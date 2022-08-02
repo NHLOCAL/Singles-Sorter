@@ -1,41 +1,42 @@
 @echo off
 chcp 1255>nul
 color E0
-title 6.18+ ξργψ δριπβμιν
+title 6.18+ ΧΧ΅Χ“Χ¨ Χ”Χ΅Χ™Χ Χ’ΧΧ™Χ
 setlocal enabledelayedexpansion
 set f=%0%
 goto mesader-singels
-::χεγ μδερτϊ ζξψιν ςμ ιγι δξωϊξω
+::Χ§Χ•Χ“ ΧΧ”Χ•Χ΅Χ¤Χª Χ–ΧΧ¨Χ™Χ ΧΆΧ Χ™Χ“Χ™ Χ”ΧΧ©ΧªΧΧ©
 :singer-list-new
 goto number%ab%
 :sln-start
 set/a abc=%ab%
 cls
-echo νιψξζ ϊτρεδ - νιμβπιρδ ψγρξ
+echo ΧΧ™Χ¨ΧΧ– ΧªΧ¤Χ΅Χ•Χ” - ΧΧ™ΧΧ’Χ Χ™Χ΅Χ” Χ¨Χ“Χ΅Χ
 echo ============================
-echo [1] γηΰ γηΰ νιψξζ ϊτρεδμ
-echo [2] υαεχ κεϊξ νιψξζ ϊεξλ ϊτρεδμ
-echo ϊειεψωτΰδξ ϊηΰα ψηα
+echo [1] Χ“Χ—Χ Χ“Χ—Χ ΧΧ™Χ¨ΧΧ– ΧªΧ¤Χ΅Χ•Χ”Χ
+echo [2] Χ¥Χ‘Χ•Χ§ ΧΧ•ΧªΧ ΧΧ™Χ¨ΧΧ– ΧªΧ•ΧΧ› ΧªΧ¤Χ΅Χ•Χ”Χ
+echo ΧªΧ•Χ™Χ•Χ¨Χ©Χ¤ΧΧ”Χ ΧªΧ—ΧΧ‘ Χ¨Χ—Χ‘
 choice /c 12
 if errorlevel 2 goto 2.0
 if errorlevel 1 goto 1.0
 :2.0
 cls
-echo νιψξζδ ϊξιωψ νς υαεχδ ϊΰ οΰλμ ψεψβ
-echo !νωμ νω οια ψθπΰ νς νιγψτεξ ϊειδμ νιλιψφ νιψξζδ
-echo :C οπελ κεϊμ υαεχδ ϊΰ χιϊςδμ υμξεξ*
+echo ΧΧ™Χ¨ΧΧ–Χ” ΧªΧΧ™Χ©Χ¨ ΧΧΆ Χ¥Χ‘Χ•Χ§Χ” ΧªΧ ΧΧΧ›Χ Χ¨Χ•Χ¨Χ’
+echo !ΧΧ©Χ ΧΧ© ΧΧ™Χ‘ Χ¨ΧΧ Χ ΧΧΆ ΧΧ™Χ“Χ¨Χ¤Χ•Χ ΧªΧ•Χ™Χ”Χ ΧΧ™Χ›Χ™Χ¨Χ¦ ΧΧ™Χ¨ΧΧ–Χ”
+echo :C ΧΧ Χ•Χ› ΧΧ•ΧªΧ Χ¥Χ‘Χ•Χ§Χ” ΧªΧ Χ§Χ™ΧªΧΆΧ”Χ Χ¥ΧΧΧ•Χ*
 set/p pa=">>>"
+if not exist %pa% echo !Χ‘Χ•Χ© Χ”Χ΅Χ  Χ™Χ•Χ’Χ© Χ‘Χ™ΧªΧ Χ” & timeout 2 & goto 2.0
 cls
 for /f "eol=;tokens=1,1*delims=" %%i in (%pa%) do echo :!ab!>>%f% & echo set c=%%i>>%f% & echo set a=*%%c: =*%%*.*>>%f% & echo set/a d=1+d>>%f% & echo goto start>>%f% & set/a ab=1+ab
-echo !δξμωεδ δμεςτδ
+echo !Χ”ΧΧΧ©Χ•Χ” Χ”ΧΧ•ΧΆΧ¤Χ”
 goto :1.3
 :1.0
-echo ψθπΰ εφημε ψξζ μω νω οΰλ εξωψ
+echo Χ¨ΧΧ Χ Χ•Χ¦Χ—ΧΧ• Χ¨ΧΧ– ΧΧ© ΧΧ© ΧΧΧ› Χ•ΧΧ©Χ¨
 goto 1.2
 :1.1
 cls
-echo ...σρεπ ψξζ μω νω εξωψ
-echo (1 εωιχδ αμω μλα δΰιφιμ)
+echo ...Χ£Χ΅Χ•Χ  Χ¨ΧΧ– ΧΧ© ΧΧ© Χ•ΧΧ©Χ¨
+echo (1 Χ•Χ©Χ™Χ§Χ” Χ‘ΧΧ© ΧΧ›Χ‘ Χ”ΧΧ™Χ¦Χ™Χ)
 :1.2
 set/p singer1=">>>"
 if "%singer1%" == "1" goto 1.3
@@ -54,37 +55,38 @@ echo set/a ab=%ab%+1>>%f%
 echo find /c ":number%%ab%%" %%f%% >>%f%
 echo if %%errorlevel%%==0 (goto number%%ab%%) else (goto :sln-start)>>%f%
 :exitsinglist
-echo ...ϊςλ ψβρϊ ΰιδ δπλεϊδ ϊεπιχϊ κψεφμ
+echo ...ΧªΧΆΧ› Χ¨Χ’Χ΅Χª ΧΧ™Χ” Χ”Χ Χ›Χ•ΧªΧ” ΧªΧ•Χ Χ™Χ§Χª ΧΧ¨Χ•Χ¦Χ
 timeout 3
 exit
 
-::ξργψ δριπβμιν ςφξε
+::ΧΧ΅Χ“Χ¨ Χ”Χ΅Χ™Χ Χ’ΧΧ™Χ ΧΆΧ¦ΧΧ•
 :mesader-singels
 set help="%temp%\help12"
 cls
 if exist %help% goto :mesader2
-echo                                                 6.0+ ξργψ δριπβμιν>>%help%
+echo                                                 6.0+ ΧΧ΅Χ“Χ¨ Χ”Χ΅Χ™Χ Χ’ΧΧ™Χ>>%help%
 echo ==============================================>>%help%
-echo ξθψϊ δϊελπδ διΰ μργψ ΰϊ δριπβμιν ωμλν αφεψδ ξρεγψϊ μτι ΰξπιν>>%help%
-echo ΰετο δωιξεω τωεθ: ιω μβψεψ ΰϊ ϊιχιιϊ δριπβμιν δψφειιδ μϊεκ ημεο δϊελπδ εμμηευ ςμ ΰπθψ>>%help%
-echo ΰηψ λκ ιω μβψεψ ϊιχιδ ηγωδ ΰε λμ ϊιχιδ ωδιΰ ωΰϊν ψεφιν ωδριπβμιν δξρεγψιν ιςαψε ΰμιδ, εμμηευ ωεα ςμ ΰπθψ >>%help%
-echo δϊελπδ ξςαιψδ ΰε ξςϊιχδ ΰϊ δχαφιν (μαηιψϊλν) μϊιχιδ δηγωδ επεϊπϊ αρεσ δϊδμικ ριλεν ωμ ξρτψ δωιψιν ωδεςαψε>>%help%
-echo δϊελπδ λεμμϊ λψβς λξεϊ ωμ λξδ ξΰεϊ ζξψιν, εξπριεπι, διΰ ϊςαιψ μψεα λξεϊ ωμ λ-50%% ξδριπβμιν ωαψωεϊλν>>%help%
-echo ΰν ιω ωιψ ςν γεΰθ, διΰ τωεθ ϊςαιψ ΰϊ δων δψΰωεο ωψωεν μδ, αγψκ λμμ ζδ ιςαιψ ΰϊ δζξψ δψΰωεο αργψ ΰμταϊι>>%help%
-echo .μγεβξΰ: "ξψγλι αο γεγ εΰαψδν τψιγ" -δϊελπδ ϊςαιψ ΰϊ δωιψ μΰαψδν τψιγ>>%help%
-echo αΰβιν περτιν: μςιϊιν δϊελπδ ςωειδ ωμΰ μζδεϊ ζξψ ξρειν, μγεβξΰ: ζξψ αων "ΰαψδν τψιγξο" διΰ ϊλπιρ μ"ΰαψδν τψιγ">>%help%
-echo δςψδ ηωεαδ! δϊελπδ ρεψχϊ βν ϊιχιεϊ ξωπδ^<^<^<>>%help%
+echo ΧΧΧ¨Χª Χ”ΧªΧ•Χ›Χ Χ” Χ”Χ™Χ ΧΧ΅Χ“Χ¨ ΧΧª Χ”Χ΅Χ™Χ Χ’ΧΧ™Χ Χ©ΧΧ›Χ Χ‘Χ¦Χ•Χ¨Χ” ΧΧ΅Χ•Χ“Χ¨Χª ΧΧ¤Χ™ ΧΧΧ Χ™Χ>>%help%
+echo ΧΧ•Χ¤Χ Χ”Χ©Χ™ΧΧ•Χ© Χ¤Χ©Χ•Χ: Χ™Χ© ΧΧ’Χ¨Χ•Χ¨ ΧΧª ΧªΧ™Χ§Χ™Χ™Χª Χ”Χ΅Χ™Χ Χ’ΧΧ™Χ Χ”Χ¨Χ¦Χ•Χ™Χ™Χ” ΧΧªΧ•Χ Χ—ΧΧ•Χ Χ”ΧªΧ•Χ›Χ Χ” Χ•ΧΧΧ—Χ•Χ¥ ΧΆΧ ΧΧ ΧΧ¨>>%help%
+echo ΧΧ—Χ¨ Χ›Χ Χ™Χ© ΧΧ’Χ¨Χ•Χ¨ ΧªΧ™Χ§Χ™Χ” Χ—Χ“Χ©Χ” ΧΧ• Χ›Χ ΧªΧ™Χ§Χ™Χ” Χ©Χ”Χ™Χ Χ©ΧΧªΧ Χ¨Χ•Χ¦Χ™Χ Χ©Χ”Χ΅Χ™Χ Χ’ΧΧ™Χ Χ”ΧΧ΅Χ•Χ“Χ¨Χ™Χ Χ™ΧΆΧ‘Χ¨Χ• ΧΧΧ™Χ”, Χ•ΧΧΧ—Χ•Χ¥ Χ©Χ•Χ‘ ΧΆΧ ΧΧ ΧΧ¨ >>%help%
+echo Χ”ΧªΧ•Χ›Χ Χ” ΧΧΆΧ‘Χ™Χ¨Χ” ΧΧ• ΧΧΆΧªΧ™Χ§Χ” ΧΧª Χ”Χ§Χ‘Χ¦Χ™Χ (ΧΧ‘Χ—Χ™Χ¨ΧªΧ›Χ) ΧΧªΧ™Χ§Χ™Χ” Χ”Χ—Χ“Χ©Χ” Χ•Χ Χ•ΧªΧ Χª Χ‘Χ΅Χ•Χ£ Χ”ΧªΧ”ΧΧ™Χ Χ΅Χ™Χ›Χ•Χ Χ©Χ ΧΧ΅Χ¤Χ¨ Χ”Χ©Χ™Χ¨Χ™Χ Χ©Χ”Χ•ΧΆΧ‘Χ¨Χ•>>%help%
+echo Χ”ΧªΧ•Χ›Χ Χ” Χ›Χ•ΧΧΧª Χ›Χ¨Χ’ΧΆ Χ›ΧΧ•Χª Χ©Χ Χ›ΧΧ” ΧΧΧ•Χª Χ–ΧΧ¨Χ™Χ, Χ•ΧΧ Χ΅Χ™Χ•Χ Χ™, Χ”Χ™Χ ΧªΧΆΧ‘Χ™Χ¨ ΧΧ¨Χ•Χ‘ Χ›ΧΧ•Χª Χ©Χ Χ›-50%% ΧΧ”Χ΅Χ™Χ Χ’ΧΧ™Χ Χ©Χ‘Χ¨Χ©Χ•ΧªΧ›Χ>>%help%
+echo ΧΧ Χ™Χ© Χ©Χ™Χ¨ ΧΆΧ Χ“Χ•ΧΧ, Χ”Χ™Χ Χ¤Χ©Χ•Χ ΧªΧΆΧ‘Χ™Χ¨ ΧΧª Χ”Χ©Χ Χ”Χ¨ΧΧ©Χ•Χ Χ©Χ¨Χ©Χ•Χ ΧΧ”, Χ‘Χ“Χ¨Χ Χ›ΧΧ Χ–Χ” Χ™ΧΆΧ‘Χ™Χ¨ ΧΧª Χ”Χ–ΧΧ¨ Χ”Χ¨ΧΧ©Χ•Χ Χ‘Χ΅Χ“Χ¨ ΧΧΧ¤Χ‘ΧªΧ™>>%help%
+echo .ΧΧ“Χ•Χ’ΧΧ: "ΧΧ¨Χ“Χ›Χ™ Χ‘Χ Χ“Χ•Χ“ Χ•ΧΧ‘Χ¨Χ”Χ Χ¤Χ¨Χ™Χ“" -Χ”ΧªΧ•Χ›Χ Χ” ΧªΧΆΧ‘Χ™Χ¨ ΧΧª Χ”Χ©Χ™Χ¨ ΧΧΧ‘Χ¨Χ”Χ Χ¤Χ¨Χ™Χ“>>%help%
+echo Χ‘ΧΧ’Χ™Χ Χ Χ•Χ΅Χ¤Χ™Χ: ΧΧΆΧ™ΧªΧ™Χ Χ”ΧªΧ•Χ›Χ Χ” ΧΆΧ©Χ•Χ™Χ” Χ©ΧΧ ΧΧ–Χ”Χ•Χª Χ–ΧΧ¨ ΧΧ΅Χ•Χ™Χ, ΧΧ“Χ•Χ’ΧΧ: Χ–ΧΧ¨ Χ‘Χ©Χ "ΧΧ‘Χ¨Χ”Χ Χ¤Χ¨Χ™Χ“ΧΧ" Χ”Χ™Χ ΧªΧ›Χ Χ™Χ΅ Χ"ΧΧ‘Χ¨Χ”Χ Χ¤Χ¨Χ™Χ“">>%help%
+echo Χ”ΧΆΧ¨Χ” Χ—Χ©Χ•Χ‘Χ”! Χ”ΧªΧ•Χ›Χ Χ” Χ΅Χ•Χ¨Χ§Χª Χ’Χ ΧªΧ™Χ§Χ™Χ•Χª ΧΧ©Χ Χ”^<^<^<>>%help%
 echo.>>%help%
-echo πιϊο μδςϊιχ εμδτιυ αωξηδ...>>%help%
-echo  nh.local11@gmail.com :χψγιθ>>%help%
+echo Χ Χ™ΧªΧ ΧΧ”ΧΆΧªΧ™Χ§ Χ•ΧΧ”Χ¤Χ™Χ¥ Χ‘Χ©ΧΧ—Χ”...>>%help%
+echo  nh.local11@gmail.com :Χ§Χ¨Χ“Χ™Χ>>%help%
+
 ) else (echo 1)
 :mesader2
-echo    6.0+ νιμβπιρδ ψγρξ
+echo    6.0+ ΧΧ™ΧΧ’Χ Χ™Χ΅Χ” Χ¨Χ“Χ΅Χ
 echo =======================
 echo.
-echo [1] μηϊδ
-echo [2] δψζς
-echo [3] νιψξζ ϊτρεδ
+echo [1] ΧΧ—ΧªΧ”
+echo [2] Χ”Χ¨Χ–ΧΆ
+echo [3] ΧΧ™Χ¨ΧΧ– ΧªΧ¤Χ΅Χ•Χ”
 choice /c 123
 if errorlevel 3 del %help% & goto :singer-list-new
 if errorlevel 2 type %help% | msg * & del %help%
@@ -92,34 +94,34 @@ if errorlevel 1 goto begining
 :begining
 del %help%
 cls
-set a=*ΰαι*ξιμψ*.*
-set c=ΰαι ξιμψ
+set a=*ΧΧ‘Χ™*ΧΧ™ΧΧ¨*.*
+set c=ΧΧ‘Χ™ ΧΧ™ΧΧ¨
 set d=1
-echo    6.0+ νιμβπιρδ ψγρξ
+echo    6.0+ ΧΧ™ΧΧ’Χ Χ™Χ΅Χ” Χ¨Χ“Χ΅Χ
 echo =======================
-echo ιωΰψδ θιψτϊμ ψεζημ ϊπξ μς ϊς μλα 0 υημ
+echo Χ™Χ©ΧΧ¨Χ” ΧΧ™Χ¨Χ¤ΧªΧ Χ¨Χ•Χ–Χ—Χ ΧªΧ Χ ΧΧΆ ΧªΧΆ ΧΧ›Χ‘ 0 Χ¥Χ—Χ
 echo.
-set/p p="ωετιημ αιϊπ οΰλ ρπλδ>>>"
+set/p p="Χ©Χ•Χ¤Χ™Χ—Χ Χ‘Χ™ΧªΧ  ΧΧΧ› Χ΅Χ Χ›Χ”>>>"
 
 if %p%==0 goto :mesader-singels
 if exist %p% (goto target_folder) ELSE (goto Wrong_Path)
 
 :target_folder	
-set/p h="δχαγδμ αιϊπ οΰλ ρπλδ>>>"
+set/p h="Χ”Χ§Χ‘Χ“Χ”Χ Χ‘Χ™ΧªΧ  ΧΧΧ› Χ΅Χ Χ›Χ”>>>"
 for %%i in (%h%) do set h=%%~i
 cd /d %p%
 :c_or_m
-echo "2" ωχδ ψιαςδμ "1" ωχδ χιϊςδμ οιιπεςξ δϊΰ νΰ
+echo "2" Χ©Χ§Χ” Χ¨Χ™Χ‘ΧΆΧ”Χ "1" Χ©Χ§Χ” Χ§Χ™ΧªΧΆΧ”Χ ΧΧ™Χ™Χ Χ•ΧΆΧ Χ”ΧªΧ ΧΧ
 choice /c 12
-if errorlevel 2 set c_or_m=move & set par= & set msg=εψαςεδω & goto start
-if errorlevel 1 set c_or_m=xcopy & set par=/y & set msg=εχϊςεδω & goto start
+if errorlevel 2 set c_or_m=move & set par= & set msg=Χ•Χ¨Χ‘ΧΆΧ•Χ”Χ© & goto start
+if errorlevel 1 set c_or_m=xcopy & set par=/y & set msg=Χ•Χ§ΧªΧΆΧ•Χ”Χ© & goto start
 :Wrong_path
-echo !αεω αιϊπδ ϊΰ ρπλδ ΰπΰ !νιιχ επιΰ αιϊπδ
+echo !Χ‘Χ•Χ© Χ‘Χ™ΧªΧ Χ” ΧªΧ Χ΅Χ Χ›Χ” ΧΧ Χ !ΧΧ™Χ™Χ§ Χ•Χ Χ™Χ Χ‘Χ™ΧªΧ Χ”
 timeout 2 >nul
 goto begining
 :begining2
-set a=*ΰαι*ξιμψ*.*
-set c=ΰαι ξιμψ
+set a=*ΧΧ‘Χ™*ΧΧ™ΧΧ¨*.*
+set c=ΧΧ‘Χ™ ΧΧ™ΧΧ¨
 set d=1
 :start
 set xx=v
@@ -129,1571 +131,1571 @@ if %c_or_m%==del set b=
 for /r %%i in ("%a%") do if exist %%i set ss=ss
 if %ss%==ss md %b%
 for /r %%i in ("%a%") do if exist %%i set xx=xx
-if %xx%==xx for /r %%i in (%a%) do %c_or_m% %par% "%%i" %b%>>νελιρ
+if %xx%==xx for /r %%i in (%a%) do %c_or_m% %par% "%%i" %b%>>ΧΧ•Χ›Χ™Χ΅
 goto %d%
 :1
-set a=*ΰαιϊψ*απΰι*.*
-set c=ΰαιϊψ απΰι
+set a=*ΧΧ‘Χ™ΧªΧ¨*Χ‘Χ ΧΧ™*.*
+set c=ΧΧ‘Χ™ΧªΧ¨ Χ‘Χ ΧΧ™
 set d=2
 goto start
 :2
-set a=*ΰαψδν*τψιγ*.*
-set c=ΰαψδν τψιγ
+set a=*ΧΧ‘Χ¨Χ”Χ*Χ¤Χ¨Χ™Χ“*.*
+set c=ΧΧ‘Χ¨Χ”Χ Χ¤Χ¨Χ™Χ“
 set d=3
 goto :start
 :3
-set a=*ΰαψεξι*ειιπαψβ*.*
-set c=ΰαψεξι ειιπαψβ
+set a=*ΧΧ‘Χ¨Χ•ΧΧ™*Χ•Χ™Χ™Χ Χ‘Χ¨Χ’*.*
+set c=ΧΧ‘Χ¨Χ•ΧΧ™ Χ•Χ™Χ™Χ Χ‘Χ¨Χ’
 set d=4
 goto :start
 :4
-set a=*ΰαψιιξι*ψεθ*.*
-set c=ΰαψιιξι ψεθ
+set a=*ΧΧ‘Χ¨Χ™Χ™ΧΧ™*Χ¨Χ•Χ*.*
+set c=ΧΧ‘Χ¨Χ™Χ™ΧΧ™ Χ¨Χ•Χ
 set d=5
 goto :start
 :5
-set a=*ΰδψμ'δ*ρξθ*.*
-set c=ΰδψμ'δ ρξθ
+set a=*ΧΧ”Χ¨Χ'Χ”*Χ΅ΧΧ*.*
+set c=ΧΧ”Χ¨Χ'Χ” Χ΅ΧΧ
 set d=6
 goto :start
 :6
-set a=*ΰδψμδ*ειπθψεα*.*
-set c=ΰδψμδ ειπθψεα
+set a=*ΧΧ”Χ¨ΧΧ”*Χ•Χ™Χ ΧΧ¨Χ•Χ‘*.*
+set c=ΧΧ”Χ¨ΧΧ” Χ•Χ™Χ ΧΧ¨Χ•Χ‘
 set d=7
 goto :start
 :7
-set a=*ΰδψο**ψζΰμ*.*
-set c=ΰδψο ψζΰμ
+set a=*ΧΧ”Χ¨Χ**Χ¨Χ–ΧΧ*.*
+set c=ΧΧ”Χ¨Χ Χ¨Χ–ΧΧ
 set d=8
 goto :start
 :8
-set a=*ΰεγι*ΰεμξο*.*
-set c=ΰεγι ΰεμξο
+set a=*ΧΧ•Χ“Χ™*ΧΧ•ΧΧΧ*.*
+set c=ΧΧ•Χ“Χ™ ΧΧ•ΧΧΧ
 set d=9
 goto :start
 :9
-set a=*ΰεγι*γειγι*.*
-set c=ΰεγι γειγι
+set a=*ΧΧ•Χ“Χ™*Χ“Χ•Χ™Χ“Χ™*.*
+set c=ΧΧ•Χ“Χ™ Χ“Χ•Χ™Χ“Χ™
 set d=10
 goto :start
 :10
-set a=*ΰεδγ*ξεωχεαιυ*.*
-set c=ΰεδγ ξεωχεαιυ
+set a=*ΧΧ•Χ”Χ“*ΧΧ•Χ©Χ§Χ•Χ‘Χ™Χ¥*.*
+set c=ΧΧ•Χ”Χ“ ΧΧ•Χ©Χ§Χ•Χ‘Χ™Χ¥
 set d=11
 goto :start
 :11
-set a=*ΰεψι*γειγι*.*
-set c=ΰεψι γειγι
+set a=*ΧΧ•Χ¨Χ™*Χ“Χ•Χ™Χ“Χ™*.*
+set c=ΧΧ•Χ¨Χ™ Χ“Χ•Χ™Χ“Χ™
 set d=12
 goto :start
 :12
-set a=*ΰιγιω*πηϊ*.*
-set c=ΰιγιω πηϊ
+set a=*ΧΧ™Χ“Χ™Χ©*Χ Χ—Χª*.*
+set c=ΧΧ™Χ“Χ™Χ© Χ Χ—Χª
 set d=13
 goto :start
 :13
-set a=*ΰιιζιχ*δΰπιβ*.*
-set c=ΰιιζιχ δΰπιβ
+set a=*ΧΧ™Χ™Χ–Χ™Χ§*Χ”ΧΧ Χ™Χ’*.*
+set c=ΧΧ™Χ™Χ–Χ™Χ§ Χ”ΧΧ Χ™Χ’
 set d=14
 goto :start
 :14
-set a=*ΰιφιχ*ΰωμ*.*
-set c=ΰιφιχ ΰωμ
+set a=*ΧΧ™Χ¦Χ™Χ§*ΧΧ©Χ*.*
+set c=ΧΧ™Χ¦Χ™Χ§ ΧΧ©Χ
 set d=15
 goto :start
 :15
-set a=*ΰιφιχ*γγιδ*.*
-set c=ΰιφιχ γγιδ
+set a=*ΧΧ™Χ¦Χ™Χ§*Χ“Χ“Χ™Χ”*.*
+set c=ΧΧ™Χ¦Χ™Χ§ Χ“Χ“Χ™Χ”
 set d=16
 goto :start
 :16
-set a=*ΰμι*δψφμικ*.*
-set c=ΰμι δψφμικ
+set a=*ΧΧΧ™*Χ”Χ¨Χ¦ΧΧ™Χ*.*
+set c=ΧΧΧ™ Χ”Χ¨Χ¦ΧΧ™Χ
 set d=17
 goto :start
 :17
-set a=**ΰμι*ξψλερ*.*
-set c=ΰμι ξψλερ
+set a=**ΧΧΧ™*ΧΧ¨Χ›Χ•Χ΅*.*
+set c=ΧΧΧ™ ΧΧ¨Χ›Χ•Χ΅
 set d=19
 goto :start
 :19
-set a=*ΰμι*τψιγξο*.*
-set c=ΰμι τψιγξο
+set a=*ΧΧΧ™*Χ¤Χ¨Χ™Χ“ΧΧ*.*
+set c=ΧΧΧ™ Χ¤Χ¨Χ™Χ“ΧΧ
 set d=20
 goto :start
 :20
-set a=*ΰτψιν*ξπγμρεο*.*
-set c=ΰτψιν ξπγμρεο
+set a=*ΧΧ¤Χ¨Χ™Χ*ΧΧ Χ“ΧΧ΅Χ•Χ*.*
+set c=ΧΧ¤Χ¨Χ™Χ ΧΧ Χ“ΧΧ΅Χ•Χ
 set d=21
 goto :start
 :21
-set a=*ΰψι*βεμγεεΰβ*.*
-set c=ΰψι βεμγεεΰβ
+set a=*ΧΧ¨Χ™*Χ’Χ•ΧΧ“Χ•Χ•ΧΧ’*.*
+set c=ΧΧ¨Χ™ Χ’Χ•ΧΧ“Χ•Χ•ΧΧ’
 set d=22
 goto :start
 :22
-set a=*ΰψι*ψιικ*.*
-set c=ΰψι ψιικ
+set a=*ΧΧ¨Χ™*Χ¨Χ™Χ™Χ*.*
+set c=ΧΧ¨Χ™ Χ¨Χ™Χ™Χ
 set d=24
 goto :start
 :24
-set a=*αιπι*μπγΰε*.*
-set c=αιπι μπγΰε
+set a=*Χ‘Χ™Χ Χ™*ΧΧ Χ“ΧΧ•*.*
+set c=Χ‘Χ™Χ Χ™ ΧΧ Χ“ΧΧ•
 set d=25
 goto :start
 :25
-set a=*αο*φιεο*ωπχψ*.*
-set c=αο φιεο ωπχψ
+set a=*Χ‘Χ*Χ¦Χ™Χ•Χ*Χ©Χ Χ§Χ¨*.*
+set c=Χ‘Χ Χ¦Χ™Χ•Χ Χ©Χ Χ§Χ¨
 set d=26
 goto :start
 :26
-set a=*απι*τψιγξο*.*
-set c=απι τψιγξο
+set a=*Χ‘Χ Χ™*Χ¤Χ¨Χ™Χ“ΧΧ*.*
+set c=Χ‘Χ Χ™ Χ¤Χ¨Χ™Χ“ΧΧ
 set d=27
 goto :start
 :27
-set a=*απφι*ωθιιο*.*
-set c=απφι ωθιιο
+set a=*Χ‘Χ Χ¦Χ™*Χ©ΧΧ™Χ™Χ*.*
+set c=Χ‘Χ Χ¦Χ™ Χ©ΧΧ™Χ™Χ
 set d=28
 goto :start
 :28
-set a=*αςψι*εεςαψ*.*
-set c=αςψι εεςαψ
+set a=*Χ‘ΧΆΧ¨Χ™*Χ•Χ•ΧΆΧ‘Χ¨*.*
+set c=Χ‘ΧΆΧ¨Χ™ Χ•Χ•ΧΆΧ‘Χ¨
 set d=29
 goto :start
 :29
-set a=*αψεκ*μειο*.*
-set c=αψεκ μειο
+set a=*Χ‘Χ¨Χ•Χ*ΧΧ•Χ™Χ*.*
+set c=Χ‘Χ¨Χ•Χ ΧΧ•Χ™Χ
 set d=30
 goto :start
 :30
-set a=*αψεκ*πτϊμ*.*
-set c=αψεκ πτϊμ
+set a=*Χ‘Χ¨Χ•Χ*Χ Χ¤ΧªΧ*.*
+set c=Χ‘Χ¨Χ•Χ Χ Χ¤ΧªΧ
 set d=31
 goto :start
 :31
-set a=*αψεκ*ωμεν*.*
-set c=αψεκ ωμεν
+set a=*Χ‘Χ¨Χ•Χ*Χ©ΧΧ•Χ*.*
+set c=Χ‘Χ¨Χ•Χ Χ©ΧΧ•Χ
 set d=32
 goto :start
 :32
-set a=*βγ*ΰμαζ*.*
-set c=βγ ΰμαζ
+set a=*Χ’Χ“*ΧΧΧ‘Χ–*.*
+set c=Χ’Χ“ ΧΧΧ‘Χ–
 set d=33
 goto :start
 :33
-set a=*γα*δπγμψ*.*
-set c=γα δπγμψ
+set a=*Χ“Χ‘*Χ”Χ Χ“ΧΧ¨*.*
+set c=Χ“Χ‘ Χ”Χ Χ“ΧΧ¨
 set d=35
 goto :start
 :35
-set a=*γγι*βψΰελψ*.*
-set c=γγι βψΰελψ
+set a=*Χ“Χ“Χ™*Χ’Χ¨ΧΧ•Χ›Χ¨*.*
+set c=Χ“Χ“Χ™ Χ’Χ¨ΧΧ•Χ›Χ¨
 set d=36
 goto :start
 :36
-set a=*γεγ*μεΰι*.*
-set c=γεγ μεΰι
+set a=*Χ“Χ•Χ“*ΧΧ•ΧΧ™*.*
+set c=Χ“Χ•Χ“ ΧΧ•ΧΧ™
 set d=37
 goto :start
 :37
-set a=*γεγ*ωξηδ*.*
-set c=γεγ ωξηδ
+set a=*Χ“Χ•Χ“*Χ©ΧΧ—Χ”*.*
+set c=Χ“Χ•Χ“ Χ©ΧΧ—Χ”
 set d=38
 goto :start
 :38
-set a=*γεγε*τιωψ*.*
-set c=γεγε τιωψ
+set a=*Χ“Χ•Χ“Χ•*Χ¤Χ™Χ©Χ¨*.*
+set c=Χ“Χ•Χ“Χ• Χ¤Χ™Χ©Χ¨
 set d=39
 goto :start
 :39
-set a=*γεγι*χΰμιω*.*
-set c=γεγι χΰμιω
+set a=*Χ“Χ•Χ“Χ™*Χ§ΧΧΧ™Χ©*.*
+set c=Χ“Χ•Χ“Χ™ Χ§ΧΧΧ™Χ©
 set d=40
 goto :start
 :40
-set a=*γεγι*χπΰτμςψ*.*
-set c=γεγι χπΰτμςψ
+set a=*Χ“Χ•Χ“Χ™*Χ§Χ ΧΧ¤ΧΧΆΧ¨*.*
+set c=Χ“Χ•Χ“Χ™ Χ§Χ ΧΧ¤ΧΧΆΧ¨
 set d=44
 goto :start
 :44
-set a=*δΰρχ*.*
-set c=δΰρχ
+set a=*Χ”ΧΧ΅Χ§*.*
+set c=Χ”ΧΧ΅Χ§
 set d=46
 goto :start
 goto :start
 :46
-set a=*δμμ*τμΰι*.*
-set c=δμμ τμΰι
+set a=*Χ”ΧΧ*Χ¤ΧΧΧ™*.*
+set c=Χ”ΧΧ Χ¤ΧΧΧ™
 set d=47
 goto :start
 :47
-set a=*δξζξψιν*.*
-set c=δξζξψιν
+set a=*Χ”ΧΧ–ΧΧ¨Χ™Χ*.*
+set c=Χ”ΧΧ–ΧΧ¨Χ™Χ
 set d=48
 goto :start
 :48
-set a=*δξπβπιν*.*
-set c=δξπβπιν
+set a=*Χ”ΧΧ Χ’Χ Χ™Χ*.*
+set c=Χ”ΧΧ Χ’Χ Χ™Χ
 set d=49
 goto :start
 :49
-set a=*δςψωι*ειιρ*.*
-set c=δςψωι ειιρ
+set a=*Χ”ΧΆΧ¨Χ©Χ™*Χ•Χ™Χ™Χ΅*.*
+set c=Χ”ΧΆΧ¨Χ©Χ™ Χ•Χ™Χ™Χ΅
 set d=50
 goto :start
 :50
-set a=*εεχΰμι*.*
-set c=εεχΰμι
+set a=*Χ•Χ•Χ§ΧΧΧ™*.*
+set c=Χ•Χ•Χ§ΧΧΧ™
 set d=51
 goto :start
 :51
-set a=*ζΰπεειμ*ειιπαψβψ*.*
-set c=ζΰπεειμ ειιπαψβψ
+set a=*Χ–ΧΧ Χ•Χ•Χ™Χ*Χ•Χ™Χ™Χ Χ‘Χ¨Χ’Χ¨*.*
+set c=Χ–ΧΧ Χ•Χ•Χ™Χ Χ•Χ™Χ™Χ Χ‘Χ¨Χ’Χ¨
 set d=52
 goto :start
 :52
-set a=*ζεωΰ*.*
-set c=ζεωΰ
+set a=*Χ–Χ•Χ©Χ*.*
+set c=Χ–Χ•Χ©Χ
 set d=53
 goto :start
 :53
-set a=*ηιιν*ιωψΰμ*.*
-set c=ηιιν ιωψΰμ
+set a=*Χ—Χ™Χ™Χ*Χ™Χ©Χ¨ΧΧ*.*
+set c=Χ—Χ™Χ™Χ Χ™Χ©Χ¨ΧΧ
 set d=54
 goto :start
 :54
-set a=*ηιιν*ωμξδ*ξΰιιςρ*.*
-set c=ηιιν ωμξδ ξΰιιςρ
+set a=*Χ—Χ™Χ™Χ*Χ©ΧΧΧ”*ΧΧΧ™Χ™ΧΆΧ΅*.*
+set c=Χ—Χ™Χ™Χ Χ©ΧΧΧ” ΧΧΧ™Χ™ΧΆΧ΅
 set d=55
 goto :start
 :55
-set a=*ηιμιχ*τψΰπχ*.*
-set c=ηιμιχ τψΰπχ
+set a=*Χ—Χ™ΧΧ™Χ§*Χ¤Χ¨ΧΧ Χ§*.*
+set c=Χ—Χ™ΧΧ™Χ§ Χ¤Χ¨ΧΧ Χ§
 set d=56
 goto :start
 :56
-set a=*ηπο*αο*ΰψι*.*
-set c=ηπο αο ΰψι
+set a=*Χ—Χ Χ*Χ‘Χ*ΧΧ¨Χ™*.*
+set c=Χ—Χ Χ Χ‘Χ ΧΧ¨Χ™
 set d=57
 goto :start
 :57
-set a=*ιδεγδ*βμΰπυ*.*
-set c=ιδεγδ βμΰπυ
+set a=*Χ™Χ”Χ•Χ“Χ”*Χ’ΧΧΧ Χ¥*.*
+set c=Χ™Χ”Χ•Χ“Χ” Χ’ΧΧΧ Χ¥
 set d=58
 goto :start
 :58
-set a=*ιδεγδ*βψιο*.*
-set c=ιδεγδ βψιο
+set a=*Χ™Χ”Χ•Χ“Χ”*Χ’Χ¨Χ™Χ*.*
+set c=Χ™Χ”Χ•Χ“Χ” Χ’Χ¨Χ™Χ
 set d=59
 goto :start
 :59
-set a=*ιδεγδ*γιν*.*
-set c=ιδεγδ γιν
+set a=*Χ™Χ”Χ•Χ“Χ”*Χ“Χ™Χ*.*
+set c=Χ™Χ”Χ•Χ“Χ” Χ“Χ™Χ
 set d=60
 goto :start
 :60
-set a=*ιεΰμι*βψιπτμγ*.*
-set c=ιεΰμι βψιπτμγ
+set a=*Χ™Χ•ΧΧΧ™*Χ’Χ¨Χ™Χ Χ¤ΧΧ“*.*
+set c=Χ™Χ•ΧΧΧ™ Χ’Χ¨Χ™Χ Χ¤ΧΧ“
 set d=61
 goto :start
 :61
-set a=*ιεΰμι*γιχξο*.*
-set c=ιεΰμι γιχξο
+set a=*Χ™Χ•ΧΧΧ™*Χ“Χ™Χ§ΧΧ*.*
+set c=Χ™Χ•ΧΧΧ™ Χ“Χ™Χ§ΧΧ
 set d=62
 goto :start
 :62
-set a=*ιεΰμι*τμχεαιυ*.*
-set c=ιεΰμι τμχεαιυ
+set a=*Χ™Χ•ΧΧΧ™*Χ¤ΧΧ§Χ•Χ‘Χ™Χ¥*.*
+set c=Χ™Χ•ΧΧΧ™ Χ¤ΧΧ§Χ•Χ‘Χ™Χ¥
 set d=63
 goto :start
 :63
-set a=*ιεΰμι*χμιιο*.*
-set c=ιεΰμι χμιιο
+set a=*Χ™Χ•ΧΧΧ™*Χ§ΧΧ™Χ™Χ*.*
+set c=Χ™Χ•ΧΧΧ™ Χ§ΧΧ™Χ™Χ
 set d=64
 goto :start
 :64
-set a=*ιεξι*μεΰι*.*
-set c=ιεξι μεΰι
+set a=*Χ™Χ•ΧΧ™*ΧΧ•ΧΧ™*.*
+set c=Χ™Χ•ΧΧ™ ΧΧ•ΧΧ™
 set d=65
 goto :start
 :65
-set a=*ιεπβςψμικ*.*
-set c=ιεπβςψμικ
+set a=*Χ™Χ•Χ Χ’ΧΆΧ¨ΧΧ™Χ*.*
+set c=Χ™Χ•Χ Χ’ΧΆΧ¨ΧΧ™Χ
 set d=66
 goto :start
 :66
-set a=*ιεπι*ζιβμαειν*-*ιεπι*z*.*
-set c=ιεπι ζιβμαειν
+set a=*Χ™Χ•Χ Χ™*Χ–Χ™Χ’ΧΧ‘Χ•Χ™Χ*-*Χ™Χ•Χ Χ™*z*.*
+set c=Χ™Χ•Χ Χ™ Χ–Χ™Χ’ΧΧ‘Χ•Χ™Χ
 set d=67
 goto :start
 :67
-set a=*ιεπϊο*ψζΰμ*.*
-set c=ιεπϊο ψζΰμ
+set a=*Χ™Χ•Χ ΧªΧ*Χ¨Χ–ΧΧ*.*
+set c=Χ™Χ•Χ ΧªΧ Χ¨Χ–ΧΧ
 set d=68
 goto :start
 :68
-set a=*ιεπϊο*ωιιπτμγ*.*
-set c=ιεπϊο ωιιπτμγ
+set a=*Χ™Χ•Χ ΧªΧ*Χ©Χ™Χ™Χ Χ¤ΧΧ“*.*
+set c=Χ™Χ•Χ ΧªΧ Χ©Χ™Χ™Χ Χ¤ΧΧ“
 set d=69
 goto :start
 :69
-set a=*ιερι*βψιο*.*
-set c=ιερι βψιο
+set a=*Χ™Χ•Χ΅Χ™*Χ’Χ¨Χ™Χ*.*
+set c=Χ™Χ•Χ΅Χ™ Χ’Χ¨Χ™Χ
 set d=70
 goto :start
 :70
-set a=*ιερσ*ηιιν*ωεεΰχι*.*
-set c=ιερσ ηιιν ωεεΰχι
+set a=*Χ™Χ•Χ΅Χ£*Χ—Χ™Χ™Χ*Χ©Χ•Χ•ΧΧ§Χ™*.*
+set c=Χ™Χ•Χ΅Χ£ Χ—Χ™Χ™Χ Χ©Χ•Χ•ΧΧ§Χ™
 set d=71
 goto :start
 :71
-set a=*ιερσ*ξωδ*λδπΰ*.*
-set c=ιερσ ξωδ λδπΰ
+set a=*Χ™Χ•Χ΅Χ£*ΧΧ©Χ”*Χ›Χ”Χ Χ*.*
+set c=Χ™Χ•Χ΅Χ£ ΧΧ©Χ” Χ›Χ”Χ Χ
 set d=72
 goto :start
 :72
-set a=*ιερσ*χψγεπψ*-*.*
-set c=ιερσ χψγεπψ
+set a=*Χ™Χ•Χ΅Χ£*Χ§Χ¨Χ“Χ•Χ Χ¨*-*.*
+set c=Χ™Χ•Χ΅Χ£ Χ§Χ¨Χ“Χ•Χ Χ¨
 set d=73
 goto :start
 :73
-set a=*ιιγμ*.*
-set c=ιιγμ εψγιβψ
+set a=*Χ™Χ™Χ“Χ*.*
+set c=Χ™Χ™Χ“Χ Χ•Χ¨Χ“Χ™Χ’Χ¨
 set d=74
 goto :start
 :74
-set a=*ιςχα*ωεεΰχι*.*
-set c=ιςχα ωεεΰχι
+set a=*Χ™ΧΆΧ§Χ‘*Χ©Χ•Χ•ΧΧ§Χ™*.*
+set c=Χ™ΧΆΧ§Χ‘ Χ©Χ•Χ•ΧΧ§Χ™
 set d=75
 goto :start
 :75
-set a=*ιωι*μτιγεϊ*.*
-set c=ιωι μτιγεϊ
+set a=*Χ™Χ©Χ™*ΧΧ¤Χ™Χ“Χ•Χª*.*
+set c=Χ™Χ©Χ™ ΧΧ¤Χ™Χ“Χ•Χª
 set d=76
 goto :start
 :76
-set a=*ιωι*ψιαε*.*
-set c=ιωι ψιαε
+set a=*Χ™Χ©Χ™*Χ¨Χ™Χ‘Χ•*.*
+set c=Χ™Χ©Χ™ Χ¨Χ™Χ‘Χ•
 set d=77
 goto :start
 :77
-set a=*ιωιαδ*αειρ*.*
-set c=ιωιαδ αειρ
+set a=*Χ™Χ©Χ™Χ‘Χ”*Χ‘Χ•Χ™Χ΅*.*
+set c=Χ™Χ©Χ™Χ‘Χ” Χ‘Χ•Χ™Χ΅
 set d=78
 goto :start
 :78
-set a=*ιωψΰμ*ΰγμψ*.*
-set c=ιωψΰμ ΰγμψ
+set a=*Χ™Χ©Χ¨ΧΧ*ΧΧ“ΧΧ¨*.*
+set c=Χ™Χ©Χ¨ΧΧ ΧΧ“ΧΧ¨
 set d=79
 goto :start
 :79
-set a=*ιωψΰμ*γβο*.*
-set c=ιωψΰμ γβο
+set a=*Χ™Χ©Χ¨ΧΧ*Χ“Χ’Χ*.*
+set c=Χ™Χ©Χ¨ΧΧ Χ“Χ’Χ
 set d=80
 goto :start
 :80
-set a=*ιωψΰμ*ειμιβψ*.*
-set c=ιωψΰμ ειμιβψ
+set a=*Χ™Χ©Χ¨ΧΧ*Χ•Χ™ΧΧ™Χ’Χ¨*.*
+set c=Χ™Χ©Χ¨ΧΧ Χ•Χ™ΧΧ™Χ’Χ¨
 set d=81
 goto :start
 :81
-set a=*ιωψΰμ*εψγιβψ*.*
-set c=ιωψΰμ εψγιβψ
+set a=*Χ™Χ©Χ¨ΧΧ*Χ•Χ¨Χ“Χ™Χ’Χ¨*.*
+set c=Χ™Χ©Χ¨ΧΧ Χ•Χ¨Χ“Χ™Χ’Χ¨
 set d=84
 goto :start
 :84
-set a=*μει*λδο*.*
-set c=μει λδο
+set a=*ΧΧ•Χ™*Χ›Χ”Χ*.*
+set c=ΧΧ•Χ™ Χ›Χ”Χ
 set d=85
 goto :start
 :85
-set a=*μει*τμχεαιυ*.*
-set c=μει τμχεαιυ
+set a=*ΧΧ•Χ™*Χ¤ΧΧ§Χ•Χ‘Χ™Χ¥*.*
+set c=ΧΧ•Χ™ Χ¤ΧΧ§Χ•Χ‘Χ™Χ¥
 set d=86
 goto :start
 :86
-set a=*μιτΰ*ωξςμφψ*.*
-set c=μιτΰ ωξςμφψ
+set a=*ΧΧ™Χ¤Χ*Χ©ΧΧΆΧΧ¦Χ¨*.*
+set c=ΧΧ™Χ¤Χ Χ©ΧΧΆΧΧ¦Χ¨
 set d=87
 goto :start
 :87
-set a=*ξΰιψ*ΰγμψ*.*
-set c=ξΰιψ ΰγμψ
+set a=*ΧΧΧ™Χ¨*ΧΧ“ΧΧ¨*.*
+set c=ΧΧΧ™Χ¨ ΧΧ“ΧΧ¨
 set d=89
 goto :start
 :89
-set a=*ξεθι*ωθιιπξυ*.*
-set c=ξεθι ωθιιπξυ
+set a=*ΧΧ•ΧΧ™*Χ©ΧΧ™Χ™Χ ΧΧ¥*.*
+set c=ΧΧ•ΧΧ™ Χ©ΧΧ™Χ™Χ ΧΧ¥
 set d=90
 goto :start
 :90
-set a=*ξεπδ*ψεζπαμεν*.*
-set c=ξεπδ ψεζπαμεν
+set a=*ΧΧ•Χ Χ”*Χ¨Χ•Χ–Χ Χ‘ΧΧ•Χ*.*
+set c=ΧΧ•Χ Χ” Χ¨Χ•Χ–Χ Χ‘ΧΧ•Χ
 set d=91
 goto :start
 :91
-set a=*ξιγγ*θρδ*.*
-set c=ξιγγ θρδ
+set a=*ΧΧ™Χ“Χ“*ΧΧ΅Χ”*.*
+set c=ΧΧ™Χ“Χ“ ΧΧ΅Χ”
 set d=92
 goto :start
 :92
-set a=*ξιιμκ*χδΰο*.*
-set c=ξιιμκ χδΰο
+set a=*ΧΧ™Χ™ΧΧ*Χ§Χ”ΧΧ*.*
+set c=ΧΧ™Χ™ΧΧ Χ§Χ”ΧΧ
 set d=93
 goto :start
 :93
-set a=*ξιλΰμ*τψεζπρχι*.*
-set c=ξιλΰμ τψεζπρχι
+set a=*ΧΧ™Χ›ΧΧ*Χ¤Χ¨Χ•Χ–Χ Χ΅Χ§Χ™*.*
+set c=ΧΧ™Χ›ΧΧ Χ¤Χ¨Χ•Χ–Χ Χ΅Χ§Χ™
 set d=94
 goto :start
 :94
-set a=*ξιλΰμ*ωθψιιλψ*.*
-set c=ξιλΰμ ωθψιιλψ
+set a=*ΧΧ™Χ›ΧΧ*Χ©ΧΧ¨Χ™Χ™Χ›Χ¨*.*
+set c=ΧΧ™Χ›ΧΧ Χ©ΧΧ¨Χ™Χ™Χ›Χ¨
 set d=95
 goto :start
 :95
-set a=*ξιλδ*βξψξο*.*
-set c=ξιλδ βξψξο
+set a=*ΧΧ™Χ›Χ”*Χ’ΧΧ¨ΧΧ*.*
+set c=ΧΧ™Χ›Χ” Χ’ΧΧ¨ΧΧ
 set d=96
 goto :start
 :96
-set a=*ξχδμϊ*ξμλεϊ*.*
-set c=ξχδμϊ ξμλεϊ
+set a=*ΧΧ§Χ”ΧΧª*ΧΧΧ›Χ•Χª*.*
+set c=ΧΧ§Χ”ΧΧª ΧΧΧ›Χ•Χª
 set d=97
 goto :start
 :97
-set a=*ξπγι*β'ψετι*.*
-set c=ξπγι β'ψετι
+set a=*ΧΧ Χ“Χ™*Χ’'Χ¨Χ•Χ¤Χ™*.*
+set c=ΧΧ Χ“Χ™ Χ’'Χ¨Χ•Χ¤Χ™
 set d=98
 goto :start
 :98
-set a=*ξπγι*ειιρ*.*
-set c=ξπγι ειιρ
+set a=*ΧΧ Χ“Χ™*Χ•Χ™Χ™Χ΅*.*
+set c=ΧΧ Χ“Χ™ Χ•Χ™Χ™Χ΅
 set d=1%help%
 goto :start
 :1%help%
-set a=*ξαγ*.*
-set c=ξψγλι αο γεγ
+set a=*ΧΧ‘Χ“*.*
+set c=ΧΧ¨Χ“Χ›Χ™ Χ‘Χ Χ“Χ•Χ“
 set d=101
 goto :start
 :101
-set a=*ξψγλι*αο*γεγ*.*
-set c=ξψγλι αο γεγ
+set a=*ΧΧ¨Χ“Χ›Χ™*Χ‘Χ*Χ“Χ•Χ“*.*
+set c=ΧΧ¨Χ“Χ›Χ™ Χ‘Χ Χ“Χ•Χ“
 set d=102
 goto :start
 :102
-set a=*ξψγλι*ωτιψΰ*.*
-set c=ξψγλι ωτιψΰ
+set a=*ΧΧ¨Χ“Χ›Χ™*Χ©Χ¤Χ™Χ¨Χ*.*
+set c=ΧΧ¨Χ“Χ›Χ™ Χ©Χ¤Χ™Χ¨Χ
 set d=103
 goto :start
 :103
-set a=*ξωδ*μΰετψ*.*
-set c=ξωδ μΰετψ
+set a=*ΧΧ©Χ”*ΧΧΧ•Χ¤Χ¨*.*
+set c=ΧΧ©Χ” ΧΧΧ•Χ¤Χ¨
 set d=104
 goto :start
 :104
-set a=*ξωδ*τμγ*.*
-set c=ξωδ τμγ
+set a=*ΧΧ©Χ”*Χ¤ΧΧ“*.*
+set c=ΧΧ©Χ” Χ¤ΧΧ“
 set d=105
 goto :start
 :105
-set a=*ξωεμν*βψιπαψβψ*.*
-set c=ξωεμν βψιπαψβψ
+set a=*ΧΧ©Χ•ΧΧ*Χ’Χ¨Χ™Χ Χ‘Χ¨Χ’Χ¨*.*
+set c=ΧΧ©Χ•ΧΧ Χ’Χ¨Χ™Χ Χ‘Χ¨Χ’Χ¨
 set d=106
 goto :start
 :106
-set a=*πϊπΰμ*ξπϊ*.*
-set c=πϊπΰμ ξπϊ
+set a=*Χ ΧªΧ ΧΧ*ΧΧ Χª*.*
+set c=Χ ΧªΧ ΧΧ ΧΧ Χª
 set d=107
 goto :start
 :107
-set a=*πτϊμι*χξτδ*.*
-set c=πτϊμι χξτδ
+set a=*Χ Χ¤ΧªΧΧ™*Χ§ΧΧ¤Χ”*.*
+set c=Χ Χ¤ΧªΧΧ™ Χ§ΧΧ¤Χ”
 set d=108
 goto :start
 :108
-set a=*ςγι*ψο*.*
-set c=ςγι ψο
+set a=*ΧΆΧ“Χ™*Χ¨Χ*.*
+set c=ΧΆΧ“Χ™ Χ¨Χ
 set d=109
 goto :start
 :109
-set a=*ςεζιδ*φγεχ*.*
-set c=ςεζιδ φγεχ
+set a=*ΧΆΧ•Χ–Χ™Χ”*Χ¦Χ“Χ•Χ§*.*
+set c=ΧΆΧ•Χ–Χ™Χ” Χ¦Χ“Χ•Χ§
 set d=110
 goto :start
 :110
-set a=*ςξιψο*γαιψ*.*
-set c=ςξιψο γαιψ
+set a=*ΧΆΧΧ™Χ¨Χ*Χ“Χ‘Χ™Χ¨*.*
+set c=ΧΆΧΧ™Χ¨Χ Χ“Χ‘Χ™Χ¨
 set d=111
 goto :start
 :111
-set a=*ςξιϊ*μιρθεεπγ*.*
-set c=ςξιϊ μιρθεεπγ
+set a=*ΧΆΧΧ™Χª*ΧΧ™Χ΅ΧΧ•Χ•Χ Χ“*.*
+set c=ΧΆΧΧ™Χª ΧΧ™Χ΅ΧΧ•Χ•Χ Χ“
 set d=112
 goto :start
 :112
-set a=*τιπι*ΰιπδεψο*.*
-set c=τιπι ΰιπδεψο
+set a=*Χ¤Χ™Χ Χ™*ΧΧ™Χ Χ”Χ•Χ¨Χ*.*
+set c=Χ¤Χ™Χ Χ™ ΧΧ™Χ Χ”Χ•Χ¨Χ
 set d=114
 goto :start
 :114
-set a=*τψηι*ιψεωμιν*.*
-set c=τψηι ιψεωμιν
+set a=*Χ¤Χ¨Χ—Χ™*Χ™Χ¨Χ•Χ©ΧΧ™Χ*.*
+set c=Χ¤Χ¨Χ—Χ™ Χ™Χ¨Χ•Χ©ΧΧ™Χ
 set d=115
 goto :start
 :115
-set a=*τψηι*ξιΰξι*.*
-set c=τψηι ξιΰξι
+set a=*Χ¤Χ¨Χ—Χ™*ΧΧ™ΧΧΧ™*.*
+set c=Χ¤Χ¨Χ—Χ™ ΧΧ™ΧΧΧ™
 set d=116
 goto :start
 :116
-set a=*φαι ζιμαψωθιιο*.*
-set c=φαι ζιμαψωθιιο
+set a=*Χ¦Χ‘Χ™ Χ–Χ™ΧΧ‘Χ¨Χ©ΧΧ™Χ™Χ*.*
+set c=Χ¦Χ‘Χ™ Χ–Χ™ΧΧ‘Χ¨Χ©ΧΧ™Χ™Χ
 set d=117
 goto :start
 :117
-set a=*φμιμ*εζξψ*.*
-set c=φμιμ εζξψ
+set a=*Χ¦ΧΧ™Χ*Χ•Χ–ΧΧ¨*.*
+set c=Χ¦ΧΧ™Χ Χ•Χ–ΧΧ¨
 set d=118
 goto :start
 :118
-set a=*φξΰδ*.*
-set c=φξΰδ
+set a=*Χ¦ΧΧΧ”*.*
+set c=Χ¦ΧΧΧ”
 set d=119
 goto :start
 :119
-set a=*φξγ*ιμγ*.*
-set c=φξγ ιμγ
+set a=*Χ¦ΧΧ“*Χ™ΧΧ“*.*
+set c=Χ¦ΧΧ“ Χ™ΧΧ“
 set d=120
 goto :start
 :120
-set a=*χεαι*αψεξψ*.*
-set c=χεαι αψεξψ
+set a=*Χ§Χ•Χ‘Χ™*Χ‘Χ¨Χ•ΧΧ¨*.*
+set c=Χ§Χ•Χ‘Χ™ Χ‘Χ¨Χ•ΧΧ¨
 set d=121
 goto :start
 :121
-set a=*χεαι*βψιπαειν*.*
-set c=χεαι βψιπαειν
+set a=*Χ§Χ•Χ‘Χ™*Χ’Χ¨Χ™Χ Χ‘Χ•Χ™Χ*.*
+set c=Χ§Χ•Χ‘Χ™ Χ’Χ¨Χ™Χ Χ‘Χ•Χ™Χ
 set d=122
 goto :start
 :122
-set a=*χεξζιπβ*.*
-set c=χεξζιπβ
+set a=*Χ§Χ•ΧΧ–Χ™Χ Χ’*.*
+set c=Χ§Χ•ΧΧ–Χ™Χ Χ’
 set d=123
 goto :start
 :123
-set a=*χιπγψμςκ*.*
-set c=δχιπγψμςκ
+set a=*Χ§Χ™Χ Χ“Χ¨ΧΧΆΧ*.*
+set c=Χ”Χ§Χ™Χ Χ“Χ¨ΧΧΆΧ
 set d=124
 goto :start
 :124
-set a=*ψεμι*γιχξο*.*
-set c=ψεμι γιχξο
+set a=*Χ¨Χ•ΧΧ™*Χ“Χ™Χ§ΧΧ*.*
+set c=Χ¨Χ•ΧΧ™ Χ“Χ™Χ§ΧΧ
 set d=125
 goto :start
 :125
-set a=*ωεμι*ψπγ*.*
-set c=ωεμι ψπγ
+set a=*Χ©Χ•ΧΧ™*Χ¨Χ Χ“*.*
+set c=Χ©Χ•ΧΧ™ Χ¨Χ Χ“
 set d=128
 goto :start
 :128
-set a=*ωμδαϊ*.*
-set c=ωμδαϊ
+set a=*Χ©ΧΧ”Χ‘Χª*.*
+set c=Χ©ΧΧ”Χ‘Χª
 set d=129
 goto :start
 :129
-set a=*ωμειξι*βψθπψ*.*
-set c=ωμειξι βψθπψ
+set a=*Χ©ΧΧ•Χ™ΧΧ™*Χ’Χ¨ΧΧ Χ¨*.*
+set c=Χ©ΧΧ•Χ™ΧΧ™ Χ’Χ¨ΧΧ Χ¨
 set d=130
 goto :start
 :130
-set a=*ωμειξι*γρχμ*.*
-set c=ωμειξι γρχμ
+set a=*Χ©ΧΧ•Χ™ΧΧ™*Χ“Χ΅Χ§Χ*.*
+set c=Χ©ΧΧ•Χ™ΧΧ™ Χ“Χ΅Χ§Χ
 set d=131
 goto :start
 :131
-set a=*ωμεν*μςξςψ*.*
-set c=ωμεν μςξςψ
+set a=*Χ©ΧΧ•Χ*ΧΧΆΧΧΆΧ¨*.*
+set c=Χ©ΧΧ•Χ ΧΧΆΧΧΆΧ¨
 set d=132
 goto :start
 :132
-set a=*ωμεξι*θειριβ*.*
-set c=ωμειξι θειριβ
+set a=*Χ©ΧΧ•ΧΧ™*ΧΧ•Χ™Χ΅Χ™Χ’*.*
+set c=Χ©ΧΧ•Χ™ΧΧ™ ΧΧ•Χ™Χ΅Χ™Χ’
 set d=134
 goto :start
 :134
-set a=*ωμξδ*ιδεγδ*ψλπιυ*.*
-set c=ωμξδ ιδεγδ ψλπιυ
+set a=*Χ©ΧΧΧ”*Χ™Χ”Χ•Χ“Χ”*Χ¨Χ›Χ Χ™Χ¥*.*
+set c=Χ©ΧΧΧ” Χ™Χ”Χ•Χ“Χ” Χ¨Χ›Χ Χ™Χ¥
 set d=135
 goto :start
 :135
-set a=*ωμξδ*λδο*.*
-set c=ωμξδ λδο
+set a=*Χ©ΧΧΧ”*Χ›Χ”Χ*.*
+set c=Χ©ΧΧΧ” Χ›Χ”Χ
 set d=136
 goto :start
 :136
-set a=*ωμξδ*χψμιακ*.*
-set c=ωμξδ χψμιακ
+set a=*Χ©ΧΧΧ”*Χ§Χ¨ΧΧ™Χ‘Χ*.*
+set c=Χ©ΧΧΧ” Χ§Χ¨ΧΧ™Χ‘Χ
 set d=137
 goto :start
 :137
-set a=*ωμξδ*ωξηδ*.*
-set c=ωμξδ ωξηδ
+set a=*Χ©ΧΧΧ”*Χ©ΧΧ—Χ”*.*
+set c=Χ©ΧΧΧ” Χ©ΧΧ—Χ”
 set d=138
 goto :start
 :138
-set a=*ωμωμϊ*.*
-set c=ωμωμϊ
+set a=*Χ©ΧΧ©ΧΧª*.*
+set c=Χ©ΧΧ©ΧΧª
 set d=139
 goto :start
 :139
-set a=*ωξεΰμ*βψιπξο*.*
-set c=ωξεΰμ βψιπξο
+set a=*Χ©ΧΧ•ΧΧ*Χ’Χ¨Χ™Χ ΧΧ*.*
+set c=Χ©ΧΧ•ΧΧ Χ’Χ¨Χ™Χ ΧΧ
 set d=140
 goto :start
 :140
-set a=*ωξηδ*μιιπψ*.*
-set c=ωξηδ μιιπψ
+set a=*Χ©ΧΧ—Χ”*ΧΧ™Χ™Χ Χ¨*.*
+set c=Χ©ΧΧ—Χ” ΧΧ™Χ™Χ Χ¨
 set d=141
 goto :start
 :141
-set a=*ωξηδ*τψιγξο*.*
-set c=ωξηδ τψιγξο
+set a=*Χ©ΧΧ—Χ”*Χ¤Χ¨Χ™Χ“ΧΧ*.*
+set c=Χ©ΧΧ—Χ” Χ¤Χ¨Χ™Χ“ΧΧ
 set d=142
 goto :start
 :142
-set a=*ωξηϊ δηιιν*.*
-set c=ωξηϊ δηιιν
+set a=*Χ©ΧΧ—Χª Χ”Χ—Χ™Χ™Χ*.*
+set c=Χ©ΧΧ—Χª Χ”Χ—Χ™Χ™Χ
 set d=143
 goto :start
 :143
-set a=*ωξιμι*ΰεπβψ*.*
-set c=ωξιμι ΰεπβψ
+set a=*Χ©ΧΧ™ΧΧ™*ΧΧ•Χ Χ’Χ¨*.*
+set c=Χ©ΧΧ™ΧΧ™ ΧΧ•Χ Χ’Χ¨
 set d=144
 goto :start
 :144
-set a=*ωξςι*ΰπβμ*.*
-set c=ωξςι ΰπβμ
+set a=*Χ©ΧΧΆΧ™*ΧΧ Χ’Χ*.*
+set c=Χ©ΧΧΆΧ™ ΧΧ Χ’Χ
 set d=145
 goto :start
 :145
-set a=*ωψβι*.*
-set c=ωψβι
+set a=*Χ©Χ¨Χ’Χ™*.*
+set c=Χ©Χ¨Χ’Χ™
 set d=146
 goto :start
 :146
-set a=*ξωδ*χμιιο*.*
-set c=ξωδ χμιιο
+set a=*ΧΧ©Χ”*Χ§ΧΧ™Χ™Χ*.*
+set c=ΧΧ©Χ” Χ§ΧΧ™Χ™Χ
 set d=147
 goto :start
 :147
-set a=*γεγ*αο*ΰψζδ*.*
-set c=γεγ αο ΰψζδ
+set a=*Χ“Χ•Χ“*Χ‘Χ*ΧΧ¨Χ–Χ”*.*
+set c=Χ“Χ•Χ“ Χ‘Χ ΧΧ¨Χ–Χ”
 set d=148
 goto :start
 :148
-set a=*ΰεγι*γξΰψι*.*
-set c=ΰεγι γξΰψι
+set a=*ΧΧ•Χ“Χ™*Χ“ΧΧΧ¨Χ™*.*
+set c=ΧΧ•Χ“Χ™ Χ“ΧΧΧ¨Χ™
 set d=149
 goto :start
 :149
-set a=*ΰαιωι*ΰωμ*.*
-set c=ΰαιωι ΰωμ
+set a=*ΧΧ‘Χ™Χ©Χ™*ΧΧ©Χ*.*
+set c=ΧΧ‘Χ™Χ©Χ™ ΧΧ©Χ
 set d=150
 goto :start
 :150
-set a=*ΰαψδν*ξψγλι*ωεεψυ*.*
-set c=ΰαψδν ξψγλι ωεεψυ
+set a=*ΧΧ‘Χ¨Χ”Χ*ΧΧ¨Χ“Χ›Χ™*Χ©Χ•Χ•Χ¨Χ¥*.*
+set c=ΧΧ‘Χ¨Χ”Χ ΧΧ¨Χ“Χ›Χ™ Χ©Χ•Χ•Χ¨Χ¥
 set d=151
 goto :start
 :151
-set a=*ΰαι*χψΰερ*.*
-set c=ΰαι χψΰερ
+set a=*ΧΧ‘Χ™*Χ§Χ¨ΧΧ•Χ΅*.*
+set c=ΧΧ‘Χ™ Χ§Χ¨ΧΧ•Χ΅
 set d=152
 goto :start
 :152
-set a=*ιεπϊο*ωιπτμγ*.*
-set c=ιεπϊο ωιιπτμγ
+set a=*Χ™Χ•Χ ΧªΧ*Χ©Χ™Χ Χ¤ΧΧ“*.*
+set c=Χ™Χ•Χ ΧªΧ Χ©Χ™Χ™Χ Χ¤ΧΧ“
 set d=153
 goto :start
 :153
-set a=*ωμεξι*βψθπψ*.*
-set c=ωμειξι βψθπψ
+set a=*Χ©ΧΧ•ΧΧ™*Χ’Χ¨ΧΧ Χ¨*.*
+set c=Χ©ΧΧ•Χ™ΧΧ™ Χ’Χ¨ΧΧ Χ¨
 set d=154
 goto :start
 :154
-set a=*ΰδψεο*ψζΰμ*.*
-set c=ΰδψο ψζΰμ
+set a=*ΧΧ”Χ¨Χ•Χ*Χ¨Χ–ΧΧ*.*
+set c=ΧΧ”Χ¨Χ Χ¨Χ–ΧΧ
 set d=155
 goto :start
 :155
-set a=*ΰψι*διμ*.*
-set c=ΰψι διμ
+set a=*ΧΧ¨Χ™*Χ”Χ™Χ*.*
+set c=ΧΧ¨Χ™ Χ”Χ™Χ
 set d=156
 goto :start
 :156
-set a=*ΰαψιξι*ψεθ*.*
-set c=ΰαψιιξι ψεθ
+set a=*ΧΧ‘Χ¨Χ™ΧΧ™*Χ¨Χ•Χ*.*
+set c=ΧΧ‘Χ¨Χ™Χ™ΧΧ™ Χ¨Χ•Χ
 set d=157
 goto :start
 :157
-set a=*ΰιφιχ*ειιπβψθο*.*
-set c=ΰιφιχ ειιπβψθο
+set a=*ΧΧ™Χ¦Χ™Χ§*Χ•Χ™Χ™Χ Χ’Χ¨ΧΧ*.*
+set c=ΧΧ™Χ¦Χ™Χ§ Χ•Χ™Χ™Χ Χ’Χ¨ΧΧ
 set d=158
 goto :start
 :158
-set a=*ΰαι*ΰιμρεο*.*
-set c=ΰαι ΰιμρεο
+set a=*ΧΧ‘Χ™*ΧΧ™ΧΧ΅Χ•Χ*.*
+set c=ΧΧ‘Χ™ ΧΧ™ΧΧ΅Χ•Χ
 set d=159
 goto :start
 :159
-set a=*ωξεΰμι*ΰεπβψ*.*
-set c=ωξιμι ΰεπβψ
+set a=*Χ©ΧΧ•ΧΧΧ™*ΧΧ•Χ Χ’Χ¨*.*
+set c=Χ©ΧΧ™ΧΧ™ ΧΧ•Χ Χ’Χ¨
 set d=160
 goto :start
 :160
-set a=*ζΰπεειμ*ειπαψβψ*.*
-set c=ζΰπεειμ ειιπαψβψ
+set a=*Χ–ΧΧ Χ•Χ•Χ™Χ*Χ•Χ™Χ Χ‘Χ¨Χ’Χ¨*.*
+set c=Χ–ΧΧ Χ•Χ•Χ™Χ Χ•Χ™Χ™Χ Χ‘Χ¨Χ’Χ¨
 set d=161
 goto :start
 :161
-set a=*ωεχι*ρμεξεο*.*
-set c=ωεχι ρμεξεο
+set a=*Χ©Χ•Χ§Χ™*Χ΅ΧΧ•ΧΧ•Χ*.*
+set c=Χ©Χ•Χ§Χ™ Χ΅ΧΧ•ΧΧ•Χ
 set d=162
 goto :start
 :162
-set a=*γεγι*χπετμψ*.*
-set c=γεγι χπετμψ
+set a=*Χ“Χ•Χ“Χ™*Χ§Χ Χ•Χ¤ΧΧ¨*.*
+set c=Χ“Χ•Χ“Χ™ Χ§Χ Χ•Χ¤ΧΧ¨
 set d=163
 goto :start
 :163
-set a=*δψΰμ*θμ*.*
-set c=δψΰμ θμ
+set a=*Χ”Χ¨ΧΧ*ΧΧ*.*
+set c=Χ”Χ¨ΧΧ ΧΧ
 set d=164
 goto :start
 :164
-set a=*γεαι*ξιιζςμρ*.*
-set c=γεαι ξιιζμρ
+set a=*Χ“Χ•Χ‘Χ™*ΧΧ™Χ™Χ–ΧΆΧΧ΅*.*
+set c=Χ“Χ•Χ‘Χ™ ΧΧ™Χ™Χ–ΧΧ΅
 set d=165
 goto :start
 :165
-set a=*γεαι*ξιιζμρ*.*
-set c=γεαι ξιιζμρ
+set a=*Χ“Χ•Χ‘Χ™*ΧΧ™Χ™Χ–ΧΧ΅*.*
+set c=Χ“Χ•Χ‘Χ™ ΧΧ™Χ™Χ–ΧΧ΅
 set d=166
 goto :start
 :166
-set a=*πιριν*αμΰχ*.*
-set c=πιριν αμΰχ
+set a=*Χ Χ™Χ΅Χ™Χ*Χ‘ΧΧΧ§*.*
+set c=Χ Χ™Χ΅Χ™Χ Χ‘ΧΧΧ§
 set d=167
 goto :start
 :167
-set a=*ςχιαΰ*βςμα*.*
-set c=ςχιαΰ βςμα
+set a=*ΧΆΧ§Χ™Χ‘Χ*Χ’ΧΆΧΧ‘*.*
+set c=ΧΆΧ§Χ™Χ‘Χ Χ’ΧΆΧΧ‘
 set d=168
 goto :start
 :168
-set a=*ξεθι*ειιρ*.*
-set c=ξεθι ειιρ
+set a=*ΧΧ•ΧΧ™*Χ•Χ™Χ™Χ΅*.*
+set c=ΧΧ•ΧΧ™ Χ•Χ™Χ™Χ΅
 set d=169
 goto :start
 :169
-set a=*ωμξδ*θειριβ*.*
-set c=ωμειξι θειριβ
+set a=*Χ©ΧΧΧ”*ΧΧ•Χ™Χ΅Χ™Χ’*.*
+set c=Χ©ΧΧ•Χ™ΧΧ™ ΧΧ•Χ™Χ΅Χ™Χ’
 set d=170
 goto :start
 :170
-set a=*ΰξπι*ιωψΰμ*.*
-set c=ΰξπι ιωψΰμ
+set a=*ΧΧΧ Χ™*Χ™Χ©Χ¨ΧΧ*.*
+set c=ΧΧΧ Χ™ Χ™Χ©Χ¨ΧΧ
 set d=171
 goto :start
 :171
-set a=*πηξο*βεμγαψβ*.*
-set c=πηξο βεμγαψβ
+set a=*Χ Χ—ΧΧ*Χ’Χ•ΧΧ“Χ‘Χ¨Χ’*.*
+set c=Χ Χ—ΧΧ Χ’Χ•ΧΧ“Χ‘Χ¨Χ’
 set d=172
 goto :start
 :172
-set c=ςξψν βψιο
+set c=ΧΆΧΧ¨Χ Χ’Χ¨Χ™Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :173
-set c=αο φιεο χμφχε
+set c=Χ‘Χ Χ¦Χ™Χ•Χ Χ§ΧΧ¦Χ§Χ•
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :174
-set c=βαι ΰδψεο
+set c=Χ’Χ‘Χ™ ΧΧ”Χ¨Χ•Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :175
-set c=ΰαιβγεψ ψεθ
+set c=ΧΧ‘Χ™Χ’Χ“Χ•Χ¨ Χ¨Χ•Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :176
-set c=ΰαι αο ιωψΰμ
+set c=ΧΧ‘Χ™ Χ‘Χ Χ™Χ©Χ¨ΧΧ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :177
-set c=ΰμι ρμεξεο
+set c=ΧΧΧ™ Χ΅ΧΧ•ΧΧ•Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :178
-set c=ΰμιως χμφχε
+set c=ΧΧΧ™Χ©ΧΆ Χ§ΧΧ¦Χ§Χ•
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :179
-set c=απφιεο εεαψξο
+set c=Χ‘Χ Χ¦Χ™Χ•Χ Χ•Χ•Χ‘Χ¨ΧΧ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :180
-set c=γεγ ωτιψΰ
+set c=Χ“Χ•Χ“ Χ©Χ¤Χ™Χ¨Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :181
-set c=ζΰαι δετξο
+set c=Χ–ΧΧ‘Χ™ Χ”Χ•Χ¤ΧΧ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :182
-set c=ιςχα ωθιιπψξο
+set c=Χ™ΧΆΧ§Χ‘ Χ©ΧΧ™Χ™Χ Χ¨ΧΧ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :183
-set c=ξςπγμ ψΰθδ
+set c=ΧΧΆΧ Χ“Χ Χ¨ΧΧΧ”
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :184
-set c=ψΰεαο ιζγιΰο
+set c=Χ¨ΧΧ•Χ‘Χ Χ™Χ–Χ“Χ™ΧΧ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :185
-set c=ωμεν αψπδεμυ
+set c=Χ©ΧΧ•Χ Χ‘Χ¨Χ Χ”Χ•ΧΧ¥
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :186
-set c=ωμεξι αψπωθιιο
+set c=Χ©ΧΧ•ΧΧ™ Χ‘Χ¨Χ Χ©ΧΧ™Χ™Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :187
-set c=ωμξδ ψβδ
+set c=Χ©ΧΧΧ” Χ¨Χ’Χ”
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :188
-set c=ωξςεο θεαεμ
+set c=Χ©ΧΧΆΧ•Χ ΧΧ•Χ‘Χ•Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :189
-set c=ΰμιδε μιιτςψ
+set c=ΧΧΧ™Χ”Χ• ΧΧ™Χ™Χ¤ΧΆΧ¨
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :190
-set c=ΰιϊξψ ωθιιο
+set c=ΧΧ™ΧªΧΧ¨ Χ©ΧΧ™Χ™Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :191
-set c=ΰψι αεμζπωθιιο
+set c=ΧΧ¨Χ™ Χ‘Χ•ΧΧ–Χ Χ©ΧΧ™Χ™Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :192
-set c=απι μΰετψ
+set c=Χ‘Χ Χ™ ΧΧΧ•Χ¤Χ¨
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :193
-set c=ωμεξι ειμξο
+set c=Χ©ΧΧ•ΧΧ™ Χ•Χ™ΧΧΧ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :194
-set c=ιψεο αψ
+set c=Χ™Χ¨Χ•Χ Χ‘Χ¨
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :195
-set c=βιμ ιωψΰμεα
+set c=Χ’Χ™Χ Χ™Χ©Χ¨ΧΧΧ•Χ‘
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :196
-set c=γεγ ηζιζδ
+set c=Χ“Χ•Χ“ Χ—Χ–Χ™Χ–Χ”
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :197
-set c=γεγ ητφγι
+set c=Χ“Χ•Χ“ Χ—Χ¤Χ¦Χ“Χ™
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :198
-set c=γπι τμβεο
+set c=Χ“Χ Χ™ Χ¤ΧΧ’Χ•Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :199
-set c=ιεπι ζιβξεπγ
-set a=*ιεπι*ζι*.*
+set c=Χ™Χ•Χ Χ™ Χ–Χ™Χ’ΧΧ•Χ Χ“
+set a=*Χ™Χ•Χ Χ™*Χ–Χ™*.*
 set/a d=1+d 
 goto start 
 :2%help%
-set c=ηιιν ωμξδ ξιιςρ
-set a=*ηιιν*ωμξδ*ξιιΰρ*.*
+set c=Χ—Χ™Χ™Χ Χ©ΧΧΧ” ΧΧ™Χ™ΧΆΧ΅
+set a=*Χ—Χ™Χ™Χ*Χ©ΧΧΧ”*ΧΧ™Χ™ΧΧ΅*.*
 set/a d=1+d 
 goto start 
 :201
-set c=ιδεγδ ωξςδ
+set c=Χ™Χ”Χ•Χ“Χ” Χ©ΧΧΆΧ”
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :202
-set c=ιωψΰμ βαψΰ
+set c=Χ™Χ©Χ¨ΧΧ Χ’Χ‘Χ¨Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :203
-set c=πϊι μει
+set c=Χ ΧªΧ™ ΧΧ•Χ™
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :204
-set c=ςξιψ απιεο
+set c=ΧΆΧΧ™Χ¨ Χ‘Χ Χ™Χ•Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :205
-set c=ξεθι ΰιμεειθω
-set a=*ξΰθι*ΰιμεειθω*.*
+set c=ΧΧ•ΧΧ™ ΧΧ™ΧΧ•Χ•Χ™ΧΧ©
+set a=*ΧΧΧΧ™*ΧΧ™ΧΧ•Χ•Χ™ΧΧ©*.*
 set/a d=1+d 
 goto start 
 :206
-set c=ξεθι ΰιμεειθω
-set a=*ξεθι*ΰιμεαιυ*.*
+set c=ΧΧ•ΧΧ™ ΧΧ™ΧΧ•Χ•Χ™ΧΧ©
+set a=*ΧΧ•ΧΧ™*ΧΧ™ΧΧ•Χ‘Χ™Χ¥*.*
 set/a d=1+d 
 goto start 
 :207
-set c=ξεθι ΰιμεειθω
+set c=ΧΧ•ΧΧ™ ΧΧ™ΧΧ•Χ•Χ™ΧΧ©
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :208
-set c=ξΰιψ ξρεΰψι
+set c=ΧΧΧ™Χ¨ ΧΧ΅Χ•ΧΧ¨Χ™
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :209
-set c=γο ΰαιηι
+set c=Χ“Χ ΧΧ‘Χ™Χ—Χ™
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :210
-set c=ωιξι ωτιυ
+set c=Χ©Χ™ΧΧ™ Χ©Χ¤Χ™Χ¥
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :211
-set c=ωξεΰμ ιφηχι
+set c=Χ©ΧΧ•ΧΧ Χ™Χ¦Χ—Χ§Χ™
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :212
-set c=ωξεΰμ ΰμδψψ
+set c=Χ©ΧΧ•ΧΧ ΧΧΧ”Χ¨Χ¨
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :213
-set c=ιεΰμ ΰμδψψ
+set c=Χ™Χ•ΧΧ ΧΧΧ”Χ¨Χ¨
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :214
-set c=ιερσ πθια
+set c=Χ™Χ•Χ΅Χ£ Χ ΧΧ™Χ‘
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :215
-set c=ωμειξι θειριβ
+set c=Χ©ΧΧ•Χ™ΧΧ™ ΧΧ•Χ™Χ΅Χ™Χ’
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :216
-set c=βιμ ςχιαιεα
+set c=Χ’Χ™Χ ΧΆΧ§Χ™Χ‘Χ™Χ•Χ‘
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :217
-set c=γειγι πηωεο
+set c=Χ“Χ•Χ™Χ“Χ™ Χ Χ—Χ©Χ•Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :218
-set c=φαι βψιπδιιν
+set c=Χ¦Χ‘Χ™ Χ’Χ¨Χ™Χ Χ”Χ™Χ™Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :219
-set c=γεγ ωΰαι
+set c=Χ“Χ•Χ“ Χ©ΧΧ‘Χ™
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :220
-set c=ΰιφιχ ΰεψμα
+set c=ΧΧ™Χ¦Χ™Χ§ ΧΧ•Χ¨ΧΧ‘
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :221
-set c=ΰμςγ ωςψ
+set c=ΧΧΧΆΧ“ Χ©ΧΆΧ¨
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :222
-set c=ΰτψιν ξψχεαιυ
+set c=ΧΧ¤Χ¨Χ™Χ ΧΧ¨Χ§Χ•Χ‘Χ™Χ¥
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :223
-set c=ΰδψμ'δ ρξθ
-set a=*ΰψδμδ*ρξθ*.*
+set c=ΧΧ”Χ¨Χ'Χ” Χ΅ΧΧ
+set a=*ΧΧ¨Χ”ΧΧ”*Χ΅ΧΧ*.*
 set/a d=1+d 
 goto start 
 :224
-set c=ιΰιψ ΰμιιφεψ
+set c=Χ™ΧΧ™Χ¨ ΧΧΧ™Χ™Χ¦Χ•Χ¨
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :225
-set c=ιΰιψ ΰμιιφεψ
-set a=*ΰμιιφεψ*.*
+set c=Χ™ΧΧ™Χ¨ ΧΧΧ™Χ™Χ¦Χ•Χ¨
+set a=*ΧΧΧ™Χ™Χ¦Χ•Χ¨*.*
 set/a d=1+d 
 goto start 
 :226
-set c=ΰδψμ'δ ρξθ
-set a=*ΰδψμδ*ρξθ*.*
+set c=ΧΧ”Χ¨Χ'Χ” Χ΅ΧΧ
+set a=*ΧΧ”Χ¨ΧΧ”*Χ΅ΧΧ*.*
 set/a d=1+d 
 goto start 
 :227
-set c=απφι χμφχιο
+set c=Χ‘Χ Χ¦Χ™ Χ§ΧΧ¦Χ§Χ™Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :228
-set c=ΰμιδε ηιιθ
+set c=ΧΧΧ™Χ”Χ• Χ—Χ™Χ™Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :229
-set c=ΰψιδ χεπρθμψ
+set c=ΧΧ¨Χ™Χ” Χ§Χ•Χ Χ΅ΧΧΧ¨
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :230
-set c=ηιιν ωμξδ ξιιςρ
-set a=*ηιιν*ωμξδ*ξΰιςρ*.*
+set c=Χ—Χ™Χ™Χ Χ©ΧΧΧ” ΧΧ™Χ™ΧΆΧ΅
+set a=*Χ—Χ™Χ™Χ*Χ©ΧΧΧ”*ΧΧΧ™ΧΆΧ΅*.*
 set/a d=1+d 
 goto start 
 :231
-set c=ξεθι ΰθιΰρ
+set c=ΧΧ•ΧΧ™ ΧΧΧ™ΧΧ΅
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :232
-set c=ξεθι ειζμ
+set c=ΧΧ•ΧΧ™ Χ•Χ™Χ–Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :233
-set c=γεγι τμγξο
+set c=Χ“Χ•Χ“Χ™ Χ¤ΧΧ“ΧΧ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :234
-set c=ξειωι ωεεψυ
-set a=*ξειωι*ωεεΰψυ*.*
+set c=ΧΧ•Χ™Χ©Χ™ Χ©Χ•Χ•Χ¨Χ¥
+set a=*ΧΧ•Χ™Χ©Χ™*Χ©Χ•Χ•ΧΧ¨Χ¥*.*
 set/a d=1+d 
 goto start 
 :235
-set c=ξιχι ωτιφψ
+set c=ΧΧ™Χ§Χ™ Χ©Χ¤Χ™Χ¦Χ¨
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :236
-set c=ξωδ μεχ
+set c=ΧΧ©Χ” ΧΧ•Χ§
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :237
-set c=ψΰεαο βψαψ
+set c=Χ¨ΧΧ•Χ‘Χ Χ’Χ¨Χ‘Χ¨
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :238
-set c=ωψεμι βψιο
+set c=Χ©Χ¨Χ•ΧΧ™ Χ’Χ¨Χ™Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :239
-set c=ξωδ γεειχ
+set c=ΧΧ©Χ” Χ“Χ•Χ•Χ™Χ§
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :240
-set c=ιερσ ηιιν αιθεο
+set c=Χ™Χ•Χ΅Χ£ Χ—Χ™Χ™Χ Χ‘Χ™ΧΧ•Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :241
-set c=βψωι ΰεψι
+set c=Χ’Χ¨Χ©Χ™ ΧΧ•Χ¨Χ™
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :242
-set c=ψτΰμ ρχεψι
+set c=Χ¨Χ¤ΧΧ Χ΅Χ§Χ•Χ¨Χ™
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :243
-set c=ΰαι χμφχε
+set c=ΧΧ‘Χ™ Χ§ΧΧ¦Χ§Χ•
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :244
-set c=ΰιιμ ΰαια
+set c=ΧΧ™Χ™Χ ΧΧ‘Χ™Χ‘
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :245
-set c=ΰμιςγ ρτιψ
+set c=ΧΧΧ™ΧΆΧ“ Χ΅Χ¤Χ™Χ¨
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :246
-set c=βιΰ χδμπι
+set c=Χ’Χ™Χ Χ§Χ”ΧΧ Χ™
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :247
-set c=ξωδ γγεο
+set c=ΧΧ©Χ” Χ“Χ“Χ•Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :248
-set c=δψωι ψεθπαψβ
+set c=Χ”Χ¨Χ©Χ™ Χ¨Χ•ΧΧ Χ‘Χ¨Χ’
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :249
-set c=ζμξο ωθεα
+set c=Χ–ΧΧΧ Χ©ΧΧ•Χ‘
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :250
-set c=ιεπι ωμξδ
+set c=Χ™Χ•Χ Χ™ Χ©ΧΧΧ”
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :251
-set c=ιωψΰμ βψετι
+set c=Χ™Χ©Χ¨ΧΧ Χ’Χ¨Χ•Χ¤Χ™
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :252
-set c=ςεαγιδ ηξξδ
+set c=ΧΆΧ•Χ‘Χ“Χ™Χ” Χ—ΧΧΧ”
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :253
-set c=ωιξι ωθιιπξςυ
+set c=Χ©Χ™ΧΧ™ Χ©ΧΧ™Χ™Χ ΧΧΆΧ¥
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :254
-set c=ωμεξι ωαϊ
+set c=Χ©ΧΧ•ΧΧ™ Χ©Χ‘Χª
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :255
-set c=ξεθι ψεζπτμγ
+set c=ΧΧ•ΧΧ™ Χ¨Χ•Χ–Χ Χ¤ΧΧ“
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :256
-set c=ΰδψο χμιιο
+set c=ΧΧ”Χ¨Χ Χ§ΧΧ™Χ™Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :257
-set c=ΰμςζψ ΰρϊψζεο
+set c=ΧΧΧΆΧ–Χ¨ ΧΧ΅ΧªΧ¨Χ–Χ•Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :258
-set c=ιεΰμ αψιζμ
+set c=Χ™Χ•ΧΧ Χ‘Χ¨Χ™Χ–Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :259
-set c=ΰηιδ δλδο
+set c=ΧΧ—Χ™Χ” Χ”Χ›Χ”Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :260
-set c=πηξο μιιτψ
+set c=Χ Χ—ΧΧ ΧΧ™Χ™Χ¤Χ¨
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :261
-set c=ξπην ΰιψπωθιιο
+set c=ΧΧ Χ—Χ ΧΧ™Χ¨Χ Χ©ΧΧ™Χ™Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :262
-set c=ΰμι χμιιο
+set c=ΧΧΧ™ Χ§ΧΧ™Χ™Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :263
-set c=ωξεΰμ δψψι
+set c=Χ©ΧΧ•ΧΧ Χ”Χ¨Χ¨Χ™
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :264
-set c=ωξιμι ωθιιπαςψβ
+set c=Χ©ΧΧ™ΧΧ™ Χ©ΧΧ™Χ™Χ Χ‘ΧΆΧ¨Χ’
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :265
-set c=ξειωι τψιιπγ
+set c=ΧΧ•Χ™Χ©Χ™ Χ¤Χ¨Χ™Χ™Χ Χ“
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :266
-set c=ιεπι ζιβξεπγ
-set a=*ιεπιZ*.*
+set c=Χ™Χ•Χ Χ™ Χ–Χ™Χ’ΧΧ•Χ Χ“
+set a=*Χ™Χ•Χ Χ™Z*.*
 set/a d=1+d 
 goto start 
 :267
-set c=ιβμ δψεω
+set c=Χ™Χ’Χ Χ”Χ¨Χ•Χ©
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :268
-set c=ηιιν βπυ
+set c=Χ—Χ™Χ™Χ Χ’Χ Χ¥
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :269
-set c=ΰρσ ωτψ
+set c=ΧΧ΅Χ£ Χ©Χ¤Χ¨
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :270
-set c=ΰψιδ χψμπιρχι
+set c=ΧΧ¨Χ™Χ” Χ§Χ¨ΧΧ Χ™Χ΅Χ§Χ™
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :271
-set c=ΰιϊο λυ
+set c=ΧΧ™ΧªΧ Χ›Χ¥
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :272
-set c=ξΰιψ ψιαχιο
+set c=ΧΧΧ™Χ¨ Χ¨Χ™Χ‘Χ§Χ™Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :273
-set c=ξΰιψ χμιιπψ
+set c=ΧΧΧ™Χ¨ Χ§ΧΧ™Χ™Χ Χ¨
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :274
-set c=ΰαψδν γεγ εψφαψβψ
+set c=ΧΧ‘Χ¨Χ”Χ Χ“Χ•Χ“ Χ•Χ¨Χ¦Χ‘Χ¨Χ’Χ¨
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :275
-set c=ΰαι μψπψ
+set c=ΧΧ‘Χ™ ΧΧ¨Χ Χ¨
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :276
-set c=ηιιν ιωλιμ
+set c=Χ—Χ™Χ™Χ Χ™Χ©Χ›Χ™Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :277
-set c=ιωιαωιψ
+set c=Χ™Χ©Χ™Χ‘Χ©Χ™Χ¨
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :278
-set c=ιερι βμπυ
+set c=Χ™Χ•Χ΅Χ™ Χ’ΧΧ Χ¥
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :279
-set c=ξειωι εμγξο
+set c=ΧΧ•Χ™Χ©Χ™ Χ•ΧΧ“ΧΧ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :280
-set c=ςεξψ αιθεο
+set c=ΧΆΧ•ΧΧ¨ Χ‘Χ™ΧΧ•Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :281
-set c=ψτΰμ ξμεμ
+set c=Χ¨Χ¤ΧΧ ΧΧΧ•Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :282
-set c=ωξεΰμ δεπιβ
+set c=Χ©ΧΧ•ΧΧ Χ”Χ•Χ Χ™Χ’
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :283
-set c=ξεθι ΰιμεειθω
-set a=*ξΰθι*ΰιμΰεειθω*.*
+set c=ΧΧ•ΧΧ™ ΧΧ™ΧΧ•Χ•Χ™ΧΧ©
+set a=*ΧΧΧΧ™*ΧΧ™ΧΧΧ•Χ•Χ™ΧΧ©*.*
 set/a d=1+d 
 goto start 
 :284
-set c=πη τμΰι
+set c=Χ Χ— Χ¤ΧΧΧ™
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :285
-set c=ξεθι ΰμθξο
+set c=ΧΧ•ΧΧ™ ΧΧΧΧΧ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :286
-set c=ξπγι βψετι
+set c=ΧΧ Χ“Χ™ Χ’Χ¨Χ•Χ¤Χ™
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :287
-set c=ΰψιδ χψμπιρχι
+set c=ΧΧ¨Χ™Χ” Χ§Χ¨ΧΧ Χ™Χ΅Χ§Χ™
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :288
-set c=ξειωι τψιιπγ
-set a=*ξεωι*τψιιπγ*.*
+set c=ΧΧ•Χ™Χ©Χ™ Χ¤Χ¨Χ™Χ™Χ Χ“
+set a=*ΧΧ•Χ©Χ™*Χ¤Χ¨Χ™Χ™Χ Χ“*.*
 set/a d=1+d 
 goto start 
 :289
-set c=ΰρσ δψεω
+set c=ΧΧ΅Χ£ Χ”Χ¨Χ•Χ©
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :290
-set c=γπιΰμ γδΰο
+set c=Χ“Χ Χ™ΧΧ Χ“Χ”ΧΧ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :291
-set c=ξλαιθρ
+set c=ΧΧ›Χ‘Χ™ΧΧ΅
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :292
-set c=ωιξι μτωιυ
+set c=Χ©Χ™ΧΧ™ ΧΧ¤Χ©Χ™Χ¥
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :293
-set c=ςεγγ ξπωψι
+set c=ΧΆΧ•Χ“Χ“ ΧΧ Χ©Χ¨Χ™
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :294
-set c=ιδεως μιξεπι
+set c=Χ™Χ”Χ•Χ©ΧΆ ΧΧ™ΧΧ•Χ Χ™
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :295
-set c=ξεθι λδο
+set c=ΧΧ•ΧΧ™ Χ›Χ”Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :296
-set c=ηιιν πηξο
+set c=Χ—Χ™Χ™Χ Χ Χ—ΧΧ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :297
-set c=ιεηπο ΰεψι
+set c=Χ™Χ•Χ—Χ Χ ΧΧ•Χ¨Χ™
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :298
-set c=ωξεμιχ χμιιο
+set c=Χ©ΧΧ•ΧΧ™Χ§ Χ§ΧΧ™Χ™Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :299
-set c=ΰιιμ θεειθε
+set c=ΧΧ™Χ™Χ ΧΧ•Χ•Χ™ΧΧ•
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :3%help%
-set c=ΰιφιχ ωεεψυ
+set c=ΧΧ™Χ¦Χ™Χ§ Χ©Χ•Χ•Χ¨Χ¥
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :301
-set c=ηιιν ξψγλι ΰχωθιιο
+set c=Χ—Χ™Χ™Χ ΧΧ¨Χ“Χ›Χ™ ΧΧ§Χ©ΧΧ™Χ™Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :302
-set c=πδεψΰι ΰψιΰμι
+set c=Χ Χ”Χ•Χ¨ΧΧ™ ΧΧ¨Χ™ΧΧΧ™
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :303
-set c=ςετψ ωξιψ
+set c=ΧΆΧ•Χ¤Χ¨ Χ©ΧΧ™Χ¨
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :304
-set c=ςχιαΰ ωλθψ
+set c=ΧΆΧ§Χ™Χ‘Χ Χ©Χ›ΧΧ¨
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :305
-set c=ΰψιΰμ ψιιλμ
+set c=ΧΧ¨Χ™ΧΧ Χ¨Χ™Χ™Χ›Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :306
-set c=ξπην ωεχψεο
+set c=ΧΧ Χ—Χ Χ©Χ•Χ§Χ¨Χ•Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :307
-set c=ςγι βαιρεο
+set c=ΧΆΧ“Χ™ Χ’Χ‘Χ™Χ΅Χ•Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :308
-set c=πϊπΰμ ιωψΰμ
+set c=Χ ΧªΧ ΧΧ Χ™Χ©Χ¨ΧΧ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :309
-set c=τιπχι εεαςψ
+set c=Χ¤Χ™Χ Χ§Χ™ Χ•Χ•Χ‘ΧΆΧ¨
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :310
-set c=ΰψι αψξο
+set c=ΧΧ¨Χ™ Χ‘Χ¨ΧΧ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :311
-set c=ΰμιχιν αεθδ
+set c=ΧΧΧ™Χ§Χ™Χ Χ‘Χ•ΧΧ”
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :312
-set c=γεγι τψιξωο
+set c=Χ“Χ•Χ“Χ™ Χ¤Χ¨Χ™ΧΧ©Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :313
-set c=ωμειξι χφπμαεβο
+set c=Χ©ΧΧ•Χ™ΧΧ™ Χ§Χ¦Χ ΧΧ‘Χ•Χ’Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :314
-set c=ΰδψμ'δ ρξθ
-set a=*ΰδψμ'ς*ρΰξςθ*.*
+set c=ΧΧ”Χ¨Χ'Χ” Χ΅ΧΧ
+set a=*ΧΧ”Χ¨Χ'ΧΆ*Χ΅ΧΧΧΆΧ*.*
 set/a d=1+d 
 goto start 
 :315
-set c=ωξεΰμ ιεπδ
+set c=Χ©ΧΧ•ΧΧ Χ™Χ•Χ Χ”
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :316
-set c=ξιλΰμ ωπιφμψ
+set c=ΧΧ™Χ›ΧΧ Χ©Χ Χ™Χ¦ΧΧ¨
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :317
-set c=ξιλΰμ ΰζεμΰι
+set c=ΧΧ™Χ›ΧΧ ΧΧ–Χ•ΧΧΧ™
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :318
-set c=πξεΰμ δψεω
+set c=Χ ΧΧ•ΧΧ Χ”Χ¨Χ•Χ©
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :319
-set c=αψχ λδο
+set c=Χ‘Χ¨Χ§ Χ›Χ”Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :320
-set c=ςξπεΰμ ωεμξο
+set c=ΧΆΧΧ Χ•ΧΧ Χ©Χ•ΧΧΧ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :321
-set c=ωμειξι αεχωτο
+set c=Χ©ΧΧ•Χ™ΧΧ™ Χ‘Χ•Χ§Χ©Χ¤Χ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :322
-set c=τιιαμ βψιπαςψβ
+set c=Χ¤Χ™Χ™Χ‘Χ Χ’Χ¨Χ™Χ Χ‘ΧΆΧ¨Χ’
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :323
-set c=ωψεμιχ ψεζπθμ
+set c=Χ©Χ¨Χ•ΧΧ™Χ§ Χ¨Χ•Χ–Χ ΧΧ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :324
-set c=ωμξδ λυ
+set c=Χ©ΧΧΧ” Χ›Χ¥
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :325
-set c=ωψεμιχ ψιιζξο
+set c=Χ©Χ¨Χ•ΧΧ™Χ§ Χ¨Χ™Χ™Χ–ΧΧ
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :326
-set c=ιφηχ ξΰιψ
+set c=Χ™Χ¦Χ—Χ§ ΧΧΧ™Χ¨
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :327
-set c=πεςν ψξϊι
+set c=Χ Χ•ΧΆΧ Χ¨ΧΧªΧ™
 set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :328
-set c=ιηιΰμ μιλθιβψ
+set c=Χ™Χ—Χ™ΧΧ ΧΧ™Χ›ΧΧ™Χ’Χ¨
 set a=*%c: =*%*.*
 set/a d=1+d
 goto start
@@ -1705,19 +1707,19 @@ if %errorlevel%==1 goto finish
 
 :finish
 cls
-echo    6.0+ νιμβπιρδ ψγρξ
+echo    6.0+ ΧΧ™ΧΧ’Χ Χ™Χ΅Χ” Χ¨Χ“Χ΅Χ
 echo =======================
-if %c_or_m%==del echo     !εχηξπ νιφαχδ & del νελιρ & echo. & goto pause
-if exist νελιρ (echo :%msg% νιφαχδ ψτρξ & find /c "1" νελιρ
+if %c_or_m%==del echo     !Χ•Χ§Χ—ΧΧ  ΧΧ™Χ¦Χ‘Χ§Χ” & del ΧΧ•Χ›Χ™Χ΅ & echo. & goto pause
+if exist ΧΧ•Χ›Χ™Χ΅ (echo :%msg% ΧΧ™Χ¦Χ‘Χ§Χ” Χ¨Χ¤Χ΅Χ & find /c "1" ΧΧ•Χ›Χ™Χ΅
 ) else (
-echo μΰ πξφΰ γαψ!
+echo ΧΧ Χ ΧΧ¦Χ Χ“Χ‘Χ¨!
 )
-if not exist νελιρ set c_or_m=xxx
-if exist νελιρ del νελιρ
+if not exist ΧΧ•Χ›Χ™Χ΅ set c_or_m=xxx
+if exist ΧΧ•Χ›Χ™Χ΅ del ΧΧ•Χ›Χ™Χ΅
 echo.
-if %c_or_m%==xcopy echo 1 ωχδ ΰμ νΰ ,2 μς δφιημα νιιψεχξδ νιφαχδ ϊΰ χεηξμ μλεϊ κιπιςα οη ϊΰφεξ δΰφεϊδ νΰ & choice /c 12 & if errorlevel 2 set c_or_m=del & goto begining2 & if errorlevel 1 goto begining
+if %c_or_m%==xcopy echo 1 Χ©Χ§Χ” ΧΧ ΧΧ ,2 ΧΧΆ Χ”Χ¦Χ™Χ—ΧΧ‘ ΧΧ™Χ™Χ¨Χ•Χ§ΧΧ” ΧΧ™Χ¦Χ‘Χ§Χ” ΧªΧ Χ§Χ•Χ—ΧΧ ΧΧ›Χ•Χª ΧΧ™Χ Χ™ΧΆΧ‘ ΧΧ— ΧªΧΧ¦Χ•Χ Χ”ΧΧ¦Χ•ΧªΧ” ΧΧ & choice /c 12 & if errorlevel 2 set c_or_m=del & goto begining2 & if errorlevel 1 goto begining
 :pause
-echo !αεω μιηϊδμ μιαωα εδωμλ ωχξ μς υημ
+echo !Χ‘Χ•Χ© ΧΧ™Χ—ΧªΧ”Χ ΧΧ™Χ‘Χ©Χ‘ Χ•Χ”Χ©ΧΧ› Χ©Χ§Χ ΧΧΆ Χ¥Χ—Χ
 pause>nul
 cls
 goto begining
@@ -1729,7 +1731,7 @@ find /c "number%ab%" %f%
 if %errorlevel%==0 (goto :number%ab%) else (goto :sln-start)
 
 goto :sln-start
-::χψγιθ: nh.local11@gmail.com
+::Χ§Χ¨Χ“Χ™Χ: nh.local11@gmail.com
 
 
 
