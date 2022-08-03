@@ -213,7 +213,7 @@ echo                                         / /
 echo                                        ^|_^|
 echo                                        (_^)
 echo ================================================================================
-curl https://raw.githubusercontent.com/NHLOCAL/Singles-Sorter/5c197f8b03b7f0afbeecdecf09a2bdc44a5e3fe7/versions.data/7.0%%2Bversion
+curl https://raw.githubusercontent.com/NHLOCAL/Singles-Sorter/main/versions.data/7.0%%2Bversion
 echo.
 echo.                                 1 שקה תעכ ןוכדעל
 echo                              2 שקה ישארה טירפתל הרזחל
@@ -235,8 +235,8 @@ echo                                        ^(_^)
 echo ================================================================================
 echo.
 echo.
-echo.                       !ךלצא רבכ %update% הסרג !בוט לזמ
-timeout 5 | echo             ...עגר דועב חתפתש היקיתב השדחה הסרגה תא אוצמל לכות 
+echo.                           !ךלצא רבכ %update% הסרג !בוט לזמ
+timeout 7 | echo               ...עגר דועב חתפתש היקיתב השדחה הסרגה תא אוצמל לכות 
 explorer "%~dp0"
 cls & "%~dp0\מסדר הסינגלים %update%.bat"
 
