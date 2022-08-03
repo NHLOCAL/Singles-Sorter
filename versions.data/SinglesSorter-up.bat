@@ -10,7 +10,7 @@ color f1
 
 
 ::בדיקה אם גרסה חדשה זמינה להורדה
-curl https://raw.githubusercontent.com/NHLOCAL/Singles-Sorter/main/versions.data/new-ver-exist-7.0%%2B -o "%temp%\ver-exist-7.tmp"
+curl https://raw.githubusercontent.com/NHLOCAL/Singles-Sorter/main/versions.data/new-ver-exist -o "%temp%\ver-exist-7.tmp"
 if errorlevel 1 goto :call-num else (
 set/p update=<"%temp%\ver-exist-7.tmp"
 del "%temp%\ver-exist-7.tmp"
