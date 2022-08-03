@@ -224,10 +224,22 @@ echo.
 choice /c 12
 if errorlevel 2 goto :mesader-singels
 if errorlevel 1 (
-echo on
 curl https://raw.githubusercontent.com/NHLOCAL/Singles-Sorter/main/versions.data/SinglesSorter-up.bat -o "%~dp0\מסדר הסינגלים %update%.bat"
-echo הגרסה החדשה נמצאת בתיקיה עם הסקריפט הקודם!
-pause
+cls
+echo.
+echo                                        ___
+echo                                       ^|   ^|
+echo                                       \   /
+echo                                        \_/
+echo                                        ^(_^)
+echo ================================================================================
+echo.
+echo.
+echo.                       !ךלצא רבכ %update% הסרג !בוט לזמ
+timeout 5 | echo             ...עגר דועב חתפתש היקיתב השדחה הסרגה תא אוצמל לכות 
+explorer "%~dp0"
+cls & "%~dp0\מסדר הסינגלים %update%.bat"
+
 )
 
 goto :mesader-singels
