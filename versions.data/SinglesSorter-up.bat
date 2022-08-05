@@ -1,20 +1,21 @@
 ::מטרת הסקריפט היא לסדר שירים בודדים בתיקיות לפי אמנים
 ::הסקריפט מיועד לציבור החרדי ובשל כך הדאטה שלו מותאמת לציבור זה
 
-::הגדרות של שפה, צבע, כותרת וגודל החלון
 @echo off
+::הגדרות של שפה, צבע, כותרת וגודל החלון
+::ועוד מספר משתנים חשובים
 chcp 1255>nul
-title 7.0 מסדר הסינגלים
+title %VER% מסדר הסינגלים
 MODE CON: COLS=80 lines=27
 color f1
-
+set VER=7.1
 
 ::בדיקה אם גרסה חדשה זמינה להורדה
 curl https://raw.githubusercontent.com/NHLOCAL/Singles-Sorter/main/versions.data/new-ver-exist -o "%temp%\ver-exist-7.tmp"
 if errorlevel 1 goto :call-num else (
 set/p update=<"%temp%\ver-exist-7.tmp"
 del "%temp%\ver-exist-7.tmp"
-if %update% GTR 7.0 goto :updating
+if %update% GTR %VER% goto :updating
 )
 
 
@@ -156,7 +157,7 @@ echo          ___) ^| ^| ^| ^| ^| (_^| ^| ^|  __/\__ \  ___) ^| (_) ^| ^|  ^| ^|
 echo         ^|____/^|_^|_^| ^|_^|\__, ^|_^|\___^|^|___/ ^|____/ \___/^|_^|   \__\___^|_^|
 echo                        ^|___/
 echo ================================================================================
-echo                                 7.0 םילגניסה רדסמ
+echo                                 %VER% םילגניסה רדסמ
 echo                                       *****
 echo.
 echo.
@@ -178,7 +179,7 @@ echo                                         / /
 echo                                        ^|_^|
 echo                                        (_^)
 echo ================================================================================
-echo                                  ?7.0 הסרגב שדח המ
+echo                                  ?%VER% הסרגב שדח המ
 echo                                        *****
 echo.
 echo                                גרדושמו שדח בוציע .1
@@ -213,13 +214,13 @@ echo                                         / /
 echo                                        ^|_^|
 echo                                        (_^)
 echo ================================================================================
-curl https://raw.githubusercontent.com/NHLOCAL/Singles-Sorter/main/versions.data/7.0%%2Bversion
+curl https://raw.githubusercontent.com/NHLOCAL/Singles-Sorter/main/versions.data/%VER%%%2Bversion
 echo.
 echo.                                 1 שקה תעכ ןוכדעל
 echo                              2 שקה ישארה טירפתל הרזחל
 echo.
 echo                              -----------------------
-echo.                              7.0 איה תיחכונה הסרגה
+echo.                              %VER% איה תיחכונה הסרגה
 echo.
 choice /c 12
 if errorlevel 2 goto :mesader-singels
@@ -277,7 +278,7 @@ echo                             4 שקה ישארה טירפתל הרזחל
 choice /c 1234>nul
 if errorlevel 4 goto :mesader-singels
 if errorlevel 3 start mailto:mesader.singelim@gmail.com?subject=מעוניין%%20בקבלת%%20גרסאות%%20והסברים%%20נוספים%%20על%%20התוכנה^&body= & goto :mesader-singels
-if errorlevel 2 (curl https://www.googleapis.com/drive/v3/files/1Dp0ZUjQYO2qED-w9dNtIg6DKqF7JGT8w?alt=media^&key=AIzaSyDduW1Zbi2MIu8aMUMF6op72pJ1f0sPBi0 -o "%userprofile%\downloads\עזרה והוראות למסדר הסינגלים.pdf"
+if errorlevel 2 (curl https://www.googleapis.com/drive/v3/files/1RJWxutr4oGNtL11vmsncVyfQ0jOvWQX1?alt=media^&key=AIzaSyDduW1Zbi2MIu8aMUMF6op72pJ1f0sPBi0 -o "%userprofile%\downloads\הוראות למסדר הסינגלים.pdf"
 cls
 echo.
 echo.
@@ -285,7 +286,7 @@ echo                         !ךלש תודרוהה תייקיתל דרי ץבוקה
 pause>nul
 goto :mesader-singels
 )
-if errorlevel 1 start https://drive.google.com/file/d/1Dp0ZUjQYO2qED-w9dNtIg6DKqF7JGT8w/preview & goto :mesader-singels
+if errorlevel 1 start https://drive.google.com/file/d/1RJWxutr4oGNtL11vmsncVyfQ0jOvWQX1/preview & goto :mesader-singels
 
 
 :Wrong_path
@@ -305,7 +306,7 @@ echo                                    ^| ^|  \ \  \ \
 echo                                    ^| ^|  / /  / /
 echo                                    ^|_^| /_/  /_/
 echo ================================================================================
-echo                                 7.0 םילגניסה רדסמ
+echo                                 %VER% םילגניסה רדסמ
 echo                                       *****
 echo                              רטנא+0 ושיקה לוטיבו האיציל
 echo.
@@ -329,7 +330,7 @@ echo                                   \ \   __) ^|  \ \
 echo                                   / /  / __/   / /
 echo                                  /_/  ^|_____^| /_/
 echo ================================================================================
-echo                                 7.0 םילגניסה רדסמ
+echo                                 %VER% םילגניסה רדסמ
 echo                                       *****
 echo                              רטנא+0 ושיקה לוטיבו האיציל
 echo.
@@ -364,7 +365,7 @@ echo                                  \ \  \ \   ^|_ \
 echo                                  / /  / /  ___) ^|
 echo                                 /_/  /_/  ^|____/
 echo ================================================================================
-echo                          הריחב תויורשפא - 7.0 םילגניסה רדסמ
+echo                          הריחב תויורשפא - %VER% םילגניסה רדסמ
 echo                                       *****
 echo.
 echo.
@@ -432,7 +433,7 @@ echo                                     \ \  \ \  \ \
 echo                                     / /  / /  / /
 echo                                    /_/  /_/  /_/
 echo ================================================================================
-echo                           הריחב תויורשפא - 7.0 םילגניסה רדסמ
+echo                           הריחב תויורשפא - %VER% םילגניסה רדסמ
 echo                                        *****
 echo.
 echo.
@@ -736,7 +737,7 @@ set c=זושא
 set d=53
 goto :start
 :53
-set a=*חיים*ישראל*.*
+set a=*חיים?ישראל*.*
 set c=חיים ישראל
 set d=54
 goto :start
@@ -2085,7 +2086,7 @@ if %errorlevel%==1 goto finish
 cls
 echo.
 echo.
-echo                                 7.0 םילגניסה רדסמ
+echo                                 %VER% םילגניסה רדסמ
 echo                                       *****
 echo.
 echo.
