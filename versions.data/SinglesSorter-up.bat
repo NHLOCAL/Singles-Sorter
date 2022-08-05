@@ -1817,8 +1817,8 @@ set a=*%c: =*%*.*
 set/a d=1+d 
 goto start 
 :277
-set c=ישיבשיר
-set a=*%c: =*%*.*
+set c=שירת המונים
+set a=*ישיבשיר*.*
 set/a d=1+d 
 goto start 
 :278
@@ -2077,10 +2077,30 @@ set a=*%c: =*%*.*
 set/a d=1+d
 goto start
 :329
+set c=שירת המונים
+set a=*קולולם*.*
 set/a d=1+d
-find /c ":%d%" %0%
-if %errorlevel%==0 goto %d%
-if %errorlevel%==1 goto finish
+goto start
+:330
+set c=פרויקט קפיצת הדרך
+set a=*%c: =*%*.*
+set/a d=1+d
+goto start
+:331
+set c=פרויקט קפיצת הדרך
+set a=*פרויקט?קפיצת?הדרך*.*
+set/a d=1+d
+goto start
+:332
+set c=נח פלאי
+set a=*%c: =*%*.*
+set/a d=1+d
+goto start
+:333 
+set/a d=1+d 
+find /c ":%d%" %0% 
+if %errorlevel% == 0 goto %d% 
+if %errorlevel% == 1 goto finish
 
 :finish
 cls
@@ -2108,39 +2128,8 @@ goto :mesader-singels
 
 :number
 cls
-set/a ab=329+1
+set/a ab=333+1
 find /c "number%ab%" %0%
 if %errorlevel%==0 (goto :number%ab%) else (goto :sln-start)
+
 ::קרדיט: nh.local11@gmail.com
-
-
-
-
-
-
-
-:330
-set c=פרויקט קפיצת הדרך
-set a=*%c: =*%*.*
-set/a d=1+d
-goto start
-:331
-set c=פרוייקט קפיצת הדרך
-set a=*%c: =*%*.*
-set/a d=1+d
-goto start
-:332
-set c=נח פלאי
-set a=*%c: =*%*.*
-set/a d=1+d
-goto start
-:333 
-set/a d=1+d 
-find /c ":%d%" %0% 
-if %errorlevel% == 0 goto %d% 
-if %errorlevel% == 1 goto finish 
-:number330
-cls
-set/a ab=333+1
-find /c ":number%ab%" %0% 
-if %errorlevel%==0 (goto number%ab%) else (goto :sln-start)
