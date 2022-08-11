@@ -8,7 +8,7 @@ chcp 1255>nul
 title %VER% מסדר הסינגלים
 MODE CON: COLS=80 lines=27
 color f1
-set VER=7.1
+set VER=7.3
 
 ::בדיקה אם גרסה חדשה זמינה להורדה
 curl https://raw.githubusercontent.com/NHLOCAL/Singles-Sorter/main/versions.data/new-ver-exist -o "%temp%\ver-exist-7.tmp"
@@ -257,9 +257,8 @@ echo           םינמא יפל תרדוסמ הרוצב םכלש םילגניסה תא רדסל איה הנכותה תרטמ
 echo.
 echo                                       :1 בלש
 echo         רטנא לע ץוחללו הנכתה ןולח ךותל הייוצרה םילגניסה תייקית תא רורגל שי
-echo                                       :2 בלש
 echo             רטנא שיקהלו ןולחה ךותל םתרציש דעי תיקית רורגל שי ינשה בלשב
-echo                                       :3 בלש
+echo.
 echo                  תישיא תומאתומ תורדגהל תויורשפא רפסמ םנשי הז בלשב 
 echo            םירפסמה ישקמ לע הציחל ידי לע תונושה תויורשפאה תא תוסנל ולכות
 echo                     םתרדגהש תורדגהה תא רשאל אלא רתונ אל תעכ
@@ -350,6 +349,7 @@ for %%i in (%h%) do set h=%%~i
 cd /d %p%
 
 ::קביעת משתנים לצורך הגדרות המשתמש
+set "clear_heb=ליעפ"
 set cm_heb=הרבעה
 set "abc_heb=ליעפ אל"
 set c_or_m=move
@@ -373,18 +373,21 @@ echo                             ךילע תופדעומה תורדגהב רחב
 echo               הריחבה יונישל בוש שיקהלו ךתריחבל םאתהב רפסמ שיקהל ןתינ
 echo.
 ::מציג הגדרות לפי המשתנים שנקבעו לעיל
+
+echo              [%clear_heb%] רתוימ ןכותמ םיצבקה תומש יוקינל [0] שקה !שדח
+echo                   ------------------------------------------
 echo                   [%cm_heb%] הרבעהל הקתעה ןיב הריחבל [1] שקה 
 echo              [%abc_heb%] 'ב 'אל תוקלוחמ תויקיתל הקתעהב הריחבל [2] שקה
 echo         [%sing_heb%] רמז לכ ךותב "םילגניס" םשב תימינפ היקית תריציל [3] שקה 
 echo             [%fixed_heb%] דבלב ךלש תועובקה םירמזה תויקיתל הקתעהל [4] שקה
 echo                                הלעפהו םויסל [5] שקה
 ::ממתין לבחירת המשתמש
-choice /c 12345>nul
+choice /c 012345>nul
 ::אם הוקש 5 תסיים
-if errorlevel 5 goto :final
+if errorlevel 6 goto :final
 ::אם הוקש 4 יתבצע שינוי של משתנה
 ::בצורת פקודת תנאי לפי המשתנה הנוכחי
-if errorlevel 4 if "%fixed_heb%"=="ליעפ אל" (
+if errorlevel 5 if "%fixed_heb%"=="ליעפ אל" (
 set fixed_heb=ליעפ
 goto :options
 )else (
@@ -393,7 +396,7 @@ goto :options
 )
 ::אם הוקש 3 יתבצע שינוי של משתנה
 ::בצורת פקודת תנאי לפי המשתנה הנוכחי
-if errorlevel 3 if "%sing_heb%"=="ליעפ אל" (
+if errorlevel 4 if "%sing_heb%"=="ליעפ אל" (
 set sing_heb=ליעפ
 set "s=\סינגלים"
 goto :options
@@ -402,14 +405,14 @@ set "sing_heb=ליעפ אל"
 set s=
 goto :options
 )
-if errorlevel 2 if "%abc_heb%"=="ליעפ אל" (
+if errorlevel 3 if "%abc_heb%"=="ליעפ אל" (
 set abc_heb=ליעפ
 goto :options
 ) else (
 set "abc_heb=ליעפ אל"
 goto :options
 )
-if errorlevel 1 if %c_or_m%==move (
+if errorlevel 2 if %c_or_m%==move (
 set c_or_m=xcopy
 set par=/y
 set msg=וקתעוהש
@@ -422,7 +425,13 @@ set msg=ורבעוהש
 set cm_heb=הרבעה
 goto :options
 )
-
+if errorlevel 1 if "%clear_heb%"=="ליעפ" (
+set "clear_heb=ליעפ אל"
+goto :options
+) else (
+set "clear_heb=ליעפ"
+goto :options
+)
 ::כאן מתבצע סיכום ההגדרות שנבחרו
 :final
 cls
@@ -437,6 +446,11 @@ echo                           הריחב תויורשפא - %VER% םילגניסה רדסמ
 echo                                        *****
 echo.
 echo.
+::מציג הודעה אם אפשרות ניקוי הקבצים פעילה
+if "%clear_heb%"=="ליעפ" (
+echo                הקירסה לחתש ינפל םכלש םיצבקה תומש לש יוקינ עצבתי !שדח
+echo                  -------------------------------------------------
+)
 ::מציג לפי משתנה אם נבחרה העברה או העתקה
 echo               םילגניסה לש ---%cm_heb%--- תעכ עצבתת ךיתורדגה יפל !בל םיש
 
@@ -460,9 +474,41 @@ echo.
 echo                  [2] שקה הרזחו לוטיבל [1] שקה הנכותה תצרהו רושיאל 
 choice /c 12>nul
 if errorlevel 2 goto :mesader-singels
-if errorlevel 1 goto :begining2
+if errorlevel 1 goto :intro
 
-:begining2
+
+:intro
+::ביצוע ניקוי לשמות הקבצים
+::אם הוגדר כך על ידי המשתמש
+cls
+if "%clear_heb%"=="ליעפ" (
+for /r %%i in (*) do (
+cls
+echo.
+echo                           ...םיצבקה תומש לש יוקינ עצבמ
+set "file=%%~ni"
+set "ext=%%~xi"
+call :clear-func
+)
+)
+goto :preparing
+
+:clear-func
+::הפונקציה מבצעת ניקוי של שמות הקבצים
+set "new_filename=%file:_= %"
+set "new_filename=%new_filename: -מייל מיוזיק=%"
+set "new_filename=%new_filename: - ציצו במייל=%"
+set "new_filename=%new_filename: -מייל מיוזיק=%"
+set "new_filename=%new_filename:-חדשות המוזיקה=%"
+set "new_filename=%new_filename: - חדשות המוזיקה=%"
+set "new_filename=%new_filename: - ציצו=%"
+set "new_filename=%new_filename: מוזיקה מכל הלב=%"
+set "new_filename=%new_filename: - מייל מיוזיק=%"
+ren "%file%%ext%" "%new_filename%%ext%"
+exit /b
+
+
+:preparing
 cls
 echo.
 echo                                    ...דבוע
@@ -2118,7 +2164,7 @@ echo                                   !רבד אצמנ אל
 if not exist םוכיס set c_or_m=xxx
 if exist םוכיס del םוכיס
 echo.
-if %c_or_m%==xcopy echo. & echo                 [2] תעכ שקה םיירוקמה םיצבקה תא קוחמל ןיינועמ התא םא & echo                         [1] שקה םתוא רומשל ןיינועמ התא םא & echo. & echo               !הקיחמב רוחבל רוסא היקית התוא םה דעיהו ביתנה םא !תוריהז & choice /c 12>nul & if errorlevel 2 set c_or_m=del & goto begining2 & if errorlevel 1 goto :pause
+if %c_or_m%==xcopy echo. & echo                 [2] תעכ שקה םיירוקמה םיצבקה תא קוחמל ןיינועמ התא םא & echo                         [1] שקה םתוא רומשל ןיינועמ התא םא & echo. & echo               !הקיחמב רוחבל רוסא היקית התוא םה דעיהו ביתנה םא !תוריהז & choice /c 12>nul & if errorlevel 2 set c_or_m=del & goto preparing & if errorlevel 1 goto :pause
 :pause
 echo.
 echo                         !בוש ליחתהל ליבשב והשלכ שקמ לע ץחל
