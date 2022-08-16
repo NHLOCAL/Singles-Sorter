@@ -199,7 +199,7 @@ goto :mesader2
 )
 if errorlevel 4 goto :singer-list-new
 if errorlevel 3 goto :help
-if errorlevel 2 goto :begining
+if errorlevel 2 goto :beginning
 if errorlevel 1 goto :updating
 
 :updating
@@ -282,11 +282,13 @@ goto :mesader-singels
 if errorlevel 1 start https://drive.google.com/file/d/1RJWxutr4oGNtL11vmsncVyfQ0jOvWQX1/preview & goto :mesader-singels
 
 
-:Wrong_path
+:wrong_path
+echo.
 echo                      !בוש ביתנה תא סנכה אנא !םייק וניא ביתנה
 timeout 2 >nul
-:begining
-::del %help%
+exit /b
+
+:beginning
 cls
 set a=*אבי*מילר*.*
 set c=אבי מילר
@@ -309,10 +311,14 @@ echo                       ינדי ןפואב היקית ביתנ ןזה - ןיפוליחל
 echo.
 echo                         !רטנא שיקהל שי ביתנה תסנכה רחאל
 echo.
-set/p p=
-if 1%p%1 == 101 goto :mesader-singels
-if not exist %p% goto Wrong_Path
-for %%i in (%p%) do set p_finish=%%~ni
+set/p source_path=
+::בדיקה אם הוקש 0 תתבצע חזרה לתפריט הראשי
+if [%source_path%] == [0] goto :mesader-singels
+::הסרת מרכאות מהמשתנה
+for %%i in (%source_path%) do set source_path=%%~ni
+::בדיקה אם מדובר בנתיב שגוי או נתיב של קובץ
+if not exist "%source_path%\" call :wrong_path & goto :beginning
+
 
 :target_folder
 cls
@@ -336,11 +342,17 @@ echo.
 echo               רטנא+1 ושיקה הנכותה תיקיתב יטמוטוא ןפואב היקית תריציל
 echo.
 set/p h=
-if 1%h%1 == 111 md "סינגלים מסודרים" & set h="%~dp0סינגלים מסודרים"
-if 1%h%1 == 101 goto :mesader-singels
-if not exist %h% goto :target_folder
+::בדיקה אם הוקש 1 תווצר תיקית יעד באופן אוטומטי
+if [%h%] == [1] md "סינגלים מסודרים" & set h="%~dp0סינגלים מסודרים"
+::בדיקה אם הוקש 0 תתבצע חזרה לתפריט הראשי
+if [%h%] == [0] goto :mesader-singels
+::הסרת מרכאות מהמשתנה
 for %%i in (%h%) do set h=%%~i
-cd /d %p%
+::בדיקה אם מדובר בנתיב שגוי או נתיב של קובץ
+if not exist "%h%\" call :wrong_Path & goto :target_folder
+
+::קביעת התיקיה הנוכחית לתיקית המקור
+d /d "%source_path%"
 
 ::קביעת משתנים לצורך הגדרות המשתמש
 set "clear_heb=ליעפ"
