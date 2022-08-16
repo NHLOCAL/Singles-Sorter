@@ -5,7 +5,7 @@
 
 **כך זה נראה:**
 <div id="header" align="center">
-  <img src="https://user-images.githubusercontent.com/95597943/183309121-c5027add-6a87-47bc-916c-ad11ddb8d85e.png" width="500"/>
+  <img src="https://github.com/NHLOCAL/Singles-Sorter/blob/main/versions.data/program-screen.png?raw=true" width="500"/>
 
 </div>
 <div id="header" align="center">
