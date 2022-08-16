@@ -9,7 +9,7 @@ chcp 1255>nul
 title %VER% מסדר הסינגלים
 MODE CON COLS=80 lines=27
 color f1
-set VER=7.4
+set VER=7.5
 
 ::בדיקה אם גרסה חדשה זמינה להורדה
 curl https://raw.githubusercontent.com/NHLOCAL/Singles-Sorter/main/versions.data/new-ver-exist -o "%temp%\ver-exist-7.tmp"
