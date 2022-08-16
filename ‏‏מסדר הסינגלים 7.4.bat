@@ -1,5 +1,6 @@
 ::מטרת הסקריפט היא לסדר שירים בודדים בתיקיות לפי אמנים
 ::הסקריפט מיועד לציבור החרדי ובשל כך הדאטה שלו מותאמת לציבור זה
+::קרדיט: nh.local11@gmail.com
 
 @echo off
 ::הגדרות של שפה, צבע, כותרת וגודל החלון
@@ -41,9 +42,9 @@ cls
 echo.
 echo.
 echo.
-echo.
+echo.[30m 
 echo                             םירמז תפסוה - םילגניסה רדסמ
-echo                      =========================================
+echo                      ========================================= [34m 
 echo.
 echo.
 echo                         ליעפ אל - [1] דחא דחא םירמז תפסוהל
@@ -76,13 +77,13 @@ cls
 echo.
 echo.
 echo.
-echo.
+echo.[30m 
 echo                             םירמז תפסוה - םילגניסה רדסמ
-echo                      =========================================
+echo                      ========================================= [34m 
 echo.
 echo.
-echo                            םירמזה תמישר םע ץבוקה תא ןאכל רורג
-echo                     !םשל םש ןיב רטנא םע םידרפומ תויהל םיכירצ םירמזה
+echo                          םירמזה תמישר םע ץבוקה תא ןאכל רורג
+echo                    !םשל םש ןיב רטנא םע םידרפומ תויהל םיכירצ םירמזה
 echo                             (רטנא+0 ושיקה לוטיבו האיציל)
 set/p pa=
 if %pa%==0 goto :mesader-singels
@@ -121,9 +122,9 @@ echo                              ...ףסונ רמז לש םש ומשר
 echo                          (1 ושיקה בלש לכב הרימשו האיציל)
 :1.2
 set/p singer1=">>>"
-if "%singer1%" == "0" goto :mesader-singels
-if "%singer1%" == "1" goto 1.3
-if "X%singer1%X" == "XX" goto 1.1
+if [%singer1%] == [0] goto :mesader-singels
+if [%singer1%] == [1] goto 1.3
+if [%singer1%] == [] goto 1.1
 echo :%ab%>>%0% & echo set c=%singer1%>>%0% & echo set a=*%%c: =*%%*.*>>%0% & echo set/a d=1+d>>%0% & echo goto start>>%0% & set/a ab=1+ab
 goto 1.1
 :1.3
@@ -270,7 +271,7 @@ echo                           3 שקה ליימב הרזע תשקב תחילשל
 echo                             4 שקה ישארה טירפתל הרזחל
 choice /c 1234>nul
 if errorlevel 4 goto :mesader-singels
-if errorlevel 3 start mailto:mesader.singelim@gmail.com?subject=מעוניין%%20בקבלת%%20גרסאות%%20והסברים%%20נוספים%%20על%%20התוכנה^&body= & goto :mesader-singels
+if errorlevel 3 start https://mail.google.com/mail/u/0/?fs=1^&tf=cm^&source=mailto^&to=mesader.singelim@gmail.com & goto :mesader-singels
 if errorlevel 2 (curl https://www.googleapis.com/drive/v3/files/1RJWxutr4oGNtL11vmsncVyfQ0jOvWQX1?alt=media^&key=AIzaSyDduW1Zbi2MIu8aMUMF6op72pJ1f0sPBi0 -o "%userprofile%\downloads\הוראות למסדר הסינגלים.pdf"
 cls
 echo.
@@ -2187,23 +2188,3 @@ if %errorlevel%==0 (goto :number%ab%) else (goto :sln-start)
 ::קרדיט: nh.local11@gmail.com
 
 
-:334
-set c=שמואל הנביא
-set a=*%c: =*%*.*
-set/a d=1+d
-goto start
-:335
-set c=אליהו הנביא
-set a=*%c: =*%*.*
-set/a d=1+d
-goto start
-:336 
-set/a d=1+d 
-find /c ":%d%" %0% 
-if %errorlevel% == 0 goto %d% 
-if %errorlevel% == 1 goto finish 
-:number334
-cls
-set/a ab=336+1
-find /c ":number%ab%" %0% 
-if %errorlevel%==0 (goto number%ab%) else (goto :sln-start)
