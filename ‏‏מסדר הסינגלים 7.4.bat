@@ -37,7 +37,6 @@ goto mesader-singels
 
 ::קוד להוספת זמרים על ידי המשתמש
 :singer-list-new
-setlocal enabledelayedexpansion
 cls
 echo.
 echo.
@@ -68,9 +67,10 @@ echo                            רמזל רמז ןיב רטנא לש הדרפה םע
 echo                           ותוא רומשו ץבוקה תא רוגס םייסתשכ
 echo.
 timeout 5|echo                         ץבוקב תוקיר תורוש ריאשהל ןיא !תוריהז
-echo הכנס כאן שמות זמרים כרצונך ומחק את שורה זו - שימו לב שלא יוותרו שורות ריקות>"c:\users\public\list.txt"
-notepad "c:\users\public\list.txt"
+echo הכנס כאן שמות זמרים כרצונך ומחק את שורה זו - שימו לב שלא יוותרו שורות ריקות>"c:\users\public\list-singers.txt"
+notepad "c:\users\public\list-singers.txt"
 goto :2.3
+
 :2.0
 cls
 echo.
@@ -87,18 +87,18 @@ echo                             (רטנא+0 ושיקה לוטיבו האיציל)
 set/p pa=
 if %pa%==0 goto :mesader-singels
 if not exist %pa% echo. & timeout 2|echo                                !בוש הסנ יוגש ביתנה & goto 2.0
-copy %pa% "c:\users\public\list.txt">nul
+copy %pa% "c:\users\public\list-singers.txt">nul
 
 :2.3
-
-for /f "eol=;tokens=1,1*delims=" %%i in (c:\users\public\list.txt) do (
+setlocal enabledelayedexpansion
+for /f "eol=;tokens=1,1*delims=" %%i in (c:\users\public\list-singers.txt) do (
 echo :!ab!>>%0%
 echo set c=%%i>>%0%
 echo set a=*%%c: =*%%*.*>>%0%
 echo set/a d=1+d>>%0%
 echo goto start>>%0%
 set/a ab=1+ab)
-del "c:\users\public\list.txt">nul
+del "c:\users\public\list-singers.txt">nul
 echo                                   !המלשוה הלועפה
 goto :1.3
 :1.0
@@ -210,7 +210,7 @@ echo                                       ^|__ \
 echo                                         / /
 echo                                        ^|_^|
 echo                                        (_^)
-echo ================================================================================
+echo ================================================================================[34m
 curl https://raw.githubusercontent.com/NHLOCAL/Singles-Sorter/main/versions.data/%VER%%%2Bversion
 echo.
 echo.                                 1 שקה תעכ ןוכדעל
@@ -224,14 +224,14 @@ if errorlevel 2 goto :mesader-singels
 if errorlevel 1 (
 curl https://raw.githubusercontent.com/NHLOCAL/Singles-Sorter/main/versions.data/SinglesSorter-up.bat -o "%~dp0\מסדר הסינגלים %update%.bat"
 cls
-echo.
+echo.[30m
 echo                                        ___
 echo                                       ^|   ^|
 echo                                       \   /
 echo                                        \_/
 echo                                        ^(_^)
 echo ================================================================================
-echo.
+echo.[34m
 echo.
 echo.                           !ךלצא רבכ %update% הסרג !בוט לזמ
 timeout 7 | echo               ...עגר דועב חתפתש היקיתב השדחה הסרגה תא אוצמל לכות 
@@ -244,25 +244,22 @@ goto :mesader-singels
 
 :help
 cls
-echo.
-echo.
-echo.
+echo.[30m
 echo                                הרזע - םילגניסה רדסמ
-echo                                       *******
+echo ================================================================================
+echo.[34m
+echo            .םינמא יפל תרדוסמ הרוצב םכלש םילגניסה תא רדסל איה הנכותה תרטמ
 echo.
-echo           םינמא יפל תרדוסמ הרוצב םכלש םילגניסה תא רדסל איה הנכותה תרטמ 
+echo         .רטנא לע ץוחללו הנכתה ןולח ךותל הייוצרה םילגניסה תייקית תא רורגל שי
+echo             .רטנא שיקהלו ןולחה ךותל םתרציש דעי תיקית רורגל שי ינשה בלשב
 echo.
-echo                                       :1 בלש
-echo         רטנא לע ץוחללו הנכתה ןולח ךותל הייוצרה םילגניסה תייקית תא רורגל שי
-echo             רטנא שיקהלו ןולחה ךותל םתרציש דעי תיקית רורגל שי ינשה בלשב
-echo.
-echo                  תישיא תומאתומ תורדגהל תויורשפא רפסמ םנשי הז בלשב 
-echo            םירפסמה ישקמ לע הציחל ידי לע תונושה תויורשפאה תא תוסנל ולכות
+echo                  תישיא תומאתומ תורדגהל תויורשפא רפסמ םנשי הז בלשב
+echo            .םירפסמה ישקמ לע הציחל ידי לע תונושה תויורשפאה תא תוסנל ולכות
 echo                     םתרדגהש תורדגהה תא רשאל אלא רתונ אל תעכ
-echo                                   !הצר הנכותה !והז
+echo                                !הצר הנכותה !והז
 echo.
-echo          ידיסחה רנא'זב רקיעב םירמז תואמ שולשל לעמ הנכותב םימייק הז בלשב 
-echo                   הנשמ תויקית םג תקרוס הנכותה !הבושח הרעה 
+echo          .ידיסחה רנא'זב רקיעב םירמז תואמ שולשל לעמ הנכותב םימייק הז בלשב 
+echo                     !הנשמ תויקית םג תקרוס הנכותה !הבושח הרעה
 echo.
 echo                          ...החמשב ץיפהלו קיתעהל ןתינ    
 echo                        mesader.singelim@gmail.com :ליימ
@@ -295,7 +292,7 @@ set a=*אבי*מילר*.*
 set c=אבי מילר
 set d=1
 
-echo.
+echo.[30m
 echo                                     _  __   __
 echo                                    / ^| \ \  \ \
 echo                                    ^| ^|  \ \  \ \
@@ -304,7 +301,7 @@ echo                                    ^|_^| /_/  /_/
 echo ================================================================================
 echo                                 %VER% םילגניסה רדסמ
 echo                                       *****
-echo                              רטנא+0 ושיקה לוטיבו האיציל
+echo                             רטנא + 0 ושיקה לוטיבו האיציל[34m
 echo.
 echo.
 echo                הנכותה ןולח ךותל םילגניס שפחנש הצור ךנה הב היקית רורג
@@ -319,7 +316,7 @@ for %%i in (%p%) do set p_finish=%%~ni
 
 :target_folder
 cls
-echo.
+echo.[30m
 echo                                  __    ____   __
 echo                                  \ \  ^|___ \  \ \
 echo                                   \ \   __) ^|  \ \
@@ -328,7 +325,7 @@ echo                                  /_/  ^|_____^| /_/
 echo ================================================================================
 echo                                 %VER% םילגניסה רדסמ
 echo                                       *****
-echo                              רטנא+0 ושיקה לוטיבו האיציל
+echo                             רטנא + 0 ושיקה לוטיבו האיציל[34m
 echo.
 echo.
 echo                   םיצבקה וקתעוי הילא היקיתה תא הנכותה ןולחל רורג
@@ -355,7 +352,7 @@ set "fixed_heb=ליעפ אל"
 ::בחירה בהגדרות שונות למשתמש
 :options
 cls
-echo.
+echo.[30m
 echo                                 __   __    _____
 echo                                 \ \  \ \  ^|___ /
 echo                                  \ \  \ \   ^|_ \
@@ -363,7 +360,7 @@ echo                                  / /  / /  ___) ^|
 echo                                 /_/  /_/  ^|____/
 echo ================================================================================
 echo                          הריחב תויורשפא - %VER% םילגניסה רדסמ
-echo                                       *****
+echo                                       *****[34m
 echo.
 echo.
 echo                             ךילע תופדעומה תורדגהב רחב 
@@ -445,8 +442,8 @@ echo.
 echo.
 ::מציג הודעה אם אפשרות ניקוי הקבצים פעילה
 if "%clear_heb%"=="ליעפ" (
-echo                הקירסה לחתש ינפל םכלש םיצבקה תומש לש יוקינ עצבתי !שדח
-echo                  -------------------------------------------------
+echo               הקירסה לחתש ינפל םכלש םיצבקה תומש לש יוקינ עצבתי !שדח
+echo                 -------------------------------------------------
 )
 ::מציג לפי משתנה אם נבחרה העברה או העתקה
 echo               םילגניסה לש ---%cm_heb%--- תעכ עצבתת ךיתורדגה יפל !בל םיש
@@ -2176,3 +2173,25 @@ find /c "number%ab%" %0%
 if %errorlevel%==0 (goto :number%ab%) else (goto :sln-start)
 
 ::קרדיט: nh.local11@gmail.com
+
+
+:334
+set c=שמואל הנביא
+set a=*%c: =*%*.*
+set/a d=1+d
+goto start
+:335
+set c=אליהו הנביא
+set a=*%c: =*%*.*
+set/a d=1+d
+goto start
+:336 
+set/a d=1+d 
+find /c ":%d%" %0% 
+if %errorlevel% == 0 goto %d% 
+if %errorlevel% == 1 goto finish 
+:number334
+cls
+set/a ab=336+1
+find /c ":number%ab%" %0% 
+if %errorlevel%==0 (goto number%ab%) else (goto :sln-start)
