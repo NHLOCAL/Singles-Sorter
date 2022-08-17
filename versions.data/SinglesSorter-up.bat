@@ -316,7 +316,7 @@ set/p source_path=
 ::בדיקה אם הוקש 0 תתבצע חזרה לתפריט הראשי
 if [%source_path%] == [0] goto :mesader-singels
 ::הסרת מרכאות מהמשתנה
-for %%i in (%source_path%) do set source_path=%%~ni
+for %%i in (%source_path%) do set source_path=%%~i
 ::בדיקה אם מדובר בנתיב שגוי או נתיב של קובץ
 if not exist "%source_path%\" call :wrong_path & goto :beginning
 
