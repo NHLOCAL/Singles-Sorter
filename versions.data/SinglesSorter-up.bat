@@ -353,7 +353,7 @@ for %%i in (%h%) do set h=%%~i
 if not exist "%h%\" call :wrong_Path & goto :target_folder
 
 ::קביעת התיקיה הנוכחית לתיקית המקור
-d /d "%source_path%"
+cd /d "%source_path%"
 
 ::קביעת משתנים לצורך הגדרות המשתמש
 set "clear_heb=ליעפ"
