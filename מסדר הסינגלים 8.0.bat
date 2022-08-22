@@ -2,17 +2,28 @@
 ::הסקריפט מיועד לציבור החרדי ובשל כך הדאטה שלו מותאמת לציבור זה
 ::קרדיט: nh.local11@gmail.com
 
-@echo off
+@echo oFF
 ::הגדרות של שפה, צבע, כותרת וגודל החלון
 ::ועוד מספר משתנים חשובים
 chcp 1255>nul
 title %VER% מסדר הסינגלים
 MODE CON COLS=80 lines=27
 color f1
-set VER=8.1
+set VER=8.0
 
+::בדיקה אם קיים קובץ דאטה ב-אפפדאטה או בתיקית הסקריפט
+::וקביעת משתנה למיקום קובץ הדאטה
 ::יצירת קובץ דאטה זמרים במקרה והוא לא קיים
-if not exist "singer-list2.csv" call :creat-cvs
+if exist "singer-list.csv" (
+set csv-file=singer-list.csv
+) else (
+if exist "%appdata%\singles-sorter\singer-list.csv" (
+set "csv-file=%appdata%\singles-sorter\singer-list.csv"
+) else (
+call :creat-cvs
+set csv-file="%appdata%\singles-sorter\singer-list.csv"
+)
+)
 
 ::בדיקה אם גרסה חדשה זמינה להורדה
 curl https://raw.githubusercontent.com/NHLOCAL/Singles-Sorter/main/versions.data/new-ver-exist -o "%temp%\ver-exist-7.tmp"
@@ -28,7 +39,7 @@ if %update% GTR %VER% goto :updating
 ::הדבר נצרך לצורך חישוב הזמן שעבר
 ::ולצורך הפונקציה של הוספת זמרים עצמאית
 if exist "%temp%\ver-exist-7.tmp" del "%temp%\ver-exist-7.tmp"
-type "singer-list2.csv" | find /c ",">"%temp%\num-singer.tmp"
+type "%csv-file%" | find /c ",">"%temp%\num-singer.tmp"
 set /p ab=<"%temp%\num-singer.tmp"
 if exist "%temp%\num-singer.tmp" del "%temp%\num-singer.tmp"
 
@@ -55,7 +66,7 @@ echo.
 echo                                תויורשפאהמ תחאב רחב
 choice /c 12>nul
 if errorlevel 2 goto mesader-singels
-if errorlevel 1 "singer-list2.csv"
+if errorlevel 1 "%csv-file%"
 
 
 ::מסדר הסינגלים עצמו
@@ -437,7 +448,7 @@ set /a d=1
 
 :start
 ::פקודת הפור הראשית שסורקת שמות קבצים
-for /f "usebackq tokens=1,2 delims=,"  %%i in (singer-list2.csv) do (
+for /f "usebackq tokens=1,2 delims=,"  %%i in (%csv-file%) do (
 set a=%%i
 set c=%%j
 call :sort-func
@@ -470,7 +481,7 @@ if %ss%==ss md %b%
 if %c_or_m%==del set b= & set par=/q
 
 ::העתקת הסינגלים בכפוף לכמה תנאים
-for /r %%d in ("%a%") do if exist %%i set xx=xx
+for /r %%d in ("%a%") do if exist %%d set xx=xx
 if %xx%==xx for /r %%e in (%a%) do %c_or_m% %par% "%%e" %b%>>םוכיס
 
 ::מעבר למספר הבא לצורך חישוב ההתקדמות
@@ -509,9 +520,11 @@ goto :mesader-singels
 
 
 :creat-cvs
-
 @echo off & pushd %~dp0
 powershell -noprofile -c "$f=[io.file]::ReadAllText('%~f0') -split ':bat2file\:.*';iex ($f[1]);X 1;"
+
+if not exist "%appdata%\singles-sorter" md "%appdata%\singles-sorter"
+move "singer-list.csv" "%appdata%\singles-sorter\singer-list.csv"
 exit /b
 
 :bat2file: Compressed2TXT v5.3
@@ -525,36 +538,32 @@ Add-Type -Language CSharp -TypeDefinition @"
  private static byte[] n4b(){ return new byte[4]{(byte)(n>>24),(byte)(n>>16),(byte)(n>>8),(byte)n}; } private static long n=0; }
 "@; function X([int]$r=1){ $tmp="$r._"; echo "`n$r.."; [BAT85]::Decode($tmp, $f[$r+1]); expand -R $tmp -F:* .; del $tmp -force }
 
-:bat2file: singer-list2.csv~
-::O/bZg00000K@)o?00000EC2ui000000|5a50RR9100000O#lD[0RRIPOCJCL00000000tIGGHJ8b7]j8WpXWSX?+WkE[N|c0C+f7eC!EJA6tNcjR6p{]Z+=;1T;m,
-::U=2iqQb+J2M9L5M[BI5lGFeRLmg3Up){yA20s{auLU3nh0Ph5=K)$CaARp65NGi}_M[g]u=U.K7-q2z]U;apkJ|/Li&t#LM)IHNxwVejzPO.|KO-2iW&VpV{OIK=B
-::OZ2LJLcjn1^dvJ-0EhspqzZ^/VeXlzt-brtu[z81KR.Vb_?/$Y7ZZ.pKe^pnWKF;|gtG$Z(m4hL;vMPkxE.&ox@Kd2$YZ5~B-([t{mqhsb27lA_r=Fe?n[e2it#oP
-::SjShS6{VCKcMq5Rhc3PMM_N8jk)[O3]Q+tA?6d@Xz!H4BZ]EC{NbN7eGUPeJQaqmT&U6J@F!JOT09Bv[QfcI;n#eD~2&ke{=x,H9NFfFR$,v4VSOR7-sUTRPH,jQV
-::5-T6q)Iq&mKrwmJdKr2226^c]MI]+!Q2pm8Ic/p[#-3Ml,&S@/lc6Xk.3$o_p&9ex8yl~4TWvn9Or~UV?kdRb8{OE_,][,vOdD{t(pG2.VVed/Q[otp[{PfyS!5)g
-::.14k&a=2=~nb6rs?}_@[|26gTOi=/^iy2FtOqU?9bJ(Swm&;q~XYZ(/rzVlw^KF0HR=MFmpS.j~HH@MhPHLq#r[M1!id#f0K)It}l(D7aB2,EwqK^OgElHeet2So|
-::uNQqTp=_=yLEz/$;Ggl=hby3vIF6kuhnVItNz6&Q.oXLB8;CoWq{+$$VF&/1QY+.lm{!N{0!D8&tMhKGR@!)$=YR},&6))v0hV_G04i}(q)Q)oH30cYWq4/-1X77H
-::$h./7j&=E4SR;ex1){AfdPQY#+7_[/7+|zEr=T)~,L.{{Lk6-y$0By_90.rZy)N=Td[qB#$rZR.qS!A1Vv54[U$asFoefM[A=$7aDAae^RlcySA^ydz!8-Mml]Jkl
-::PvTKh3|^qAGG#{SKbP]V5u-r+l?y0.UQ/;tAl3QEKCgH.TYK/[(9[ROOsPcP1v/DTJ=9KmLpwJv.sCfScXDxi@gH@qjK{LqN[HAbNGZea(HuxjS.CRu7Fe{!UFZ!J
-::R;pgrgcNtdXq7+8MHMZXP,UZ4o0S3VQY-BJK(W+X|Jh=V^MjfS+;]s3,^Xi~@RzeQK-Cf;oC}yHnlX#]l,q/Le#g&YDBZGX+82&Dn$-Z5i0]u^w@$E^E;8?E?3hmh
-::dR585L7zi~@Xt[anfHj-;uE!X+UYH=@/zwiA)O_iZ|ZogfEnY[)4SzMDNJlrEl|jSjPk5cxzt|)]2.$&HrO~2t0/_Y2p+[^{5?vKQr.|eefvElgM3CeDz3~fEd@|g
-::XWR,y9QrdzXX)-diLY]h2X8^pU6Dg7;}Fo{m|g4_KBX5BH8598=(!g6MtB_GS)gwyUXU|$sNP10fVej~zZGg+oKN{gWo]!?G7rgf,rqz5USvfwz;tZk-k0^A+3{zf
-::OV&_zS$~3#zK8S@4^b[e$QJb+/LvBktWUU[xG~E=_WYgOUk.G]N$^4lf4pnwjey$0[U36/ipq{MK61-|V0d&10!;0Rg70CKAsYvhfdrWICegvtcvj1{z/B|WrLG},
-::Y?-VlmClyERDk]yuA;r4?zmC6iFu}b2-;ur_Lld1Ve1vCXL[,dxV_#mhO?D4vo}).&bL34^AsTrOSIiQdj!U(a&R{cjqb4ZZbIvSzx_^UpQ8EJGqo7{{W5G3^BYuM
-::=d~Pt3$e0Yf|#4wZIfO1!]&9Vkl1i,v{2oWnFVBSUsSTN)lOczlc7+M$-rH#f0AR(T}bS//tjL,eaR63.,Rt!uyajAjE(ryEF@o;1o^rW.7pNA4WLLvs9NdE7IJUa
-::^Td{oQbOQmx!;TpUrboh.XbLHccTcuNpk!=h}aRNnoy5-MGRGc0b22l5oWxXH2}AuvN$V1-Ij6l2@XnV;8.rl(u8M}.$6a2&qHpeaNKn(c-Z4n$c1)8w-09XTD4r9
-::#_AZ3;I.n7SI,nFEmS,Q^++Niqu4cs0JSq+wCH4ewjGWBb#n=G!IYLJ)k&nfAr|3{;Ds-2;MrAcB_]jsKm=a+5IR2n^kTkoc8D7+dMn)!tOZnRb}1M_yuc|JUvt~L
-::1btj(fpmR!#or=6J6S~Npn8pj.!7G1y0@F(#drO+lwoYe&kd@+Q0siU#13hhaL)xXD,7G}!l2bemTNs^RO3Z-st$,NSwcx?yB$lDmk$A|KQbMTi{di1fcHozo)&~/
-::tFXn}ExHKww|&2WPYG-ppF}@NJC)8cvo^s#wD?c/hLZn9g1ZiBgvGSMA&6p/E@defKgff$tTNW![mReIu(4NewJ~CA6^Lh=ztR07/F9Bookn$yS0R9=pyt~212;RJ
-::ihRhPGSAAhc!p_+6}1bwx|)-cCx!2D1?^/#HYsU?_k;u.hwdR#x)asuXq86CNdIc@Q3}D1-br~GR]0}xgl;(C-083b6Cq&e^8xfQEea]l?9nO8{W6E!Axh~@@,Z^7
-::4R6bXe&?2DIeshm{D&OemB98d4oRJS/a+~r+E-g44nn;n8Mm_YF4o;^sN3d+wQS]w[4n$Wuzv&?g{RnjMKDFwo-OK&[EFyCE;O^on@|i)hj3NmdjlKwoxlmYRz8{R
-::BUsHTiY)M!(djrXm{8_~6,PY,0z@}(S_J?gI[FrK0mG|B9vRpP8l/{dgqOu[arM@tQ!c(d[#CG+U5r-Z9+JxTk.8KX@;bpDaLh9QYzouaRIdEUIv#mRyOSRT[ai$o
-::Y)@UQc#7Yr?1ZES@qA)}tj,t]Va82tBh[eC;Gm2aeK2+sP5.~6G?}?MAtxm~k-w3q4u$S[g&?{;uXqS5LW0RJ13OnEbdOGc/ol_0K/~.viUtf!rSGSg]T(sb$L#w,
-::GYeYSx?L7q]G7s^ccvTw=;)4,Y|j/;R,9c#bokJ&uWAUVHUE4w/1(O{TmPARq9AqR-1?EI#^(srt{4ZU(fY-|@fh(3M6Q.[W0a{q|5olZsS4$bqq?iha,mqbU5vot
-::8D1=T+]gt55Smo9h&4apj}5d(,BM|;T|jNq.ep_@[JD.DL|5ou[[Cu1u&h03S(tw;p?JEl3)H+u{BH)HyEe4743u^u?B749GV=./GCVaqgJq+,;EVWF;s]P$tL@|M
-::VMcEVrNfq2;[#rKNh==D|2]9(;P3I;,=W#qhQ1MQcFVHoQD9^T(-k.jzR~coqq8Mi=wPf3M)wn$_mVc6fw?C72!fA-/.qp80!YG@,m=;jB~M4_AsCDnvDw|hNHbrq
-::kZ57-438odxAZ?LCR1v!jziGBdY_}elm
+:bat2file: singer-list.csv~
+::O/bZg00000J^.N/00000EC2ui000000|5a50RR9100000OaK4@0RRIPZ65#t00000000)M9i|_vb7]j8WpXWSX?+WgV{?+[[$ef??IrQhTY!L#0T9ym002}3Bx3-z
+::4Mc+cN4Ky;$_AMN{QF_tj]xi=WSi+zG~+mQ0{}BZaA#&!@,ywrwMbnckLhuw0zG!8dBx9[s^wSGyVbC6y-zN#4xM+iphJq}Nj^}|18LN/Jnj]$?e;c1rd&q]-g!R,
+::om!$.@.T$1]}hhZ001+pR5VjS@G9t#VTw=]Y.1}x_}^a;n&GH(n1VOq|NNGlI!ZE1K$)G73H?=pomIAu?nC![$)ME,DJ05S0wI4i;#@PkxbVIV+0kcS)r@kH=2$G@
+::W|R((/WS[P?2dh.SpKo6r~Twyl~Oz?X#ITZk1W{Zo/sXF.!9Ye8#PS)jle7NPhB(@ARNsVyDE[8Xa$v)f=Sjk3xWdgQ84.E$Jvw{lQtzWh5#(Iv[,$)Sh6=jWTO.D
+::z..YWy6S+?fmV7kd9o+t1q4NU#e.lZ=MYK#tS82Cc/y-DO^h[vDB|9u5hke(oCq5ruk=@ZesfT5;,e!]Wb!+?,Fe|Z$;o/./Ao,YM_~edCR$XZ.9.Yu#p6|vB&~d6
+::tw@eLbZ|[[aPM~LN[Nc=_i.cYfq2C&t&Rn07,e[RRjtb^46rxhRh_p(NT$295{-s^0LI^kTc09g#=$4X)rur(9M0;QvYN0hq!mtCyFq|+ecm_)2hH/A8Pl57rmm~=
+::,bwxxStgim_&GN@PG^/-FyhY()=eH2yg@IbID!]-Um?j+qs3go.qOiB{xEkWj(gDyt)dY|TJ4tso+J$HzJ?yP$-IF?g089(yf.QXJ!9gWinLO&J0Zl9;LtR-LDeZ3
+::lzQ(dDx/&L8.Bs4v_a~Cl|jK4pnDmjzkc~z&Pn)=JihiaP|~rL3_Q!@c;PZ?zih;ZjRU^JqvSh?l?WuEsal|DAC6c}x]AoZm[+;;Xm9B1/548ztID|Ie5GZOj?w;V
+::;IO_Z33e-/l&c&?aw0(e]P8Qj[o=19/(B[HPEugpBCRK]aJu,Cd-rSpUg]2l(=^6|+#;s-yzep!&b-^UF;K@f4AZx#5Bnzl&Wz.hx5S5KH(j_p^F5ZeTq?hP4h2;J
+::cu54yF5ldgniM_-0=.PMidXWHYwXb/+1$W;HG|axGZ?]j4;.;3fmVihlaz}Fm}P]@;7R.[;nIO+j#,6UcS2B6YIZHfc+geyqNr7$Ubnz?L1iev]ki[l=MZ80EOSG+
+::KVo)Hjd-3[rp+PHl#C|@5^#aQA-Z&/W1bnjlk1uIyvFFlN,.vWXax!u.g=U$t]lrK,1=rHs,LjjJB9D5zsOA~+$vz}0sZOBe_[h_dN@B-fMz$Ey3J1q0h8ugmr5oM
+::{!qedel#]fozLLmP6#UOtnQg{-hR+(e-5NSPIHTw#Eqk1huA_ul@hAaDp[qA2!3.2t9u#pS#iJR^I&A8Q|F{C^[IwZ3no~h7|mG,5s!E$?cy_)C0H=vFYLi6.$VIb
+::CyC68GywW=aBDYbR^OAe-o[$td)vPaUxuFKlml3COuSmsBlk9X|09hL1sq3uGHqrVNjY/Z0[6vef=y=C^|S{W#E)qM69VD6cv;V)z}2g]nb#rwb-UK++.aX;dfxuU
+::ujoi2-dIoP[_kHtLioQPeRP{oSS$rk/h.bueZD.$C/xsrY&H|@]Nl^((8D(56HH$)wryA6K7rcL)d^c0ywygZE86z=+34C}MmD3mw/DyiUWQJR3[69op^ajKFqgAT
+::4YLp7c(^JuspFrDn=QXag;^iwD@qsesG[eA&-X7rv3zkIhg13cn/hp3bZV/=jF^.-uaE;HmV4rpqHG=le6.SNAX+|]]v788uwv722}K_L(_x8vmw(Lb3g7p+6#]~H
+::_o}W,aKZ^86d{Gb8b$wYNaXNAs,e)Dct.7txUbIzwBQ,d@1)k(fewImc~,h6]4O(s71/L&?SpmC)3r-Qqk3nVLCosoxa,eiz6p_B7v{R,86X,H,LHFm(mirMN}u~-
+::)68/bpA.A=qaX}Nw2^DxwRT(y=wOSsI,WYkCllwwIjvBnS^YzHEkhf}Lx-?d]SL;7/EbV,2tMf{Mt}Y;{?D$dlXq3bZM=5a3b5Jjl-cEJfLkx@_Kp!+RLOyrll9dV
+::fQtd_b_he)ZZ;Mb_gHZ^.n~CXfj2f!cGhCV6;=rzyw0dgCy~90#hC;SR5=;#67.45fw8F!bv$s6&i}2!SE&.Ma&BRjPaYkLi$XGvfZ}^~ANEOCyAj16EU.v?,Se$h
+::Uwx}bzX@FNJfyJ{vz7n(S|gh~gZqDkO38;!!kt=6l461Am)OKW9zKJzSy_.U/bnfiaIx@eY+_}jGG?kUek1q+ct^xiKPT&7uZ#d2Nkg@w2h6VM6@d@_W&!jr/jZIm
+::D_qXad-aL{JF#FS3JOEuZODe,]jlkn4naeVch@GapS{wEjL-|OAN3IIxvRntYQ}MhO4_P@9PYk@Ine@rX(=EiUgLlgq]]7VIgxjn9U^(U]sE5i.w@K.Y4,Kgl/gM)
+::(o2n[ns{tK$N)wwFg)lfq13CW)c#Y-mmxcY5qtKJMl~J}yxk+obcYT{flnLIZu_}+D?]CQ{+TC!hDWIObittz81.{SCE8YL[4/;|cMd1iS]/Iska#sSDB[J7w6ll1
+::F]$XtE1?@i1Zh1|Xpy^{dfc2C0o9-skJ0+jMuu/~A,=BVd26c_seYcfc$v/~uK8H^4[QPANVtlwcV$tFxRe;!wr1)SE_|PW9alVLMW2tP^]B8I_}y}X5/Axxx@/zP
+::JKTGgD^GAQVVO/yBgqrSZ|acaZoPd6(PKmzH~)03A([2avL;DC9c;l$3Jd;~S}^nXgzr/T1^,s#)Ctc&Za;j|/C$;4D/hQJwYuLj,T4TR$EW-uGps]@z6;x_Th&m;
+::w]tvGbQ5U-wHS+wtLR[;)8OrBSA2xf9yh-z[Q@o+t&];9)f^)VaFBTL=5K2+uJ8w!+?uHT@cRO4L?!g[W4[^(|CaA9saE2)qY96kZ[!$;VUIxpG#FPxu+V)XA?]sN
+::6,u5{A6I1N.nW2)b!E9VdINEdwU=(i5gj3[$zSe~!;u3,X@}wIg-OfqFWhqp[iQ7c@Y_h9GT7SJrc~.1&ZMw|NzK){6f&$g!V3c)-EM!ou!)=o1KZwcPL)Yg&ZE?|
+::67+Rm|5xUqh_TIPvl-lS4A~?}+^yW@a@|7|)O]|vzAx}[qtPX^;-ZL^Mqtzp3hv9SfvgTo2)gdB/+3N$1W1G+[sT4ciV^wX/@6NXip2iDM+&nYg_5j^+}$&IaRcyE
+::bwZ]]?PQ58sW;uCpEepH{nT0b0K[
 :bat2file: end
-
-
-
-
