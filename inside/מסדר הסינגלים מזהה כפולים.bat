@@ -28,9 +28,15 @@ set n=%%n
 call :func-scan
 )
 pause
+del "number-find.txt"
+del "000.txt"
 exit
 
 :func-scan
+if "%i% %j%"=="אהרן רזאל" exit /b
+if "%i% %j%"=="אהרון רזאל" exit /b
+if "%j% %k%"=="אהרן רזאל" exit /b
+if "%j% %k%"=="אהרון רזאל" exit /b
 dir /b | find /c "%i% %j% %k%">"number-find.txt"
 set /p num=<"number-find.txt" 
 if %num% gtr 1 dir /b | find "%i% %j% %k%"
