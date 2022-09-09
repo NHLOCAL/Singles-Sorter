@@ -280,6 +280,7 @@ cd /d "%source_path%"
 ::קביעת משתנים לצורך הגדרות המשתמש
 set "clear_heb=ליעפ"
 set cm_heb=הרבעה
+set "msg=ורבעוהש"
 set "abc_heb=ליעפ אל"
 set c_or_m=move
 set "sing_heb=ליעפ אל"
@@ -500,7 +501,7 @@ echo                                       *****
 echo.
 echo.
 if %c_or_m%==del echo                                   !וקחמנ םיצבקה & echo. & del םוכיס & goto pause
-if exist םוכיס (echo                              :%msg% םיצבקה רפסמ & find /c "1" םוכיס
+if exist םוכיס (echo                                 :%msg% םיצבקה רפסמ & find /c "1" םוכיס
 ) else (
 echo                                   !רבד אצמנ אל
 )
