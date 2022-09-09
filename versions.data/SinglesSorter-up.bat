@@ -105,13 +105,15 @@ echo ===========================================================================
 echo                                  ?%VER% הסרגב שדח המ
 echo                                        ***** [34m
 echo.
-echo                               םיינכדע הרזע ירושיק *
-echo                           דוקב תואסרגה םושיר לועיי *
-echo                            םירמזה תמישר לש לק רודיס *
+echo                                םיינכדע הרזע ירושיק *
+echo                            דוקב תואסרגה םושיר לועיי *
+echo                             םירמזה תמישר לש לק רודיס *
+echo                        ינוציח לסקא ץבוקל םירמזה תמישר תרבעה *
+echo                                םירמזה תמישר תבחרה *
 echo.                          
-echo                  םיצבק ןכות לש יטמוטוא יוקינל תורשפא הפסוותה
-echo               חוור יוותב ףלחוי _ וותה תא ליכמה ץבוק םש :אמגודל
-echo             וקחמי המודכו "ליימ קיזוימ" ,"ליימב וציצ" ומכ תומודיק
+echo                   םיצבק ןכות לש יטמוטוא יוקינל תורשפא הפסוותה
+echo                חוור יוותב ףלחוי _ וותה תא ליכמה ץבוק םש :אמגודל
+echo              וקחמי המודכו "ליימ קיזוימ" ,"ליימב וציצ" ומכ תומודיק
 echo.
 echo                            :טידרק nh.local11@gmail.com
 echo.
@@ -194,7 +196,7 @@ echo                             4 שקה ישארה טירפתל הרזחל
 choice /c 1234>nul
 if errorlevel 4 goto :mesader-singels
 if errorlevel 3 start https://mail.google.com/mail/u/0/?fs=1^&tf=cm^&source=mailto^&to=mesader.singelim@gmail.com & goto :mesader-singels
-if errorlevel 2 (curl https://www.googleapis.com/drive/v3/files/1RJWxutr4oGNtL11vmsncVyfQ0jOvWQX1?alt=media^&key=AIzaSyDduW1Zbi2MIu8aMUMF6op72pJ1f0sPBi0 -o "%userprofile%\downloads\הוראות למסדר הסינגלים.pdf"
+if errorlevel 2 (start https://github.com/NHLOCAL/Singles-Sorter/releases/download/v8.2/help-singles-sorter.pdf
 cls
 echo.
 echo.
