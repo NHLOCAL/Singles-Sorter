@@ -43,9 +43,10 @@ cls
 del "%temp%\number-find.txt"
 del "%temp%\000.txt"
 del "%temp%\list-to-delete-temp.tmp"
-if exist "%temp%\list-to-delete.tmp" (notepad "%temp%\list-to-delete.tmp") else (
+if not exist "%temp%\list-to-delete.tmp" (
 echo not multiply files
-timeout 2 & exit
+timeout 2
+exit
 )
 ::מחיקת קבצים לפי הרשימה
 cls
