@@ -50,41 +50,72 @@ for /f "eol=;tokens=1,1*delims=" %%a in (%temp%\list-to-delete.tmp) do (
 set item=%%a
 call :choice-delete
 )
+
+::הצגת רשימת השירים למחיקה
 echo -------------------
 :choicer
-choice /c 123456789
-if errorlevel 24 echo %item24% & pause & goto :choicer
-if errorlevel 23 echo %item23% & pause & goto :choicer
-if errorlevel 22 echo %item22% & pause & goto :choicer
-if errorlevel 21 echo %item21% & pause & goto :choicer
-if errorlevel 20 echo %item20% & pause & goto :choicer
-if errorlevel 19 echo %item19% & pause & goto :choicer
-if errorlevel 18 echo %item18% & pause & goto :choicer
-if errorlevel 17 echo %item17% & pause & goto :choicer
-if errorlevel 16 echo %item16% & pause & goto :choicer
-if errorlevel 15 echo %item15% & pause & goto :choicer
-if errorlevel 14 echo %item14% & pause & goto :choicer
-if errorlevel 13 echo %item13% & pause & goto :choicer
-if errorlevel 12 echo %item12% & pause & goto :choicer
-if errorlevel 11 echo %item11% & pause & goto :choicer
-if errorlevel 10 echo %item10% & pause & goto :choicer
-if errorlevel 9  echo %item9% & pause & goto :choicer
-if errorlevel 8  echo %item8% & pause & goto :choicer
-if errorlevel 7  echo %item7% & pause & goto :choicer
-if errorlevel 6  echo %item6% & pause & goto :choicer
-if errorlevel 5  echo %item5% & pause & goto :choicer
-if errorlevel 4  echo %item4% & pause & goto :choicer
-if errorlevel 3  echo %item3% & pause & goto :choicer
-if errorlevel 2  echo %item2% & pause & goto :choicer
-if errorlevel 1  echo %item1% & pause & goto :choicer
+choice /c ABCDEFGHIJKLMNOPQRSTUVWXYZ
+if errorlevel 26 echo %itemZ% |rev & pause & goto :choicer
+if errorlevel 25 echo %itemY% |rev & pause & goto :choicer
+if errorlevel 24 echo %itemX% |rev & pause & goto :choicer
+if errorlevel 23 echo %itemW% |rev & pause & goto :choicer
+if errorlevel 22 echo %itemV% |rev & pause & goto :choicer
+if errorlevel 21 echo %itemU% |rev & pause & goto :choicer
+if errorlevel 20 echo %itemT% |rev & pause & goto :choicer
+if errorlevel 19 echo %itemS% |rev & pause & goto :choicer
+if errorlevel 18 echo %itemR% |rev & pause & goto :choicer
+if errorlevel 17 echo %itemQ% |rev & pause & goto :choicer
+if errorlevel 16 echo %itemP% |rev & pause & goto :choicer
+if errorlevel 15 echo %itemO% |rev & pause & goto :choicer
+if errorlevel 14 echo %itemN% |rev & pause & goto :choicer
+if errorlevel 13 echo %itemM% |rev & pause & goto :choicer
+if errorlevel 12 echo %itemL% |rev & pause & goto :choicer
+if errorlevel 11 echo %itemK% |rev & pause & goto :choicer
+if errorlevel 10 echo %itemJ% |rev & pause & goto :choicer
+if errorlevel 9 echo %itemI% |rev & pause & goto :choicer
+if errorlevel 8 echo %itemH% |rev & pause & goto :choicer
+if errorlevel 7 echo %itemG% |rev & pause & goto :choicer
+if errorlevel 6 echo %itemF% |rev & pause & goto :choicer
+if errorlevel 5 echo %itemE% |rev & pause & goto :choicer
+if errorlevel 4 echo %itemD% |rev & pause & goto :choicer
+if errorlevel 3 echo %itemC% |rev & pause & goto :choicer
+if errorlevel 2 echo %itemB% |rev & pause & goto :choicer
+if errorlevel 1 echo %itemA% |rev & pause & goto :choicer
+
 
 pause
 del "%temp%\list-to-delete.tmp"
 exit
 
 :choice-delete
-echo [%num%] %item%
-set item%num%=%item%
+if %num%==1 set let=A
+if %num%==2 set let=B
+if %num%==3 set let=C
+if %num%==4 set let=D
+if %num%==5 set let=E
+if %num%==6 set let=F
+if %num%==7 set let=G
+if %num%==8 set let=H
+if %num%==9 set let=I
+if %num%==10 set let=J
+if %num%==11 set let=K
+if %num%==12 set let=L
+if %num%==13 set let=M
+if %num%==14 set let=N
+if %num%==14 set let=O
+if %num%==15 set let=P
+if %num%==16 set let=Q
+if %num%==17 set let=R
+if %num%==18 set let=S
+if %num%==19 set let=T
+if %num%==20 set let=U
+if %num%==21 set let=V
+if %num%==22 set let=W
+if %num%==23 set let=X
+if %num%==24 set let=Y
+if %num%==25 set let=Z
+echo [%let%] %item%
+set item%let%=%item%
 set /a num=num+1
 exit /b
 
