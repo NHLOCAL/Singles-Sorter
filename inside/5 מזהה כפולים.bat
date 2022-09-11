@@ -1,6 +1,5 @@
 @echo off
 chcp 1255>nul
-chcp 1255
 echo.
 set /p p=">>>"
 for %%i in (%p%) do set artist=%%~ni
@@ -50,41 +49,41 @@ for /f "eol=;tokens=1,1*delims=" %%a in (%temp%\list-to-delete.tmp) do (
 set item=%%a
 call :choice-delete
 )
-
+del "%temp%\list-to-delete.tmp"
 ::הצגת רשימת השירים למחיקה
 echo -------------------
 :choicer
 choice /c ABCDEFGHIJKLMNOPQRSTUVWXYZ
-if errorlevel 26 echo %itemZ% |rev & pause & goto :choicer
-if errorlevel 25 echo %itemY% |rev & pause & goto :choicer
-if errorlevel 24 echo %itemX% |rev & pause & goto :choicer
-if errorlevel 23 echo %itemW% |rev & pause & goto :choicer
-if errorlevel 22 echo %itemV% |rev & pause & goto :choicer
-if errorlevel 21 echo %itemU% |rev & pause & goto :choicer
-if errorlevel 20 echo %itemT% |rev & pause & goto :choicer
-if errorlevel 19 echo %itemS% |rev & pause & goto :choicer
-if errorlevel 18 echo %itemR% |rev & pause & goto :choicer
-if errorlevel 17 echo %itemQ% |rev & pause & goto :choicer
-if errorlevel 16 echo %itemP% |rev & pause & goto :choicer
-if errorlevel 15 echo %itemO% |rev & pause & goto :choicer
-if errorlevel 14 echo %itemN% |rev & pause & goto :choicer
-if errorlevel 13 echo %itemM% |rev & pause & goto :choicer
-if errorlevel 12 echo %itemL% |rev & pause & goto :choicer
-if errorlevel 11 echo %itemK% |rev & pause & goto :choicer
-if errorlevel 10 echo %itemJ% |rev & pause & goto :choicer
-if errorlevel 9 echo %itemI% |rev & pause & goto :choicer
-if errorlevel 8 echo %itemH% |rev & pause & goto :choicer
-if errorlevel 7 echo %itemG% |rev & pause & goto :choicer
-if errorlevel 6 echo %itemF% |rev & pause & goto :choicer
-if errorlevel 5 echo %itemE% |rev & pause & goto :choicer
-if errorlevel 4 echo %itemD% |rev & pause & goto :choicer
-if errorlevel 3 echo %itemC% |rev & pause & goto :choicer
-if errorlevel 2 echo %itemB% |rev & pause & goto :choicer
-if errorlevel 1 echo %itemA% |rev & pause & goto :choicer
+if errorlevel 26 echo "%itemZ%" |rev & pause & goto :choicer
+if errorlevel 25 echo "%itemY%" |rev & pause & goto :choicer
+if errorlevel 24 echo "%itemX%" |rev & pause & goto :choicer
+if errorlevel 23 echo "%itemW%" |rev & pause & goto :choicer
+if errorlevel 22 echo "%itemV%" |rev & pause & goto :choicer
+if errorlevel 21 echo "%itemU%" |rev & pause & goto :choicer
+if errorlevel 20 echo "%itemT%" |rev & pause & goto :choicer
+if errorlevel 19 echo "%itemS%" |rev & pause & goto :choicer
+if errorlevel 18 echo "%itemR%" |rev & pause & goto :choicer
+if errorlevel 17 echo "%itemQ%" |rev & pause & goto :choicer
+if errorlevel 16 echo "%itemP%" |rev & pause & goto :choicer
+if errorlevel 15 echo "%itemO%" |rev & pause & goto :choicer
+if errorlevel 14 echo "%itemN%" |rev & pause & goto :choicer
+if errorlevel 13 echo "%itemM%" |rev & pause & goto :choicer
+if errorlevel 12 echo "%itemL%" |rev & pause & goto :choicer
+if errorlevel 11 echo "%itemK%" |rev & pause & goto :choicer
+if errorlevel 10 echo "%itemJ%" |rev & pause & goto :choicer
+if errorlevel 9 echo "%itemI%" |rev & pause & goto :choicer
+if errorlevel 8 echo "%itemH%" |rev & pause & goto :choicer
+if errorlevel 7 echo "%itemG%" |rev & pause & goto :choicer
+if errorlevel 6 echo "%itemF%" |rev & pause & goto :choicer
+if errorlevel 5 echo "%itemE%" |rev & pause & goto :choicer
+if errorlevel 4 echo "%itemD%" |rev & pause & goto :choicer
+if errorlevel 3 echo "%itemC%" |rev & pause & goto :choicer
+if errorlevel 2 echo "%itemB%" |rev & pause & goto :choicer
+if errorlevel 1 echo "%itemA%" |rev & pause & goto :choicer
 
 
 pause
-del "%temp%\list-to-delete.tmp"
+
 exit
 
 :choice-delete
@@ -124,18 +123,18 @@ exit /b
 :func-scan
 ::מיון לפי המילים הראשונות בשם הקובץ
 if "%i% %j%"=="" exit /b
-if "%i% %j%"=="%artist%" exit /b
-if "%i% %j% %k%"=="%artist%" exit /b
-if "%j% %k%"=="%artist%" exit /b
-if "%j% %k% %l%"=="%artist%" exit /b
-dir /b | find /c "%i% %j% %k%">"%temp%\number-find.txt"
+if "%i% %j%"=="%artist%" set "file_tokens=%k% %l% %m%"
+if "%i% %j% %k%"=="%artist%" set "file_tokens=%l% %m%%n%"
+if "%j% %k%"=="%artist%" set "file_tokens=%l% %m% %n%"
+if "%j% %k% %l%"=="%artist%" set "file_tokens=%m% %n% %o%"
+dir /b | find /c "%file_tokens%">"%temp%\number-find.txt"
 ::הכנסת מספר תוצאות החיפוש למשתנה
 set /p num=<"%temp%\number-find.txt"
 ::בדיקה האם הקובץ הכפול כבר מופיע ברשימת הכפולים
 ::הבדיקה סבוכה מעט כדי לוודא שלא מדלגים על קבצים שאינם כפולים
-if %num% gtr 1 dir /b | find "%i% %j% %k%">"%temp%\list-to-delete-temp.tmp"
+if %num% gtr 1 dir /b | find "%file_tokens%">"%temp%\list-to-delete-temp.tmp"
 if exist "%temp%\list-to-delete-temp.tmp" if %num% gtr 1 for /f "eol=;tokens=1,1*delims=" %%b in (%temp%\list-to-delete-temp.tmp) do (find /c "%%b" "%temp%\list-to-delete.tmp"
-if errorlevel 1 dir /b | find "%i% %j% %k%" >> "%temp%\list-to-delete.tmp"
+if errorlevel 1 dir /b | find "%file_tokens%" >> "%temp%\list-to-delete.tmp"
 )
 cls
 exit /b
