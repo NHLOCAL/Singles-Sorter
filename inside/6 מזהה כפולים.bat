@@ -45,7 +45,7 @@ del "%temp%\000.txt"
 del "%temp%\list-to-delete-temp.tmp"
 if exist "%temp%\list-to-delete.tmp" (notepad "%temp%\list-to-delete.tmp") else (
 echo not multiply files
-timeout 2
+timeout 2 & exit
 )
 ::מחיקת קבצים לפי הרשימה
 cls
