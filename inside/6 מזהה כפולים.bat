@@ -1,7 +1,9 @@
 @echo off
 chcp 1255>nul
 echo.
+if not [%1]==[] set p=%1 & goto :start
 set /p p=">>>"
+:start
 for %%i in (%p%) do set artist=%%~ni
 for %%i in (%p%) do set p=%%~i
 cd /d "%p%\סינגלים"
