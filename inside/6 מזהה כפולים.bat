@@ -1,5 +1,7 @@
 @echo off
 chcp 1255>nul
+MODE CON: COLS=70 lines=40
+color f1
 echo.
 if not [%1]==[] set p=%1 & goto :start
 set /p p=">>>"
@@ -41,8 +43,10 @@ cls
 del "%temp%\number-find.txt"
 del "%temp%\000.txt"
 del "%temp%\list-to-delete-temp.tmp"
-notepad "%temp%\list-to-delete.tmp"
-pause
+if exist "%temp%\list-to-delete.tmp" (notepad "%temp%\list-to-delete.tmp") else (
+echo not multiply files
+timeout 2
+)
 ::מחיקת קבצים לפי הרשימה
 cls
 echo.
