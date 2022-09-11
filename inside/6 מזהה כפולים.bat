@@ -47,6 +47,7 @@ echo.
 set /a num=1
 for /f "eol=;tokens=1,1*delims=" %%a in (%temp%\list-to-delete.tmp) do (
 set item=%%a
+set viwe_item=%%~na
 call :choice-delete
 )
 del "%temp%\list-to-delete.tmp"
@@ -54,32 +55,32 @@ del "%temp%\list-to-delete.tmp"
 echo -------------------
 :choicer
 choice /c ABCDEFGHIJKLMNOPQRSTUVWXYZ
-if errorlevel 26 echo "%itemZ%" |rev & pause & goto :choicer
-if errorlevel 25 echo "%itemY%" |rev & pause & goto :choicer
-if errorlevel 24 echo "%itemX%" |rev & pause & goto :choicer
-if errorlevel 23 echo "%itemW%" |rev & pause & goto :choicer
-if errorlevel 22 echo "%itemV%" |rev & pause & goto :choicer
-if errorlevel 21 echo "%itemU%" |rev & pause & goto :choicer
-if errorlevel 20 echo "%itemT%" |rev & pause & goto :choicer
-if errorlevel 19 echo "%itemS%" |rev & pause & goto :choicer
-if errorlevel 18 echo "%itemR%" |rev & pause & goto :choicer
-if errorlevel 17 echo "%itemQ%" |rev & pause & goto :choicer
-if errorlevel 16 echo "%itemP%" |rev & pause & goto :choicer
-if errorlevel 15 echo "%itemO%" |rev & pause & goto :choicer
-if errorlevel 14 echo "%itemN%" |rev & pause & goto :choicer
-if errorlevel 13 echo "%itemM%" |rev & pause & goto :choicer
-if errorlevel 12 echo "%itemL%" |rev & pause & goto :choicer
-if errorlevel 11 echo "%itemK%" |rev & pause & goto :choicer
-if errorlevel 10 echo "%itemJ%" |rev & pause & goto :choicer
-if errorlevel 9 echo "%itemI%" |rev & pause & goto :choicer
-if errorlevel 8 echo "%itemH%" |rev & pause & goto :choicer
-if errorlevel 7 echo "%itemG%" |rev & pause & goto :choicer
-if errorlevel 6 echo "%itemF%" |rev & pause & goto :choicer
-if errorlevel 5 echo "%itemE%" |rev & pause & goto :choicer
-if errorlevel 4 echo "%itemD%" |rev & pause & goto :choicer
-if errorlevel 3 echo "%itemC%" |rev & pause & goto :choicer
-if errorlevel 2 echo "%itemB%" |rev & pause & goto :choicer
-if errorlevel 1 echo "%itemA%" |rev & pause & goto :choicer
+if errorlevel 26 echo "%itemZ%" |rev & goto :choicer
+if errorlevel 25 echo "%itemY%" |rev & goto :choicer
+if errorlevel 24 echo "%itemX%" |rev & goto :choicer
+if errorlevel 23 echo "%itemW%" |rev & goto :choicer
+if errorlevel 22 echo "%itemV%" |rev & goto :choicer
+if errorlevel 21 echo "%itemU%" |rev & goto :choicer
+if errorlevel 20 echo "%itemT%" |rev & goto :choicer
+if errorlevel 19 echo "%itemS%" |rev & goto :choicer
+if errorlevel 18 echo "%itemR%" |rev & goto :choicer
+if errorlevel 17 echo "%itemQ%" |rev & goto :choicer
+if errorlevel 16 echo "%itemP%" |rev & goto :choicer
+if errorlevel 15 echo "%itemO%" |rev & goto :choicer
+if errorlevel 14 echo "%itemN%" |rev & goto :choicer
+if errorlevel 13 echo "%itemM%" |rev & goto :choicer
+if errorlevel 12 echo "%itemL%" |rev & goto :choicer
+if errorlevel 11 echo "%itemK%" |rev & goto :choicer
+if errorlevel 10 echo "%itemJ%" |rev & goto :choicer
+if errorlevel 9 echo "%itemI%" |rev & goto :choicer
+if errorlevel 8 echo "%itemH%" |rev & goto :choicer
+if errorlevel 7 echo "%itemG%" |rev & goto :choicer
+if errorlevel 6 echo "%itemF%" |rev & goto :choicer
+if errorlevel 5 echo "%itemE%" |rev & goto :choicer
+if errorlevel 4 echo "%itemD%" |rev & goto :choicer
+if errorlevel 3 echo "%itemC%" |rev & goto :choicer
+if errorlevel 2 echo "%itemB%" |rev & goto :choicer
+if errorlevel 1 echo "%itemA%" |rev & goto :choicer
 
 
 pause
@@ -113,8 +114,8 @@ if %num%==22 set let=W
 if %num%==23 set let=X
 if %num%==24 set let=Y
 if %num%==25 set let=Z
-echo [%let%] %item%
-set item%let%=%item%
+echo %viwe_item% ]%let%[|rev
+set item%let%=%viwe_item%
 set /a num=num+1
 exit /b
 
@@ -122,11 +123,15 @@ exit /b
 
 :func-scan
 ::מיון לפי המילים הראשונות בשם הקובץ
+::וכן בדיקה אם המילים המזוהות הם שם הזמר
+::ובמקרה זה לעבור למילים הבאות
 if "%i% %j%"=="" exit /b
+set "file_tokens=%i% %j% %k%"
 if "%i% %j%"=="%artist%" set "file_tokens=%k% %l% %m%"
 if "%i% %j% %k%"=="%artist%" set "file_tokens=%l% %m%%n%"
 if "%j% %k%"=="%artist%" set "file_tokens=%l% %m% %n%"
 if "%j% %k% %l%"=="%artist%" set "file_tokens=%m% %n% %o%"
+if "%artist%" == "%file_tokens%" exit /b
 dir /b | find /c "%file_tokens%">"%temp%\number-find.txt"
 ::הכנסת מספר תוצאות החיפוש למשתנה
 set /p num=<"%temp%\number-find.txt"
