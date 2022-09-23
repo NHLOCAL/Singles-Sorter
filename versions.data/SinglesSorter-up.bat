@@ -2,11 +2,11 @@
 ::הסקריפט מיועד לציבור החרדי ובשל כך הדאטה שלו מותאמת לציבור זה
 ::קרדיט: nh.local11@gmail.com
 
-@echo oFF
+@echo off
 ::הגדרות של שפה, צבע, כותרת וגודל החלון
 ::ועוד מספר משתנים חשובים
 chcp 1255>nul
-set VER=8.2
+set VER=8.3
 title %VER% מסדר הסינגלים
 MODE CON COLS=80 lines=27
 color f1
@@ -61,11 +61,17 @@ echo                      ========================================= [34m
 echo.
 echo.
 echo                           [1] ץבוק ךותמ םירמז תומכ תפסוהל
-echo                                 [2] ישארה טירפתל הרזחל
+echo                        [2] הנכותה תיקיתל םירמזה תמישר תקתעהל
+echo                               [3] ישארה טירפתל הרזחל
 echo.
-echo                                תויורשפאהמ תחאב רחב
-choice /c 12>nul
-if errorlevel 2 goto mesader-singels
+echo                                 תויורשפאהמ תחאב רחב
+choice /c 123>nul
+if errorlevel 3 goto :mesader-singels
+if errorlevel 2 (@copy "%csv-file%" "%~dp0"
+echo.
+timeout 2 | echo                                    !קתעוה ץבוקה
+goto :mesader-singels
+)
 if errorlevel 1 "%csv-file%" & call :call-num
 
 
@@ -215,10 +221,6 @@ exit /b
 
 :beginning
 cls
-set a=*אבי*מילר*.*
-set c=אבי מילר
-set d=1
-
 echo.[30m
 echo                                     _  __   __
 echo                                    / ^| \ \  \ \
