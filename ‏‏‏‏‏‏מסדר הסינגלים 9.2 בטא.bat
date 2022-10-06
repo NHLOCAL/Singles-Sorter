@@ -597,11 +597,8 @@ goto :mesader-singels
 if not exist "%AppData%\singles-sorter\MediaInfo.exe" if exist "%~dp0MediaInfo.exe" copy "%~dp0MediaInfo.exe" "%AppData%\singles-sorter"
 ::הוספת מיקום התוכנה החיצונית למשתנה הסביבה
 path "%AppData%\singles-sorter";%path%
-
-mediainfo
-pause
 echo.
-timeout 3 | echo            ךלש תורדגהה יפ לע ןמא יפל תמדקתמ הקירס לחת תוינש רפסמ דועב
+timeout 10 | echo            ךלש תורדגהה יפ לע ןמא יפל תמדקתמ הקירס לחת תוינש רפסמ דועב
 for %tree% %%s in (*.mp3) do (
 set file=%%~s
 call :scanner_func
@@ -631,7 +628,7 @@ powershell "(Get-Content "%Temp%\artist-song.tmp" -Encoding utf8 | Out-File "%Te
 :: העברת תוכן הקובץ למשתנה
 set/p artist=<"%Temp%\artist-song-ansi.tmp"
 ::יציאה מהפונקציה במקרה והמשתנה ריק
-if "%artist%"=="" exit /b
+"if [%artist%]==[]" exit /b
 ::במקרה ולא:
 ::הסרת תוכן מהקובץ והשארת שם האמן בלבד
 set "artist=%artist:~43%"
