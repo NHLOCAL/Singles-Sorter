@@ -26,15 +26,6 @@ set csv-file="%appdata%\singles-sorter\singer-list.csv"
 )
 )
 
-::בדיקה אם גרסה חדשה זמינה להורדה
-curl https://raw.githubusercontent.com/NHLOCAL/Singles-Sorter/main/versions.data/new-ver-exist -o "%temp%\ver-exist-7.tmp"
-if errorlevel 1 goto :call-num else (
-set/p update=<"%temp%\ver-exist-7.tmp"
-del "%temp%\ver-exist-7.tmp"
-if %update% GTR %VER% goto :updating
-)
-
-
 :call-num
 ::בדיקת מספר הזמרים הקיים כעת בסקריפט
 ::הדבר נצרך לצורך חישוב הזמן שעבר
@@ -44,6 +35,15 @@ type "%csv-file%" | find /c ",">"%temp%\num-singer.tmp"
 set /p ab=<"%temp%\num-singer.tmp"
 if exist "%temp%\num-singer.tmp" del "%temp%\num-singer.tmp"
 set/a abc=%ab%
+
+
+::בדיקה אם גרסה חדשה זמינה להורדה
+curl https://raw.githubusercontent.com/NHLOCAL/Singles-Sorter/main/versions.data/new-ver-exist -o "%temp%\ver-exist-7.tmp"
+if errorlevel 1 goto :mesader-singels else (
+set/p update=<"%temp%\ver-exist-7.tmp"
+del "%temp%\ver-exist-7.tmp"
+if %update% GTR %VER% goto :updating
+)
 
 goto :mesader-singels
 
