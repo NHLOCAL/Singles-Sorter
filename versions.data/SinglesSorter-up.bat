@@ -6,10 +6,11 @@
 ::הגדרות של שפה, צבע, כותרת וגודל החלון
 ::ועוד מספר משתנים חשובים
 chcp 1255>nul
-set VER=8.3
+set "VER=8.9"
 title %VER% מסדר הסינגלים
 MODE CON COLS=80 lines=27
 color f1
+
 
 ::בדיקה אם קיים קובץ דאטה ב-אפפדאטה או בתיקית הסקריפט
 ::וקביעת משתנה למיקום קובץ הדאטה
@@ -111,11 +112,11 @@ echo ===========================================================================
 echo                                  ?%VER% הסרגב שדח המ
 echo                                        ***** [34m
 echo.
-echo                                םיינכדע הרזע ירושיק *
-echo                            דוקב תואסרגה םושיר לועיי *
-echo                             םירמזה תמישר לש לק רודיס *
-echo                        ינוציח לסקא ץבוקל םירמזה תמישר תרבעה *
-echo                                םירמזה תמישר תבחרה *
+echo                        תויקיתה תריחב בלשב םיגאב ןוקית *
+echo                      דבלב תישאר היקית ןוימ תורשפא תפסוה *
+echo                     !ץבוקה ןמא םש יפל םיצבק ןוימ :ץלמומ *
+echo                         הרזעה לש שדוחמ בוציעו חוסינ *
+echo                                   ...דועו *
 echo.                          
 echo                   םיצבק ןכות לש יטמוטוא יוקינל תורשפא הפסוותה
 echo                חוור יוותב ףלחוי _ וותה תא ליכמה ץבוק םש :אמגודל
@@ -179,20 +180,23 @@ echo.[30m
 echo                                הרזע - םילגניסה רדסמ
 echo ================================================================================
 echo.[34m
-echo            .םינמא יפל תרדוסמ הרוצב םכלש םילגניסה תא רדסל איה הנכותה תרטמ
+echo         .םינמא יפל תרדוסמ הרוצב םכלש םילגניסה תא רדסל איה הנכותה תרטמ
+echo             :םיטושפ םידעצ השולשב תאז עצבל ןתינ ?הב םישמתשמ ךיא זא
+echo                    ----------------------------------------
+echo   .רטנא לע ץוחללו הנכתה ןולח ךותל הייוצרה םילגניסה תייקית תא רורגל שי .1 בלש
 echo.
-echo         .רטנא לע ץוחללו הנכתה ןולח ךותל הייוצרה םילגניסה תייקית תא רורגל שי
-echo             .רטנא שיקהלו ןולחה ךותל םתרציש דעי תיקית רורגל שי ינשה בלשב
+echo            .רטנא שיקהלו ןולחה ךותל םתרציש דעי תיקית רורגל שי .2 בלש
 echo.
-echo                  תישיא תומאתומ תורדגהל תויורשפא רפסמ םנשי הז בלשב
-echo            .םירפסמה ישקמ לע הציחל ידי לע תונושה תויורשפאה תא תוסנל ולכות
-echo                     םתרדגהש תורדגהה תא רשאל אלא רתונ אל תעכ
-echo                                !הצר הנכותה !והז
+echo            תישיא תומאתומ תורדגהל תויורשפא רפסמ םנשי הז בלשב .3 בלש
+echo         .םירפסמה ישקמ לע הציחל ידי לע תונושה תויורשפאה תא תוסנל ולכות
+echo                       !האלה וכישמהו 7 וצחל טושפ ?םיכבתסמ
 echo.
-echo          .ידיסחה רנא'זב רקיעב םירמז תואמ שולשל לעמ הנכותב םימייק הז בלשב 
-echo                     !הנשמ תויקית םג תקרוס הנכותה !הבושח הרעה
+echo       !הצר הנכותה !והז - םתרדגהש תורדגהה תא רשאל אלא רתונ אל תעכ .4 בלש
+echo                    ----------------------------------------
+echo           ידיסחה רנא'זב רקיעב םירמז 350-ל לעמ הנכותב םימייק הז בלשב
+echo             ישארה טירפתב 3 לע השקהב יאמצע ןפואב םירמז ףיסוהל ןתינ
 echo.
-echo                          ...החמשב ץיפהלו קיתעהל ןתינ    
+echo                          !!!החמשב ץיפהלו קיתעהל ןתינ
 echo                        mesader.singelim@gmail.com :ליימ
 echo.
 echo                              1 שקה תשרב תפסונ הרזעל
@@ -245,6 +249,8 @@ if [%source_path%] == [0] goto :mesader-singels
 for %%i in (%source_path%) do set source_path=%%~i
 ::בדיקה אם מדובר בנתיב שגוי או נתיב של קובץ
 if not exist "%source_path%\" call :wrong_path & goto :beginning
+::בדיקה אם מדובר בנתיב ריק
+if "%source_path%"=="" call :wrong_path & goto :beginning
 
 
 :target_folder
@@ -277,6 +283,23 @@ if [%h%] == [0] goto :mesader-singels
 for %%i in (%h%) do set h=%%~i
 ::בדיקה אם מדובר בנתיב שגוי או נתיב של קובץ
 if not exist "%h%\" call :wrong_Path & goto :target_folder
+::בדיקה אם מדובר בנתיב ריק
+if "%h%"=="" call :wrong_path & goto :target_folder
+
+::הודעת אזהרה אם תיקיות המקור והיעד זהות
+if "%source_path%"=="%h%" (
+cls
+echo.
+echo.
+echo                     תוהז תנזהש דעיהו רוקמה תויקיתש בל ונמש
+echo                                ץלמומ וניא רבדה
+echo                      1 שקה תאז לכב ךישמהל ןיינועמ התא םא
+echo                            2 שקה הרוחא הרזחו לוטיבל
+choice /c 12
+if errorlevel 2 goto :beginning
+if errorlevel 1 cls
+)
+
 
 ::קביעת התיקיה הנוכחית לתיקית המקור
 cd /d "%source_path%"
@@ -289,6 +312,8 @@ set "abc_heb=ליעפ אל"
 set c_or_m=move
 set "sing_heb=ליעפ אל"
 set "fixed_heb=ליעפ אל"
+set "artist_heb=ליעפ אל"
+set "dir_heb=ליעפ"
 ::בחירה בהגדרות שונות למשתמש
 :options
 cls
@@ -310,15 +335,40 @@ echo.
 
 echo              [%clear_heb%] רתוימ ןכותמ םיצבקה תומש יוקינל [0] שקה !שדח
 echo                   ------------------------------------------
-echo                   [%cm_heb%] הרבעהל הקתעה ןיב הריחבל [1] שקה 
+echo                    [%cm_heb%] הרבעהל הקתעה ןיב הריחבל [1] שקה 
 echo              [%abc_heb%] 'ב 'אל תוקלוחמ תויקיתל הקתעהב הריחבל [2] שקה
 echo         [%sing_heb%] רמז לכ ךותב "םילגניס" םשב תימינפ היקית תריציל [3] שקה 
 echo             [%fixed_heb%] דבלב ךלש תועובקה םירמזה תויקיתל הקתעהל [4] שקה
-echo                                הלעפהו םויסל [5] שקה
+echo                   ------------------------------------------
+echo              [%artist_heb%] רישה יטרפב ןמאה םש יפל ןוימו הקירסל [5] שקה
+echo                [%dir_heb%] הנשמ תויקית תקירס לוטיב וא תלעפהל [6] שקה
+echo                        ----------------------------------
+echo                               הלעפהו םויסל [7] שקה
 ::ממתין לבחירת המשתמש
-choice /c 012345>nul
-::אם הוקש 5 תסיים
-if errorlevel 6 goto :final
+choice /c 01234567>nul
+::אם הוקש 7 סיים והתחל בסריקה
+if errorlevel 8 goto :final
+
+
+
+::אם הוקש 6 יתבצע שינוי של משתנה
+::בצורת פקודת תנאי לפי המשתנה הנוכחי
+if errorlevel 7 if "%dir_heb%"=="ליעפ" (
+set "dir_heb=ליעפ אל"
+goto :options
+) else (
+set dir_heb=ליעפ
+goto :options
+)
+::אם הוקש 5 יתבצע שינוי של משתנה
+::בצורת פקודת תנאי לפי המשתנה הנוכחי
+if errorlevel 6 if "%artist_heb%"=="ליעפ אל" (
+set artist_heb=ליעפ
+goto :options
+)else (
+set "artist_heb=ליעפ אל"
+goto :options
+)
 ::אם הוקש 4 יתבצע שינוי של משתנה
 ::בצורת פקודת תנאי לפי המשתנה הנוכחי
 if errorlevel 5 if "%fixed_heb%"=="ליעפ אל" (
@@ -380,6 +430,11 @@ echo                           הריחב תויורשפא - %VER% םילגניסה רדסמ
 echo                                        *****
 echo.
 echo.
+::מציג הודעה אם נבחרה אפשרות המיון המתקדמת
+
+if "%artist_heb%"=="ליעפ" (
+echo                הקירסה םויסב ץבוקה ןמא םש יפל םדקתמ ןוימ עצבתי !שדח
+)
 ::מציג הודעה אם אפשרות ניקוי הקבצים פעילה
 if "%clear_heb%"=="ליעפ" (
 echo               הקירסה לחתש ינפל םכלש םיצבקה תומש לש יוקינ עצבתי !שדח
@@ -387,6 +442,13 @@ echo                 -------------------------------------------------
 )
 ::מציג לפי משתנה אם נבחרה העברה או העתקה
 echo               םילגניסה לש ---%cm_heb%--- תעכ עצבתת ךיתורדגה יפל !בל םיש
+::מציג לפי משתנה האם תתבצע סריקה גם של תיקיות משנה
+::או רק של תיקיה ראשית
+if "%dir_heb%"=="ליעפ" (
+echo                           הנשמה תויקית לש םג הקירס עצבתת            
+) else (
+echo                     דבלב תישארה היקיתבש םיצבקה לש הקירס עצבתת
+)
 
 ::תצוגה שכרגע לא פעילה - אולי בהמשך
 ::echo                                       היקיתהמ
@@ -446,11 +508,14 @@ exit /b
 cls
 echo.
 echo                                    ...דבוע
+::מספר הגדרות משתנים חשובות
 
-::הגדרה ראשונה של משתנים - ראה בהמשך
-set cm_heb=
-set /a d=1
-
+::הגדרת סריקת תיקיות משנה לפי העדפות המשתמש
+if "%dir_heb%"=="ליעפ" (set tree=/r) else (set tree=)
+::איפוס מספרים עבור חישוב אחוזים
+set/a d=1
+::איפוס משתנה עבור סריקה מתקדמת לפי אמן
+set pro_scan=False
 :start
 ::פקודת הפור הראשית שסורקת שמות קבצים
 for /f "usebackq tokens=1,2 delims=,"  %%i in (%csv-file%) do (
@@ -478,7 +543,7 @@ set b="%h%\%w%%c%%s%"
 ::יצירת תיקית זמר בכפוף לכמה תנאים
 set xx=v
 set ss=z
-for /r %%c in ("%a%") do if exist %%c set ss=ss
+for %tree% %%c in ("%a%") do if exist %%c set ss=ss
 if "%fixed_heb%"=="ליעפ" if not exist "%h%\%w%%c%" set ss==z
 if %ss%==ss md %b%
 
@@ -486,8 +551,8 @@ if %ss%==ss md %b%
 if %c_or_m%==del set b= & set par=/q
 
 ::העתקת הסינגלים בכפוף לכמה תנאים
-for /r %%d in ("%a%") do if exist %%d set xx=xx
-if %xx%==xx for /r %%e in (%a%) do %c_or_m% %par% "%%e" %b%>>םוכיס
+for %tree% %%d in ("%a%") do if exist %%d set xx=xx
+if exist %b% if %xx%==xx for %tree% %%e in (%a%) do %c_or_m% %par% "%%e" %b%>>םוכיס
 
 ::מעבר למספר הבא לצורך חישוב ההתקדמות
 set/a d=d+1
@@ -504,15 +569,21 @@ echo                                 %VER% םילגניסה רדסמ
 echo                                       *****
 echo.
 echo.
-if %c_or_m%==del echo                                   !וקחמנ םיצבקה & echo. & del םוכיס & goto pause
+if %c_or_m%==del echo                                   !וקחמנ םיצבקה & echo. & del םוכיס & goto :intro_pro
 if exist םוכיס (echo                                 :%msg% םיצבקה רפסמ & find /c "1" םוכיס
 ) else (
 echo                                   !רבד אצמנ אל
 )
-if not exist םוכיס set c_or_m=xxx
-if exist םוכיס del םוכיס
+if exist םוכיס (del םוכיס) else (goto :intro_pro)
 echo.
-if %c_or_m%==xcopy echo. & echo                 [2] תעכ שקה םיירוקמה םיצבקה תא קוחמל ןיינועמ התא םא & echo                         [1] שקה םתוא רומשל ןיינועמ התא םא & echo. & echo               !הקיחמב רוחבל רוסא היקית התוא םה דעיהו ביתנה םא !תוריהז & choice /c 12>nul & if errorlevel 2 set c_or_m=del & goto preparing & if errorlevel 1 goto :pause
+::אם התבצעה העתקה ניתנת אפשרות למחוק את קבצי המקור
+if not "%pro_scan%"=="True" if %c_or_m%==xcopy echo. & echo                 [2] תעכ שקה םיירוקמה םיצבקה תא קוחמל ןיינועמ התא םא & echo                         [1] שקה םתוא רומשל ןיינועמ התא םא & echo. & echo               !הקיחמב רוחבל רוסא היקית התוא םה דעיהו ביתנה םא !תוריהז & choice /c 12>nul & if errorlevel 2 set c_or_m=del & goto preparing & if errorlevel 1 goto :intro_pro
+
+:intro_pro
+::אם הוגדרה סריקה לפי אמן
+::יתבצע מעבר לפונקציה זו
+if "%artist_heb%"=="ליעפ" goto :pro_scanner
+
 :pause
 echo.
 echo                         !בוש ליחתהל ליבשב והשלכ שקמ לע ץחל
@@ -520,7 +591,62 @@ pause>nul
 cls
 goto :mesader-singels
 
-::קרדיט: nh.local11@gmail.com
+
+:pro_scanner
+::פונקציה מתקדמת המאפשרת חיפוש לפי שם האמן המופיע בקובץ
+if not exist "%AppData%\singles-sorter\MediaInfo.exe" if exist "%~dp0MediaInfo.exe" copy "%~dp0MediaInfo.exe" "%AppData%\singles-sorter"
+::הוספת מיקום התוכנה החיצונית למשתנה הסביבה
+path "%AppData%\singles-sorter";%path%
+echo.
+timeout 10 | echo            ךלש תורדגהה יפ לע ןמא יפל תמדקתמ הקירס לחת תוינש רפסמ דועב
+for %tree% %%s in (*.mp3) do (
+set file=%%~s
+call :scanner_func
+set/a d=d+1
+)
+::מחיקת קבצים זמניים והגדרת משתנים חשובים
+::עבור תצוגת הסיכום
+del "%Temp%\artist-song.tmp"
+del "%Temp%\artist-song-ansi.tmp"
+set "artist_heb=ליעפ אל"
+set pro_scan=True
+goto :finish
+
+:scanner_func
+::תצוגה למשתמש
+cls
+echo.
+echo                                    ...דבוע
+
+:: שימוש בתוכנה חיצונית להכנסת נתוני השיר לקובץ
+::חיפוש שורה המכילה את שם האמן בתוך הקובץ
+:: והכנסת השורה לקובץ
+mediainfo "%file%" | findstr /b "Performer">"%Temp%\artist-song.tmp"
+::המרת קובץ הפלט לפורמט אנסי התואם לבאט
+powershell "(Get-Content "%Temp%\artist-song.tmp" -Encoding utf8 | Out-File "%Temp%\artist-song-ansi.tmp" -Encoding default)"
+
+:: העברת תוכן הקובץ למשתנה
+set/p artist=<"%Temp%\artist-song-ansi.tmp"
+::יציאה מהפונקציה במקרה והמשתנה ריק
+"if [%artist%]==[]" exit /b
+::במקרה ולא:
+::הסרת תוכן מהקובץ והשארת שם האמן בלבד
+set "artist=%artist:~43%"
+::חיפוש שם האמן בתוך הקובץ הנוכחי
+::אם הוא קיים מתבצעת העברה של השיר
+::לתוך תיקיה המוגדרת כשם האמן
+if "%abc_heb%"=="ליעפ" set w=%artist:~0,1%\
+find /c "%artist%" "%csv-file%">nul
+if %errorlevel%==0 (
+if "%fixed_heb%"=="ליעפ אל" (if not exist "%h%\%w%%artist%%s%" md "%h%\%w%%artist%%s%"
+) else (
+if exist "%h%\%w%%artist%" if not exist "%h%\%w%%artist%%s%" md "%h%\%w%%artist%%s%")
+if exist "%h%\%w%%artist%%s%" %c_or_m% %par% "%file%" "%h%\%w%%artist%%s%">>םוכיס
+)
+::יציאה מהפונקציה וחזרה לפקודת הפור
+exit /b
+
+
 
 
 
@@ -544,33 +670,36 @@ Add-Type -Language CSharp -TypeDefinition @"
 "@; function X([int]$r=1){ $tmp="$r._"; echo "`n$r.."; [BAT85]::Decode($tmp, $f[$r+1]); expand -R $tmp -F:* .; del $tmp -force }
 
 :bat2file: singer-list.csv~
-::O/bZg00000@g{^]00000EC2ui000000|5a50RR9100000OaK4@0RRIPrXc^T00000001dfT[WAub7]j8WpXWSX?+WgV{?+[aR@1$nhK]NTY!L#0uW,v002}3G.3c@
-::4Mc+cN4Ky;$_AMN{QE{SS4^^?#ih+r=,R#B2moee/Lgkdo+lYwZB7eLF}/ZNpm,F]R^xwAb$|Y9R[,f1i=YW+oP0V@#M#N=I@6-E$Z8T39-L7{GMjn4l(gB#,QGNx
-::sk(z@(mnyWzyJRCK#&|c2ms7R3~YX3_@lgEQbmUm-X4Ig|ND~Id}U0rmvDdn&FP_lYw}Q}oDoBR$LNzP+iM3T8-w)LH+GVMiQdx|I#IrE{8+z)M+{g!03qbNev6mZ
-::Z]Eg9!p.zmxJ51Pl)Mm))^7_o{ATZuBRo2hnH1+yOGnAFe,V)IN$Bjv0e@?/yuS#}$n!/|;UVoBM,yfi]5hYKRi5&uWyCa&-80p.pFd{eZ=7Xx[bUm/Got~Pd{|4W
-::^@71j{MeaP3NZaS1V/#{CeBVTA5Y/ZkASQ|WOxFI./5=&#!hdX!gtG}XsDZn1QAUC;d=jpPa;c+ywIkO{N;U.&U9D+h~)rLQ{z,2#7bS6fP/0/9ixPGnrB5VIU(V+
-::7N@]wNJzM/8Ik0~?EW8V)H_s0kj6f2?NkmI1mTF4O8rck0GxA_i5i#G8B|}wsWQ^~NTfS-[=P]F[FHK,S)]&4#.S)1)qW]s9L@h1teB83pb;)}yD[-fZO$lF2aNLU
-::Jd.wmrKT$L7SQypStWOk_|G&P9nO=TK,X96Bw#YRc,7@WZUn68x+Mt,=ZZOkoaJAI@kra&jWUAXteCP]Smk#Ceii2;T|+srq#2Q^07umP-FNr0o[sHm1sZfpCW=,Z
-::pq;ofpgM{ojUMYTx~QUqhTkaa,rB{Ox}aElpuI,?sb{9v5=+Na$ZuYNNy3)rqbSHbp0uD5FIi(HjRC)9Mp18$Fa3qJsaK$2./Gv9qGoFNkgkj)!T!^Kz.c,MN0o6!
-::=@c3b6^5Xf#jAGQl4[6sAOm]@;phCD;}dox/);6ji^]6CO1[yk0,)5kG=2MXJ.3EfFLc~rXPmT!ar(&s-t)KbWloih7=4bWh2dM&hrQGOW/8.^t@yaa48^(wx7C1|
-::cDg80ccO|ag-5Rb=9imN_G!+3Q0hD,ro)SkVuSWoJ(e?5,}Imfqo~)ASVF;|X9PGG4{0=)&sSJ?^L{t2KPR9V(Mt~}iDEUK$pH-hHMU~jB4YRkxU8h}=?pl!B}0Rz
-::qkz~ql@yUv2].7b#7m.K$Sa?.WlJa];C)EYw1PloX-})o+HBH]8fFWVc&~8R5r9]l=^#Ii0#L?|2cr[j7ZC)d2Ig;)jn7hYqmz[W{8P+}X6RG?![=3pGa1pueV#hg
-::h-NGG)=l;fXEN6DhY=Is_B[([q5xTEHAjqB6038.wd+!E(k@?lTQ/JIT7O(yCH(D=Wh[,jc-n^ecjn;2aapAqY[b~9=F2KmfSkwulD,LFMx-7]=j{1}EzXW]q$3lG
-::9meIgP81jSGJfGn[U9yTioO}y_OAmZsk{]RbQj;qQ84-LoDWP4tyMddX+81GV4v{2)db9Occ39tb9VWVK3frxN}jfB]{U0k-|w?zU|LKRf9K/^p+g=.VN1sA6#hD1
-::Tl[._yMR4-=UPW}n~v-;&hsVs,fSygQx814hfmll@Ml)0BjioKJV)x,ymi[C))}$U[vU7il;F$M]7L.o8-7+G+Q,g11wYAH-uVLcs^+;Y1MOoZF{XPd,zx9FaZ=7O
-::@iek-G{]+aL#tshIxvTaeeksD+0@@o+~^@6z$Cl~VD6=;v{5EgPZCEIRA~Ouj)cZG;ue-cS8=z30Tbs7M$(C|!Y7ElJqq|BqrpJ18&5QBury#rtkL@3K7]sQ;}5Go
-::VOa(9@QbIlS+B8WU3B1plIkZy3Uf7x|C]Ag)4m&)l4]+H.iU8sp9]TkG6q.CYTE=HKqYBLfv+n]g#s1Zb^VID,_Cjs#Xkf4hnYdf&g5tRRKNQrN-v?VaKj}+u=Lh+
-::aazxw@2Jes_(iJ=]^HU)I_E]w2[c95iWmAiE!T9aRZDHfzI0OwbD]|WCerN!(|wx}jmw?,N8|IqT,?ZL((34Yc[+u+pKG77r?4ofD(iaTU3CJgwmbB5A?Cb+&R0X2
-::RYIzGRDC3UcEsKyJUfI$bI9w)jFWtmv~,s.d_lDFuX$[{B}7octd@Z!DY|F|+|XYBA.6HjHVP&E2af_8P!|e$/hgG[Y_{B0vd2gL0h5PE4z+$O8J7TYHC?PTgsaVh
-::VqeVb(K0.&qco2^bxOa4kk$@;EcIYrFaFiO;;7MJk8mmZ15~(aY6)(75Zv.L+TT~vOUhYgtX;w-cDoR=^XxIUV!/wGvlY+s{khxG^aaRRJHjhNz.D$7,i]b+h;;VC
-::.C2bXnbZ4NFUw.K!aLvIDzOu^MXaFU+QyHb,xsLHR3H$p#o)D9r[N)4h/O6C3?oU(,gMoHXWU|8JTdt-tx~)897nXSNlc[FChR=uVoMQFpV$0KWlqT4t+rCEm!1OM
-::-!@)sSXyjn]yKTUyz_C&NBe/6J{czw9+funG}Ls|3OXd)@=E0xV#ICzM]SEr.^4^uBeW.j=)^j}uP(XI@h)M0Qg@$Sr[$zx2);c4BJ3@Xlm]|Z#rKC75;lRCNh7~Z
-::;^Xkh5JmdpT,UAw9wwAIZv?w|L{Qe]jTUd0PmdZCGk|pR&41Q!kdf@{KS+~qP2SxqW~$Pg^O9J|.!&ve#iOX98xoa,/#y@Ui|pA(kL^Xhdr6hQS)hIV)sGGM0{HqE
-::D@5^+84|?B){-50R^@E!IaV&zJi)Bg,hZyKim(NH[L.846OG3IYVHNHY9DM/g{J}5J=U;G$BxwE0i$t8Y7zJ+ybIf!jiEkz7Yz6-)104Lz$12RWGZ+_yIek;XF6fp
-::@w7kDKkik1;FuzkK+kl)27rl/7,eW]6tzwKH4DVY5O.pRch~/a{{pL_5,G0PVow]RzB~CFW{V]I/Mo}CsMy,WLbt[#7eHohsy8Q[.}JSjj!9Mcxf;phDgE^_6i_MH
-::N~pG&cix3ug(vqmrf@jAg]zEa1HHNcYSIn.HRs(Lf)z04auWOz9-|B1]+BWo$Q{Td5?Ue47x2C]!TXMjU)y8|TiY~BJ-l_vl6l0u(2=9~=,[T8o_X4RA3?X1+C/!#
-::j5bv05};s,PMM5;p^V_52le-cN}=Yi=,vC?9LVc4P3IYwH/s+V#Z}_[,X9[vqI[1)ttHj{ZxnAQWmQ00-FuZ;CW]QF?k}X~QxuVesBqGv843;Iy5Pkz3x|7uilVt$
-::/ex5cZOeHSp}1lAqcRvJe)4tk&cXSq/GZnZSl;9.g3mWy8R|4vw!Qk$Xw0u(;0=B)fI8VIed,/d4EFJ@l0z&{{cWA^ikRLo[(m{)6z=~=F}eR2ndBi~^FclcV=x;?
-::f!7Kh1~1=+SR=RJ.p#SeGLw6+RI4L]inR@SFvr$sA=/dy9tBp.V+.mORT77;r~&y)/(?$z/dteB|0is2-5^z{9@^0-Au.huK3_J=9IC{)879CXX-{^!9kaaT0Kx
+::O/bZg00000Bntol00000EC2ui000000|5a50RR9100000OaK4@0RRIPYa##u00000001?r;RBmbb7]j8WpXWSX?+WgV{?+[o8u=n(;blJTY!L#0uZt$003kJG,SRy
+::4Mc+cN4Ky;$_AMN{QE{SS4^^?i&Z]59hrat0RYGh-}RlbCxJDft4/-D&k(WGK;{/DY}mZBGyi{Enr$_jmO=!woP0S?9cOgiX_KpnHXE2gDTyTG-O-Y/ZsyChMS0V5
+::mOHGGTZlfv.~a#nAV?fJ1OP.r1x4?LZg,@B+tELS1)eTE()FmEE0c=lgk$xeuKpZplkXy3jDY,YMjuo/j-NJ~&I_$n8LPIu[TRs&iE4G$NAZi_+;2vw2)jM;TO@Wh
+::q[Rl3H?Xz^7SR#GDQxv(y&h+EH,4FG5uTjLOzQq~+e,4tx4.H[B=(aXfWM}Zc/5+fk?g5Axqal8jsQ^f/?jZbsx/.J&ZR8MurHwqpEqXW|C@oS[bZ9T8?0c1d{|4W
+::^@6}izS~Sn1)-Tkf}/df6K1U!yC,orBj79286E(4AEU|Wu~Gk~@&cAc8tNq?LB!EF_6ZzYlL#5_uk[WSKe;!C^$s=ok=y^SX^+J7Q0Xg]aInl7;Fl}_)~PG,C!{bh
+::.@Yv}328SKBNCi2e4G?4-AAG8)Rg{y{mReGpgUK@+UTAKz{wX0+V_EXV7d~{Re3(2BAt~)X4+x|7oC!ZdVJ8z4psS8PCJ~HXukL7#T0BojDWi0jZuu-at5jDU^](M
+::nVR|IwX?BcfL2GfBB5+?U&$TDaKGv7BA$![0kg?]8/X)0BRF~vE5X#FsyHKfS(~+3(hka#D09lg6/qaqt6VMsujG8lYv{nIEF+5t/3&3OdwVVbGi}b+I3q[?M3G9a
+::vU7TkR7X$,=baAIi[G^d_0b+[@u4|#1!Y?)_]80p.WXb!D^M$5|2Y8$Nqb5rq8LYpVUHs_vN-,hf_}pdl71YG_~PTPs|vwV7)qpSnpxpXx~hsmJsGKk+0);~Dr1U{
+::mEJ-pwReOS&m3cRG}A_Ofhz+zB0Z,ZlR+b8aD83xX_K7MUs^rvMlexv9{oC--dZ0}oFUok3isjt9(KEl9gD(D)@w$$S0yP&-]+JXcU&9kX6|l_UP!t&IP09Dy4rKL
+::7cja_6eV(dqo_5n2]BRyxG9-LE?!})Ofw}q^)ml,Xg}1m?l~WBYIzxosvgG[2(yn6!@}D&p|NJvm[cl[;MsGC0mVahQ@N=DsOe1)Wk{~A67vxCsyC0zKsuN&l.,e}
+::IH+lSVEq=kAv2w?u?3{5/-b{4]ynhCi2]iU,m^1Q1XP&1L$o42#)bqwxiGt[j8KdKvBE=7[zfCjG{_uZkl4D2CxAC7d]6g3l#)5tnN/ZCcMdl[Jk87.k=/C#8BN]e
+::rPF}Rvy7c~iE}[bu$n!KH8Guk/E]Q@lyy{d$oOloJ^kIr$mvOr[z30,2}NkVvlx.]L|KTjbExA,qk!)/$}i&w&QDG6x#_N2Ri[!MkNnMd,+kDf0D~dBKHZCRqgm#N
+::gd(IWd0_1f&D(9-JW1X+qXDQ7#;hNOVTCI1q;!7RXeSg5eq,,;@FH8Iok^IS8F{eH^-4mpBj7vIkclC@e8-#S2uLN)&{INN[ln[wlNXqZ5)VG6c-[D(,jdsN]Lm9p
+::juu^L1;YMQp1F(yG~Za;EtzGjeWTJdA]b}ZKDvib,ePa9XwW0q_@[v9oc)y{v!^V6BG0L}@_o!07YVkbYunnOvQLxtSu_s6PPW@C.XmY?{hwr[b(Ms3eh(,f?bxaR
+::!{OBd+P-KWNHDUp6Xvc1e|X)DNt[ceP4&UInF#;U=S2l_DovtIFqt,OI&1~6_Hyn!IZL]nrqOu$aw_xny1ULuq_g.60g;3b7$4g/b^6v3{uqMwivA+OXplhALj6J@
+::mcVyIu#e85v,G~u$PvXXS]sO=?imh2VCn|ZUxN^+Iu!B]Qq9Xo8xh[0YoRUrzW]#+4f}vIsD#T1Pc@78C@J7dXGm(d@3oOi]z+=(j5Wi23/gV_],c{OVy48R$14H]
+::LtiZiqh0J7(gkT]k9GXKZwdKO1Ahvz-$]@{)ZXj)rCQE)XNjq}hpr/QE^BdZM4DZ|I.mj!aMyISYdn9u8ZNKo7PE9eQ4l}pwIw4zML(Bd)(]tKX,N{5cLc{Qy6J{P
+::oowAD!o6rkeW.m,!~~,rI$lCN$b@07i?s5A?3V&/CcM1-@_F;gh,m,OmO$&#nIs13lUSV8wpFa53el&EyXCQi3xGVQP8Gm#/B-B2/~jp{$.AR~?dQobyP~(,E}/FE
+::&^l,]pJsNk0n]?9Q(&&a]wL;P^)=nj.XV,mAFJubQ@+;2I1?B]nv{G2gj.gnw;_@;,@c#$rias[RaO]ku6V570+!bpfbEM=g~ZNe[H2FO$ak{6[KUgj$.+Jw+g6~L
+::Pc|H}E3Sb&y5K8gX(;(^N5olp^1IRVbt1e75fnq(ZAgFZ_3$83hfpX6P4qg|Dn()nxU8VT1lIu-c1Ann5euP.ZKu~L.N@EkGt~kntdF6qEHS_|Mn[}!IdOBBj$)@)
+::f?5$gGXz^.bb8LP)aCG-2iS#pHXhfXFbJZ(;W@?_P~B0}2-@ILyO5#7h_/,9qMMV4(T_1l^tD&5@#aSG8~)Seh+zoQJKz$n/5pS&EEJOhi$0DRL0c.JKD)m$=g^07
+::2sl(Fx+-]!6RkHyLfjNC6L}p]0!p7Yq|b383u@;o&fE[6KuzlzW&$0tkx_S7N$LDQ.dYM3tlf+dFVcw@HQfu~p$Ma]5~P9~Sdq_/?tw}@E!q5!VPVg_yUK]O-Pjgo
+::e+7fuUOxE935mB1I+cY3ceY0?t5[$^T&ApxBg[xp()$HtEOS)Nro{h=@ly929|clksA;((+_5UMj==JlBh,I$5rHLV3/6i8pxiVXIDADe0r60wM?N+iROy}JIqy7p
+::bbRj5lVKq34,Y?Xv{l33yrbqo05,,VN^(nNwR.#&3r$BgcEqNT+nd;g1ODYctX2OcJ$aC7[Mv+OEoJ~bcaMyNN[HiB.C{or01?TS.kNZ#[6Y;ZCe?j+Z(Y}2_VEm&
+::py@tgc!pO?9=2SU8.;hV/V=SAKR7.Mdf+,Dgmt,pbQ?4hu5f1yNmNIOWb)#+yTG5+]^V9Xppd/K-=b,WH-~v}[{Su[-J$M_v.Dv.c]AOa-Qpyd;(SLiLA,83pd1p9
+::3!DAYH@Zf7pj5CD9DYBeOUCgKQXgXuLhWpk3-DsnxIQx-=j[h6jTs][dWNUs_KZIOokcaVRgJx]6xEYAs[E,CEx=UmMF[Wh;Yr!d0/DjCEt2&qIa(&s-^6R&FgbAH
+::bZ@;hn49D-Tq-T]n_a.25{[paj!+39dO]Rv3760Rvod3C1CAL!.,n0^nXzljG!#PP8SNfd5$FNbpGN3QCx2zEieJYZxPIT[,9oGCpv@w9lH5e$M}HzFm/P5KSHZ4;
+::jBy7T]$thji$bA62sr=M[$s)rVQjlfhOPqFIs(5D-CT;#jeUBez=hYN.?T9,@yK[BK75369)RN|R,79WNoo84/F]p26g&lg7+ywdZ+yUc=O_^Q5wS?y5pYPBD[J-8
+::.j8Q3tO8N/K$R|0k0Uy0rHoHg6;HcYC(SwMt!78K)7Ab!@]wEG+obGYQ^?)YycGbT
 :bat2file: end
+
+::קרדיט: nh.local11@gmail.com
 
