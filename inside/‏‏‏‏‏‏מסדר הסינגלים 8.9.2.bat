@@ -6,7 +6,7 @@
 ::הגדרות של שפה, צבע, כותרת וגודל החלון
 ::ועוד מספר משתנים חשובים
 chcp 1255>nul
-set "VER=8.9.1"
+set "VER=8.9.2"
 title %VER% מסדר הסינגלים
 MODE CON COLS=80 lines=27
 color f1
@@ -36,7 +36,21 @@ set /p ab=<"%temp%\num-singer.tmp"
 if exist "%temp%\num-singer.tmp" del "%temp%\num-singer.tmp"
 set/a abc=%ab%
 
+::הגדרת משתנה לתיקית המקור ודילוג לשלב 2
+::במקרה שהמשתמש גרר תיקיה על גבי הסקריפט
+if not [%1]==[] (
+set "source_path=%1"
+call :drag_func
+)
 
+goto :new_ver
+
+:drag_func
+for %%i in (%source_path%) do set source_path=%%~i
+if exist "%source_path%\" goto :target_folder
+exit /b
+
+:new_ver
 ::בדיקה אם גרסה חדשה זמינה להורדה
 curl https://raw.githubusercontent.com/NHLOCAL/Singles-Sorter/main/versions.data/new-ver-exist -o "%temp%\ver-exist-7.tmp"
 if errorlevel 1 goto :mesader-singels else (
