@@ -637,11 +637,12 @@ mediainfo "%file%" | findstr /b "Performer">"%Temp%\artist-song.tmp"
 powershell "(Get-Content "%Temp%\artist-song.tmp" -Encoding utf8 | Out-File "%Temp%\artist-song-ansi.tmp" -Encoding default)"
 
 ::בדיקה אם קיימים תוים בעייתים בקובץ
-findstr """" "%Temp%\artist-song-ansi.tmp">nul
+find /c """" "%Temp%\artist-song-ansi.tmp">nul
 if %errorlevel%==0 exit /b
-findstr "?" "%Temp%\artist-song-ansi.tmp">nul
+find /c "?" "%Temp%\artist-song-ansi.tmp">nul
 if %errorlevel%==0 exit /b
-
+::בדיקה אם הקובץ ריק
+if ;;;;;;;;;;;; exit /b
 
 :: העברת תוכן הקובץ למשתנה
 set/p artist=<"%Temp%\artist-song-ansi.tmp"
@@ -650,13 +651,8 @@ set/p artist=<"%Temp%\artist-song-ansi.tmp"
 ::הסרת תוכן מהקובץ והשארת שם האמן בלבד
 set "artist=%artist:~43%"
 
-
-
-
 ::יציאה מהפונקציה במקרה והמשתנה ריק
-for %%c in ("a")do (if "[%artist%]"=="[~43]" (
-exit /b)
-)
+for %%c in ("a")do (if "[%artist%]"=="[~43]" exit /b)
 
 ::במקרה ולא:
 ::חיפוש שם האמן בתוך הקובץ הנוכחי
