@@ -6,7 +6,7 @@
 ::הגדרות של שפה, צבע, כותרת וגודל החלון
 ::ועוד מספר משתנים חשובים
 chcp 1255>nul
-set "VER=8.9.2"
+set "VER=8.9.5"
 title %VER% מסדר הסינגלים
 MODE CON COLS=80 lines=27
 color f1
@@ -605,19 +605,12 @@ goto :mesader-singels
 
 :pro_scanner
 ::פונקציה מתקדמת המאפשרת חיפוש לפי שם האמן המופיע בקובץ
-::העתקת קובץ ההפעלה של הפונצקיה לתיקית האפ-דאטה של הסקריפט
 if not exist "%AppData%\singles-sorter\MediaInfo.exe" if exist "%~dp0MediaInfo.exe" copy "%~dp0MediaInfo.exe" "%AppData%\singles-sorter"
-
 ::הוספת מיקום התוכנה החיצונית למשתנה הסביבה
 path "%AppData%\singles-sorter";%path%
-
-::המתנה של מספר שניות עד להפעלה
 echo.
 timeout 10 | echo            ךלש תורדגהה יפ לע ןמא יפל תמדקתמ הקירס לחת תוינש רפסמ דועב
-
-::הפונקציה עצמה
-::המשתנה tree קובע אם הפקודה תעבוד על תיקיות משנה
-for %tree% %%s in (*.mp3,*.wav,*.wma) do (
+for %tree% %%s in (*.mp3,*.wma,*.wav) do (
 set file=%%~s
 call :scanner_func
 set/a d=d+1
@@ -632,41 +625,35 @@ goto :finish
 
 :scanner_func
 ::תצוגה למשתמש
-echo on
 cls
 echo.
 echo                                    ...דבוע
 
 :: שימוש בתוכנה חיצונית להכנסת נתוני השיר לקובץ
 ::חיפוש שורה המכילה את שם האמן בתוך הקובץ
-:: והכנסת השורה למשתנה
-::דרך חדשה ומועדפת
-for /f "eol=;tokens=1,1*delims=" %%i in ('mediainfo "%file%" ^| findstr /b "Performer"') do (set artist=%%i)
-
-
-::הסרת תוכן מהקובץ והשארת שם האמן בלבד
-set "artist=%artist:~43%"
-
-::יציאה מהפונקציה במקרה והמשתנה ריק
-if [%artist%]==[] exit /b
-
-echo 0 "%artist%"
-pause
-
-::במקרה ולא
-::הכנסת המשתנה לקובץ
-echo %artist%>"%Temp%\artist-song.tmp"
-
+:: והכנסת השורה לקובץ
+mediainfo "%file%" | findstr /b "Performer">"%Temp%\artist-song.tmp"
 ::המרת קובץ הפלט לפורמט אנסי התואם לבאט
 powershell "(Get-Content "%Temp%\artist-song.tmp" -Encoding utf8 | Out-File "%Temp%\artist-song-ansi.tmp" -Encoding default)"
+
+::בדיקה אם קיימים תוים בעייתים בקובץ
+::ויציאה מהפונקציה אם התשובה חיובית
+find /c """" "%Temp%\artist-song-ansi.tmp">nul
+if %errorlevel%==0 exit /b
+find /c "?" "%Temp%\artist-song-ansi.tmp">nul
+if %errorlevel%==0 exit /b
+
+::בדיקה אם הקובץ ריק לפי גודל הקובץ
+::ויציאה מהפונקציה אם התשובה חיובית
+for %%h in ("%Temp%\artist-song-ansi.tmp") do (if %%~zh==0 exit /b)
 
 :: העברת תוכן הקובץ למשתנה
 set/p artist=<"%Temp%\artist-song-ansi.tmp"
 
-ECHO 1 "%artist%"
-PAUSE
+::הסרת תוכן מהקובץ והשארת שם האמן בלבד
+set "artist=%artist:~43%"
 
-
+::במקרה ולא:
 ::חיפוש שם האמן בתוך הקובץ הנוכחי
 ::אם הוא קיים מתבצעת העברה של השיר
 ::לתוך תיקיה המוגדרת כשם האמן
@@ -678,11 +665,8 @@ if "%fixed_heb%"=="ליעפ אל" (if not exist "%h%\%w%%artist%%s%" md "%h%\%w%%artis
 if exist "%h%\%w%%artist%" if not exist "%h%\%w%%artist%%s%" md "%h%\%w%%artist%%s%")
 if exist "%h%\%w%%artist%%s%" %c_or_m% %par% "%file%" "%h%\%w%%artist%%s%">>םוכיס
 )
-
 ::יציאה מהפונקציה וחזרה לפקודת הפור
 exit /b
-
-
 
 
 
