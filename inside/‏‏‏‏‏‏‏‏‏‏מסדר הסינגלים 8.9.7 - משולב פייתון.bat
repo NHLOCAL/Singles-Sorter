@@ -645,16 +645,28 @@ for /f "tokens=1,2* delims=" %%p  in ('conver "%Temp%\artist-song.tmp"') do (set
 echo "%artist%"
 pause
 
+
+
+
 ::בדיקה אם קיימים תוים בעייתים בקובץ
 ::ויציאה מהפונקציה אם התשובה חיובית
+
+
 rem find /c """" "%Temp%\artist-song-ansi.tmp">nul
 rem if %errorlevel%==0 exit /b
 rem find /c "?" "%Temp%\artist-song-ansi.tmp">nul
 rem if %errorlevel%==0 exit /b
 
-
 ::הסרת תוכן מהקובץ והשארת שם האמן בלבד
 set "artist=%artist:~1%"
+
+
+
+
+set "artist=%artist:~^&=^^&%
+
+
+
 
 ::במקרה ולא:
 ::חיפוש שם האמן בתוך הקובץ הנוכחי
