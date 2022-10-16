@@ -6,7 +6,7 @@
 ::הגדרות של שפה, צבע, כותרת וגודל החלון
 ::ועוד מספר משתנים חשובים
 chcp 1255>nul
-set "VER=8.9.6"
+set "VER=8.9.7"
 title %VER% מסדר הסינגלים
 MODE CON COLS=80 lines=27
 color f1
