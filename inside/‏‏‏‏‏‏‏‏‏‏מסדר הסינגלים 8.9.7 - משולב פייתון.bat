@@ -638,34 +638,25 @@ for /f "tokens=1,2 delims=:" %%i in ('mediainfo "%file%" ^| findstr /b "Performe
 ::ויציאה מהפונקציה אם התשובה חיובית
 for %%h in ("%Temp%\artist-song-ansi.tmp") do (if %%~zh==0 exit /b)
 
-
 ::המרת קובץ הפלט לפורמט אנסי התואם לבאט
-for /f "tokens=1,2* delims=" %%p  in ('conver "%Temp%\artist-song.tmp"') do (set "artist=%%p")
+for /f "tokens=1,2* delims=" %%p  in ('conver "%Temp%\artist-song.tmp"') do (
+%%p
+if errorlevel 1 exit /b
+set "artist=%%p"
+)
 
 echo "%artist%"
-pause
-
-
-
-
-::בדיקה אם קיימים תוים בעייתים בקובץ
-::ויציאה מהפונקציה אם התשובה חיובית
-
-
-rem find /c """" "%Temp%\artist-song-ansi.tmp">nul
-rem if %errorlevel%==0 exit /b
-rem find /c "?" "%Temp%\artist-song-ansi.tmp">nul
-rem if %errorlevel%==0 exit /b
 
 ::הסרת תוכן מהקובץ והשארת שם האמן בלבד
 set "artist=%artist:~1%"
 
 
-
-
-set "artist=%artist:~^&=^^&%
-
-
+::בדיקה אם קיימים תוים בעייתים בקובץ
+::ויציאה מהפונקציה אם התשובה חיובית
+echo %artist% | findstr /c:"""">nul
+if %errorlevel%==0 exit /b
+echo %artist% | findstr /c:"?">nul
+if %errorlevel%==0 exit /b
 
 
 ::במקרה ולא:
