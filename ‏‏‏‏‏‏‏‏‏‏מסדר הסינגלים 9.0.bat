@@ -41,9 +41,8 @@ if not [%1]==[] (
 set "source_path=%1"
 color f1
 call :drag_func
-) else (
-goto :new_ver
 )
+goto :down-mediainfo
 
 :drag_func
 for %%i in (%source_path%) do set source_path=%%~i
@@ -55,14 +54,14 @@ exit /b
 ::פונקציה מתקדמת המאפשרת חיפוש לפי שם האמן המופיע בקובץ
 ::העקת קובץ התוכנה לתיקית העבודה או הורדה שלו
 ::הורדת תוכנת עזר לפונצית מיון לפי אמן
-set madiainfo="%appdata%\singles-sorter\MediaInfo.exe"
-if not exist %mediainfo% if exist "%~dp0MediaInfo.exe" (
+set mi="%appdata%\singles-sorter\MediaInfo.exe"
+if not exist %mi% if exist "%~dp0MediaInfo.exe" (
 copy "%~dp0MediaInfo.exe" "%AppData%\singles-sorter"
 ) else (
-curl -LJO https://github.com/NHLOCAL/Singles-Sorter/raw/main/data/MediaInfo.exe -o %mediainfo%
+curl -LJO https://github.com/NHLOCAL/Singles-Sorter/raw/main/data/MediaInfo.exe
+move MediaInfo.exe "%AppData%\singles-sorter"
 )
 
-:new_ver
 ::בדיקה אם גרסה חדשה זמינה להורדה
 curl https://raw.githubusercontent.com/NHLOCAL/Singles-Sorter/main/versions.data/new-ver-exist -o "%temp%\ver-exist-7.tmp"
 if errorlevel 1 goto :mesader-singels else (
@@ -139,9 +138,9 @@ echo                                        ***** [34m
 echo.
 echo                        תויקיתה תריחב בלשב םיגאב ןוקית *
 echo                      דבלב תישאר היקית ןוימ תורשפא תפסוה *
-echo                     !ץבוקה ןמא םש יפל םיצבק ןוימ :ץלמומ *
-echo                         הרזעה לש שדוחמ בוציעו חוסינ *
-echo                                   ...דועו *
+echo                      !ץבוקה ןמא יפל ןוימ :השדח היצקנופ *
+echo                        השדחה היקצנופה לש םיגאב ינוקית *
+echo                        הרזע ץבוק לש רתוי הטושפ הדרוה *
 echo.                          
 echo                   םיצבק ןכות לש יטמוטוא יוקינל תורשפא הפסוותה
 echo                חוור יוותב ףלחוי _ וותה תא ליכמה ץבוק םש :אמגודל
@@ -232,11 +231,16 @@ echo                             4 שקה ישארה טירפתל הרזחל
 choice /c 1234>nul
 if errorlevel 4 goto :mesader-singels
 if errorlevel 3 start https://mail.google.com/mail/u/0/?fs=1^&tf=cm^&source=mailto^&to=mesader.singelim@gmail.com & goto :mesader-singels
-if errorlevel 2 (start https://github.com/NHLOCAL/Singles-Sorter/releases/download/v8.2/help-singles-sorter.pdf
+if errorlevel 2 (
 cls
 echo.
 echo.
-echo                         !ךלש תודרוהה תייקיתל דרי ץבוקה
+echo.
+curl -LJO https://github.com/NHLOCAL/Singles-Sorter/releases/download/v8.2/help-singles-sorter.pdf -O
+cls
+echo.
+echo.
+echo                         !הנכותה תיקיתל דרי הרזעה ץבוק
 pause>nul
 goto :mesader-singels
 )
@@ -763,9 +767,8 @@ echo        ) ^|^| ^|   ^| ^|^| (\ (      ^| ^|   ^| (      ^| (\ (           ) 
 echo  /\____) ^|^| (___) ^|^| ) \ \__   ^| ^|   ^| (____/\^| ) \ \__  /\____) )_ ^|  (__) ^|
 echo  \_______)(_______)^|/   \__/   )_(   (_______/^|/   \__/  \______/(_)(_______)
 
-timeout 5 | echo.
+timeout 3 | echo.
 exit /b
-
 
 
 
