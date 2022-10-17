@@ -9,7 +9,7 @@ chcp 1255>nul
 set "VER=9.0"
 title %VER% מסדר הסינגלים
 MODE CON COLS=80 lines=27
-call :logo_show
+if [%1]==[] call :logo_show
 
 ::בדיקה אם קיים קובץ דאטה ב-אפפדאטה או בתיקית הסקריפט
 ::וקביעת משתנה למיקום קובץ הדאטה
@@ -39,15 +39,22 @@ set/a abc=%ab%
 ::במקרה שהמשתמש גרר תיקיה על גבי הסקריפט
 if not [%1]==[] (
 set "source_path=%1"
+color f1
 call :drag_func
-)
-
+) else (
 goto :new_ver
+)
 
 :drag_func
 for %%i in (%source_path%) do set source_path=%%~i
 if exist "%source_path%\" goto :target_folder
 exit /b
+
+
+:down-mediainfo
+::הורדת תוכנת עזר לפונצית מיון לפי אמן
+curl   -o "%appdata%\singles-sorter\mediainfo.exe"
+
 
 :new_ver
 ::בדיקה אם גרסה חדשה זמינה להורדה
@@ -325,7 +332,7 @@ set "abc_heb=ליעפ אל"
 set c_or_m=move
 set "sing_heb=ליעפ אל"
 set "fixed_heb=ליעפ אל"
-set "artist_heb=ליעפ אל"
+set "artist_heb=ליעפ"
 set "dir_heb=ליעפ"
 ::בחירה בהגדרות שונות למשתמש
 :options
@@ -353,7 +360,7 @@ echo              [%abc_heb%] 'ב 'אל תוקלוחמ תויקיתל הקתעהב הריחבל [2] שקה
 echo         [%sing_heb%] רמז לכ ךותב "םילגניס" םשב תימינפ היקית תריציל [3] שקה 
 echo             [%fixed_heb%] דבלב ךלש תועובקה םירמזה תויקיתל הקתעהל [4] שקה
 echo                   ------------------------------------------
-echo              [%artist_heb%] רישה יטרפב ןמאה םש יפל ןוימו הקירסל [5] שקה
+echo               [%artist_heb%] רישה יטרפב ןמאה םש יפל ןוימו הקירסל [5] שקה
 echo                [%dir_heb%] הנשמ תויקית תקירס לוטיב וא תלעפהל [6] שקה
 echo                        ----------------------------------
 echo                               הלעפהו םויסל [7] שקה
@@ -375,11 +382,11 @@ goto :options
 )
 ::אם הוקש 5 יתבצע שינוי של משתנה
 ::בצורת פקודת תנאי לפי המשתנה הנוכחי
-if errorlevel 6 if "%artist_heb%"=="ליעפ אל" (
-set artist_heb=ליעפ
+if errorlevel 6 if "%artist_heb%"=="ליעפ" (
+set "artist_heb=ליעפ אל"
 goto :options
 )else (
-set "artist_heb=ליעפ אל"
+set artist_heb=ליעפ
 goto :options
 )
 ::אם הוקש 4 יתבצע שינוי של משתנה
