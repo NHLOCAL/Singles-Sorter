@@ -52,9 +52,15 @@ exit /b
 
 
 :down-mediainfo
+::פונקציה מתקדמת המאפשרת חיפוש לפי שם האמן המופיע בקובץ
+::העקת קובץ התוכנה לתיקית העבודה או הורדה שלו
 ::הורדת תוכנת עזר לפונצית מיון לפי אמן
-curl   -o "%appdata%\singles-sorter\mediainfo.exe"
-
+set madiainfo="%appdata%\singles-sorter\MediaInfo.exe"
+if not exist %mediainfo% if exist "%~dp0MediaInfo.exe" (
+copy "%~dp0MediaInfo.exe" "%AppData%\singles-sorter"
+) else (
+curl -LJO https://github.com/NHLOCAL/Singles-Sorter/raw/main/data/MediaInfo.exe -o %mediainfo%
+)
 
 :new_ver
 ::בדיקה אם גרסה חדשה זמינה להורדה
@@ -613,8 +619,6 @@ goto :mesader-singels
 
 
 :pro_scanner
-::פונקציה מתקדמת המאפשרת חיפוש לפי שם האמן המופיע בקובץ
-if not exist "%AppData%\singles-sorter\MediaInfo.exe" if exist "%~dp0MediaInfo.exe" copy "%~dp0MediaInfo.exe" "%AppData%\singles-sorter"
 ::הוספת מיקום התוכנה החיצונית למשתנה הסביבה
 path "%AppData%\singles-sorter";%path%
 echo.
