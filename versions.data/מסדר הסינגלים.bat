@@ -6,11 +6,10 @@
 ::הגדרות של שפה, צבע, כותרת וגודל החלון
 ::ועוד מספר משתנים חשובים
 chcp 1255>nul
-set "VER=8.9"
+set "VER=9.0"
 title %VER% מסדר הסינגלים
 MODE CON COLS=80 lines=27
-color f1
-
+if [%1]==[] call :logo_show
 
 ::בדיקה אם קיים קובץ דאטה ב-אפפדאטה או בתיקית הסקריפט
 ::וקביעת משתנה למיקום קובץ הדאטה
@@ -26,15 +25,6 @@ set csv-file="%appdata%\singles-sorter\singer-list.csv"
 )
 )
 
-::בדיקה אם גרסה חדשה זמינה להורדה
-curl https://raw.githubusercontent.com/NHLOCAL/Singles-Sorter/main/versions.data/new-ver-exist -o "%temp%\ver-exist-7.tmp"
-if errorlevel 1 goto :call-num else (
-set/p update=<"%temp%\ver-exist-7.tmp"
-del "%temp%\ver-exist-7.tmp"
-if %update% GTR %VER% goto :updating
-)
-
-
 :call-num
 ::בדיקת מספר הזמרים הקיים כעת בסקריפט
 ::הדבר נצרך לצורך חישוב הזמן שעבר
@@ -43,10 +33,42 @@ if exist "%temp%\ver-exist-7.tmp" del "%temp%\ver-exist-7.tmp"
 type "%csv-file%" | find /c ",">"%temp%\num-singer.tmp"
 set /p ab=<"%temp%\num-singer.tmp"
 if exist "%temp%\num-singer.tmp" del "%temp%\num-singer.tmp"
-
-:sln-start
-cls
 set/a abc=%ab%
+
+::הגדרת משתנה לתיקית המקור ודילוג לשלב 2
+::במקרה שהמשתמש גרר תיקיה על גבי הסקריפט
+if not [%1]==[] (
+set "source_path=%1"
+color f1
+call :drag_func
+)
+goto :down-mediainfo
+
+:drag_func
+for %%i in (%source_path%) do set source_path=%%~i
+if exist "%source_path%\" goto :target_folder
+exit /b
+
+
+:down-mediainfo
+::פונקציה מתקדמת המאפשרת חיפוש לפי שם האמן המופיע בקובץ
+::העקת קובץ התוכנה לתיקית העבודה או הורדה שלו
+::הורדת תוכנת עזר לפונצית מיון לפי אמן
+set mi="%appdata%\singles-sorter\MediaInfo.exe"
+if not exist %mi% if exist "%~dp0MediaInfo.exe" (
+copy "%~dp0MediaInfo.exe" "%AppData%\singles-sorter"
+) else (
+curl -LJO https://github.com/NHLOCAL/Singles-Sorter/raw/main/data/MediaInfo.exe
+move MediaInfo.exe "%AppData%\singles-sorter"
+)
+
+::בדיקה אם גרסה חדשה זמינה להורדה
+curl https://raw.githubusercontent.com/NHLOCAL/Singles-Sorter/main/versions.data/new-ver-exist -o "%temp%\ver-exist-7.tmp"
+if errorlevel 1 goto :mesader-singels else (
+set/p update=<"%temp%\ver-exist-7.tmp"
+del "%temp%\ver-exist-7.tmp"
+if %update% GTR %VER% goto :updating
+)
 
 goto :mesader-singels
 
@@ -78,14 +100,16 @@ if errorlevel 1 "%csv-file%" & call :call-num
 
 ::מסדר הסינגלים עצמו
 :mesader-singels
+color f1
 cls
 echo. [30m
-echo          ____  _             _             ____             _
-echo         / ___^|(_)_ __   __ _^| ^| ___  ___  / ___^|  ___  _ __^| ^|_ ___ _ __
-echo         \___ \^| ^| '_ \ / _` ^| ^|/ _ \/ __^| \___ \ / _ \^| '__^| __/ _ \ '__^|
-echo          ___) ^| ^| ^| ^| ^| (_^| ^| ^|  __/\__ \  ___) ^| (_) ^| ^|  ^| ^|^|  __/ ^|
-echo         ^|____/^|_^|_^| ^|_^|\__, ^|_^|\___^|^|___/ ^|____/ \___/^|_^|   \__\___^|_^|
-echo                        ^|___/                     
+echo       _             _                            _              _____  _____ 
+echo      (_)           ^| ^|                          ^| ^|            ^|  _  ^|^|  _  ^|
+echo   ___ _ _ __   __ _^| ^| ___  ___   ___  ___  _ __^| ^|_ ___ _ __  ^| ^|_^| ^|^| ^|/' ^|
+echo  / __^| ^| '_ \ / _` ^| ^|/ _ \/ __^| / __^|/ _ \^| '__^| __/ _ \ '__^| \____ ^|^|  /^| ^|
+echo  \__ \ ^| ^| ^| ^| (_^| ^| ^|  __/\__ \ \__ \ (_) ^| ^|  ^| ^|^|  __/ ^|    .___/ /\ ^|_/ /
+echo  ^|___/_^|_^| ^|_^|\__, ^|_^|\___^|^|___/ ^|___/\___/^|_^|   \__\___^|_^|    \____(_)\___/ 
+echo               ^|___/                                                          
 echo ================================================================================
 echo                                 %VER% םילגניסה רדסמ
 echo                                       ***** [34m 
@@ -114,9 +138,9 @@ echo                                        ***** [34m
 echo.
 echo                        תויקיתה תריחב בלשב םיגאב ןוקית *
 echo                      דבלב תישאר היקית ןוימ תורשפא תפסוה *
-echo                     !ץבוקה ןמא םש יפל םיצבק ןוימ :ץלמומ *
-echo                         הרזעה לש שדוחמ בוציעו חוסינ *
-echo                                   ...דועו *
+echo                      !ץבוקה ןמא יפל ןוימ :השדח היצקנופ *
+echo                        השדחה היקצנופה לש םיגאב ינוקית *
+echo                        הרזע ץבוק לש רתוי הטושפ הדרוה *
 echo.                          
 echo                   םיצבק ןכות לש יטמוטוא יוקינל תורשפא הפסוותה
 echo                חוור יוותב ףלחוי _ וותה תא ליכמה ץבוק םש :אמגודל
@@ -136,6 +160,7 @@ if errorlevel 1 goto :updating
 
 :updating
 cls
+color f1
 echo. [30m
 echo                                        ___
 echo                                       ^|__ \
@@ -206,11 +231,16 @@ echo                             4 שקה ישארה טירפתל הרזחל
 choice /c 1234>nul
 if errorlevel 4 goto :mesader-singels
 if errorlevel 3 start https://mail.google.com/mail/u/0/?fs=1^&tf=cm^&source=mailto^&to=mesader.singelim@gmail.com & goto :mesader-singels
-if errorlevel 2 (start https://github.com/NHLOCAL/Singles-Sorter/releases/download/v8.2/help-singles-sorter.pdf
+if errorlevel 2 (
 cls
 echo.
 echo.
-echo                         !ךלש תודרוהה תייקיתל דרי ץבוקה
+echo.
+curl -LJO https://github.com/NHLOCAL/Singles-Sorter/releases/download/v8.2/help-singles-sorter.pdf -O
+cls
+echo.
+echo.
+echo                         !הנכותה תיקיתל דרי הרזעה ץבוק
 pause>nul
 goto :mesader-singels
 )
@@ -312,7 +342,7 @@ set "abc_heb=ליעפ אל"
 set c_or_m=move
 set "sing_heb=ליעפ אל"
 set "fixed_heb=ליעפ אל"
-set "artist_heb=ליעפ אל"
+set "artist_heb=ליעפ"
 set "dir_heb=ליעפ"
 ::בחירה בהגדרות שונות למשתמש
 :options
@@ -340,7 +370,7 @@ echo              [%abc_heb%] 'ב 'אל תוקלוחמ תויקיתל הקתעהב הריחבל [2] שקה
 echo         [%sing_heb%] רמז לכ ךותב "םילגניס" םשב תימינפ היקית תריציל [3] שקה 
 echo             [%fixed_heb%] דבלב ךלש תועובקה םירמזה תויקיתל הקתעהל [4] שקה
 echo                   ------------------------------------------
-echo              [%artist_heb%] רישה יטרפב ןמאה םש יפל ןוימו הקירסל [5] שקה
+echo               [%artist_heb%] רישה יטרפב ןמאה םש יפל ןוימו הקירסל [5] שקה
 echo                [%dir_heb%] הנשמ תויקית תקירס לוטיב וא תלעפהל [6] שקה
 echo                        ----------------------------------
 echo                               הלעפהו םויסל [7] שקה
@@ -362,11 +392,11 @@ goto :options
 )
 ::אם הוקש 5 יתבצע שינוי של משתנה
 ::בצורת פקודת תנאי לפי המשתנה הנוכחי
-if errorlevel 6 if "%artist_heb%"=="ליעפ אל" (
-set artist_heb=ליעפ
+if errorlevel 6 if "%artist_heb%"=="ליעפ" (
+set "artist_heb=ליעפ אל"
 goto :options
 )else (
-set "artist_heb=ליעפ אל"
+set artist_heb=ליעפ
 goto :options
 )
 ::אם הוקש 4 יתבצע שינוי של משתנה
@@ -593,13 +623,11 @@ goto :mesader-singels
 
 
 :pro_scanner
-::פונקציה מתקדמת המאפשרת חיפוש לפי שם האמן המופיע בקובץ
-if not exist "%AppData%\singles-sorter\MediaInfo.exe" if exist "%~dp0MediaInfo.exe" copy "%~dp0MediaInfo.exe" "%AppData%\singles-sorter"
 ::הוספת מיקום התוכנה החיצונית למשתנה הסביבה
 path "%AppData%\singles-sorter";%path%
 echo.
 timeout 10 | echo            ךלש תורדגהה יפ לע ןמא יפל תמדקתמ הקירס לחת תוינש רפסמ דועב
-for %tree% %%s in (*.mp3) do (
+for %tree% %%s in (*.mp3,*.wma,*.wav) do (
 set file=%%~s
 call :scanner_func
 set/a d=d+1
@@ -621,17 +649,30 @@ echo                                    ...דבוע
 :: שימוש בתוכנה חיצונית להכנסת נתוני השיר לקובץ
 ::חיפוש שורה המכילה את שם האמן בתוך הקובץ
 :: והכנסת השורה לקובץ
-mediainfo "%file%" | findstr /b "Performer">"%Temp%\artist-song.tmp"
+for /f "tokens=1,2 delims=:" %%i in ('mediainfo "%file%" ^| findstr /b "Performer"') do echo %%j>"%Temp%\artist-song.tmp"
+
+::בדיקה אם הקובץ ריק לפי גודל הקובץ
+::ויציאה מהפונקציה אם התשובה חיובית
+for %%h in ("%Temp%\artist-song-ansi.tmp") do (if %%~zh==0 exit /b)
+
 ::המרת קובץ הפלט לפורמט אנסי התואם לבאט
 powershell "(Get-Content "%Temp%\artist-song.tmp" -Encoding utf8 | Out-File "%Temp%\artist-song-ansi.tmp" -Encoding default)"
 
+::בדיקה אם קיימים תוים בעייתים בקובץ
+::ויציאה מהפונקציה אם התשובה חיובית
+find /c """" "%Temp%\artist-song-ansi.tmp">nul
+if %errorlevel%==0 exit /b
+find /c "?" "%Temp%\artist-song-ansi.tmp">nul
+if %errorlevel%==0 exit /b
+
 :: העברת תוכן הקובץ למשתנה
 set/p artist=<"%Temp%\artist-song-ansi.tmp"
-::יציאה מהפונקציה במקרה והמשתנה ריק
-"if [%artist%]==[]" exit /b
-::במקרה ולא:
+
+
 ::הסרת תוכן מהקובץ והשארת שם האמן בלבד
-set "artist=%artist:~43%"
+set "artist=%artist:~1%"
+
+::במקרה ולא:
 ::חיפוש שם האמן בתוך הקובץ הנוכחי
 ::אם הוא קיים מתבצעת העברה של השיר
 ::לתוך תיקיה המוגדרת כשם האמן
@@ -645,8 +686,6 @@ if exist "%h%\%w%%artist%%s%" %c_or_m% %par% "%file%" "%h%\%w%%artist%%s%">>םוכי
 )
 ::יציאה מהפונקציה וחזרה לפקודת הפור
 exit /b
-
-
 
 
 
@@ -702,4 +741,35 @@ Add-Type -Language CSharp -TypeDefinition @"
 :bat2file: end
 
 ::קרדיט: nh.local11@gmail.com
+
+
+:logo_show
+
+echo.
+echo.
+echo                                  אימשד אתעיסב
+echo. [40;36m
+echo         _______ _________ _        _______  _        _______  _______ 
+echo        (  ____ \\__   __/( (    /^|(  ____ \( \      (  ____ \(  ____ \
+echo        ^| (    \/   ) (   ^|  \  ( ^|^| (    \/^| (      ^| (    \/^| (    \/
+echo        ^| (_____    ^| ^|   ^|   \ ^| ^|^| ^|      ^| ^|      ^| (__    ^| (_____ 
+echo        (_____  )   ^| ^|   ^| (\ \) ^|^| ^| ____ ^| ^|      ^|  __)   (_____  )
+echo              ) ^|   ^| ^|   ^| ^| \   ^|^| ^| \_  )^| ^|      ^| (            ) ^|
+echo        /\____) ^|___) (___^| )  \  ^|^| (___) ^|^| (____/\^| (____/\/\____) ^|
+echo        \_______)\_______/^|/    )_)(_______)(_______/(_______/\_______)
+echo. 
+echo   _______  _______  _______ _________ _______  _______     _____     _______ 
+echo  (  ____ \(  ___  )(  ____ )\__   __/(  ____ \(  ____ )   / ___ \   (  __   )
+echo  ^| (    \/^| (   ) ^|^| (    )^|   ) (   ^| (    \/^| (    )^|  ( (   ) )  ^| (  )  ^|
+echo  ^| (_____ ^| ^|   ^| ^|^| (____)^|   ^| ^|   ^| (__    ^| (____)^|  ( (___) ^|  ^| ^| /   ^|
+echo  (_____  )^| ^|   ^| ^|^|     __)   ^| ^|   ^|  __)   ^|     __)   \____  ^|  ^| (/ /) ^|
+echo        ) ^|^| ^|   ^| ^|^| (\ (      ^| ^|   ^| (      ^| (\ (           ) ^|  ^|   / ^| ^|
+echo  /\____) ^|^| (___) ^|^| ) \ \__   ^| ^|   ^| (____/\^| ) \ \__  /\____) )_ ^|  (__) ^|
+echo  \_______)(_______)^|/   \__/   )_(   (_______/^|/   \__/  \______/(_)(_______)
+
+timeout 3 | echo.
+exit /b
+
+
+
 
