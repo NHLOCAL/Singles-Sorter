@@ -31,13 +31,11 @@ color f1
 
 :beginning
 cls
-powershell "(Get-Content "%temp%\mesader-source.tmp" -Encoding utf8 | Out-File "%temp%\mesader-sourceB.tmp" -Encoding default)"
 set/p source_path=<"%temp%\mesader-sourceB.tmp"
 del "%temp%\mesader-sourceB.tmp"
 
 :target_folder
 cls
-powershell "(Get-Content "%temp%\mesader-target.tmp" -Encoding utf8 | Out-File "%temp%\mesader-targetB.tmp" -Encoding default)"
 set/p h=<"%temp%\mesader-targetB.tmp"
 del "%temp%\mesader-targetB.tmp"
 
