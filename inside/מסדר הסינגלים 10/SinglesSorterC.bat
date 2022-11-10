@@ -43,11 +43,22 @@ del "%temp%\mesader-targetB.tmp"
 cd /d "%source_path%"
 
 ::קביעת משתנים לצורך הגדרות המשתמש
-set "clear_heb=ליעפ"
-set cm_heb=הרבעה
-set "msg=ורבעוהש"
-set "abc_heb=ליעפ אל"
+
+::הגדרת משתנה לניקוי שמות הקבצים
+set cleaning=<<"%tmp%\select7_tmp.tmp"
+if "%cleaning%"=="False" (set "abc_heb=ליעפ אל") else (set "clear_heb=ליעפ")
+
+::הגדרת משתנה העברה או העתקה
+set/p copmoving=<"%tmp%\select3_tmp.tmp"
+if "%copmoving%"=="False" (set c_or_m=xcopy
+set "msg=וקתעוהש"
+set cm_heb=הקתעה
+) else (
 set c_or_m=move
+set "msg=ורבעוהש"
+set cm_heb=הרבעה)
+
+
 set "sing_heb=ליעפ אל"
 set "fixed_heb=ליעפ אל"
 set "artist_heb=ליעפ"
