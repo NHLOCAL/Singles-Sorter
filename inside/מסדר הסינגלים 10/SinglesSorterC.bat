@@ -45,24 +45,46 @@ cd /d "%source_path%"
 ::קביעת משתנים לצורך הגדרות המשתמש
 
 ::הגדרת משתנה לניקוי שמות הקבצים
-set cleaning=<<"%tmp%\select7_tmp.tmp"
-if "%cleaning%"=="False" (set "abc_heb=ליעפ אל") else (set "clear_heb=ליעפ")
+set/p cleaning=<"%tmp%\select7_tmp.tmp"
+if "%cleaning%"=="False" (set "clear_heb=ליעפ אל") else (set "clear_heb=ליעפ")
 
 ::הגדרת משתנה העברה או העתקה
-set/p copmoving=<"%tmp%\select3_tmp.tmp"
-if "%copmoving%"=="False" (set c_or_m=xcopy
+set/p copy_moving=<"%tmp%\select3_tmp.tmp"
+if "%copy_moving%"=="False" (set c_or_m=xcopy
 set "msg=וקתעוהש"
 set cm_heb=הקתעה
 ) else (
 set c_or_m=move
 set "msg=ורבעוהש"
-set cm_heb=הרבעה)
+set cm_heb=הרבעה
+)
 
+::קביעת משתנה ליצירת תיקיות ראשיות בחלוקה לא' ב'
+set/p abc_dirs_creating=<"%tmp%\select2_tmp.tmp"
+if "%abc_dirs_creating%"=="True" (set "abc_heb=ליעפ") else (set "abc_heb=ליעפ אל")
 
+::הגדרת משתנה ליצירת תיקית סינגלים פנימית
+set/p in_folder_creating=<"%tmp%\select1_tmp.tmp"
+if "%in_folder_creating%"=="True" (
+set sing_heb=ליעפ
+set "s=\סינגלים"
+)else (
 set "sing_heb=ליעפ אל"
-set "fixed_heb=ליעפ אל"
-set "artist_heb=ליעפ"
-set "dir_heb=ליעפ"
+set s=
+goto :options
+)
+
+::הגדרת משתנה ליצירת תיקיות חדשות או העברה לתיקיות קיימות בלבד
+set/p creating_folder=<"%tmp%\select4_tmp.tmp"
+if "%creating_folder%"=="True" (set fixed_heb=ליעפ) else (set "fixed_heb=ליעפ אל")
+
+::הגדרת משתנה להפעלת סריקה מתקדמת
+set/p pro_scanning=<"%tmp%\select6_tmp.tmp"
+if "%pro_scanning%"=="False" (set "artist_heb=ליעפ") else (set "artist_heb=ליעפ אל")
+
+::הגדרת משתנה לסריקת תיקיות משנה
+set/p tree_scanning=<"%tmp%\select6_tmp.tmp"
+if "%tree_scanning%"=="True" (set "dir_heb=ליעפ אל") else (set "dir_heb=ליעפ")
 
 
 :intro
