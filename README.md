@@ -9,7 +9,7 @@
 
 **כך זה נראה:**
 <div id="header" align="center">
-  <img src="https://github.com/NHLOCAL/Singles-Sorter/blob/main/versions.data/program-screen.png?raw=true" width="600"/>
+  <img src="https://github.com/NHLOCAL/Singles-Sorter/blob/main/versions.data/program-screen.png?raw=true" width="480"/>
 
 </div>
 <div id="header" align="center">
@@ -17,6 +17,14 @@
 </div>
  
 ---
+
+## בקרוב! גרסה 10.0!
+<div id="header" align="center">
+  <img src="https://user-images.githubusercontent.com/95597943/201238743-0086c55f-8f4b-4043-80ea-9d15a90ed897.png?raw=true" width="600"/>
+
+
+---
+
 </div>
 <div id="header" align="center">
 
