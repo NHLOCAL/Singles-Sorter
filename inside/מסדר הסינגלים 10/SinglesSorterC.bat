@@ -49,10 +49,13 @@ if "%cleaning%"=="False" (set "clear_heb=ליעפ אל") else (set "clear_heb=ליעפ")
 
 ::הגדרת משתנה העברה או העתקה
 set/p copy_moving=<"%tmp%\select3_tmp.tmp"
-if "%copy_moving%"=="True" (set c_or_m=xcopy
+if "%copy_moving%"=="True" (
+set c_or_m=xcopy
+set par=/y
 set "msg=וקתעוהש"
 set cm_heb=הקתעה
 ) else (
+set par=
 set c_or_m=move
 set "msg=ורבעוהש"
 set cm_heb=הרבעה
