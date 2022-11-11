@@ -18,7 +18,7 @@
  
 ---
 
-## בקרוב! גרסה 10.0!
+## בקרוב: גרסה 10.0!
 <div id="header" align="center">
   <img src="https://user-images.githubusercontent.com/95597943/201238743-0086c55f-8f4b-4043-80ea-9d15a90ed897.png?raw=true" width="600"/>
 
