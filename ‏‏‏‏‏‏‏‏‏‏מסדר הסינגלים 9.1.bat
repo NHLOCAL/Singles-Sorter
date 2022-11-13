@@ -179,7 +179,7 @@ echo.
 choice /c 12
 if errorlevel 2 goto :mesader-singels
 if errorlevel 1 (
-curl https://raw.githubusercontent.com/NHLOCAL/Singles-Sorter/main/versions.data/SinglesSorter-up.bat -o "%~dp0\מסדר הסינגלים %update%.bat"
+curl -LJ https://github.com/NHLOCAL/Singles-Sorter/releases/download/v%update%/Singles-Sorter-%update%.bat -o "%~dp0\מסדר הסינגלים %update%.bat"
 cls
 echo.[30m
 echo                                        ___
@@ -240,7 +240,7 @@ curl -LJ https://github.com/NHLOCAL/Singles-Sorter/releases/download/v8.2/help-s
 cls
 echo.
 echo.
-echo                         !הנכותה תיקיתל דרי הרזעה ץבוק
+echo                         !ךלש תודרוהה תיקיתל דרי ץבוקה
 pause>nul
 goto :mesader-singels
 )
