@@ -6,7 +6,7 @@
 ::הגדרות של שפה, צבע, כותרת וגודל החלון
 ::ועוד מספר משתנים חשובים
 chcp 1255>nul
-set "VER=9.0"
+set "VER=9.1"
 title %VER% מסדר הסינגלים
 MODE CON COLS=80 lines=27
 if [%1]==[] call :logo_show
@@ -179,7 +179,7 @@ echo.
 choice /c 12
 if errorlevel 2 goto :mesader-singels
 if errorlevel 1 (
-curl https://raw.githubusercontent.com/NHLOCAL/Singles-Sorter/main/versions.data/SinglesSorter-up.bat -o "%~dp0\מסדר הסינגלים %update%.bat"
+curl -LJ https://github.com/NHLOCAL/Singles-Sorter/releases/download/v%update%/Singles-Sorter-%update%.bat -o "%~dp0\מסדר הסינגלים %update%.bat"
 cls
 echo.[30m
 echo                                        ___
@@ -236,11 +236,11 @@ cls
 echo.
 echo.
 echo.
-curl -LJO https://github.com/NHLOCAL/Singles-Sorter/releases/download/v8.2/help-singles-sorter.pdf -O
+curl -LJ https://github.com/NHLOCAL/Singles-Sorter/releases/download/v8.2/help-singles-sorter.pdf -o "%userprofile%\downloads\עזרה - מסדר הסינגלים.pdf"
 cls
 echo.
 echo.
-echo                         !הנכותה תיקיתל דרי הרזעה ץבוק
+echo                         !ךלש תודרוהה תיקיתל דרי ץבוקה
 pause>nul
 goto :mesader-singels
 )
