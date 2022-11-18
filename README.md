@@ -24,7 +24,7 @@
 
 ## בקרוב: גרסה 10.0!
 <div id="header" align="center">
-  <img src="https://user-images.githubusercontent.com/95597943/201508176-0037fd9e-fa8c-43e8-926a-ff4600bb2b66.png?raw=true" width="600"/>
+  <img src="https://user-images.githubusercontent.com/95597943/202588262-140c0c50-365d-4042-a083-92116f47aa34.png?raw=true" width="600"/>
 
 ---
 
