@@ -9,19 +9,22 @@ chcp 1255>nul
 set "VER=10.0"
 title %VER% מסדר הסינגלים
 MODE CON COLS=80 lines=27
+
 ::קביעת משתנה למיקום קובץ הדאטה
 set "csv-file=%appdata%\singles-sorter\singer-list.csv"
+set "personal-csv-file=%appdata%\singles-sorter\personal-singer-list.csv"
+if not exist "%personal-csv-file%" set personal-csv-file=
+
+::מחיקת קובץ לבדיקת עדכון גרסה
+if exist "%temp%\ver-exist-7.tmp" del "%temp%\ver-exist-7.tmp"
 
 :call-num
 ::בדיקת מספר הזמרים הקיים כעת בסקריפט
 ::הדבר נצרך לצורך חישוב הזמן שעבר
 ::ולצורך הפונקציה של הוספת זמרים עצמאית
-if exist "%temp%\ver-exist-7.tmp" del "%temp%\ver-exist-7.tmp"
-type "%csv-file%" | find /c ",">"%temp%\num-singer.tmp"
-set /p ab=<"%temp%\num-singer.tmp"
-if exist "%temp%\num-singer.tmp" del "%temp%\num-singer.tmp"
-set/a abc=%ab%
-
+for /f "tokens=1,2* delims=" %%n in ('type "%csv-file%" ^| find /c ","') do set ab=%%n
+if defined personal-csv-file for /f "tokens=1,2* delims=" %%n in ('type "%personal-csv-file%" ^| find /c ","') do set ac=%%n
+set/a abc=ab+ac
 
 ::מסדר הסינגלים עצמו
 :mesader-singels
@@ -42,6 +45,7 @@ del "%temp%\mesader-targetB.tmp"
 cd /d "%source_path%"
 
 ::קביעת משתנים לצורך הגדרות המשתמש
+::================================
 
 ::הגדרת משתנה לניקוי שמות הקבצים
 set/p cleaning=<"%tmp%\select7_tmp.tmp"
@@ -133,7 +137,7 @@ set/a d=1
 set pro_scan=False
 :start
 ::פקודת הפור הראשית שסורקת שמות קבצים
-for /f "usebackq tokens=1,2 delims=,"  %%i in (%csv-file%) do (
+for /f "usebackq tokens=1,2 delims=,"  %%i in (%csv-file%,%personal-csv-file%) do (
 set a=%%i
 set c=%%j
 call :sort-func
@@ -217,6 +221,7 @@ timeout 10 | echo            ךלש תורדגהה יפ לע ןמא יפל תמדקתמ הקירס לחת תוינש רפ
 for %tree% %%s in (*.mp3,*.wma,*.wav) do (
 set file=%%~s
 call :scanner_func
+if exist "%Temp%\artist-song.tmp" del "%Temp%\artist-song.tmp"
 set/a d=d+1
 )
 ::מחיקת קבצים זמניים והגדרת משתנים חשובים
@@ -236,11 +241,13 @@ echo                                    ...דבוע
 :: שימוש בתוכנה חיצונית להכנסת נתוני השיר לקובץ
 ::חיפוש שורה המכילה את שם האמן בתוך הקובץ
 :: והכנסת השורה לקובץ
+
+
 for /f "tokens=1,2 delims=:" %%i in ('mediainfo "%file%" ^| findstr /b "Performer"') do echo %%j>"%Temp%\artist-song.tmp"
 
-::בדיקה אם הקובץ ריק לפי גודל הקובץ
-::ויציאה מהפונקציה אם התשובה חיובית
-for %%h in ("%Temp%\artist-song-ansi.tmp") do (if %%~zh==0 exit /b)
+::בדיקה אם הקובץ קיים
+::ויציאה מהפונקציה אם התשובה שלילית
+if not exist "%Temp%\artist-song.tmp" exit /b
 
 ::המרת קובץ הפלט לפורמט אנסי התואם לבאט
 powershell "(Get-Content "%Temp%\artist-song.tmp" -Encoding utf8 | Out-File "%Temp%\artist-song-ansi.tmp" -Encoding default)"
