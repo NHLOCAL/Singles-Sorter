@@ -24,7 +24,7 @@
 
 ## בקרוב: גרסה 10.0!
 <div id="header" align="center">
-  <img src="https://user-images.githubusercontent.com/95597943/202588262-140c0c50-365d-4042-a083-92116f47aa34.png?raw=true" width="600"/>
+  <img src="https://github.com/NHLOCAL/Singles-Sorter/blob/main/inside/%D7%9E%D7%A1%D7%93%D7%A8%20%D7%94%D7%A1%D7%99%D7%A0%D7%92%D7%9C%D7%99%D7%9D%2010/%E2%80%8F%E2%80%8Fgui-version.png?raw=true" width="600"/>
 
 ---
 
