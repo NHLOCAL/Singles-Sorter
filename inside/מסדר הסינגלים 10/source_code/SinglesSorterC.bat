@@ -2,15 +2,7 @@
 ::הסקריפט מיועד לציבור החרדי ובשל כך הדאטה שלו מותאמת לציבור זה
 ::קרדיט: nh.local11@gmail.com
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-@echo on
-=======
 @echo off
->>>>>>> parent of 2565eed (׳¢׳“׳›׳•׳ ׳•׳™׳¢׳•׳)
-=======
-@echo off
->>>>>>> parent of 2565eed (׳¢׳“׳›׳•׳ ׳•׳™׳¢׳•׳)
 ::הגדרות של שפה, צבע, כותרת וגודל החלון
 ::ועוד מספר משתנים חשובים
 chcp 1255>nul
@@ -43,19 +35,6 @@ color f1
 cls
 set/p source_path=<"%temp%\mesader-sourceB.tmp"
 del "%temp%\mesader-sourceB.tmp"
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-::קביעת התיקיה הנוכחית לתיקית המקור
-cd /d "%source_path%"
-
-::במידה והוכנס פרמטר "clean"
-::יבוצע ניקוי קבצים בלבד
-if "%1"=="-clean" set "clear_heb=ליעפ" & goto :intro
-=======
->>>>>>> parent of 2565eed (׳¢׳“׳›׳•׳ ׳•׳™׳¢׳•׳)
-=======
->>>>>>> parent of 2565eed (׳¢׳“׳›׳•׳ ׳•׳™׳¢׳•׳)
 
 :target_folder
 cls
@@ -127,15 +106,6 @@ set "ext=%%~xi"
 call :clear-func
 )
 )
-<<<<<<< HEAD
-<<<<<<< HEAD
-::יציאה במקרה והוגדר ניקוי קבצים בלבד
-if "%1"=="-clean" pause & exit
-::המשך במקרה ולא
-=======
->>>>>>> parent of 2565eed (׳¢׳“׳›׳•׳ ׳•׳™׳¢׳•׳)
-=======
->>>>>>> parent of 2565eed (׳¢׳“׳›׳•׳ ׳•׳™׳¢׳•׳)
 goto :preparing
 
 :clear-func
