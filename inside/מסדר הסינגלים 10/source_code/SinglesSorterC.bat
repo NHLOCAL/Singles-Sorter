@@ -15,9 +15,6 @@ set "csv-file=%appdata%\singles-sorter\singer-list.csv"
 set "personal-csv-file=%appdata%\singles-sorter\personal-singer-list.csv"
 if not exist "%personal-csv-file%" set personal-csv-file=
 
-::מחיקת קובץ לבדיקת עדכון גרסה
-if exist "%temp%\ver-exist-7.tmp" del "%temp%\ver-exist-7.tmp"
-
 :call-num
 ::בדיקת מספר הזמרים הקיים כעת בסקריפט
 ::הדבר נצרך לצורך חישוב הזמן שעבר
@@ -36,13 +33,18 @@ cls
 set/p source_path=<"%temp%\mesader-sourceB.tmp"
 del "%temp%\mesader-sourceB.tmp"
 
+::קביעת התיקיה הנוכחית לתיקית המקור
+cd /d "%source_path%"
+
+::במידה והוכנס פרמטר "clean"
+::יבוצע ניקוי קבצים בלבד
+if "%1"=="-clean" set "clear_heb=ליעפ" & goto :intro
+
 :target_folder
 cls
 set/p h=<"%temp%\mesader-targetB.tmp"
 del "%temp%\mesader-targetB.tmp"
 
-::קביעת התיקיה הנוכחית לתיקית המקור
-cd /d "%source_path%"
 
 ::קביעת משתנים לצורך הגדרות המשתמש
 ::================================
@@ -106,6 +108,10 @@ set "ext=%%~xi"
 call :clear-func
 )
 )
+
+::יציאה במקרה והוגדר ניקוי קבצים בלבד
+if "%1"=="-clean" pause & exit
+::המשך במקרה ולא
 goto :preparing
 
 :clear-func
@@ -121,6 +127,8 @@ set "new_filename=%new_filename: מוזיקה מכל הלב=%"
 set "new_filename=%new_filename: - מייל מיוזיק=%"
 ren "%file%%ext%" "%new_filename%%ext%"
 exit /b
+
+
 
 
 :preparing
