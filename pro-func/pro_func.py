@@ -11,15 +11,19 @@ from bidi.algorithm import get_display
 
 
 def pro_scanner(my_file, root):
+# הפונקציה סורקת את המטאדאטה של השיר ומכניסה אותו למשתנה
     try:
-        artist_file = music_tag.load_file(root + "\\" + my_file)
-        art = artist_file['artist']
-        print(str(art))
+        my_file = root + "\\" + my_file
+        artist_file = music_tag.load_file(my_file)
+        artist = artist_file['artist']
+        target_dict[my_file] = artist
     except:
         pass
 
    
 def main():
+    global target_dict
+    target_dict = {}
     dir_path = str(sys.argv[1])
     if (dir_path != "") and (os.path.exists(dir_path)):
         for root, dirs, files in os.walk(dir_path):
@@ -27,6 +31,10 @@ def main():
             #continue
             for my_file in files:
                 pro_scanner(my_file, root)
+        dict_list = target_dict.items()        
+        for item in dict_list:
+            print("move " + str(item[0]) + " to " + str(item[1]))
+            
     os.system('pause')
 
 if __name__ == '__main__':
