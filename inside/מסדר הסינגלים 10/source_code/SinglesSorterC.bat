@@ -2,7 +2,7 @@
 ::הסקריפט מיועד לציבור החרדי ובשל כך הדאטה שלו מותאמת לציבור זה
 ::קרדיט: nh.local11@gmail.com
 
-@echo o
+@echo on
 ::הגדרות של שפה, צבע, כותרת וגודל החלון
 ::ועוד מספר משתנים חשובים
 chcp 1255>nul
@@ -33,19 +33,20 @@ color f1
 
 :beginning
 cls
-set source_path=%1
+set/p source_path=<"%temp%\mesader-sourceB.tmp"
+del "%temp%\mesader-sourceB.tmp"
 
 ::קביעת התיקיה הנוכחית לתיקית המקור
 cd /d "%source_path%"
 
 ::במידה והוכנס פרמטר "clean"
 ::יבוצע ניקוי קבצים בלבד
-if %2==/clean set "clear_heb=ליעפ" & goto :intro
+if "%1"=="-clean" set "clear_heb=ליעפ" & goto :intro
 
 :target_folder
 cls
-set h=%2
-
+set/p h=<"%temp%\mesader-targetB.tmp"
+del "%temp%\mesader-targetB.tmp"
 
 
 ::קביעת משתנים לצורך הגדרות המשתמש
@@ -111,7 +112,7 @@ call :clear-func
 )
 )
 ::יציאה במקרה והוגדר ניקוי קבצים בלבד
-if %2==/clean pause & exit
+if "%1"=="-clean" pause & exit
 ::המשך במקרה ולא
 goto :preparing
 
