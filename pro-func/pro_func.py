@@ -31,9 +31,13 @@ def main():
             #continue
             for my_file in files:
                 pro_scanner(my_file, root)
-        dict_list = target_dict.items()        
+        dict_list = target_dict.items()          
         for item in dict_list:
-            print("move " + str(item[0]) + " to " + str(item[1]))
+            file_name = str(item[0])
+            art_name = str(item[1])
+            if art_name.isdigit():
+                continue
+            print("move " + file_name + " to " + art_name)
             
     os.system('pause')
 
