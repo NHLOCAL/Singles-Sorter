@@ -3,7 +3,11 @@
 ::χψγιθ: nh.local11@gmail.com
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 @echo on
+=======
+@echo off
+>>>>>>> parent of 2565eed (ΧΆΧ“Χ›Χ•Χ Χ•Χ™ΧΆΧ•Χ)
 =======
 @echo off
 >>>>>>> parent of 2565eed (ΧΆΧ“Χ›Χ•Χ Χ•Χ™ΧΆΧ•Χ)
@@ -40,6 +44,7 @@ cls
 set/p source_path=<"%temp%\mesader-sourceB.tmp"
 del "%temp%\mesader-sourceB.tmp"
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 ::χαιςϊ δϊιχιδ δπεληιϊ μϊιχιϊ δξχεψ
 cd /d "%source_path%"
@@ -47,6 +52,8 @@ cd /d "%source_path%"
 ::αξιγδ εδελπρ τψξθψ "clean"
 ::ιαεφς πιχει χαφιν αμαγ
 if "%1"=="-clean" set "clear_heb=μιςτ" & goto :intro
+=======
+>>>>>>> parent of 2565eed (ΧΆΧ“Χ›Χ•Χ Χ•Χ™ΧΆΧ•Χ)
 =======
 >>>>>>> parent of 2565eed (ΧΆΧ“Χ›Χ•Χ Χ•Χ™ΧΆΧ•Χ)
 
@@ -121,9 +128,12 @@ call :clear-func
 )
 )
 <<<<<<< HEAD
+<<<<<<< HEAD
 ::ιφιΰδ αξχψδ εδεβγψ πιχει χαφιν αμαγ
 if "%1"=="-clean" pause & exit
 ::δξωκ αξχψδ εμΰ
+=======
+>>>>>>> parent of 2565eed (ΧΆΧ“Χ›Χ•Χ Χ•Χ™ΧΆΧ•Χ)
 =======
 >>>>>>> parent of 2565eed (ΧΆΧ“Χ›Χ•Χ Χ•Χ™ΧΆΧ•Χ)
 goto :preparing
