@@ -35,7 +35,7 @@ def main():
         for item in dict_list:
             file_name = str(item[0])
             art_name = str(item[1])
-            if art_name.isdigit() or art_name.isalpha() or "&" in art_name or art_name == "" or "," in art_name or len(art_name) >= 20:
+            if art_name.isdigit() or art_name.isalpha() or "&" in art_name or art_name == "" or "," in art_name or len(art_name.split()) >= 3:
                 continue
             print("move " + file_name + " to " + art_name)
             
