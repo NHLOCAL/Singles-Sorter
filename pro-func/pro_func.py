@@ -5,23 +5,35 @@ import sys
 # יבוא פונצקיה לקריאת מטאדאטה של קובץ
 import music_tag
 
-# יבוא פונצקיה לקריאת עץ תיקיות
+# יבוא פונקציה לקריאת עץ תיקיות
 from os.path import join, getsize
 
-# יבוא פונצקיה עבור תצוגת האותיות העבריות
+# יבוא פונקציה עבור תצוגת האותיות העבריות
 from bidi.algorithm import get_display
 
 
 def pro_scanner(my_file, root):
     """
-    פונקציית סורקת את המטאדאטה של השיר ומכניסה אותו למשתנה
+    פונקציית סורקת את המטאדאטה של השיר ומכניסה את האמן למשתנה
+    
+    תנאים:
+    my_file (str) - שם הקובץ שנסרק
+    root (str) - נתיב התיקייה האב
+    
+    תוצאה:
+    מכניס את האמן שנמצא במטאדאטה של השיר למשתנה target_dict
     """
     try:
+        # בדיקה האם הקובץ הוא קובץ MP3
         if not my_file.endswith(".mp3"):
             return
+        # יצירת נתיב מלא לקובץ
         my_file = root + "\\" + my_file
+        # טעינת מטאדאטה של השיר
         artist_file = music_tag.load_file(my_file)
+        # קבלת אמן מטאדאטה של השיר
         artist = artist_file['artist']
+        # הכנסת נתוני האמן למשתנה הגלובלי
         if artist:
             target_dict[my_file] = artist
     except:
@@ -29,8 +41,19 @@ def pro_scanner(my_file, root):
 
 
 def main():
+    """
+    הפונקציה המרכיבת את הפקודה הראשית של התכנית. היא מסורקת את התיקיות והקבצים תחת נתיב שצוין ומכניסה את האמנים שמופיעים במטאדאטה של השירים למשתנה גלובלי
+    
+    תנאים:
+    אין
+    
+    תוצאה:
+    מכניס את האמנים שמופיעים במטאדאטה של השירים למשתנה גלובלי
+    """
+    # הגדרת משתנה גלובלי למעט את התגיות הראשיות
     global target_dict
     target_dict = {}
+    # קבלת נתיב משתנה
     dir_path = str(sys.argv[1])
     if (dir_path != "") and (os.path.exists(dir_path)):
         for root, dirs, files in os.walk(dir_path):
