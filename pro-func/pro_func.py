@@ -55,12 +55,15 @@ def main():
     target_dict = {}
     # קבלת נתיב משתנה
     dir_path = str(sys.argv[1])
+    
+    # מעבר על עץ תיקיות והפעלת פונקציה לבדיקת שם אמן הקובץ
     if (dir_path != "") and (os.path.exists(dir_path)):
         for root, dirs, files in os.walk(dir_path):
             for my_file in files:
                 pro_scanner(my_file, root)
-                
-    dict_list = target_dict.items()          
+          
+    dict_list = target_dict.items()
+    # מעבר על תוצאות הסריקה והדפסתם בכפוף למספר תנאים
     for file_name, artist_item in dict_list:
         artist = artist_item.value
         if len(artist.split()) >= 3:
