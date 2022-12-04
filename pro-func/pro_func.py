@@ -22,7 +22,8 @@ def pro_scanner(my_file, root):
         my_file = root + "\\" + my_file
         artist_file = music_tag.load_file(my_file)
         artist = artist_file['artist']
-        target_dict[my_file] = artist
+        if artist:
+            target_dict[my_file] = artist
     except:
         pass
 
@@ -36,13 +37,12 @@ def main():
             for my_file in files:
                 pro_scanner(my_file, root)
                 
-        dict_list = target_dict.items()          
-        for item in dict_list:
-            file_name = str(item[0])
-            art_name = str(item[1])
-            if art_name.isdigit() or art_name.isalpha() or "&" in art_name or art_name == "" or "," in art_name or len(art_name.split()) >= 3:
-                continue
-            print("move " + file_name + " to " + art_name)
+    dict_list = target_dict.items()          
+    for file_name, artist_item in dict_list:
+        artist = artist_item.value
+        if artist.isdigit() or artist.isalpha() or "&" in artist or artist == "" or "," in artist or len(artist.split()) >= 3:
+            continue
+        print("move " + file_name + " to " + artist)
 
 
 if __name__ == '__main__':
