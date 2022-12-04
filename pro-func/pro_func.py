@@ -63,9 +63,10 @@ def main():
     dict_list = target_dict.items()          
     for file_name, artist_item in dict_list:
         artist = artist_item.value
-        if artist.isdigit() or artist.isalpha() or "&" in artist or artist == "" or "," in artist or len(artist.split()) >= 3:
+        if len(artist.split()) >= 3:
             continue
-        print("move " + file_name + " to " + artist)
+        elif all(c in 'אבגדהוזחטיכלמנסעפצקרשתךםןףץ ' for c in artist):
+            print("move " + file_name + " to " + artist)
 
 
 if __name__ == '__main__':
