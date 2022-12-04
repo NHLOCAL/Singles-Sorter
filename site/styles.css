@@ -1,0 +1,56 @@
+/* The sidebar menu */
+.sidenav {
+  height: 100%; /* Full-height: remove this if you want "auto" height */
+  width: 250px; /* Set the width of the sidebar */
+  position: fixed; /* Fixed Sidebar (stay in place on scroll) */
+  z-index: 5; /* Stay on top */
+  top: 0; /* Stay at the top */
+  right: 0;
+  background-color: #005E8A; /* Black */
+  overflow-x: hidden; /* Disable horizontal scroll */
+  padding-top: 20px;
+}
+
+.sidenav img {
+  padding: 20px 40px 16px 26px;
+  bottom: 40px;
+  position: fixed;
+}
+/* The navigation menu links */
+.sidenav h3 {
+  padding: 20px 40px 16px 26px;
+  font-size: 25px;
+  color: white;
+  display: block;
+}
+
+/* Style page content */
+.main {
+  margin-right: 160px; /* Same as the width of the sidebar */
+  padding: 0px 10px;
+}
+
+/* On smaller screens, where height is less than 450px, change the style of the sidebar (less padding and a smaller font size) */
+@media screen and (max-height: 450px) {
+  .sidenav {padding-top: 15px;}
+  .sidenav a {font-size: 18px;}
+}
+
+body {
+  margin: 5px 300px 40px 140px;
+}
+
+a:link.butt, a:visited.butt, input.butt{
+  background-color: #7092BE;
+  color: white;
+  padding: 15px 25px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+}
+
+a:hover.butt, a:active.butt, input:active.butt, input:hover.butt{
+  background-color: #4E6685;
+}
+
+body {font-family: Tahoma;}
