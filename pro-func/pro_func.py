@@ -61,7 +61,8 @@ def main():
         for root, dirs, files in os.walk(dir_path):
             for my_file in files:
                 pro_scanner(my_file, root)
-          
+     
+    # המרת מילון המכיל את תוצאות הסריקה לרשימה
     dict_list = target_dict.items()
     # מעבר על תוצאות הסריקה והדפסתם בכפוף למספר תנאים
     for file_name, artist_item in dict_list:
