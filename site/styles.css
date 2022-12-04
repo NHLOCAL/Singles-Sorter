@@ -40,6 +40,16 @@ body {
   margin: 5px 300px 40px 140px;
 }
 
+.butt {
+	width: 120px;
+	height: 70px;
+	left: 40px;
+	float: left;
+	margin: 30px;
+	position: fixed;
+	bottom: 30px;
+}
+
 a:link.butt, a:visited.butt, input.butt{
   background-color: #7092BE;
   color: white;
