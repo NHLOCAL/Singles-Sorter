@@ -22,8 +22,9 @@
 }
 
 .sidenav img {
-  padding: 220px 40px 16px 26px;
-  bottom: 20px
+  padding: 20px 40px 16px 26px;
+  bottom: 40px;
+  position: fixed;
 }
 /* The navigation menu links */
 .sidenav h3 {
@@ -49,7 +50,7 @@ body {
   margin: 5px 300px 40px 140px;
 }
 
-a:link.butt, a:visited.butt {
+a:link.butt, a:visited.butt, input.butt{
   background-color: #7092BE;
   color: white;
   padding: 15px 25px;
@@ -58,7 +59,7 @@ a:link.butt, a:visited.butt {
   display: inline-block;
 }
 
-a:hover.butt, a:active.butt {
+a:hover.butt, a:active.butt, input:active.butt, input:hover.butt{
   background-color: #4E6685;
 }
 
@@ -72,11 +73,12 @@ body {font-family: Tahoma;}
   <br>
   <img style="border-radius: 1%;" src="https://github.com/NHLOCAL/Singles-Sorter/blob/main/inside/%D7%9E%D7%A1%D7%93%D7%A8%20%D7%94%D7%A1%D7%99%D7%A0%D7%92%D7%9C%D7%99%D7%9D%2010/icons/logo.png?raw=true" width="150" alt="אייקון התוכנה">
 </div>
-<div style="width: 100px; float:right; height:100px; margin:30px">
-  <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSc0hSn9jV5FOhZxO29uH0gLpTG7_QTTmitz5-U4yL1Nxv_pXA/viewform?embedded=true" width="640" height="650" frameborder="0" marginheight="0" marginwidth="0">בטעינה…</iframe>
+<div style="width:50%; float:right; height:90%; margin:30px; right:280px; position: fixed;">
+  <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSc0hSn9jV5FOhZxO29uH0gLpTG7_QTTmitz5-U4yL1Nxv_pXA/viewform?embedded=true" width="90%" height="100%" frameborder="0" marginheight="0" marginwidth="0">בטעינה…</iframe>
 </div>
-<div style="width: 200px; float:left; height:400px; margin:50px;">	
-  <a class="butt"; href="https://nhlocal.github.io/Singles-Sorter/">חזור אחורה</a>
+<div style="width:20%; height:10%; left:80px; float:left; margin:30px; position: fixed; bottom: 20px;">	
+
+<input class="butt" type="button" value="תחזור!" onclick="history.back()">
 </div>
 
 </body>
