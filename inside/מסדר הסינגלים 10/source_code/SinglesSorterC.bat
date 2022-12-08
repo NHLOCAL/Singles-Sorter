@@ -179,7 +179,10 @@ if %c_or_m%==del set b= & set par=/q
 
 ::העתקת הסינגלים בכפוף לכמה תנאים
 for %tree% %%d in ("%a%") do if exist %%d set xx=xx
-if exist %b% if %xx%==xx for %tree% %%e in (%a%) do %c_or_m% %par% "%%e" %b%>>םוכיס
+
+if defined b if exist %b% (set xx=xx) else (set xx=vv)
+
+if "%xx%"=="xx" for %tree% %%e in (%a%) do %c_or_m% %par% "%%e" %b%>>םוכיס
 
 ::מעבר למספר הבא לצורך חישוב ההתקדמות
 set/a d=d+1
@@ -204,7 +207,16 @@ echo                                   !רבד אצמנ אל
 if exist םוכיס (del םוכיס) else (goto :intro_pro)
 echo.
 ::אם התבצעה העתקה ניתנת אפשרות למחוק את קבצי המקור
-if not "%pro_scan%"=="True" if %c_or_m%==xcopy echo. & echo                 [2] תעכ שקה םיירוקמה םיצבקה תא קוחמל ןיינועמ התא םא & echo                         [1] שקה םתוא רומשל ןיינועמ התא םא & echo. & echo               !הקיחמב רוחבל רוסא היקית התוא םה דעיהו ביתנה םא !תוריהז & choice /c 12>nul & if errorlevel 2 set c_or_m=del & goto preparing & if errorlevel 1 goto :intro_pro
+if not "%pro_scan%"=="True" if %c_or_m%==xcopy (
+echo.
+echo                 [2] תעכ שקה םיירוקמה םיצבקה תא קוחמל ןיינועמ התא םא
+echo                         [1] שקה םתוא רומשל ןיינועמ התא םא
+echo.
+echo               !הקיחמב רוחבל רוסא היקית התוא םה דעיהו ביתנה םא !תוריהז
+choice /c 12>nul
+if errorlevel 2 set c_or_m=del & goto preparing
+if errorlevel 1 goto :intro_pro
+)
 
 :intro_pro
 ::אם הוגדרה סריקה לפי אמן
@@ -279,13 +291,24 @@ set "artist=%artist:~1%"
 ::אם הוא קיים מתבצעת העברה של השיר
 ::לתוך תיקיה המוגדרת כשם האמן
 if "%abc_heb%"=="ליעפ" set w=%artist:~0,1%\
-find /c "%artist%" "%csv-file%">nul
-if %errorlevel%==0 (
-if "%fixed_heb%"=="ליעפ אל" (if not exist "%h%\%w%%artist%%s%" md "%h%\%w%%artist%%s%"
-) else (
-if exist "%h%\%w%%artist%" if not exist "%h%\%w%%artist%%s%" md "%h%\%w%%artist%%s%")
-if exist "%h%\%w%%artist%%s%" %c_or_m% %par% "%file%" "%h%\%w%%artist%%s%">>םוכיס
+
+::הגדרת שם משתנה עבור נתיב התיקיה לנוחות קריאת הקוד
+set file_path="%h%\%w%%artist%%s%"
+
+::בדיקה אם הוגדה העתקה לתיקיות קיימות בלבד
+::אם כן, תתבצע העתקה מידית
+::אם לא, יתבצע חיפוש שם האמן בתוך רשימת הזמרים
+
+if "%fixed_heb%"=="ליעפ" (
+if exist "%h%\%w%%artist%" if not exist %file_path% md %file_path%
+if exist %file_path% %c_or_m% %par% "%file%" %file_path%>>םוכיס
+exit /b
 )
+
+find /c "%artist%" "%csv-file%">nul
+if %errorlevel%==0 (if not exist %file_path% md %file_path%
+if exist %file_path% %c_or_m% %par% "%file%" %file_path%>>םוכיס)
+
 ::יציאה מהפונקציה וחזרה לפקודת הפור
 exit /b
 
