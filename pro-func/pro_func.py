@@ -24,11 +24,11 @@ def pro_scanner(my_file, root):
     מכניס את האמן שנמצא במטאדאטה של השיר למשתנה target_dict
     """
     try:
-        # בדיקה האם הקובץ הוא קובץ MP3
-        if not my_file.endswith(".mp3"):
-            return
         # יצירת נתיב מלא לקובץ
         my_file = root + "\\" + my_file
+        # בדיקה האם הקובץ הוא קובץ MP3
+        if not (my_file.endswith(".mp3") or my_file.endswith(".wav") or my_file.endswith(".wma")):
+            return
         # טעינת מטאדאטה של השיר
         artist_file = music_tag.load_file(my_file)
         # קבלת אמן מטאדאטה של השיר
@@ -55,7 +55,11 @@ def main():
     target_dict = {}
     # קבלת נתיב משתנה
     dir_path = str(sys.argv[1])
-    
+    try:
+        target_dir = str(sys.argv[2])
+    except:
+        pass
+
     # מעבר על עץ תיקיות והפעלת פונקציה לבדיקת שם אמן הקובץ
     if (dir_path != "") and (os.path.exists(dir_path)):
         for root, dirs, files in os.walk(dir_path):
@@ -67,11 +71,14 @@ def main():
     # מעבר על תוצאות הסריקה והדפסתם בכפוף למספר תנאים
     for file_name, artist_item in dict_list:
         artist = artist_item.value
-        if len(artist.split()) >= 3:
+        if len(artist.split()) >= 4:
             continue
-        elif all(c in 'אבגדהוזחטיכלמנסעפצקרשתךםןףץ ' for c in artist):
-            print("move " + file_name + " to " + artist)
-
+        elif all(c in "אבגדהוזחטיכלמנסעפצקרשתךםןףץ' " for c in artist):
+            try:
+                os.system("md " + '"' + target_dir + "\\" + artist +'"')
+                os.system('move "' + file_name + '" "' +  target_dir + "\\" + artist + '"')
+            except:
+                 print("move " + file_name + " to " + artist)
 
 if __name__ == '__main__':
     main()
