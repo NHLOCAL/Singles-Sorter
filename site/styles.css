@@ -63,4 +63,18 @@ a:hover.butt, a:active.butt, input:active.butt, input:hover.butt{
   background-color: #4E6685;
 }
 
+
+a:link.center_butt, a:visited.center_butt {
+  background-color: #f44336;
+  color: white;
+  padding: 15px 25px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+}
+
+a:hover.center_butt, a:active.center_butt {
+  background-color: red;
+}
+
 body {font-family: Tahoma;}
