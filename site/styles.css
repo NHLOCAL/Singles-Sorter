@@ -31,6 +31,18 @@
   display: block;
 }
 
+/* הגדרת כפתור נוכחי */
+.sidenav h3.current {
+  text-align: center;
+  text-decoration: none;
+  background-color: #C0C0C0;
+  color: black;
+  display: inline-block;
+  padding: 20px 40px 26px 74px;
+  font-size: 25px;
+  color: white;
+}
+
 /* הגדרת עיצוב לינק ברירת מחדל לסרגל הצידי */
 .sidenav a:link, a:visited, input {
   color: white;
