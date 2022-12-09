@@ -12,7 +12,7 @@
 }
 
 .sidenav img {
-  padding: 20px 40px 16px 26px;
+  right: 45px;
   bottom: 40px;
   position: fixed;
 }
@@ -22,6 +22,25 @@
   font-size: 25px;
   color: white;
   display: block;
+}
+
+.sidenav h4 {
+  padding: 0px 40px 16px 0px;
+  font-size: 20px;
+  color: white;
+  display: block;
+}
+
+/* הגדרת עיצוב לינק ברירת מחדל לסרגל הצידי */
+.sidenav a:link, a:visited, input {
+  color: white;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.sidenav a:hover, a:active, input:active, input:hover {
+  color: #73FBFD;
 }
 
 /* Style page content */
@@ -63,7 +82,7 @@ a:hover.butt, a:active.butt, input:active.butt, input:hover.butt{
   background-color: #4E6685;
 }
 
-
+/* הגדרת כפתור אדום באמצע הדף */
 a:link.center_butt, a:visited.center_butt {
   background-color: #f44336;
   color: white;
