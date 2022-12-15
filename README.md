@@ -4,7 +4,7 @@
 
 
 
-**הגרסה הנוכחית היא 9.2**
+**הגרסה הנוכחית היא 10.0**
 
 סקריפט שמסדר קבצי מוזיקה בודדים בתיקיות מסודרות לפי אמנים.
 
@@ -20,12 +20,6 @@
  ניתן להעתיק ולהפיץ בשמחה!🤩
 </div>
  
----
-
-## בקרוב: גרסה 10.0!
-<div id="header" align="center">
-  <img src="https://github.com/NHLOCAL/Singles-Sorter/blob/main/inside/%D7%9E%D7%A1%D7%93%D7%A8%20%D7%94%D7%A1%D7%99%D7%A0%D7%92%D7%9C%D7%99%D7%9D%2010/%E2%80%8F%E2%80%8Fgui-version.png?raw=true" width="600"/>
-
 ---
 
 </div>
