@@ -38,9 +38,11 @@
   background-color: #C0C0C0;
   color: black;
   display: inline-block;
-  padding: 20px 40px 26px 74px;
+  width: 100%;
+  height: 60px;
+  padding: 20px 0px 0px 10px;
   font-size: 25px;
-  color: white;
+  color: blue;
 }
 
 /* הגדרת עיצוב לינק ברירת מחדל לסרגל הצידי */
