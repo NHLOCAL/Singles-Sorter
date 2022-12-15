@@ -18,14 +18,16 @@
 }
 /* The navigation menu links */
 .sidenav h3 {
-  padding: 20px 40px 16px 26px;
+  text-align: center;
+  padding: 20px 0px 0px 10px;
   font-size: 25px;
   color: white;
   display: block;
 }
 
 .sidenav h4 {
-  padding: 0px 40px 16px 0px;
+  text-align: center;
+  padding: 20px 0px 0px 10px;
   font-size: 20px;
   color: white;
   display: block;
@@ -42,7 +44,7 @@
   height: 60px;
   padding: 20px 0px 0px 10px;
   font-size: 25px;
-  color: blue;
+  color: #2A3087;
 }
 
 /* הגדרת עיצוב לינק ברירת מחדל לסרגל הצידי */
