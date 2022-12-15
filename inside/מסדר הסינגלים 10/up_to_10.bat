@@ -8,7 +8,9 @@ echo.
 echo                    הווצא ץבוקכ רתוי ןימז וניא םילגניסה רדסמ
 echo                         !תבצועמהו השדחה הסרגה דרת דימ
 echo.
+timeout 3
+
 start https://nhlocal.github.io/Singles-Sorter/site/download.html
 
+del %0%
 
-pause
