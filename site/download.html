@@ -23,12 +23,18 @@
 <body>
 
 <script>
-    setTimeout(myFunc, 2000);
-    document.location.href = 'https://github.com/NHLOCAL/Singles-Sorter/releases/download/v9.2/Singles-Sorter-9.2.bat';
-    
+    // הגדרת משתנה להחלפה בכל עדכון גרסה
+    var cur_ver = "10.0"
+
+    // הורדת הגרסה האחרונה
+    document.location.href = 'https://github.com/NHLOCAL/Singles-Sorter/releases/download/v' + cur_ver + '/Singles-Sorter-' + cur_ver + '.exe';
+	// השהייה של שתי שניות לפני סגירת הכרטיסיה
+	setTimeout(myFunc, 2000);
+
+// הגדרת פונקצית סגירת העמוד
 function myFunc() {
         window.close();
-}	
+}
     
 </script>
 
