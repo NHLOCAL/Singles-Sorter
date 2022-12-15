@@ -11,8 +11,10 @@ from os.path import join, getsize
 # יבוא פונקציה עבור תצוגת האותיות העבריות
 from bidi.algorithm import get_display
 
+from jibrish_to_hebrew import jibrish_to_hebrew
 
-def pro_scanner(my_file, root):
+
+def artist_from_song(my_file, root):
     """
     פונקציית סורקת את המטאדאטה של השיר ומכניסה את האמן למשתנה
     
@@ -64,7 +66,7 @@ def main():
     if (dir_path != "") and (os.path.exists(dir_path)):
         for root, dirs, files in os.walk(dir_path):
             for my_file in files:
-                pro_scanner(my_file, root)
+                artist_from_song(my_file, root)
      
     # המרת מילון המכיל את תוצאות הסריקה לרשימה
     dict_list = target_dict.items()
@@ -73,12 +75,15 @@ def main():
         artist = artist_item.value
         if len(artist.split()) >= 4:
             continue
-        elif all(c in "אבגדהוזחטיכלמנסעפצקרשתךםןףץ' " for c in artist):
+        elif any(c in "àáâãäåæçèéëìîðñòôö÷øùúêíïóõ" for c in artist):
+            artist = jibrish_to_hebrew(artist)
+            
+        if all(c in "אבגדהוזחטיכלמנסעפצקרשתךםןףץ' " for c in artist):
             try:
                 os.system("md " + '"' + target_dir + "\\" + artist +'"')
                 os.system('move "' + file_name + '" "' +  target_dir + "\\" + artist + '"')
             except:
-                 print("move " + file_name + " to " + artist)
+                print("move " + file_name + " to " + artist)
 
 if __name__ == '__main__':
     main()

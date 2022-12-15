@@ -26,11 +26,17 @@ def jibrish_to_hebrew(string):
         if letter == " ":
             new_string = new_string + " "
         elif setting == "heb":
-            new_letter = jib_to_heb[letter]
-            new_string = new_string + new_letter
+            try:
+                new_letter = jib_to_heb[letter]
+                new_string = new_string + new_letter
+            except:
+                pass
         elif setting == "jib":
-            new_letter = heb_to_jib[letter]
-            new_string = new_string + new_letter
+            try:
+                new_letter = heb_to_jib[letter]
+                new_string = new_string + new_letter
+            except:
+                pass
             
     return new_string
 
