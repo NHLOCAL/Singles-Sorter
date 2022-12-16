@@ -37,7 +37,7 @@ def artist_from_song(my_file, root):
         artist = artist_file['artist']
         # הכנסת נתוני האמן למשתנה הגלובלי
         if artist:
-            target_dict[my_file] = artist
+            return my_file, artist
     except:
         pass
 
@@ -52,9 +52,8 @@ def main():
     תוצאה:
     מכניס את האמנים שמופיעים במטאדאטה של השירים למשתנה גלובלי
     """
-    # הגדרת משתנה גלובלי למעט את התגיות הראשיות
-    global target_dict
-    target_dict = {}
+    # יצירת רשימה ריקה להכנסת מידע על הקבצים
+    info_list = []
     # קבלת נתיב משתנה
     dir_path = str(sys.argv[1])
     try:
@@ -66,12 +65,12 @@ def main():
     if (dir_path != "") and (os.path.exists(dir_path)):
         for root, dirs, files in os.walk(dir_path):
             for my_file in files:
-                artist_from_song(my_file, root)
-     
-    # המרת מילון המכיל את תוצאות הסריקה לרשימה
-    dict_list = target_dict.items()
+                info_file = artist_from_song(my_file, root)
+                if info_file:
+                    info_list.append(info_file)
+                    
     # מעבר על תוצאות הסריקה והדפסתם בכפוף למספר תנאים
-    for file_name, artist_item in dict_list:
+    for file_name, artist_item in info_list:
         artist = artist_item.value
         if len(artist.split()) >= 4 or len(artist.split()) <= 1:
             continue
