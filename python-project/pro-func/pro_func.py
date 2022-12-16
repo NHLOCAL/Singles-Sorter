@@ -73,7 +73,7 @@ def main():
     # מעבר על תוצאות הסריקה והדפסתם בכפוף למספר תנאים
     for file_name, artist_item in dict_list:
         artist = artist_item.value
-        if len(artist.split()) >= 4:
+        if len(artist.split()) >= 4 or len(artist.split()) <= 1:
             continue
         elif any(c in "àáâãäåæçèéëìîðñòôö÷øùúêíïóõ" for c in artist):
             artist = jibrish_to_hebrew(artist)
