@@ -48,14 +48,16 @@ def artist_from_song(my_file, root):
 
 
 
-def scan_dir(dir_path, target_dir=None):
+def scan_dir(dir_path, target_dir=None, copy_mode=False):
     """
 הפונקציה המרכיבת את הפקודה הראשית של התכנית. היא סורקת את התיקיות והקבצים תחת נתיב שצוין ויוצרת רשימה של קבצים להעתקה.
 בסוף התהליך היא מעתיקה אותם אם הוכנס פרמטר של תיקית יעד.
     
 תנאים:
     פרמטר 1 = נתיב תיקיה לסריקה
-    פרמטר 2 = נתיב תיקית יעד להעברה אליה
+    פרמטר 2 = נתיב תיקית יעד להעברה אליה (אופציונלי)
+    פרמטר 3 = הפעלת מצב העתקה (ברירת המחדל היא העברה).
+מוגדר על ידי Trte או False.
     
 תוצאה:
     מדפיס את רשימת האמנים שמופיעים במטאדאטה של השירים, ומעתיק אותם ליעד.
@@ -89,9 +91,12 @@ def scan_dir(dir_path, target_dir=None):
                 # יצירת תיקית יעד אם אינה קיימת
                 if not os.path.isdir(target_path):
                     os.makedirs(target_path)
-                
-                # העברת הקובץ לתיקית האמן התואמת
-                shutil.move(file_path, target_path)
+                if copy_mode:
+                    # העתקת הקובץ לתיקית האמן התואמת
+                    shutil.copyfile(file_path, target_path)
+                else:
+                    # העברת הקובץ לתיקית האמן התואמת
+                    shutil.move(file_path, target_path)
 
 
 def main():
