@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 import os
+
 import sys
+
+# פונקציה להעתקת והעברת קבצים
+import shutil
 
 # יבוא פונקציה לקריאת מטאדאטה של קובץ
 import music_tag
@@ -17,13 +21,13 @@ from jibrish_to_hebrew import jibrish_to_hebrew
 
 def artist_from_song(my_file, root):
     """
-    פונקציית סורקת את המטאדאטה של השיר ומכניסה את האמן למשתנה
+פונקציית סורקת את המטאדאטה של השיר ומכניסה את האמן למשתנה
     
-    תנאים:
+תנאים:
     my_file (str) - שם הקובץ שנסרק
     root (str) - נתיב התיקייה האב
     
-    תוצאה:
+תוצאה:
     ערך המכיל את שם הקובץ, וערך המכיל את שם האמן שלו
     """
     try:
@@ -43,25 +47,23 @@ def artist_from_song(my_file, root):
         pass
 
 
-def main():
+
+def scan_dir(dir_path, target_dir=None):
     """
-    הפונקציה המרכיבת את הפקודה הראשית של התכנית. היא סורקת את התיקיות והקבצים תחת נתיב שצוין ומכניסה את האמנים שמופיעים במטאדאטה של השירים למשתנה גלובלי
+הפונקציה המרכיבת את הפקודה הראשית של התכנית. היא סורקת את התיקיות והקבצים תחת נתיב שצוין ויוצרת רשימה של קבצים להעתקה.
+בסוף התהליך היא מעתיקה אותם אם הוכנס פרמטר של תיקית יעד.
     
-    תנאים:
-    אין
+תנאים:
+    פרמטר 1 = נתיב תיקיה לסריקה
+    פרמטר 2 = נתיב תיקית יעד להעברה אליה
     
-    תוצאה:
-    מכניס את האמנים שמופיעים במטאדאטה של השירים למשתנה גלובלי
+תוצאה:
+    מדפיס את רשימת האמנים שמופיעים במטאדאטה של השירים, ומעתיק אותם ליעד.
     """
+    
     # יצירת רשימה ריקה להכנסת מידע על הקבצים
     info_list = []
-    # קבלת נתיב משתנה
-    dir_path = str(sys.argv[1])
-    try:
-        target_dir = str(sys.argv[2])
-    except:
-        pass
-
+    
     # מעבר על עץ תיקיות והפעלת פונקציה לבדיקת שם אמן הקובץ
     if (dir_path != "") and (os.path.exists(dir_path)):
         for root, dirs, files in os.walk(dir_path):
@@ -71,20 +73,42 @@ def main():
                     info_list.append(info_file)
                     
     # מעבר על תוצאות הסריקה והדפסתם בכפוף למספר תנאים
-    for file_name, artist_item in info_list:
+    for file_path, artist_item in info_list:
         artist = artist_item.value
         if len(artist.split()) >= 4 or len(artist.split()) <= 1:
             continue
         elif any(c in "àáâãäåæçèéëìîðñòôö÷øùúêíïóõ" for c in artist):
             artist = jibrish_to_hebrew(artist)
-            
-        if all(c in "אבגדהוזחטיכלמנסעפצקרשתךםןףץ' " for c in artist):
-            try:
-                os.system("md " + '"' + target_dir + "\\" + artist +'"')
-                os.system('move "' + file_name + '" "' +  target_dir + "\\" + artist + '"')
-            except:
-                print("move " + file_name + " to " + artist)
+
+        if all(c in "אבגדהוזחטיכלמנסעפצקרשתךםןףץ'׳ " for c in artist):
+            if target_dir == None:
+                print(file_path + " == " + artist)
+            else:
+                target_path = '"' + target_dir + "\\" + artist + '"'
+                
+                # יצירת תיקית יעד אם אינה קיימת
+                if not os.path.isdir(target_path):
+                    os.makedirs(target_path)
+                
+                # העברת הקובץ לתיקית האמן התואמת
+                shutil.move(file_path, target_path)
+
+
+def main():
+    # קבלת נתיב משתנה
+    dir_path = str(sys.argv[1])
+    if sys.argv[2:]:
+        target_dir = str(sys.argv[2])
+        # הפעלת פונקצית סריקת הקבצים עם שתי פרמטרים
+        scan_dir(dir_path, target_dir)
+    else:
+        # הפעלת פונקצית סריקת הקבצים עם פרמטר יחיד
+        scan_dir(dir_path)
+    
+
+    
+    
+    os.system('pause')
 
 if __name__ == '__main__':
     main()
-    os.system('pause')
