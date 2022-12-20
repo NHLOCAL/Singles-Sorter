@@ -18,6 +18,8 @@ from bidi.algorithm import get_display
 # יבוא פונקציה להמרת ג'יבריש לעברית תקינה
 from jibrish_to_hebrew import jibrish_to_hebrew
 
+# יבוא פונקציה לזיהוי דמיון בין מחרוזות
+from identify_similarities import true_or_false
 
 def artist_from_song(my_file, root):
     """
@@ -63,6 +65,9 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
     מדפיס את רשימת האמנים שמופיעים במטאדאטה של השירים, ומעתיק אותם ליעד.
     """
     
+    # הגדרת רשימת מחרוזות יוצאות דופן, עליהם המערכת מוגדרת לדלג
+    unusual_list = ["סינגלים", "אבגדהוזחט", "סינגל"]
+    
     # יצירת רשימה ריקה להכנסת מידע על הקבצים
     info_list = []
     
@@ -77,8 +82,16 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
     # מעבר על תוצאות הסריקה והדפסתם בכפוף למספר תנאים
     for file_path, artist_item in info_list:
         artist = artist_item.value
-        if len(artist.split()) >= 4 or len(artist.split()) <= 1:
+        
+        # חזרה לתחילת הלולאה אם שם האמן קיים ברשימת יוצאי הדופן
+        # או אם הוא דומה לפריט כלשהו ברשימת יוצאי הדופן
+        if artist in unusual_list or true_or_false(artist, unusual_list):
+            print(artist + "not good!")
             continue
+            
+        elif len(artist.split()) >= 4 or len(artist.split()) <= 0:
+            continue
+            
         elif any(c in "àáâãäåæçèéëìîðñòôö÷øùúêíïóõ" for c in artist):
             artist = jibrish_to_hebrew(artist)
 
