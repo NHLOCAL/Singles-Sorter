@@ -57,8 +57,6 @@ def true_or_false(text, text_list):
     
 תוצאה:
     אמת או שקר
-
-
     """
     # הפעלת הפונקציה לזיהוי דמיון בין מחרוזות וקבלת ערכי משתנים
     most_similar_string, max_similarity, sum_list = find_text_similarity(text, text_list)
