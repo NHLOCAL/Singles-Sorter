@@ -68,7 +68,7 @@ def Similarity_sure(text, text_list, Similarity_sure=True):
     
     # הגדרת רמת ההתאמה הנדרשת בתרגיל חשבוני בהתאם לפרמטר שהוכנס לפונקציה
     if Similarity_sure == False:
-        Required_level_similarity = 1.0 - (str_len * 0.04)
+        Required_level_similarity = 1.0 - (str_len * 0.03)
     elif Similarity_sure == True:
         Required_level_similarity = 1.0 - (str_len * 0.015)
     
