@@ -84,7 +84,7 @@ def scan_dir(dir_path, target_dir=None):
             if target_dir == None:
                 print(file_path + " == " + artist)
             else:
-                target_path = '"' + target_dir + "\\" + artist + '"'
+                target_path = target_dir + "\\" + artist
                 
                 # יצירת תיקית יעד אם אינה קיימת
                 if not os.path.isdir(target_path):
