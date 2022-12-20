@@ -59,7 +59,7 @@ def true_or_false(text, text_list):
     
     # אם רמת הדמיון מספקת, החזר אמת, אם לא החזר שקר
     if max_similarity > Required_level_similarity:
-        return Required_level_similarity, max_similarity, True
+        return True
     else:
         return False
 
