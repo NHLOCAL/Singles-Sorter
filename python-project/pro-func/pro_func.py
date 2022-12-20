@@ -11,6 +11,7 @@ from os.path import join, getsize
 # יבוא פונקציה עבור תצוגת האותיות העבריות
 from bidi.algorithm import get_display
 
+# יבוא פונקציה להמרת ג'יבריש לעברית תקינה
 from jibrish_to_hebrew import jibrish_to_hebrew
 
 
@@ -23,7 +24,7 @@ def artist_from_song(my_file, root):
     root (str) - נתיב התיקייה האב
     
     תוצאה:
-    מכניס את האמן שנמצא במטאדאטה של השיר למשתנה target_dict
+    ערך המכיל את שם הקובץ, וערך המכיל את שם האמן שלו
     """
     try:
         # יצירת נתיב מלא לקובץ

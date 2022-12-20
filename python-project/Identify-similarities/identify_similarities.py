@@ -68,7 +68,7 @@ def true_or_false(text, text_list):
     Required_level_similarity = 1.0 - (str_len * 0.01)
     
     # אם רמת הדמיון מספקת, החזר אמת, אם לא החזר שקר
-    if max_similarity > Required_level_similarity:
+    if max_similarity >= Required_level_similarity:
         return True
     else:
         return False
@@ -85,8 +85,8 @@ def main():
 
 
 if __name__ == '__main__':
-    text = "אברימי רוט"
-    text_list = ["אברימי לוי", "אברהם פריד", "מוטי שטיינמץ"]
+    text = "אברימי גגגגגרוט"
+    text_list = ["אברימי לוי", "אברהם פריד", "מוטי שטיינמץ", "אברי גגגגגרוט"]
     
     a = true_or_false(text, text_list)
     print(a)
