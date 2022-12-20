@@ -19,7 +19,7 @@ from bidi.algorithm import get_display
 from jibrish_to_hebrew import jibrish_to_hebrew
 
 # יבוא פונקציה לזיהוי דמיון בין מחרוזות
-from identify_similarities import true_or_false
+from identify_similarities import reasonable_resemblance
 
 def artist_from_song(my_file, root):
     """
@@ -85,7 +85,7 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
         
         # חזרה לתחילת הלולאה אם שם האמן קיים ברשימת יוצאי הדופן
         # או אם הוא דומה לפריט כלשהו ברשימת יוצאי הדופן
-        if artist in unusual_list or true_or_false(artist, unusual_list):
+        if artist in unusual_list or reasonable_resemblance(artist, unusual_list):
             print(artist + "not good!")
             continue
             
