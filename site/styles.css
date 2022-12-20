@@ -75,6 +75,17 @@ body {
   margin: 5px 300px 40px 140px;
 }
 
+/* סגנון עבור פריטים הממוקמים בשמאל המסך */
+.left_item {
+	width: 120px;
+	left: 30px;
+	float: left;
+	margin: 20px;
+	position: fixed;
+	top: 20px;
+}
+
+/* סגנון כפתור */
 .butt {
 	width: 120px;
 	height: 70px;
