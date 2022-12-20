@@ -44,8 +44,8 @@ def find_text_similarity(text, text_list):
 
 
 # הפונקציה מקבלת ערכי מספרים מפונקציית "find_text_similarity"
-# הפונקציה מחזירה אמת רק בהתאמה גבוהה מאוד
-def Similarity_sure(text, text_list):
+# הפונקציה מחזירה אמת אם המחרוזות מתאימות
+def Similarity_sure(text, text_list, Similarity_sure=True):
     """
 מחשב את רמת ההתאמה בין מחרוזות, ומחזיר אמת או שקר
 בהתאם לאורך המחרוזת לחיפוש
@@ -54,6 +54,8 @@ def Similarity_sure(text, text_list):
 פרמטרים:
     פרמטר 1 = מחרוזת טקסט
     פרמטר 2 = רשימת מחרוזות טקסט
+    פרמטר 3 = אופציונלי - הגדרת התאמה גבוהה או בינונית.
+ניתן להכניס אמת או שקר. ברירת המחדל היא אמת.
     
 תוצאה:
     אמת או שקר
@@ -64,47 +66,17 @@ def Similarity_sure(text, text_list):
     # ניתוח ערכי המשתנים בהתאם לאורך המחרוזת
     str_len = len(text)
     
-    # הגדרת רמת ההתאמה הנדרשת בתרגיל חשבוני
-    Required_level_similarity = 1.0 - (str_len * 0.04)
+    # הגדרת רמת ההתאמה הנדרשת בתרגיל חשבוני בהתאם לפרמטר שהוכנס לפונקציה
+    if Similarity_sure == False:
+        Required_level_similarity = 1.0 - (str_len * 0.04)
+    elif Similarity_sure == True:
+        Required_level_similarity = 1.0 - (str_len * 0.015)
     
     # אם רמת הדמיון מספקת, החזר אמת, אם לא החזר שקר
     if max_similarity >= Required_level_similarity:
         return True
     else:
         return False
-
-
-# הפונקציה מקבלת ערכי מספרים מפונקציית "find_text_similarity"
-# פונקציה שמגדירה דמיון בין מחרוזות, בסבירות בינונית
-def reasonable_resemblance(text, text_list):
-    """
-מחשב את רמת ההתאמה בין מחרוזות, ומחזיר אמת או שקר
-בהתאם לאורך המחרוזת לחיפוש
-הפונקציה מחזירה אמת אם ישנה התאמה ברמת בינונית
-
-פרמטרים:
-    פרמטר 1 = מחרוזת טקסט
-    פרמטר 2 = רשימת מחרוזות טקסט
-    
-תוצאה:
-    אמת או שקר
-    """
-    # הפעלת הפונקציה לזיהוי דמיון בין מחרוזות וקבלת ערכי משתנים
-    most_similar_string, max_similarity, sum_list = find_text_similarity(text, text_list)
-    
-    # ניתוח ערכי המשתנים בהתאם לאורך המחרוזת
-    str_len = len(text)
-    
-    # הגדרת רמת ההתאמה הנדרשת בתרגיל חשבוני
-    Required_level_similarity = 1.0 - (str_len * 0.015)
-    
-    # אם רמת הדמיון מספקת, החזר אמת, אם לא החזר שקר
-    if max_similarity >= Required_level_similarity:
-        return True
-    else:
-        return False
-
-
 
 
 def main():
