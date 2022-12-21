@@ -64,11 +64,11 @@ def Similarity_sure(text, text_list, Similarity_sure=True):
     most_similar_string, max_similarity, sum_list = find_text_similarity(text, text_list)
     
     # ניתוח ערכי המשתנים בהתאם לאורך המחרוזת
-    str_len = len(text)
-    
+    str_len = len(text.replace(" ", ""))
+
     # הגדרת רמת ההתאמה הנדרשת בתרגיל חשבוני בהתאם לפרמטר שהוכנס לפונקציה
     if Similarity_sure == False:
-        Required_level_similarity = 1.0 - (str_len * 0.03)
+        Required_level_similarity = 1.0 - (str_len * 0.02)
     elif Similarity_sure == True:
         Required_level_similarity = 1.0 - (str_len * 0.015)
     
@@ -80,13 +80,17 @@ def Similarity_sure(text, text_list, Similarity_sure=True):
 
 
 def main():
-    text = "אברימי רוט"
-    text_list = ["אבריימי רוט", "אברימי לוי", "אברהם פריד", "מוטי שטיינמץ", "אברמי רוט", "אברימי רוט"]
-    most_similar_string, max_similarity, sum_list = find_text_similarity(text, text_list)
-    print(f'השם הדומה ביותר למחרוזת הראשונה הוא "{most_similar_string}" עם דמיון של {max_similarity:.2f}')
-    print("-" * 70)
-    for i in sum_list:
-        print("{} {} {}".format(i[0], "=", i[1]))
+    import os
+    text_list = os.listdir(r"J:\שמע\מוזיקה נוספת\יעד")
+    for text in text_list:
+           
+        most_similar_string, max_similarity, sum_list = find_text_similarity(text, text_list)
+        print(f'השם הדומה ביותר למחרוזת הראשונה הוא "{most_similar_string}" עם דמיון של {max_similarity:.2f}')
+        print("-" * 70)
+        
+        # הדפסת רשימת המחרוזות עם רמת הדמיון שלהם למחרוזת הנוכחית
+        for i in sum_list:
+            print("{} {} {}".format(i[0], "=", i[1]))
 
 
 if __name__ == '__main__':

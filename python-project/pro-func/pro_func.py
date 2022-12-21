@@ -66,7 +66,7 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
     """
     
     # הגדרת רשימת מחרוזות יוצאות דופן, עליהם המערכת מוגדרת לדלג
-    unusual_list = ["סינגלים", "סינגל"]
+    unusual_list = ["סינגלים", "סינגל", "אבגדהוזחטיכלמנסעפצקרשתךםןץ", "אמן לא ידוע", "טוב", "לא ידוע", "תודה לך ה"]
     
     # יצירת רשימה ריקה להכנסת מידע על הקבצים
     info_list = []
@@ -83,20 +83,22 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
     for file_path, artist_item in info_list:
         artist = artist_item.value
         
+        if len(artist.split()) >= 4 or len(artist.split()) <= 0:
+            continue        
+        
         # חזרה לתחילת הלולאה אם שם האמן קיים ברשימת יוצאי הדופן
         # או אם הוא דומה לפריט כלשהו ברשימת יוצאי הדופן
         if artist in unusual_list or Similarity_sure(artist, unusual_list, False):
+            print(artist)
             continue
-            
-        if len(artist.split()) >= 4 or len(artist.split()) <= 0:
-            continue
-            
+                      
         elif any(c in "àáâãäåæçèéëìîðñòôö÷øùúêíïóõ" for c in artist):
             artist = jibrish_to_hebrew(artist)
 
         if all(c in "אבגדהוזחטיכלמנסעפצקרשתךםןףץ'׳ " for c in artist):
             if target_dir == None:
-                print(file_path + " == " + artist)
+                pass
+                #print(file_path + " == " + artist)
             else:
                 target_path = target_dir + "\\" + artist
                 

@@ -54,6 +54,12 @@ class SongCopier:
             if not os.path.exists(target_path):
                 os.link(song.file_path, target_path)
 
+import ftfy
+
+def fix_encoding(text):
+    return ftfy.fix_text(text, fix_entities=True)
+
+
 def main(root_dir, target_dir, copy_mode):
     scanner = SongScanner(root_dir)
     songs = scanner.scan()
@@ -61,7 +67,7 @@ def main(root_dir, target_dir, copy_mode):
         copier = SongCopier(target_dir)
         copier.copy(songs)
     else:
-        artists = set([song[1] for song in songs])
+        artists = set([fix_encoding(str(song[1])) for song in songs])
         print(f"Found the following artists: {', '.join([str(artist) for artist in artists])}")
 
 
