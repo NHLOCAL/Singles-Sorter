@@ -89,7 +89,6 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
         # חזרה לתחילת הלולאה אם שם האמן קיים ברשימת יוצאי הדופן
         # או אם הוא דומה לפריט כלשהו ברשימת יוצאי הדופן
         if artist in unusual_list or Similarity_sure(artist, unusual_list, False):
-            print(artist)
             continue
                       
         elif any(c in "àáâãäåæçèéëìîðñòôö÷øùúêíïóõ" for c in artist):
