@@ -70,7 +70,7 @@ def Similarity_sure(text, text_list, Similarity_sure=True):
     if Similarity_sure == False:
         Required_level_similarity = 1.0 - (str_len * 0.02)
     elif Similarity_sure == True:
-        Required_level_similarity = 1.0 - (str_len * 0.015)
+        Required_level_similarity = 1.0 - (str_len * 0.01)
     
     # אם רמת הדמיון מספקת, החזר אמת, אם לא החזר שקר
     if max_similarity >= Required_level_similarity:
@@ -81,16 +81,18 @@ def Similarity_sure(text, text_list, Similarity_sure=True):
 
 def main():
     import os
-    text_list = os.listdir(r"J:\שמע\מוזיקה נוספת\יעד")
-    for text in text_list:
-           
+    text_list = os.listdir(r"J:\שמע\מוזיקה נוספת")
+    for text in text_list:           
         most_similar_string, max_similarity, sum_list = find_text_similarity(text, text_list)
-        print(f'השם הדומה ביותר למחרוזת הראשונה הוא "{most_similar_string}" עם דמיון של {max_similarity:.2f}')
+        #print(f'השם הדומה ביותר למחרוזת הראשונה הוא "{most_similar_string}" עם דמיון של {max_similarity:.2f}')
         print("-" * 70)
-        
+        num = 0
         # הדפסת רשימת המחרוזות עם רמת הדמיון שלהם למחרוזת הנוכחית
         for i in sum_list:
             print("{} {} {}".format(i[0], "=", i[1]))
+            if num == 1:
+                break
+            num += 1
 
 
 if __name__ == '__main__':
