@@ -19,7 +19,7 @@ from bidi.algorithm import get_display
 from jibrish_to_hebrew import jibrish_to_hebrew
 
 # יבוא פונקציה לזיהוי דמיון בין מחרוזות
-from identify_similarities import Similarity_sure
+from identify_similarities import similarity_sure
 
 def artist_from_song(my_file, root):
     """
@@ -49,7 +49,7 @@ def artist_from_song(my_file, root):
         pass
 
 
-
+# מעבר על עץ התיקיות שהוגדר
 def scan_dir(dir_path, target_dir=None, copy_mode=False):
     """
 הפונקציה המרכיבת את הפקודה הראשית של התכנית. היא סורקת את התיקיות והקבצים תחת נתיב שצוין ויוצרת רשימה של קבצים להעתקה.
@@ -87,8 +87,9 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
             continue        
         
         # חזרה לתחילת הלולאה אם שם האמן קיים ברשימת יוצאי הדופן
-        # או אם הוא דומה לפריט כלשהו ברשימת יוצאי הדופן
-        if artist in unusual_list or Similarity_sure(artist, unusual_list, False):
+        # או אם הוא דומה לפריט כלשהו ברשימת יוצאי הדופן       
+        unusual_str = similarity_sure(artist, unusual_list, True)        
+        if artist in unusual_list or unusual_str[0]:
             continue
                       
         elif any(c in "àáâãäåæçèéëìîðñòôö÷øùúêíïóõ" for c in artist):
@@ -101,6 +102,11 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
             else:
                 target_path = target_dir + "\\" + artist
                 
+                # הפעלת בדיקה אם שם אמן דומה כבר קיים ביעד
+                similarity_str = check_if_exist(target_dir, artist)
+                if similarity_str:
+                    print('{} "{}" {} {} {}'.format("המערכת זיהתה כי קיים שם אמן דומה לשם", artist, "-->", similarity_str, "/nהקש 1 למיזוג או 2 כדי להמשיך"))
+                           
                 # יצירת תיקית יעד אם אינה קיימת
                 if not os.path.isdir(target_path):
                     os.makedirs(target_path)
@@ -112,20 +118,32 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
                     shutil.move(file_path, target_path)
 
 
+# בדיקה אם שם האמן קיים כבר בצורה דומה
+def check_if_exist(target_dir, artist):
+        list_dirs = os.listdir(target_dir)
+
+        # בדיקת דמיון בין מחרוזות כדי לבדוק אם קיים שם אמן דומה בתיקית היעד
+        answer, similarity_str = similarity_sure(artist, list_dirs, False)
+        if answer:
+            return similarity_str
+        else:
+            return None
+
 def main():
     # קבלת נתיב משתנה
     dir_path = str(sys.argv[1])
-    if sys.argv[2:]:
+    if sys.argv[3:]:
+        copy_mode=str(sys.argv[3])
+        # הפעלת פונקצית סריקת קבצים עם שלוש פרמטרים
+        scan_dir(dir_path, target_dir, copy_mode)
+    elif sys.argv[2:]:
         target_dir = str(sys.argv[2])
         # הפעלת פונקצית סריקת הקבצים עם שתי פרמטרים
         scan_dir(dir_path, target_dir)
     else:
         # הפעלת פונקצית סריקת הקבצים עם פרמטר יחיד
         scan_dir(dir_path)
-    
 
-    
-    
     os.system('pause')
 
 if __name__ == '__main__':
