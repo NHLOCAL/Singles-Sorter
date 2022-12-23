@@ -1,6 +1,7 @@
 # מסדר הסינגלים
-
-### **🫵 למילוי סקר קצר על השימוש בתוכנה - לחצו [כאן](https://forms.gle/DSEs8QAJDns6EJRa6) עכשיו!**
+<div align="center">
+<h3>🫵 הכנסו ל<a href="https://nhlocal.github.io/Singles-Sorter/">אתר החדש</a> של התוכנה!</h3>
+</div>
 
 
 
@@ -12,25 +13,25 @@
 
 
 **כך זה נראה:**
-<div id="header" align="center">
+<div align="center">
   <img src="https://github.com/NHLOCAL/Singles-Sorter/blob/main/versions.data/program-screen.png?raw=true" width="480"/>
 
 </div>
-<div id="header" align="center">
+<div align="center">
  ניתן להעתיק ולהפיץ בשמחה!🤩
 </div>
  
 ---
 
 </div>
-<div id="header" align="center">
+<div align="center">
 
   📄 להורדת קובץ עזרה לחצו [כאן](https://github.com/NHLOCAL/Singles-Sorter/raw/main/הוראות%20שימוש%20במסדר%20הסינגלים.pdf)
 
 </div>
 
 </div>
-<div id="header" align="center">
+<div align="center">
 
 📣 להורדת הגרסה האחרונה לחצו על הקישור [הזה](https://github.com/NHLOCAL/Singles-Sorter/releases)
 </div>
