@@ -99,14 +99,22 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
             if target_dir == None:
                 pass
                 #print(file_path + " == " + artist)
-            else:
-                target_path = target_dir + "\\" + artist
-                
+            else:  
                 # הפעלת בדיקה אם שם אמן דומה כבר קיים ביעד
                 similarity_str = check_if_exist(target_dir, artist)
                 if similarity_str:
-                    print('{} "{}" {} {} {}'.format("המערכת זיהתה כי קיים שם אמן דומה לשם", artist, "-->", similarity_str, "/nהקש 1 למיזוג או 2 כדי להמשיך"))
-                           
+                    print('{}\n"{}" {} "{}"\n{}'.format("נמצאו שמות דומים - למזג?", artist, "-->", similarity_str, "הקש 1 לאישור או 2 להמשך"))
+                    
+                    # מתן אפשרות למשתמש לבחור אם למזג את שמות הזמרים
+                    answer = input(">>>")
+                    try:
+                        if int(answer) == 1:
+                            artist = similarity_str
+                    except:
+                        pass
+                        
+                target_path = target_dir + "\\" + artist
+                
                 # יצירת תיקית יעד אם אינה קיימת
                 if not os.path.isdir(target_path):
                     os.makedirs(target_path)
