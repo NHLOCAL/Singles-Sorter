@@ -129,7 +129,9 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
 # בדיקה אם שם האמן קיים כבר בצורה דומה
 def check_if_exist(target_dir, artist):
         list_dirs = os.listdir(target_dir)
-
+        # יציאה מהפונקציה במקרה ורשימת הקבצים ריקה
+        if list_dirs == []:
+            return None
         # בדיקת דמיון בין מחרוזות כדי לבדוק אם קיים שם אמן דומה בתיקית היעד
         answer, similarity_str = similarity_sure(artist, list_dirs, False)
         if answer:
@@ -141,7 +143,8 @@ def main():
     # קבלת נתיב משתנה
     dir_path = str(sys.argv[1])
     if sys.argv[3:]:
-        copy_mode=str(sys.argv[3])
+        copy_mode=bool(sys.argv[3])
+        target_dir = str(sys.argv[2])
         # הפעלת פונקצית סריקת קבצים עם שלוש פרמטרים
         scan_dir(dir_path, target_dir, copy_mode)
     elif sys.argv[2:]:
