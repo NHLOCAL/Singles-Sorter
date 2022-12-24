@@ -90,8 +90,7 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
         # או אם הוא דומה לפריט כלשהו ברשימת יוצאי הדופן       
         unusual_str = similarity_sure(artist, unusual_list, True)        
         if artist in unusual_list or unusual_str[0]:
-            continue
-                      
+            continue                      
         elif any(c in "àáâãäåæçèéëìîðñòôö÷øùúêíïóõ" for c in artist):
             artist = jibrish_to_hebrew(artist)
 
@@ -101,7 +100,7 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
                 #print(file_path + " == " + artist)
             else:  
                 # הפעלת בדיקה אם שם אמן דומה כבר קיים ביעד
-                similarity_str = check_if_exist(target_dir, artist)
+                similarity_str = check_similarity(target_dir, artist)
                 if similarity_str:
                     print('{}\n"{}" {} "{}"\n{}'.format("נמצאו שמות דומים - למזג?", artist, "-->", similarity_str, "הקש 1 לאישור או 2 להמשך"))
                     
@@ -120,14 +119,20 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
                     os.makedirs(target_path)
                 if copy_mode:
                     # העתקת הקובץ לתיקית האמן התואמת
-                    shutil.copyfile(file_path, target_path)
+                    shutil.copy(file_path, target_path)
                 else:
                     # העברת הקובץ לתיקית האמן התואמת
-                    shutil.move(file_path, target_path)
+                    try:
+                        shutil.move(file_path, target_path)
+                    except:
+                        pass
 
 
 # בדיקה אם שם האמן קיים כבר בצורה דומה
-def check_if_exist(target_dir, artist):
+def check_similarity(target_dir, artist):
+     """
+בדיקה אם שם אמן קיים ברשימת תיקיות
+    """
         list_dirs = os.listdir(target_dir)
         # יציאה מהפונקציה במקרה ורשימת הקבצים ריקה
         if list_dirs == []:
