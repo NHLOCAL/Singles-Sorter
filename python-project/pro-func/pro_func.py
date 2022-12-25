@@ -110,8 +110,6 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
         info_list = [(root + "\\" + my_file, artist_from_song(root + "\\" + my_file))
             for root, dirs, files in os.walk(dir_path)
             for my_file in files if artist_from_song(root + "\\" + my_file)]
-        print(info_list)
-        return
     else:
         return
         
