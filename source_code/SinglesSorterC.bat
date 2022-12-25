@@ -259,45 +259,17 @@ echo.
 echo                                    ...דבוע
 
 :: שימוש בתוכנה חיצונית להכנסת נתוני השיר לקובץ
-::חיפוש שורה המכילה את שם האמן בתוך הקובץ
-:: והכנסת השורה לקובץ
+for /f "tokens=1,2* delims=" %%i in ('infosong "%file%"') do set artist=%%i
 
+if "%artist%"=="False" exit /b
 
-for /f "tokens=1,2 delims=:" %%i in ('mediainfo "%file%" ^| findstr /b "Performer"') do echo %%j>"%Temp%\artist-song.tmp"
-
-::בדיקה אם הקובץ קיים
-::ויציאה מהפונקציה אם התשובה שלילית
-if not exist "%Temp%\artist-song.tmp" exit /b
-
-::המרת קובץ הפלט לפורמט אנסי התואם לבאט
-powershell "(Get-Content "%Temp%\artist-song.tmp" -Encoding utf8 | Out-File "%Temp%\artist-song-ansi.tmp" -Encoding default)"
-
-::בדיקה אם קיימים תוים בעייתים בקובץ
-::ויציאה מהפונקציה אם התשובה חיובית
-find /c """" "%Temp%\artist-song-ansi.tmp">nul
-if %errorlevel%==0 exit /b
-find /c "?" "%Temp%\artist-song-ansi.tmp">nul
-if %errorlevel%==0 exit /b
-
-:: העברת תוכן הקובץ למשתנה
-set/p artist=<"%Temp%\artist-song-ansi.tmp"
-
-
-::הסרת תוכן מהקובץ והשארת שם האמן בלבד
-set "artist=%artist:~1%"
-
-::במקרה ולא:
-::חיפוש שם האמן בתוך הקובץ הנוכחי
-::אם הוא קיים מתבצעת העברה של השיר
-::לתוך תיקיה המוגדרת כשם האמן
+::הגדרת משתנה עבור נתיב היעד
 if "%abc_heb%"=="ליעפ" set w=%artist:~0,1%\
 
 ::הגדרת שם משתנה עבור נתיב התיקיה לנוחות קריאת הקוד
 set file_path="%h%\%w%%artist%%s%"
 
 ::בדיקה אם הוגדה העתקה לתיקיות קיימות בלבד
-::אם כן, תתבצע העתקה מידית
-::אם לא, יתבצע חיפוש שם האמן בתוך רשימת הזמרים
 
 if "%fixed_heb%"=="ליעפ" (
 if exist "%h%\%w%%artist%" if not exist %file_path% md %file_path%
@@ -305,9 +277,8 @@ if exist %file_path% %c_or_m% %par% "%file%" %file_path%>>םוכיס
 exit /b
 )
 
-find /c "%artist%" "%csv-file%">nul
-if %errorlevel%==0 (if not exist %file_path% md %file_path%
-if exist %file_path% %c_or_m% %par% "%file%" %file_path%>>םוכיס)
+if not exist %file_path% md %file_path%
+if exist %file_path% %c_or_m% %par% "%file%" %file_path%>>םוכיס
 
 ::יציאה מהפונקציה וחזרה לפקודת הפור
 exit /b
