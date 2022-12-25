@@ -105,20 +105,13 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
 תוצאה:
     מדפיס את רשימת האמנים שמופיעים במטאדאטה של השירים, ומעתיק אותם ליעד.
     """
-    
-    # יצירת רשימה ריקה להכנסת מידע על הקבצים
-    info_list = []
-    
-    # מעבר על עץ תיקיות והפעלת פונקציה לבדיקת שם אמן הקובץ
+
     if (dir_path != "") and (os.path.exists(dir_path)):
-        for root, dirs, files in os.walk(dir_path):
-            for my_file in files:
-                # יצירת נתיב מלא לקובץ
-                my_file = root + "\\" + my_file
-                # הפעלת פונקציה לקבלת שם אמן
-                info_file = artist_from_song(my_file)
-                if info_file:
-                    info_list.append((my_file, info_file))
+        info_list = [(root + "\\" + my_file, artist_from_song(root + "\\" + my_file))
+            for root, dirs, files in os.walk(dir_path)
+            for my_file in files if artist_from_song(root + "\\" + my_file)]
+        print(info_list)
+        return
     else:
         return
         
