@@ -65,9 +65,6 @@ def check_artist(artist):
     else:
         return False
  
-        
-
-    
 
 # בדיקה אם שם האמן קיים כבר בצורה דומה
 def check_similarity(target_dir, artist):
@@ -91,8 +88,6 @@ def check_similarity(target_dir, artist):
         return similarity_str
     else:
         return None
-
-
 
 
 # מעבר על עץ התיקיות שהוגדר
@@ -164,7 +159,7 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
                     shutil.move(file_path, target_path)
                 except:
                     pass
-                        
+
 
 def main():
     # קבלת נתיב משתנה
