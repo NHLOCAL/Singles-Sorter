@@ -11,21 +11,26 @@ def main():
             arg = str(arg)
             arg_list.append(arg)
         arg_list = arg_list[3::]
-
+        
+        # מיון הארגומנטים
         arg_list.sort(key=sort_arg)
-        print(arg_list)
-        '''
+
+    except Exception as e:
+        print("הכנס נתיב שיר לקבלת שם האמן שלו")
+
+
+# סריקה בפועל של מערכת הקבצים
+def scan_dir(file_path, target_path, args_list):
+
         artist = artist_from_song(arg_list)
         checking = check_artist(artist)
         if checking:
             print(artist)
         else:
             print(False)
-        '''
-    except Exception as e:
-        print("הכנס נתיב שיר לקבלת שם האמן שלו")
 
 
+# מיועד למיון הארגומנטים שמתקבלים מהמשתמש
 def sort_arg(arg):
     # ארגומנט יצירת תיקית סינגלים
     if arg == "s-f:yes" or arg == "s-f:no": return 1
