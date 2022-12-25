@@ -1,23 +1,16 @@
 # -*- coding: utf-8 -*-
 import os
-
 import sys
-
 # פונקציה להעתקת והעברת קבצים
 import shutil
-
 # יבוא פונקציה לקריאת מטאדאטה של קובץ
 import music_tag
-
 # יבוא פונקציה לקריאת עץ תיקיות
 from os.path import join, getsize
-
 # יבוא פונקציה עבור תצוגת האותיות העבריות
 from bidi.algorithm import get_display
-
 # יבוא פונקציה להמרת ג'יבריש לעברית תקינה
 from jibrish_to_hebrew import jibrish_to_hebrew
-
 # יבוא פונקציה לזיהוי דמיון בין מחרוזות
 from identify_similarities import similarity_sure
 
@@ -30,7 +23,7 @@ def artist_from_song(my_file, root):
     root (str) - נתיב התיקייה האב
     
 תוצאה:
-    ערך המכיל את שם הקובץ, וערך המכיל את שם האמן שלו
+    ערך המכיל את שם אמן הקובץ
     """
     try:
         # יצירת נתיב מלא לקובץ
@@ -42,11 +35,65 @@ def artist_from_song(my_file, root):
         artist_file = music_tag.load_file(my_file)
         # קבלת אמן מטאדאטה של השיר
         artist = artist_file['artist']
+        artist = artist.value
         # הכנסת נתוני האמן למשתנה הגלובלי
         if artist:
-            return my_file, artist
+            # המרת שם האמן אם הוא פגום
+            if any(c in "àáâãäåæçèéëìîðñòôö÷øùúêíïóõ" for c in artist):
+                artist = jibrish_to_hebrew(artist)               
+            return artist
     except:
-        pass
+        return
+
+
+# בדיקות שונות על שם האמן
+def check_artist(artist):
+    # הגדרת רשימת מחרוזות יוצאות דופן, עליהם המערכת מוגדרת לדלג
+    unusual_list = ["סינגלים", "סינגל", "אבגדהוזחטיכלמנסעפצקרשתךםןץ", "אמן לא ידוע", "טוב", "לא ידוע", "תודה לך ה"]
+    # החזרת שקר אם שם האמן קיים ברשימת יוצאי הדופן
+    # או אם הוא דומה לפריט כלשהו ברשימת יוצאי הדופן       
+    unusual_str = similarity_sure(artist, unusual_list, True)        
+    if artist in unusual_list or unusual_str[0]:
+        return False
+       
+    # בדיקה אם המחרוזת אינה ארוכה מידי
+    if len(artist.split()) >= 4 or len(artist.split()) <= 0:
+        return False
+    
+    # בדיקה אם המחרוזת מכילה תוים תקינים בלבד
+    if all(c in "אבגדהוזחטיכלמנסעפצקרשתךםןףץ'׳ " for c in artist):
+        return True
+    else:
+        return False
+ 
+        
+
+    
+
+# בדיקה אם שם האמן קיים כבר בצורה דומה
+def check_similarity(target_dir, artist):
+    """
+בדיקה אם שם אמן קיים ברשימת תיקיות
+
+פרמטרים:
+    פרמטר 1 = נתיב תיקיה
+    פרמטר 2 = שם אמן
+
+תוצאה:
+    שם האמן הדומה או "None"
+    """
+    list_dirs = os.listdir(target_dir)
+    # יציאה מהפונקציה במקרה ורשימת הקבצים ריקה
+    if list_dirs == []:
+        return None
+    # בדיקת דמיון בין מחרוזות כדי לבדוק אם קיים שם אמן דומה בתיקית היעד
+    answer, similarity_str = similarity_sure(artist, list_dirs, False)
+    if answer:
+        return similarity_str
+    else:
+        return None
+
+
 
 
 # מעבר על עץ התיקיות שהוגדר
@@ -65,9 +112,6 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
     מדפיס את רשימת האמנים שמופיעים במטאדאטה של השירים, ומעתיק אותם ליעד.
     """
     
-    # הגדרת רשימת מחרוזות יוצאות דופן, עליהם המערכת מוגדרת לדלג
-    unusual_list = ["סינגלים", "סינגל", "אבגדהוזחטיכלמנסעפצקרשתךםןץ", "אמן לא ידוע", "טוב", "לא ידוע", "תודה לך ה"]
-    
     # יצירת רשימה ריקה להכנסת מידע על הקבצים
     info_list = []
     
@@ -76,73 +120,50 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
         for root, dirs, files in os.walk(dir_path):
             for my_file in files:
                 info_file = artist_from_song(my_file, root)
+                fileb = root + "\\" + my_file
                 if info_file:
-                    info_list.append(info_file)
-                    
+                    info_list.append((fileb, info_file))
+    else:
+        return
+        
     # מעבר על תוצאות הסריקה והדפסתם בכפוף למספר תנאים
-    for file_path, artist_item in info_list:
-        artist = artist_item.value
+    for file_path, artist in info_list:
         
-        if len(artist.split()) >= 4 or len(artist.split()) <= 0:
-            continue        
-        
-        # חזרה לתחילת הלולאה אם שם האמן קיים ברשימת יוצאי הדופן
-        # או אם הוא דומה לפריט כלשהו ברשימת יוצאי הדופן       
-        unusual_str = similarity_sure(artist, unusual_list, True)        
-        if artist in unusual_list or unusual_str[0]:
-            continue                      
-        elif any(c in "àáâãäåæçèéëìîðñòôö÷øùúêíïóõ" for c in artist):
-            artist = jibrish_to_hebrew(artist)
-
-        if all(c in "אבגדהוזחטיכלמנסעפצקרשתךםןףץ'׳ " for c in artist):
-            if target_dir == None:
-                pass
-                #print(file_path + " == " + artist)
-            else:  
-                # הפעלת בדיקה אם שם אמן דומה כבר קיים ביעד
-                similarity_str = check_similarity(target_dir, artist)
-                if similarity_str:
-                    print('{}\n"{}" {} "{}"\n{}'.format("נמצאו שמות דומים - למזג?", artist, "-->", similarity_str, "הקש 1 לאישור או 2 להמשך"))
-                    
-                    # מתן אפשרות למשתמש לבחור אם למזג את שמות הזמרים
-                    answer = input(">>>")
-                    try:
-                        if int(answer) == 1:
-                            artist = similarity_str
-                    except:
-                        pass
-                        
-                target_path = target_dir + "\\" + artist
+        # הפעלת פונקציה המבצעת בדיקות על שם האמן
+        check_answer = check_artist(artist)
+        if check_answer == False:
+            continue
+            
+        if target_dir == None:
+            print(file_path + " == " + artist)
+            
+        else:  
+            target_path = target_dir + "\\" + artist
+            # הפעלת בדיקה אם שם אמן דומה כבר קיים ביעד
+            similarity_str = check_similarity(target_dir, artist)
+            if similarity_str:                   
+                # מתן אפשרות למשתמש לבחור אם למזג את שמות הזמרים
+                print('{}\n"{}" {} "{}"\n{}'.format("נמצאו שמות דומים - למזג?", artist, "-->", similarity_str, "הקש 1 לאישור או 2 להמשך"))
+                answer = input(">>>")
+                try:
+                    if int(answer) == 1:
+                        artist = similarity_str
+                except:
+                    pass   
                 
-                # יצירת תיקית יעד אם אינה קיימת
-                if not os.path.isdir(target_path):
-                    os.makedirs(target_path)
-                if copy_mode:
-                    # העתקת הקובץ לתיקית האמן התואמת
-                    shutil.copy(file_path, target_path)
-                else:
-                    # העברת הקובץ לתיקית האמן התואמת
-                    try:
-                        shutil.move(file_path, target_path)
-                    except:
-                        pass
-
-
-# בדיקה אם שם האמן קיים כבר בצורה דומה
-def check_similarity(target_dir, artist):
-     """
-בדיקה אם שם אמן קיים ברשימת תיקיות
-    """
-        list_dirs = os.listdir(target_dir)
-        # יציאה מהפונקציה במקרה ורשימת הקבצים ריקה
-        if list_dirs == []:
-            return None
-        # בדיקת דמיון בין מחרוזות כדי לבדוק אם קיים שם אמן דומה בתיקית היעד
-        answer, similarity_str = similarity_sure(artist, list_dirs, False)
-        if answer:
-            return similarity_str
-        else:
-            return None
+            # יצירת תיקית יעד אם אינה קיימת
+            if not os.path.isdir(target_path):
+                os.makedirs(target_path)
+            if copy_mode:
+                # העתקת הקובץ לתיקית האמן התואמת
+                shutil.copy(file_path, target_path)
+            else:
+                # העברת הקובץ לתיקית האמן התואמת
+                try:
+                    shutil.move(file_path, target_path)
+                except:
+                    pass
+                        
 
 def main():
     # קבלת נתיב משתנה
