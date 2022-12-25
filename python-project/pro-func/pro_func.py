@@ -27,8 +27,8 @@ def artist_from_song(my_file):
     """
     try:
 
-        # בדיקה האם הקובץ הוא קובץ MP3
-        if not (my_file.endswith(".mp3") or my_file.endswith(".wav") or my_file.endswith(".wma")):
+        # בדיקה האם הקובץ הוא קובץ שמע
+        if not (my_file.endswith((".mp3",".wma", "wav")):
             return
         # טעינת מטאדאטה של השיר
         artist_file = music_tag.load_file(my_file)
@@ -105,7 +105,7 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
 תוצאה:
     מדפיס את רשימת האמנים שמופיעים במטאדאטה של השירים, ומעתיק אותם ליעד.
     """
-
+    # סריקת עץ התיקיות והכנסת שם הקבצים ושם האמן שלהם לרשימה
     if (dir_path != "") and (os.path.exists(dir_path)):
         info_list = [(root + "\\" + my_file, artist_from_song(root + "\\" + my_file))
             for root, dirs, files in os.walk(dir_path)
@@ -115,7 +115,7 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
         
     # מעבר על תוצאות הסריקה והדפסתם בכפוף למספר תנאים
     for file_path, artist in info_list:
-        
+    
         # הפעלת פונקציה המבצעת בדיקות על שם האמן
         check_answer = check_artist(artist)
         if check_answer == False:
