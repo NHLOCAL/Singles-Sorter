@@ -14,7 +14,7 @@ from jibrish_to_hebrew import jibrish_to_hebrew
 # יבוא פונקציה לזיהוי דמיון בין מחרוזות
 from identify_similarities import similarity_sure
 
-def artist_from_song(my_file, root):
+def artist_from_song(my_file):
     """
 פונקציית סורקת את המטאדאטה של השיר ומכניסה את האמן למשתנה
     
@@ -26,8 +26,7 @@ def artist_from_song(my_file, root):
     ערך המכיל את שם אמן הקובץ
     """
     try:
-        # יצירת נתיב מלא לקובץ
-        my_file = root + "\\" + my_file
+
         # בדיקה האם הקובץ הוא קובץ MP3
         if not (my_file.endswith(".mp3") or my_file.endswith(".wav") or my_file.endswith(".wma")):
             return
@@ -119,10 +118,12 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
     if (dir_path != "") and (os.path.exists(dir_path)):
         for root, dirs, files in os.walk(dir_path):
             for my_file in files:
-                info_file = artist_from_song(my_file, root)
-                fileb = root + "\\" + my_file
+                # יצירת נתיב מלא לקובץ
+                my_file = root + "\\" + my_file
+                # הפעלת פונקציה לקבלת שם אמן
+                info_file = artist_from_song(my_file)
                 if info_file:
-                    info_list.append((fileb, info_file))
+                    info_list.append((my_file, info_file))
     else:
         return
         
@@ -138,7 +139,6 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
             print(file_path + " == " + artist)
             
         else:  
-            target_path = target_dir + "\\" + artist
             # הפעלת בדיקה אם שם אמן דומה כבר קיים ביעד
             similarity_str = check_similarity(target_dir, artist)
             if similarity_str:                   
@@ -152,6 +152,7 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
                     pass   
                 
             # יצירת תיקית יעד אם אינה קיימת
+            target_path = target_dir + "\\" + artist
             if not os.path.isdir(target_path):
                 os.makedirs(target_path)
             if copy_mode:
