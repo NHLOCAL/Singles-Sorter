@@ -28,7 +28,7 @@ def artist_from_song(my_file):
     try:
 
         # בדיקה האם הקובץ הוא קובץ שמע
-        if not (my_file.endswith((".mp3",".wma", "wav")):
+        if not my_file.endswith((".mp3",".wma", "wav")):
             return
         # טעינת מטאדאטה של השיר
         artist_file = music_tag.load_file(my_file)
