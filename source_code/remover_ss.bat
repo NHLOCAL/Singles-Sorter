@@ -7,7 +7,7 @@ chcp 1255
 mode con cols=16 lines=1
 
 ::מחיקת קיצורי דרך
-del "%userprofile%\Desktop\מסדר הסינגלים 10.lnk"
+del "%userprofile%\Desktop\מסדר הסינגלים.lnk"
 rd /s /q "%AppData%\Microsoft\Windows\Start Menu\Programs\מסדר הסינגלים"
 
 ::מחיקת ערך הרישום האחראי על רשימת התוכנות להסרה
