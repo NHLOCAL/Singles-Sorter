@@ -82,7 +82,7 @@ def similarity_sure(text, text_list, Similarity_sure=True):
 
 def main():
     import os
-    text_list = os.listdir(r"C:\Users\אורי\Music\סינגלים ניסוי")
+    text_list = os.listdir()
     for text in text_list:
         most_similar_string, max_similarity, sum_list = find_text_similarity(text, text_list)
         print(text)
