@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 import os
-import sys
+from sys import argv
+# פונקציית ניקוי מסך
+from click import clear
 # פונקציה להעתקת והעברת קבצים
-import shutil
+from shutil import copy, move
 # יבוא פונקציה לקריאת מטאדאטה של קובץ
-import music_tag
+from music_tag import load_file
 # יבוא פונקציה לקריאת עץ תיקיות
 from os.path import join, getsize
 # יבוא פונקציה עבור תצוגת האותיות העבריות
@@ -31,7 +33,7 @@ def artist_from_song(my_file):
         if not my_file.endswith((".mp3",".wma", "wav")):
             return
         # טעינת מטאדאטה של השיר
-        artist_file = music_tag.load_file(my_file)
+        artist_file = load_file(my_file)
         # קבלת אמן מטאדאטה של השיר
         artist = artist_file['artist']
         artist = artist.value
@@ -107,20 +109,29 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
     """
     # סריקת עץ התיקיות והכנסת שם הקבצים ושם האמן שלהם לרשימה
     if (dir_path != "") and (os.path.exists(dir_path)):
-        info_list = [(root + "\\" + my_file, artist_from_song(root + "\\" + my_file))
+        info_list = [(os.path.join(root, my_file), artist_from_song(os.path.join(root, my_file)))
             for root, dirs, files in os.walk(dir_path)
-            for my_file in files if artist_from_song(root + "\\" + my_file)]
+            for my_file in files if artist_from_song(os.path.join(root, my_file))]
     else:
         return
         
+    # הגדרות עבור תצוגת אחוזים
+    len_dir = len(info_list)
+    len_item = 0    
+    
     # מעבר על תוצאות הסריקה והדפסתם בכפוף למספר תנאים
     for file_path, artist in info_list:
     
+        # תצוגת אחוזים מתחלפת
+        len_item += 1
+        show_len = len_item * 100 // len_dir
+        print(str(show_len) + "% " + get_display("הושלמו"),end='\r')
+        time.sleep(1)
         # הפעלת פונקציה המבצעת בדיקות על שם האמן
         check_answer = check_artist(artist)
         if check_answer == False:
             continue
-            
+
         if target_dir == None:
             print(file_path + " == " + artist)
             
@@ -131,6 +142,8 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
                 # מתן אפשרות למשתמש לבחור אם למזג את שמות הזמרים
                 print('{}\n"{}" {} "{}"\n{}'.format("נמצאו שמות דומים - למזג?", artist, "-->", similarity_str, "הקש 1 לאישור או 2 להמשך"))
                 answer = input(">>>")
+                # ניקוי מסך
+                clear()
                 try:
                     if int(answer) == 1:
                         artist = similarity_str
@@ -143,25 +156,25 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
                 os.makedirs(target_path)
             if copy_mode:
                 # העתקת הקובץ לתיקית האמן התואמת
-                shutil.copy(file_path, target_path)
+                copy(file_path, target_path)
             else:
                 # העברת הקובץ לתיקית האמן התואמת
                 try:
-                    shutil.move(file_path, target_path)
+                    move(file_path, target_path)
                 except:
                     pass
 
 
 def main():
     # קבלת נתיב משתנה
-    dir_path = str(sys.argv[1])
-    if sys.argv[3:]:
-        copy_mode=eval(sys.argv[3])
-        target_dir = str(sys.argv[2])
+    dir_path = str(argv[1])
+    if argv[3:]:
+        copy_mode=eval(argv[3])
+        target_dir = str(argv[2])
         # הפעלת פונקצית סריקת קבצים עם שלוש פרמטרים
         scan_dir(dir_path, target_dir, copy_mode)
-    elif sys.argv[2:]:
-        target_dir = str(sys.argv[2])
+    elif argv[2:]:
+        target_dir = str(argv[2])
         # הפעלת פונקצית סריקת הקבצים עם שתי פרמטרים
         scan_dir(dir_path, target_dir)
     else:
