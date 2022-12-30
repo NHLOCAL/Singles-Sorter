@@ -140,7 +140,8 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
         # הפעלת בדיקה אם שם אמן דומה כבר קיים ביעד
         similarity_str = check_similarity(target_dir, artist)
         set_item = (artist, similarity_str)
-        if similarity_str and not set_item in similarity_set and not set_item in not_similarity_set:
+        if similarity_str and not set_item in similarity_set \
+            and not set_item in not_similarity_set:
             # מתן אפשרות למשתמש לבחור אם למזג את שמות הזמרים
             print('{}\n"{}" {} "{}"\n{}'.format("נמצאו שמות דומים - למזג?", artist, "-->", similarity_str, "הקש 1 לאישור או 2 להמשך"))
             answer = input(">>>")
