@@ -135,37 +135,36 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
 
         if target_dir == None:
             print(file_path + " == " + artist)
-            
-        else:  
-            # הפעלת בדיקה אם שם אמן דומה כבר קיים ביעד
-            similarity_str = check_similarity(target_dir, artist)
-            if similarity_str:                   
-                # מתן אפשרות למשתמש לבחור אם למזג את שמות הזמרים
-                print('{}\n"{}" {} "{}"\n{}'.format("נמצאו שמות דומים - למזג?", artist, "-->", similarity_str, "הקש 1 לאישור או 2 להמשך"))
-                answer = input(">>>")
-                # ניקוי מסך
-                clear()
-                try:
-                    if int(answer) == 1:
-                        similarity_set.add((artist, similarity_str))
-                        artist = similarity_str
-                except:
-                    pass   
-            
-                        
-            # יצירת תיקית יעד אם אינה קיימת        
-            target_path =  os.path.join(target_dir,artist)
-            if not os.path.isdir(target_path):
-                os.makedirs(target_path)
-            if copy_mode:
-                # העתקת הקובץ לתיקית האמן התואמת
-                copy(file_path, target_path)
-            else:
-                # העברת הקובץ לתיקית האמן התואמת
-                try:
-                    move(file_path, target_path)
-                except:
-                    pass
+            continue
+              
+        # הפעלת בדיקה אם שם אמן דומה כבר קיים ביעד
+        similarity_str = check_similarity(target_dir, artist)
+        if similarity_str:                   
+            # מתן אפשרות למשתמש לבחור אם למזג את שמות הזמרים
+            print('{}\n"{}" {} "{}"\n{}'.format("נמצאו שמות דומים - למזג?", artist, "-->", similarity_str, "הקש 1 לאישור או 2 להמשך"))
+            answer = input(">>>")
+            # ניקוי מסך
+            clear()
+            try:
+                if int(answer) == 1:
+                    similarity_set.add((artist, similarity_str))
+                    artist = similarity_str
+            except:
+                pass   
+                                   
+        # יצירת תיקית יעד אם אינה קיימת        
+        target_path =  os.path.join(target_dir,artist)
+        if not os.path.isdir(target_path):
+            os.makedirs(target_path)
+        if copy_mode:
+            # העתקת הקובץ לתיקית האמן התואמת
+            copy(file_path, target_path)
+        else:
+            # העברת הקובץ לתיקית האמן התואמת
+            try:
+                move(file_path, target_path)
+            except:
+                pass
     print(similarity_set)
 
 def main():
