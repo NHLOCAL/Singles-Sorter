@@ -117,11 +117,13 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
         
     # הגדרות עבור תצוגת אחוזים
     len_dir = len(info_list)
-    len_item = 0    
+    len_item = 0
+
+    # הגדרת סט שמות אמנים דומים    
+    similarity_set = set()
     
     # מעבר על תוצאות הסריקה והדפסתם בכפוף למספר תנאים
-    for file_path, artist in info_list:
-    
+    for file_path, artist in info_list:   
         # תצוגת אחוזים מתחלפת
         len_item += 1
         show_len = len_item * 100 // len_dir
@@ -145,10 +147,12 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
                 clear()
                 try:
                     if int(answer) == 1:
+                        similarity_set.add((artist, similarity_str))
                         artist = similarity_str
                 except:
                     pass   
-                
+            
+                        
             # יצירת תיקית יעד אם אינה קיימת        
             target_path =  os.path.join(target_dir,artist)
             if not os.path.isdir(target_path):
@@ -162,7 +166,7 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
                     move(file_path, target_path)
                 except:
                     pass
-
+    print(similarity_set)
 
 def main():
     # קבלת נתיב משתנה
