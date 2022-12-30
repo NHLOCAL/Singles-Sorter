@@ -121,7 +121,7 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
 
     # הגדרת סט שמות אמנים דומים    
     similarity_set = set()
-    
+    not_similarity_set = set()
     # מעבר על תוצאות הסריקה והדפסתם בכפוף למספר תנאים
     for file_path, artist in info_list:   
         # תצוגת אחוזים מתחלפת
@@ -139,7 +139,8 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
               
         # הפעלת בדיקה אם שם אמן דומה כבר קיים ביעד
         similarity_str = check_similarity(target_dir, artist)
-        if similarity_str:                   
+        set_item = (artist, similarity_str)
+        if similarity_str and not set_item in similarity_set and not set_item in not_similarity_set:
             # מתן אפשרות למשתמש לבחור אם למזג את שמות הזמרים
             print('{}\n"{}" {} "{}"\n{}'.format("נמצאו שמות דומים - למזג?", artist, "-->", similarity_str, "הקש 1 לאישור או 2 להמשך"))
             answer = input(">>>")
@@ -147,11 +148,16 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
             clear()
             try:
                 if int(answer) == 1:
-                    similarity_set.add((artist, similarity_str))
+                    similarity_set.add(set_item)
                     artist = similarity_str
+                elif int(answer) == 2:
+                    not_similarity_set.add(set_item)
             except:
-                pass   
-                                   
+                pass
+
+        elif (artist, similarity_str) in similarity_set:
+            artist = similarity_str
+                       
         # יצירת תיקית יעד אם אינה קיימת        
         target_path =  os.path.join(target_dir,artist)
         if not os.path.isdir(target_path):
@@ -165,7 +171,6 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
                 move(file_path, target_path)
             except:
                 pass
-    print(similarity_set)
 
 def main():
     # קבלת נתיב משתנה
