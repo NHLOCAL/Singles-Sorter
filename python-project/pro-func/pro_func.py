@@ -126,7 +126,6 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
         len_item += 1
         show_len = len_item * 100 // len_dir
         print(str(show_len) + "% " + get_display("הושלמו"),end='\r')
-        time.sleep(1)
         # הפעלת פונקציה המבצעת בדיקות על שם האמן
         check_answer = check_artist(artist)
         if check_answer == False:
