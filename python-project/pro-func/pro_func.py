@@ -9,8 +9,6 @@ from shutil import copy, move
 from music_tag import load_file
 # יבוא פונקציה לקריאת עץ תיקיות
 from os.path import join, getsize
-# יבוא פונקציה עבור תצוגת האותיות העבריות
-from bidi.algorithm import get_display
 # יבוא פונקציה להמרת ג'יבריש לעברית תקינה
 from jibrish_to_hebrew import jibrish_to_hebrew
 # יבוא פונקציה לזיהוי דמיון בין מחרוזות
@@ -30,7 +28,7 @@ def artist_from_song(my_file):
     try:
 
         # בדיקה האם הקובץ הוא קובץ שמע
-        if not my_file.endswith((".mp3",".wma", "wav")):
+        if not my_file.endswith((".mp3",".wma", ".wav")):
             return
         # טעינת מטאדאטה של השיר
         artist_file = load_file(my_file)
@@ -127,7 +125,7 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
         # תצוגת אחוזים מתחלפת
         len_item += 1
         show_len = len_item * 100 // len_dir
-        print(str(show_len) + "% " + get_display("הושלמו"),end='\r')
+        print(str(show_len) + "% " + "הושלמו",end='\r')
         # הפעלת פונקציה המבצעת בדיקות על שם האמן
         check_answer = check_artist(artist)
         if check_answer == False:
