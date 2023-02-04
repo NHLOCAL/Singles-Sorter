@@ -158,7 +158,7 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
             artist = similarity_str
                        
         # יצירת תיקית יעד אם אינה קיימת        
-        target_path =  os.path.join(target_dir,artist)
+        target_path =  os.path.join(target_dir, artist)
         if not os.path.isdir(target_path):
             os.makedirs(target_path)
         if copy_mode:
