@@ -11,7 +11,7 @@
 8. לבצע מיזוג תיקיות לפי הרשימה.
 '''
 
-import csv, os, shutil
+import csv, os, shutil, identify_similarities
 
 # יבוא רשימת זמרים מקובץ csv
 def read_csv(file_path):
