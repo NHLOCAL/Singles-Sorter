@@ -15,6 +15,11 @@ import csv, os, shutil
 
 # יבוא רשימת זמרים מקובץ csv
 def read_csv(file_path):
+    """
+קריאת תוכן קובץ CSV והכנסה לרשימה
+    פרמטר = נתיב קובץ
+    תוצאה = רשימת נתונים
+    """
     with open(file_path, 'r') as file:
         csv_reader = csv.reader(file)
         singers_data = [tuple(row) for row in csv_reader]
@@ -24,26 +29,27 @@ def read_csv(file_path):
 def merge_folders(singers_data):
     """
 מבצע מיזוג של תיקיות זמרים בעלי שם שונה במקצת
-פרמטר = רשימת זמרים
-תוצאה = אין   
+    פרמטר = רשימת זמרים
+    תוצאה = אין   
     """
-    for source_name, target_name in singers_data:
+    for source_name, target_name in singers_data:   
+        # אם שם תיקית המקור והיעד זהים תתבצע חזרה להמשך הלולאה
+        if source_name == target_name: continue
+
         old_path = os.path.join(os.getcwd(), source_name)
         new_path = os.path.join(os.getcwd(), target_name)
-        
-        # אם שם תיקית המקור והיעד זהים תתבצע חזרה להמשך הלולאה
-        if old_path == new_path: continue
-        
+               
         # אם לא קיים נתיב יעד יתבצע שינוי שם לשם הרצוי
         if os.path.exists(old_path) and not os.path.exists(new_path):
             os.rename(old_path, new_path)
+       
         # אם קיים נתיב יעד, תתבצע העברה של הקבצים שבמקור אל היעד
-        elif os.path.exists(old_path):
+        elif os.path.exists(old_path):       
             for filename in os.listdir(old_path):
                 source_path = os.path.join(old_path, filename)
                 destination_path = os.path.join(new_path, filename)
                 shutil.move(source_path, destination_path)
-
+            # מחיקת תיקית המקור לאחר סיום ההעברה
             shutil.rmtree(old_path)
 
 
