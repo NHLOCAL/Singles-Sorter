@@ -11,7 +11,7 @@
 8. לבצע מיזוג תיקיות לפי הרשימה.
 '''
 
-import csv, os, shutil, identify_similarities
+import csv, os, sys, shutil, identify_similarities
 
 # יבוא רשימת זמרים מקובץ csv
 def read_csv(file_path):
@@ -26,22 +26,29 @@ def read_csv(file_path):
     return singers_data
 
 
-def merge_folders(singers_data):
+def merge_folders(singers_data, dir_path):
     """
 מבצע מיזוג של תיקיות זמרים בעלי שם שונה במקצת
-    פרמטר = רשימת זמרים
+    פרמטר 1 = רשימת זמרים
+    פרמטר 2 = נתיב תיקיה לסריקה
     תוצאה = אין   
     """
-    for source_name, target_name in singers_data:   
+    # הגדרת התיקיה שהוכנסה כתיקיה הנוכחית
+    os.chdir(dir_path)
+    
+    # מעבר על רשימת שמות הזמרים וחיפוש שלהם בתיקיה
+    for source_name, target_name in singers_data:
         # אם שם תיקית המקור והיעד זהים תתבצע חזרה להמשך הלולאה
         if source_name == target_name: continue
-
+        
+        # הגדרת נתיבי תיקית מקור ותיקית יעד
         old_path = os.path.join(os.getcwd(), source_name)
         new_path = os.path.join(os.getcwd(), target_name)
-               
+
         # אם לא קיים נתיב יעד יתבצע שינוי שם לשם הרצוי
         if os.path.exists(old_path) and not os.path.exists(new_path):
             os.rename(old_path, new_path)
+            print(old_path + ' --> \n' + new_path)
        
         # אם קיים נתיב יעד, תתבצע העברה של הקבצים שבמקור אל היעד
         elif os.path.exists(old_path):       
@@ -49,14 +56,16 @@ def merge_folders(singers_data):
                 source_path = os.path.join(old_path, filename)
                 destination_path = os.path.join(new_path, filename)
                 shutil.move(source_path, destination_path)
+            print(old_path + ' --> \n' + new_path)
             # מחיקת תיקית המקור לאחר סיום ההעברה
             shutil.rmtree(old_path)
 
 
 def main():
+    dir_path = str(sys.argv[1])
     file_path = r"C:\Users\COLMI\AppData\Roaming\singles-sorter\singer-list.csv"
     singers_data = read_csv(file_path)
-    merge_folders(singers_data)
+    merge_folders(singers_data, dir_path)
 
 if __name__ == '__main__':
     main()
