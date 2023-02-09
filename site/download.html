@@ -31,25 +31,37 @@
 </div>
 
 
-<h1 style="text-align:center">ההורדה שלך תתחיל מיד!...</h1>
+<h1 id="countdown" style="text-align:center"></h1>
 
-
-
+<script>
+  var countdown = 7;
+  var intervalId = setInterval(function() {
+    countdown--;
+    document.getElementById("countdown").innerHTML = "<span style='color:red'>" + countdown + "</span> ההורדה שלך תתחיל מיד!... ";
+    if (countdown === 0) {
+      clearInterval(intervalId);
+    }
+  }, 1000);
+</script>
 
 
 <script>
     // הגדרת משתנה להחלפה בכל עדכון גרסה
     var cur_ver = "10.1"
+	
+	// השהייה של מספר שניות לפני הורדה וסגירת הכרטיסיה
+	setTimeout(myFunc, 7000);
+	setTimeout(closeFunc, 13000);
 
-    // הורדת הגרסה האחרונה
-    document.location.href = 'https://github.com/NHLOCAL/Singles-Sorter/releases/download/v' + cur_ver + '/Singles-Sorter-' + cur_ver + '.exe';
-	// השהייה של מספר שניות לפני סגירת הכרטיסיה
-	setTimeout(myFunc, 10000);
-
-// הגדרת פונקצית סגירת העמוד
+// הורדת הגרסה האחרונה
 function myFunc() {
-        window.close();
-}    
+        document.location.href = 'https://github.com/NHLOCAL/Singles-Sorter/releases/download/v' + cur_ver + '/Singles-Sorter-' + cur_ver + '.exe';
+}
+
+// הגדרת פונקצית סגירת העמוד 
+function closeFunc() {
+		window.close();
+}     
 </script>
 
 </body>
