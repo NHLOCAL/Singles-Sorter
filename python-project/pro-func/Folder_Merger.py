@@ -92,9 +92,16 @@ def check_similarity(target_dir, artist):
         return None
 
 
-#יצירת רשימת שמות דומים לפי בחירת המשתמש
-def similarity_list(dir_path):
 
+# יצירת רשימת שמות דומים לפי בחירת המשתמש
+def creat_similarity_list(dir_path):
+    '''
+יוצר רשימה של זמרים דומים לפי בחירות המשתמש
+    
+    פרמטר = נתיב תיקית זמרים
+    
+    תוצאה = רשימה המכילה קבוצות זמרים לפי דמיון
+    '''
     # הגדרת סט שמות אמנים דומים    
     similarity_set = set()
     not_similarity_set = set()
@@ -126,13 +133,15 @@ def similarity_list(dir_path):
     
     # מיזוג זוגות שמתו דומים לקבוצות
     merges_list = merge_tuples(similarity_set)
-    print(merges_list)
+    
+    return merges_list
 
 
 # מיזוג טאפלים המכילים שמות זמרים זהים
 def merge_tuples(input_set):
     '''
 ממזג טאפלים המכילים מחרוזת אחת זהה לרשימה חדשה המכילה טאפלים
+
     פרמטר = סט המכיל טאפלים בני 2 מחרוזות
     
     תוצאה = רשימה עם סטים ממוזגים    
@@ -160,7 +169,7 @@ def main():
     file_path = r"C:\Users\COLMI\AppData\Roaming\singles-sorter\singer-list.csv"
     singers_data = read_csv(file_path)
     merge_folders(singers_data, dir_path)
-    similarity_list(dir_path)
+    creat_similarity_list(dir_path)
 
 if __name__ == '__main__':
     main()
