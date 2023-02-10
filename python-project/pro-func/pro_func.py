@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
 from sys import argv
-# פונקציית ניקוי מסך
-from click import clear
 # פונקציה להעתקת והעברת קבצים
 from shutil import copy, move
 # יבוא פונקציה לקריאת מטאדאטה של קובץ
@@ -64,30 +62,6 @@ def check_artist(artist):
         return True
     else:
         return False
- 
-
-# בדיקה אם שם האמן קיים כבר בצורה דומה
-def check_similarity(target_dir, artist):
-    """
-בדיקה אם שם אמן קיים ברשימת תיקיות
-
-פרמטרים:
-    פרמטר 1 = נתיב תיקיה
-    פרמטר 2 = שם אמן
-
-תוצאה:
-    שם האמן הדומה או "None"
-    """
-    list_dirs = os.listdir(target_dir)
-    # יציאה מהפונקציה במקרה ורשימת הקבצים ריקה
-    if list_dirs == []:
-        return None
-    # בדיקת דמיון בין מחרוזות כדי לבדוק אם קיים שם אמן דומה בתיקית היעד
-    answer, similarity_str = similarity_sure(artist, list_dirs, False)
-    if answer:
-        return similarity_str
-    else:
-        return None
 
 
 # מעבר על עץ התיקיות שהוגדר
@@ -116,16 +90,14 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
     # הגדרות עבור תצוגת אחוזים
     len_dir = len(info_list)
     len_item = 0
-
-    # הגדרת סט שמות אמנים דומים    
-    similarity_set = set()
-    not_similarity_set = set()
+    
     # מעבר על תוצאות הסריקה והדפסתם בכפוף למספר תנאים
     for file_path, artist in info_list:   
         # תצוגת אחוזים מתחלפת
         len_item += 1
         show_len = len_item * 100 // len_dir
         print(str(show_len) + "% " + "הושלמו",end='\r')
+        
         # הפעלת פונקציה המבצעת בדיקות על שם האמן
         check_answer = check_artist(artist)
         if check_answer == False:
@@ -134,38 +106,16 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False):
         if target_dir == None:
             print(file_path + " == " + artist)
             continue
-              
-        # הפעלת בדיקה אם שם אמן דומה כבר קיים ביעד
-        similarity_str = check_similarity(target_dir, artist)
-        set_item = (artist, similarity_str)
-        if similarity_str and not set_item in similarity_set \
-            and not set_item in not_similarity_set:
-            # מתן אפשרות למשתמש לבחור אם למזג את שמות הזמרים
-            print('{}\n"{}" {} "{}"\n{}'.format("נמצאו שמות דומים - למזג?", artist, "-->", similarity_str, "הקש 1 לאישור או 2 להמשך"))
-            answer = input(">>>")
-            # ניקוי מסך
-            clear()
-            try:
-                if int(answer) == 1:
-                    similarity_set.add(set_item)
-                    artist = similarity_str
-                elif int(answer) == 2:
-                    not_similarity_set.add(set_item)
-            except:
-                pass
-
-        elif (artist, similarity_str) in similarity_set:
-            artist = similarity_str
                        
         # יצירת תיקית יעד אם אינה קיימת        
         target_path =  os.path.join(target_dir, artist)
         if not os.path.isdir(target_path):
             os.makedirs(target_path)
+
+        # העברה או העתקה בהתאם להגדרות המשתמש
         if copy_mode:
-            # העתקת הקובץ לתיקית האמן התואמת
             copy(file_path, target_path)
         else:
-            # העברת הקובץ לתיקית האמן התואמת
             try:
                 move(file_path, target_path)
             except:
