@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+  <meta charset="utf-8">
+    <title>חיפוש בדרייב</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <body dir="rtl" style="background-color:#FFFEDB;">
+	<style>
+body {
+  background-color: #fff3cd;
+  font-family: Tahoma;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 70vh;
+}
+
+h1 {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+form {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
+
+input {
+  font-size: 1.5rem;
+  padding: 0.5rem;
+  margin-right: 1rem;
+  border-radius: 5px;
+  border: none;
+  background-color: #ffffff;
+  width: 300px;
+}
+
+button {
+  background-color: #007bff;
+  color: #fff;
+  font-size: 1.5rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #0069d9;
+}
+    </style>
+	
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-TGD4VQW4X8"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-TGD4VQW4X8');
+</script>
+  </head>
+  
+  <body>
+    <div class="container">
+      <h1>חפשו בדרייב:</h1>
+      <form onsubmit="return openDriveLink();">
+        <input type="text" id="searchInput" name="searchInput" placeholder="הכנס מילות מפתח">
+        <button type="submit">חפש</button>
+      </form>
+	  
+	  <script>
+  function openDriveLink() {
+    var searchTerm = document.getElementById("searchInput").value;
+    var link = "https://drive.google.com/drive/u/3/search?q=" + searchTerm + "%20type:audio%20parent:1ijBiqqRc5ageu7Fbt5op3pvvm19rplRS";
+    window.open(link, "_blank");
+    return false;
+  }
+</script>
+
+    </div>
+    <script src="script.js"></script>
+  </body>
+</html>
