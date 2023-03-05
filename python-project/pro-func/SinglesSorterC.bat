@@ -49,9 +49,19 @@ del "%temp%\mesader-targetB.tmp"
 ::קביעת משתנים לצורך הגדרות המשתמש
 ::================================
 
-::הגדרת משתנה לניקוי שמות הקבצים
-set/p cleaning=<"%tmp%\select7_tmp.tmp"
-if "%cleaning%"=="False" (set "clear_heb=False") else (set "clear_heb=True")
+::הגדרת משתנה ליצירת תיקית סינגלים פנימית
+set/p in_folder_creating=<"%tmp%\select1_tmp.tmp"
+if "%in_folder_creating%"=="True" (
+set sing_heb=True
+set "s=\סינגלים"
+)else (
+set "sing_heb=False"
+set s=
+)
+
+::קביעת משתנה ליצירת תיקיות ראשיות בחלוקה לא' ב'
+set/p abc_dirs_creating=<"%tmp%\select2_tmp.tmp"
+if "%abc_dirs_creating%"=="True" (set "abc_heb=True") else (set "abc_heb=False")
 
 ::הגדרת משתנה העברה או העתקה
 set/p copy_moving=<"%tmp%\select3_tmp.tmp"
@@ -67,31 +77,21 @@ set "msg=ורבעוהש"
 set cm_heb=הרבעה
 )
 
-::קביעת משתנה ליצירת תיקיות ראשיות בחלוקה לא' ב'
-set/p abc_dirs_creating=<"%tmp%\select2_tmp.tmp"
-if "%abc_dirs_creating%"=="True" (set "abc_heb=True") else (set "abc_heb=False")
-
-::הגדרת משתנה ליצירת תיקית סינגלים פנימית
-set/p in_folder_creating=<"%tmp%\select1_tmp.tmp"
-if "%in_folder_creating%"=="True" (
-set sing_heb=True
-set "s=\סינגלים"
-)else (
-set "sing_heb=False"
-set s=
-)
-
 ::הגדרת משתנה ליצירת תיקיות חדשות או העברה לתיקיות קיימות בלבד
 set/p creating_folder=<"%tmp%\select4_tmp.tmp"
 if "%creating_folder%"=="True" (set fixed_heb=True) else (set "fixed_heb=False")
+
+::הגדרת משתנה לסריקת תיקיות משנה
+set/p tree_scanning=<"%tmp%\select5_tmp.tmp"
+if "%tree_scanning%"=="True" (set "dir_heb=True") else (set "dir_heb=False")
 
 ::הגדרת משתנה להפעלת סריקה מתקדמת
 set/p pro_scanning=<"%tmp%\select6_tmp.tmp"
 if "%pro_scanning%"=="False" (set "artist_heb=False") else (set "artist_heb=True")
 
-::הגדרת משתנה לסריקת תיקיות משנה
-set/p tree_scanning=<"%tmp%\select6_tmp.tmp"
-if "%tree_scanning%"=="True" (set "dir_heb=True") else (set "dir_heb=False")
+::הגדרת משתנה לניקוי שמות הקבצים
+set/p cleaning=<"%tmp%\select7_tmp.tmp"
+if "%cleaning%"=="False" (set "clear_heb=False") else (set "clear_heb=True")
 
 
 :intro
@@ -239,14 +239,17 @@ path "%AppData%\singles-sorter";%path%
 echo.
 timeout 10 | echo            ךלש תורדגהה יפ לע ןמא יפל תמדקתמ הקירס לחת תוינש רפסמ דועב
 
-
-:: החלפת פונקציית הפרו בפונקציית פייתון
-:: ישנם 7 פרמטרים שונים
-
-
-‏‏pro_func_releas.py "%source_path%" "%h%" %c_or_m% %abc_heb% %fixed_heb% a:%s% b:%tree%
+cls
+echo.
+echo                                    ...דבוע
+echo.
+echo.
+‏‏pro_func_releas.py "%source_path%" "%h%" %c_or_m% %abc_heb% %fixed_heb% %in_folder_creating% %dir_heb%
 
 pause
+
+::לבינתיים יציאה מידית
+exit
 
 set "artist_heb=False"
 set pro_scan=True

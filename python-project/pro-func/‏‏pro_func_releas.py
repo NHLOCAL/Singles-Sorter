@@ -65,7 +65,7 @@ def check_artist(artist):
 
 
 # מעבר על עץ התיקיות שהוגדר
-def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_only=False, singles_folder=False, tree_folders=True):
+def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_only=False, singles_folder=True, tree_folders=True):
     """
 הפונקציה המרכיבת את הפקודה הראשית של התכנית. היא סורקת את התיקיות והקבצים תחת נתיב שצוין ויוצרת רשימה של קבצים להעתקה.
 בסוף התהליך היא מעתיקה אותם אם הוכנס פרמטר של תיקית יעד.
@@ -79,13 +79,23 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_o
 תוצאה:
     מדפיס את רשימת האמנים שמופיעים במטאדאטה של השירים, ומעתיק אותם ליעד.
     """
-    # סריקת עץ התיקיות והכנסת שם הקבצים ושם האמן שלהם לרשימה
-    if (dir_path != "") and (os.path.exists(dir_path)):
-        info_list = [(os.path.join(root, my_file), artist_from_song(os.path.join(root, my_file)))
-            for root, dirs, files in os.walk(dir_path)
-            for my_file in files if artist_from_song(os.path.join(root, my_file))]
-    else:
-        return
+    # סריקת עץ התיקיות או התיקיה הראשית בהתאם לבחירת המשתמש והכנסת שם הקבצים ושם האמן שלהם לרשימה
+    info_list = []  
+    if tree_folders:
+        for root, dirs, files in os.walk(dir_path):
+            for my_file in files:
+                file_path = os.path.join(root, my_file)
+                if my_file.endswith((".mp3",".wma", ".wav")):
+                    artist = artist_from_song(file_path)
+                    if artist: info_list.append((file_path, artist))
+
+    elif tree_folders == False:
+        for my_file in os.listdir(dir_path):
+            file_path = os.path.join(dir_path, my_file)
+            if os.path.isfile(file_path):
+                if my_file.endswith((".mp3",".wma", ".wav")):
+                    artist = artist_from_song(file_path)
+                    if artist: info_list.append((file_path, artist))
 
         
     # הגדרות עבור תצוגת אחוזים
@@ -97,7 +107,7 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_o
         # תצוגת אחוזים מתחלפת
         len_item += 1
         show_len = len_item * 100 // len_dir
-        print(str(show_len) + "% " + "הושלמו",end='\r')
+        print("" * 39, str(show_len), "% ", "הושלמו",end='\r')
         
         # הפעלת פונקציה המבצעת בדיקות על שם האמן
         check_answer = check_artist(artist)
@@ -122,6 +132,13 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_o
         if not os.path.isdir(target_path) and exist_only == False:
             try: os.makedirs(target_path)
             except: pass
+            
+        # חזרה ללולאה אם מוגדר להעביר תיקיות קיימות בלבד
+        elif not os.path.isdir(target_path) and singles_folder:
+            if not os.path.isdir(os.path.dirname(path)): continue
+        elif not os.path.isdir(target_path):
+            try: os.makedirs(target_path)
+            except: pass 
 
         # העברה או העתקה בהתאם להגדרות המשתמש
         if copy_mode and os.path.isdir(target_path):
@@ -135,16 +152,19 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_o
 def main():
     dir_path = os.path.join(argv[1]) # נתיב תיקית מקור
     target_dir = os.path.join(argv[2]) # נתיב תיקית יעד  
-    copy_mode = True if argv[3:] == "xcopy" else False  # קביעת העתקה או העברה  
+    copy_mode = True if str(argv[3]) == "xcopy" else False  # קביעת העתקה או העברה  
     abc_sort = True if eval(argv[4]) else False # מיון לפי א' ב'
     exist_only = True if eval(argv[5]) else False # העברה לתיקיות קיימות בלבד
     # הוספת תיקית סינגלים פנימית
-    singles_folder = True if str(argv[6]) == r"a:\סינגלים" else False
+    singles_folder = True if eval(argv[6]) else False
     # מעבר על עץ תיקיות
-    tree_folders = True if str(argv[7:]) == "b:/r" else False
+    tree_folders = False if eval(argv[7]) else True
 
     # הרצת הפונצקיה עם כל הפרמטרים
     scan_dir(str(argv[1]), str(argv[2]), copy_mode, abc_sort, exist_only, singles_folder, tree_folders)
+    
+    os.system('echo' + str(tree_folders))
+    os.system('pause')
 
 if __name__ == '__main__':
     main()
