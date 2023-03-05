@@ -242,58 +242,15 @@ timeout 10 | echo            ךלש תורדגהה יפ לע ןמא יפל תמדקתמ הקירס לחת תוינש רפ
 
 :: החלפת פונקציית הפרו בפונקציית פייתון
 :: ישנם 7 פרמטרים שונים
-‏‏pro_func_releas %source_path% %h% %c_or_m% %abc_heb% %fixed_heb% a:%s% b:%tree%
 
 
+‏‏pro_func_releas.py "%source_path%" "%h%" %c_or_m% %abc_heb% %fixed_heb% a:%s% b:%tree%
 
+pause
 
-
-
-for %tree% %%s in (*.mp3,*.wma,*.wav) do (
-set file=%%~s
-call :scanner_func
-if exist "%Temp%\artist-song.tmp" del "%Temp%\artist-song.tmp"
-set/a d=d+1
-)
-::מחיקת קבצים זמניים והגדרת משתנים חשובים
-::עבור תצוגת הסיכום
-del "%Temp%\artist-song.tmp"
-del "%Temp%\artist-song-ansi.tmp"
 set "artist_heb=False"
 set pro_scan=True
 goto :finish
-
-:scanner_func
-::תצוגה למשתמש
-cls
-echo.
-echo                                    ...דבוע
-
-:: שימוש בתוכנה חיצונית להכנסת נתוני השיר לקובץ
-for /f "tokens=1,2* delims=" %%i in ('infosong "%file%"') do set artist=%%i
-
-if "%artist%"=="False" exit /b
-
-::הגדרת משתנה עבור נתיב היעד
-if "%abc_heb%"=="True" set w=%artist:~0,1%\
-
-::הגדרת שם משתנה עבור נתיב התיקיה לנוחות קריאת הקוד
-set file_path="%h%\%w%%artist%%s%"
-
-::בדיקה אם הוגדה העתקה לתיקיות קיימות בלבד
-
-if "%fixed_heb%"=="True" (
-if exist "%h%\%w%%artist%" if not exist %file_path% md %file_path%
-if exist %file_path% %c_or_m% %par% "%file%" %file_path%>>םוכיס
-exit /b
-)
-
-if not exist %file_path% md %file_path%
-if exist %file_path% %c_or_m% %par% "%file%" %file_path%>>םוכיס
-
-::יציאה מהפונקציה וחזרה לפקודת הפור
-exit /b
-
 
 
 

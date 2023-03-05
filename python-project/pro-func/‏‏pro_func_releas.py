@@ -110,41 +110,41 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_o
                        
         # יצירת תיקית יעד אם אינה קיימת בהתאם להתאמות האישיות של המשתמש
         if singles_folder and abc_sort:
-            target_path =  os.path.join(target_dir, artist[0], artist, "סינגלים")
+            target_path = os.path.join(target_dir, artist[0], artist, "סינגלים")
         elif singles_folder:
-            target_path =  os.path.join(target_dir, artist, "סינגלים")
+            target_path = os.path.join(target_dir, artist, "סינגלים")
         elif abc_sort:
-            target_path =  os.path.join(target_dir, artist[0], artist)
+            target_path = os.path.join(target_dir, artist[0], artist)
+        else:
+            target_path = os.path.join(target_dir, artist)
         
         # יצירת תיקית יעד בתנאים מסויימים
-        if not os.path.isdir(target_path) and exist_only = False:
-            os.makedirs(target_path)
+        if not os.path.isdir(target_path) and exist_only == False:
+            try: os.makedirs(target_path)
+            except: pass
 
         # העברה או העתקה בהתאם להגדרות המשתמש
-        if copy_mode:
+        if copy_mode and os.path.isdir(target_path):
             copy(file_path, target_path)
-        else:
+        elif os.path.isdir(target_path):
             try:
                 move(file_path, target_path)
             except:
                 pass
 
 def main():
-    dir_path = str(argv[1]) # נתיב תיקית מקור
-    target_dir = str(argv[2]) # נתיב תיקית יעד  
-    if argv[3:] == "xcopy": copy_mode = True # קביעת העתקה או העברה  
-    if eval(argv[4:]): abc_sort = True # מיון לפי א' ב'
-    if eval(argv[5:]): exist_only = True # העברה לתיקיות קיימות בלבד
+    dir_path = os.path.join(argv[1]) # נתיב תיקית מקור
+    target_dir = os.path.join(argv[2]) # נתיב תיקית יעד  
+    copy_mode = True if argv[3:] == "xcopy" else False  # קביעת העתקה או העברה  
+    abc_sort = True if eval(argv[4]) else False # מיון לפי א' ב'
+    exist_only = True if eval(argv[5]) else False # העברה לתיקיות קיימות בלבד
     # הוספת תיקית סינגלים פנימית
-    if str(argv[6:]) == r"a:\סינגלים": singles_folder = True
+    singles_folder = True if str(argv[6]) == r"a:\סינגלים" else False
     # מעבר על עץ תיקיות
-    tree_folders = True if str(argv[7:]) == "b:/r" else tree_folders = False
+    tree_folders = True if str(argv[7:]) == "b:/r" else False
 
     # הרצת הפונצקיה עם כל הפרמטרים
     scan_dir(str(argv[1]), str(argv[2]), copy_mode, abc_sort, exist_only, singles_folder, tree_folders)
-    
-    
-    os.system('pause')
 
 if __name__ == '__main__':
     main()
