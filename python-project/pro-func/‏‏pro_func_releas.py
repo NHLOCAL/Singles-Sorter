@@ -133,12 +133,16 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_o
             try: os.makedirs(target_path)
             except: pass
             
-        # חזרה ללולאה אם מוגדר להעביר תיקיות קיימות בלבד
+        elif singles_folder and not os.path.isdir(os.path.dirname(target_path)):
+            try: os.makedirs(target_path)
+            except: pass
+        """
         elif not os.path.isdir(target_path) and singles_folder:
-            if not os.path.isdir(os.path.dirname(path)): continue
+            if not os.path.isdir(os.path.dirname(target_path)): continue
         elif not os.path.isdir(target_path):
             try: os.makedirs(target_path)
-            except: pass 
+            except: pass
+        """
 
         # העברה או העתקה בהתאם להגדרות המשתמש
         if copy_mode and os.path.isdir(target_path):
@@ -162,9 +166,6 @@ def main():
 
     # הרצת הפונצקיה עם כל הפרמטרים
     scan_dir(str(argv[1]), str(argv[2]), copy_mode, abc_sort, exist_only, singles_folder, tree_folders)
-    
-    os.system('echo' + str(tree_folders))
-    os.system('pause')
 
 if __name__ == '__main__':
     main()

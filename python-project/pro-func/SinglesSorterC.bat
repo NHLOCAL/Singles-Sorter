@@ -83,7 +83,7 @@ if "%creating_folder%"=="True" (set fixed_heb=True) else (set "fixed_heb=False")
 
 ::הגדרת משתנה לסריקת תיקיות משנה
 set/p tree_scanning=<"%tmp%\select5_tmp.tmp"
-if "%tree_scanning%"=="True" (set "dir_heb=True") else (set "dir_heb=False")
+if "%tree_scanning%"=="True" (set "dir_heb=False") else (set "dir_heb=True")
 
 ::הגדרת משתנה להפעלת סריקה מתקדמת
 set/p pro_scanning=<"%tmp%\select6_tmp.tmp"
