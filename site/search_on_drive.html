@@ -16,7 +16,7 @@ body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  height: 70vh;
+  height: 50vh;
 }
 
 h1 {
@@ -69,14 +69,16 @@ button:hover {
   
   <body>
     <div class="container">
-      <h1>חפשו בדרייב:</h1>
+      <h1>חפשו בדרייב</h1>
       <form onsubmit="return openDriveLink();">
         <input type="text" id="searchInput" name="searchInput" placeholder="הכנס מילות מפתח">
         <button type="submit">חפש</button>
       </form>  
     </div>
 
-<iframe src="https://drive.google.com/embeddedfolderview?id=1ijBiqqRc5ageu7Fbt5op3pvvm19rplRS&resourcekey=1ijBiqqRc5ageu7Fbt5op3pvvm19rplRS#grid" style="width:100%; height:600px; border:0;"></iframe>
+
+<h2 style="text-align: center;">או כנסו לאחת התיקיות</h2>
+<iframe src="https://drive.google.com/embeddedfolderview?id=1ijBiqqRc5ageu7Fbt5op3pvvm19rplRS&resourcekey=1ijBiqqRc5ageu7Fbt5op3pvvm19rplRS#grid" style="width:100%; height:300px; border:0;"></iframe>
 
 	  <script>
   function openDriveLink() {
