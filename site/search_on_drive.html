@@ -55,8 +55,7 @@ button:hover {
   background-color: #0069d9;
 }
     </style>
-<script src="https://apis.google.com/js/platform.js" async defer></script>
-
+	
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-TGD4VQW4X8"></script>
 <script>
@@ -77,46 +76,17 @@ button:hover {
       </form>  
     </div>
 
-<div class="g-signin2" data-onsuccess="onSignIn"></div>
-
 
 <h2 style="text-align: center;">או כנסו לאחת התיקיות</h2>
 <iframe src="https://drive.google.com/embeddedfolderview?id=1ijBiqqRc5ageu7Fbt5op3pvvm19rplRS&resourcekey=1ijBiqqRc5ageu7Fbt5op3pvvm19rplRS#grid" style="width:100%; height:300px; border:0;"></iframe>
 
-	<script>
-/*  function openDriveLink() {
+	  <script>
+  function openDriveLink() {
     var searchTerm = document.getElementById("searchInput").value;
     var link = "https://drive.google.com/drive/u/3/search?q=" + searchTerm + "%20type:audio%20parent:1ijBiqqRc5ageu7Fbt5op3pvvm19rplRS";
     window.open(link, "_blank");
     return false;
-  } */
-  
-function onSignIn(googleUser) {
-  // Get the user's ID token and basic profile information
-  var id_token = googleUser.getAuthResponse().id_token;
-  var profile = googleUser.getBasicProfile();
-
-  // Send the ID token and profile information to your server for authentication
-  // TODO: Implement server-side authentication
-}
-
-
-function openDriveLink() {
-  var searchTerm = document.getElementById("searchInput").value;
-
-  // Check if the user is signed in
-  if (gapi.auth2.getAuthInstance().isSignedIn.get()) {
-    // User is signed in, open the Drive link
-    var link = "https://drive.google.com/drive/u/3/search?q=" + searchTerm + "%20type:audio%20parent:1ijBiqqRc5ageu7Fbt5op3pvvm19rplRS";
-    window.open(link, "_blank");
-  } else {
-    // User is not signed in, display an error message
-    alert("Please sign in to your Google account to search Drive.");
   }
-
-  return false;
-}
-
 </script>
 
 
