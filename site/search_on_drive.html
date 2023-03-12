@@ -5,9 +5,9 @@
     <title>חיפוש בדרייב</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <body dir="rtl" style="background-color:#FFFEDB;">
-	<style>
+  <style>
 body {
-  background-color: #fff3cd;
+  background-color: #f1f9ff;
   font-family: Tahoma;
 }
 
@@ -17,11 +17,14 @@ body {
   justify-content: center;
   align-items: center;
   height: 50vh;
+  background-color: transparent;
 }
 
 h1 {
   font-size: 3rem;
   margin-bottom: 1rem;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
+  color: #151F36;
 }
 
 form {
@@ -29,6 +32,10 @@ form {
   flex-direction: row;
   justify-content: center;
   align-items: center;
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
 }
 
 input {
@@ -37,24 +44,64 @@ input {
   margin-right: 1rem;
   border-radius: 5px;
   border: none;
-  background-color: #ffffff;
+  background-color: #dfe8f7;
   width: 300px;
+  box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.1);
+}
+
+input:focus {
+  border: 2px solid #2d4373;
+  border-radius: 5px;
+  outline: none;
+  box-shadow: 0 0 10px rgba(45, 67, 115, 0.5);
+  animation: input-border 0.5s ease-in-out;
+}
+
+@keyframes input-border {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 button {
-  background-color: #007bff;
+  background-color: #2d4373;
   color: #fff;
   font-size: 1.5rem;
   padding: 0.5rem 1rem;
   border: none;
   border-radius: 5px;
   cursor: pointer;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 5px 15px rgba(45, 67, 115, 0.5);
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
 
 button:hover {
-  background-color: #0069d9;
+  background-color: #1e2d4d;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(45, 67, 115, 0.5);
 }
-    </style>
+
+/* Additional styles for demonstration purposes only */
+input[type="checkbox"] {
+  transform: scale(1.5);
+  margin-right: 5px;
+}
+
+label {
+  display: flex;
+  align-items: center;
+  font-size: 1.2rem;
+  margin-right: 1rem;
+  color: #2d4373;
+}
+  </style>
 	
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-TGD4VQW4X8"></script>
