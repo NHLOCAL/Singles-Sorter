@@ -2,7 +2,7 @@
 <html lang="he">
 <head>
   <meta charset="utf-8">
-    <title>חיפוש בדרייב</title>
+  <title>חיפוש בדרייב</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <body dir="rtl" style="background-color:#FFFEDB;">
   <style>
@@ -112,30 +112,42 @@ label {
 
   gtag('config', 'G-TGD4VQW4X8');
 </script>
-  </head>
+</head>
   
-  <body>
-    <div class="container">
-      <h1>חפשו בדרייב</h1>
-      <form onsubmit="return openDriveLink();">
-        <input type="text" id="searchInput" name="searchInput" placeholder="הכנס מילות מפתח">
-        <button type="submit">חפש</button>
-      </form>  
-    </div>
+<body>
+  <div class="container">
+    <h1>חפשו בדרייב</h1>
+    <form onsubmit="return openDriveLink();">
+      <input type="text" id="searchInput" name="searchInput" placeholder="הכנס מילות מפתח">
+      <button type="submit">חפש</button>
+    </form>  
+  </div>
 
+  <h2 style="text-align: center;">או כנסו לאחת התיקיות</h2>
+  <iframe src="https://drive.google.com/embeddedfolderview?id=1ijBiqqRc5ageu7Fbt5op3pvvm19rplRS&resourcekey=1ijBiqqRc5ageu7Fbt5op3pvvm19rplRS#grid" style="width:100%; height:300px; border:0;"></iframe>
 
-<h2 style="text-align: center;">או כנסו לאחת התיקיות</h2>
-<iframe src="https://drive.google.com/embeddedfolderview?id=1ijBiqqRc5ageu7Fbt5op3pvvm19rplRS&resourcekey=1ijBiqqRc5ageu7Fbt5op3pvvm19rplRS#grid" style="width:100%; height:300px; border:0;"></iframe>
+  <script>
+    // Retrieve the search history from local storage and display it
+    var searchHistory = JSON.parse(localStorage.getItem("searchHistory")) || [];
+    var historyList = document.createElement("ul");
+    for (var i = 0; i < searchHistory.length; i++) {
+      var item = document.createElement("li");
+      item.textContent = searchHistory[i];
+      historyList.appendChild(item);
+    }
+    document.body.appendChild(historyList);
 
-	  <script>
-  function openDriveLink() {
-    var searchTerm = document.getElementById("searchInput").value;
-    var link = "https://drive.google.com/drive/u/3/search?q=" + searchTerm + "%20parent:1ijBiqqRc5ageu7Fbt5op3pvvm19rplRS";
-    window.open(link, "_blank");
-    return false;
-  }
-</script>
-
-
-  </body>
+    function openDriveLink() {
+      var searchTerm = document.getElementById("searchInput").value;
+      var link = "https://drive.google.com/drive/u/3/search?q=" + searchTerm + "%20parent:1ijBiqqRc5ageu7Fbt5op3pvvm19rplRS";
+      window.open(link, "_blank");
+      
+      // Store the search term in local storage
+      searchHistory.push(searchTerm);
+      localStorage.setItem("searchHistory", JSON.stringify(searchHistory));
+      
+      return false;
+    }
+  </script>
+</body>
 </html>
