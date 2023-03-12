@@ -10,6 +10,7 @@ body {
   background-color: #f1f9ff;
   font-family: Tahoma;
 }
+
 .container {
   display: flex;
   flex-direction: column;
@@ -18,12 +19,14 @@ body {
   height: 50vh;
   background-color: transparent;
 }
+
 h1 {
   font-size: 3rem;
   margin-bottom: 1rem;
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
   color: #151F36;
 }
+
 form {
   display: flex;
   flex-direction: row;
@@ -34,6 +37,7 @@ form {
   border-radius: 10px;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
 }
+
 input {
   font-size: 1.5rem;
   padding: 0.5rem;
@@ -44,6 +48,7 @@ input {
   width: 300px;
   box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.1);
 }
+
 input:focus {
   border: 2px solid #2d4373;
   border-radius: 5px;
@@ -51,6 +56,7 @@ input:focus {
   box-shadow: 0 0 10px rgba(45, 67, 115, 0.5);
   animation: input-border 0.5s ease-in-out;
 }
+
 @keyframes input-border {
   0% {
     transform: scale(1);
@@ -62,6 +68,7 @@ input:focus {
     transform: scale(1);
   }
 }
+
 button {
   background-color: #2d4373;
   color: #fff;
@@ -74,16 +81,19 @@ button {
   box-shadow: 0 5px 15px rgba(45, 67, 115, 0.5);
   transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
+
 button:hover {
   background-color: #1e2d4d;
   transform: translateY(-2px);
   box-shadow: 0 10px 20px rgba(45, 67, 115, 0.5);
 }
+
 /* Additional styles for demonstration purposes only */
 input[type="checkbox"] {
   transform: scale(1.5);
   margin-right: 5px;
 }
+
 label {
   display: flex;
   align-items: center;
@@ -91,46 +101,6 @@ label {
   margin-right: 1rem;
   color: #2d4373;
 }
-
-
-.search-container {
-  position: relative;
-}
-
-.search-history-dropdown {
-  position: absolute;
-  top: calc(100% + 5px);
-  left: 0;
-  z-index: 1;
-}
-
-
-
-
-.search-history-dropdown-content {
-  display: none;
-  position: absolute;
-  background-color: #fff;
-  min-width: 100%;
-  box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
-  padding: 8px 0;
-  margin: 0;
-  list-style: none;
-}
-
-.search-history-dropdown-content li {
-  padding: 8px 12px;
-  cursor: pointer;
-}
-
-.search-history-dropdown-content li:hover {
-  background-color: #dfe8f7;
-}
-
-.search-history-dropdown-content.active {
-  display: block;
-}
-
   </style>
 	
 <!-- Google tag (gtag.js) -->
@@ -139,72 +109,45 @@ label {
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
+
   gtag('config', 'G-TGD4VQW4X8');
 </script>
 </head>
-
   
 <body>
-<div class="container">
-  <h1>חפשו בדרייב</h1>
-  <form onsubmit="return openDriveLink();">
-    <div class="search-container">
-      <input type="text" id="searchInput" name="searchInput" placeholder="הכנס מילות מפתח"
-	  button type="button" onclick="toggleSearchHistoryDropdown()"></button>	   
-        <ul id="searchHistoryDropdown" class="search-history-dropdown-content"></ul>
-    </div>
-    <button type="submit">חפש</button>
-  </form>
-</div>
-
-
+  <div class="container">
+    <h1>חפשו בדרייב</h1>
+    <form onsubmit="return openDriveLink();">
+      <input type="text" id="searchInput" name="searchInput" placeholder="הכנס מילות מפתח">
+      <button type="submit">חפש</button>
+    </form>  
+  </div>
 
   <h2 style="text-align: center;">או כנסו לאחת התיקיות</h2>
   <iframe src="https://drive.google.com/embeddedfolderview?id=1ijBiqqRc5ageu7Fbt5op3pvvm19rplRS&resourcekey=1ijBiqqRc5ageu7Fbt5op3pvvm19rplRS#grid" style="width:100%; height:300px; border:0;"></iframe>
+
   <script>
-// Retrieve the search history from local storage and display it in the dropdown list
-var searchHistory = JSON.parse(localStorage.getItem("searchHistory")) || [];
-var searchHistoryDropdown = document.getElementById("searchHistoryDropdown");
-for (var i = 0; i < searchHistory.length; i++) {
-  var item = document.createElement("li");
-  item.textContent = searchHistory[i];
-  item.onclick = function() {
-    document.getElementById("searchInput").value = this.textContent;
-    toggleSearchHistoryDropdown();
-  }
-  searchHistoryDropdown.appendChild(item);
-}
-
-function toggleSearchHistoryDropdown() {
-  searchHistoryDropdown.classList.toggle("active");
-}
-
-function openDriveLink() {
-  var searchTerm = document.getElementById("searchInput").value;
-  var link = "https://drive.google.com/drive/u/3/search?q=" + searchTerm + "%20parent:1ijBiqqRc5ageu7Fbt5op3pvvm19rplRS";
-  window.open(link, "_blank");
-
-  // Store the search term in local storage
-  searchHistory.push(searchTerm);
-  localStorage.setItem("searchHistory", JSON.stringify(searchHistory));
-
-  // Clear the input and close the search history dropdown
-  document.getElementById("searchInput").value = "";
-  searchHistoryDropdown.innerHTML = "";
-  for (var i = 0; i < searchHistory.length; i++) {
-    var item = document.createElement("li");
-    item.textContent = searchHistory[i];
-    item.onclick = function() {
-      document.getElementById("searchInput").value = this.textContent;
-      toggleSearchHistoryDropdown();
+    // Retrieve the search history from local storage and display it
+    var searchHistory = JSON.parse(localStorage.getItem("searchHistory")) || [];
+    var historyList = document.createElement("ul");
+    for (var i = 0; i < searchHistory.length; i++) {
+      var item = document.createElement("li");
+      item.textContent = searchHistory[i];
+      historyList.appendChild(item);
     }
-    searchHistoryDropdown.appendChild(item);
-  }
-  toggleSearchHistoryDropdown();
+    document.body.appendChild(historyList);
 
-  return false;
-}
-
+    function openDriveLink() {
+      var searchTerm = document.getElementById("searchInput").value;
+      var link = "https://drive.google.com/drive/u/3/search?q=" + searchTerm + "%20parent:1ijBiqqRc5ageu7Fbt5op3pvvm19rplRS";
+      window.open(link, "_blank");
+      
+      // Store the search term in local storage
+      searchHistory.push(searchTerm);
+      localStorage.setItem("searchHistory", JSON.stringify(searchHistory));
+      
+      return false;
+    }
   </script>
 </body>
 </html>
