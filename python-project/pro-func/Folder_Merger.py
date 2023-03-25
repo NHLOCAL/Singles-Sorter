@@ -107,8 +107,10 @@ def creat_similarity_list(dir_path):
     # הגדרת סט שמות אמנים דומים    
     similarity_set = set()
     not_similarity_set = set()
+    # יצירת רשימת תיקיות תוך התעלמות מקבצים
+    folders_list = [item for item in os.listdir(dir_path) if os.path.isdir(os.path.join(dir_path, item))]
 
-    for artist in os.listdir(dir_path):
+    for artist in folders_list:
         # הפעלת בדיקה אם שם אמן דומה כבר קיים ביעד
         similarity_str = check_similarity(dir_path, artist)
         set_item = (artist, similarity_str)
