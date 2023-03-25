@@ -17,6 +17,7 @@ from identify_similarities import similarity_sure
 # פונקציית ניקוי מסך
 from click import clear
 
+
 # יבוא רשימת זמרים מקובץ csv
 def read_csv(file_path):
     """
@@ -30,12 +31,13 @@ def read_csv(file_path):
     return singers_data
 
 
+# מבצע מיזוג של תיקיות זמרים בעלי שם שונה במקצת
 def merge_folders(singers_data, dir_path):
     """
 מבצע מיזוג של תיקיות זמרים בעלי שם שונה במקצת
     פרמטר 1 = רשימת זמרים
     פרמטר 2 = נתיב תיקיה לסריקה
-    תוצאה = אין   
+    תוצאה = אין
     """
     # הגדרת התיקיה שהוכנסה כתיקיה הנוכחית
     os.chdir(dir_path)
