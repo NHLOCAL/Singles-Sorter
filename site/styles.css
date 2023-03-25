@@ -1,3 +1,11 @@
+.button-image:hover {
+   opacity: 0.8; /* עמעום אטום של התמונה */
+   transform: scale(0.95); /* הקטנת התמונה */
+   transition: all 0.2s ease-in-out; /* יצירת אפקט חלק בעת העברת העכבר */
+   cursor: pointer; /* הצגת הסמן של העכבר כמו כפתור */
+}
+
+
 /* The sidebar menu */
 .sidenav {
   height: 100%; /* Full-height: remove this if you want "auto" height */
@@ -127,6 +135,7 @@ body {font-family: Tahoma;}
 
 /* הגדרת הודעה קופצת */
 .alert {
+  border-radius: 10px;
   background-color: #0800E0;
   width: 90%;
   color: white;
