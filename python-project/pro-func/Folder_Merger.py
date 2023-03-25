@@ -27,12 +27,12 @@ def read_csv(file_path):
     """
     with open(file_path, 'r') as file:
         csv_reader = csv.reader(file)
-        singers_data = [tuple(row) for row in csv_reader]
-    return singers_data
+        singer_list = [tuple(row) for row in csv_reader]
+    return singer_list
 
 
 # מבצע מיזוג של תיקיות זמרים בעלי שם שונה במקצת
-def merge_folders(singers_data, dir_path):
+def merge_folders(singer_list, dir_path):
     """
 מבצע מיזוג של תיקיות זמרים בעלי שם שונה במקצת
     פרמטר 1 = רשימת זמרים
@@ -43,12 +43,12 @@ def merge_folders(singers_data, dir_path):
     os.chdir(dir_path)
     
     # מעבר על רשימת שמות הזמרים וחיפוש שלהם בתיקיה
-    for source_name, target_name in singers_data:
+    for source_name, target_name in singer_list:
         # אם שם תיקית המקור והיעד זהים תתבצע חזרה להמשך הלולאה
         if source_name == target_name: continue
         
         # בדיקה אם שם האמן קיים ברשימת התיקיות
-        if not source_name in os.listdir(): continue
+        if source_name not in os.listdir(): continue
         
         # הגדרת נתיבי תיקית מקור ותיקית יעד
         old_path = os.path.join(os.getcwd(), source_name)
@@ -57,7 +57,7 @@ def merge_folders(singers_data, dir_path):
         # אם לא קיים נתיב יעד יתבצע שינוי שם לשם הרצוי
         if os.path.exists(old_path) and not os.path.exists(new_path):
             os.rename(old_path, new_path)
-            print(old_path + ' --> \n' + new_path)
+            print(f"{old_path} -->\n{new_path}")
        
         # אם קיים נתיב יעד, תתבצע העברה של הקבצים שבמקור אל היעד
         elif os.path.exists(old_path):
@@ -65,7 +65,7 @@ def merge_folders(singers_data, dir_path):
                 source_path = os.path.join(old_path, filename)
                 destination_path = os.path.join(new_path, filename)
                 shutil.move(source_path, destination_path)
-            print(old_path + ' --> \n' + new_path)
+            print(f"{old_path} -->\n{new_path}")
             # מחיקת תיקית המקור לאחר סיום ההעברה
             shutil.rmtree(old_path)
 
@@ -171,8 +171,8 @@ def merge_tuples(input_set):
 def main():
     dir_path = str(sys.argv[1])
     file_path = r"C:\Users\COLMI\AppData\Roaming\singles-sorter\singer-list.csv"
-    singers_data = read_csv(file_path)
-    merge_folders(singers_data, dir_path)
+    singer_list = read_csv(file_path)
+    merge_folders(singer_list, dir_path)
     creat_similarity_list(dir_path)
 
 if __name__ == '__main__':
