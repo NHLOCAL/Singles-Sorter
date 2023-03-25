@@ -131,7 +131,7 @@ def creat_similarity_list(dir_path):
         elif (artist, similarity_str) in similarity_set:
             artist = similarity_str
     
-    # מיזוג זוגות שמתו דומים לקבוצות
+    # מיזוג זוגות שמות דומים לקבוצות
     merges_list = merge_tuples(similarity_set)
     
     return merges_list
