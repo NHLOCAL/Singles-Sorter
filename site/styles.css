@@ -61,6 +61,11 @@ border-radius: 5px;
 }
 
 
+/* Page content */
+main {
+margin-top: 10px;
+}
+
 /* Responsive top bar for smaller screens */
 @media screen and (max-width: 767px) {
 .topnav {
