@@ -61,13 +61,6 @@ border-radius: 5px;
 }
 
 
-/* Page content */
-main {
-margin-top: 10px;
-margin-top: 10px;
-padding: 10 20px;
-}
-
 /* Responsive top bar for smaller screens */
 @media screen and (max-width: 767px) {
 .topnav {
@@ -98,18 +91,20 @@ text-align: center;
 background-color: #fff;
 color: #005E8A;
 }
-}
 
+/* Content on the left side */
+.topnav .left_item {
+left: 50px;
+float: center;
+}
+}
 
 /* Content on the left side */
 .left_item {
-width: 120px;
-left: 30px;
+left: 50px;
 float: left;
-margin: 20px;
-position: fixed;
-top: 60px;
-display: none;
+top: 5px;
+position: absolute;
 }
 
 /* Button style */
