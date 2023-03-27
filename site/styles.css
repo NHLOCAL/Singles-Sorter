@@ -182,3 +182,23 @@ body {
 .closebtn:hover {
   color: black;
 }
+
+
+/* Make the page responsive */
+@media only screen and (max-width: 600px) {
+  /* Adjust the top navigation menu */
+  .topnav {
+    overflow: hidden;
+  }
+  .topnav a {
+    display: block;
+    float: none;
+    text-align: center;
+  }
+  
+  /* Adjust the size and position of the iframe */
+  div[style="width:100%; float:center; height:100%; margin:30px; position: fixed;"] {
+    margin: 0;
+    height: calc(100% - 56px); /* Subtract the height of the top navigation menu */
+  }
+}
