@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <title>חיפוש בדרייב</title>
+  <link rel="stylesheet" href="styles.css">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <body dir="rtl" style="background-color:#FFFEDB;">
   <style>
@@ -115,6 +116,8 @@ label {
 </head>
   
 <body>
+
+
   <div class="container">
     <h1>חפשו בדרייב</h1>
     <form onsubmit="return openDriveLink();">
@@ -142,12 +145,12 @@ label {
       var link = "https://drive.google.com/drive/u/3/search?q=" + searchTerm + "%20parent:1ijBiqqRc5ageu7Fbt5op3pvvm19rplRS";
       window.open(link, "_blank");
       
-      // Store the search term in local storage
-      searchHistory.push(searchTerm);
-      localStorage.setItem("searchHistory", JSON.stringify(searchHistory));
-      
       return false;
     }
+	
+	  // Store the search term in local storage
+      searchHistory.push(searchTerm);
+      localStorage.setItem("searchHistory", JSON.stringify(searchHistory));
   </script>
 </body>
 </html>

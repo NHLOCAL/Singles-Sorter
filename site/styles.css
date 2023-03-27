@@ -1,148 +1,171 @@
+/* Button hover effect */
 .button-image:hover {
-   opacity: 0.8; /* עמעום אטום של התמונה */
-   transform: scale(0.95); /* הקטנת התמונה */
-   transition: all 0.2s ease-in-out; /* יצירת אפקט חלק בעת העברת העכבר */
-   cursor: pointer; /* הצגת הסמן של העכבר כמו כפתור */
+opacity: 0.8;
+transform: scale(0.95);
+transition: all 0.2s ease-in-out;
+cursor: pointer;
 }
 
 
-/* The sidebar menu */
-.sidenav {
-  height: 100%; /* Full-height: remove this if you want "auto" height */
-  width: 250px; /* Set the width of the sidebar */
-  position: fixed; /* Fixed Sidebar (stay in place on scroll) */
-  z-index: 5; /* Stay on top */
-  top: 0; /* Stay at the top */
-  right: 0;
-  background-color: #005E8A; /* Black */
-  overflow-x: hidden; /* Disable horizontal scroll */
-  padding-top: 20px;
+/* Top bar menu */
+
+*  {
+  margin: 0;
+  padding: 0;
 }
 
-.sidenav img {
-  right: 45px;
-  bottom: 40px;
-  position: fixed;
-}
-/* The navigation menu links */
-.sidenav h3 {
-  text-align: center;
-  padding: 20px 0px 0px 10px;
-  font-size: 25px;
-  color: white;
-  display: block;
+.topnav {
+padding: 10px;
+text-align: center;
+height: 60px;
+width: 100%;
+z-index: 0;
+top: 0;
+right: 0;
+background-color: #005E8A;
+box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.sidenav h4 {
-  text-align: center;
-  padding: 20px 0px 0px 10px;
-  font-size: 20px;
-  color: white;
-  display: block;
+/* Navigation menu links */
+.topnav h3 {
+font-size: 24px;
+font-weight: 600;
+text-transform: uppercase;
+letter-spacing: 2px;
+margin: 0;
+padding: 0 20px;
+line-height: 60px;
+display: inline-block;
+transition: all 0.2s ease-in-out;
+background-color: #fff;
+color: #005E8A;
+border-radius: 5px;
 }
 
-/* הגדרת כפתור נוכחי */
-.sidenav h3.current {
-  text-align: center;
-  text-decoration: none;
-  background-color: #C0C0C0;
-  color: black;
-  display: inline-block;
-  width: 100%;
-  height: 60px;
-  padding: 20px 0px 0px 10px;
-  font-size: 25px;
-  color: #2A3087;
-}
-
-/* הגדרת עיצוב לינק ברירת מחדל לסרגל הצידי */
-.sidenav a:link, a:visited, input {
+/* Default link style for top bar */
+.topnav a {
   color: white;
   text-align: center;
   text-decoration: none;
   display: inline-block;
+  border-radius: 5px;
+  padding: 10px 20px; /* added this line */
 }
 
-.sidenav a:hover, a:active, input:active, input:hover {
+/* Hover and active link style for top bar */
+.topnav a:hover,
+.topnav a:active,
+.topnav h3.current {
   color: #73FBFD;
+  background-color: #C0C0C0;
 }
 
-/* Style page content */
-.main {
-  margin-right: 160px; /* Same as the width of the sidebar */
-  padding: 0px 10px;
+
+/* Page content */
+main {
+margin-top: 10px;
+margin-top: 10px;
+padding: 10 20px;
 }
 
-/* On smaller screens, where height is less than 450px, change the style of the sidebar (less padding and a smaller font size) */
-@media screen and (max-height: 450px) {
-  .sidenav {padding-top: 15px;}
-  .sidenav a {font-size: 18px;}
+/* Responsive top bar for smaller screens */
+@media screen and (max-width: 767px) {
+.topnav {
+height: auto;
+padding: 10px 0;
 }
 
-body {
-  margin: 5px 300px 40px 140px;
+.topnav img {
+position: static;
+margin: 0 auto;
 }
 
-/* סגנון עבור פריטים הממוקמים בשמאל המסך */
+.topnav h3 {
+font-size: 20px;
+padding: 10px 0;
+display: block;
+}
+
+.topnav a {
+display: block;
+padding: 10px;
+text-align: center;
+}
+
+.topnav a:hover,
+.topnav a:active,
+.topnav h3.current {
+background-color: #fff;
+color: #005E8A;
+}
+}
+
+
+/* Content on the left side */
 .left_item {
-	width: 120px;
-	left: 30px;
-	float: left;
-	margin: 20px;
-	position: fixed;
-	top: 20px;
+width: 120px;
+left: 30px;
+float: left;
+margin: 20px;
+position: fixed;
+top: 60px;
+display: none;
 }
 
-/* סגנון כפתור */
+/* Button style */
 .butt {
-	width: 120px;
-	height: 70px;
-	left: 40px;
-	float: left;
-	margin: 30px;
-	position: fixed;
-	bottom: 30px;
+width: 120px;
+height: 70px;
+left: 40px;
+float: left;
+margin: 30px;
+position: fixed;
+bottom: 30px;
 }
 
 a:link.butt, a:visited.butt, input.butt{
-  background-color: #7092BE;
-  color: white;
-  padding: 15px 25px;
-  text-align: center;
-  text-decoration: none;
-  display: inline-block;
+background-color: #7092BE;
+color: white;
+padding: 15px 25px;
+text-align: center;
+text-decoration: none;
+display: inline-block;
 }
 
 a:hover.butt, a:active.butt, input:active.butt, input:hover.butt{
-  background-color: #4E6685;
+background-color: #4E6685;
 }
 
-/* הגדרת כפתור אדום באמצע הדף */
+/* Centered red button style */
 a:link.center_butt, a:visited.center_butt {
-  background-color: #f44336;
-  color: white;
-  padding: 15px 25px;
-  text-align: center;
-  text-decoration: none;
-  display: inline-block;
+background-color: #f44336;
+color: white;
+padding: 15px 25px;
+text-align: center;
+text-decoration: none;
+display: inline-block;
 }
 
 a:hover.center_butt, a:active.center_butt {
   background-color: red;
 }
 
-body {font-family: Tahoma;}
+body {
+  font-family: Tahoma;
+  max-width: 100%;
+  overflow-x: hidden;
+}
 
 /* הגדרת הודעה קופצת */
 .alert {
   border-radius: 10px;
   background-color: #0800E0;
-  width: 90%;
+  width: 70%;
   color: white;
   padding: 25px 25px;
-  display: inline-block;
   text-align: center;
   text-decoration: none;
+  margin: auto;
 }
 
 .closebtn {
