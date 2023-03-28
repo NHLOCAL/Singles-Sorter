@@ -38,7 +38,7 @@ cd /d "%source_path%"
 
 ::במידה והוכנס פרמטר "clean"
 ::יבוצע ניקוי קבצים בלבד
-if "%1"=="-clean" set "clear_heb=ליעפ" & goto :intro
+if "%1"=="-clean" set "clear_heb=True" & goto :intro
 
 :target_folder
 cls
@@ -49,9 +49,19 @@ del "%temp%\mesader-targetB.tmp"
 ::קביעת משתנים לצורך הגדרות המשתמש
 ::================================
 
-::הגדרת משתנה לניקוי שמות הקבצים
-set/p cleaning=<"%tmp%\select7_tmp.tmp"
-if "%cleaning%"=="False" (set "clear_heb=ליעפ אל") else (set "clear_heb=ליעפ")
+::הגדרת משתנה ליצירת תיקית סינגלים פנימית
+set/p in_folder_creating=<"%tmp%\select1_tmp.tmp"
+if "%in_folder_creating%"=="True" (
+set sing_heb=True
+set "s=\סינגלים"
+)else (
+set "sing_heb=False"
+set s=
+)
+
+::קביעת משתנה ליצירת תיקיות ראשיות בחלוקה לא' ב'
+set/p abc_dirs_creating=<"%tmp%\select2_tmp.tmp"
+if "%abc_dirs_creating%"=="True" (set "abc_heb=True") else (set "abc_heb=False")
 
 ::הגדרת משתנה העברה או העתקה
 set/p copy_moving=<"%tmp%\select3_tmp.tmp"
@@ -67,38 +77,28 @@ set "msg=ורבעוהש"
 set cm_heb=הרבעה
 )
 
-::קביעת משתנה ליצירת תיקיות ראשיות בחלוקה לא' ב'
-set/p abc_dirs_creating=<"%tmp%\select2_tmp.tmp"
-if "%abc_dirs_creating%"=="True" (set "abc_heb=ליעפ") else (set "abc_heb=ליעפ אל")
-
-::הגדרת משתנה ליצירת תיקית סינגלים פנימית
-set/p in_folder_creating=<"%tmp%\select1_tmp.tmp"
-if "%in_folder_creating%"=="True" (
-set sing_heb=ליעפ
-set "s=\סינגלים"
-)else (
-set "sing_heb=ליעפ אל"
-set s=
-)
-
 ::הגדרת משתנה ליצירת תיקיות חדשות או העברה לתיקיות קיימות בלבד
 set/p creating_folder=<"%tmp%\select4_tmp.tmp"
-if "%creating_folder%"=="True" (set fixed_heb=ליעפ) else (set "fixed_heb=ליעפ אל")
+if "%creating_folder%"=="True" (set fixed_heb=True) else (set "fixed_heb=False")
+
+::הגדרת משתנה לסריקת תיקיות משנה
+set/p tree_scanning=<"%tmp%\select5_tmp.tmp"
+if "%tree_scanning%"=="True" (set "dir_heb=False") else (set "dir_heb=True")
 
 ::הגדרת משתנה להפעלת סריקה מתקדמת
 set/p pro_scanning=<"%tmp%\select6_tmp.tmp"
-if "%pro_scanning%"=="False" (set "artist_heb=ליעפ אל") else (set "artist_heb=ליעפ")
+if "%pro_scanning%"=="False" (set "artist_heb=False") else (set "artist_heb=True")
 
-::הגדרת משתנה לסריקת תיקיות משנה
-set/p tree_scanning=<"%tmp%\select6_tmp.tmp"
-if "%tree_scanning%"=="True" (set "dir_heb=ליעפ") else (set "dir_heb=ליעפ אל")
+::הגדרת משתנה לניקוי שמות הקבצים
+set/p cleaning=<"%tmp%\select7_tmp.tmp"
+if "%cleaning%"=="False" (set "clear_heb=False") else (set "clear_heb=True")
 
 
 :intro
 ::ביצוע ניקוי לשמות הקבצים
 ::אם הוגדר כך על ידי המשתמש
 cls
-if "%clear_heb%"=="ליעפ" (
+if "%clear_heb%"=="True" (
 for /r %%i in (*) do (
 cls
 echo.
@@ -138,7 +138,7 @@ echo                                    ...דבוע
 ::מספר הגדרות משתנים חשובות
 
 ::הגדרת סריקת תיקיות משנה לפי העדפות המשתמש
-if "%dir_heb%"=="ליעפ" (set tree=/r) else (set tree=)
+if "%dir_heb%"=="True" (set tree=/r) else (set tree=)
 ::איפוס מספרים עבור חישוב אחוזים
 set/a d=1
 ::איפוס משתנה עבור סריקה מתקדמת לפי אמן
@@ -162,7 +162,7 @@ if not "%en%"=="%enb%" cls & echo. & echo                                    ...
 set/a enb=%d%00/ab
 
 ::קובע אם יווצרו תקיות ראשיות לפי א ב
-if "%abc_heb%"=="ליעפ" set w=%c:~0,1%\
+if "%abc_heb%"=="True" set w=%c:~0,1%\
 
 ::קביעת נתיב יעד עם מספר משתנים - בהתאם להגדרות המשתמש
 set b="%h%\%w%%c%%s%"
@@ -171,7 +171,7 @@ set b="%h%\%w%%c%%s%"
 set xx=v
 set ss=z
 for %tree% %%c in ("%a%") do if exist %%c set ss=ss
-if "%fixed_heb%"=="ליעפ" if not exist "%h%\%w%%c%" set ss==z
+if "%fixed_heb%"=="True" if not exist "%h%\%w%%c%" set ss==z
 if %ss%==ss md %b%
 
 ::הגדרת מחיקת קבצי מקור לאחר העתקה אם הוגדר כך
@@ -221,7 +221,7 @@ if errorlevel 1 goto :intro_pro
 :intro_pro
 ::אם הוגדרה סריקה לפי אמן
 ::יתבצע מעבר לפונקציה זו
-if "%artist_heb%"=="ליעפ" goto :pro_scanner
+if "%artist_heb%"=="True" goto :pro_scanner
 
 :pause
 echo.
@@ -238,51 +238,22 @@ exit
 path "%AppData%\singles-sorter";%path%
 echo.
 timeout 10 | echo            ךלש תורדגהה יפ לע ןמא יפל תמדקתמ הקירס לחת תוינש רפסמ דועב
-for %tree% %%s in (*.mp3,*.wma,*.wav) do (
-set file=%%~s
-call :scanner_func
-if exist "%Temp%\artist-song.tmp" del "%Temp%\artist-song.tmp"
-set/a d=d+1
-)
-::מחיקת קבצים זמניים והגדרת משתנים חשובים
-::עבור תצוגת הסיכום
-del "%Temp%\artist-song.tmp"
-del "%Temp%\artist-song-ansi.tmp"
-set "artist_heb=ליעפ אל"
-set pro_scan=True
-goto :finish
 
-:scanner_func
-::תצוגה למשתמש
 cls
 echo.
 echo                                    ...דבוע
+echo.
+echo.
+‏‏pro_func_release "%source_path%" "%h%" %c_or_m% %abc_heb% %fixed_heb% %in_folder_creating% %dir_heb%
 
-:: שימוש בתוכנה חיצונית להכנסת נתוני השיר לקובץ
-for /f "tokens=1,2* delims=" %%i in ('infosong "%file%"') do set artist=%%i
+pause
 
-if "%artist%"=="False" exit /b
+::לבינתיים יציאה מידית
+exit
 
-::הגדרת משתנה עבור נתיב היעד
-if "%abc_heb%"=="ליעפ" set w=%artist:~0,1%\
-
-::הגדרת שם משתנה עבור נתיב התיקיה לנוחות קריאת הקוד
-set file_path="%h%\%w%%artist%%s%"
-
-::בדיקה אם הוגדה העתקה לתיקיות קיימות בלבד
-
-if "%fixed_heb%"=="ליעפ" (
-if exist "%h%\%w%%artist%" if not exist %file_path% md %file_path%
-if exist %file_path% %c_or_m% %par% "%file%" %file_path%>>םוכיס
-exit /b
-)
-
-if not exist %file_path% md %file_path%
-if exist %file_path% %c_or_m% %par% "%file%" %file_path%>>םוכיס
-
-::יציאה מהפונקציה וחזרה לפקודת הפור
-exit /b
-
+set "artist_heb=False"
+set pro_scan=True
+goto :finish
 
 
 
