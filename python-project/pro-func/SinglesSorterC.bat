@@ -244,7 +244,7 @@ echo.
 echo                                    ...ãáåò
 echo.
 echo.
-þþpro_func_releas.py "%source_path%" "%h%" %c_or_m% %abc_heb% %fixed_heb% %in_folder_creating% %dir_heb%
+þþpro_func_release.py "%source_path%" "%h%" %c_or_m% %abc_heb% %fixed_heb% %in_folder_creating% %dir_heb%
 
 pause
 

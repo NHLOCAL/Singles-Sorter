@@ -65,7 +65,7 @@ def check_artist(artist):
 
 
 # מעבר על עץ התיקיות שהוגדר
-def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_only=False, singles_folder=True, tree_folders=True):
+def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_only=False, singles_folder=True, tree_folders=False):
     """
 הפונקציה המרכיבת את הפקודה הראשית של התכנית. היא סורקת את התיקיות והקבצים תחת נתיב שצוין ויוצרת רשימה של קבצים להעתקה.
 בסוף התהליך היא מעתיקה אותם אם הוכנס פרמטר של תיקית יעד.
@@ -85,7 +85,7 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_o
     """
     # סריקת עץ התיקיות או התיקיה הראשית בהתאם לבחירת המשתמש והכנסת שם הקבצים ושם האמן שלהם לרשימה
     info_list = []  
-    if tree_folders:
+    if tree_folders is False:
         for root, dirs, files in os.walk(dir_path):
             for my_file in files:
                 file_path = os.path.join(root, my_file)
@@ -93,7 +93,8 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_o
                     artist = artist_from_song(file_path)
                     if artist: info_list.append((file_path, artist))
 
-    elif tree_folders == False:
+    # סריקת התיקיה הראשית בלבד ללא תיקיות פנימיות
+    elif tree_folders:
         for my_file in os.listdir(dir_path):
             file_path = os.path.join(dir_path, my_file)
             if os.path.isfile(file_path):
@@ -117,45 +118,42 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_o
         check_answer = check_artist(artist)
         if check_answer == False:
             continue
-
-        if target_dir == None:
-            print(file_path + " == " + artist)
-            continue
                        
-        # יצירת תיקית יעד אם אינה קיימת בהתאם להתאמות האישיות של המשתמש
+        # הגדרת משתנה עבור תיקית יעד בהתאם להתאמות האישיות של המשתמש
         if singles_folder and abc_sort:
+            main_target_path = os.path.join(target_dir, artist[0], artist)
             target_path = os.path.join(target_dir, artist[0], artist, "סינגלים")
         elif singles_folder:
+            main_target_path = os.path.join(target_dir, artist)
             target_path = os.path.join(target_dir, artist, "סינגלים")
         elif abc_sort:
+            main_target_path = os.path.join(target_dir, artist[0], artist)
             target_path = os.path.join(target_dir, artist[0], artist)
         else:
+            main_target_path = os.path.join(target_dir, artist)
             target_path = os.path.join(target_dir, artist)
         
         # יצירת תיקית יעד בתנאים מסויימים
-        if not os.path.isdir(target_path) and exist_only == False:
-            try: os.makedirs(target_path)
-            except: pass
-            
-        elif singles_folder and not os.path.isdir(os.path.dirname(target_path)):
-            try: os.makedirs(target_path)
-            except: pass
-        """
-        elif not os.path.isdir(target_path) and singles_folder:
-            if not os.path.isdir(os.path.dirname(target_path)): continue
-        elif not os.path.isdir(target_path):
-            try: os.makedirs(target_path)
-            except: pass
-        """
+        if exist_only is False:
+            if not os.path.isdir(target_path):
+                try: os.makedirs(target_path)
+                except: pass
+                
+        elif exist_only and singles_folder:
+            if os.path.isdir(main_target_path) and not os.path.isdir(target_path):
+                try: os.makedirs(target_path)
+                except: pass
+        else:
+            pass #לא תיווצר תיקיה חדשה
+
 
         # העברה או העתקה בהתאם להגדרות המשתמש
         if copy_mode and os.path.isdir(target_path):
-            copy(file_path, target_path)
+            try: copy(file_path, target_path)
+            except: pass
         elif os.path.isdir(target_path):
-            try:
-                move(file_path, target_path)
-            except:
-                pass
+            try: move(file_path, target_path)
+            except: pass
 
 def main():
     dir_path = os.path.join(argv[1]) # נתיב תיקית מקור
