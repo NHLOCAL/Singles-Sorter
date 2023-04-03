@@ -102,6 +102,39 @@ label {
   margin-right: 1rem;
   color: #2d4373;
 }
+
+
+@media screen and (max-width: 480px) {
+  .container {
+    height: auto;
+    padding: 1rem;
+  }
+  
+  h1 {
+    font-size: 2rem;
+  }
+  
+  form {
+    flex-direction: column;
+    padding: 10px;
+  }
+  
+  input {
+    font-size: 1.2rem;
+    margin-right: 0;
+    margin-bottom: 1rem;
+    width: 100%;
+  }
+  
+  button {
+    font-size: 1.2rem;
+    margin-top: 1rem;
+    width: 100%;
+  }
+  
+
+}
+
   </style>
 	
 <!-- Google tag (gtag.js) -->
@@ -125,9 +158,11 @@ label {
       <button type="submit">חפש</button>
     </form>  
   </div>
-
-  <h2 style="text-align: center;">או כנסו לאחת התיקיות</h2>
-  <iframe src="https://drive.google.com/embeddedfolderview?id=1ijBiqqRc5ageu7Fbt5op3pvvm19rplRS&resourcekey=1ijBiqqRc5ageu7Fbt5op3pvvm19rplRS#grid" style="width:100%; height:300px; border:0;"></iframe>
+  
+<center style="position: fixed; bottom: 0; width: 100%; height: 50%;">
+<h2>או כנסו לאחת התיקיות</h2>
+<iframe src="https://drive.google.com/embeddedfolderview?id=1ijBiqqRc5ageu7Fbt5op3pvvm19rplRS&resourcekey=1ijBiqqRc5ageu7Fbt5op3pvvm19rplRS#grid" style="width:100%; height:100%; border:0;"></iframe>
+</center>
 
   <script>
     // Retrieve the search history from local storage and display it
