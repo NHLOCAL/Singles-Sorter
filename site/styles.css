@@ -143,6 +143,8 @@ background-color: #4E6685;
 
 /* Centered red button style */
 a:link.center_butt, a:visited.center_butt {
+	
+border-radius: 10px;
 background-color: #f44336;
 color: white;
 padding: 15px 25px;
