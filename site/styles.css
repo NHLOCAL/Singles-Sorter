@@ -1,11 +1,14 @@
 /* Button hover effect */
 .button-image:hover {
-opacity: 0.8;
-transform: scale(0.95);
-transition: all 0.2s ease-in-out;
+opacity: 0.95;
+transform: scale(0.98);
+transition: all 0.3s ease-in-out;
 cursor: pointer;
 }
 
+main {
+margin-top: 30px;
+}
 
 /* Top bar menu */
 
@@ -67,12 +70,6 @@ left: 50px;
 float: left;
 top: 5px;
 position: absolute;
-}
-
-
-/* Page content */
-main {
-  margin-top: 100px;
 }
 
 /* Button style */
@@ -145,6 +142,8 @@ body {
 .topnav {
 height: auto;
 padding: 10px 0;
+position: static;
+overflow: hidden;
 }
 
 .topnav img {
@@ -165,8 +164,9 @@ display: block;
 
 .topnav a {
 display: block;
-padding: 10px;
+float: none;
 text-align: center;
+padding: 10px;
 }
 
 .topnav a:hover,
@@ -182,19 +182,9 @@ right: auto;
 float: center;
 position: static;
 }
-
-  .topnav {
-    position: static;
-    overflow: hidden;
-  }
-  .topnav a {
-    display: block;
-    float: none;
-    text-align: center;
-  }
   
   /* Adjust the size and position of the iframe */
-  div[style="width:100%; float:center; height:100%; margin:30px; position: fixed;"] {
+div[style="width:100%; float:center; height:100%; margin:30px; position: fixed;"] {
     margin: 0;
     height: calc(100% - 56px); /* Subtract the height of the top navigation menu */
   }
