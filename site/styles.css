@@ -61,9 +61,83 @@ border-radius: 5px;
 }
 
 
+/* Content on the left side */
+.left_item {
+left: 50px;
+float: left;
+top: 5px;
+position: absolute;
+}
+
+
 /* Page content */
 main {
-margin-top: 10px;
+  margin-top: 100px;
+}
+
+/* Button style */
+a:link.butt, a:visited.butt {
+padding: 10px;
+text-align: center;
+border-radius: 5px;
+text-decoration: none;
+display: inline-block;
+background-color: #fff;
+color: black;
+font-weight: bold;
+}
+
+a:hover.butt, a:active.butt {
+  color: #73FBFD;
+  background-color: #C0C0C0;
+}
+
+/* Centered red button style */
+a:link.center_butt, a:visited.center_butt {
+border-radius: 10px;
+background-color: #f44336;
+color: white;
+padding: 15px 25px;
+text-align: center;
+text-decoration: none;
+display: inline-block;
+}
+
+a:hover.center_butt, a:active.center_butt {
+  background-color: red;
+}
+
+body {
+  font-family: Tahoma;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* הגדרת הודעה קופצת */
+.alert {
+  border-radius: 10px;
+  background-color: #0800E0;
+  width: 70%;
+  color: white;
+  padding: 25px 25px;  
+  text-align: center;
+  text-decoration: none;
+  margin: auto;
+}
+
+.closebtn {
+  margin-left: 15px;
+  color: white;
+  font-weight: bold;
+  float: right;
+  font-size: 22px;
+  line-height: 20px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.closebtn:hover {
+  color: black;
 }
 
 /* Responsive top bar for smaller screens */
@@ -98,103 +172,19 @@ text-align: center;
 .topnav a:hover,
 .topnav a:active,
 .topnav h3.current {
-background-color: #fff;
 color: #005E8A;
 }
 
 /* Content on the left side */
 .topnav .left_item {
-left: 50px;
+left: auto;
+right: auto;
 float: center;
-}
-}
-
-/* Content on the left side */
-.left_item {
-left: 50px;
-float: left;
-top: 5px;
-position: absolute;
+position: static;
 }
 
-/* Button style */
-.butt {
-width: 120px;
-height: 70px;
-left: 40px;
-float: left;
-margin: 30px;
-position: fixed;
-bottom: 30px;
-}
-
-a:link.butt, a:visited.butt, input.butt{
-background-color: #7092BE;
-color: white;
-padding: 15px 25px;
-text-align: center;
-text-decoration: none;
-display: inline-block;
-}
-
-a:hover.butt, a:active.butt, input:active.butt, input:hover.butt{
-background-color: #4E6685;
-}
-
-/* Centered red button style */
-a:link.center_butt, a:visited.center_butt {
-	
-border-radius: 10px;
-background-color: #f44336;
-color: white;
-padding: 15px 25px;
-text-align: center;
-text-decoration: none;
-display: inline-block;
-}
-
-a:hover.center_butt, a:active.center_butt {
-  background-color: red;
-}
-
-body {
-  font-family: Tahoma;
-  max-width: 100%;
-  overflow-x: hidden;
-}
-
-/* הגדרת הודעה קופצת */
-.alert {
-  border-radius: 10px;
-  background-color: #0800E0;
-  width: 70%;
-  color: white;
-  padding: 25px 25px;
-  text-align: center;
-  text-decoration: none;
-  margin: auto;
-}
-
-.closebtn {
-  margin-left: 15px;
-  color: white;
-  font-weight: bold;
-  float: right;
-  font-size: 22px;
-  line-height: 20px;
-  cursor: pointer;
-  transition: 0.3s;
-}
-
-.closebtn:hover {
-  color: black;
-}
-
-
-/* Make the page responsive */
-@media only screen and (max-width: 600px) {
-  /* Adjust the top navigation menu */
   .topnav {
+    position: static;
     overflow: hidden;
   }
   .topnav a {
