@@ -70,5 +70,23 @@
   <a class="button-image" href="https://www.buymeacoffee.com/NHLOCAL" title="עזרו לי לעזור לכם!" target="_blank"><div id="bmc-wbtn" style="display: flex; align-items: center; justify-content: center; width: 64px; height: 64px; background: #D3FAA5; color: white; border-radius: 32px; position: fixed; left: 18px; bottom: 18px; box-shadow: rgba(0, 0, 0, 0.4) 0px 4px 8px; z-index: 9999; cursor: pointer; font-weight: 600; transition: all 0.2s ease 0s; transform: scale(1);"><font style="vertical-align: inherit; font-size: 40px;">💎</font></div></a>  
 
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Check if the message has already been displayed
+  if (localStorage.getItem('messageDisplayed')) {
+    // Message has already been displayed, don't show it again
+    document.querySelector('.alert').style.display = 'none';
+  } else {
+    // Message has not been displayed, show it
+    document.querySelector('.alert').style.display = 'block';
+
+    // Add event listener to close button to set localStorage flag when clicked
+    document.querySelector('.closebtn').addEventListener('click', function() {
+      localStorage.setItem('messageDisplayed', 'true');
+    });
+  }
+});
+
+</script>
 </body>
 </html>
