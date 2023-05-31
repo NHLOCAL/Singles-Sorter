@@ -188,7 +188,7 @@ def main():
         target_dir = os.path.join(argv[2]) # נתיב תיקית יעד  
         copy_mode = True if eval(argv[3]) else False  # קביעת העתקה או העברה 
         # מעבר על עץ תיקיות
-        tree_folders = False if eval(argv[4]) else True
+        tree_folders = True if eval(argv[4]) else False
         # הוספת תיקית סינגלים פנימית
         singles_folder = True if eval(argv[5]) else False 
         exist_only = True if eval(argv[6]) else False # העברה לתיקיות קיימות בלבד        
