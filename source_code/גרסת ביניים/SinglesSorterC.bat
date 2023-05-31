@@ -232,7 +232,7 @@ echo                                    ...ãáåò
 echo.
 echo.
 cd /d "%~dp0"
-þþpro_func_release.exe %source_path% "%h%" %c_or_m% %abc_heb% %fixed_heb% %in_folder_creating% %dir_heb%
+pro_func_release.exe %source_path% "%h%" %c_or_m% %abc_heb% %fixed_heb% %in_folder_creating% %dir_heb%
 
 
 echo.
