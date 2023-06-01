@@ -189,3 +189,14 @@ div[style="width:100%; float:center; height:100%; margin:30px; position: fixed;"
     height: calc(100% - 56px); /* Subtract the height of the top navigation menu */
   }
 }
+
+
+.fixed-bottom {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    height: 20vh;
+    background-color: #FFF5A6;
+    padding: 30px;
+    text-align: center;
+  }

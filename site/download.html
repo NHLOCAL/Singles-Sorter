@@ -33,6 +33,13 @@
 
 <h1 id="countdown" style="text-align:center"></h1>
 
+
+<div class="fixed-bottom">
+  <h2>רוצה להתעדכן ראשון על הגרסה הבאה?</h2>
+  <br>
+  <a class="butt" id="registing" href="https://mail.google.com/mail/u/0/?view=cm&fs=1&tf=1&source=mailto&su=%D7%9E%D7%A2%D7%95%D7%A0%D7%99%D7%99%D7%9F+%D7%9C%D7%94%D7%A6%D7%98%D7%A8%D7%A3+%D7%9C%D7%A7%D7%91%D7%9C%D7%AA+%D7%A2%D7%93%D7%9B%D7%95%D7%A0%D7%99%D7%9D&to=mesader.singelim%40gmail.com" target="_blank">שלח מייל כעת</a>
+</div>
+
 <script>
   var countdown = 4;
   var intervalId = setInterval(function() {
@@ -42,26 +49,18 @@
       clearInterval(intervalId);
     }
   }, 1000);
-</script>
 
 
-<script>
     // הגדרת משתנה להחלפה בכל עדכון גרסה
     var cur_ver = "12.0"
 	
 	// השהייה של מספר שניות לפני הורדה וסגירת הכרטיסיה
 	setTimeout(myFunc, 4000);
-	setTimeout(closeFunc, 13000);
 
 // הורדת הגרסה האחרונה
 function myFunc() {
         document.location.href = 'https://github.com/NHLOCAL/Singles-Sorter/releases/download/v' + cur_ver + '/Singles-Sorter-' + cur_ver + '.exe';
-}
-
-// הגדרת פונקצית סגירת העמוד 
-function closeFunc() {
-		window.close();
-}     
+}    
 </script>
 
 </body>
