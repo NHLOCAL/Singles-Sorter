@@ -40,7 +40,7 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_o
         for root, dirs, files in os.walk(dir_path):
             for my_file in files:
                 file_path = os.path.join(root, my_file)
-                if my_file.endswith((".mp3",".wma", ".wav")):
+                if my_file.lower().endswith((".mp3",".wma", ".wav")):
                     artist = artist_from_song(file_path)
                     if artist: info_list.append((file_path, artist))
 
@@ -49,7 +49,7 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_o
         for my_file in os.listdir(dir_path):
             file_path = os.path.join(dir_path, my_file)
             if os.path.isfile(file_path):
-                if my_file.endswith((".mp3",".wma", ".wav")):
+                if my_file.lower().endswith((".mp3",".wma", ".wav")):
                     artist = artist_from_song(file_path)
                     if artist: info_list.append((file_path, artist))
 
@@ -129,10 +129,18 @@ def artist_from_song(my_file):
     split_file = split_file.replace('-', ' ')
     
     # יבוא רשימת זמרים מקובץ csv
-    csv_path = os.environ['USERPROFILE'] + r"\AppData\Roaming\singles-sorter\singer-list.csv"
-    with open(csv_path, 'r') as file:
-        csv_reader = csv.reader(file)
-        singer_list = [tuple(row) for row in csv_reader]
+    if not 'singer_list' in globals():
+        csv_path = "singer-list.csv"
+        global singer_list
+        with open(csv_path, 'r') as file:
+            csv_reader = csv.reader(file)
+            singer_list = [tuple(row) for row in csv_reader]    
+        
+        if os.path.isfile("personal-singer-list.csv"):
+            with open("personal-singer-list.csv", 'r') as file:
+                csv_reader = csv.reader(file)
+                personal_list = [tuple(row) for row in csv_reader]
+            singer_list.extend(personal_list)
     
     # מעבר על רשימת השמות ובדיקה אם אחד מהם קיים בשם השיר
     for source_name, target_name in singer_list:
@@ -144,7 +152,7 @@ def artist_from_song(my_file):
     # אם שם הקובץ לא נמצא יתבצע חיפוש במטאדאטה של הקובץ
     try:
         # בדיקה האם הקובץ הוא קובץ שמע
-        if not my_file.endswith((".mp3",".wma", ".wav")):
+        if not my_file.lower().endswith((".mp3",".wma", ".wav")):
             return
         # טעינת מטאדאטה של השיר
         artist_file = load_file(my_file)
