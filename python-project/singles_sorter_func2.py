@@ -40,7 +40,7 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_o
         for root, dirs, files in os.walk(dir_path):
             for my_file in files:
                 file_path = os.path.join(root, my_file)
-                if my_file.endswith((".mp3",".wma", ".wav")):
+                if my_file.lower().endswith((".mp3",".wma", ".wav")):
                     artist = artist_from_song(file_path)
                     if artist: info_list.append((file_path, artist))
 
@@ -49,7 +49,7 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_o
         for my_file in os.listdir(dir_path):
             file_path = os.path.join(dir_path, my_file)
             if os.path.isfile(file_path):
-                if my_file.endswith((".mp3",".wma", ".wav")):
+                if my_file.lower().endswith((".mp3",".wma", ".wav")):
                     artist = artist_from_song(file_path)
                     if artist: info_list.append((file_path, artist))
 
@@ -64,11 +64,6 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_o
         len_item += 1
         show_len = len_item * 100 // len_dir
         print("" * 39, str(show_len), "% ", "הושלמו",end='\r')
-        
-        # הפעלת פונקציה המבצעת בדיקות על שם האמן
-        check_answer = check_artist(artist)
-        if check_answer == False:
-            continue
                        
         # הגדרת משתנה עבור תיקית יעד בהתאם להתאמות האישיות של המשתמש
         if singles_folder and abc_sort:
@@ -129,10 +124,18 @@ def artist_from_song(my_file):
     split_file = split_file.replace('-', ' ')
     
     # יבוא רשימת זמרים מקובץ csv
-    csv_path = os.environ['USERPROFILE'] + r"\AppData\Roaming\singles-sorter\singer-list.csv"
-    with open(csv_path, 'r') as file:
-        csv_reader = csv.reader(file)
-        singer_list = [tuple(row) for row in csv_reader]
+    if not 'singer_list' in globals():
+        csv_path = "singer-list.csv"
+        global singer_list
+        with open(csv_path, 'r') as file:
+            csv_reader = csv.reader(file)
+            singer_list = [tuple(row) for row in csv_reader]    
+        
+        if os.path.isfile("personal-singer-list.csv"):
+            with open("personal-singer-list.csv", 'r') as file:
+                csv_reader = csv.reader(file)
+                personal_list = [tuple(row) for row in csv_reader]
+            singer_list.extend(personal_list)
     
     # מעבר על רשימת השמות ובדיקה אם אחד מהם קיים בשם השיר
     for source_name, target_name in singer_list:
@@ -140,11 +143,10 @@ def artist_from_song(my_file):
             artist = target_name
             return artist
 
-
     # אם שם הקובץ לא נמצא יתבצע חיפוש במטאדאטה של הקובץ
     try:
         # בדיקה האם הקובץ הוא קובץ שמע
-        if not my_file.endswith((".mp3",".wma", ".wav")):
+        if not my_file.lower().endswith((".mp3",".wma", ".wav")):
             return
         # טעינת מטאדאטה של השיר
         artist_file = load_file(my_file)
@@ -155,7 +157,19 @@ def artist_from_song(my_file):
         if artist:
             # המרת שם האמן אם הוא פגום
             if any(c in "àáâãäåæçèéëìîðñòôö÷øùúêíïóõ" for c in artist):
-                artist = jibrish_to_hebrew(artist)               
+                artist = jibrish_to_hebrew(artist)
+            
+            # מעבר על רשימת השמות ובדיקה אם אחד מהם קיים בתגית האמן
+            for source_name, target_name in singer_list:
+                if source_name in artist:
+                    artist = target_name
+                    return artist 
+                
+            # הפעלת פונקציה המבצעת בדיקות על שם האמן
+            check_answer = check_artist(artist)
+            if check_answer == False:
+                return
+                
             return artist
     except:
         return
@@ -188,7 +202,7 @@ def main():
         target_dir = os.path.join(argv[2]) # נתיב תיקית יעד  
         copy_mode = True if eval(argv[3]) else False  # קביעת העתקה או העברה 
         # מעבר על עץ תיקיות
-        tree_folders = False if eval(argv[4]) else True
+        tree_folders = True if eval(argv[4]) else False
         # הוספת תיקית סינגלים פנימית
         singles_folder = True if eval(argv[5]) else False 
         exist_only = True if eval(argv[6]) else False # העברה לתיקיות קיימות בלבד        
