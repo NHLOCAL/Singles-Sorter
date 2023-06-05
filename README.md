@@ -1,6 +1,6 @@
 # מסדר הסינגלים
 <div align="center">
-<h3>🫵 הכנסו ל<a href="https://nhlocal.github.io/Singles-Sorter/">אתר החדש</a> של התוכנה!</h3>
+<h3>🫵 הכנסו ל<a href="https://nhlocal.github.io/Singles-Sorter/">אתר</a> של התוכנה!</h3>
 </div>
 
 
