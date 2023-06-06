@@ -23,7 +23,7 @@ function parseCSV(csvText) {
   for (var i = 1; i < lines.length; i++) {
     var line = lines[i].trim();
     if (line) {
-      var columns = line.split(',');
+      var columns = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
       var song = {
         serial: columns[0],
         name: columns[1],
@@ -36,17 +36,13 @@ function parseCSV(csvText) {
   return songs;
 }
 
+
 function filterSongs(songs, query, searchBy) {
   return songs.filter(function(song) {
     var value = song[searchBy].toLocaleLowerCase();
-    if (searchBy === 'song') {
-      return value.includes(query.toLocaleLowerCase());
-    } else {
-      return value === query.toLocaleLowerCase();
-    }
+    return value.includes(query.toLocaleLowerCase());
   });
 }
-
 
 
 function displayResults(results) {
