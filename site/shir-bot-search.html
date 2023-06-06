@@ -7,7 +7,7 @@
 function search() {
   const searchInput = document.getElementById("searchInput").value.toLowerCase();
   const searchBy = document.getElementById("searchBy").value;
-  
+
   fetch("songs.csv")
     .then(response => response.text())
     .then(data => {
@@ -18,17 +18,17 @@ function search() {
 
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i].split(",");
-        const value = row[columnIndex].toLowerCase();
-        
-        if (value.includes(searchInput)) {
+
+        if (row.length > columnIndex && row[columnIndex].toLowerCase().includes(searchInput)) {
           results.push(row);
         }
       }
-      
+
       displayResults(results);
     })
     .catch(error => console.log(error));
 }
+
 
 function displayResults(results) {
   const searchResults = document.getElementById("searchResults");
