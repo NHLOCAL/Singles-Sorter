@@ -38,15 +38,18 @@ function parseCSV(csvText) {
 
 function filterSongs(songs, query, searchBy) {
   return songs.filter(function(song) {
-    var values = Object.values(song).map(function(value) {
-      return value.toLowerCase();
-    });
-    return values.some(function(value) {
-      return value.includes(query);
-    });
+    var value;
+    if (searchBy === 'all') {
+      value = Object.values(song).join(' ').toLowerCase();
+    } else {
+      value = song[searchBy];
+      if (value) {
+        value = value.toLowerCase();
+      }
+    }
+    return value && value.includes(query);
   });
 }
-
 
 function displayResults(results) {
   var tableBody = document.querySelector('#resultsTable tbody');
