@@ -6,7 +6,9 @@
   <body dir="rtl" style="background-color:#FFFEDB;">
   <link rel="stylesheet" href="styles.css">
   <style>
- 
+
+
+
     form {
       margin-bottom: 20px;
       text-align: center;
@@ -34,10 +36,21 @@
 .search-input,
 .search-select {
   font-family: Tahoma;
-  padding: 8px;
-  font-size: 16px;
+  font-size: 14px;
+  width: 110px;
+  height: 40px;
   border: 1px solid #005E8A;
   border-radius: 4px;
+  box-shadow: 0 5px 15px rgba(45, 67, 115, 0.5);
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.search-input {
+  font-size: 16px;
+  padding-left: 5px;
+  padding-right: 5px;
+  height: 39px;
+  width: 220px;
 }
 
 .search-input:focus,
@@ -52,7 +65,8 @@
 
 .search-button {
   font-family: Tahoma;
-  padding: 9px 20px;
+  width: 80px;
+  height: 40px;
   font-size: 16px;
   border-radius: 4px;
   cursor: pointer;
@@ -109,14 +123,14 @@
     <h3>חיפוש שירים</h3>
 	
 	<form id="searchForm" class="search-form">
-  <input type="text" id="searchInput" name="searchInput" class="search-input">
 <select id="searchBy" name="searchBy" class="search-select">
-  <option value="all">כל הפרמטרים</option>
+  <option value="all">הכל</option>
   <option value="serial">מספר סידורי</option>
   <option value="name">שם השיר</option>
   <option value="album">שם האלבום</option>
   <option value="singer">שם הזמר</option>
-</select>
+</select>	 
+  <input type="text" id="searchInput" name="searchInput" class="search-input">
   <button type="submit" class="search-button">חפש</button>
 </form>
 
