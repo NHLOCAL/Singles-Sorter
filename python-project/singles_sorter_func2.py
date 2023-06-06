@@ -63,7 +63,7 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_o
         # תצוגת אחוזים מתחלפת
         len_item += 1
         show_len = len_item * 100 // len_dir
-        print("" * 39, str(show_len), "% ", "הושלמו",end='\r')
+        print(" " * 39, str(show_len), "% ", "הושלמו",end='\r')
                        
         # הגדרת משתנה עבור תיקית יעד בהתאם להתאמות האישיות של המשתמש
         if singles_folder and abc_sort:
