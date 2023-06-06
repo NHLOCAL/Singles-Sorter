@@ -13,7 +13,6 @@
     }
 
     table {
-      border-collapse: collapse;
       width: 95%;
 	  margin: auto;
 	  bottom: 2vh;
@@ -85,7 +84,31 @@
 
 
 .topnav {
-)
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 10px;
+  z-index: 9999;
+}
+
+.search-form {
+  position: sticky;
+  top: 90px;
+  left: 50%;
+  right: auto;
+  padding: 10px;
+  z-index: 9999;
+}
+
+thead {
+  position: sticky;
+  top: 150px;
+  left: auto
+  right: auto
+  padding: 10px;
+  z-index: 9999;
+}
 
   </style>
 </head>
