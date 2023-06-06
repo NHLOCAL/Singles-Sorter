@@ -129,7 +129,7 @@ def artist_from_song(my_file):
         global singer_list
         with open(csv_path, 'r') as file:
             csv_reader = csv.reader(file)
-            singer_list = [tuple(row) for row in csv_reader]    
+            singer_list = [tuple(row) for row in csv_reader]
         
         if os.path.isfile("personal-singer-list.csv"):
             with open("personal-singer-list.csv", 'r') as file:
