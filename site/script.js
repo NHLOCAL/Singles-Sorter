@@ -37,19 +37,22 @@ function parseCSV(csvText) {
 }
 
 function filterSongs(songs, query, searchBy) {
-  var options = {
-    keys: [searchBy],
-    includeScore: true,
-    includeMatches: true,
-    threshold: 0.4, // Adjust this threshold for fuzzy search sensitivity
-    distance: 100, // Adjust this distance for proximity search sensitivity
-  };
-
-  var fuse = new Fuse(songs, options);
-  var searchResults = fuse.search(query);
-
-  return searchResults.map(function(result) {
-    return result.item;
+  return songs.filter(function(song) {
+    var values = Object.values(song).map(function(value) {
+      return value.toLowerCase();
+    });
+    if (searchBy === 'all') {
+      return values.some(function(value) {
+        return value.includes(query);
+      });
+    } else {
+      var value = song[searchBy];
+      if (value) {
+        value = value.toLowerCase();
+        return value.includes(query);
+      }
+    }
+    return false;
   });
 }
 
