@@ -36,20 +36,20 @@ function parseCSV(csvText) {
   return songs;
 }
 
-
-
 function filterSongs(songs, query, searchBy) {
   return songs.filter(function(song) {
-    var value = song[searchBy];
-    if (value) {
-      value = value.toLocaleLowerCase();
-      return value.includes(query.toLocaleLowerCase());
+    var value;
+    if (searchBy === 'all') {
+      value = Object.values(song).join(' ').toLowerCase();
+    } else {
+      value = song[searchBy];
+      if (value) {
+        value = value.toLowerCase();
+      }
     }
-    return false;
+    return value && value.includes(query);
   });
 }
-
-
 
 function displayResults(results) {
   var tableBody = document.querySelector('#resultsTable tbody');
