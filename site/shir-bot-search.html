@@ -2,82 +2,117 @@
 <html>
 <head>
   <title>Song Search</title>
-<script>
-
-function search() {
-  const searchInput = document.getElementById("searchInput").value.toLowerCase();
-  const searchBy = document.getElementById("searchBy").value;
-
-  fetch("songs.csv")
-    .then(response => response.text())
-    .then(data => {
-      const rows = data.split("\n");
-      const header = rows[0].split(",");
-      const columnIndex = header.indexOf(searchBy);
-      let results = [];
-
-      for (let i = 1; i < rows.length; i++) {
-        const row = rows[i].split(",");
-
-        if (row.length > columnIndex && row[columnIndex].toLowerCase().includes(searchInput)) {
-          results.push(row);
-        }
-      }
-
-      displayResults(results);
-    })
-    .catch(error => console.log(error));
-}
-
-
-function displayResults(results) {
-  const searchResults = document.getElementById("searchResults");
-  searchResults.innerHTML = "";
-
-  if (results.length === 0) {
-    searchResults.innerHTML = "<p>No results found.</p>";
-  } else {
-    const table = document.createElement("table");
-    const headerRow = document.createElement("tr");
-
-    for (let i = 0; i < results[0].length; i++) {
-      const headerCell = document.createElement("th");
-      headerCell.textContent = results[0][i];
-      headerRow.appendChild(headerCell);
+  <style>
+    table {
+      border-collapse: collapse;
+      width: 100%;
     }
-
-    table.appendChild(headerRow);
-
-    for (let i = 1; i < results.length; i++) {
-      const row = document.createElement("tr");
-
-      for (let j = 0; j < results[i].length; j++) {
-        const cell = document.createElement("td");
-        cell.textContent = results[i][j];
-        row.appendChild(cell);
-      }
-
-      table.appendChild(row);
+    th, td {
+      padding: 8px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
     }
-
-    searchResults.appendChild(table);
-  }
-}
-
-
-
-</script>
+    form {
+      margin-bottom: 20px;
+    }
+  </style>
 </head>
 <body>
   <h1>Song Search</h1>
-  <input type="text" id="searchInput" placeholder="Search...">
-  <select id="searchBy">
-    <option value="serial">Serial Number</option>
-    <option value="song">Song Name</option>
-    <option value="album">Album Name</option>
-    <option value="singer">Singer Name</option>
-  </select>
-  <button onclick="search()">Search</button>
-  <div id="searchResults"></div>
+  <form id="searchForm">
+    <label for="searchInput">Search:</label>
+    <input type="text" id="searchInput" name="searchInput">
+    <select id="searchBy" name="searchBy">
+      <option value="serial">Serial Number</option>
+      <option value="song">Song Name</option>
+      <option value="album">Album Name</option>
+      <option value="singer">Singer Name</option>
+    </select>
+    <button type="submit">Search</button>
+  </form>
+  <table id="resultsTable">
+    <thead>
+      <tr>
+        <th>Serial Number</th>
+        <th>Song Name</th>
+        <th>Album Name</th>
+        <th>Singer Name</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+  
+
+document.getElementById('searchForm').addEventListener('submit', function(event) {
+  event.preventDefault();
+  var searchInput = document.getElementById('searchInput').value.toLowerCase();
+  var searchBy = document.getElementById('searchBy').value;
+  searchSongs(searchInput, searchBy);
+});
+
+function searchSongs(query, searchBy) {
+  fetch('songs.csv')
+    .then(function(response) {
+      return response.text();
+    })
+    .then(function(csvText) {
+      var songs = parseCSV(csvText);
+      var results = filterSongs(songs, query, searchBy);
+      displayResults(results);
+    });
+}
+
+function parseCSV(csvText) {
+  var lines = csvText.split('\n');
+  var songs = [];
+  for (var i = 1; i < lines.length; i++) {
+    var line = lines[i].trim();
+    if (line) {
+      var columns = line.split(',');
+      var song = {
+        serial: columns[0],
+        name: columns[1],
+        album: columns[2],
+        singer: columns[3]
+      };
+      songs.push(song);
+    }
+  }
+  return songs;
+}
+
+function filterSongs(songs, query, searchBy) {
+  return songs.filter(function(song) {
+    var value = song[searchBy].toLowerCase();
+    return value.includes(query);
+  });
+}
+
+function displayResults(results) {
+  var tableBody = document.querySelector('#resultsTable tbody');
+  tableBody.innerHTML = '';
+  for (var i = 0; i < results.length; i++) {
+    var song = results[i];
+    var row = document.createElement('tr');
+    var serialCell = document.createElement('td');
+    var nameCell = document.createElement('td');
+    var albumCell = document.createElement('td');
+    var singerCell = document.createElement('td');
+    serialCell.textContent = song.serial;
+    nameCell.textContent = song.name;
+    albumCell.textContent = song.album;
+    singerCell.textContent = song.singer;
+    row.appendChild(serialCell);
+    row.appendChild(nameCell);
+    row.appendChild(albumCell);
+    row.appendChild(singerCell);
+    tableBody.appendChild(row);
+  }
+}
+
+  
+</script>
 </body>
 </html>
