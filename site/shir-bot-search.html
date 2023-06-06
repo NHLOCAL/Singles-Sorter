@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Song Search</title>
+<script>
+
+function search() {
+  const searchInput = document.getElementById("searchInput").value.toLowerCase();
+  const searchBy = document.getElementById("searchBy").value;
+  
+  fetch("songs.csv")
+    .then(response => response.text())
+    .then(data => {
+      const rows = data.split("\n");
+      const header = rows[0].split(",");
+      const columnIndex = header.indexOf(searchBy);
+      let results = [];
+
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i].split(",");
+        const value = row[columnIndex].toLowerCase();
+        
+        if (value.includes(searchInput)) {
+          results.push(row);
+        }
+      }
+      
+      displayResults(results);
+    })
+    .catch(error => console.log(error));
+}
+
+function displayResults(results) {
+  const searchResults = document.getElementById("searchResults");
+  searchResults.innerHTML = "";
+
+  if (results.length === 0) {
+    searchResults.innerHTML = "<p>No results found.</p>";
+  } else {
+    const table = document.createElement("table");
+    const headerRow = document.createElement("tr");
+
+    for (let i = 0; i < results[0].length; i++) {
+      const headerCell = document.createElement("th");
+      headerCell.textContent = results[0][i];
+      headerRow.appendChild(headerCell);
+    }
+
+    table.appendChild(headerRow);
+
+    for (let i = 1; i < results.length; i++) {
+      const row = document.createElement("tr");
+
+      for (let j = 0; j < results[i].length; j++) {
+        const cell = document.createElement("td");
+        cell.textContent = results[i][j];
+        row.appendChild(cell);
+      }
+
+      table.appendChild(row);
+    }
+
+    searchResults.appendChild(table);
+  }
+}
+
+
+
+</script>
+</head>
+<body>
+  <h1>Song Search</h1>
+  <input type="text" id="searchInput" placeholder="Search...">
+  <select id="searchBy">
+    <option value="serial">Serial Number</option>
+    <option value="song">Song Name</option>
+    <option value="album">Album Name</option>
+    <option value="singer">Singer Name</option>
+  </select>
+  <button onclick="search()">Search</button>
+  <div id="searchResults"></div>
+</body>
+</html>
