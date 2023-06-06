@@ -25,10 +25,10 @@ function parseCSV(csvText) {
     if (line) {
       var columns = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
       var song = {
-        serial: columns[0],
-        name: columns[1],
-        album: columns[2],
-        singer: columns[3]
+        serial: columns[0].trim(),
+        name: columns[1].trim(),
+        album: columns[2].trim(),
+        singer: columns[3].trim()
       };
       songs.push(song);
     }
@@ -37,12 +37,18 @@ function parseCSV(csvText) {
 }
 
 
+
 function filterSongs(songs, query, searchBy) {
   return songs.filter(function(song) {
-    var value = song[searchBy].toLocaleLowerCase();
-    return value.includes(query.toLocaleLowerCase());
+    var value = song[searchBy];
+    if (value) {
+      value = value.toLocaleLowerCase();
+      return value.includes(query.toLocaleLowerCase());
+    }
+    return false;
   });
 }
+
 
 
 function displayResults(results) {
