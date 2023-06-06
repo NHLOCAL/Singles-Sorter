@@ -6,6 +6,11 @@ document.getElementById('searchForm').addEventListener('submit', function(event)
 });
 
 function searchSongs(query, searchBy) {
+  // Check if the query string is empty
+  if (query.trim() === '') {
+    return; // Do not perform a search
+  }
+  
   fetch('songs.csv')
     .then(function(response) {
       return response.text();
@@ -16,6 +21,7 @@ function searchSongs(query, searchBy) {
       displayResults(results);
     });
 }
+
 
 function parseCSV(csvText) {
   var lines = csvText.split('\n');
