@@ -69,7 +69,7 @@ function displayResults(results) {
     var singerCell = document.createElement('td');
     var serialLink = document.createElement('a');
     serialLink.href = generateMailtoLink(song.serial);
-    serialLink.target = '_blank'; // Set the target to open in a new tab
+    serialLink.target = '_blank';
     serialLink.textContent = song.serial;
     serialCell.appendChild(serialLink);
     nameCell.textContent = song.name;
