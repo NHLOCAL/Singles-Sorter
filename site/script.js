@@ -67,10 +67,11 @@ function displayResults(results) {
     var nameCell = document.createElement('td');
     var albumCell = document.createElement('td');
     var singerCell = document.createElement('td');
-    var serialLink = document.createElement('a'); // Create the link element
-    serialLink.href = generateMailtoLink(song.serial); // Generate the mailto link
-    serialLink.textContent = song.serial; // Set the text content of the link
-    serialCell.appendChild(serialLink); // Append the link to the serial cell
+    var serialLink = document.createElement('a');
+    serialLink.href = generateMailtoLink(song.serial);
+    serialLink.target = '_blank'; // Set the target to open in a new tab
+    serialLink.textContent = song.serial;
+    serialCell.appendChild(serialLink);
     nameCell.textContent = song.name;
     albumCell.textContent = song.album;
     singerCell.textContent = song.singer;
@@ -81,6 +82,7 @@ function displayResults(results) {
     tableBody.appendChild(row);
   }
 }
+
 
 function generateMailtoLink(serial) {
   var mailtoLink = 'https://mail.google.com/mail/u/0/?view=cm&fs=1&tf=1&source=mailto&su=%D7%A9%D7%99%D7%A8-%D7%91%D7%95%D7%98&to=mesader.singelim%40gmail.com&body=';
