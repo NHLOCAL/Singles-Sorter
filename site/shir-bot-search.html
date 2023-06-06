@@ -85,10 +85,11 @@ function parseCSV(csvText) {
 
 function filterSongs(songs, query, searchBy) {
   return songs.filter(function(song) {
-    var value = song[searchBy].toLowerCase();
-    return value.includes(query);
+    var value = song[searchBy].toLocaleLowerCase();
+    return value.includes(query.toLocaleLowerCase());
   });
 }
+
 
 function displayResults(results) {
   var tableBody = document.querySelector('#resultsTable tbody');
