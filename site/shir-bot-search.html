@@ -131,13 +131,43 @@
   background-color: white;
 }
 
+.awesomplete {
+  display: block;
+  background: #fff;
+  border: 1px solid #ddd;
+  max-height: 200px; /* Set the maximum height of the auto-completion list */
+  overflow-y: auto;
+  font-family: Tahoma;
+  font-size: 16px;
+  z-index: 9999;
+}
+
+.awesomplete ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.awesomplete li {
+  padding: 8px;
+  cursor: pointer;
+}
+
+.awesomplete li:hover {
+  background: #f4f4f4;
+}
+
+.awesomplete li.selected {
+  background: #ddd;
+}
+
+
   </style>
 </head>
 <body>
   <div class="topnav">
     <h3>שיר-בוט</h3>
-	
-	<form id="searchForm" class="search-form">
+<form id="searchForm" class="search-form">
 <select id="searchBy" name="searchBy" class="search-select">
   <option value="all">הכל</option>
   <option value="serial">מספר סידורי</option>
@@ -148,7 +178,6 @@
   <input type="text" id="searchInput" name="searchInput" class="search-input" placeholder="הזן מילות מפתח..." autofocus>
   <button type="submit" class="search-button">חפש</button>
 </form>
-
 <div id="resultsTable";>
   <table>
     <thead>
