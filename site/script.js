@@ -95,3 +95,25 @@ function generateMailtoLink(serial) {
   var mailtoLink = 'https://mail.google.com/mail/u/0/?view=cm&fs=1&tf=1&source=mailto&su=%D7%A9%D7%99%D7%A8-%D7%91%D7%95%D7%98&to=mesader.singelim%40gmail.com&body=';
   return mailtoLink + serial;
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+  var searchInput = document.getElementById('searchInput');
+  var awesomplete = new Awesomplete(searchInput, {
+    minChars: 2, // Minimum number of characters to trigger auto-completion
+    list: [], // Initially empty list of suggestions
+    autoFirst: true, // Automatically select the first suggestion
+  });
+
+  // Fetch CSV data and update the suggestions list
+  fetch('songs.csv')
+    .then(function(response) {
+      return response.text();
+    })
+    .then(function(csvText) {
+      var songs = parseCSV(csvText);
+      var songNames = songs.map(function(song) {
+        return song.name;
+      });
+      awesomplete.list = songNames; // Update the suggestions list
+    });
+});

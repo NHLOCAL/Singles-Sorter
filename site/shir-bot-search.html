@@ -35,11 +35,9 @@
 
 .search-input,
 .search-select {
-  font-family: Tahoma;
-  font-size: 18px;
+  font-family: Tahoma; 
   padding-left: 10px;
   padding-right: 10px;
-  width: 150px;
   height: 58px;
   border: 1px solid #005E8A;
   border-radius: 4px;
@@ -47,9 +45,18 @@
   transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
 
+.search-select {
+  padding-bottom: 5px;
+  padding-top: 5px;
+  font-size: 18px;
+  width: 150px;
+}
+  
+
 .search-input {
   font-size: 20px;
   width: 300px;
+  
 }
 
 .search-input:focus,
@@ -61,6 +68,7 @@
 .search-select option {
   background-color: white;
 }
+
 
 .search-button {
   font-family: Tahoma;
@@ -191,13 +199,12 @@
   </table>
 </div>
 
-
-
 </div>
-
   <div class="fixed-bottom">
     <p>כל הזכויות שמורות © 2023 - v1.0</p>
   </div>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/awesomplete/1.1.2/awesomplete.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
