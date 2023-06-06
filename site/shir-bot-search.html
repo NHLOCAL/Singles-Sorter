@@ -13,10 +13,7 @@
     }
 
     table {
-      width: 95%;
-	  margin: auto;
-	  bottom: 2vh;
-	  position: static;
+	  width: 100%;
     }
 
     th, td {
@@ -30,10 +27,7 @@
 	  position: fixed;
     }
 
-.search-form {
-  margin-bottom: 20px;
-  text-align: center;
-}
+
 
 .search-input,
 .search-select {
@@ -78,10 +72,14 @@
 }
 
 #resultsTable {
-  position: sticky;
-  top: 250px;
-  height: 300px;
-  overflow-y: scroll;
+  margin-bottom: 2vh;
+  position: static;
+  margin-left: 3%;
+  margin-right: 3%;
+  margin-top: 100px;
+  padding: 10px;
+  width: 94%;
+  height: 90%;
 }
 
 .topnav {
@@ -94,24 +92,11 @@
 }
 
 .search-form {
-  position: sticky;
-  top: 100px;
-  left: 50%;
-  right: auto;
-  padding: 10px;
+  position: absolute;
+  padding-top: 40px;
+  width: 100%;
   z-index: 9999;
 }
-
-thead {
-  position: sticky;
-  top: 180px;
-  left: auto
-  right: auto
-  padding: 10px;
-  z-index: 9999;
-}
-
-
 
 
   </style>
@@ -119,9 +104,8 @@ thead {
 <body>
   <div class="topnav">
     <h3>חיפוש שירים</h3>
-  </div>
-  <main>
-<form id="searchForm" class="search-form">
+	
+	<form id="searchForm" class="search-form">
   <input type="text" id="searchInput" name="searchInput" class="search-input">
   <select id="searchBy" name="searchBy" class="search-select">
     <option value="serial">מספר סידורי</option>
@@ -131,6 +115,7 @@ thead {
   </select>
   <button type="submit" class="search-button">חפש</button>
 </form>
+
     <table id="resultsTable">
       <thead>
         <tr>
@@ -142,7 +127,7 @@ thead {
       </thead>
       <tbody></tbody>
     </table>
-  </main>
+</div>
   <div class="fixed-bottom">
     <p>כל הזכויות שמורות © 2023</p>
   </div>
