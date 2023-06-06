@@ -200,7 +200,9 @@ div[style="width:100%; float:center; height:100%; margin:30px; position: fixed;"
     padding: 30px;
     text-align: center;
   }
-  
+
+
+/* הגדרת עיצוב פס גלילה */
   
   ::-webkit-scrollbar {
     width: 8px;
@@ -216,3 +218,36 @@ div[style="width:100%; float:center; height:100%; margin:30px; position: fixed;"
     background-color:  #005580;
   }
   
+
+
+/* הגדרת הקו המהבהב */
+.search-input {
+  caret-color: #2d4373;
+}
+
+.search-input::-webkit-caret {
+  border-width: 2px;
+}
+
+.search-input::-moz-caret {
+  border-width: 2px;
+}
+
+.search-input::caret {
+  border-width: 2px;
+}
+
+.search-input::-webkit-caret {
+  border-style: solid;
+  border-color: #2d4373;
+}
+
+.search-input::-moz-caret {
+  border-style: solid;
+  border-color: #2d4373;
+}
+
+.search-input::caret {
+  border-style: solid;
+  border-color: #2d4373;
+}
