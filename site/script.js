@@ -39,9 +39,14 @@ function parseCSV(csvText) {
 function filterSongs(songs, query, searchBy) {
   return songs.filter(function(song) {
     var value = song[searchBy].toLocaleLowerCase();
-    return value.includes(query.toLocaleLowerCase());
+    if (searchBy === 'song') {
+      return value.includes(query.toLocaleLowerCase());
+    } else {
+      return value === query.toLocaleLowerCase();
+    }
   });
 }
+
 
 
 function displayResults(results) {
