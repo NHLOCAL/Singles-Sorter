@@ -6,8 +6,8 @@ document.getElementById('searchForm').addEventListener('submit', function(event)
 });
 
 function searchSongs(query, searchBy) {
-  // Check if the query string is empty
-  if (query.trim() === '') {
+  // Check if the query string is empty or less than two letters/one number
+  if (query.trim() === '' || (query.trim().length < 2 && !/^\d$/.test(query.trim()))) {
     return; // Do not perform a search
   }
   
@@ -21,6 +21,7 @@ function searchSongs(query, searchBy) {
       displayResults(results);
     });
 }
+
 
 
 function parseCSV(csvText) {
