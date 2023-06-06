@@ -1,119 +1,195 @@
 <!DOCTYPE html>
-<html lang="he">
+<html>
 <head>
   <title>Song Search</title>
   <style>
+    * {
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Tahoma;
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
+    .topnav {
+      padding: 10px;
+      text-align: center;
+      height: 60px;
+      width: 100%;
+      z-index: 0;
+      top: 0;
+      right: 0;
+      background-color: #005E8A;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .topnav h3 {
+      font-size: 24px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin: 0;
+      padding: 0 20px;
+      line-height: 60px;
+      display: inline-block;
+      transition: all 0.2s ease-in-out;
+      background-color: #fff;
+      color: #005E8A;
+      border-radius: 5px;
+    }
+
+    .topnav a {
+      color: white;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      border-radius: 5px;
+      padding: 10px 20px;
+    }
+
+    .topnav a:hover,
+    .topnav a:active,
+    .topnav h3.current {
+      color: #73FBFD;
+      background-color: #C0C0C0;
+    }
+
+    main {
+      margin-top: 30px;
+    }
+
+    form {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
     table {
       border-collapse: collapse;
       width: 100%;
     }
+
     th, td {
       padding: 8px;
-      text-align: left;
+      text-align: right;
       border-bottom: 1px solid #ddd;
     }
-    form {
-      margin-bottom: 20px;
+
+    .button-image:hover {
+      opacity: 0.95;
+      transform: scale(0.98);
+      transition: all 0.3s ease-in-out;
+      cursor: pointer;
+    }
+
+    .left_item {
+      left: 50px;
+      float: right;
+      top: 5px;
+      position: absolute;
+    }
+
+    a:link.butt, a:visited.butt {
+      padding: 10px;
+      text-align: center;
+      border-radius: 5px;
+      text-decoration: none;
+      display: inline-block;
+      background-color: #fff;
+      color: black;
+      font-weight: bold;
+    }
+
+    a:hover.butt, a:active.butt {
+      color: #73FBFD;
+      background-color: #C0C0C0;
+    }
+
+    a:link.center_butt, a:visited.center_butt {
+      border-radius: 10px;
+      background-color: #f44336;
+      color: white;
+      padding: 15px 25px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    a:hover.center_butt, a:active.center_butt {
+      background-color: red;
+    }
+
+    .alert {
+      border-radius: 10px;
+      background-color: #0800E0;
+      width: 70%;
+      color: white;
+      padding: 25px 25px;
+      text-align: center;
+      text-decoration: none;
+      margin: auto;
+    }
+
+    .closebtn {
+      margin-left: 15px;
+      color: white;
+      font-weight: bold;
+      float: right;
+      font-size: 22px;
+      line-height: 20px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .closebtn:hover {
+      color: black;
+    }
+
+    .fixed-bottom {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      height: 20vh;
+      background-color: #FFF5A6;
+      padding: 30px;
+      text-align: center;
     }
   </style>
 </head>
 <body>
-  <h1>Song Search</h1>
-  <form id="searchForm">
-    <label for="searchInput">Search:</label>
-    <input type="text" id="searchInput" name="searchInput">
-    <select id="searchBy" name="searchBy">
-      <option value="serial">Serial Number</option>
-      <option value="song">Song Name</option>
-      <option value="album">Album Name</option>
-      <option value="singer">Singer Name</option>
-    </select>
-    <button type="submit">Search</button>
-  </form>
-  <table id="resultsTable">
-    <thead>
-      <tr>
-        <th>Serial Number</th>
-        <th>Song Name</th>
-        <th>Album Name</th>
-        <th>Singer Name</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <div class="topnav">
+    <h3>חיפוש שירים</h3>
+  </div>
+  <main>
+    <form id="searchForm">
+      <label for="searchInput">חיפוש:</label>
+      <input type="text" id="searchInput" name="searchInput">
+      <select id="searchBy" name="searchBy">
+        <option value="serial">מספר סידורי</option>
+        <option value="song">שם השיר</option>
+        <option value="album">שם האלבום</option>
+        <option value="singer">שם הזמר/ת</option>
+      </select>
+      <button type="submit" class="butt">חפש</button>
+    </form>
+    <table id="resultsTable">
+      <thead>
+        <tr>
+          <th>מספר סידורי</th>
+          <th>שם השיר</th>
+          <th>שם האלבום</th>
+          <th>שם הזמר/ת</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </main>
+  <div class="fixed-bottom">
+    <p>כל הזכויות שמורות © 2023</p>
+  </div>
 
-  <script>
-  
-
-document.getElementById('searchForm').addEventListener('submit', function(event) {
-  event.preventDefault();
-  var searchInput = document.getElementById('searchInput').value.toLowerCase();
-  var searchBy = document.getElementById('searchBy').value;
-  searchSongs(searchInput, searchBy);
-});
-
-function searchSongs(query, searchBy) {
-  fetch('songs.csv')
-    .then(function(response) {
-      return response.text();
-    })
-    .then(function(csvText) {
-      var songs = parseCSV(csvText);
-      var results = filterSongs(songs, query, searchBy);
-      displayResults(results);
-    });
-}
-
-function parseCSV(csvText) {
-  var lines = csvText.split('\n');
-  var songs = [];
-  for (var i = 1; i < lines.length; i++) {
-    var line = lines[i].trim();
-    if (line) {
-      var columns = line.split(',');
-      var song = {
-        serial: columns[0],
-        name: columns[1],
-        album: columns[2],
-        singer: columns[3]
-      };
-      songs.push(song);
-    }
-  }
-  return songs;
-}
-
-function filterSongs(songs, query, searchBy) {
-  return songs.filter(function(song) {
-    var value = song[searchBy].toLocaleLowerCase();
-    return value.includes(query.toLocaleLowerCase());
-  });
-}
-
-
-function displayResults(results) {
-  var tableBody = document.querySelector('#resultsTable tbody');
-  tableBody.innerHTML = '';
-  for (var i = 0; i < results.length; i++) {
-    var song = results[i];
-    var row = document.createElement('tr');
-    var serialCell = document.createElement('td');
-    var nameCell = document.createElement('td');
-    var albumCell = document.createElement('td');
-    var singerCell = document.createElement('td');
-    serialCell.textContent = song.serial;
-    nameCell.textContent = song.name;
-    albumCell.textContent = song.album;
-    singerCell.textContent = song.singer;
-    row.appendChild(serialCell);
-    row.appendChild(nameCell);
-    row.appendChild(albumCell);
-    row.appendChild(singerCell);
-    tableBody.appendChild(row);
-  }
-}
-
-  
-</script>
+  <script src="script.js"></script>
 </body>
 </html>
