@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>חיפוש שירים</title>
+   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <body dir="rtl" style="background-color:#FFFEDB;">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+ 
+    form {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    table {
+	  width: 100%;
+	  overflow-y: scroll;
+    }
+
+    th, td {
+      padding: 8px;
+      text-align: right;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .fixed-bottom {
+      height: 2vh;
+	  position: fixed;
+	  z-index: 9999;
+	  bottom: 0px;
+    }
+
+
+.search-input,
+.search-select {
+  font-family: Tahoma;
+  padding: 8px;
+  font-size: 16px;
+  border: 1px solid #005E8A;
+  border-radius: 4px;
+}
+
+.search-input:focus,
+.search-select:focus {
+  outline: none;
+  background: #e6f7ff;
+}
+
+.search-select option {
+  background-color: white;
+}
+
+.search-button {
+  font-family: Tahoma;
+  padding: 9px 20px;
+  font-size: 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  background-color: #2d4373;
+  color: #fff;
+  border: none;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 5px 15px rgba(45, 67, 115, 0.5);
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.search-button:hover {
+  background-color: #1e2d4d;
+  box-shadow: 0 10px 20px rgba(45, 67, 115, 0.5);
+}
+
+.search-button:active {
+  background-color: #2d4373;
+}
+
+#resultsTable {
+  position: fixed;
+  margin-left: 3%;
+  margin-right: 3%;
+  margin-top: 100px;
+  margin-bottom: 500px;
+  width: 90%;
+  height: 60vh;
+  overflow: auto;
+  padding: 20px;
+}
+
+.topnav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 10px;
+  z-index: 9999;
+}
+
+.search-form {
+  position: absolute;
+  padding-top: 40px;
+  width: 100%;
+  z-index: 9999;
+}
+
+
+  </style>
+</head>
+<body>
+  <div class="topnav">
+    <h3>חיפוש שירים</h3>
+	
+	<form id="searchForm" class="search-form">
+  <input type="text" id="searchInput" name="searchInput" class="search-input">
+  <select id="searchBy" name="searchBy" class="search-select">
+    <option value="serial">מספר סידורי</option>
+    <option value="song">שם השיר</option>
+    <option value="album">שם האלבום</option>
+    <option value="singer">שם הזמר</option>
+  </select>
+  <button type="submit" class="search-button">חפש</button>
+</form>
+
+<div id="resultsTable";>
+  <table>
+    <thead>
+      <tr>
+        <th>מספר סידורי</th>
+        <th>שם השיר</th>
+        <th>שם האלבום</th>
+        <th>שם הזמר</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+</div>
+  <div class="fixed-bottom">
+    <p>כל הזכויות שמורות © 2023</p>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
+
+
