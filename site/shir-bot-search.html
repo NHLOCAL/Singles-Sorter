@@ -17,7 +17,7 @@
       width: 95%;
 	  margin: auto;
 	  bottom: 5vh;
-	  position: fixed;
+	  position: static;
     }
 
     th, td {
@@ -28,6 +28,7 @@
 
     .fixed-bottom {
       height: 5vh;
+	  position: fixed;
     }
 
 .search-form {
@@ -35,19 +36,7 @@
   text-align: center;
 }
 
-.search-input {
-  font-family: Tahoma;
-  padding: 8px;
-  font-size: 16px;
-  border: 1px solid #005E8A;
-  border-radius: 4px;
-}
-
-.search-input:focus {
-  outline: none;
-  background: #e6f7ff;
-}
-
+.search-input,
 .search-select {
   font-family: Tahoma;
   padding: 8px;
@@ -56,8 +45,14 @@
   border-radius: 4px;
 }
 
+.search-input:focus,
 .search-select:focus {
   outline: none;
+  background: #e6f7ff;
+}
+
+.search-select option {
+  background-color: white;
 }
 
 .search-button {
