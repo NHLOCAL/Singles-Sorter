@@ -38,14 +38,24 @@ function parseCSV(csvText) {
 
 function filterSongs(songs, query, searchBy) {
   return songs.filter(function(song) {
-    var value = song[searchBy];
-    if (value) {
-      value = value.toLowerCase();
-      return value.includes(query);
+    var values = Object.values(song).map(function(value) {
+      return value.toLowerCase();
+    });
+    if (searchBy === 'all') {
+      return values.some(function(value) {
+        return value.includes(query);
+      });
+    } else {
+      var value = song[searchBy];
+      if (value) {
+        value = value.toLowerCase();
+        return value.includes(query);
+      }
     }
     return false;
   });
 }
+
 
 
 
