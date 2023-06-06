@@ -1,13 +1,13 @@
 # מסדר הסינגלים
 <div align="center">
-<h3>🫵 הכנסו ל<a href="https://nhlocal.github.io/Singles-Sorter/">אתר החדש</a> של התוכנה!</h3>
+<h3>🫵 הכנסו ל<a href="https://nhlocal.github.io/Singles-Sorter/">אתר</a> של התוכנה!</h3>
 </div>
 
 
 
 **הגרסה הנוכחית היא 12.0**
 
-סקריפט שמסדר קבצי מוזיקה בודדים בתיקיות מסודרות לפי אמנים.
+תוכנה שמסדרת קבצי מוזיקה בודדים בתיקיות מסודרות לפי אמנים.
 
 הדאטה של הקוד מכילה זמרים יהודים חרדים בלבד, וממילא היא מיועדת לציבור החרדי בישראל בלבד.
 
