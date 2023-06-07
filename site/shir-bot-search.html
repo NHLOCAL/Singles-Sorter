@@ -116,11 +116,23 @@
   z-index: 9999;
 }
 
-
-.topnav a {
+a {
   color: #005E8A;
   background-color: white;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  border-radius: 5px;
+  padding: 10px 20px;
 }
+
+a:hover,
+a:active,
+h3.current {
+  color: #73FBFD;
+  background-color: #C0C0C0;
+}
+
   </style>
 </head>
 <body dir="rtl" style="background-color:#FFFEDB;">
@@ -134,6 +146,7 @@
         <option value="album">שם האלבום</option>
         <option value="singer">שם הזמר</option>
       </select>
+
       <input type="text" id="searchInput" name="searchInput" class="search-input awesomplete" class="search-input" placeholder="הזן מילות מפתח..." autofocus>
       <button type="submit" class="search-button">חפש</button>
     </form>
@@ -147,10 +160,12 @@
           <th>שם השיר</th>
           <th>שם האלבום</th>
           <th>שם הזמר</th>
+		  
         </tr>
       </thead>
       <tbody></tbody>
     </table>
+	
   </div>
 
   <div class="fixed-bottom">
