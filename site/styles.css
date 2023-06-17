@@ -52,7 +52,7 @@ border-radius: 5px;
   text-decoration: none;
   display: inline-block;
   border-radius: 5px;
-  padding: 10px 20px; /* added this line */
+  padding: 10px 20px;
 }
 
 /* Hover and active link style for top bar */
