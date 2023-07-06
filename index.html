@@ -46,7 +46,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 </div>
 
 <main>
-<div>
+<div class="scale-div" style="padding-bottom: 30px">
 <center class="alert">
   <span class="closebtn" onclick="this.parentElement.style.display='none';">&times;</span>
 <strong>👀הצעה מיוחדת! </strong>מעוניין להצטרף לקבלת 500 ג'יגה של מוזיקה בדרייב? <a style="color: #A1FA4F; font-weight: bold" id="music-in-drive" href="https://forms.gle/couZadvYGJ41hhYs7", target="_blank">לחץ כאן!</a>
@@ -69,8 +69,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 
 
-
-<div style="background-color: #FFF8C5; display: flex; justify-content: center; align-items: center">
+<div class="scale-div" style="background-color: #FFF8C5; display: flex; justify-content: center; align-items: center">
   <div class="about-program">
     <h3>מה התוכנה עושה?</h3>
     <p>התוכנה מסדרת את הסינגלים המפוזרים שלכם בתוך תיקיות מסודרות לפי שמות הזמרים</p>
@@ -88,7 +87,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 
 
-<div style="background-color: #FFF49C">
+<div class="scale-div" style="background-color: #FFF49C">
 <center style="padding: 30px;">
   <h2>רוצה להתעדכן ראשון על הגרסה הבאה?</h2><br>
     <a class="butt" id="registing" href="https://mail.google.com/mail/u/0/?view=cm&fs=1&tf=1&source=mailto&su=%D7%9E%D7%A2%D7%95%D7%A0%D7%99%D7%99%D7%9F+%D7%9C%D7%94%D7%A6%D7%98%D7%A8%D7%A3+%D7%9C%D7%A7%D7%91%D7%9C%D7%AA+%D7%A2%D7%93%D7%9B%D7%95%D7%A0%D7%99%D7%9D&to=mesader-singelim%2Bsubscribe@googlegroups.com" target="_blank">שלח מייל כעת</a>
@@ -115,6 +114,29 @@ document.addEventListener('DOMContentLoaded', function() {
       localStorage.setItem('messageDisplayed', 'true');
     });
   }
+});
+
+
+
+// JavaScript for the scrolling effect
+document.addEventListener("DOMContentLoaded", function() {
+  var divs = document.querySelectorAll(".scale-div");
+
+  function scrollHandler() {
+    for (var i = 0; i < divs.length; i++) {
+      var div = divs[i];
+      var rect = div.getBoundingClientRect();
+
+      if (rect.top < window.innerHeight && rect.bottom >= 0) {
+        div.classList.add("active");
+      } else {
+        div.classList.remove("active");
+      }
+    }
+  }
+
+  window.addEventListener("scroll", scrollHandler);
+  scrollHandler();
 });
 
 </script>

@@ -268,3 +268,16 @@ div[style="width:100%; float:center; height:100%; margin:30px; position: fixed;"
 .about-program p {
   margin-bottom: 30px;	
 }
+
+
+/* CSS for the animated effect */
+.scale-div {
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+
+.scale-div.active {
+  opacity: 1;
+  transform: scale(1);
+}
