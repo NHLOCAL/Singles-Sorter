@@ -63,12 +63,7 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_o
         # תצוגת אחוזים מתחלפת
         len_item += 1
         show_len = len_item * 100 // len_dir
-        print("" * 39, str(show_len), "% ", "הושלמו",end='\r')
-        
-        # הפעלת פונקציה המבצעת בדיקות על שם האמן
-        check_answer = check_artist(artist)
-        if check_answer == False:
-            continue
+        print(" " * 39, str(show_len), "% ", "הושלמו",end='\r')
                        
         # הגדרת משתנה עבור תיקית יעד בהתאם להתאמות האישיות של המשתמש
         if singles_folder and abc_sort:
@@ -134,7 +129,7 @@ def artist_from_song(my_file):
         global singer_list
         with open(csv_path, 'r') as file:
             csv_reader = csv.reader(file)
-            singer_list = [tuple(row) for row in csv_reader]    
+            singer_list = [tuple(row) for row in csv_reader]
         
         if os.path.isfile("personal-singer-list.csv"):
             with open("personal-singer-list.csv", 'r') as file:
@@ -147,7 +142,6 @@ def artist_from_song(my_file):
         if source_name in split_file:
             artist = target_name
             return artist
-
 
     # אם שם הקובץ לא נמצא יתבצע חיפוש במטאדאטה של הקובץ
     try:
@@ -163,7 +157,19 @@ def artist_from_song(my_file):
         if artist:
             # המרת שם האמן אם הוא פגום
             if any(c in "àáâãäåæçèéëìîðñòôö÷øùúêíïóõ" for c in artist):
-                artist = jibrish_to_hebrew(artist)               
+                artist = jibrish_to_hebrew(artist)
+            
+            # מעבר על רשימת השמות ובדיקה אם אחד מהם קיים בתגית האמן
+            for source_name, target_name in singer_list:
+                if source_name in artist:
+                    artist = target_name
+                    return artist 
+                
+            # הפעלת פונקציה המבצעת בדיקות על שם האמן
+            check_answer = check_artist(artist)
+            if check_answer == False:
+                return
+                
             return artist
     except:
         return

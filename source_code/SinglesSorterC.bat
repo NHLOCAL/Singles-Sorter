@@ -6,7 +6,7 @@
 ::הגדרות של שפה, צבע, כותרת וגודל החלון
 ::ועוד מספר משתנים חשובים
 chcp 1255>nul
-set "VER=12.0"
+set "VER=12.5"
 title %VER% מסדר הסינגלים
 MODE CON COLS=80 lines=18
 color f1
@@ -73,5 +73,3 @@ set "new_filename=%new_filename: מוזיקה מכל הלב=%"
 set "new_filename=%new_filename: - מייל מיוזיק=%"
 ren "%file%%ext%" "%new_filename%%ext%"
 exit /b
-
-::קרדיט: nh.local11@gmail.com
