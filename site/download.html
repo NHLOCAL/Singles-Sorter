@@ -50,18 +50,30 @@
     }
   }, 1000);
 
+  // הגדרת משתנה להחלפה בכל עדכון גרסה
+  var cur_ver = "";
 
-    // הגדרת משתנה להחלפה בכל עדכון גרסה
-    var cur_ver = "12.5"
-	
-	// השהייה של מספר שניות לפני הורדה וסגירת הכרטיסיה
-	setTimeout(myFunc, 4000);
+  // השהייה של מספר שניות לפני הורדה וסגירת הכרטיסיה
+  setTimeout(myFunc, 4000);
 
-// הורדת הגרסה האחרונה
-function myFunc() {
+  // הורדת הגרסה האחרונה
+  function myFunc() {
+    fetchFileContent('https://nhlocal.github.io/Singles-Sorter/versions.data/new-ver-exist')
+      .then(fileContent => {
+	  
+        cur_ver = fileContent.trim();
+
         document.location.href = 'https://github.com/NHLOCAL/Singles-Sorter/releases/download/v' + cur_ver + '/Singles-Sorter-' + cur_ver + '.exe';
-}    
+      })
+  }
+
+  function fetchFileContent(url) {
+    return fetch(url)
+      .then(response => response.text());
+  }
 </script>
+
+
 
 </body>
 </html>
