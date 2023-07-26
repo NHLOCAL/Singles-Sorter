@@ -27,8 +27,8 @@ jobs:
         uses: ArtemSBulgakov/buildozer-action@v1
         id: buildozer
         with:
-          repository_root: master
-          workdir: test_app
+          repository_root: .
+          workdir: ./apk-project
           buildozer_version: stable
 
       - name: Upload artifacts
