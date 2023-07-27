@@ -29,7 +29,7 @@ jobs:
         # Remove the 'v' prefix from the version (e.g., 1.0.0)
         export VERSION=$(echo "${VERSION}" | cut -c 2-)
         # Run PyInstaller with custom name and version
-        pyinstaller --onefile --name "Singles-Sorter-${VERSION}.exe" python-project/singles_sorter_func.py
+        pyinstaller --onefile --name "Singles-Sorter-${VERSION}" python-project/singles_sorter_func.py
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         VERSION: ${{ env.VERSION }} # Pass the version to the build step
