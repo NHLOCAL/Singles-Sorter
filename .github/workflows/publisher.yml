@@ -3,7 +3,10 @@ name: Publish Release
 on:
   push:
     tags:
-      - 'v*.*' # Trigger the workflow on tag creation with the format "vX.Y"
+      - 'v*.*' # Trigger the workflow on tag creation with the format "vX.Y.Z"
+
+env:
+  VERSION: ${{ github.ref }} # Use the GitHub ref directly as the version
 
 jobs:
   build:
@@ -23,26 +26,23 @@ jobs:
 
     - name: Build EXE
       run: |
-        # Get the version number from the tag (e.g., v1.0.0)
-        VERSION=$(echo "${{ github.ref }}" | cut -d'/' -f3)
         # Remove the 'v' prefix from the version (e.g., 1.0.0)
-        VERSION=$(echo "${VERSION}" | cut -c 2-)
+        export VERSION=$(echo "${VERSION}" | cut -c 2-)
         # Run PyInstaller with custom name and version
-            pyinstaller --onefile --name "Singles-Sorter-${VERSION}.exe" python-project/singles_sorter_func.py
+        pyinstaller --onefile --name "Singles-Sorter-${VERSION}.exe" python-project/singles_sorter_func.py
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        VERSION: ${{ env.VERSION }} # Pass the version to the build step
 
     - name: Set version number
       run: |
-        # Get the version number from the tag (e.g., v1.0.0)
-        VERSION=$(echo "${{ github.ref }}" | cut -d'/' -f3)
         # Remove the 'v' prefix from the version (e.g., 1.0.0)
-        VERSION=$(echo "${VERSION}" | cut -c 2-)
+        export VERSION=$(echo "${VERSION}" | cut -c 2-)
         echo "${VERSION}" > version.txt # Update version.txt with your desired version
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        files: "/home/runner/work/Singles-Sorter/Singles-Sorter/dist/Singles-Sorter-${VERSION}.exe" # Use the custom name and version in the path
+        files: "/home/runner/work/Singles-Sorter/Singles-Sorter/dist/Singles-Sorter-${VERSION}.exe" # Use double quotes for variable expansion
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
