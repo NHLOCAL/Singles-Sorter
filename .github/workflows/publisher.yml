@@ -31,6 +31,6 @@ jobs:
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        files: dist/main.exe # Replace 'main.exe' with the correct path to your generated EXE file
+        files: /home/runner/work/Singles-Sorter/Singles-Sorter/dist/singles_sorter_func # Replace 'main.exe' with the correct path to your generated EXE file
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
