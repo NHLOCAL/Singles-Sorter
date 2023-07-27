@@ -3,7 +3,7 @@ name: Publish Release
 on:
   push:
     tags:
-      - 'v*.*'
+      - 'v*.*' # Trigger the workflow on tag creation with the format "vX.Y.Z"
 
 jobs:
   build:
@@ -29,7 +29,7 @@ jobs:
         VERSION=$(echo "${VERSION}" | cut -c 2-)
 
         # Run PyInstaller with custom name and version
-        pyinstaller --onefile --name "Singles-Sorter-${VERSION}.exe" python-project/singles_sorter_func.py
+        pyinstaller --onefile --name "Singles-Sorter-${VERSION}" python-project/singles_sorter_func.py
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         VERSION: ${{ github.ref }}
@@ -43,8 +43,9 @@ jobs:
         echo "${VERSION}" > version.txt # Update version.txt with your desired version
 
     - name: Create Release
+      id: create_release
       uses: softprops/action-gh-release@v1
       with:
-        files: "dist/Singles-Sorter-${VERSION}.exe" # Use double quotes and access the VERSION variable correctly
+        files: "dist/Singles-Sorter-${{ env.VERSION }}.exe" # Use double quotes and access the VERSION variable correctly
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
