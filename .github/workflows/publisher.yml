@@ -22,11 +22,11 @@ jobs:
         pip install pyinstaller
 
     - name: Build EXE
-      run: pyinstaller --onefile /python-project/singles_sorter_func.py # Replace 'main.py' with the name of your main Python file
+      run: pyinstaller --onefile python-project/singles_sorter_func.py # Replace 'main.py' with the name of your main Python file
 
     - name: Set version number
       run: |
-        echo "1.0" > /version.txt # Update version.txt with your desired version
+        echo "1.0" > version.txt # Update version.txt with your desired version
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
