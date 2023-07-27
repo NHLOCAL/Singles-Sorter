@@ -3,7 +3,7 @@ name: Publish Release
 on:
   push:
     tags:
-      - 'v*.*' # Trigger the workflow on tag creation with the format "vX.Y.Z"
+      - 'v*.*' # Trigger the workflow on tag creation with the format "vX.Y"
 
 jobs:
   build:
@@ -13,7 +13,7 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Setup Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v3
       with:
         python-version: '3.10' # Replace with the Python version you need
 
