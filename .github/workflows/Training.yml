@@ -2,7 +2,7 @@ name: Train spaCy NER model
 on:
   push:
     branches:
-      - main  # Adjust this to the branch you want to trigger the workflow on
+      - machine-learn
 
 jobs:
   train-ner-model:
