@@ -3,6 +3,12 @@ from spacy.training.example import Example
 import pandas as pd
 import random
 
+# ####
+from pathlib import Path
+current_working_directory = Path.cwd()
+print(current_working_directory)
+# ####
+
 # Function to check alignment and fix misaligned entities
 def check_alignment(nlp, text, entities):
     doc = nlp.make_doc(text)
