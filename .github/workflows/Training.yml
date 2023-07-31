@@ -29,10 +29,14 @@ jobs:
         run: |
           python machine-learn/create_ner_model.py
 
+      - name: Move prepared file to internal folder
+        run: |
+          mv custom_ner_model machine-learn/
+
       - name: Commit and push changes
         run: |
           git config --local user.email "actions@github.com"
           git config --local user.name "GitHub Actions"
-          git add /home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/custom_ner_model
+          git add machine-learn/custom_ner_model
           git commit -m "Update custom_ner_model" || echo "No changes to commit"
           git push
