@@ -52,7 +52,6 @@ training_data = convert_to_spacy_format(df.to_dict('records'))  # Convert DataFr
 random.shuffle(training_data)
 
 
-
 # Start training the spaCy model
 nlp.begin_training()
 
