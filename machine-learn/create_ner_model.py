@@ -3,11 +3,6 @@ from spacy.training.example import Example
 import pandas as pd
 import random
 
-# ####
-from pathlib import Path
-current_working_directory = Path.cwd()
-print(current_working_directory)
-# ####
 
 # Function to check alignment and fix misaligned entities
 def check_alignment(nlp, text, entities):
@@ -47,7 +42,7 @@ ner = nlp.add_pipe("ner")
 ner.add_label("SINGER")
 
 # Replace 'output_data.csv' with the actual path to your output CSV file
-output_csv = 'training_data.csv'
+output_csv = '/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/training_data.csv'
 
 # Read the output CSV file into a Pandas DataFrame
 df = pd.read_csv(output_csv)
