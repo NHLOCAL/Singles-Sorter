@@ -6,20 +6,24 @@ on:
 
 jobs:
   train-ner-model:
-    runs-on: ubuntu-latest  # Use the latest version of Ubuntu
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2  # This step checks out your repository's code
+        uses: actions/checkout@v3
 
       - name: Set up Python environment
         uses: actions/setup-python@v3
         with:
-          python-version: '3.9'  # Replace with the Python version you need
+          python-version: '3.9'
 
       - name: Install dependencies
         run: |
           pip install spacy pandas
+
+      - name: Set working directory
+        run: cd machine-learn/  # Replace 'path/to/directory' with the path to your working directory
+        working-directory: ${{ github.workspace }}  # Use the GitHub workspace as the starting directory
 
       - name: Run training script
         run: |
@@ -32,4 +36,3 @@ jobs:
           git add custom_ner_model
           git commit -m "Update custom_ner_model" || echo "No changes to commit"
           git push
-
