@@ -1,1 +1,35 @@
+name: Train spaCy NER model
+on:
+  push:
+    branches:
+      - main  # Adjust this to the branch you want to trigger the workflow on
+
+jobs:
+  train-ner-model:
+    runs-on: ubuntu-latest  # Use the latest version of Ubuntu
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2  # This step checks out your repository's code
+
+      - name: Set up Python environment
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.9'  # Replace with the Python version you need
+
+      - name: Install dependencies
+        run: |
+          pip install spacy pandas
+
+      - name: Run training script
+        run: |
+          python machine-learn/create_ner_model.py
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "actions@github.com"
+          git config --local user.name "GitHub Actions"
+          git add custom_ner_model
+          git commit -m "Update custom_ner_model" || echo "No changes to commit"
+          git push
 
