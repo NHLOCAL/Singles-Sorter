@@ -19,7 +19,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install spacy pandas
+          pip install spacy==3.2.2 pandas
 
       - name: Set working directory
         run: cd machine-learn/  # Replace 'path/to/directory' with the path to your working directory
