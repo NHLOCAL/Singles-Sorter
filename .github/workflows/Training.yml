@@ -33,6 +33,6 @@ jobs:
         run: |
           git config --local user.email "actions@github.com"
           git config --local user.name "GitHub Actions"
-          git add machine-learn/custom_ner_model
+          git add /home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/custom_ner_model
           git commit -m "Update custom_ner_model" || echo "No changes to commit"
           git push
