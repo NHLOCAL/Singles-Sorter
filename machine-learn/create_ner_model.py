@@ -56,11 +56,11 @@ random.shuffle(training_data)
 nlp.begin_training()
 
 # Training loop
-for itn in range(1000):
+for itn in range(400):
     losses = {}
     for example in training_data:
         nlp.update([example], drop=0.35, losses=losses)
-    if int(losses['ner']) <= 100: break
+    if int(losses['ner']) <= 150: break
     print(str(itn) + ": " + str(losses))
 
 
