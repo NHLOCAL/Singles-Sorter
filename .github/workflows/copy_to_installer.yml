@@ -1,0 +1,34 @@
+name: Copy to Installer
+
+on:
+  push:
+    paths:
+      - 'source_code/**' # Run the workflow when changes are made in the source_code folder
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Create installer
+        run: |
+          # Create the installer file (e.g., installer.exe)
+          # Here, you can use any script or tool to create the installer file.
+          # For simplicity, let's assume the installer is already available in the repository.
+          # Replace the following command with the actual command to create the installer.
+          cp path/to/installer.exe installer.exe
+
+      - name: Copy source_code to installer
+        run: |
+          # Copy the contents of the source_code folder to the installer file.
+          # Replace 'path/to/source_code' with the actual path of the source_code folder.
+          cp -r path/to/source_code/* installer.exe
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: installer
+          path: installer.exe
