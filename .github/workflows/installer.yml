@@ -15,7 +15,6 @@ jobs:
 
       - name: Create Zip File
         run: |
-          cd $GITHUB_WORKSPACE/source_code
           zip -r $GITHUB_WORKSPACE/software_files.zip *
 
       - name: Upload Zip Artifact
