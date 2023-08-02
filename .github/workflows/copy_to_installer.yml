@@ -1,36 +1,36 @@
-name: Copy to Installer
+name: Copy Files and Create Installer
 
 on:
   push:
     branches:
-      - main
-    paths:
-      - 'source_code/**'
+      - main # Change this to your default branch if different
+  # You can add more triggers like pull_request, release, etc., as needed.
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest # Change to your desired runner OS if required.
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
+    - name: Checkout repository
+      uses: actions/checkout@v2
 
-      - name: Create installer
-        run: |
-          # Create the installer file (e.g., installer.exe)
-          # Here, you can use any script or tool to create the installer file.
-          # For simplicity, let's assume the installer is already available in the repository.
-          # Replace the following command with the actual command to create the installer.
-          cp path/to/installer.exe installer.exe
+    - name: Copy files to installation directory
+      run: |
+        mkdir -p $HOME/AppData/singles-sorter
+        cp -R source_code/* $HOME/AppData/singles-sorter/
 
-      - name: Copy source_code to installer
-        run: |
-          # Copy the contents of the source_code folder to the installer file.
-          # Replace 'path/to/source_code' with the actual path of the source_code folder.
-          cp -r path/to/source_code/* installer.exe
+    - name: Create Windows installer script
+      run: |
+        echo @echo off > installer.bat
+        echo echo Installing Singles Sorter... >> installer.bat
+        echo mkdir "%AppData%\singles-sorter" >> installer.bat
+        echo xcopy /s /e /i "%~dp0source_code" "%AppData%\singles-sorter" >> installer.bat
+        echo echo Installation complete. >> installer.bat
 
-      - name: Upload installer artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: installer
-          path: installer.exe
+    - name: Save changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add installer.bat
+        git commit -m "Create Windows installer script"
+        git push
