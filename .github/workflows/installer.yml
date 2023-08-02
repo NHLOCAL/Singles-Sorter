@@ -1,39 +1,25 @@
-name: Create Installer
+name: Create Zip File
 
 on:
   push:
     branches:
-      - main  # Change this to your main branch name if different
+      - main # Replace with the branch you want to trigger the workflow
 
 jobs:
-  build:
+  create_zip_file:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: '14'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Copy files to installation folder
+      - name: Create Zip File
         run: |
-          mkdir -p $HOME/AppData/singles-sorter
-          cp -r source_code/* $HOME/AppData/singles-sorter
-          cp add_uninstall_list.reg $HOME/AppData/singles-sorter
+          cd $GITHUB_WORKSPACE/source_code
+          zip -r software_files.zip * # This will create a zip file containing all files in the source_code folder
 
-      - name: Package installer
-        run: |
-          npm install -g electron-packager
-          electron-packager $HOME/AppData/singles-sorter singles-sorter-installer --platform=win32 --arch=x64 --out=installer --overwrite
-
-      - name: Upload installer artifact
+      - name: Upload Zip Artifact
         uses: actions/upload-artifact@v2
         with:
-          name: singles-sorter-installer
-          path: installer/singles-sorter-installer-win32-x64
+          name: software_files # Replace with your desired artifact name
+          path: $GITHUB_WORKSPACE/source_code/software_files.zip # Replace with the correct path to the zip file
