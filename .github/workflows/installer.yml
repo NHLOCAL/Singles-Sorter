@@ -22,4 +22,4 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: software_files # Replace with your desired artifact name
-          path: $GITHUB_WORKSPACE/software_files.zip # Corrected path to the zip file
+          path: $GITHUB_WORKSPACE/software_files.zip
