@@ -2,8 +2,10 @@ name: Copy to Installer
 
 on:
   push:
+    branches:
+      - main
     paths:
-      - 'source_code/**' # Run the workflow when changes are made in the source_code folder
+      - 'source_code/**'
 
 jobs:
   build:
