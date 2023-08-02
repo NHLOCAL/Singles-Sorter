@@ -16,11 +16,10 @@ jobs:
       - name: Create Zip File
         run: |
           cd $GITHUB_WORKSPACE/source_code
-          zip -r $GITHUB_WORKSPACE/software_files.zip *
+          zip -r software_files.zip *
 
       - name: Upload Zip Artifact
         uses: actions/upload-artifact@v2
         with:
-          cd $GITHUB_WORKSPACE/source_code
-          name: software_files # Replace with your desired artifact name
-          path: $GITHUB_WORKSPACE/software_files.zip
+          name: software_files.zip
+          path: $GITHUB_WORKSPACE/source_code/software_files.zip # Replace with the correct path to the zip file
