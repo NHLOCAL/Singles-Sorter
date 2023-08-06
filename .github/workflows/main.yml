@@ -1,55 +1,25 @@
-name: Build APK
-
-on:
-  push:
-    branches:
-      - data
+name: Build
+on: [push, pull_request]
 
 jobs:
-  build:
+  # Build job. Builds app for Android with Buildozer
+  build-android:
+    name: Build for Android
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Build with Buildozer
+        uses: ArtemSBulgakov/buildozer-action@v1
+        id: buildozer
         with:
-          path: apk-project
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.8
-      - name: Install Buildozer
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            ccache \
-            git \
-            libffi-dev \
-            libssl-dev \
-            python3-dev \
-            python3-pip \
-            zlib1g-dev \
-            openjdk-8-jdk-headless \
-            unzip \
-            autoconf \
-            automake \
-            libtool \
-            pkg-config
-          pip3 install --user --upgrade Cython==0.29.19 wheel setuptools virtualenv
-          git clone https://github.com/kivy/buildozer.git ~/buildozer
-          cd ~/buildozer && sudo python3 setup.py install
+          workdir: ./apk-project
+          buildozer_version: stable
 
-      - name: Create buildozer.spec
-        run: |
-          cd ./apk-project/
-          buildozer init
-
-      - name: Build APK with Buildozer
-        run: |
-          cd ./apk-project/
-          buildozer android debug
-
-      - name: Upload APK artifact
+      - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: app-debug.apk
-          path: ./apk-project/bin/
+          name: package
+          path: ${{ steps.buildozer.outputs.filename }}

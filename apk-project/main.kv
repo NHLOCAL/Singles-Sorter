@@ -1,0 +1,19 @@
+MDBoxLayout:
+    orientation: 'vertical'
+    id: box
+    MDTopAppBar:
+        title: 'SampleApp'
+        pos_hint: {'top': 1}
+
+    MDTextField:
+        id: listinput
+        hint_text: 'Add Item'
+        mode: 'rectangle'
+        size_hint_x: .9
+        pos_hint: {'center_x': .5} 
+        text_validate_unfocus: False
+        on_text_validate: app.add_item(listinput.text)
+
+    ScrollView:
+        MDList:
+            id: listcontainer
