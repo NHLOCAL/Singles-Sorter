@@ -11,15 +11,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.8  # Replace with the version you need
-
-      - name: Install Dependencies
-        run: |
-          pip install -r apk-project/requirements.txt  # Install your project dependencies here
-
       - name: Build with Buildozer
         uses: ArtemSBulgakov/buildozer-action@v1
         id: buildozer
