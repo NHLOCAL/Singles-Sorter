@@ -38,10 +38,14 @@ jobs:
           git clone https://github.com/kivy/buildozer.git ~/buildozer
           cd ~/buildozer && sudo python3 setup.py install
 
+      - name: Create buildozer.spec
+        run: |
+          cd ./apk-project/
+          buildozer init
+
       - name: Build APK with Buildozer
         run: |
-          cd /home/runner/work/Singles-Sorter/Singles-Sorter/apk-project
-          pwd
+          cd ./apk-project/
           buildozer android debug
 
       - name: Upload APK artifact
