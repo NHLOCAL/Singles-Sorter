@@ -40,7 +40,7 @@ jobs:
 
       - name: Build APK with Buildozer
         run: |
-          cd apk-project/
+          cd ./apk-project/
           buildozer android debug
 
       - name: Upload APK artifact
