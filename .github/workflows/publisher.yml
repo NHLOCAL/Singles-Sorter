@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest  # Change to windows-latest for Windows environment
+    runs-on: windows-latest
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
