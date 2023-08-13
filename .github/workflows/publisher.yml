@@ -7,15 +7,15 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest  # Change to windows-latest for Windows environment
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
-
+      
     - name: Setup Python
       uses: actions/setup-python@v3
       with:
-        python-version: '3.10' # Replace with the Python version you need
+        python-version: '3.10'
 
     - name: Install dependencies
       run: |
@@ -24,10 +24,8 @@ jobs:
     - name: Build EXE
       run: |
         # Get the version number from the tag (e.g., v1.0.0)
-        VERSION=$(echo "${{ github.ref }}" | cut -d'/' -f3)
-        # Remove the 'v' prefix from the version (e.g., 1.0.0)
-        VERSION=$(echo "${VERSION}" | cut -c 2-)
-
+        $env:VERSION = $env:GITHUB_REF -replace '^refs/tags/v', ''
+        
         # Run PyInstaller with custom name and version
         pyinstaller --noconfirm --onefile --console --name "Singles-Sorter.exe" python-project/singles_sorter_func.py
       env:
@@ -37,10 +35,8 @@ jobs:
     - name: Set version number
       run: |
         # Get the version number from the tag (e.g., v1.0.0)
-        VERSION=$(echo "${{ github.ref }}" | cut -d'/' -f3)
-        # Remove the 'v' prefix from the version (e.g., 1.0.0)
-        VERSION=$(echo "${VERSION}" | cut -c 2-)
-        echo "${VERSION}" > version.txt # Update version.txt with your desired version
+        $env:VERSION = $env:GITHUB_REF -replace '^refs/tags/v', ''
+        echo $env:VERSION > version.txt # Update version.txt with your desired version
 
     - name: Create Release
       id: create_release
