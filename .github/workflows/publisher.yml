@@ -62,6 +62,6 @@ jobs:
       id: create_release
       uses: softprops/action-gh-release@v1
       with:
-        files: "artifacts/Singles-Sorter.zip" # Use double quotes and access the VERSION variable correctly
+        files: "artifacts/Singles-Sorter.zip"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
