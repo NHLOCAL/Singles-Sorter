@@ -3,7 +3,7 @@ name: Publish Release
 on:
   push:
     tags:
-      - 'v*.*' # Trigger the workflow on tag creation with the format "vX.Y"
+      - 'v*.*'
 
 jobs:
   build:
@@ -27,10 +27,30 @@ jobs:
         $env:VERSION = $env:GITHUB_REF -replace '^refs/tags/v', ''
         
         # Run PyInstaller with custom name and version
-        pyinstaller --noconfirm --onefile --console --name "Singles-Sorter.exe" python-project/singles_sorter_func.py
+        pyinstaller --noconfirm --onefile --console --name "singles_sorter_func.exe" python-project/singles_sorter_func.py
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         VERSION: ${{ github.ref }}
+
+
+
+
+    - name: Create Artifact Directory
+      run: mkdir -p artifacts
+      
+    - name: Copy Output File to Artifact Directory
+      run: copy dist\singles_sorter_func.exe artifacts\ 
+
+    - name: Prepare Additional Files
+      run: |
+        copy source_code\*.* artifacts\
+
+    - name: Zip Artifact Directory
+      run: |
+        cd artifacts
+        powershell -Command "Compress-Archive -Path * -DestinationPath Singles-Sorter.zip"
+
+
 
     - name: Set version number
       run: |
@@ -42,6 +62,6 @@ jobs:
       id: create_release
       uses: softprops/action-gh-release@v1
       with:
-        files: "dist/Singles-Sorter.exe" # Use double quotes and access the VERSION variable correctly
+        files: "artifacts/Singles-Sorter.zip" # Use double quotes and access the VERSION variable correctly
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
