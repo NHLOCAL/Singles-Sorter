@@ -18,6 +18,7 @@
   },
   "labels":{
     "ner":[
+      "OTHER",
       "SINGER"
     ]
   },
