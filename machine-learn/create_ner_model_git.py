@@ -75,7 +75,7 @@ random.shuffle(training_data_combined)
 nlp.begin_training()
 
 # Training loop
-for itn in range(75):
+for itn in range(25):
     losses = {}
     for example in training_data_combined:
         nlp.update([example], drop=0.3, losses=losses)
