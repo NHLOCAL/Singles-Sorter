@@ -1,4 +1,5 @@
-name: Train spaCy NER model
+name: Train NER model
+
 on:
   workflow_dispatch:
 
