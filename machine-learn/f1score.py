@@ -4,7 +4,7 @@ from spacy.training.example import Example
 nlp = spacy.load("custom_ner_model2")
 examples = []
 data = [
-    ("נפתלי פפר בסינגל החדש שלו - אליהו הנביא", {"entities": [(0, 9, "SINGER")]}),
+    ("נפתלי כהן בסינגל החדש שלו - אליהו הנביא", {"entities": [(0, 9, "SINGER")]}),
     ("השיר החדש של יהושע כהנוביץ - שמחה וששון", {"entities": [(13, 28, "SINGER")]}),
 ]
 
