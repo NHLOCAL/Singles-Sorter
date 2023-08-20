@@ -24,7 +24,7 @@ def read_single_songs(my_dir):
     
     
 
-root_dir = r'C:\Users\משתמש\Documents\song_list'
+root_dir = r'J:\שמע\כל המוזיקה'
 
 # בנה רשימה של תיקיות משנה
 list_of_dirs = [ name for name in os.listdir(root_dir) if os.path.isdir(os.path.join(root_dir, name)) ]
@@ -39,20 +39,25 @@ for my_dir in list_of_dirs:
     songs_without_ext = [os.path.splitext(song)[0] for song in songs]
     songs_set.update(songs_without_ext)
     
-print(len(songs_set))
+
 
 
 
 # קבל את רשימת השירים מתוך קובץ
-with open('list0.txt', mode='r', newline='', encoding='utf-8') as file:
+with open('songs_list.txt', mode='r', newline='', encoding='utf-8') as file:
     content = file.readlines()    
     songs_list = [os.path.splitext(song)[0].strip() for song in content]
 
 
+
 # הוסף את התוכן הישן לתוכן החדש
+old_songs_set = len(songs_list)
 songs_set.update(songs_list)
+print(len(songs_set))
+print('----')
+print(len(songs_set) - old_songs_set)
 
 # הוסף תוכן לקובץ
-with open('songs_list.txt', mode='a', newline='', encoding='utf-8') as file:
+with open('songs_list.txt', mode='w', newline='', encoding='utf-8') as file:
     for song in songs_set:
         file.write(song + "\n")
