@@ -79,7 +79,7 @@ for itn in range(25):
     losses = {}
     for example in training_data_combined:
         nlp.update([example], drop=0.3, losses=losses)
-    if int(losses['ner']) <= 700:
+    if int(losses['ner']) <= 3500:
         break
     print(str(itn) + ": " + str(losses))
 
