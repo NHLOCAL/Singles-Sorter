@@ -48,8 +48,6 @@ with open('songs_list.txt', mode='r', newline='', encoding='utf-8') as file:
     content = file.readlines()    
     songs_list = [os.path.splitext(song)[0].strip() for song in content]
 
-
-
 # הוסף את התוכן הישן לתוכן החדש
 old_songs_set = len(songs_list)
 songs_set.update(songs_list)
