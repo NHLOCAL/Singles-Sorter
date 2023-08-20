@@ -25,7 +25,7 @@ training_data = []
 # קבל את רשימת השירים מתוך קובץ
 with open('songs_list.txt', mode='r', newline='', encoding='utf-8') as file:
     content = file.readlines()    
-    songs_list = [os.path.splitext(song)[0].strip() for song in content]
+    songs_list = [song.strip() for song in content]
 
 
 

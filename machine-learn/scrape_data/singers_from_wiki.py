@@ -1,3 +1,4 @@
+import re
 import requests
 from bs4 import BeautifulSoup
 
@@ -37,4 +38,9 @@ for category in category_list:
     israeli_singers = [singer for singer in scrape_singer_names(category) if not "קטגוריה" in singer]
     all_singers_set.update(israeli_singers)
 
-print(all_singers_set)
+# הסרת תוכן לא רצוי מהמחרוזת
+pattern = r'\s*\([^)]*\)'
+all_singers_set = [re.sub(pattern, '', item) for item in all_singers_set]
+
+for singer in all_singers_set:
+    print(singer)
