@@ -1,7 +1,6 @@
 name: Train spaCy NER model
 on:
-  push:
-    workflow_dispatch:
+  workflow_dispatch:
 
 jobs:
   train-ner-model:
