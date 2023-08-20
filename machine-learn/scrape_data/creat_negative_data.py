@@ -59,9 +59,9 @@ for obj in selected_objects:
 output_csv = 'negative_data.csv'
 
 # Write the CSV file with the specified structure
-with open(output_csv, mode='w', newline='', encoding='utf-8') as file:
+with open(output_csv, mode='a', newline='', encoding='utf-8') as file:
     writer = csv.writer(file)
-    writer.writerow(['Column A', 'Column B', 'Start Position', 'End Position'])  # Write header
+    # writer.writerow(['Column A', 'Column B', 'Start Position', 'End Position'])  # Write header
     writer.writerows(csv_rows)  # Write data rows
 
 print(f"CSV dataset saved to {output_csv}")

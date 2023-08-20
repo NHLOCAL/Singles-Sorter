@@ -1,0 +1,34 @@
+{
+  "lang":"he",
+  "name":"find_singer_heb",
+  "version":"0.0.0",
+  "spacy_version":">=3.6.0,<3.7.0",
+  "description":"",
+  "author":"",
+  "email":"",
+  "url":"",
+  "license":"",
+  "spacy_git_version":"6fc153a26",
+  "vectors":{
+    "width":0,
+    "vectors":0,
+    "keys":0,
+    "name":null,
+    "mode":"default"
+  },
+  "labels":{
+    "ner":[
+      "OTHER",
+      "SINGER"
+    ]
+  },
+  "pipeline":[
+    "ner"
+  ],
+  "components":[
+    "ner"
+  ],
+  "disabled":[
+
+  ]
+}
