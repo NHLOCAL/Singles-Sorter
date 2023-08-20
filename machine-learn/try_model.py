@@ -1,7 +1,8 @@
-import spacy
+from spacy import load
+import sys
 
 # Load your trained model
-nlp = spacy.load("custom_ner_model2")
+nlp = load("custom_ner_model")
 
 def machine_learn(text):
     # Process the text with the loaded model
@@ -16,20 +17,18 @@ def machine_learn(text):
         print(token.text, token.pos_, token.tag_, token.dep_, end='')
     print('\n')
 
-text = "מוטי גרינבוים & אוהד מושקוביץ - תינוקות של בית רבן"
-machine_learn(text)
 
-text = "יעקב אבינו - ריבונו של עולם"
-machine_learn(text)
 
-text = "מאיר כהנוביץ מתוך האלבום החדש: יהושע ליבוביץ, לא ישא גוי"
-machine_learn(text)
+if __name__ == "__main__":
 
-text = "יונתן שטרן וגלעד שטרן - מי האיש (ווקאלי)"
-machine_learn(text)
+    text_list = [
+"מוטי גרינבוים & אוהד מושקוביץ - תינוקות של בית רבן",
+"יעקב אבינו - ריבונו של עולם",
+"מאיר כהנוביץ מתוך האלבום החדש: יהושע ליבוביץ, לא ישא גוי",
+"יונתן שטרן וגלעד שטרן - מי האיש (ווקאלי)",
+"יוסף לויסון# ויעקב שוואקי - למה תעמוד מרחוק",
+"להקת שיר ציון - מהרה ה'  ניגון קרלין  נחל נובע  אעופה אשכונה  מי מנוחות"
+]
 
-text = "יוסף לויסון# ויעקב שוואקי - למה תעמוד מרחוק"
-machine_learn(text)
-
-text = "להקת שיר ציון - מהרה ה'  ניגון קרלין  נחל נובע  אעופה אשכונה  מי מנוחות"
-machine_learn(text)
+    for text in text_list:
+        machine_learn(text)
