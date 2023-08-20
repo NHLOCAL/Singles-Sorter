@@ -54,7 +54,7 @@ ner.add_label("SINGER")
 ner.add_label("OTHER")
 
 # Replace 'training_data.csv' with the actual path to your positive training CSV file
-positive_csv = 'training_data.csv'
+positive_csv = 'filtered_file.csv'
 
 # Replace 'negative_data.csv' with the actual path to your negative training CSV file
 negative_csv = 'negative_data.csv'
@@ -75,17 +75,17 @@ random.shuffle(training_data_combined)
 nlp.begin_training()
 
 # Training loop
-for itn in range(25):
+for itn in range(50):
     losses = {}
     for example in training_data_combined:
-        nlp.update([example], drop=0.3, losses=losses)
-    if int(losses['ner']) <= 3500:
-        break
+        nlp.update([example], drop=0.4, losses=losses)
     print(str(itn) + ": " + str(losses))
+    if int(losses['ner']) <= 400:
+        break
 
 # Save the trained model to disk
 nlp.meta['name'] = 'find_singer_heb'
-nlp.to_disk("custom_ner_model2")
+nlp.to_disk("custom_ner_model3")
 
 # Load the trained model later
 # loaded_nlp = spacy.load("custom_ner_model")
