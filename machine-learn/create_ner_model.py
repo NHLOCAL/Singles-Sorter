@@ -78,7 +78,7 @@ nlp.begin_training()
 for itn in range(50):
     losses = {}
     for example in training_data_combined:
-        nlp.update([example], drop=0.4, losses=losses)
+        nlp.update([example], drop=0.5, losses=losses)
     print(str(itn) + ": " + str(losses))
     if int(losses['ner']) <= 400:
         break
