@@ -34,17 +34,18 @@ def find_name(string):
         return
 
 # בצע מעבר על רשימת קבצים לסריקה   
-def files_list(dir_path):
+def files_list(file_path):
 
+    with open(file_path, mode='r', newline='', encoding='utf-8') as file:
+        content = file.readlines()    
+        songs_names = [song.strip() for song in content]    
+    
     songs_list = []
     
-    for filename in os.listdir(dir_path):
-        
-        # הסרת סיומת שם הקובץ
-        my_str = os.path.splitext(filename)[0]
+    for filename in songs_names:
         
         # הרץ זיהוי שם אדם מתוך המחרוזת
-        singer_name = find_name(my_str)
+        singer_name = find_name(filename)
         
         songs_list.append(singer_name)
     
