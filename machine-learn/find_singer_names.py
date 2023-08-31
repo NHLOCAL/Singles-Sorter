@@ -13,7 +13,7 @@ def find_name(string):
     # הסרת תווים המפריעים לניתוח תקין
     text = string.replace('-', ' ')
 
-    doc = nlp(text)
+    doc = nlp(string)
     
     '''
     for entity in doc.ents:

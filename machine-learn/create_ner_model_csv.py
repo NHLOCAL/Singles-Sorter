@@ -54,10 +54,10 @@ ner.add_label("SINGER")
 ner.add_label("OTHER")
 
 # Replace 'training_data.csv' with the actual path to your positive training CSV file
-positive_csv = 'filtered_file.csv'
+positive_csv = 'scrape_data\filtered_file.csv'
 
 # Replace 'negative_data.csv' with the actual path to your negative training CSV file
-negative_csv = 'negative_data.csv'
+negative_csv = 'scrape_data\negative_data.csv'
 
 # Read the positive and negative CSV files into Pandas DataFrames
 df_positive = pd.read_csv(positive_csv)
@@ -75,12 +75,12 @@ random.shuffle(training_data_combined)
 nlp.begin_training()
 
 # Training loop
-for itn in range(50):
+for itn in range(100):
     losses = {}
     for example in training_data_combined:
         nlp.update([example], drop=0.5, losses=losses)
     print(str(itn) + ": " + str(losses))
-    if int(losses['ner']) <= 400:
+    if int(losses['ner']) <= 200:
         break
 
 # Save the trained model to disk

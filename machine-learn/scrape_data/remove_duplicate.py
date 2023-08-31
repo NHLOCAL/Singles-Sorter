@@ -14,7 +14,7 @@ with open('training_data.csv', newline='', encoding='utf-8') as csvfile:
 # Filter data to keep up to 3 instances of each entity
 filtered_data = []
 for entity, rows in data.items():
-    filtered_rows = rows[:3]  # Keep the first 3 instances
+    filtered_rows = rows[:2]  # Keep the first 3 instances
     filtered_data.extend(filtered_rows)
 
 # Write the filtered data back to a new CSV file
