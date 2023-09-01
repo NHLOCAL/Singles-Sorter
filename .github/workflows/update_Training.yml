@@ -2,6 +2,8 @@ name: Train NER model
 
 on:
   push:
+    branches:
+      - machine-learn
 
 jobs:
   train-ner-model:
