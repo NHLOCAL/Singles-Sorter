@@ -1,7 +1,7 @@
 name: Train NER model
 
 on:
-  workflow_dispatch:
+  push:
 
 jobs:
   train-ner-model:
