@@ -1,6 +1,6 @@
 import csv
 
-def reduce_song_list(songs_file, singer_csv, output_file, max_singer_count=5):
+def reduce_song_list(songs_file, singer_csv, output_file, min_singer_count=5):
     # Read the list of singers from the CSV file
     singer_names = []
     with open(singer_csv, mode='r', newline='', encoding='utf-8') as file:
@@ -22,14 +22,14 @@ def reduce_song_list(songs_file, singer_csv, output_file, max_singer_count=5):
     # Identify singers to remove
     singers_to_remove = set()
     for singer, count in singer_counts.items():
-        if count > max_singer_count:
+        if count <= min_singer_count:
             singers_to_remove.add(singer)
 
     # Create a reduced song list
     reduced_songs = []
     for song in song_names:
-        has_other_singer = any(singer in song for singer in singer_names if singer not in singers_to_remove)
-        if not any(singer in song for singer in singers_to_remove) or has_other_singer:
+        song_contains_singer_to_remove = any(singer in song for singer in singers_to_remove)
+        if not song_contains_singer_to_remove:
             reduced_songs.append(song)
 
     # Write the reduced song list to the output file
@@ -42,5 +42,5 @@ songs_file = 'songs_list.txt'
 singer_csv_file = 'singers_list.csv'
 output_file = 'reduced_songs.txt'
 
-reduce_song_list(songs_file, singer_csv_file, output_file, max_singer_count=5)
+reduce_song_list(songs_file, singer_csv_file, output_file, min_singer_count=5)
 print(f"Reduced song list saved to {output_file}")
