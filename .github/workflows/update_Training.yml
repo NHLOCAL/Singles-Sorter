@@ -32,12 +32,12 @@ jobs:
 
       - name: Move prepared file to internal folder
         run: |
-          mv custom_ner_model machine-learn/
+          mv custom_ner_model1 machine-learn/
 
       - name: Commit and push changes
         run: |
           git config --local user.email "actions@github.com"
           git config --local user.name "GitHub Actions"
-          git add machine-learn/custom_ner_model
-          git commit -m "Update custom_ner_model" || echo "No changes to commit"
+          git add machine-learn/custom_ner_model1
+          git commit -m "Update custom_ner_model1" || echo "No changes to commit"
           git push
