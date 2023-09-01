@@ -170,7 +170,7 @@ def merge_tuples(input_set):
 
 def main():
     dir_path = str(sys.argv[1])
-    file_path = r"C:\Users\COLMI\AppData\Roaming\singles-sorter\singer-list.csv"
+    file_path = r"C:\Users\משתמש\AppData\Roaming\singles-sorter\singer-list.csv"
     singer_list = read_csv(file_path)
     merge_folders(singer_list, dir_path)
     creat_similarity_list(dir_path)
