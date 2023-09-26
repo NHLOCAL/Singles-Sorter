@@ -113,28 +113,65 @@ body {
 /* הגדרת הודעה קופצת */
 .alert {
   border-radius: 10px;
-  background-color: #0800E0;
-  width: 70%;
-  color: white;
-  padding: 25px 25px;  
+  background-color: #FFEDC0;
+  max-width: 450px; /* Adjust the maximum width as needed */
+  margin: 0 auto;
+  color: #333;
+  padding: 15px;
   text-align: center;
   text-decoration: none;
-  margin: auto;
+  position: relative; /* Add relative positioning for close button */
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.close-container {
+  position: absolute;
+  top: 10px;
+  right: 10px;
 }
 
 .closebtn {
-  margin-left: 15px;
-  color: white;
+  color: #FF4D00;
   font-weight: bold;
-  float: right;
-  font-size: 22px;
-  line-height: 20px;
+  font-size: 20px;
   cursor: pointer;
   transition: 0.3s;
 }
 
 .closebtn:hover {
-  color: black;
+  color: #0077B6;
+}
+
+.content {
+  margin: 10px;
+}
+
+.promo-text {
+  color: #FF4D00;
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.description {
+  font-size: 16px;
+  margin-top: 5px; /* Add space between the title and description */
+  margin-bottom: 20px;
+}
+
+.cta-button {
+  display: inline-block;
+  padding: 10px 20px;
+  background-color: #0077B6;
+  color: white;
+  font-weight: bold;
+  text-decoration: none;
+  border-radius: 5px;
+  transition: background-color 0.3s;
+}
+
+.cta-button:hover {
+  background-color: #005E8A;
 }
 
 /* Responsive top bar for smaller screens */

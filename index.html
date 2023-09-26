@@ -47,10 +47,20 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <main>
 <div class="scale-div" style="padding-bottom: 30px">
+
 <center class="alert">
-  <span class="closebtn" onclick="this.parentElement.style.display='none';">&times;</span>
-<strong>👀הצעה מיוחדת! </strong>מעוניין להצטרף לקבלת 500 ג'יגה של מוזיקה בדרייב? <a style="color: #A1FA4F; font-weight: bold" id="music-in-drive" href="https://forms.gle/couZadvYGJ41hhYs7", target="_blank">לחץ כאן!</a>
+  <div class="close-container">
+    <span class="closebtn" onclick="this.parentElement.style.display='none';">&times;</span>
+  </div>
+  <div class="content">
+    <strong class="promo-text">מבצע - 50% הנחה!</strong>
+    <p class="description">מעוניינים לקבל גישה למאגר מוזיקלי בעל 500 ג'יגה<br>המכיל מעל 70,000 שירים - במחצית מהמחיר המלא?</p>
+    <a class="cta-button" id="music-in-drive" href="https://forms.gle/couZadvYGJ41hhYs7" target="_blank">הרשמו כעת</a>
+  </div>
 </center>
+
+
+
 
 <center style="padding: 15px;">
   <h1 style="text-align:center;">מסדר הסינגלים - האתר הרשמי</h1><br>
@@ -112,9 +122,23 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add event listener to close button to set localStorage flag when clicked
     document.querySelector('.closebtn').addEventListener('click', function() {
       localStorage.setItem('messageDisplayed', 'true');
+      // Hide the entire alert when the close button is clicked
+      document.querySelector('.alert').style.display = 'none';
     });
   }
+
+  // Define the reset date as 'yyyy-mm-dd' format (e.g., '2023-09-26')
+  const resetDate = '2023-09-26';
+  const currentDate = new Date().toLocaleDateString('en-US');
+
+  // Check if the current date has passed the reset date
+  if (currentDate > resetDate) {
+    // Reset the message display status
+    localStorage.removeItem('messageDisplayed');
+  }
 });
+
+
 
 
 
