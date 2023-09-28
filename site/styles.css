@@ -318,3 +318,28 @@ div[style="width:100%; float:center; height:100%; margin:30px; position: fixed;"
   opacity: 1;
   transform: scale(1);
 }
+
+
+
+/* אפקטים של זוהר עבור כפתור הקישור */
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: 200px 0;
+  }
+}
+
+/* Apply styles to your button */
+.butt {
+  display: inline-block;
+  padding: 10px 20px;
+  font-size: 18px;
+  background: linear-gradient(90deg, #E0E0BD 25%, #FEFFD7 50%, #E0E0BD 75%);
+  background-size: 200% 100%;
+  text-decoration: none;
+  animation: shimmer 2s infinite; /* Apply the shimmer animation */
+  transition: background-position 0.5s ease; /* Smooth transition for the background */
+}
+
