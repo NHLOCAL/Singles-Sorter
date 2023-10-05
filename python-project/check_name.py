@@ -1,23 +1,26 @@
 import os
+import re
 import csv
 
 def artist_from_song(my_file):
     """
-    The function checks the artist's name in the file name based on a database and stores the artist's name in a variable.
-    If the name does not exist, it scans the metadata of the song and stores the artist's name in the variable.
+    הפונקציה בודקת את שם האמן בשם הקובץ על סמך מסד נתונים ומאחסנת את שם האמן במשתנה.
+        אם השם לא קיים, הוא סורק את המטא נתונים של השיר ומאחסן את שם האמן במשתנה.
 
-    Args:
-        my_file (str): The file name to be scanned.
+        טיעונים:
+            my_file (str): שם הקובץ שיש לסרוק.
 
-    Returns:
-        str: The value containing the artist's name from the file.
+        החזרות:
+            str: הערך המכיל את שם האמן מהקובץ.
     """
-
-    # Get the file name without the full path
+    
+    PATTERN = r'( ו|[^א-ת])'
+    
+    # קבל את שם הקובץ ללא הנתיב המלא
     split_file = os.path.split(my_file)[1]
     split_file = os.path.splitext(split_file)[0]
 
-    # Remove unwanted characters from the file name
+    # הסר תווים לא רצויים משם הקובץ
     split_file = split_file.replace('_', ' ')
     split_file = split_file.replace('-', ' ')
 
@@ -35,36 +38,55 @@ def artist_from_song(my_file):
                 personal_list = [tuple(row) for row in csv_reader]
             singer_list.extend(personal_list)
 
-    # Iterate over the list of names and check if any of them exist in the file name
+    # חזור על רשימת השמות ובדוק אם אחד מהם קיים בשם הקובץ
     for source_name, target_name in singer_list:
         if source_name in split_file:
             artist = target_name
 
-            # Check if the singer's name appears at the beginning and end of the file name
+            # בדקו אם שם הזמר מופיע בתחילת ובסוף שם הקובץ
             if split_file.startswith(source_name) and split_file.endswith(source_name):
-                    return artist
+                print(1)
+                return artist
 
-            # Check if the singer's name appears at the beginning of the file name
+            # בדוק אם שם הזמר מופיע בתחילת שם הקובץ
             elif split_file.startswith(source_name):
                 next_char = split_file[len(source_name)]
                 if next_char in [" ", ".", ","]:
+                    print(2)
                     return artist
 
-            # Check if the singer's name appears at the end of the file name
+            # בדקו אם שם הזמר מופיע בסוף שם הקובץ
             elif split_file.endswith(source_name):
-                previous_char = split_file[split_file.index(source_name) - 1]
-                if previous_char in [" ", "ו"]:
+                index = split_file.index(source_name)
+                
+                # הגדרת התו הקדמי בהתאם למיקום שלו במחרוזת
+                previous_char = split_file[index - 1] if index == 1 else split_file[index - 2:index]
+                
+                if re.search(PATTERN, previous_char):
+                    print(3)
+                    return artist
+                elif split_file.find(previous_char) == 0 and previous_char in [" ", "ו"]:
+                    print(4)
                     return artist
 
-            # Check if the singer's name appears in the middle of the file name
+            # בדקו אם שם הזמר מופיע באמצע שם הקובץ
             elif source_name in split_file[1:-1]:
                 index = split_file.index(source_name)
-                previous_char = split_file[index - 1]
+                
+                # הגדרת התו הקדמי בהתאם למיקום שלו במחרוזת
+                previous_char = split_file[index - 1] if index == 1 else split_file[index - 2:index]
+
                 next_char = split_file[index + len(source_name)]
-                if previous_char in [" ", "("] and next_char in [" ", ".", ",", ")"]:
+                
+                # בדיקה אם המחרוזת
+                if re.search(PATTERN, previous_char) and re.search(PATTERN, next_char):
+                    print(5)
                     return artist
 
     return None
 
 if __name__ == '__main__':
-   print(artist_from_song('-אברהם פריד.mp3'))
+   print(artist_from_song('מוטי ויואלי קליין .mp3'))
+
+
+# previous_char in [" ", " ו", "("] and next_char in [" ", ".", ",", ")"]
