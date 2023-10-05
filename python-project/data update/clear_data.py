@@ -2,7 +2,7 @@ import csv
 
 def remove_duplicates(names_file, singer_file, output_file, removed_file):
     # Read the names from the names.txt file
-    with open(names_file, 'r') as file:
+    with open(names_file, 'r', encoding='utf-8') as file:
         names = file.read().splitlines()
 
     # Read the singer names from the singer-list.csv file
