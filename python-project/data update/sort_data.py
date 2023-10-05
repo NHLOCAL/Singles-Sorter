@@ -1,5 +1,5 @@
 def sort_names(input_file, sorted_file, one_word_file, three_or_more_words_file):
-    with open(input_file, 'r') as file:
+    with open(input_file, 'r', encoding='utf-8') as file:
         names = file.read().splitlines()
 
     sorted_names = []
