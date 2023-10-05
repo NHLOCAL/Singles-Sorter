@@ -145,19 +145,15 @@ def artist_from_song(my_file):
 
     # אם שם הקובץ לא נמצא יתבצע חיפוש במטאדאטה של הקובץ
     try:
-        # בדיקה האם הקובץ הוא קובץ שמע
-        if not my_file.lower().endswith((".mp3",".wma", ".wav")):
-            return
         # טעינת מטאדאטה של השיר
-        artist_file = load_file(my_file)
+        metadata_file = load_file(my_file)
         # קבלת אמן מטאדאטה של השיר
-        artist = artist_file['artist']
+        artist = metadata_file['artist']
         artist = artist.value
-        # הכנסת נתוני האמן למשתנה הגלובלי
+
         if artist:
             # המרת שם האמן אם הוא פגום
-            if any(c in "àáâãäåæçèéëìîðñòôö÷øùúêíïóõ" for c in artist):
-                artist = jibrish_to_hebrew(artist)
+            artist = jibrish_to_hebrew(artist, "heb")
             
             # מעבר על רשימת השמות ובדיקה אם אחד מהם קיים בתגית האמן
             for source_name, target_name in singer_list:
@@ -171,6 +167,22 @@ def artist_from_song(my_file):
                 return
                 
             return artist
+        
+        # אם לא נמצא שם אמן תקין יתבצע חיפוש בכותרת הקובץ
+        else:
+            # קבלת כותרת השיר
+            title = metadata_file['title']
+            title = title.value
+            
+            if title:
+                # המרת שם האמן אם הוא פגום
+                title = jibrish_to_hebrew(title, "heb")
+                
+                # מעבר על רשימת השמות ובדיקה אם אחד מהם קיים בתגית האמן
+                for source_name, target_name in singer_list:
+                    if source_name in title:
+                        artist = target_name
+                        return artist        
     except:
         return
 
