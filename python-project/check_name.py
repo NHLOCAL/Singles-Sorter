@@ -7,7 +7,7 @@ def artist_from_song(my_file):
     הפונקציה בודקת את שם האמן בשם הקובץ על סמך מסד נתונים ומאחסנת את שם האמן במשתנה.
         אם השם לא קיים, הוא סורק את המטא נתונים של השיר ומאחסן את שם האמן במשתנה.
 
-        טיעונים:
+        פרמטר:
             my_file (str): שם הקובץ שיש לסרוק.
 
         החזרות:
@@ -43,16 +43,14 @@ def artist_from_song(my_file):
         if source_name in split_file:
             artist = target_name
 
-            # בדקו אם שם הזמר מופיע בתחילת ובסוף שם הקובץ
-            if split_file.startswith(source_name) and split_file.endswith(source_name):
-                print(1)
+            # בדקו אם שם הזמר זהה במדויק לשם הקובץ
+            if split_file == source_name:
                 return artist
 
             # בדוק אם שם הזמר מופיע בתחילת שם הקובץ
             elif split_file.startswith(source_name):
                 next_char = split_file[len(source_name)]
-                if next_char in [" ", ".", ","]:
-                    print(2)
+                if re.search(PATTERN, next_char):
                     return artist
 
             # בדקו אם שם הזמר מופיע בסוף שם הקובץ
@@ -63,10 +61,8 @@ def artist_from_song(my_file):
                 previous_char = split_file[index - 1] if index == 1 else split_file[index - 2:index]
                 
                 if re.search(PATTERN, previous_char):
-                    print(3)
                     return artist
                 elif split_file.find(previous_char) == 0 and previous_char in [" ", "ו"]:
-                    print(4)
                     return artist
 
             # בדקו אם שם הזמר מופיע באמצע שם הקובץ
@@ -78,9 +74,8 @@ def artist_from_song(my_file):
 
                 next_char = split_file[index + len(source_name)]
                 
-                # בדיקה אם המחרוזת
+                # בדיקה אם אין אותיות עבריות צמודות לשם הזמר
                 if re.search(PATTERN, previous_char) and re.search(PATTERN, next_char):
-                    print(5)
                     return artist
 
     return None
