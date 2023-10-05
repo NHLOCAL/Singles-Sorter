@@ -21,8 +21,8 @@ def artist_from_song(my_file):
     split_file = os.path.splitext(split_file)[0]
 
     # הסר תווים לא רצויים משם הקובץ
-    split_file = split_file.replace('_', ' ')
-    split_file = split_file.replace('-', ' ')
+    split_file = re.sub(r'[_-]', ' ', split_file)
+
 
     # Import the list of singers from a CSV file
     if 'singer_list' not in globals():
