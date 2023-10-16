@@ -63,7 +63,10 @@ def check_exact_name(filename, artist_to_search):
     """
     
     # הגדרת חיפוש מיוחד
-    PATTERN = r'( ו|[^א-ת])'
+    PATTERN = r'^( ו|[^א-ת])$'
+    
+    # הסרת רווח נקי בתחילת המחרוזת
+    #filename = filename.lstrip()
 
     # בדקו אם שם הזמר זהה במדויק לשם הקובץ
     if filename == artist_to_search:
@@ -82,6 +85,7 @@ def check_exact_name(filename, artist_to_search):
         # הגדרת התו הקדמי בהתאם למיקום שלו במחרוזת
         previous_char = filename[index - 1] if index == 1 else filename[index - 2:index]
         
+        
         if re.search(PATTERN, previous_char):
             return True
         elif filename.find(previous_char) == 0 and previous_char in [" ", "ו"]:
@@ -99,12 +103,21 @@ def check_exact_name(filename, artist_to_search):
         # בדיקה אם אין אותיות עבריות צמודות לשם הזמר
         if re.search(PATTERN, previous_char) and re.search(PATTERN, next_char):
             return True
+        
+        elif filename.find(previous_char) == 0 and previous_char in [" ", "ו"]:
+            return True
             
     return False
     
-    
+  
+  
 if __name__ == '__main__':
-   print(artist_from_song('השיר החדש של מבני פרידמן -.mp3'))
+
+    
+    list_ = [' לבני פרידמן.mp3', '=יואלי קליין=.mp3', ' ממ =אברהם פריד מ.mp3'] 
+    
+    for i in list_:
+        print(artist_from_song(i))
 
 
 # previous_char in [" ", " ו", "("] and next_char in [" ", ".", ",", ")"]
