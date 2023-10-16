@@ -50,71 +50,42 @@ def artist_from_song(my_file):
 
 
 
+import re
+
 def check_exact_name(filename, artist_to_search):
     """
-    בדיקה אם שם האמן מופיע בצורה מדויקת בתוך שם הקובץ
-    
-    פרמטר - שם קובץ או מטאדאטה
-    
-    פרמטר 2 - שם אמן קיים בתוך שם הקובץ
-    
-    ערך החזרה - אמת או שקר
-    
+    Check if the artist's name appears exactly in the filename, even if preceded by "ו".
+
+    Parameters:
+    filename (str): The filename or metadata.
+    artist_to_search (str): The artist's name to search for.
+
+    Returns:
+    bool: True if the artist's name is found exactly in the filename (even if preceded by "ו"), False otherwise.
     """
     
-    # הגדרת חיפוש מיוחד
-    PATTERN = r'^( ו|[^א-ת])$'
+    # Remove leading spaces in the filename
+    filename = filename.lstrip()
     
-    # הסרת רווח נקי בתחילת המחרוזת
-    #filename = filename.lstrip()
+    # Escape special characters in the artist's name
+    escaped_artist = re.escape(artist_to_search)
+    
+    # Define a pattern to match the exact artist name, even if preceded by "ו"
+    exact_match_pattern = fr'(^|[^א-ת])ו?{escaped_artist}\b'
 
-    # בדקו אם שם הזמר זהה במדויק לשם הקובץ
-    if filename == artist_to_search:
+    # Search for the exact artist name in the filename
+    if re.search(exact_match_pattern, filename):
         return True
 
-    # בדוק אם שם הזמר מופיע בתחילת שם הקובץ
-    elif filename.startswith(artist_to_search):
-        next_char = filename[len(artist_to_search)]
-        if re.search(PATTERN, next_char):
-            return True
-
-    # בדקו אם שם הזמר מופיע בסוף שם הקובץ
-    elif filename.endswith(artist_to_search):
-        index = filename.index(artist_to_search)
-        
-        # הגדרת התו הקדמי בהתאם למיקום שלו במחרוזת
-        previous_char = filename[index - 1] if index == 1 else filename[index - 2:index]
-        
-        
-        if re.search(PATTERN, previous_char):
-            return True
-        elif filename.find(previous_char) == 0 and previous_char in [" ", "ו"]:
-            return True
-
-    # בדקו אם שם הזמר מופיע באמצע שם הקובץ
-    elif artist_to_search in filename[1:-1]:
-        index = filename.index(artist_to_search)
-        
-        # הגדרת התו הקדמי בהתאם למיקום שלו במחרוזת
-        previous_char = filename[index - 1] if index == 1 else filename[index - 2:index]
-
-        next_char = filename[index + len(artist_to_search)]
-        
-        # בדיקה אם אין אותיות עבריות צמודות לשם הזמר
-        if re.search(PATTERN, previous_char) and re.search(PATTERN, next_char):
-            return True
-        
-        elif filename.find(previous_char) == 0 and previous_char in [" ", "ו"]:
-            return True
-            
     return False
+
     
   
   
 if __name__ == '__main__':
 
     
-    list_ = [' לבני פרידמן.mp3', '=יואלי קליין=.mp3', ' ממ =אברהם פריד מ.mp3'] 
+    list_ = ['ח (בני פרידמן) חלל.mp3', '@יואלי קליין=.mp3', 'ואברהם פריד.mp3', 'שיר נוסף - ומוטי שטיינמץ.mp3'] 
     
     for i in list_:
         print(artist_from_song(i))
