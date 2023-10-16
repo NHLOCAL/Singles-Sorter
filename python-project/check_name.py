@@ -13,9 +13,7 @@ def artist_from_song(my_file):
         החזרות:
             str: הערך המכיל את שם האמן מהקובץ.
     """
-    
-    PATTERN = r'( ו|[^א-ת])'
-    
+      
     # קבל את שם הקובץ ללא הנתיב המלא
     split_file = os.path.split(my_file)[1]
     split_file = os.path.splitext(split_file)[0]
@@ -24,7 +22,7 @@ def artist_from_song(my_file):
     split_file = re.sub(r'[_-]', ' ', split_file)
 
 
-    # Import the list of singers from a CSV file
+    # ייבא את רשימת הזמרים מקובץ csv
     if 'singer_list' not in globals():
         csv_path = "singer-list.csv"
         global singer_list
@@ -42,46 +40,71 @@ def artist_from_song(my_file):
     for source_name, target_name in singer_list:
         if source_name in split_file:
             artist = target_name
+            
+            # בדיקת דיוק שם הקובץ
+            exact = check_exact_name(split_file, source_name)
+            if exact: return artist
 
-            # בדקו אם שם הזמר זהה במדויק לשם הקובץ
-            if split_file == source_name:
-                return artist
+    return
 
-            # בדוק אם שם הזמר מופיע בתחילת שם הקובץ
-            elif split_file.startswith(source_name):
-                next_char = split_file[len(source_name)]
-                if re.search(PATTERN, next_char):
-                    return artist
 
-            # בדקו אם שם הזמר מופיע בסוף שם הקובץ
-            elif split_file.endswith(source_name):
-                index = split_file.index(source_name)
-                
-                # הגדרת התו הקדמי בהתאם למיקום שלו במחרוזת
-                previous_char = split_file[index - 1] if index == 1 else split_file[index - 2:index]
-                
-                if re.search(PATTERN, previous_char):
-                    return artist
-                elif split_file.find(previous_char) == 0 and previous_char in [" ", "ו"]:
-                    return artist
 
-            # בדקו אם שם הזמר מופיע באמצע שם הקובץ
-            elif source_name in split_file[1:-1]:
-                index = split_file.index(source_name)
-                
-                # הגדרת התו הקדמי בהתאם למיקום שלו במחרוזת
-                previous_char = split_file[index - 1] if index == 1 else split_file[index - 2:index]
 
-                next_char = split_file[index + len(source_name)]
-                
-                # בדיקה אם אין אותיות עבריות צמודות לשם הזמר
-                if re.search(PATTERN, previous_char) and re.search(PATTERN, next_char):
-                    return artist
+def check_exact_name(filename, artist_to_search):
+    """
+    בדיקה אם שם האמן מופיע בצורה מדויקת בתוך שם הקובץ
+    
+    פרמטר - שם קובץ או מטאדאטה
+    
+    פרמטר 2 - שם אמן קיים בתוך שם הקובץ
+    
+    ערך החזרה - אמת או שקר
+    
+    """
+    
+    # הגדרת חיפוש מיוחד
+    PATTERN = r'( ו|[^א-ת])'
 
-    return None
+    # בדקו אם שם הזמר זהה במדויק לשם הקובץ
+    if filename == artist_to_search:
+        return True
 
+    # בדוק אם שם הזמר מופיע בתחילת שם הקובץ
+    elif filename.startswith(artist_to_search):
+        next_char = filename[len(artist_to_search)]
+        if re.search(PATTERN, next_char):
+            return True
+
+    # בדקו אם שם הזמר מופיע בסוף שם הקובץ
+    elif filename.endswith(artist_to_search):
+        index = filename.index(artist_to_search)
+        
+        # הגדרת התו הקדמי בהתאם למיקום שלו במחרוזת
+        previous_char = filename[index - 1] if index == 1 else filename[index - 2:index]
+        
+        if re.search(PATTERN, previous_char):
+            return True
+        elif filename.find(previous_char) == 0 and previous_char in [" ", "ו"]:
+            return True
+
+    # בדקו אם שם הזמר מופיע באמצע שם הקובץ
+    elif artist_to_search in filename[1:-1]:
+        index = filename.index(artist_to_search)
+        
+        # הגדרת התו הקדמי בהתאם למיקום שלו במחרוזת
+        previous_char = filename[index - 1] if index == 1 else filename[index - 2:index]
+
+        next_char = filename[index + len(artist_to_search)]
+        
+        # בדיקה אם אין אותיות עבריות צמודות לשם הזמר
+        if re.search(PATTERN, previous_char) and re.search(PATTERN, next_char):
+            return True
+            
+    return False
+    
+    
 if __name__ == '__main__':
-   print(artist_from_song('מוטי ויואלי קליין .mp3'))
+   print(artist_from_song('השיר החדש של מבני פרידמן -.mp3'))
 
 
 # previous_char in [" ", " ו", "("] and next_char in [" ", ".", ",", ")"]
