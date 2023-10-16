@@ -142,8 +142,13 @@ def artist_from_song(my_file):
     # מעבר על רשימת השמות ובדיקה אם אחד מהם קיים בשם השיר
     for source_name, target_name in singer_list:
         if source_name in split_file:
-            artist = target_name
-            return artist
+        
+            # בדיקת דיוק שם הקובץ
+            exact = check_exact_name(split_file, source_name)
+            
+            if exact:
+                artist = target_name
+                return artist
 
     # אם שם הקובץ לא נמצא יתבצע חיפוש במטאדאטה של הקובץ
     try:
@@ -160,8 +165,12 @@ def artist_from_song(my_file):
             # מעבר על רשימת השמות ובדיקה אם אחד מהם קיים בתגית האמן
             for source_name, target_name in singer_list:
                 if source_name in artist:
+                    """
+                    # בדיקת דיוק שם הקובץ
+                    exact = check_exact_name(artist, source_name)  
+                    """
                     artist = target_name
-                    return artist 
+                    return artist
                 
             # הפעלת פונקציה המבצעת בדיקות על שם האמן
             check_answer = check_artist(artist)
@@ -183,8 +192,12 @@ def artist_from_song(my_file):
                 # מעבר על רשימת השמות ובדיקה אם אחד מהם קיים בתגית האמן
                 for source_name, target_name in singer_list:
                     if source_name in title:
-                        artist = target_name
-                        return artist        
+                        # בדיקת דיוק שם הקובץ
+                        exact = check_exact_name(title, source_name)
+                        
+                        if exact:
+                            artist = target_name
+                            return artist
     except:
         return
 
