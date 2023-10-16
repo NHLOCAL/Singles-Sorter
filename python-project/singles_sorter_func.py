@@ -13,6 +13,8 @@ from jibrish_to_hebrew import jibrish_to_hebrew
 from identify_similarities import similarity_sure
 # פונקציה לקריאת קבצי csv
 import csv
+# פונקציה לבדיקת דיוק שם האמן במחרוזת
+from check_name import check_exact_name
 
 
 # מעבר על עץ התיקיות שהוגדר
