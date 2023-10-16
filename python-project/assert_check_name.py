@@ -15,16 +15,20 @@ def test_check_exact_name():
     assert check_exact_name("מוטי שטיינמץ - שיר", "מוטי שטיינמץ") is True
     
     # Test case 2: Artist name appears at the start of the file name
-    assert check_exact_name("מוטי שטיינמץ-שיר", "מוטי שטיינמץ") is True
+    assert check_exact_name("#מוטי שטיינמץ$-שיר חדש", "מוטי שטיינמץ") is True
     
     # Test case 3: Artist name appears at the end of the file name
-    assert check_exact_name("שיר של מוטי שטיינמץ", "מוטי שטיינמץ") is True
+    assert check_exact_name("שיר של (מוטי שטיינמץ)", "מוטי שטיינמץ") is True
     
     # Test case 4: Artist name appears in the middle of the file name
     assert check_exact_name("אהבת מוטי שטיינמץ עולם", "מוטי שטיינמץ") is True
     
     # Test case 5: Artist name does not match
     assert check_exact_name("שיר נוסף - למוטי שטיינמץ", "מוטי שטיינמץ") is False
+    
+    assert check_exact_name("שיר נוסף - מומוטי שטיינמץ חדש", "מוטי שטיינמץ") is False
+    
+    assert check_exact_name("למוטי שטיינמץ", "מוטי שטיינמץ") is False
     
     assert check_exact_name("שיר נוסף - מוטי שטיינמץל", "מוטי שטיינמץ") is False
 

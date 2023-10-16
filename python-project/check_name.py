@@ -50,8 +50,6 @@ def artist_from_song(my_file):
 
 
 
-import re
-
 def check_exact_name(filename, artist_to_search):
     """
     Check if the artist's name appears exactly in the filename, even if preceded by "ו".
@@ -85,10 +83,7 @@ def check_exact_name(filename, artist_to_search):
 if __name__ == '__main__':
 
     
-    list_ = ['ח (בני פרידמן) חלל.mp3', '@יואלי קליין=.mp3', 'ואברהם פריד.mp3', 'שיר נוסף - ומוטי שטיינמץ.mp3'] 
+    list_ = ['ח בני פרידמן, מוטי שטיינמ.mp3', '@יואלי קליין=.mp3', 'ואברהם פריד.mp3', 'שיר נוסף - מוטי שטיינמץל מ.mp3'] 
     
     for i in list_:
         print(artist_from_song(i))
-
-
-# previous_char in [" ", " ו", "("] and next_char in [" ", ".", ",", ")"]
