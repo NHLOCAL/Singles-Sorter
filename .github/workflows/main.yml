@@ -1,5 +1,5 @@
 name: Build
-on: workflow_dispatch
+on: [push, pull_request]
 
 jobs:
   # Build job. Builds app for Android with Buildozer
@@ -9,7 +9,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
       - name: Build with Buildozer
         uses: ArtemSBulgakov/buildozer-action@v1
