@@ -1,7 +1,7 @@
 name: Build Kivy APK
 
 on:
-  push:
+  push
 
 jobs:
   build:
