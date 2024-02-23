@@ -5,16 +5,22 @@ from sys import argv
 from shutil import copy, move
 # יבוא פונקציה לקריאת מטאדאטה של קובץ
 from music_tag import load_file
-# יבוא פונקציה לקריאת עץ תיקיות
-from os.path import join, getsize
 # יבוא פונקציה להמרת ג'יבריש לעברית תקינה
-from jibrish_to_hebrew import jibrish_to_hebrew
+from jibrish_to_hebrew import fix_jibrish
 # יבוא פונקציה לזיהוי דמיון בין מחרוזות
 from identify_similarities import similarity_sure
 # פונקציה לקריאת קבצי csv
 import csv
 # פונקציה לבדיקת דיוק שם האמן במחרוזת
 from check_name import check_exact_name
+
+
+
+def progress_display(len_amount):
+    # הגדרות עבור תצוגת אחוזים
+    for len_item in range(1, len_amount + 1):
+        show_len = len_item * 100 // len_amount
+        yield show_len
 
 
 # מעבר על עץ התיקיות שהוגדר
@@ -55,16 +61,12 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_o
                     artist = artist_from_song(file_path)
                     if artist: info_list.append((file_path, artist))
 
-        
-    # הגדרות עבור תצוגת אחוזים
     len_dir = len(info_list)
-    len_item = 0
-    
+    progress_generator = progress_display(len_dir)
+
     # מעבר על תוצאות הסריקה והדפסתם בכפוף למספר תנאים
     for file_path, artist in info_list:   
-        # תצוגת אחוזים מתחלפת
-        len_item += 1
-        show_len = len_item * 100 // len_dir
+        show_len = next(progress_generator)
         print(" " * 30, str(show_len), "% ", "הושלמו",end='\r')
                        
         # הגדרת משתנה עבור תיקית יעד בהתאם להתאמות האישיות של המשתמש
@@ -127,7 +129,12 @@ def artist_from_song(my_file):
     
     # יבוא רשימת זמרים מקובץ csv
     if not 'singer_list' in globals():
-        csv_path = "singer-list.csv"
+        # Get the directory of the script file
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+
+        # Construct the path to the CSV file
+        csv_path = os.path.join(script_dir, "singer-list.csv")
+        
         global singer_list
         with open(csv_path, 'r') as file:
             csv_reader = csv.reader(file)
@@ -160,7 +167,7 @@ def artist_from_song(my_file):
 
         if artist:
             # המרת שם האמן אם הוא פגום
-            artist = jibrish_to_hebrew(artist, "heb")
+            artist = fix_jibrish(artist, "heb")
             
             # מעבר על רשימת השמות ובדיקה אם אחד מהם קיים בתגית האמן
             for source_name, target_name in singer_list:
@@ -187,7 +194,7 @@ def artist_from_song(my_file):
             
             if title:
                 # המרת שם האמן אם הוא פגום
-                title = jibrish_to_hebrew(title, "heb")
+                title = fix_jibrish(title, "heb")
                 
                 # מעבר על רשימת השמות ובדיקה אם אחד מהם קיים בתגית האמן
                 for source_name, target_name in singer_list:
