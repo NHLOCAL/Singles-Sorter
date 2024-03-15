@@ -49,7 +49,6 @@ nlp.tokenizer = custom_tokenizer(nlp)
 # Add the entity recognizer to the pipeline using its string name
 ner = nlp.add_pipe("ner")
 ner.add_label("SINGER")
-ner.add_label("OTHER")
 
 # Replace 'data.json' with the actual path to your JSON data file
 json_file = '/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/scrape_data/data.json'

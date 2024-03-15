@@ -1,5 +1,6 @@
 import csv
 import json
+import re
 
 # Your list of song names
 songs_names_file = "songs_list.txt"
@@ -27,13 +28,14 @@ for song_name in song_names:
 
     # Iterate through singer names and find their positions
     for singer in singer_names:
-        # Find the position of the singer's name in the song name
-        position = song_name.find(singer, start)
+        # Use regular expression to find whole word matches
+        matches = re.findall(r'\b' + re.escape(singer) + r'\b', song_name)
 
-        # If the singer's name is found, add it as an entity
-        if position != -1:
-            entities.append((position, position + len(singer), "SINGER"))
-            start = position + len(singer)  # Update start position
+        # Add each match as an entity
+        for match in matches:
+            position = song_name.find(match, start)
+            entities.append((position, position + len(match), "SINGER"))
+            start = position + len(match)
 
     # Only add to examples if entities are present
     if entities:

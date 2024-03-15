@@ -4,14 +4,11 @@ from sys import argv
 
 global nlp
 
-nlp = load("custom_ner_model")
+# improved_model / custom_ner_model / he_ner_news_trf
+nlp = load("custom_ner_model2")
 
 # בצע חיפוש שם אדם במחרוזת באמצעות מודל NER
 def find_name(string):
-    # improved_model / custom_ner_model / he_ner_news_trf
-    
-    # הסרת תווים המפריעים לניתוח תקין
-    text = string.replace('-', ' ')
 
     doc = nlp(string)
     

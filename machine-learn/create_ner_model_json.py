@@ -52,7 +52,7 @@ ner.add_label("SINGER")
 ner.add_label("OTHER")
 
 # Replace 'data.json' with the actual path to your JSON data file
-json_file = 'scrape_data\data.json'
+json_file = r'scrape_data\cleaned_data.json'
 
 # Load the data from the JSON file
 with open(json_file, 'r', encoding='utf-8') as f:
@@ -72,7 +72,7 @@ random.shuffle(training_data)
 nlp.begin_training()
 
 # Training loop
-for itn in range(100):
+for itn in range(50):
     losses = {}
     for example in training_data:
         nlp.update([example], drop=0.5, losses=losses)
