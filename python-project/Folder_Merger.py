@@ -16,7 +16,6 @@ import os
 import sys
 import shutil
 from identify_similarities import similarity_sure
-from click import clear
 
 
 class SingerMerger:
@@ -26,19 +25,18 @@ class SingerMerger:
         self.dir_listing = os.listdir(dir_path)
         self.singer_list = self.read_csv()
         self.similarity_set = set()
-        self.not_similarity_set = set()
 
     def read_csv(self):
         with open(self.file_path, 'r') as file:
             csv_reader = csv.reader(file)
             return [tuple(row) for row in csv_reader]
 
-    def merge_folders(self):
+    def merge_folders_by_csv(self):
         os.chdir(self.dir_path)
         for source_name, target_name in self.singer_list:
             if source_name == target_name:
                 continue
-            if source_name not in self.dir_listing:
+            if source_name not in self.dir_listing or target_name not in self.dir_listing:
                 continue
 
             old_path = os.path.join(os.getcwd(), source_name)
@@ -68,53 +66,62 @@ class SingerMerger:
 
     def create_similarity_list(self):
         folders_list = [item for item in self.dir_listing if os.path.isdir(os.path.join(self.dir_path, item))]
+        processed_folders = set()  # To keep track of processed folders
 
         for artist in folders_list:
             similarity_str = self.check_similarity(artist)
             set_item = (artist, similarity_str)
 
-            if similarity_str and set_item not in self.similarity_set and set_item not in self.not_similarity_set:
-                print('{}\n"{}" {} "{}"\n{}'.format("נמצאו שמות דומים - למזג?", artist, "<-->", similarity_str, "הקש 1 לאישור או 2 להמשך"))
-                answer = input(">>>")
-                clear()
+            # Check if the similarity pair or its reverse has been processed
+            if similarity_str and (set_item not in self.similarity_set) and (set_item[::-1] not in self.similarity_set) and (artist not in processed_folders) and (similarity_str not in processed_folders):
+                print(f'Found similar names - merge into folder "{artist}" or "{similarity_str}"?')
+                print('Press 1 to merge into first folder, 2 to merge into second folder, or Enter to skip.')
+                answer = input(">>> ")
+
                 try:
                     if int(answer) == 1:
                         self.similarity_set.add(set_item)
-                        artist = similarity_str
+                        self.merge_folders(similarity_str, artist)  # Swap source and target
                     elif int(answer) == 2:
-                        self.not_similarity_set.add(set_item)
-                except:
+                        self.similarity_set.add((similarity_str, artist))
+                        self.merge_folders(artist, similarity_str)  # Swap source and target
+                    processed_folders.add(artist)
+                    processed_folders.add(similarity_str)
+                except ValueError:
                     pass
 
-        merges_list = self.merge_tuples(self.similarity_set)
-        return merges_list
+        self.merge_folders_by_csv()
 
-    @staticmethod
-    def merge_tuples(input_set):
-        result = list(input_set)
-        i = 0
-        while i < len(result):
-            v = result[i]
-            for j, tup in enumerate(result):
-                if v == tup:
-                    continue
-                if not set(v).isdisjoint(set(tup)):
-                    result[j] = set(v).union(set(tup))
-                    result.pop(i)
-                    break
-            else:
-                i += 1
-        return result
+
+    def merge_folders(self, source_name, target_name):
+        if source_name == target_name:
+            return
+        if source_name not in self.dir_listing or target_name not in self.dir_listing:
+            return
+
+        old_path = os.path.join(self.dir_path, source_name)
+        new_path = os.path.join(self.dir_path, target_name)
+
+        if os.path.exists(old_path) and not os.path.exists(new_path):
+            os.rename(old_path, new_path)
+            print(f"{old_path} -->\n{new_path}")
+        elif os.path.exists(old_path):
+            for filename in os.listdir(old_path):
+                source_path = os.path.join(old_path, filename)
+                destination_path = os.path.join(new_path, filename)
+                shutil.move(source_path, destination_path)
+            print(f"{old_path} -->\n{new_path}")
+            shutil.rmtree(old_path)
+
+
 
 
 def main():
     dir_path = str(sys.argv[1])
     file_path = r"C:\Users\משתמש\AppData\Roaming\singles-sorter\singer-list.csv"
     singer_merger = SingerMerger(dir_path, file_path)
-    singer_merger.merge_folders()
     singer_merger.create_similarity_list()
 
 
 if __name__ == '__main__':
-    pass
-
+    main()
