@@ -66,14 +66,13 @@ class SingerMerger:
 
     def create_similarity_list(self):
         folders_list = [item for item in self.dir_listing if os.path.isdir(os.path.join(self.dir_path, item))]
-        processed_folders = set()  # To keep track of processed folders
 
         for artist in folders_list:
             similarity_str = self.check_similarity(artist)
-            set_item = (artist, similarity_str)
 
-            # Check if the similarity pair or its reverse has been processed
-            if similarity_str and (set_item not in self.similarity_set) and (set_item[::-1] not in self.similarity_set) and (artist not in processed_folders) and (similarity_str not in processed_folders):
+            # Check if the similarity pair has been processed
+            set_item = (artist, similarity_str)
+            if similarity_str and set_item not in self.similarity_set:
                 print(f'Found similar names - merge into folder "{artist}" or "{similarity_str}"?')
                 print('Press 1 to merge into first folder, 2 to merge into second folder, or Enter to skip.')
                 answer = input(">>> ")
@@ -81,16 +80,16 @@ class SingerMerger:
                 try:
                     if int(answer) == 1:
                         self.similarity_set.add(set_item)
-                        self.merge_folders(similarity_str, artist)  # Swap source and target
+                        self.merge_folders(similarity_str, artist)
                     elif int(answer) == 2:
-                        self.similarity_set.add((similarity_str, artist))
-                        self.merge_folders(artist, similarity_str)  # Swap source and target
-                    processed_folders.add(artist)
-                    processed_folders.add(similarity_str)
+                        self.similarity_set.add(set_item)
+                        self.merge_folders(artist, similarity_str)
+
                 except ValueError:
                     pass
 
         self.merge_folders_by_csv()
+
 
 
     def merge_folders(self, source_name, target_name):
