@@ -114,7 +114,6 @@ class SingerMerger:
 
 
 
-
 def main():
     dir_path = str(sys.argv[1])
     file_path = r"C:\Users\משתמש\AppData\Roaming\singles-sorter\singer-list.csv"
