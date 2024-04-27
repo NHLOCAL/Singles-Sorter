@@ -110,12 +110,16 @@ class SingerMerger:
                 destination_path = os.path.join(new_path, filename)
                 shutil.move(source_path, destination_path)
             print(f"{old_path} -->\n{new_path}")
-            shutil.rmtree(old_path)
+
+            try:
+                shutil.rmtree(old_path)
+            except PermissionError as e:
+                print(f"Permission error: {e}. Skipping directory deletion.")
 
 
 
 def main():
-    dir_path = str(sys.argv[1])
+    dir_path = r'D:\שמע\מסודר מחדש\זמרי שירים בודדים'
     file_path = r"C:\Users\משתמש\AppData\Roaming\singles-sorter\singer-list.csv"
     singer_merger = SingerMerger(dir_path, file_path)
     singer_merger.create_similarity_list()
