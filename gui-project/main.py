@@ -16,17 +16,17 @@ def main(page: ft.Page):
                     "מסדר הסינגלים 13.0",
                     size=40,
                     text_align=ft.TextAlign.CENTER,
-                    color="#FFFF80",
+                    color="#FCD41C",
                     weight=ft.FontWeight.BOLD,
                     rtl=True,
-                )
+                ),
+                ft.Image(src="assets/icon.png", width=80, height=80),  # הוספת התמונה
             ],
             alignment=ft.MainAxisAlignment.CENTER,
         ),
-        bgcolor="#005E8A",
+        bgcolor="#27447D",
         expand=True,
     )
-    
     page.add(LABLEL_PROGRAM)
     
 
