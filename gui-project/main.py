@@ -31,10 +31,10 @@ def main(page: ft.Page):
     
 
     # Input fields
-    source_dir_input = ft.TextField(label="תיקית הסינגלים שלך", autofocus=True, rtl=True)
+    source_dir_input = ft.TextField(label="תיקית הסינגלים שלך", autofocus=True, rtl=True, expand=True)
     source_dir_button = ft.ElevatedButton("בחר תיקיה", on_click=lambda _: pick_directory(source_dir_input))
 
-    target_dir_input = ft.TextField(label="תיקית יעד", rtl=True)
+    target_dir_input = ft.TextField(label="תיקית יעד", rtl=True, expand=True)
     target_dir_button = ft.ElevatedButton("בחר תיקיה", on_click=lambda _: pick_directory(target_dir_input))
     
     source_picker = ft.FilePicker(on_result=lambda e: update_path(e, source_dir_input))
@@ -47,12 +47,11 @@ def main(page: ft.Page):
 
 
     # Checkboxes
-    LE_PO = ft.LabelPosition.LEFT
-    copy_mode_checkbox = ft.Checkbox(label="העתק קבצים (העברה היא ברירת המחדל)", label_position=LE_PO)
-    tree_folders_checkbox = ft.Checkbox(label="אל תסרוק עץ תיקיות", label_position=LE_PO)
-    singles_folder_checkbox = ft.Checkbox(label='צור תיקית "סינגלים"', label_position=LE_PO)
-    exist_only_checkbox = ft.Checkbox(label="השתמש בתיקיות קיימות בלבד", label_position=LE_PO)
-    abc_sort_checkbox = ft.Checkbox(label="מיין בתיקיות לפי הא' ב'", label_position=LE_PO)
+    copy_mode_checkbox = ft.Checkbox(label="העתק קבצים (העברה היא ברירת המחדל)")
+    tree_folders_checkbox = ft.Checkbox(label="אל תסרוק עץ תיקיות", )
+    singles_folder_checkbox = ft.Checkbox(label='צור תיקית "סינגלים"')
+    exist_only_checkbox = ft.Checkbox(label="השתמש בתיקיות קיימות בלבד")
+    abc_sort_checkbox = ft.Checkbox(label="מיין בתיקיות לפי הא' ב'")
 
     # Progress bar
     progress_bar = ft.ProgressBar(width=400, value=0)
@@ -93,16 +92,22 @@ def main(page: ft.Page):
 
         ft.Column(
             [
-                ft.Row([source_dir_input, source_dir_button], alignment=ft.MainAxisAlignment.CENTER,),
-                ft.Row([target_dir_input, target_dir_button], alignment=ft.MainAxisAlignment.CENTER,),
-                copy_mode_checkbox,
-                tree_folders_checkbox,
-                singles_folder_checkbox,
-                exist_only_checkbox,
-                abc_sort_checkbox,
-                progress_bar,
-                output_text,
-                organize_button,
+                ft.Row([source_dir_button, source_dir_input], alignment=ft.MainAxisAlignment.CENTER),
+                ft.Row([target_dir_button, target_dir_input], alignment=ft.MainAxisAlignment.CENTER),
+                
+                ft.Column(
+                    [copy_mode_checkbox,
+                    tree_folders_checkbox,
+                    singles_folder_checkbox,
+                    exist_only_checkbox,
+                    abc_sort_checkbox],
+                    
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    rtl=True,
+                ),
+                    progress_bar,
+                    output_text,
+                    organize_button,
             ],
             alignment=ft.MainAxisAlignment.CENTER,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
