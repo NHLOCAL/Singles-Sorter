@@ -3,7 +3,7 @@ from singles_sorter_func import scan_dir
 
 def main(page: ft.Page):
     page.title = "מסדר הסינגלים"
-    page.vertical_alignment = ft.MainAxisAlignment.CENTER
+    page.vertical_alignment = ft.MainAxisAlignment.SPACE_BETWEEN
     page.window_height = 600
     page.window_width = 800
     
@@ -23,10 +23,13 @@ def main(page: ft.Page):
                 ft.Image(src="assets/icon.png", width=80, height=80),  # הוספת התמונה
             ],
             alignment=ft.MainAxisAlignment.CENTER,
+            
         ),
         bgcolor="#27447D",
-        expand=True,
+        expand=False,
+        height=100,
     )
+    
     page.add(LABLEL_PROGRAM)
     
 
@@ -48,8 +51,8 @@ def main(page: ft.Page):
 
     # Checkboxes
     copy_mode_checkbox = ft.Checkbox(label="העתק קבצים (העברה היא ברירת המחדל)")
-    tree_folders_checkbox = ft.Checkbox(label="אל תסרוק עץ תיקיות", )
-    singles_folder_checkbox = ft.Checkbox(label='צור תיקית "סינגלים"')
+    tree_folders_checkbox = ft.Checkbox(label="סרוק תיקיה ראשית", )
+    singles_folder_checkbox = ft.Checkbox(label='צור תיקיות סינגלים')
     exist_only_checkbox = ft.Checkbox(label="השתמש בתיקיות קיימות בלבד")
     abc_sort_checkbox = ft.Checkbox(label="מיין בתיקיות לפי הא' ב'")
 
@@ -89,15 +92,29 @@ def main(page: ft.Page):
     organize_button = ft.ElevatedButton("הפעל כעת", on_click=organize_files)
 
     page.add(
-
+   
         ft.Column(
-            [
+            [  
                 ft.Row([source_dir_button, source_dir_input], alignment=ft.MainAxisAlignment.CENTER),
                 ft.Row([target_dir_button, target_dir_input], alignment=ft.MainAxisAlignment.CENTER),
-                
+            ],
+            
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        ),
+
+        ft.Column(
+            [ 
                 ft.Column(
-                    [copy_mode_checkbox,
+                    [
+                    
+                    ft.Text("הגדרות בסיסיות"),
+                    
+                    copy_mode_checkbox,
                     tree_folders_checkbox,
+                    
+                    ft.Text("מתקדם"),
+                    
                     singles_folder_checkbox,
                     exist_only_checkbox,
                     abc_sort_checkbox],
