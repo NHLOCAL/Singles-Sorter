@@ -24,7 +24,7 @@ def progress_display(len_amount):
 
 
 # מעבר על עץ התיקיות שהוגדר
-def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_only=False, singles_folder=True, tree_folders=False):
+def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_only=False, singles_folder=True, tree_folders=False, progress_callback=None):
     """
 הפונקציה המרכיבת את הפקודה הראשית של התכנית. היא סורקת את התיקיות והקבצים תחת נתיב שצוין ויוצרת רשימה של קבצים להעתקה.
 בסוף התהליך היא מעתיקה אותם אם הוכנס פרמטר של תיקית יעד.
@@ -67,7 +67,9 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_o
     # מעבר על תוצאות הסריקה והדפסתם בכפוף למספר תנאים
     for file_path, artist in info_list:   
         show_len = next(progress_generator)
-        print(" " * 30, str(show_len), "% ", "הושלמו",end='\r')
+        # print(" " * 30, str(show_len), "% ", "הושלמו",end='\r')
+        if progress_callback:  # Call the callback with progress
+            progress_callback(show_len)
                        
         # הגדרת משתנה עבור תיקית יעד בהתאם להתאמות האישיות של המשתמש
         if singles_folder and abc_sort:
