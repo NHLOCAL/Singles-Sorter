@@ -4,11 +4,11 @@ from singles_sorter_func import scan_dir
 def main(page: ft.Page):
     page.title = "מסדר הסינגלים"
     page.vertical_alignment = ft.MainAxisAlignment.SPACE_BETWEEN
-    page.theme = ft.theme.Theme(color_scheme_seed="#27447D")
+    page.theme = ft.Theme(color_scheme=ft.ColorScheme(primary="#27447D",primary_container=ft.colors.YELLOW_50),)
     page.theme_mode = ft.ThemeMode.LIGHT
     page.rtl = True
     page.padding = 0
-    page.bgcolor = '#FFF8DD'
+    page.bgcolor = ft.colors.YELLOW_50
     #page.window_height = 680
     #page.window_width = 800
     
@@ -130,7 +130,7 @@ def main(page: ft.Page):
             content=ft.Column(
                 [
 
-                    ft.Text("אפשרויות נוספות", size=20, color="#27447D", weight=ft.FontWeight.BOLD),
+                    ft.Text("אפשרויות נוספות", size=20, color="#ff27447D", weight=ft.FontWeight.BOLD),
                     
                     ft.Column(
                         [
