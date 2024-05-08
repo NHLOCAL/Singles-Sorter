@@ -1,40 +1,70 @@
-import flet
-from flet import (
-    ElevatedButton,
-    FilePicker,
-    FilePickerResultEvent,
-    Page,
-    Row,
-    Text,
-    icons,
-)
+import flet as ft
 
+def main(page: ft.Page):
+    page.theme = ft.Theme(
+        scrollbar_theme=ft.ScrollbarTheme(
+            track_color={
+                ft.MaterialState.HOVERED: ft.colors.AMBER,
+                ft.MaterialState.DEFAULT: ft.colors.TRANSPARENT,
+            },
+            track_visibility=True,
+            track_border_color=ft.colors.BLUE,
+            thumb_visibility=True,
+            thumb_color={
+                ft.MaterialState.HOVERED: ft.colors.RED,
+                ft.MaterialState.DEFAULT: ft.colors.GREY_300,
+            },
+            thickness=30,
+            radius=15,
+            main_axis_margin=5,
+            cross_axis_margin=10,
+            # interactive=False,
+        )
+    )
 
-def main(page: Page):
-    # Open directory dialog
-    def get_directory_result(e: FilePickerResultEvent):
-        directory_path.value = e.path if e.path else "Cancelled!"
-        directory_path.update()
+    cl = ft.Column(
+        spacing=10,
+        height=200,
+        width=float("inf"),
+        scroll=ft.ScrollMode.ALWAYS,
+    )
+    for i in range(0, 100):
+        cl.controls.append(ft.Text(f"Text line {i}", key=str(i)))
 
-    get_directory_dialog = FilePicker(on_result=get_directory_result)
-    directory_path = Text()
+    def scroll_to_offset(e):
+        cl.scroll_to(offset=100, duration=1000)
 
-    # hide all dialogs in overlay
-    page.overlay.extend([get_directory_dialog])
+    def scroll_to_start(e):
+        cl.scroll_to(offset=0, duration=1000)
+
+    def scroll_to_end(e):
+        cl.scroll_to(offset=-1, duration=2000, curve=ft.AnimationCurve.EASE_IN_OUT)
+
+    def scroll_to_key(e):
+        cl.scroll_to(key="20", duration=1000)
+
+    def scroll_to_delta(e):
+        cl.scroll_to(delta=40, duration=200)
+
+    def scroll_to_minus_delta(e):
+        cl.scroll_to(delta=-40, duration=200)
 
     page.add(
-        Row(
+        ft.Container(cl, border=ft.border.all(1)),
+        ft.ElevatedButton("Scroll to offset 100", on_click=scroll_to_offset),
+        ft.Row(
             [
-                ElevatedButton(
-                    "Open directory",
-                    icon=icons.FOLDER_OPEN,
-                    on_click=lambda _: get_directory_dialog.get_directory_path(),
-                    disabled=page.web,
-                ),
-                directory_path,
+                ft.ElevatedButton("Scroll to start", on_click=scroll_to_start),
+                ft.ElevatedButton("Scroll to end", on_click=scroll_to_end),
+            ]
+        ),
+        ft.ElevatedButton("Scroll to key '20'", on_click=scroll_to_key),
+        ft.Row(
+            [
+                ft.ElevatedButton("Scroll -40", on_click=scroll_to_minus_delta),
+                ft.ElevatedButton("Scroll +40", on_click=scroll_to_delta),
             ]
         ),
     )
 
-
-flet.app(target=main)
+ft.app(main)
