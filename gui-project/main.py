@@ -30,14 +30,20 @@ def main(page: ft.Page):
                 ],
 
                 alignment=ft.MainAxisAlignment.CENTER,
-            ),
-            
+            ),     
         ),
         center_title=True,
         automatically_imply_leading=False,
         bgcolor="#27447D",
-        toolbar_height='80',
-        
+        toolbar_height='80',  
+    )
+
+    page.bottom_appbar = ft.BottomAppBar(
+        bgcolor=ft.colors.YELLOW_300,
+        shape=ft.NotchShape.CIRCULAR,
+        height='40',
+
+
     )
 
 
