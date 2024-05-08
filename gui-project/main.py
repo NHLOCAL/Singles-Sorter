@@ -13,33 +13,33 @@ def main(page: ft.Page):
     #page.window_width = 800
     
     
-    
-    LABLEL_PROGRAM = ft.Container(
-        content=ft.Row(
-            [
+    page.appbar = ft.AppBar(
+        
+        title=ft.Container(
+            content=ft.Row(
+                [
                 ft.Image(src="assets/icon.png", width=60),
-
-                ft.Text(
-                    "מסדר הסינגלים 13.0",
-                    size=30,
-                    text_align=ft.TextAlign.CENTER,
-                    color="#FCD41C",
-                    weight=ft.FontWeight.BOLD,
-                    rtl=True,
-                ),
                 
-            ],
+                ft.Text(
+                            "מסדר הסינגלים 13.0",
+                            size=30,
+                            text_align=ft.TextAlign.CENTER,
+                            color="#FCD41C",
+                            weight=ft.FontWeight.BOLD,
+                        ),
+                ],
 
-            alignment=ft.MainAxisAlignment.CENTER,
+                alignment=ft.MainAxisAlignment.CENTER,
+            ),
             
         ),
+        center_title=True,
+        automatically_imply_leading=False,
         bgcolor="#27447D",
-        expand=False,
-        height=80,
+        toolbar_height='80',
+        
     )
-    
-    page.add(LABLEL_PROGRAM)
-    
+
 
     # Input fields
     round_button = ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=15))
@@ -184,7 +184,6 @@ def main(page: ft.Page):
 
                 ],
                 
-
                 spacing='30',
             ),
 
