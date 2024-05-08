@@ -235,7 +235,7 @@ def check_artist(artist):
 def main():
     try:
         dir_path = os.path.join(argv[1]) # נתיב תיקית מקור
-        target_dir = os.path.join(argv[2]) # נתיב תיקית יעד  
+        target_dir = os.path.join(argv[2]) # נתיב תיקית יעד
         copy_mode = True if eval(argv[3]) else False  # קביעת העתקה או העברה 
         # מעבר על עץ תיקיות
         tree_folders = True if eval(argv[4]) else False

@@ -4,7 +4,7 @@ from singles_sorter_func import scan_dir
 def main(page: ft.Page):
     page.title = "מסדר הסינגלים"
     page.vertical_alignment = ft.MainAxisAlignment.SPACE_BETWEEN
-    page.window_height = 600
+    page.window_height = 680
     page.window_width = 800
     
     
@@ -51,10 +51,10 @@ def main(page: ft.Page):
 
     # Checkboxes
     copy_mode_checkbox = ft.Checkbox(label="העתק קבצים (העברה היא ברירת המחדל)")
-    tree_folders_checkbox = ft.Checkbox(label="סרוק תיקיה ראשית", )
-    singles_folder_checkbox = ft.Checkbox(label='צור תיקיות סינגלים')
+    tree_folders_checkbox = ft.Checkbox(label="סרוק תיקיה ראשית בלבד", )
+    singles_folder_checkbox = ft.Checkbox(label='צור תיקיות סינגלים פנימיות', value=True)
     exist_only_checkbox = ft.Checkbox(label="השתמש בתיקיות קיימות בלבד")
-    abc_sort_checkbox = ft.Checkbox(label="מיין בתיקיות לפי הא' ב'")
+    abc_sort_checkbox = ft.Checkbox(label="צור תיקיות ראשיות לפי ה-א' ב'")
 
     # Progress bar
     progress_bar = ft.ProgressBar(width=400, value=0)
@@ -90,6 +90,7 @@ def main(page: ft.Page):
 
     # Organize button
     organize_button = ft.ElevatedButton("הפעל כעת", on_click=organize_files)
+    #organize_button.disabled = True
 
     page.add(
    
