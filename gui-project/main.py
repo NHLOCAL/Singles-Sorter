@@ -4,9 +4,11 @@ from singles_sorter_func import scan_dir
 def main(page: ft.Page):
     page.title = "מסדר הסינגלים"
     page.vertical_alignment = ft.MainAxisAlignment.SPACE_BETWEEN
-    page.theme = ft.theme.Theme(color_scheme_seed="#FCD41C")
+    page.theme = ft.theme.Theme(color_scheme_seed="#27447D")
     page.theme_mode = ft.ThemeMode.LIGHT
-    page.rtl=True
+    page.rtl = True
+    page.padding = 0
+    page.bgcolor = '#FFF8DD'
     #page.window_height = 680
     #page.window_width = 800
     
@@ -15,11 +17,11 @@ def main(page: ft.Page):
     LABLEL_PROGRAM = ft.Container(
         content=ft.Row(
             [
-                ft.Image(src="assets/icon.png", width=80, height=80),
+                ft.Image(src="assets/icon.png", width=60),
 
                 ft.Text(
                     "מסדר הסינגלים 13.0",
-                    size=40,
+                    size=30,
                     text_align=ft.TextAlign.CENTER,
                     color="#FCD41C",
                     weight=ft.FontWeight.BOLD,
@@ -27,12 +29,13 @@ def main(page: ft.Page):
                 ),
                 
             ],
+
             alignment=ft.MainAxisAlignment.CENTER,
             
         ),
         bgcolor="#27447D",
         expand=False,
-        height=100,
+        height=80,
     )
     
     page.add(LABLEL_PROGRAM)
@@ -40,12 +43,12 @@ def main(page: ft.Page):
 
     # Input fields
     round_button = ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=15))
-    height_button = '60'
+    height_button = '50'
     round_text_field = ft.border_radius.only(15, 10, 15, 10)
 
-    source_dir_input = ft.TextField(label="תיקית הסינגלים שלך", autofocus=True, rtl=True, expand=True, border_radius=round_text_field, height='70')
+    source_dir_input = ft.TextField(label="תיקית הסינגלים שלך", autofocus=True, rtl=True, expand=True, border_radius=round_text_field, height='60')
 
-    target_dir_input = ft.TextField(label="תיקית יעד", rtl=True, expand=True,  border_radius=round_text_field, height='70')
+    target_dir_input = ft.TextField(label="תיקית יעד", rtl=True, expand=True,  border_radius=round_text_field, height='60')
     
     source_picker = ft.FilePicker(on_result=lambda e: update_path(e, source_dir_input))
     target_picker = ft.FilePicker(on_result=lambda e: update_path(e, target_dir_input))
@@ -101,31 +104,34 @@ def main(page: ft.Page):
         page.update()
 
     # Organize button
-    organize_button = ft.ElevatedButton("הפעל כעת", on_click=organize_files)
+    organize_button = ft.ElevatedButton(content=ft.Text("הפעל כעת", size=20), on_click=organize_files, style=round_button, height='70', width='180')
     #organize_button.disabled = True
 
     page.add(
    
         ft.Container(
             content=ft.Column(
-                [  
+                [
                     ft.Row([source_dir_button, source_dir_input], alignment=ft.MainAxisAlignment.CENTER),
                     ft.Row([target_dir_button, target_dir_input], alignment=ft.MainAxisAlignment.CENTER),
                 ],
     
-                spacing='30',
+                spacing='20',
                 alignment=ft.MainAxisAlignment.CENTER,
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             ),
-
-            
-            margin = ft.margin.all(20)
+ 
+            margin = ft.margin.only(40, 30, 40, 30)
 
         ),
 
+
         ft.Container(
             content=ft.Column(
-                [ 
+                [
+
+                    ft.Text("אפשרויות נוספות", size=20, color="#27447D", weight=ft.FontWeight.BOLD),
+                    
                     ft.Column(
                         [
                         
@@ -141,17 +147,50 @@ def main(page: ft.Page):
                         abc_sort_checkbox],
                         
                         alignment=ft.MainAxisAlignment.CENTER,
-                        rtl=True,
                     ),
-                        progress_bar,
-                        output_text,
-                        organize_button,
                 ],
                 alignment=ft.MainAxisAlignment.CENTER,
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             ),
 
-            margin = ft.margin.all(20)
+            
+            margin = ft.margin.only(40, 5, 40, 10),
+            border=ft.border.all(2, color="#27447D"),
+            border_radius=15,
+            padding=20,
+            alignment=ft.alignment.center,
+        ),
+
+
+        ft.Container(
+            content=ft.Column(
+               [          
+                ft.Row(
+                    [
+                        output_text,
+                        organize_button,
+                    ],
+
+                    alignment=ft.MainAxisAlignment.CENTER,
+                ),
+
+                ft.Row(
+                    [
+                        progress_bar,
+                    ],
+
+                    alignment=ft.MainAxisAlignment.CENTER,
+                ),
+
+                ],
+                
+
+                spacing='30',
+            ),
+
+            margin = ft.margin.all(20),
+            padding=10,
+            alignment=ft.alignment.center,
         )
     )
     
