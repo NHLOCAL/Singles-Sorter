@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import flet as ft
 from singles_sorter_gui import scan_dir
 
