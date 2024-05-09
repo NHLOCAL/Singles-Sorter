@@ -1,47 +1,39 @@
 import flet as ft
-from singles_sorter_func import scan_dir
+from singles_sorter_gui import scan_dir
 
 def main(page: ft.Page):
     page.title = "מסדר הסינגלים"
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
-    page.theme = ft.Theme(color_scheme=ft.ColorScheme(
-        primary="#27447D",
-        secondary="#FCD41C",
-        )
-    ,)
-    
-    # הגדרות ראשיות עבור הדף
     page.theme_mode = ft.ThemeMode.LIGHT
     page.rtl = True
-    page.padding = 0
+    page.padding = 20  # Added padding for better spacing
     #page.bgcolor = ft.colors.SURFACE_VARIANT
     #page.window_height = 680
     #page.window_width = 800
-    
-    # הגדרת סרגל עליון
-    page.appbar = ft.AppBar(
-        
-        title=ft.Container(
-            content=ft.Row(
-                [
-                ft.Image(src="assets/icon.png", width=60),
-                
-                ft.Text(
-                            "מסדר הסינגלים 13.0",
-                            size=30,
-                            text_align=ft.TextAlign.CENTER,
-                            color=ft.colors.SECONDARY,
-                            weight=ft.FontWeight.BOLD,
-                        ),
-                ],
 
-                alignment=ft.MainAxisAlignment.CENTER,
-            ),     
+    # Consistent button style definition
+    round_button = ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=15))
+    
+    
+    # App bar
+    page.appbar = ft.AppBar(
+        title=ft.Row(
+            [
+                ft.Image(src="assets/icon.png", width=60),  # Adjusted icon size
+                ft.Text(
+                    "מסדר הסינגלים 13.0",
+                    size=30,  # Adjusted title size
+                    text_align=ft.TextAlign.CENTER,
+                    color=ft.colors.ON_PRIMARY,  # Assumed color for better contrast
+                    weight=ft.FontWeight.BOLD,
+                ),
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
         ),
         center_title=True,
-        automatically_imply_leading=False,
         bgcolor=ft.colors.PRIMARY,
-        toolbar_height='80',  
+        elevation=4,  # Added elevation for visual depth
+        toolbar_height='80',
     )
 
 
@@ -60,13 +52,13 @@ def main(page: ft.Page):
 
 
     # Input fields
-    round_button = ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=15))
+
     height_button = '50'
     round_text_field = ft.border_radius.only(15, 10, 15, 10)
 
-    source_dir_input = ft.TextField(label="תיקית הסינגלים שלך", autofocus=True, rtl=True, expand=True, border_radius=round_text_field, height='60')
+    source_dir_input = ft.TextField(label="תיקית הסינגלים שלך", autofocus=True, rtl=True, expand=True, border_radius=round_text_field, height='60', hint_text=r"C:\Music\סינגלים",)
 
-    target_dir_input = ft.TextField(label="תיקית יעד", rtl=True, expand=True,  border_radius=round_text_field, height='60')
+    target_dir_input = ft.TextField(label="תיקית יעד", rtl=True, expand=True,  border_radius=round_text_field, height='60', hint_text=r"C:\Music\כל המוזיקה",)
     
     source_picker = ft.FilePicker(on_result=lambda e: update_path(e, source_dir_input))
     target_picker = ft.FilePicker(on_result=lambda e: update_path(e, target_dir_input))
@@ -92,37 +84,17 @@ def main(page: ft.Page):
     # Output text
     output_text = ft.Text()
     
-    
-    def update_path(e: ft.FilePickerResultEvent, target_input: ft.TextField):
-        target_input.value = e.path if e.path else None
-        target_input.update()
-        
 
-    def organize_files(e):
-        source_dir = source_dir_input.value
-        target_dir = target_dir_input.value
-
-        # Get checkbox values
-        copy_mode = copy_mode_checkbox.value
-        tree_folders = tree_folders_checkbox.value
-        singles_folder = singles_folder_checkbox.value
-        exist_only = exist_only_checkbox.value
-        abc_sort = abc_sort_checkbox.value
-
-        def progress_callback(progress):
-            progress_num = progress / 100
-            progress_bar.value = progress_num
-            page.window_progress_bar = str(progress_num)
-            page.update()
-
-        # Call the scan_dir function with arguments and progress callback
-        scan_dir(source_dir, target_dir, copy_mode, abc_sort, exist_only, singles_folder, tree_folders, progress_callback)
-        output_text.value = "מיון הקבצים הסתיים!"
-        page.window_progress_bar = '0.0'
-        page.update()
 
     # Organize button
-    organize_button = ft.ElevatedButton(content=ft.Text("הפעל כעת", size=20), on_click=organize_files, style=round_button, height='70', width='180')
+    organize_button = ft.ElevatedButton(
+        content=ft.Text("הפעל כעת", size=20),
+        on_click=lambda e: organize_files(e, page),
+        style=round_button,
+        height='70',
+        width='180',
+        )
+    
     #organize_button.disabled = True
 
     page.add(
@@ -152,19 +124,19 @@ def main(page: ft.Page):
                     
                     ft.Column(
                         [
-                        
-                        ft.Text("הגדרות בסיסיות"),
-                        
-                        copy_mode_checkbox,
-                        tree_folders_checkbox,
-                        
-                        ft.Text("מתקדם"),
-                        
-                        singles_folder_checkbox,
-                        exist_only_checkbox,
-                        abc_sort_checkbox],
-                        
-                        alignment=ft.MainAxisAlignment.CENTER,
+                            ft.Text("הגדרות בסיסיות", weight=ft.FontWeight.BOLD),
+                            copy_mode_checkbox,
+                            tree_folders_checkbox,
+                        ]
+                    ),
+
+                    ft.Column(
+                        [
+                            ft.Text("מתקדם", weight=ft.FontWeight.BOLD), 
+                            singles_folder_checkbox,
+                            exist_only_checkbox,
+                            abc_sort_checkbox,
+                        ]
                     ),
                 ],
                 alignment=ft.MainAxisAlignment.CENTER,
@@ -182,19 +154,20 @@ def main(page: ft.Page):
 
         ft.Container(
             content=ft.Column(
-               [          
-                ft.Row(
-                    [
-                        output_text,
-                        organize_button,
-                    ],
-
-                    alignment=ft.MainAxisAlignment.CENTER,
-                ),
+               [
 
                 ft.Row(
                     [
                         progress_bar,
+                    ],
+
+                    alignment=ft.MainAxisAlignment.CENTER,
+                ),
+                  
+                ft.Row(
+                    [
+                        output_text,
+                        organize_button,
                     ],
 
                     alignment=ft.MainAxisAlignment.CENTER,
@@ -210,6 +183,72 @@ def main(page: ft.Page):
             alignment=ft.alignment.center,
         )
     )
-    
+
+
+
+
+    def update_path(e: ft.FilePickerResultEvent, target_input: ft.TextField):
+        try:
+            target_input.value = e.path if e.path else None
+            target_input.update()
+        except Exception as error:
+            # Display an error message to the user or log the error
+            print(f"Error updating path: {error}")
+            # Consider using a Snackbar or AlertDialog to display the error to the user
+        
+
+    def organize_files(e, page: ft.Page):
+        source_dir = source_dir_input.value
+        target_dir = target_dir_input.value
+
+        show_snackbar = lambda message_text, color: ft.SnackBar(content=ft.Text(message_text), bgcolor=color)
+        
+        if not source_dir or not target_dir:
+            page.snack_bar = show_snackbar("אנא בחר תיקיית מקור ותיקיית יעד!", ft.colors.ERROR)
+            page.snack_bar.open = True
+            page.update()
+            return
+
+        # Get checkbox values
+        copy_mode = copy_mode_checkbox.value
+        tree_folders = tree_folders_checkbox.value
+        singles_folder = singles_folder_checkbox.value
+        exist_only = exist_only_checkbox.value
+        abc_sort = abc_sort_checkbox.value
+
+        def progress_callback(progress):
+            progress_num = progress / 100
+            progress_bar.value = progress_num
+            page.window_progress_bar = str(progress_num)
+            page.update()
+
+        # Call the scan_dir function with arguments and progress callback
+        try:
+            scan_dir(
+                source_dir, 
+                target_dir, 
+                copy_mode, 
+                abc_sort, 
+                exist_only, 
+                singles_folder, 
+                tree_folders, 
+                progress_callback
+            )
+            page.snack_bar = show_snackbar("מיון הקבצים הסתיים בהצלחה", ft.colors.GREEN)
+
+        except FileNotFoundError as error:
+            page.snack_bar = show_snackbar(f"{error}", ft.colors.ERROR)
+        except PermissionError as error:
+            page.snack_bar =  show_snackbar(f"{error}", ft.colors.ERROR)
+        except Exception as error:
+            page.snack_bar = show_snackbar(f"שגיאה במיון הקבצים: {error}", ft.colors.ERROR)
+
+
+        finally: 
+            page.window_progress_bar = '0.0'
+            page.snack_bar.open = True
+            page.update()
+
+
 
 ft.app(target=main)

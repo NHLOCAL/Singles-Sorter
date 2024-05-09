@@ -16,11 +16,39 @@ from check_name import check_exact_name
 
 
 
+# הגדרות עבור תצוגת אחוזים
 def progress_display(len_amount):
-    # הגדרות עבור תצוגת אחוזים
     for len_item in range(1, len_amount + 1):
         show_len = len_item * 100 // len_amount
         yield show_len
+
+
+# בדיקת שגיאות מתקדמת
+def check_errors(source_dir, target_dir):
+    """
+    Checks for potential errors related to source and target directories.
+
+    Args:
+        source_dir (str): The path to the source directory.
+        target_dir (str): The path to the target directory.
+
+    Raises:
+        FileNotFoundError: If the source or target directory does not exist.
+        PermissionError: If the script does not have write access to the target directory.
+        ValueError: If the source and target directories are the same.
+    """
+    if not os.path.exists(source_dir):
+        raise FileNotFoundError("תיקיית המקור לא נמצאה")
+
+    if not os.path.exists(target_dir):
+        raise FileNotFoundError("תיקיית היעד לא נמצאה")
+
+    if not os.access(target_dir, os.W_OK):
+        raise PermissionError("אין הרשאת כתיבה לתיקיית היעד")
+
+    if os.path.samefile(source_dir, target_dir):
+        raise ValueError("תיקיית המקור ותיקיית היעד לא יכולות להיות זהות")
+
 
 
 # מעבר על עץ התיקיות שהוגדר
@@ -42,6 +70,10 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_o
 תוצאה:
     מדפיס את רשימת האמנים שמופיעים במטאדאטה של השירים, ומעתיק אותם ליעד.
     """
+
+    check_errors(dir_path, target_dir)
+
+
     # סריקת עץ התיקיות או התיקיה הראשית בהתאם לבחירת המשתמש והכנסת שם הקבצים ושם האמן שלהם לרשימה
     info_list = []  
     if tree_folders is False:
@@ -106,6 +138,8 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_o
         elif os.path.isdir(target_path):
             try: move(file_path, target_path)
             except: pass
+
+    return True, None
 
  
 def artist_from_song(my_file):
@@ -244,7 +278,7 @@ def main():
         exist_only = True if eval(argv[6]) else False # העברה לתיקיות קיימות בלבד        
         abc_sort = True if eval(argv[7]) else False # מיון לפי א' ב'
 
-        # הרצת הפונצקיה עם כל הפרמטרים
+        # הרצת הפונקציה עם כל הפרמטרים
         scan_dir(str(argv[1]), str(argv[2]), copy_mode, abc_sort, exist_only, singles_folder, tree_folders)
     except Exception as e:
         print("Error: {}".format(e))
