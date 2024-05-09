@@ -9,7 +9,8 @@ def main(page: ft.Page):
         secondary="#FCD41C",
         )
     ,)
-
+    
+    # הגדרות ראשיות עבור הדף
     page.theme_mode = ft.ThemeMode.LIGHT
     page.rtl = True
     page.padding = 0
@@ -17,7 +18,7 @@ def main(page: ft.Page):
     #page.window_height = 680
     #page.window_width = 800
     
-    
+    # הגדרת סרגל עליון
     page.appbar = ft.AppBar(
         
         title=ft.Container(
@@ -43,12 +44,18 @@ def main(page: ft.Page):
         toolbar_height='80',  
     )
 
+
+    # הגדרת סרגל תחתון
     page.bottom_appbar = ft.BottomAppBar(
+        ft.Text(
+                            "© כל הזכויות שמורות ל-nh.local11@gmail.com",
+                            size=10,
+                            text_align=ft.TextAlign.CENTER,
+                            color=ft.colors.ON_SECONDARY,
+                        ),
         bgcolor=ft.colors.ON_PRIMARY_CONTAINER,
         shape=ft.NotchShape.CIRCULAR,
         height='40',
-
-
     )
 
 
