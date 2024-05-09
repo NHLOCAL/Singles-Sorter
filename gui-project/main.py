@@ -3,12 +3,17 @@ from singles_sorter_func import scan_dir
 
 def main(page: ft.Page):
     page.title = "מסדר הסינגלים"
-    page.vertical_alignment = ft.MainAxisAlignment.SPACE_BETWEEN
-    page.theme = ft.Theme(color_scheme=ft.ColorScheme(primary="#27447D",primary_container=ft.colors.YELLOW_50),)
+    page.vertical_alignment = ft.MainAxisAlignment.CENTER
+    page.theme = ft.Theme(color_scheme=ft.ColorScheme(
+        primary="#27447D",
+        secondary="#FCD41C",
+        )
+    ,)
+
     page.theme_mode = ft.ThemeMode.LIGHT
     page.rtl = True
     page.padding = 0
-    page.bgcolor = ft.colors.YELLOW_50
+    #page.bgcolor = ft.colors.SURFACE_VARIANT
     #page.window_height = 680
     #page.window_width = 800
     
@@ -24,7 +29,7 @@ def main(page: ft.Page):
                             "מסדר הסינגלים 13.0",
                             size=30,
                             text_align=ft.TextAlign.CENTER,
-                            color="#FCD41C",
+                            color=ft.colors.SECONDARY,
                             weight=ft.FontWeight.BOLD,
                         ),
                 ],
@@ -34,12 +39,12 @@ def main(page: ft.Page):
         ),
         center_title=True,
         automatically_imply_leading=False,
-        bgcolor="#27447D",
+        bgcolor=ft.colors.PRIMARY,
         toolbar_height='80',  
     )
 
     page.bottom_appbar = ft.BottomAppBar(
-        bgcolor=ft.colors.YELLOW_300,
+        bgcolor=ft.colors.ON_PRIMARY_CONTAINER,
         shape=ft.NotchShape.CIRCULAR,
         height='40',
 
@@ -136,7 +141,7 @@ def main(page: ft.Page):
             content=ft.Column(
                 [
 
-                    ft.Text("אפשרויות נוספות", size=20, color="#ff27447D", weight=ft.FontWeight.BOLD),
+                    ft.Text("אפשרויות נוספות", size=20, color=ft.colors.PRIMARY, weight=ft.FontWeight.BOLD),
                     
                     ft.Column(
                         [
@@ -160,7 +165,7 @@ def main(page: ft.Page):
             ),
 
             
-            margin = ft.margin.only(40, 5, 40, 10),
+            margin = ft.margin.only(40, 5, 40, 0),
             border=ft.border.all(2, color="#27447D"),
             border_radius=15,
             padding=20,
@@ -193,7 +198,7 @@ def main(page: ft.Page):
                 spacing='30',
             ),
 
-            margin = ft.margin.all(20),
+            margin = ft.margin.all(10),
             padding=10,
             alignment=ft.alignment.center,
         )
