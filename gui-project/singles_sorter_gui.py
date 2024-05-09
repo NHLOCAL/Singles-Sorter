@@ -172,7 +172,7 @@ def artist_from_song(my_file):
         script_dir = os.path.dirname(os.path.abspath(__file__))
 
         # Construct the path to the CSV file
-        csv_path = os.path.join(script_dir, "singer-list.csv")
+        csv_path = os.path.abspath("singer-list.csv")
         
         global singer_list
         with open(csv_path, 'r') as file:
