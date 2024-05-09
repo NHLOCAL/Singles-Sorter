@@ -48,6 +48,9 @@ def check_errors(source_dir, target_dir):
 
     if os.path.samefile(source_dir, target_dir):
         raise ValueError("תיקיית המקור ותיקיית היעד לא יכולות להיות זהות")
+    
+    if not os.listdir(source_dir):
+        raise ValueError("תיקיית המקור ריקה")
 
 
 

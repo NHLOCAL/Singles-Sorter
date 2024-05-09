@@ -6,7 +6,7 @@ def main(page: ft.Page):
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.theme_mode = ft.ThemeMode.LIGHT
     page.rtl = True
-    page.padding = 20  # Added padding for better spacing
+    page.padding = 30  # Added padding for better spacing
     #page.bgcolor = ft.colors.SURFACE_VARIANT
     #page.window_height = 680
     #page.window_width = 800
@@ -94,8 +94,6 @@ def main(page: ft.Page):
         height='70',
         width='180',
         )
-    
-    #organize_button.disabled = True
 
     page.add(
    
@@ -111,7 +109,7 @@ def main(page: ft.Page):
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             ),
  
-            margin = ft.margin.only(40, 30, 40, 30)
+            margin = ft.margin.all(20)
 
         ),
 
@@ -144,10 +142,10 @@ def main(page: ft.Page):
             ),
 
             
-            margin = ft.margin.only(40, 5, 40, 0),
+            margin = ft.margin.only(20, 5, 20, 0),
             border=ft.border.all(2, color="#27447D"),
             border_radius=15,
-            padding=20,
+            padding=10,
             alignment=ft.alignment.center,
         ),
 
@@ -201,7 +199,7 @@ def main(page: ft.Page):
         source_dir = source_dir_input.value
         target_dir = target_dir_input.value
 
-        show_snackbar = lambda message_text, color: ft.SnackBar(content=ft.Text(message_text), bgcolor=color)
+        show_snackbar = lambda message_text, color, mseconds=1000, : ft.SnackBar(content=ft.Text(message_text), bgcolor=color, duration=mseconds)
         
         if not source_dir or not target_dir:
             page.snack_bar = show_snackbar("אנא בחר תיקיית מקור ותיקיית יעד!", ft.colors.ERROR)
@@ -224,6 +222,10 @@ def main(page: ft.Page):
 
         # Call the scan_dir function with arguments and progress callback
         try:
+            # השבתת כפתור הפעל בעת הרצת הסריקה
+            organize_button.disabled = True
+            page.update()
+            
             scan_dir(
                 source_dir, 
                 target_dir, 
@@ -234,7 +236,7 @@ def main(page: ft.Page):
                 tree_folders, 
                 progress_callback
             )
-            page.snack_bar = show_snackbar("מיון הקבצים הסתיים בהצלחה", ft.colors.GREEN)
+            page.snack_bar = show_snackbar("מיון הקבצים הסתיים בהצלחה", ft.colors.GREEN, 10000)
 
         except FileNotFoundError as error:
             page.snack_bar = show_snackbar(f"{error}", ft.colors.ERROR)
@@ -243,10 +245,10 @@ def main(page: ft.Page):
         except Exception as error:
             page.snack_bar = show_snackbar(f"שגיאה במיון הקבצים: {error}", ft.colors.ERROR)
 
-
         finally: 
             page.window_progress_bar = '0.0'
             page.snack_bar.open = True
+            organize_button.disabled = False
             page.update()
 
 
