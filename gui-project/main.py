@@ -7,7 +7,7 @@ def main(page: ft.Page):
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.theme_mode = ft.ThemeMode.LIGHT
     page.rtl = True
-    page.padding = 30  # Added padding for better spacing
+    page.padding = ft.padding.only(45, 30, 45, 30)
     #page.bgcolor = ft.colors.SURFACE_VARIANT
     #page.window_height = 680
     #page.window_width = 800
@@ -20,10 +20,10 @@ def main(page: ft.Page):
     page.appbar = ft.AppBar(
         title=ft.Row(
             [
-                ft.Image(src="assets/icon.png", width=60),  # Adjusted icon size
+                ft.Image(src="assets/icon.png", width=40),  # Adjusted icon size
                 ft.Text(
                     "מסדר הסינגלים 13.0",
-                    size=30,  # Adjusted title size
+                    size=24,  # Adjusted title size
                     text_align=ft.TextAlign.CENTER,
                     color=ft.colors.ON_PRIMARY,  # Assumed color for better contrast
                     weight=ft.FontWeight.BOLD,
@@ -34,7 +34,7 @@ def main(page: ft.Page):
         center_title=True,
         bgcolor=ft.colors.PRIMARY,
         elevation=4,  # Added elevation for visual depth
-        toolbar_height='80',
+        toolbar_height='60',
     )
 
 
@@ -110,7 +110,7 @@ def main(page: ft.Page):
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             ),
  
-            margin = ft.margin.all(20)
+            margin = ft.margin.only(0, 0, 0, 20)
 
         ),
 
@@ -143,7 +143,7 @@ def main(page: ft.Page):
             ),
 
             
-            margin = ft.margin.only(20, 5, 20, 0),
+            margin = ft.margin.all(0),
             border=ft.border.all(2, color="#27447D"),
             border_radius=15,
             padding=10,
