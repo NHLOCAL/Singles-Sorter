@@ -4,13 +4,13 @@ from singles_sorter_gui import scan_dir
 
 def main(page: ft.Page):
     page.title = "מסדר הסינגלים"
-    page.vertical_alignment = ft.MainAxisAlignment.CENTER
+    page.vertical_alignment = ft.MainAxisAlignment.SPACE_BETWEEN
     page.theme_mode = ft.ThemeMode.LIGHT
     page.rtl = True
     page.padding = ft.padding.only(45, 30, 45, 30)
     #page.bgcolor = ft.colors.SURFACE_VARIANT
-    #page.window_height = 680
-    #page.window_width = 800
+    page.window_height = 820
+    page.window_width = 900
 
     # Consistent button style definition
     round_button = ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=15))
