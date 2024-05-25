@@ -1,5 +1,2 @@
-singles_sorter_func
 music_tag
 jibrish_to_hebrew
-identify_similarities
-check_name
