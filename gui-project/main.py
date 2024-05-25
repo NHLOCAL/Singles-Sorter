@@ -54,7 +54,7 @@ def main(page: ft.Page):
 
     # Input fields
 
-    height_button = '50'
+    height_button = '55'
     round_text_field = ft.border_radius.only(15, 10, 15, 10)
 
     source_dir_input = ft.TextField(label="תיקית הסינגלים שלך", autofocus=True, rtl=True, expand=True, border_radius=round_text_field, height='60', hint_text=r"C:\Music\סינגלים",)
