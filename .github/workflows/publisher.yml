@@ -24,7 +24,8 @@ jobs:
 
     - name: Build EXE
       run: |
-        pyinstaller --noconfirm --onefile --console --name "singles_sorter.exe" gui-project/main.py
+        flet pack -i gui-project/assets/icon.ico gui-project/main.py --product-name "Singles Sorter" --product-version "12.9.0" --file-description "Software that sorts your singles folders through advanced automation" --copyright "nh.local11@gmail.com"
+
 
     - name: Create Artifact Directory
       run: mkdir -p artifacts
