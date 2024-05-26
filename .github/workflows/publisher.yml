@@ -20,7 +20,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install pyinstaller music_tag jibrish_to_hebrew
+        pip install pyinstaller music_tag jibrish_to_hebrew flet
 
     - name: Build EXE
       run: |
@@ -38,7 +38,7 @@ jobs:
         powershell -Command "Compress-Archive -Path * -DestinationPath Singles-Sorter.zip"
 
     - name: Upload Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: singles-sorter
         path: artifacts/Singles-Sorter.zip
