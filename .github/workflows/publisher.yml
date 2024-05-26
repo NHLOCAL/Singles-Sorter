@@ -31,7 +31,7 @@ jobs:
       run: mkdir -p artifacts
       
     - name: Copy Output File to Artifact Directory
-      run: copy dist\singles_sorter.exe artifacts\ 
+      run: copy dist\main.exe artifacts\ 
 
     - name: Zip Artifact Directory
       run: |
