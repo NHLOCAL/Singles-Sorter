@@ -24,7 +24,7 @@ jobs:
 
     - name: Build EXE
       run: |
-        flet pack -i gui-project/assets/icon.ico gui-project/main.py --product-name "Singles Sorter" --product-version "12.9.0" --file-description "Software that sorts your singles folders through advanced automation" --copyright "nh.local11@gmail.com"
+        flet pack -i gui-project/assets/icon.ico gui-project/main.py --product-name "Singles Sorter" --product-version "12.9.0" --file-description "Singles Sorter" --copyright "nh.local11@gmail.com"
 
 
     - name: Create Artifact Directory
