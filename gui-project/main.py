@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import flet as ft
-from singles_sorter_gui import scan_dir
+from singles_sorter_v2 import scan_dir
 
 def main(page: ft.Page):
     page.title = "מסדר הסינגלים"
