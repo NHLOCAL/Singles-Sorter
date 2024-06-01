@@ -5,7 +5,7 @@ def clean_names(dir_path):
     # Function to clean file names
     pass
 
-def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_only=False, singles_folder=True, tree_folders=False, progress_callback=None):
+def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_only=False, singles_folder=True, main_folder_only=False, progress_callback=None):
     """
     Main function of the program. Scans the specified directory and creates a list of files for copying.
     At the end of the process, it copies them if a target directory parameter is provided.
@@ -17,7 +17,7 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_o
         abc_sort = Sort folders alphabetically
         exist_only = Transfer to existing folders only
         singles_folder = Create an internal "singles" folder
-        tree_folders = Sort only the main folder/tree folders
+        main_folder_only = Sort only the main folder
         Defined by True or False.
     
     Result:
@@ -29,10 +29,10 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_o
     print(f"Alphabetical sort: {abc_sort}")
     print(f"Exist only: {exist_only}")
     print(f"Singles folder: {singles_folder}")
-    print(f"Tree folders: {tree_folders}")
+    print(f"Main folder only: {main_folder_only}")
 
 def main():
-    parser = argparse.ArgumentParser(description="Run directory operations with default parameters")
+    parser = argparse.ArgumentParser(description="Single Organizer 13.0 - Scan and organize music files into folders by artist using advanced automation.")
     parser.add_argument('dir_path', help="Path to the source directory")
     parser.add_argument('target_dir', help="Path to the target directory", nargs='?', default=None)
 
@@ -40,7 +40,7 @@ def main():
     parser.add_argument('--abc_sort', help="Sort folders alphabetically", action='store_true')
     parser.add_argument('--exist_only', help="Transfer to existing folders only", action='store_true')
     parser.add_argument('--no_singles_folder', help="Do not create an internal 'singles' folder", action='store_false', dest='singles_folder', default=True)
-    parser.add_argument('--main_folder_only', help="Sort only the main folder (default: False, sorts tree folders)", action='store_false', dest='tree_folders', default=True)
+    parser.add_argument('--main_folder_only', help="Sort only the main folder (default: False)", action='store_true')
 
     args = parser.parse_args()
 
@@ -51,13 +51,13 @@ def main():
         abc_sort = args.abc_sort  # Alphabetical sorting
         exist_only = args.exist_only  # Transfer to existing folders only        
         singles_folder = args.singles_folder  # Internal singles folder
-        tree_folders = args.tree_folders  # Tree folders
+        main_folder_only = args.main_folder_only  # Main folder only
 
         # Run the clean names function
         clean_names(dir_path)
     
         # Run the scan directory function with all parameters
-        scan_dir(dir_path, target_dir, copy_mode, abc_sort, exist_only, singles_folder, tree_folders)
+        scan_dir(dir_path, target_dir, copy_mode, abc_sort, exist_only, singles_folder, main_folder_only)
     except Exception as e:
         print("Error: {}".format(e))
 

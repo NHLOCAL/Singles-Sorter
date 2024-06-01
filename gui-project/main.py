@@ -73,7 +73,7 @@ def main(page: ft.Page):
 
     # Checkboxes
     copy_mode_checkbox = ft.Checkbox(label="העתק קבצים (העברה היא ברירת המחדל)")
-    tree_folders_checkbox = ft.Checkbox(label="סרוק תיקיה ראשית בלבד", )
+    main_folder_only_checkbox = ft.Checkbox(label="סרוק תיקיה ראשית בלבד", )
     singles_folder_checkbox = ft.Checkbox(label='צור תיקיות סינגלים פנימיות', value=True)
     exist_only_checkbox = ft.Checkbox(label="השתמש בתיקיות קיימות בלבד")
     abc_sort_checkbox = ft.Checkbox(label="צור תיקיות ראשיות לפי ה-א' ב'")
@@ -125,7 +125,7 @@ def main(page: ft.Page):
                         [
                             ft.Text("הגדרות בסיסיות", weight=ft.FontWeight.BOLD),
                             copy_mode_checkbox,
-                            tree_folders_checkbox,
+                            main_folder_only_checkbox,
                         ]
                     ),
 
@@ -210,7 +210,7 @@ def main(page: ft.Page):
 
         # Get checkbox values
         copy_mode = copy_mode_checkbox.value
-        tree_folders = tree_folders_checkbox.value
+        main_folder_only = main_folder_only_checkbox.value
         singles_folder = singles_folder_checkbox.value
         exist_only = exist_only_checkbox.value
         abc_sort = abc_sort_checkbox.value
@@ -234,7 +234,7 @@ def main(page: ft.Page):
                 abc_sort, 
                 exist_only, 
                 singles_folder, 
-                tree_folders, 
+                main_folder_only, 
                 progress_callback
             )
             page.snack_bar = show_snackbar("מיון הקבצים הסתיים בהצלחה", ft.colors.GREEN, 10000)

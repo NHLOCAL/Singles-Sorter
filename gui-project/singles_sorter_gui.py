@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
-from sys import argv
+import argparse
 # פונקציה להעתקת והעברת קבצים
 from shutil import copy, move
 # יבוא פונקציה לקריאת מטאדאטה של קובץ
@@ -15,6 +15,9 @@ import csv
 from check_name import check_exact_name
 
 
+# גרסת התוכנה
+global VERSION
+VERSION = '12.9.1'
 
 # הגדרות עבור תצוגת אחוזים
 def progress_display(len_amount):
@@ -53,7 +56,7 @@ def check_errors(source_dir, target_dir):
         raise ValueError("תיקיית המקור ריקה")
 
 
-
+# הסרת תוכן מיותר משמות הקבצים
 def clean_names(dir_path):
     pass
 
@@ -64,36 +67,34 @@ def clean_names(dir_path):
 
 
 
-
-
-
 # מעבר על עץ התיקיות שהוגדר
-def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_only=False, singles_folder=True, tree_folders=False, progress_callback=None):
+def scan_dir(dir_path, target_dir, copy_mode=False, abc_sort=False, exist_only=False, singles_folder=True, main_folder_only=False, progress_callback=None):
     """
-הפונקציה המרכיבת את הפקודה הראשית של התכנית. היא סורקת את התיקיות והקבצים תחת נתיב שצוין ויוצרת רשימה של קבצים להעתקה.
-בסוף התהליך היא מעתיקה אותם אם הוכנס פרמטר של תיקית יעד.
+    Main function of the program. Scans the specified directory and creates a list of files for copying.
+    At the end of the process, it copies them if a target directory parameter is provided.
     
-תנאים:
-    פרמטר 1 = נתיב תיקיה לסריקה
-    פרמטר 2 = נתיב תיקית יעד להעברה אליה (אופציונלי)
-    פרמטר 3 = הפעלת מצב העתקה (ברירת המחדל היא העברה)
-    פרמטר 4 = מיון בתיקיות לפי א' ב'
-    פרמטר 5 = העברה לתיקיות קיימות בלבד
-    פרמטר 6 = יצירת תיקית "סינגלים" פנימית
-    פרמטר 7 = מיון תיקיה ראשית בלבד/עץ תיקיות
-מוגדר על ידי True או False.
+    Parameters:
+        dir_path = Directory path to scan
+        target_dir = Target directory path for transfer
+        copy_mode = Enable copy mode (default is move)
+        abc_sort = Sort folders alphabetically
+        exist_only = Transfer to existing folders only
+        singles_folder = Create an internal "singles" folder
+        main_folder_only = Sort only the main folder
+        Defined by True or False.
     
-תוצאה:
-    מדפיס את רשימת האמנים שמופיעים במטאדאטה של השירים, ומעתיק אותם ליעד.
+    Result:
+        Prints the list of artists that appear in the song metadata and copies them to the target.
     """
 
+    # בדיקת שגיאות בארגומנטים של המשתמש
     check_errors(dir_path, target_dir)
 
 
     # סריקת עץ התיקיות או התיקיה הראשית בהתאם לבחירת המשתמש והכנסת שם הקבצים ושם האמן שלהם לרשימה
     info_list = []  
-    if tree_folders is False:
-        for root, dirs, files in os.walk(dir_path):
+    if main_folder_only is False:
+        for root, _, files in os.walk(dir_path):
             for my_file in files:
                 file_path = os.path.join(root, my_file)
                 if my_file.lower().endswith((".mp3",".wma", ".wav")):
@@ -101,7 +102,7 @@ def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_o
                     if artist: info_list.append((file_path, artist))
 
     # סריקת התיקיה הראשית בלבד ללא תיקיות פנימיות
-    elif tree_folders:
+    elif main_folder_only:
         for my_file in os.listdir(dir_path):
             file_path = os.path.join(dir_path, my_file)
             if os.path.isfile(file_path):
@@ -283,40 +284,34 @@ def check_artist(artist):
 
 
 def main():
-    try:
-        dir_path = os.path.join(argv[1]) # נתיב תיקית מקור
-        target_dir = os.path.join(argv[2]) # נתיב תיקית יעד
-        copy_mode = True if eval(argv[3]) else False  # קביעת העתקה או העברה 
-        # מעבר על עץ תיקיות
-        tree_folders = True if eval(argv[4]) else False
-        # הוספת תיקית סינגלים פנימית
-        singles_folder = True if eval(argv[5]) else False 
-        exist_only = True if eval(argv[6]) else False # העברה לתיקיות קיימות בלבד        
-        abc_sort = True if eval(argv[7]) else False # מיון לפי א' ב'
+    parser = argparse.ArgumentParser(description=f"Singles Sorter {VERSION} - Scan and organize music files into folders by artist using advanced automation.")
+    parser.add_argument('dir_path', help="Path to the source directory")
+    parser.add_argument('target_dir', help="Path to the target directory", nargs='?')
 
-        # הרצת פונקציית ניקוי שמות קבצים
+    parser.add_argument('--copy_mode', help="Enable copy mode (default is move mode)", action='store_true')
+    parser.add_argument('--abc_sort', help="Sort folders alphabetically", action='store_true')
+    parser.add_argument('--exist_only', help="Transfer to existing folders only", action='store_true')
+    parser.add_argument('--no_singles_folder', help="Do not create an internal 'singles' folder", action='store_false', dest='singles_folder', default=True)
+    parser.add_argument('--main_folder_only', help="Sort only the main folder (default: False)", action='store_true')
+
+    args = parser.parse_args()
+
+    try:
+        dir_path = os.path.join(args.dir_path) # Source directory path
+        target_dir = os.path.join(args.target_dir) # Target directory path
+        copy_mode = args.copy_mode  # Set copy mode
+        abc_sort = args.abc_sort  # Alphabetical sorting
+        exist_only = args.exist_only  # Transfer to existing folders only        
+        singles_folder = args.singles_folder  # Internal singles folder
+        main_folder_only = args.main_folder_only  # Main folder only
+
+        # Run the clean names function
         clean_names(dir_path)
     
-        # הרצת הפונקציה עם כל הפרמטרים
-        scan_dir(dir_path, target_dir, copy_mode, abc_sort, exist_only, singles_folder, tree_folders)
+        # Run the scan directory function with all parameters
+        scan_dir(dir_path, target_dir, copy_mode, abc_sort, exist_only, singles_folder, main_folder_only)
     except Exception as e:
         print("Error: {}".format(e))
-
-        print("""מסדר הסינגלים 13.0 - סריקת קבצי מוזיקה ומיון שלהם לפי אמנים.
-    
-תנאים:
-    פרמטר 1 = נתיב תיקיה לסריקה
-    פרמטר 2 = נתיב תיקית יעד להעברה אליה (אופציונלי)
-    פרמטר 3 = הפעלת מצב העתקה (ברירת המחדל היא העברה)
-    פרמטר 4 = מצב סריקת עץ תיקיות
-    פרמטר 5 = יצירת תיקית "סינגלים" פנימית
-    פרמטר 6 = הפעלת מצב העברה לתיקיות קיימות בלבד
-    פרמטר 7 = יצירת תיקיות א' ב' ראשיות
-מוגדר על ידי True או False.
-    
-תוצאה:
-    מדפיס את רשימת האמנים שמופיעים במטאדאטה של השירים, ומעתיק אותם ליעד.
-""")
     
     
 if __name__ == '__main__':
