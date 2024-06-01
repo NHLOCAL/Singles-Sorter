@@ -57,13 +57,39 @@ def check_errors(source_dir, target_dir):
 
 
 # הסרת תוכן מיותר משמות הקבצים
-def clean_names(dir_path):
-    pass
+def clean_filename(filename):
+    substrings_to_remove = [
+        " -מייל מיוזיק",
+        " - ציצו במייל",
+        "-חדשות המוזיקה",
+        " - חדשות המוזיקה",
+        " - ציצו",
+        " מוזיקה מכל הלב",
+        " - מייל מיוזיק"
+    ]
+    
+    for substring in substrings_to_remove:
+        filename = filename.replace(substring, "")
+        
+    return filename
 
-
-
-
-
+def clean_names(dir_path, main_folder_only=False):
+    if main_folder_only is False:
+        for root, _, files in os.walk(dir_path):
+            for my_file in files:
+                if my_file.lower().endswith((".mp3", ".wma", ".wav")):
+                    old_file_path = os.path.join(root, my_file)
+                    new_file_name = clean_filename(my_file)
+                    new_file_path = os.path.join(root, new_file_name)
+                    os.rename(old_file_path, new_file_path)
+                    
+    elif main_folder_only:
+        for my_file in os.listdir(dir_path):
+            file_path = os.path.join(dir_path, my_file)
+            if os.path.isfile(file_path) and my_file.lower().endswith((".mp3", ".wma", ".wav")):
+                new_file_name = clean_filename(my_file)
+                new_file_path = os.path.join(dir_path, new_file_name)
+                os.rename(file_path, new_file_path)
 
 
 
@@ -306,7 +332,7 @@ def main():
         main_folder_only = args.main_folder_only  # Main folder only
 
         # Run the clean names function
-        clean_names(dir_path)
+        clean_names(dir_path, main_folder_only)
     
         # Run the scan directory function with all parameters
         scan_dir(dir_path, target_dir, copy_mode, abc_sort, exist_only, singles_folder, main_folder_only)
