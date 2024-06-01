@@ -116,7 +116,7 @@ def scan_dir(dir_path, target_dir, copy_mode=False, abc_sort=False, exist_only=F
     # מעבר על תוצאות הסריקה והדפסתם בכפוף למספר תנאים
     for file_path, artist in info_list:   
         show_len = next(progress_generator)
-        print(" " * 30, str(show_len), "% ", "הושלמו",end='\r')
+        print(f"{show_len}% completed",end='\r')
         if progress_callback:  # Call the callback with progress
             progress_callback(show_len)
                        
