@@ -54,6 +54,19 @@ def check_errors(source_dir, target_dir):
 
 
 
+def clean_names(dir_path):
+    pass
+
+
+
+
+
+
+
+
+
+
+
 # מעבר על עץ התיקיות שהוגדר
 def scan_dir(dir_path, target_dir=None, copy_mode=False, abc_sort=False, exist_only=False, singles_folder=True, tree_folders=False, progress_callback=None):
     """
@@ -281,8 +294,11 @@ def main():
         exist_only = True if eval(argv[6]) else False # העברה לתיקיות קיימות בלבד        
         abc_sort = True if eval(argv[7]) else False # מיון לפי א' ב'
 
+        # הרצת פונקציית ניקוי שמות קבצים
+        clean_names(dir_path)
+    
         # הרצת הפונקציה עם כל הפרמטרים
-        scan_dir(str(argv[1]), str(argv[2]), copy_mode, abc_sort, exist_only, singles_folder, tree_folders)
+        scan_dir(dir_path, target_dir, copy_mode, abc_sort, exist_only, singles_folder, tree_folders)
     except Exception as e:
         print("Error: {}".format(e))
 
