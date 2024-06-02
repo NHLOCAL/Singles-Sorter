@@ -52,6 +52,91 @@ def main(page: ft.Page):
     )
 
 
+
+
+    # תפריט אפשרויות נוספות
+    # Define menu items
+    def on_menu_selected(e):
+        if e.control.data == "help":
+            show_help()
+        elif e.control.data == "about":
+            show_about()
+        elif e.control.data == "whats_new":
+            show_whats_new()
+        elif e.control.data == "settings":
+            show_settings()
+
+    menu_button = ft.PopupMenuButton(
+        items=[
+            ft.PopupMenuItem(text="עזרה", icon=ft.icons.HELP, data="help", on_click=on_menu_selected),
+            ft.PopupMenuItem(text="אודות התוכנה", icon=ft.icons.INFO, data="about", on_click=on_menu_selected),
+            ft.PopupMenuItem(text="מה חדש", icon=ft.icons.NEW_RELEASES, data="whats_new", on_click=on_menu_selected),
+            ft.PopupMenuItem(text="הגדרות נוספות", icon=ft.icons.SETTINGS, data="settings", on_click=on_menu_selected),
+        ],
+        icon=ft.icons.MORE_VERT,
+        icon_color=ft.colors.ON_PRIMARY,
+        icon_size=28,
+        tooltip="אפשרויות נוספות",
+    )
+
+    page.appbar.actions.append(menu_button)
+
+    # Define handlers for menu items
+    def show_help():
+        # Open the help file
+        try:
+            with open("help.md", "r", encoding="utf-8") as file:
+                help_content = file.read()
+        except FileNotFoundError:
+            return
+
+        # Create a BottomSheet to display the help content
+        help_sheet = ft.BottomSheet(
+            content=ft.Container(
+                content=ft.Column([
+                    ft.Text("עזרה", theme_style="headlineMedium"),
+                    ft.Markdown(help_content),
+                ],
+                tight=True,
+                rtl=True,
+                scroll=ft.ScrollMode.HIDDEN,
+                
+                ),
+                    
+                alignment=ft.alignment.center,
+                padding=20, 
+                margin=10,
+                expand=False,
+                width=page.window_width,
+
+            ),
+
+            enable_drag=True,
+            is_scroll_controlled=True,
+        )
+
+        page.overlay.append(help_sheet)
+        help_sheet.open = True
+        page.update()
+
+    def show_about():
+        page.snack_bar = ft.SnackBar(ft.Text("אודות התוכנה: כאן יופיע המידע על אודות התוכנה"), bgcolor=ft.colors.SECONDARY_CONTAINER)
+        page.snack_bar.open = True
+        page.update()
+
+    def show_whats_new():
+        page.snack_bar = ft.SnackBar(ft.Text("מה חדש: כאן יופיע המידע על מה חדש"), bgcolor=ft.colors.SECONDARY_CONTAINER)
+        page.snack_bar.open = True
+        page.update()
+
+    def show_settings():
+        page.snack_bar = ft.SnackBar(ft.Text("הגדרות נוספות: כאן יופיע המידע על הגדרות נוספות"), bgcolor=ft.colors.SECONDARY_CONTAINER)
+        page.snack_bar.open = True
+        page.update()
+
+
+
+
     # Input fields
 
     height_button = '55'
@@ -101,6 +186,7 @@ def main(page: ft.Page):
             modal=True,
             title=ft.Text("אשר והתחל", text_align="center"),
             content=ft.Text("התוכנה מיועדת לסינגלים בלבד\n מיון תיקיות אלבומים צפויה לשבש אותם", text_align="center"),
+
             actions=[
                 ft.TextButton("אישור", on_click=continue_organization),
                 ft.TextButton("ביטול", on_click=close_dialog),

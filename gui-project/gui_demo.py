@@ -1,40 +1,35 @@
 import flet as ft
-from singles_sorter_gui import scan_dir  # Assuming this is your external function
 
 
-def main(page: ft.Page):
-    def show_snackbar_with_action(message_text, color):
-        def dismiss_snackbar(e):
-            page.snack_bar.open = False
-            page.update()
+def main(page):
+    page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
+    page.vertical_alignment = ft.MainAxisAlignment.CENTER
 
-        page.snack_bar = ft.SnackBar(
-            content=ft.Text(message_text),
-            bgcolor=color,
-            action=ft.TextButton("סגור", on_click=dismiss_snackbar),
-        )
-        
-        page.snack_bar.open = True
-        page.update()
-
-    def show_alert_dialog(message_text):
-        def close_dialog(e):
-            page.dialog.open = False
-            page.update()
-
-        page.dialog = ft.AlertDialog(
-            title=ft.Text("הודעה"),
-            content=ft.Text(message_text),
+    page.add(
+        ft.CupertinoContextMenu(
+            enable_haptic_feedback=True,
+            content=ft.Image("https://picsum.photos/200/200"),
             actions=[
-                ft.TextButton("אישור", on_click=close_dialog),
+                ft.CupertinoContextMenuAction(
+                    text="Action 1",
+                    is_default_action=True,
+                    trailing_icon=ft.icons.CHECK,
+                    on_click=lambda e: print("Action 1"),
+                ),
+                ft.CupertinoContextMenuAction(
+                    text="Action 2",
+                    trailing_icon=ft.icons.MORE,
+                    on_click=lambda e: print("Action 2"),
+                ),
+                ft.CupertinoContextMenuAction(
+                    text="Action 3",
+                    is_destructive_action=True,
+                    trailing_icon=ft.icons.CANCEL,
+                    on_click=lambda e: print("Action 3"),
+                ),
             ],
         )
-        page.dialog.open = True
-        page.update()
+    )
 
-    
-
-    #show_snackbar_with_action('ddd', 'blue')
-    show_alert_dialog('cccccccccccccc fdxbf')
 
 ft.app(target=main)
