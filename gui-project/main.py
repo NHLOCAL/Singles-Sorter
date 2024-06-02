@@ -13,11 +13,13 @@ def main(page: ft.Page):
     if page.platform == ft.PagePlatform.ANDROID:
         page.padding = ft.padding.only(20, 10, 20, 10)
         page.scroll = ft.ScrollMode.AUTO
-        
+        auto_focus=False
+
     else:
         page.padding = ft.padding.only(45, 30, 45, 30)
         page.window_height = 820
         page.window_width = 900
+        auto_focus=True
 
     # Consistent button style definition
     round_button = ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=15))
@@ -150,7 +152,7 @@ def main(page: ft.Page):
     height_button = '55'
     round_text_field = ft.border_radius.only(15, 10, 15, 10)
 
-    source_dir_input = ft.TextField(label="תיקית הסינגלים שלך", autofocus=True, rtl=True, expand=True, border_radius=round_text_field, height='60', hint_text=r"C:\Music\סינגלים",)
+    source_dir_input = ft.TextField(label="תיקית הסינגלים שלך", autofocus=auto_focus, rtl=True, expand=True, border_radius=round_text_field, height='60', hint_text=r"C:\Music\סינגלים",)
 
     target_dir_input = ft.TextField(label="תיקית יעד", rtl=True, expand=True,  border_radius=round_text_field, height='60', hint_text=r"C:\Music\כל המוזיקה",)
     
