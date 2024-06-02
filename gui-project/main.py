@@ -95,22 +95,23 @@ def main(page: ft.Page):
             content=ft.Container(
                 content=ft.Column([
                     ft.Text("עזרה", theme_style="headlineMedium"),
-                    ft.Markdown(help_content),
+                    ft.Markdown(help_content, code_theme='vs'),
                 ],
                 tight=True,
                 rtl=True,
-                scroll=ft.ScrollMode.HIDDEN,
+                scroll=ft.ScrollMode.AUTO,
                 
                 ),
                     
                 alignment=ft.alignment.center,
-                padding=20, 
-                margin=10,
+                padding=40,
                 expand=False,
-                width=page.window_width,
+                bgcolor=ft.colors.SECONDARY_CONTAINER,
 
             ),
 
+            #show_drag_handle=True,
+            #elevation=50,
             enable_drag=True,
             is_scroll_controlled=True,
         )
