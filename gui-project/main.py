@@ -11,7 +11,7 @@ def main(page: ft.Page):
 
     # הגדרה אוטומטית מותאמת למערכת ההפעלה
     if page.platform == ft.PagePlatform.ANDROID:
-        page.padding = ft.padding.only(20, 10, 20, 10)
+        page.padding = ft.padding.all(20)
         page.scroll = ft.ScrollMode.AUTO
         auto_focus=False
 
@@ -321,7 +321,7 @@ def main(page: ft.Page):
         source_dir = source_dir_input.value
         target_dir = target_dir_input.value
 
-        show_snackbar = lambda message_text, color, mseconds=1000, : ft.SnackBar(content=ft.Text(message_text), bgcolor=color, duration=mseconds)
+        show_snackbar = lambda message_text, color, mseconds=2500, : ft.SnackBar(content=ft.Text(message_text), bgcolor=color, duration=mseconds)
         
         if not source_dir or not target_dir:
             page.snack_bar = show_snackbar("אנא בחר תיקיית מקור ותיקיית יעד!", ft.colors.ERROR)

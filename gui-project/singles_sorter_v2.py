@@ -7,8 +7,6 @@ from shutil import copy, move
 from music_tag import load_file
 # יבוא פונקציה להמרת ג'יבריש לעברית תקינה
 from jibrish_to_hebrew import fix_jibrish
-# יבוא פונקציה לזיהוי דמיון בין מחרוזות
-from identify_similarities import similarity_sure
 # פונקציה לקריאת קבצי csv
 import csv
 # פונקציה לבדיקת דיוק שם האמן במחרוזת
@@ -187,14 +185,14 @@ def scan_dir(dir_path, target_dir, copy_mode=False, abc_sort=False, exist_only=F
  
 def artist_from_song(my_file):
     """
-הפונקציה בודקת את שם אמן הקובץ בשם הקובץ לפי מסד נתונים ומכניסה את שם האמן למשתנה
-אם השם לא קיים היא סורקת את המטאדאטה של השיר ומכניסה את שם האמן למשתנה
+    הפונקציה בודקת את שם אמן הקובץ בשם הקובץ לפי מסד נתונים ומכניסה את שם האמן למשתנה
+    אם השם לא קיים היא סורקת את המטאדאטה של השיר ומכניסה את שם האמן למשתנה
     
-תנאים:
-    my_file (str) - שם הקובץ שנסרק
+    תנאים:
+        my_file (str) - שם הקובץ שנסרק
     
-תוצאה:
-    ערך המכיל את שם אמן הקובץ
+    תוצאה:
+        ערך המכיל את שם אמן הקובץ
     """
  
     # מעבר על רשימת הזמרים בדאטה וחיפוש שלהם בשם הקובץ
@@ -215,12 +213,12 @@ def artist_from_song(my_file):
         csv_path = os.path.abspath("singer-list.csv")
         
         global singer_list
-        with open(csv_path, 'r') as file:
+        with open(csv_path, 'r', encoding='utf-8') as file:
             csv_reader = csv.reader(file)
             singer_list = [tuple(row) for row in csv_reader]
         
         if os.path.isfile("personal-singer-list.csv"):
-            with open("personal-singer-list.csv", 'r') as file:
+            with open("personal-singer-list.csv", 'r', encoding='utf-8') as file:
                 csv_reader = csv.reader(file)
                 personal_list = [tuple(row) for row in csv_reader]
             singer_list.extend(personal_list)
@@ -284,18 +282,21 @@ def artist_from_song(my_file):
                         if exact:
                             artist = target_name
                             return artist
-    except:
+    except UnicodeDecodeError as e:
+        print(f"Error decoding metadata in file {my_file}: {e}")
         return
+    except Exception as e:
+        print(f"An unexpected error occurred with file {my_file}: {e}")
+        return
+
 
 
 # בדיקות שונות על שם האמן
 def check_artist(artist):
     # הגדרת רשימת מחרוזות יוצאות דופן, עליהם המערכת מוגדרת לדלג
     unusual_list = ["סינגלים", "סינגל", "אבגדהוזחטיכלמנסעפצקרשתךםןץ", "אמן לא ידוע", "טוב", "לא ידוע", "תודה לך ה"]
-    # החזרת שקר אם שם האמן קיים ברשימת יוצאי הדופן
-    # או אם הוא דומה לפריט כלשהו ברשימת יוצאי הדופן       
-    unusual_str = similarity_sure(artist, unusual_list, True)        
-    if artist in unusual_list or unusual_str[0]:
+    # החזרת שקר אם שם האמן קיים ברשימת יוצאי הדופן     
+    if artist in unusual_list:
         return False
        
     # בדיקה אם המחרוזת אינה ארוכה מידי
