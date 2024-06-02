@@ -87,14 +87,39 @@ def main(page: ft.Page):
     
 
 
-    # Organize button
+    def show_warning(e):
+        def close_dialog(e):
+            page.dialog.open = False
+            page.update()
+
+        def continue_organization(e):
+            page.dialog.open = False
+            organize_files(e, page)
+            page.update()
+        
+        page.dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("אשר והתחל", text_align="center"),
+            content=ft.Text("התוכנה מיועדת לסינגלים בלבד\n מיון תיקיות אלבומים צפויה לשבש אותם", text_align="center"),
+            actions=[
+                ft.TextButton("אישור", on_click=continue_organization),
+                ft.TextButton("ביטול", on_click=close_dialog),
+            ],
+            actions_alignment=ft.MainAxisAlignment.SPACE_AROUND,
+        )
+        page.dialog.open = True
+        page.update()
+
     organize_button = ft.ElevatedButton(
         content=ft.Text("הפעל כעת", size=20),
-        on_click=lambda e: organize_files(e, page),
+        on_click=show_warning,
         style=round_button,
         height='70',
         width='180',
-        )
+    )
+
+
+
 
     page.add(
    
