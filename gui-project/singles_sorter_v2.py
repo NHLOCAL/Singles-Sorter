@@ -161,24 +161,34 @@ def scan_dir(dir_path, target_dir, copy_mode=False, abc_sort=False, exist_only=F
         # יצירת תיקית יעד בתנאים מסויימים
         if exist_only is False:
             if not os.path.isdir(target_path):
-                try: os.makedirs(target_path)
-                except: pass
+                try: 
+                    os.makedirs(target_path)
+                except Exception as e:
+                    print(f"Error creating directory {target_path}: {e}")
                 
         elif exist_only and singles_folder:
             if os.path.isdir(main_target_path) and not os.path.isdir(target_path):
-                try: os.makedirs(target_path)
-                except: pass
+                try: 
+                    os.makedirs(target_path)
+                except Exception as e:
+                    print(f"Error creating directory {target_path}: {e}")
         else:
-            pass #לא תיווצר תיקיה חדשה
+            pass
 
 
         # העברה או העתקה בהתאם להגדרות המשתמש
         if copy_mode and os.path.isdir(target_path):
-            try: copy(file_path, target_path)
-            except: pass
+            try:
+                copy(file_path, target_path)
+                print(f"Copied {file_path} to {target_path}")
+            except Exception as e:
+                print(f"Failed to copy {file_path} to {target_path}: {e}")
         elif os.path.isdir(target_path):
-            try: move(file_path, target_path)
-            except: pass
+            try:
+                move(file_path, target_path)
+                print(f"Moved {file_path} to {target_path}")
+            except Exception as e:
+                print(f"Failed to move {file_path} to {target_path}: {e}")
 
     return True, None
 
