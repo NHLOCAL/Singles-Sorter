@@ -1,32 +1,28 @@
 import flet as ft
 
 def main(page: ft.Page):
-    def bs_dismissed(e):
-        print("Dismissed!")
+    page.title = "My Flet App"
 
-    def show_bs(e):
-        bs.open = True
-        bs.update()
 
-    def close_bs(e):
-        bs.open = False
-        bs.update()
+    if page.platform == ft.PagePlatform.ANDROID:
+        padding_num = 10  # שוליים צרות יותר לאנדרואיד
+        page.scroll = ft.ScrollMode.AUTO  # מאפשר גלילה
+    else:
+        padding_num = 100  # שוליים רחבות יותר למערכות הפעלה אחרות
+        page.scroll = None
 
-    bs = ft.BottomSheet(
-        ft.Container(
-            ft.Column(
-                [
-                    ft.Text("This is sheet's content!"),
-                    ft.ElevatedButton("Close bottom sheet", on_click=close_bs),
-                ],
-                tight=True,
-            ),
-            padding=10,
+    container = ft.Container(
+        content=ft.Column(
+            controls=[
+                ft.Text("ברוכים הבאים לאפליקציה שלי! 😊"),
+                ft.Text("התוכן כאן מותאם למסכים קטנים וגדולים כאחד."),
+                # הוסף כאן את שאר התוכן שלך
+            ],
         ),
-        open=True,
-        on_dismiss=bs_dismissed,
+        padding=padding_num,
+        #expand=True,
     )
-    page.overlay.append(bs)
-    page.add(ft.ElevatedButton("Display bottom sheet", on_click=show_bs))
+
+    page.add(container)
 
 ft.app(target=main)

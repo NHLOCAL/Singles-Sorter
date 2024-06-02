@@ -7,10 +7,17 @@ def main(page: ft.Page):
     page.vertical_alignment = ft.MainAxisAlignment.SPACE_BETWEEN
     page.theme_mode = ft.ThemeMode.LIGHT
     page.rtl = True
-    page.padding = ft.padding.only(45, 30, 45, 30)
     #page.bgcolor = ft.colors.SURFACE_VARIANT
-    page.window_height = 820
-    page.window_width = 900
+
+    # הגדרה אוטומטית מותאמת למערכת ההפעלה
+    if page.platform == ft.PagePlatform.ANDROID:
+        page.padding = ft.padding.only(20, 10, 20, 10)
+        page.scroll = ft.ScrollMode.AUTO
+        
+    else:
+        page.padding = ft.padding.only(45, 30, 45, 30)
+        page.window_height = 820
+        page.window_width = 900
 
     # Consistent button style definition
     round_button = ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=15))
