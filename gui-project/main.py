@@ -45,7 +45,7 @@ def main(page: ft.Page):
 
     else:
         page.padding = ft.padding.only(45, 30, 45, 30)
-        page.window_height = 750
+        page.window_height = 760
         page.window_width = 850
         auto_focus=True
 
@@ -86,7 +86,7 @@ def main(page: ft.Page):
         bgcolor=ft.colors.ON_PRIMARY_CONTAINER,
         shape=ft.NotchShape.CIRCULAR,
         padding=8,
-        height='30',
+        height='35',
     )
 
 
@@ -106,13 +106,20 @@ def main(page: ft.Page):
         elif e.control.data == "settings":
             show_settings()
 
+
+    update_available = False
+
+    update_item = ft.PopupMenuItem(text="עדכן כעת", icon=ft.icons.UPDATE, data="upadte", on_click=on_menu_selected) if update_available else ft.PopupMenuItem()
+
     menu_button = ft.PopupMenuButton(
         items=[
+            # כפתור עדכון שמופיע אוטומטית
+            update_item,
+
             ft.PopupMenuItem(text="עזרה", icon=ft.icons.HELP, data="help", on_click=on_menu_selected),
             ft.PopupMenuItem(text="אודות התוכנה", icon=ft.icons.INFO, data="about", on_click=on_menu_selected),
             ft.PopupMenuItem(text="מה חדש", icon=ft.icons.NEW_RELEASES, data="whats_new", on_click=on_menu_selected),
-            ft.PopupMenuItem(text="עדכון גרסה", icon=ft.icons.UPDATE, data="upadte", on_click=on_menu_selected),
-            ft.PopupMenuItem(text="הגדרות נוספות", icon=ft.icons.SETTINGS, data="settings", on_click=on_menu_selected),
+            ft.PopupMenuItem(text="הגדרות נוספות", icon=ft.icons.SETTINGS, data="settings", on_click=on_menu_selected, disabled=True),
         ],
         icon=ft.icons.MORE_VERT,
         icon_color=ft.colors.ON_PRIMARY,
@@ -202,10 +209,10 @@ def main(page: ft.Page):
     # Input fields
 
     height_button = '50'
-    width_button = '140'
+    width_button = '150'
     round_text_field = ft.border_radius.only(15, 10, 15, 10)
 
-    source_dir_input = ft.TextField(label="תיקית הסינגלים שלך", autofocus=auto_focus, rtl=True, expand=True, border_radius=round_text_field, height='50', hint_text=r"C:\Music\סינגלים",)
+    source_dir_input = ft.TextField(label="תיקית הסינגלים שלך", autofocus=auto_focus, rtl=True, expand=True, border_radius=round_text_field, height='50', hint_text=r"C:\Music\סינגלים")
 
     target_dir_input = ft.TextField(label="תיקית יעד", rtl=True, expand=True,  border_radius=round_text_field, height='50', hint_text=r"C:\Music\המוזיקה שלך",)
     
@@ -252,14 +259,11 @@ def main(page: ft.Page):
     
     
     # כפתור שמירת הגדרות
-    save_config_button = ft.ElevatedButton(
-        "שמור",
+    save_config_button = ft.IconButton(
         icon=ft.icons.SAVE,
         on_click=save_config,
-        height=35,
-        width=105,
+        bgcolor=ft.colors.BACKGROUND,
         tooltip='שמור הגדרות מותאמות אישית',
-        style=round_button,
     )
     
     
@@ -298,7 +302,7 @@ def main(page: ft.Page):
         on_click=show_warning,
         style=round_button,
         height='60',
-        width='150',
+        width='160',
     )
 
 

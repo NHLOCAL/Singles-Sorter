@@ -1,1 +1,2 @@
-flet pack -i assets/icon.ico main.py --product-name "Singles Sorter" --product-version "12.9.0" --file-description "Software that sorts your singles folders through advanced automation" --copyright "nh.local11@gmail.com"
+flet pack -i assets/icon.ico main.py --product-name "Singles Sorter" --product-version "12.9.1" --file-description "Singles Sorter" --copyright "nh.local11@gmail.com"
+pause
