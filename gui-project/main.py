@@ -1,6 +1,34 @@
 # -*- coding: utf-8 -*-
 import flet as ft
 from singles_sorter_v2 import scan_dir
+import json
+
+
+# גרסת התוכנה
+global VERSION
+VERSION = '12.9'
+
+
+# הגדרות משתמש שמורות
+global USER_CONFIG
+with open('app/config.json', 'r') as f:
+    USER_CONFIG = json.load(f)
+    
+# שמירת הגדרות משתמש לקובץ
+def save_config(e):
+
+    user_config = USER_CONFIG
+    
+    user_config['general']['copy_mode'] = copy_mode.value
+    user_config['general']['main_folder_only'] = main_folder_only.value
+    user_config['general']['singles_folder'] = singles_folder.value
+    user_config['general']['exist_only'] = exist_only.value
+    user_config['general']['abc_sort'] = abc_sort.value
+    
+    with open('app/config.json', 'w') as file:
+        json.dump(user_config, file, indent=4) 
+
+
 
 def main(page: ft.Page):
     page.title = "מסדר הסינגלים"
@@ -17,8 +45,8 @@ def main(page: ft.Page):
 
     else:
         page.padding = ft.padding.only(45, 30, 45, 30)
-        page.window_height = 820
-        page.window_width = 900
+        page.window_height = 750
+        page.window_width = 850
         auto_focus=True
 
     # Consistent button style definition
@@ -31,7 +59,7 @@ def main(page: ft.Page):
             [
                 ft.Image(src="assets/icon.png", width=40),  # Adjusted icon size
                 ft.Text(
-                    "מסדר הסינגלים 13.0",
+                    f"מסדר הסינגלים {VERSION}",
                     size=24,  # Adjusted title size
                     text_align=ft.TextAlign.CENTER,
                     color=ft.colors.ON_PRIMARY,  # Assumed color for better contrast
@@ -57,7 +85,8 @@ def main(page: ft.Page):
                         ),
         bgcolor=ft.colors.ON_PRIMARY_CONTAINER,
         shape=ft.NotchShape.CIRCULAR,
-        height='40',
+        padding=8,
+        height='30',
     )
 
 
@@ -66,12 +95,14 @@ def main(page: ft.Page):
     # תפריט אפשרויות נוספות
     # Define menu items
     def on_menu_selected(e):
-        if e.control.data == "help":
-            show_help()
+        if e.control.data == "upadte":
+            show_update()
+        elif e.control.data == "help":
+            show_content('help', 'עזרה')        
         elif e.control.data == "about":
-            show_about()
+            show_content('about', 'אודות התוכנה')
         elif e.control.data == "whats_new":
-            show_whats_new()
+            show_content('whats-new', 'מה חדש')
         elif e.control.data == "settings":
             show_settings()
 
@@ -80,6 +111,7 @@ def main(page: ft.Page):
             ft.PopupMenuItem(text="עזרה", icon=ft.icons.HELP, data="help", on_click=on_menu_selected),
             ft.PopupMenuItem(text="אודות התוכנה", icon=ft.icons.INFO, data="about", on_click=on_menu_selected),
             ft.PopupMenuItem(text="מה חדש", icon=ft.icons.NEW_RELEASES, data="whats_new", on_click=on_menu_selected),
+            ft.PopupMenuItem(text="עדכון גרסה", icon=ft.icons.UPDATE, data="upadte", on_click=on_menu_selected),
             ft.PopupMenuItem(text="הגדרות נוספות", icon=ft.icons.SETTINGS, data="settings", on_click=on_menu_selected),
         ],
         icon=ft.icons.MORE_VERT,
@@ -91,10 +123,10 @@ def main(page: ft.Page):
     page.appbar.actions.append(menu_button)
 
     # Define handlers for menu items
-    def show_help():
+    def show_content(type_content, header_content):
         # Open the help file
         try:
-            with open("help.md", "r", encoding="utf-8") as file:
+            with open(f"app/{type_content}.md", "r", encoding="utf-8") as file:
                 help_content = file.read()
         except FileNotFoundError:
             return
@@ -103,24 +135,27 @@ def main(page: ft.Page):
         help_sheet = ft.BottomSheet(
             content=ft.Container(
                 content=ft.Column([
-                    ft.Text("עזרה", theme_style="headlineMedium"),
-                    ft.Markdown(help_content, code_theme='vs'),
+                    ft.Text(header_content, theme_style="headlineMedium", weight=ft.FontWeight.BOLD),
+                    ft.Markdown(help_content),
                 ],
                 tight=True,
                 rtl=True,
                 scroll=ft.ScrollMode.AUTO,
-                
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing='30',
                 ),
                     
-                alignment=ft.alignment.center,
+                #alignment=ft.alignment.center,
                 padding=40,
-                expand=False,
+                expand=True,
                 bgcolor=ft.colors.SECONDARY_CONTAINER,
+                
 
             ),
 
-            #show_drag_handle=True,
-            #elevation=50,
+            show_drag_handle=True,
+            elevation=300,
             enable_drag=True,
             is_scroll_controlled=True,
         )
@@ -128,16 +163,33 @@ def main(page: ft.Page):
         page.overlay.append(help_sheet)
         help_sheet.open = True
         page.update()
+        
 
-    def show_about():
-        page.snack_bar = ft.SnackBar(ft.Text("אודות התוכנה: כאן יופיע המידע על אודות התוכנה"), bgcolor=ft.colors.SECONDARY_CONTAINER)
-        page.snack_bar.open = True
+    def show_update():
+        def close_dialog(e):
+            page.dialog.open = False
+            page.update()
+
+        def updating(e):
+            page.dialog.open = False
+            pass
+            # יישום שיטת עדכון אוטומטי
+            page.update()
+        
+        page.dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("עדכון גרסה", text_align="center"),
+            content=ft.Text("גרסה חדשה זמינה להורדה\n להוריד כעת?", text_align="center", rtl=True),
+
+            actions=[
+                ft.TextButton("אישור", on_click=updating),
+                ft.TextButton("ביטול", on_click=close_dialog),
+            ],
+            actions_alignment=ft.MainAxisAlignment.SPACE_AROUND,
+        )
+        page.dialog.open = True
         page.update()
 
-    def show_whats_new():
-        page.snack_bar = ft.SnackBar(ft.Text("מה חדש: כאן יופיע המידע על מה חדש"), bgcolor=ft.colors.SECONDARY_CONTAINER)
-        page.snack_bar.open = True
-        page.update()
 
     def show_settings():
         page.snack_bar = ft.SnackBar(ft.Text("הגדרות נוספות: כאן יופיע המידע על הגדרות נוספות"), bgcolor=ft.colors.SECONDARY_CONTAINER)
@@ -149,12 +201,13 @@ def main(page: ft.Page):
 
     # Input fields
 
-    height_button = '55'
+    height_button = '50'
+    width_button = '140'
     round_text_field = ft.border_radius.only(15, 10, 15, 10)
 
-    source_dir_input = ft.TextField(label="תיקית הסינגלים שלך", autofocus=auto_focus, rtl=True, expand=True, border_radius=round_text_field, height='60', hint_text=r"C:\Music\סינגלים",)
+    source_dir_input = ft.TextField(label="תיקית הסינגלים שלך", autofocus=auto_focus, rtl=True, expand=True, border_radius=round_text_field, height='50', hint_text=r"C:\Music\סינגלים",)
 
-    target_dir_input = ft.TextField(label="תיקית יעד", rtl=True, expand=True,  border_radius=round_text_field, height='60', hint_text=r"C:\Music\כל המוזיקה",)
+    target_dir_input = ft.TextField(label="תיקית יעד", rtl=True, expand=True,  border_radius=round_text_field, height='50', hint_text=r"C:\Music\המוזיקה שלך",)
     
     source_picker = ft.FilePicker(on_result=lambda e: update_path(e, source_dir_input))
     target_picker = ft.FilePicker(on_result=lambda e: update_path(e, target_dir_input))
@@ -162,25 +215,59 @@ def main(page: ft.Page):
     page.overlay.extend([source_picker, target_picker])
 
     
-    source_dir_button = ft.ElevatedButton("בחר תיקיה", icon=ft.icons.FOLDER_OPEN, on_click=lambda _: source_picker.get_directory_path(), height=height_button, tooltip='בחירת תיקיה המכילה את המוזיקה שברצונך לסדר', style=round_button,)
-    target_dir_button = ft.ElevatedButton("בחר תיקיה", icon=ft.icons.FOLDER_OPEN, on_click=lambda _: target_picker.get_directory_path(), height=height_button, tooltip='בחירת תיקית יעד אליה יוכנסו תיקיות  המוזיקה שיווצרו', style=round_button)
+    source_dir_button = ft.ElevatedButton("בחר תיקיה", icon=ft.icons.FOLDER_OPEN, on_click=lambda _: source_picker.get_directory_path(), height=height_button, width=width_button, tooltip='בחירת תיקיה המכילה את המוזיקה שברצונך לסדר', style=round_button,)
+    target_dir_button = ft.ElevatedButton("בחר תיקיה", icon=ft.icons.FOLDER_OPEN, on_click=lambda _: target_picker.get_directory_path(), height=height_button, width=width_button, tooltip='בחירת תיקית יעד אליה יוכנסו תיקיות  המוזיקה שיווצרו', style=round_button)
 
 
     # Checkboxes
-    copy_mode_checkbox = ft.Checkbox(label="העתק קבצים (העברה היא ברירת המחדל)")
-    main_folder_only_checkbox = ft.Checkbox(label="סרוק תיקיה ראשית בלבד", )
-    singles_folder_checkbox = ft.Checkbox(label='צור תיקיות סינגלים פנימיות', value=True)
-    exist_only_checkbox = ft.Checkbox(label="השתמש בתיקיות קיימות בלבד")
-    abc_sort_checkbox = ft.Checkbox(label="צור תיקיות ראשיות לפי ה-א' ב'")
+    global copy_mode, main_folder_only, singles_folder, exist_only, abc_sort
+    
+    
+    copy_mode = ft.Checkbox(
+    label="העתק קבצים (העברה היא ברירת המחדל)",
+    tooltip="סמן אם ברצונך לבצע העתקה של הקבצים כברירת מחדל תתבצע העברה",
+    value=USER_CONFIG['general']['copy_mode']
+    )
+    main_folder_only = ft.Checkbox(
+    label="סרוק תיקיה ראשית בלבד",
+    tooltip="אם מסומן, התוכנה תסרוק רק את התיקייה הראשית ולא תתי תיקיות",
+    value=USER_CONFIG['general']['main_folder_only']
+    )
+    singles_folder = ft.Checkbox(
+    label='צור תיקיות סינגלים פנימיות',
+    tooltip="סמן אם ברצונך ליצור תיקיות פנימיות בתוך תיקיות הזמרים אליהם יועברו הסינגלים",
+    value=USER_CONFIG['general']['singles_folder']
+    )
+    exist_only = ft.Checkbox(
+    label="השתמש בתיקיות קיימות בלבד",
+    tooltip="אם מסומן, התוכנה תעביר קבצים רק לתיקיות זמרים קיימות ולא תיצור חדשות",
+    value=USER_CONFIG['general']['exist_only']
+    )
+    abc_sort = ft.Checkbox(
+    label="צור תיקיות ראשיות לפי ה-א' ב'",
+    tooltip="אם מסומן, התוכנה תיצור תיקיה ראשית לכל אות באלפבית",
+    value=USER_CONFIG['general']['abc_sort']
+    )
+    
+    
+    
+    # כפתור שמירת הגדרות
+    save_config_button = ft.ElevatedButton(
+        "שמור",
+        icon=ft.icons.SAVE,
+        on_click=save_config,
+        height=35,
+        width=105,
+        tooltip='שמור הגדרות מותאמות אישית',
+        style=round_button,
+    )
+    
+    
 
     # Progress bar
     page.window_progress_bar='0.0'
     progress_bar = ft.ProgressBar(width=400, value=0)
-
-    # Output text
-    output_text = ft.Text()
     
-
 
     def show_warning(e):
         def close_dialog(e):
@@ -195,7 +282,7 @@ def main(page: ft.Page):
         page.dialog = ft.AlertDialog(
             modal=True,
             title=ft.Text("אשר והתחל", text_align="center"),
-            content=ft.Text("התוכנה מיועדת לסינגלים בלבד\n מיון תיקיות אלבומים צפויה לשבש אותם", text_align="center"),
+            content=ft.Text("התוכנה מיועדת לסינגלים בלבד\n מיון תיקיות אלבומים צפויה לשבש אותם!", text_align="center", rtl=True),
 
             actions=[
                 ft.TextButton("אישור", on_click=continue_organization),
@@ -210,8 +297,8 @@ def main(page: ft.Page):
         content=ft.Text("הפעל כעת", size=20),
         on_click=show_warning,
         style=round_button,
-        height='70',
-        width='180',
+        height='60',
+        width='150',
     )
 
 
@@ -240,24 +327,34 @@ def main(page: ft.Page):
             content=ft.Column(
                 [
 
-                    ft.Text("אפשרויות נוספות", size=20, color=ft.colors.PRIMARY, weight=ft.FontWeight.BOLD),
+                    ft.Text("התאמה אישית", size=20, color=ft.colors.PRIMARY, weight=ft.FontWeight.BOLD),
                     
                     ft.Column(
                         [
                             ft.Text("הגדרות בסיסיות", weight=ft.FontWeight.BOLD),
-                            copy_mode_checkbox,
-                            main_folder_only_checkbox,
+                            copy_mode,
+                            main_folder_only,
                         ]
                     ),
 
                     ft.Column(
                         [
                             ft.Text("מתקדם", weight=ft.FontWeight.BOLD), 
-                            singles_folder_checkbox,
-                            exist_only_checkbox,
-                            abc_sort_checkbox,
+                            singles_folder,
+                            exist_only,
+
+ 
+                            ft.Row(
+                                [
+                                    abc_sort,
+                                    save_config_button,
+                                ],
+                                
+                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                            ),
                         ]
                     ),
+                
                 ],
                 alignment=ft.MainAxisAlignment.CENTER,
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -286,7 +383,6 @@ def main(page: ft.Page):
                   
                 ft.Row(
                     [
-                        output_text,
                         organize_button,
                     ],
 
@@ -295,10 +391,10 @@ def main(page: ft.Page):
 
                 ],
                 
-                spacing='30',
+                spacing='20',
             ),
 
-            margin = ft.margin.all(10),
+            margin = ft.margin.only(0, 10, 0, 10),
             padding=10,
             alignment=ft.alignment.center,
         )
@@ -329,12 +425,6 @@ def main(page: ft.Page):
             page.update()
             return
 
-        # Get checkbox values
-        copy_mode = copy_mode_checkbox.value
-        main_folder_only = main_folder_only_checkbox.value
-        singles_folder = singles_folder_checkbox.value
-        exist_only = exist_only_checkbox.value
-        abc_sort = abc_sort_checkbox.value
 
         def progress_callback(progress):
             progress_num = progress / 100
@@ -351,11 +441,11 @@ def main(page: ft.Page):
             scan_dir(
                 source_dir, 
                 target_dir, 
-                copy_mode, 
-                abc_sort, 
-                exist_only, 
-                singles_folder, 
-                main_folder_only, 
+                copy_mode.value, 
+                abc_sort.value, 
+                exist_only.value, 
+                singles_folder.value, 
+                main_folder_only.value, 
                 progress_callback
             )
             page.snack_bar = show_snackbar("מיון הקבצים הסתיים בהצלחה", ft.colors.GREEN, 10000)

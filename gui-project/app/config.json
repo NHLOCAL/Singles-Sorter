@@ -1,0 +1,13 @@
+{
+    "general": {
+        "copy_mode": false,
+        "main_folder_only": false,
+        "singles_folder": true,
+        "exist_only": false,
+        "abc_sort": false
+    },
+    "folders": {
+        "source": "",
+        "traget": ""
+    }
+}

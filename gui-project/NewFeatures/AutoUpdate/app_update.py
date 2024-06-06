@@ -31,8 +31,8 @@ def main(page: ft.Page):
     page.title = "My App"
     page.add(ft.Text("Checking for updates..."))
 
-    current_version = get_current_version()
-    latest_version = get_latest_version_info()
+    current_version = '12.9.0' #get_current_version()
+    latest_version = '12.9.0' #get_latest_version_info()
 
     if update_available(current_version, latest_version):
         update_text = f"New version {latest_version} available! Current version is {current_version}."
