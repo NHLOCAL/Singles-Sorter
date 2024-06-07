@@ -316,22 +316,27 @@ class MusicSorter:
     def log_to_file(self):
         now = datetime.datetime.now()
         log_filename = f"log_{now.strftime('%Y%m%d_%H%M%S')}.json"
+        log_directory = "log"
         
         log_data = {
             "operation_time": now.strftime('%d/%m/%Y %H:%M:%S'),
             "source_directory": self.operating_details[0],
             "target_directory": self.operating_details[1],
-            "copy_mode": True if self.operating_details[2] else False,
-            "abc_sort": True if self.operating_details[3] else False,
-            "exist_only": True if self.operating_details[4] else False,
-            "singles_folder": True if self.operating_details[5] else False,
-            "main_folder_only": True if self.operating_details[6] else False,
+            "copy_mode": bool(self.operating_details[2]),
+            "abc_sort": bool(self.operating_details[3]),
+            "exist_only": bool(self.operating_details[4]),
+            "singles_folder": bool(self.operating_details[5]),
+            "main_folder_only": bool(self.operating_details[6]),
             "files": [{"old_path": old_path, "new_path": new_path} for old_path, new_path in self.log_files]
         }
         
-        with open(log_filename, 'w', encoding='utf-8') as log_file:
+        # יצירת התיקיה אם היא לא קיימת
+        if not os.path.exists(log_directory):
+            os.makedirs(log_directory)
+        
+        log_path = os.path.join(log_directory, log_filename)
+        with open(log_path, 'w', encoding='utf-8') as log_file:
             json.dump(log_data, log_file, ensure_ascii=False, indent=4)
-
 
     def load_from_log(self, log_filename):
         with open(log_filename, 'r', encoding='utf-8') as log_file:
