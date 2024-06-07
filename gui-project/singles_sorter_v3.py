@@ -9,11 +9,11 @@ from check_name import check_exact_name
 import json
 import datetime
 
-class MusicFileOrganizer:
+class MusicSorter:
 
     VERSION = '12.9.1'
 
-    def __init__(self, source_dir, target_dir, copy_mode=False, abc_sort=False, exist_only=False, singles_folder=True, main_folder_only=False):
+    def __init__(self, source_dir, target_dir, copy_mode=False, abc_sort=False, exist_only=False, singles_folder=True, main_folder_only=False, progress_callback=None):
         self.unusual_list = ["סינגלים", "סינגל", "אבגדהוזחטיכלמנסעפצקרשתךםןץ", "אמן לא ידוע", "טוב", "לא ידוע", "תודה לך ה"]
         self.substrings_to_remove = [" -מייל מיוזיק", " - ציצו במייל", "-חדשות המוזיקה", " - חדשות המוזיקה", " - ציצו", " מוזיקה מכל הלב", " - מייל מיוזיק"]
         self.source_dir = source_dir
@@ -25,7 +25,7 @@ class MusicFileOrganizer:
         self.main_folder_only = main_folder_only
         self.log_files = []
         self.operating_details = [source_dir, target_dir, copy_mode, abc_sort, exist_only, singles_folder, main_folder_only]
-        self.singer_list = self.load_singer_list()
+        self.progress_callback = progress_callback
 
 
     def progress_display(self, len_amount):
@@ -89,7 +89,7 @@ class MusicFileOrganizer:
                     os.rename(file_path, new_file_path)
 
 
-    def scan_dir(self, progress_callback=None):
+    def scan_dir(self):
         """
         Main function of the program. Scans the specified directory and creates a list of files for copying.
         At the end of the process, it copies them if a target directory parameter is provided.
@@ -137,8 +137,8 @@ class MusicFileOrganizer:
         for file_path, artist in info_list:   
             show_len = next(progress_generator)
             print(f"{show_len}% completed",end='\r')
-            if progress_callback:  # Call the callback with progress
-                progress_callback(show_len)
+            if self.progress_callback:  # Call the callback with progress
+                self.progress_callback(show_len)
                         
             # הגדרת משתנה עבור תיקית יעד בהתאם להתאמות האישיות של המשתמש
             if self.singles_folder and self.abc_sort:
@@ -337,13 +337,11 @@ class MusicFileOrganizer:
         with open(log_filename, 'r', encoding='utf-8') as log_file:
             log_data = json.load(log_file)
         return log_data
+    
 
-    def load_singer_list(self):
-        # Your code here
-        pass
 
 def main():
-    parser = argparse.ArgumentParser(description=f"Singles Sorter {MusicFileOrganizer.VERSION} - Scan and organize music files into folders by artist using advanced automation.")
+    parser = argparse.ArgumentParser(description=f"Singles Sorter {MusicSorter.VERSION} - Scan and organize music files into folders by artist using advanced automation.")
     parser.add_argument('source_dir', help="Path to the source directory")
     parser.add_argument('target_dir', help="Path to the target directory", nargs='?')
     parser.add_argument('--copy_mode', help="Enable copy mode (default is move mode)", action='store_true')
@@ -355,10 +353,10 @@ def main():
     args = parser.parse_args()
 
     try:
-        organizer = MusicFileOrganizer(args.source_dir, args.target_dir, args.copy_mode, args.abc_sort, args.exist_only, args.singles_folder, args.main_folder_only)
-        organizer.clean_names()
-        organizer.scan_dir()
-        organizer.log_to_file()
+        sorter = MusicSorter(args.source_dir, args.target_dir, args.copy_mode, args.abc_sort, args.exist_only, args.singles_folder, args.main_folder_only)
+        sorter.clean_names()
+        sorter.scan_dir()
+        sorter.log_to_file()
     except Exception as e:
         print("Error: {}".format(e))
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import flet as ft
-from singles_sorter_v2 import scan_dir
+from singles_sorter_v3 import MusicSorter
 import json
 
 
@@ -442,16 +442,26 @@ def main(page: ft.Page):
             organize_button.disabled = True
             page.update()
             
-            scan_dir(
+            # הפעלת פונקציות חיצוניות ליישום המיון
+            sorter = MusicSorter(
                 source_dir, 
                 target_dir, 
                 copy_mode.value, 
                 abc_sort.value, 
                 exist_only.value, 
                 singles_folder.value, 
-                main_folder_only.value, 
+                main_folder_only.value,
                 progress_callback
             )
+
+            # ניקוי תוכן מיותר משמות הקבצים
+            sorter.clean_names()
+            # מיון הקבצים בפעול
+            sorter.scan_dir()
+            # יצירת קובץ לוג
+            sorter.log_to_file()
+
+
             page.snack_bar = show_snackbar("מיון הקבצים הסתיים בהצלחה", ft.colors.GREEN, 10000)
 
         except FileNotFoundError as error:
