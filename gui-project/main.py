@@ -2,11 +2,12 @@
 import flet as ft
 from singles_sorter_v3 import MusicSorter
 import json
+import os
 
 
 # גרסת התוכנה
 global VERSION
-VERSION = '12.9'
+VERSION = MusicSorter.VERSION
 
 
 # הגדרות משתמש שמורות
@@ -107,20 +108,24 @@ def main(page: ft.Page):
             show_settings()
 
 
-    update_available = False
+    # רשימת אפשרויות נוספות
+    items_list = []
 
+    update_available = True
     update_item = ft.PopupMenuItem(text="עדכן כעת", icon=ft.icons.UPDATE, data="upadte", on_click=on_menu_selected) if update_available else ft.PopupMenuItem()
 
-    menu_button = ft.PopupMenuButton(
-        items=[
-            # כפתור עדכון שמופיע אוטומטית
-            update_item,
+    if update_available:
+        items_list.append(update_item)
 
+    items_list = items_list + [
             ft.PopupMenuItem(text="עזרה", icon=ft.icons.HELP, data="help", on_click=on_menu_selected),
             ft.PopupMenuItem(text="אודות התוכנה", icon=ft.icons.INFO, data="about", on_click=on_menu_selected),
             ft.PopupMenuItem(text="מה חדש", icon=ft.icons.NEW_RELEASES, data="whats_new", on_click=on_menu_selected),
-            ft.PopupMenuItem(text="הגדרות נוספות", icon=ft.icons.SETTINGS, data="settings", on_click=on_menu_selected, disabled=True),
-        ],
+            ft.PopupMenuItem(text="הגדרות נוספות", icon=ft.icons.SETTINGS, data="settings", on_click=on_menu_selected, disabled=False),
+        ]
+
+    menu_button = ft.PopupMenuButton(
+        items=items_list,
         icon=ft.icons.MORE_VERT,
         icon_color=ft.colors.ON_PRIMARY,
         icon_size=28,
@@ -179,7 +184,7 @@ def main(page: ft.Page):
 
         def updating(e):
             page.dialog.open = False
-            pass
+            
             # יישום שיטת עדכון אוטומטי
             page.update()
         
@@ -199,15 +204,91 @@ def main(page: ft.Page):
 
 
     def show_settings():
-        page.snack_bar = ft.SnackBar(ft.Text("הגדרות נוספות: כאן יופיע המידע על הגדרות נוספות"), bgcolor=ft.colors.SECONDARY_CONTAINER)
-        page.snack_bar.open = True
+        # Open the help file
+        try:
+            with open(f"app/add_singers.md", "r", encoding="utf-8") as file:
+                add_singers_info = file.read()
+        except FileNotFoundError:
+            pass
+        
+
+        def close_dialog(e):
+            page.dialog.open = False
+            page.update()
+
+        def import_csv(e):
+            pass
+
+        def export_csv(e):
+            pass
+
+        def open_csv(e):
+            old_csv = os.path.abspath("app/disable-singer-list.csv")
+            personal_csv = os.path.abspath("app/personal-singer-list.csv")
+
+            # שינוי שם קובץ csv לפני ביצוע שינויים
+            if os.path.exists(old_csv):
+                try:
+                    os.rename(old_csv, personal_csv)
+                except PermissionError:
+                    print(f"Permission denied for renaming the file '{old_csv}'.")
+                except Exception as e:
+                    print(f"An error occurred while trying to rename the file: {e}")
+
+            # פתיחת קובץ ה-CSV לצורך עריכה על ידי המשתמש
+            try:
+                os.startfile(personal_csv)
+            except AttributeError:
+                print("This feature is not supported on Windows.")
+
+
+        
+        page.dialog = ft.AlertDialog(
+            modal=True,
+            #icon=ft.icons.SETTINGS,
+            title=ft.Text("הגדרות מתקדמות", text_align="center"),
+            content=ft.Column(
+                [
+                    ft.Text("מיון דואטים", weight=ft.FontWeight.BOLD),
+                    ft.RadioGroup(content=ft.Column([
+                            ft.Radio(value="auto_singer", label="בחירה אוטומטית",),
+                            ft.Radio(value="first_singer", label="העתק לזמר הראשון בשם השיר", disabled=False),
+                            ft.Radio(value="all_singers", label="העתק לכל הזמרים המופיעים בשם השיר", disabled=False)],
+                            rtl=True,
+                            ),
+                            value="auto_singer"
+                            ),
+
+                    ft.Text("הוספת זמרים", weight=ft.FontWeight.BOLD),
+                    ft.Markdown(add_singers_info),
+
+                    ft.Row(
+                        [
+                    ft.TextButton("ערוך קובץ", on_click=open_csv),
+                    ft.TextButton("ייבא קובץ", on_click=import_csv),
+                    ft.TextButton("ייצא קובץ", on_click=export_csv),
+                        ]
+                    )
+                ],
+    
+                spacing='20',
+                alignment=ft.MainAxisAlignment.START,
+                horizontal_alignment=ft.CrossAxisAlignment.START,
+                rtl=True,
+            ),
+
+            actions=[
+                ft.TextButton("סגור", on_click=close_dialog),
+            ],
+            actions_alignment=ft.MainAxisAlignment.SPACE_AROUND,
+        )
+        page.dialog.open = True
         page.update()
 
 
-
+    ft.Radio
 
     # Input fields
-
     height_button = '50'
     width_button = '150'
     round_text_field = ft.border_radius.only(15, 10, 15, 10)
@@ -228,7 +309,6 @@ def main(page: ft.Page):
 
     # Checkboxes
     global copy_mode, main_folder_only, singles_folder, exist_only, abc_sort
-    
     
     copy_mode = ft.Checkbox(
     label="העתק קבצים (העברה היא ברירת המחדל)",
@@ -257,7 +337,6 @@ def main(page: ft.Page):
     )
     
     
-    
     # כפתור שמירת הגדרות
     save_config_button = ft.IconButton(
         icon=ft.icons.SAVE,
@@ -267,12 +346,12 @@ def main(page: ft.Page):
     )
     
     
-
     # Progress bar
     page.window_progress_bar='0.0'
     progress_bar = ft.ProgressBar(width=400, value=0)
     
 
+    # הצגת הודעת אזהרה לפני הפעלת הסריקה
     def show_warning(e):
         def close_dialog(e):
             page.dialog.open = False
@@ -307,7 +386,7 @@ def main(page: ft.Page):
 
 
 
-
+    # הגדרות הממשק הגרפי של התוכנה
     page.add(
    
         ft.Container(
@@ -417,11 +496,12 @@ def main(page: ft.Page):
             # Consider using a Snackbar or AlertDialog to display the error to the user
         
 
+    # טיפול במיון הקבצים בפועל - בעת לחיצה על כפתור הפעל
     def organize_files(e, page: ft.Page):
         source_dir = source_dir_input.value
         target_dir = target_dir_input.value
 
-        show_snackbar = lambda message_text, color, mseconds=2500, : ft.SnackBar(content=ft.Text(message_text), bgcolor=color, duration=mseconds)
+        show_snackbar = lambda message_text, color, mseconds=3000, : ft.SnackBar(content=ft.Text(message_text), bgcolor=color, duration=mseconds)
         
         if not source_dir or not target_dir:
             page.snack_bar = show_snackbar("אנא בחר תיקיית מקור ותיקיית יעד!", ft.colors.ERROR)

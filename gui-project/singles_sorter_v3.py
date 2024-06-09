@@ -26,6 +26,7 @@ class MusicSorter:
         self.log_files = []
         self.operating_details = [source_dir, target_dir, copy_mode, abc_sort, exist_only, singles_folder, main_folder_only]
         self.progress_callback = progress_callback
+        self.singer_list =  self.list_from_csv()
 
 
     def progress_display(self, len_amount):
@@ -191,6 +192,24 @@ class MusicSorter:
         return
 
 
+    def list_from_csv(self):
+        # יבוא רשימת זמרים מקובץ csv
+        # Construct the path to the CSV file
+        csv_path = os.path.abspath("app/singer-list.csv")
+        
+        with open(csv_path, 'r', encoding='utf-8') as file:
+            csv_reader = csv.reader(file)
+            singer_list = [tuple(row) for row in csv_reader]
+        
+        if os.path.isfile("app/personal-singer-list.csv"):
+            with open("app/personal-singer-list.csv", 'r') as file:
+                csv_reader = csv.reader(file)
+                personal_list = [tuple(row) for row in csv_reader]
+            singer_list.extend(personal_list)
+
+        return singer_list
+
+
     def artist_from_song(self, my_file):
         """
         הפונקציה בודקת את שם אמן הקובץ בשם הקובץ לפי מסד נתונים ומכניסה את שם האמן למשתנה
@@ -212,27 +231,9 @@ class MusicSorter:
         split_file = split_file.replace('_', ' ')
         split_file = split_file.replace('-', ' ')
         
-        # יבוא רשימת זמרים מקובץ csv
-        if not 'singer_list' in globals():
-            # Get the directory of the script file
-            #script_dir = os.path.dirname(os.path.abspath(__file__))
-
-            # Construct the path to the CSV file
-            csv_path = os.path.abspath("singer-list.csv")
-            
-            global singer_list
-            with open(csv_path, 'r', encoding='utf-8') as file:
-                csv_reader = csv.reader(file)
-                singer_list = [tuple(row) for row in csv_reader]
-            
-            if os.path.isfile("personal-singer-list.csv"):
-                with open("personal-singer-list.csv", 'r', encoding='utf-8') as file:
-                    csv_reader = csv.reader(file)
-                    personal_list = [tuple(row) for row in csv_reader]
-                singer_list.extend(personal_list)
         
         # מעבר על רשימת השמות ובדיקה אם אחד מהם קיים בשם השיר
-        for source_name, target_name in singer_list:
+        for source_name, target_name in self.singer_list:
             if source_name in split_file:
             
                 # בדיקת דיוק שם הקובץ
@@ -255,7 +256,7 @@ class MusicSorter:
                 artist = fix_jibrish(artist, "heb")
                 
                 # מעבר על רשימת השמות ובדיקה אם אחד מהם קיים בתגית האמן
-                for source_name, target_name in singer_list:
+                for source_name, target_name in self.singer_list:
                     if source_name in artist:
                         """
                         # בדיקת דיוק שם הקובץ
@@ -282,7 +283,7 @@ class MusicSorter:
                     title = fix_jibrish(title, "heb")
                     
                     # מעבר על רשימת השמות ובדיקה אם אחד מהם קיים בתגית האמן
-                    for source_name, target_name in singer_list:
+                    for source_name, target_name in self.singer_list:
                         if source_name in title:
                             # בדיקת דיוק שם הקובץ
                             exact = check_exact_name(title, source_name)
@@ -322,11 +323,11 @@ class MusicSorter:
             "operation_time": now.strftime('%d/%m/%Y %H:%M:%S'),
             "source_directory": self.operating_details[0],
             "target_directory": self.operating_details[1],
-            "copy_mode": bool(self.operating_details[2]),
-            "abc_sort": bool(self.operating_details[3]),
-            "exist_only": bool(self.operating_details[4]),
-            "singles_folder": bool(self.operating_details[5]),
-            "main_folder_only": bool(self.operating_details[6]),
+            "copy_mode": self.operating_details[2],
+            "abc_sort": self.operating_details[3],
+            "exist_only": self.operating_details[4],
+            "singles_folder": self.operating_details[5],
+            "main_folder_only": self.operating_details[6],
             "files": [{"old_path": old_path, "new_path": new_path} for old_path, new_path in self.log_files]
         }
         
@@ -349,11 +350,11 @@ def main():
     parser = argparse.ArgumentParser(description=f"Singles Sorter {MusicSorter.VERSION} - Scan and organize music files into folders by artist using advanced automation.")
     parser.add_argument('source_dir', help="Path to the source directory")
     parser.add_argument('target_dir', help="Path to the target directory", nargs='?')
-    parser.add_argument('--copy_mode', help="Enable copy mode (default is move mode)", action='store_true')
-    parser.add_argument('--abc_sort', help="Sort folders alphabetically", action='store_true')
-    parser.add_argument('--exist_only', help="Transfer to existing folders only", action='store_true')
-    parser.add_argument('--no_singles_folder', help="Do not create an internal 'singles' folder", action='store_false', dest='singles_folder', default=True)
-    parser.add_argument('--main_folder_only', help="Sort only the main folder (default: False)", action='store_true')
+    parser.add_argument('-c', '--copy_mode', help="Enable copy mode (default is move mode)", action='store_true')
+    parser.add_argument('-a', '--abc_sort', help="Sort folders alphabetically", action='store_true')
+    parser.add_argument('-e', '--exist_only', help="Transfer to existing folders only", action='store_true')
+    parser.add_argument('-n', '--no_singles_folder', help="Do not create an internal 'singles' folder", action='store_false', dest='singles_folder', default=True)
+    parser.add_argument('-m', '--main_folder_only', help="Sort only the main folder (default: False)", action='store_true')
 
     args = parser.parse_args()
 
