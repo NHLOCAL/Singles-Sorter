@@ -11,7 +11,6 @@ VERSION = MusicSorter.VERSION
 
 
 # הגדרות משתמש שמורות
-global USER_CONFIG
 with open('app/config.json', 'r') as f:
     USER_CONFIG = json.load(f)
     
@@ -108,30 +107,38 @@ def main(page: ft.Page):
             show_settings()
 
 
-    # רשימת אפשרויות נוספות
-    items_list = []
-
     update_available = True
-    update_item = ft.PopupMenuItem(text="עדכן כעת", icon=ft.icons.UPDATE, data="upadte", on_click=on_menu_selected) if update_available else ft.PopupMenuItem()
 
+    # תפריט אפשרויות נוספות
+    menu_items = [
+        ft.PopupMenuItem(text="עזרה", icon=ft.icons.HELP, data="help", on_click=on_menu_selected),
+        ft.PopupMenuItem(text="אודות התוכנה", icon=ft.icons.INFO, data="about", on_click=on_menu_selected),
+        ft.PopupMenuItem(text="מה חדש", icon=ft.icons.NEW_RELEASES, data="whats_new", on_click=on_menu_selected),
+        ft.PopupMenuItem(text="הגדרות נוספות", icon=ft.icons.SETTINGS, data="settings", on_click=on_menu_selected, disabled=False),
+    ]
+
+    # הוספת פריט עדכון רק אם זמין
     if update_available:
-        items_list.append(update_item)
+        update_item = ft.PopupMenuItem(text="עדכן כעת", icon=ft.icons.UPDATE, data="upadte", on_click=on_menu_selected)
+        menu_items.insert(0, update_item)  # הוספת פריט העדכון לתחילת הרשימה
 
-    items_list = items_list + [
-            ft.PopupMenuItem(text="עזרה", icon=ft.icons.HELP, data="help", on_click=on_menu_selected),
-            ft.PopupMenuItem(text="אודות התוכנה", icon=ft.icons.INFO, data="about", on_click=on_menu_selected),
-            ft.PopupMenuItem(text="מה חדש", icon=ft.icons.NEW_RELEASES, data="whats_new", on_click=on_menu_selected),
-            ft.PopupMenuItem(text="הגדרות נוספות", icon=ft.icons.SETTINGS, data="settings", on_click=on_menu_selected, disabled=False),
-        ]
+    # כפתור אפשרויות נוספות בסרגל העליון
+    # כולל הצגת התראה אדומה אם קיים עדכון זמין
+    menu_button = ft.Badge(
+        content=ft.PopupMenuButton(
+            items=menu_items,
+            icon=ft.icons.MORE_VERT,
+            icon_color=ft.colors.ON_PRIMARY,
+            icon_size=28,
+            tooltip="אפשרויות נוספות",
+        ),
+        text='up',
+        label_visible=update_available,
+        offset=ft.transform.Offset(0, -2),
 
-    menu_button = ft.PopupMenuButton(
-        items=items_list,
-        icon=ft.icons.MORE_VERT,
-        icon_color=ft.colors.ON_PRIMARY,
-        icon_size=28,
-        tooltip="אפשרויות נוספות",
-    )
+        )
 
+    
     page.appbar.actions.append(menu_button)
 
     # Define handlers for menu items
@@ -148,7 +155,7 @@ def main(page: ft.Page):
             content=ft.Container(
                 content=ft.Column([
                     ft.Text(header_content, theme_style="headlineMedium", weight=ft.FontWeight.BOLD),
-                    ft.Markdown(help_content),
+                    ft.Markdown(help_content, auto_follow_links=True),
                 ],
                 tight=True,
                 rtl=True,
@@ -252,8 +259,8 @@ def main(page: ft.Page):
                     ft.Text("מיון דואטים", weight=ft.FontWeight.BOLD),
                     ft.RadioGroup(content=ft.Column([
                             ft.Radio(value="auto_singer", label="בחירה אוטומטית",),
-                            ft.Radio(value="first_singer", label="העתק לזמר הראשון בשם השיר", disabled=False),
-                            ft.Radio(value="all_singers", label="העתק לכל הזמרים המופיעים בשם השיר", disabled=False)],
+                            ft.Radio(value="first_singer", label="העתק לזמר הראשון בשם השיר", disabled=True),
+                            ft.Radio(value="all_singers", label="העתק לכל הזמרים המופיעים בשם השיר", disabled=True)],
                             rtl=True,
                             ),
                             value="auto_singer"
@@ -265,8 +272,8 @@ def main(page: ft.Page):
                     ft.Row(
                         [
                     ft.TextButton("ערוך קובץ", on_click=open_csv),
-                    ft.TextButton("ייבא קובץ", on_click=import_csv),
-                    ft.TextButton("ייצא קובץ", on_click=export_csv),
+                    ft.TextButton("ייבא קובץ", on_click=import_csv, disabled=True),
+                    ft.TextButton("ייצא קובץ", on_click=export_csv, disabled=True),
                         ]
                     )
                 ],

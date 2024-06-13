@@ -351,8 +351,8 @@ def main():
     parser.add_argument('source_dir', help="Path to the source directory")
     parser.add_argument('target_dir', help="Path to the target directory", nargs='?')
     parser.add_argument('-c', '--copy_mode', help="Enable copy mode (default is move mode)", action='store_true')
-    parser.add_argument('-a', '--abc_sort', help="Sort folders alphabetically", action='store_true')
-    parser.add_argument('-e', '--exist_only', help="Transfer to existing folders only", action='store_true')
+    parser.add_argument('-a', '--abc_sort', help="Sort folders alphabetically (default: False)", action='store_true')
+    parser.add_argument('-e', '--exist_only', help="Transfer to existing folders only (default: False)", action='store_true')
     parser.add_argument('-n', '--no_singles_folder', help="Do not create an internal 'singles' folder", action='store_false', dest='singles_folder', default=True)
     parser.add_argument('-m', '--main_folder_only', help="Sort only the main folder (default: False)", action='store_true')
 
