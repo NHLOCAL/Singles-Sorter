@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 import flet as ft
 from singles_sorter_v3 import MusicSorter
-import json
+import pickle
 import os
+from update import check_for_update
 
 
 # גרסת התוכנה
@@ -11,13 +12,13 @@ VERSION = MusicSorter.VERSION
 
 
 # הגדרות משתמש שמורות
-with open('app/config.json', 'r') as f:
-    USER_CONFIG = json.load(f)
+def load_config():
+    with open('app/config.pkl', 'rb') as f:
+        user_config =  pickle.load(f)
+        return user_config
     
 # שמירת הגדרות משתמש לקובץ
 def save_config(e):
-
-    user_config = USER_CONFIG
     
     user_config['general']['copy_mode'] = copy_mode.value
     user_config['general']['main_folder_only'] = main_folder_only.value
@@ -25,8 +26,8 @@ def save_config(e):
     user_config['general']['exist_only'] = exist_only.value
     user_config['general']['abc_sort'] = abc_sort.value
     
-    with open('app/config.json', 'w') as file:
-        json.dump(user_config, file, indent=4) 
+    with open('app/config.pkl', 'wb') as f:
+        pickle.dump(user_config, f)
 
 
 
@@ -98,16 +99,16 @@ def main(page: ft.Page):
         if e.control.data == "upadte":
             show_update()
         elif e.control.data == "help":
-            show_content('help', 'עזרה')        
+            show_content('help', 'עזרה', ft.icons.HELP)        
         elif e.control.data == "about":
-            show_content('about', 'אודות התוכנה')
+            show_content('about', 'אודות התוכנה', ft.icons.INFO)
         elif e.control.data == "whats_new":
-            show_content('whats-new', 'מה חדש')
+            show_content('whats-new', 'מה חדש', ft.icons.NEW_RELEASES)
         elif e.control.data == "settings":
             show_settings()
 
 
-    update_available = True
+    update_available = check_for_update(VERSION)
 
     # תפריט אפשרויות נוספות
     menu_items = [
@@ -133,7 +134,7 @@ def main(page: ft.Page):
             tooltip="אפשרויות נוספות",
         ),
         text='up',
-        label_visible=update_available,
+        label_visible=bool(update_available),
         offset=ft.transform.Offset(0, -2),
 
         )
@@ -142,7 +143,7 @@ def main(page: ft.Page):
     page.appbar.actions.append(menu_button)
 
     # Define handlers for menu items
-    def show_content(type_content, header_content):
+    def show_content(type_content, header_content, icon_name=None):
         # Open the help file
         try:
             with open(f"app/{type_content}.md", "r", encoding="utf-8") as file:
@@ -153,26 +154,36 @@ def main(page: ft.Page):
         # Create a BottomSheet to display the help content
         help_sheet = ft.BottomSheet(
             content=ft.Container(
-                content=ft.Column([
-                    ft.Text(header_content, theme_style="headlineMedium", weight=ft.FontWeight.BOLD),
-                    ft.Markdown(help_content, auto_follow_links=True),
-                ],
-                tight=True,
-                rtl=True,
-                scroll=ft.ScrollMode.AUTO,
-                alignment=ft.MainAxisAlignment.CENTER,
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                spacing='30',
+                content=ft.Column(
+                    [
+                        # Adding a Row to include the icon and header
+                        ft.Row(
+                            [
+                                ft.Icon(icon_name, size=30, color=ft.colors.ON_SECONDARY_CONTAINER) if icon_name else None,
+                                ft.Text(
+                                    header_content,
+                                    theme_style="headlineMedium",
+                                    weight=ft.FontWeight.BOLD,
+                                    rtl=True,
+                                    color=ft.colors.ON_SECONDARY_CONTAINER,
+                                ),
+                            ],
+                            alignment=ft.MainAxisAlignment.CENTER,  # Center the icon and header
+                            rtl=True,
+                        ),
+                        ft.Markdown(help_content, auto_follow_links=True),
+                    ],
+                    tight=True,
+                    rtl=True,
+                    scroll=ft.ScrollMode.AUTO,
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing="30",
                 ),
-                    
-                #alignment=ft.alignment.center,
                 padding=40,
                 expand=True,
                 bgcolor=ft.colors.SECONDARY_CONTAINER,
-                
-
             ),
-
             show_drag_handle=True,
             elevation=300,
             enable_drag=True,
@@ -190,15 +201,24 @@ def main(page: ft.Page):
             page.update()
 
         def updating(e):
+            """
+            פונקציה לפתיחת כתובת האתר להורדת גרסה חדשה בדפדפן
+            """
             page.dialog.open = False
+
+            import webbrowser
+            download_url = "https://nhlocal.github.io/Singles-Sorter/site/download"
+            webbrowser.open(download_url)
+
             
             # יישום שיטת עדכון אוטומטי
             page.update()
         
         page.dialog = ft.AlertDialog(
             modal=True,
+            icon=ft.Icon(ft.icons.UPDATE, size=30, color=ft.colors.ON_SECONDARY_CONTAINER),
             title=ft.Text("עדכון גרסה", text_align="center"),
-            content=ft.Text("גרסה חדשה זמינה להורדה\n להוריד כעת?", text_align="center", rtl=True),
+            content=ft.Text(f"גרסה {update_available} זמינה להורדה\n להוריד כעת?", text_align="center", rtl=True),
 
             actions=[
                 ft.TextButton("אישור", on_click=updating),
@@ -250,38 +270,64 @@ def main(page: ft.Page):
 
 
         
+        is_expanded = False
+
+        def toggle_content(e):
+            nonlocal is_expanded
+            is_expanded = not is_expanded
+            content.visible = is_expanded
+            icon_arrow.icon = "ARROW_DROP_DOWN" if is_expanded else "ARROW_RIGHT"
+            page.update()
+
+        icon_arrow = ft.IconButton(
+            icon=ft.icons.ARROW_RIGHT,
+            on_click=toggle_content,
+            tooltip="למידע נוסף"  # טקסט הסבר לחץ
+        )
+        title = ft.Text("הוספת זמרים", weight=ft.FontWeight.BOLD)
+        content = ft.Markdown(add_singers_info, visible=False)
+
         page.dialog = ft.AlertDialog(
             modal=True,
-            #icon=ft.icons.SETTINGS,
+            icon=ft.Icon(ft.icons.SETTINGS, size=30, color=ft.colors.ON_SECONDARY_CONTAINER),
             title=ft.Text("הגדרות מתקדמות", text_align="center"),
-            content=ft.Column(
-                [
-                    ft.Text("מיון דואטים", weight=ft.FontWeight.BOLD),
-                    ft.RadioGroup(content=ft.Column([
-                            ft.Radio(value="auto_singer", label="בחירה אוטומטית",),
-                            ft.Radio(value="first_singer", label="העתק לזמר הראשון בשם השיר", disabled=True),
-                            ft.Radio(value="all_singers", label="העתק לכל הזמרים המופיעים בשם השיר", disabled=True)],
-                            rtl=True,
-                            ),
-                            value="auto_singer"
-                            ),
+            content=ft.Container( # הוספת Container לשליטה ברוחב
+                width=page.window_width * 0.7, # קביעת רוחב קבוע
+                content=ft.Column(
+                    [
+                        ft.Text("מיון דואטים", weight=ft.FontWeight.BOLD),
+                        ft.Text("תכונה זו לא זמינה עדיין, יתכן שהיא תשולב בהמשך", size=12, color='red'),
+                        ft.RadioGroup(content=ft.Column([
+                                ft.Radio(value="auto_singer", label="בחירה אוטומטית",),
+                                ft.Radio(value="first_singer", label="העתק לזמר הראשון בשם השיר", disabled=True),
+                                ft.Radio(value="all_singers", label="העתק לכל הזמרים המופיעים בשם השיר", disabled=True)],
+                                rtl=True,
+                                ),
+                                value="auto_singer"
+                                ),
 
-                    ft.Text("הוספת זמרים", weight=ft.FontWeight.BOLD),
-                    ft.Markdown(add_singers_info),
+                        # קטע הקוד המעודכן
+                        ft.Column(
+                            [
+                                ft.Row([icon_arrow, title]),
+                                content,
+                            ],
+                        ),
 
-                    ft.Row(
-                        [
-                    ft.TextButton("ערוך קובץ", on_click=open_csv),
-                    ft.TextButton("ייבא קובץ", on_click=import_csv, disabled=True),
-                    ft.TextButton("ייצא קובץ", on_click=export_csv, disabled=True),
-                        ]
-                    )
-                ],
-    
-                spacing='20',
-                alignment=ft.MainAxisAlignment.START,
-                horizontal_alignment=ft.CrossAxisAlignment.START,
-                rtl=True,
+                        ft.Row(
+                            [
+                                ft.TextButton("ערוך קובץ", on_click=open_csv),
+                                ft.TextButton("ייבא קובץ", on_click=import_csv, disabled=True),
+                                ft.TextButton("ייצא קובץ", on_click=export_csv, disabled=True),
+                            ]
+                        )
+                    ],
+
+                    spacing='10',
+                    alignment=ft.MainAxisAlignment.START,
+                    horizontal_alignment=ft.CrossAxisAlignment.START,
+                    rtl=True,
+                ),
             ),
 
             actions=[
@@ -292,8 +338,6 @@ def main(page: ft.Page):
         page.dialog.open = True
         page.update()
 
-
-    ft.Radio
 
     # Input fields
     height_button = '50'
@@ -316,31 +360,36 @@ def main(page: ft.Page):
 
     # Checkboxes
     global copy_mode, main_folder_only, singles_folder, exist_only, abc_sort
+
     
+    # import user config form file
+    global user_config
+    user_config = load_config()
+
     copy_mode = ft.Checkbox(
     label="העתק קבצים (העברה היא ברירת המחדל)",
     tooltip="סמן אם ברצונך לבצע העתקה של הקבצים כברירת מחדל תתבצע העברה",
-    value=USER_CONFIG['general']['copy_mode']
+    value=user_config['general']['copy_mode']
     )
     main_folder_only = ft.Checkbox(
     label="סרוק תיקיה ראשית בלבד",
     tooltip="אם מסומן, התוכנה תסרוק רק את התיקייה הראשית ולא תתי תיקיות",
-    value=USER_CONFIG['general']['main_folder_only']
+    value=user_config['general']['main_folder_only']
     )
     singles_folder = ft.Checkbox(
     label='צור תיקיות סינגלים פנימיות',
     tooltip="סמן אם ברצונך ליצור תיקיות פנימיות בתוך תיקיות הזמרים אליהם יועברו הסינגלים",
-    value=USER_CONFIG['general']['singles_folder']
+    value=user_config['general']['singles_folder']
     )
     exist_only = ft.Checkbox(
     label="השתמש בתיקיות קיימות בלבד",
     tooltip="אם מסומן, התוכנה תעביר קבצים רק לתיקיות זמרים קיימות ולא תיצור חדשות",
-    value=USER_CONFIG['general']['exist_only']
+    value=user_config['general']['exist_only']
     )
     abc_sort = ft.Checkbox(
     label="צור תיקיות ראשיות לפי ה-א' ב'",
     tooltip="אם מסומן, התוכנה תיצור תיקיה ראשית לכל אות באלפבית",
-    value=USER_CONFIG['general']['abc_sort']
+    value=user_config['general']['abc_sort']
     )
     
     
@@ -384,11 +433,17 @@ def main(page: ft.Page):
         page.update()
 
     organize_button = ft.ElevatedButton(
-        content=ft.Text("הפעל כעת", size=20),
+        content=ft.Row(
+            [
+                ft.Icon(ft.icons.AUTO_FIX_HIGH), # הוספת אייקון "אזהרה"
+                ft.Text("הפעל כעת", size=20),
+            ],
+            alignment=ft.MainAxisAlignment.CENTER, # מירכוז תוכן הכפתור
+        ),
         on_click=show_warning,
         style=round_button,
         height='60',
-        width='160',
+        width='180',
     )
 
 
@@ -416,41 +471,49 @@ def main(page: ft.Page):
         ft.Container(
             content=ft.Column(
                 [
-
-                    ft.Text("התאמה אישית", size=20, color=ft.colors.PRIMARY, weight=ft.FontWeight.BOLD),
-                    
-                    ft.Column(
+                    # התאמה אישית
+                    ft.Row(
                         [
+                            ft.Icon(ft.icons.TUNE),  # סמל כיוון
+                            ft.Text("התאמה אישית", size=20, color=ft.colors.PRIMARY, weight=ft.FontWeight.BOLD),
+                        ],
+                        alignment=ft.MainAxisAlignment.CENTER, # יישור הסמל והכותרת לשמאל
+                    ),
+
+                    # הגדרות בסיסיות
+                    ft.Row(
+                        [
+                            #ft.Icon(ft.icons.HOME),  # סמל בית
                             ft.Text("הגדרות בסיסיות", weight=ft.FontWeight.BOLD),
-                            copy_mode,
-                            main_folder_only,
-                        ]
+                        ],
+                        alignment=ft.MainAxisAlignment.START,
                     ),
+                    copy_mode,
+                    main_folder_only,
 
-                    ft.Column(
+                    # מתקדם
+                    ft.Row(
                         [
-                            ft.Text("מתקדם", weight=ft.FontWeight.BOLD), 
-                            singles_folder,
-                            exist_only,
-
- 
-                            ft.Row(
-                                [
-                                    abc_sort,
-                                    save_config_button,
-                                ],
-                                
-                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                            ),
-                        ]
+                            #ft.Icon(ft.icons.BUILD),  # סמל בנייה
+                            ft.Text("מתקדם", weight=ft.FontWeight.BOLD),
+                        ],
+                        alignment=ft.MainAxisAlignment.START,
                     ),
-                
+                    singles_folder,
+                    exist_only,
+
+                    ft.Row(
+                        [
+                            abc_sort,
+                            save_config_button,
+                        ],
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    ),
                 ],
                 alignment=ft.MainAxisAlignment.CENTER,
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             ),
 
-            
             margin = ft.margin.all(0),
             border=ft.border.all(2, color="#27447D"),
             border_radius=15,

@@ -11,7 +11,7 @@ import datetime
 
 class MusicSorter:
 
-    VERSION = '12.9.1'
+    VERSION = '12.7.1'
 
     def __init__(self, source_dir, target_dir, copy_mode=False, abc_sort=False, exist_only=False, singles_folder=True, main_folder_only=False, progress_callback=None):
         self.unusual_list = ["סינגלים", "סינגל", "אבגדהוזחטיכלמנסעפצקרשתךםןץ", "אמן לא ידוע", "טוב", "לא ידוע", "תודה לך ה"]
