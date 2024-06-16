@@ -364,7 +364,18 @@ def main(page: ft.Page):
     
     # import user config form file
     global user_config
-    user_config = load_config()
+    
+    if page.platform == ft.PagePlatform.ANDROID:
+        user_config = {'general': {'copy_mode': False,
+            'main_folder_only': False,
+            'singles_folder': True,
+            'exist_only': False,
+            'abc_sort': False},
+            'folders': {'source': [], 'target': []}
+            }
+    else:
+        user_config = load_config()
+
 
     copy_mode = ft.Checkbox(
     label="העתק קבצים (העברה היא ברירת המחדל)",
@@ -399,6 +410,7 @@ def main(page: ft.Page):
         on_click=save_config,
         bgcolor=ft.colors.BACKGROUND,
         tooltip='שמור הגדרות מותאמות אישית',
+        disabled=True if page.platform == ft.PagePlatform.ANDROID else False
     )
     
     
