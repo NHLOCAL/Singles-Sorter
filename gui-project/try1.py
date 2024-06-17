@@ -1,24 +1,22 @@
 import flet as ft
-import flet_material as fm
-
-
-fm.Theme.set_theme(theme="blue")
-
 
 def main(page: ft.Page):
-    page.bgcolor = fm.Theme.bgcolor
+    def regular_action(e):
+        # קוד להפעלה רגילה
+        pass
 
-    page.horizontal_alignment = "center"
-    page.vertical_alignment = "center"
+    def clean_only_action(e):
+        # קוד להפעלת ניקוי בלבד
+        pass
 
-    drop = fm.Admonitions(
-        type_="note", expanded_height=300, expanded=False, controls_list=None
+    tabs = ft.Tabs(
+        selected_index=0,
+        tabs=[
+            ft.Tab(text="הפעל", content=ft.Text("הפעל",)),
+            ft.Tab(text="הפעל ניקוי בלבד", content=ft.Text("הפעל ניקוי בלבד",))
+        ]
     )
 
-    page.add(drop)
+    page.add(tabs)
 
-    page.update()
-
-
-if __name__ == "__main__":
-    ft.app(target=main)
+ft.app(target=main)

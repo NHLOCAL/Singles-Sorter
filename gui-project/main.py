@@ -1,34 +1,15 @@
 # -*- coding: utf-8 -*-
 import flet as ft
 from singles_sorter_v3 import MusicSorter
-import pickle
 import os
-from update import check_for_update
+
+if ft.Page.platform != ft.PagePlatform.ANDROID:
+    from general_windows import check_for_update, load_config, save_config
 
 
 # גרסת התוכנה
 global VERSION
 VERSION = MusicSorter.VERSION
-
-
-# הגדרות משתמש שמורות
-def load_config():
-    with open('app/config.pkl', 'rb') as f:
-        user_config =  pickle.load(f)
-        return user_config
-    
-# שמירת הגדרות משתמש לקובץ
-def save_config(e):
-    
-    user_config['general']['copy_mode'] = copy_mode.value
-    user_config['general']['main_folder_only'] = main_folder_only.value
-    user_config['general']['singles_folder'] = singles_folder.value
-    user_config['general']['exist_only'] = exist_only.value
-    user_config['general']['abc_sort'] = abc_sort.value
-    
-    with open('app/config.pkl', 'wb') as f:
-        pickle.dump(user_config, f)
-
 
 
 def main(page: ft.Page):
@@ -108,7 +89,10 @@ def main(page: ft.Page):
             show_settings()
 
 
-    update_available = check_for_update(VERSION)
+    if page.platform == ft.PagePlatform.ANDROID:
+        update_available = False
+    else:
+        update_available = check_for_update(VERSION)
 
     # תפריט אפשרויות נוספות
     menu_items = [
@@ -402,12 +386,17 @@ def main(page: ft.Page):
     tooltip="אם מסומן, התוכנה תיצור תיקיה ראשית לכל אות באלפבית",
     value=user_config['general']['abc_sort']
     )
+
+    # יצירת פונקציה לשמירת הגדרות המשתמש רק אם הפלטפורמה אינה אנדרואיד
+    if page.platform != ft.PagePlatform.ANDROID:
+        def open_save_config(e):
+            save_config(e, copy_mode.value, main_folder_only.value, singles_folder.value, exist_only.value, abc_sort.value)
     
     
     # כפתור שמירת הגדרות
     save_config_button = ft.IconButton(
         icon=ft.icons.SAVE,
-        on_click=save_config,
+        on_click=None if page.platform == ft.PagePlatform.ANDROID else open_save_config,
         bgcolor=ft.colors.BACKGROUND,
         tooltip='שמור הגדרות מותאמות אישית',
         disabled=True if page.platform == ft.PagePlatform.ANDROID else False
