@@ -3,13 +3,15 @@ import flet as ft
 from singles_sorter_v3 import MusicSorter
 import os
 
-if ft.Page.platform != ft.PagePlatform.ANDROID:
-    from general_windows import check_for_update, load_config, save_config
+from general_windows import check_for_update, load_config, save_config
 
 
 # גרסת התוכנה
 global VERSION
 VERSION = MusicSorter.VERSION
+
+global ANDROID_MODE
+ANDROID_MODE = True if ft.Page.platform == ft.PagePlatform.ANDROID else False
 
 
 def main(page: ft.Page):
@@ -20,7 +22,7 @@ def main(page: ft.Page):
     #page.bgcolor = ft.colors.SURFACE_VARIANT
 
     # הגדרה אוטומטית מותאמת למערכת ההפעלה
-    if page.platform == ft.PagePlatform.ANDROID:
+    if ANDROID_MODE:
         page.padding = ft.padding.all(20)
         page.scroll = ft.ScrollMode.AUTO
         auto_focus=False
@@ -89,17 +91,18 @@ def main(page: ft.Page):
             show_settings()
 
 
-    if page.platform == ft.PagePlatform.ANDROID:
-        update_available = False
-    else:
+    try:
         update_available = check_for_update(VERSION)
+    except:
+        update_available = False
+        
 
     # תפריט אפשרויות נוספות
     menu_items = [
         ft.PopupMenuItem(text="עזרה", icon=ft.icons.HELP, data="help", on_click=on_menu_selected),
         ft.PopupMenuItem(text="אודות התוכנה", icon=ft.icons.INFO, data="about", on_click=on_menu_selected),
         ft.PopupMenuItem(text="מה חדש", icon=ft.icons.NEW_RELEASES, data="whats_new", on_click=on_menu_selected),
-        ft.PopupMenuItem(text="הגדרות נוספות", icon=ft.icons.SETTINGS, data="settings", on_click=on_menu_selected, disabled=False),
+        ft.PopupMenuItem(text="הגדרות מתקדמות", icon=ft.icons.SETTINGS, data="settings", on_click=on_menu_selected, disabled=ANDROID_MODE),
     ]
 
     # הוספת פריט עדכון רק אם זמין
@@ -348,8 +351,10 @@ def main(page: ft.Page):
     
     # import user config form file
     global user_config
-    
-    if page.platform == ft.PagePlatform.ANDROID:
+
+    try:
+        user_config = load_config()
+    except:
         user_config = {'general': {'copy_mode': False,
             'main_folder_only': False,
             'singles_folder': True,
@@ -357,9 +362,6 @@ def main(page: ft.Page):
             'abc_sort': False},
             'folders': {'source': [], 'target': []}
             }
-    else:
-        user_config = load_config()
-
 
     copy_mode = ft.Checkbox(
     label="העתק קבצים (העברה היא ברירת המחדל)",
@@ -387,19 +389,18 @@ def main(page: ft.Page):
     value=user_config['general']['abc_sort']
     )
 
-    # יצירת פונקציה לשמירת הגדרות המשתמש רק אם הפלטפורמה אינה אנדרואיד
-    if page.platform != ft.PagePlatform.ANDROID:
-        def open_save_config(e):
-            save_config(e, copy_mode.value, main_folder_only.value, singles_folder.value, exist_only.value, abc_sort.value)
-    
+    # יצירת פונקציה לשמירת הגדרות המשתמש
+    def open_save_config(e):
+        save_config(e, copy_mode.value, main_folder_only.value, singles_folder.value, exist_only.value, abc_sort.value)
+
     
     # כפתור שמירת הגדרות
     save_config_button = ft.IconButton(
         icon=ft.icons.SAVE,
-        on_click=None if page.platform == ft.PagePlatform.ANDROID else open_save_config,
+        on_click=open_save_config,
         bgcolor=ft.colors.BACKGROUND,
         tooltip='שמור הגדרות מותאמות אישית',
-        disabled=True if page.platform == ft.PagePlatform.ANDROID else False
+        disabled=False,
     )
     
     

@@ -20,12 +20,6 @@ def save_config(e, copy_mode, main_folder_only, singles_folder, exist_only, abc_
     
     with open('app/config.pkl', 'wb') as f:
         pickle.dump(user_config, f)
-        
-    print("succesed")
-    print(copy_mode, main_folder_only, singles_folder, exist_only, abc_sort)
-
-
-
 
 
 
