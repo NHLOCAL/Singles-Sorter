@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 import flet as ft
-from singles_sorter_v3 import MusicSorter
 import os
 
+# קבצי התוכנה
+from singles_sorter_v3 import MusicSorter
 from general_windows import check_for_update, load_config, save_config
 
 
@@ -10,11 +11,13 @@ from general_windows import check_for_update, load_config, save_config
 global VERSION
 VERSION = MusicSorter.VERSION
 
-global ANDROID_MODE
-ANDROID_MODE = True if ft.Page.platform == ft.PagePlatform.ANDROID else False
-
 
 def main(page: ft.Page):
+
+    # הגדרת זיהוי הפעלה על אנדרואיד
+    global ANDROID_MODE
+    ANDROID_MODE = True if page.platform == ft.PagePlatform.ANDROID else False
+
     page.title = "מסדר הסינגלים"
     page.vertical_alignment = ft.MainAxisAlignment.SPACE_BETWEEN
     page.theme_mode = ft.ThemeMode.LIGHT
@@ -23,7 +26,7 @@ def main(page: ft.Page):
 
     # הגדרה אוטומטית מותאמת למערכת ההפעלה
     if ANDROID_MODE:
-        page.padding = ft.padding.all(20)
+        page.padding = ft.padding.only(20, 30, 20, 20)
         page.scroll = ft.ScrollMode.AUTO
         auto_focus=False
 
