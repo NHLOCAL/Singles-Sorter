@@ -32,9 +32,9 @@ def main(page: ft.Page):
         auto_focus=False
 
     else:
-        page.padding = ft.padding.only(45, 15, 45, 30)
+        page.padding = ft.padding.only(60, 20, 60, 20)
         page.window_height = 800
-        page.window_width = 850
+        page.window_width = 900
         auto_focus=True
 
     # Consistent button style definition
@@ -302,7 +302,21 @@ def main(page: ft.Page):
                         ft.Column(
                             [
                                 ft.Text("מיון דואטים", weight=ft.FontWeight.BOLD, size=16),
-                                ft.Text("תכונה זו לא זמינה עדיין, יתכן שהיא תשולב בהמשך", size=12, color='red'),
+                                ft.Text(
+                                    "תכונה זו לא זמינה עדיין, רוצים לזרז את הוספת התכונה? ",
+                                    spans=[
+                                        ft.TextSpan(
+                                            "מלאו טופס כעת",
+                                            ft.TextStyle(
+                                                decoration=ft.TextDecoration.UNDERLINE,
+                                                color=ft.colors.BLUE
+                                            ),
+                                            url="https://docs.google.com/forms/d/e/1FAIpQLScOaX1wWW1YXXlX4cylMA6LWpO7yIb2fStmjzfSqmLc_V9CIw/viewform?usp=sf_link"
+                                        ),
+                                    ],
+                                    color='red'
+                                ),
+
                                 ft.RadioGroup(content=ft.Column([
                                     ft.Radio(value="auto_singer", label="בחירה אוטומטית",),
                                     ft.Radio(value="first_singer", label="העתק לזמר הראשון בשם השיר", disabled=True),
