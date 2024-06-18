@@ -27,17 +27,23 @@ def save_config(e, copy_mode, main_folder_only, singles_folder, exist_only, abc_
 
 # ישום עדכון וזיהוי גרסה חדשה
 def check_for_update(current_version):
-    # URL של קובץ הגרסה באתר
-    url = "https://nhlocal.github.io/Singles-Sorter/versions.data/new-ver-exist"
+    # URL של GitHub API לקבלת הגרסה האחרונה
+    url = "https://api.github.com/repos/NHLOCAL/Singles-Sorter/releases/latest"
     
     try:
-        # בקשה לקובץ הגרסה באתר
+        # בקשה ל-API לקבלת הגרסה האחרונה
         response = requests.get(url)
         response.raise_for_status()  # לבדוק אם התקבלה תשובה תקינה
-        latest_version = response.text.strip()  # להוריד רווחים מיותרים
+        latest_release = response.json()  # לקבל JSON
+        
+        # לבדוק אם מדובר בגרסת בטא
+        is_prerelease = latest_release['prerelease']
+        
+        # לגרסה החדשה ביותר
+        latest_version = latest_release['tag_name'].strip()
         
         # להשוות בין גרסה נוכחית לגרסה באתר
-        if latest_version > current_version:
+        if latest_version > f"v{current_version}" and not is_prerelease:
             return latest_version
         else:
             return False
@@ -45,9 +51,8 @@ def check_for_update(current_version):
     except requests.RequestException as e:
         print(f"Error fetching version data: {e}")
         return False
-    
-if __name__ == '__main__':
 
+if __name__ == '__main__':
 
     from singles_sorter_v3 import MusicSorter
 
