@@ -49,7 +49,7 @@ def check_for_update(current_version):
             return False
         
     except requests.RequestException as e:
-        print(f"Error fetching version data: {e}")
+        #print(f"Error fetching version data: {e}")
         return False
 
 if __name__ == '__main__':
