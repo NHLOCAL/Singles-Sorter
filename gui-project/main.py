@@ -4,7 +4,7 @@ import os
 
 # קבצי התוכנה
 from singles_sorter_v3 import MusicSorter
-from general_windows import check_for_update, load_config, save_config
+from general_configs import check_for_update, load_config, save_config
 
 
 # גרסת התוכנה
