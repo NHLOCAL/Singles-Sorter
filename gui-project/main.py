@@ -22,7 +22,8 @@ def main(page: ft.Page):
     page.vertical_alignment = ft.MainAxisAlignment.SPACE_BETWEEN
     page.theme_mode = ft.ThemeMode.LIGHT
     page.rtl = True
-    #page.bgcolor = ft.colors.SURFACE_VARIANT
+    #page.bgcolor = "#f5f5f5"
+    page.theme = ft.Theme(color_scheme_seed="#2196f3")
 
     # הגדרה אוטומטית מותאמת למערכת ההפעלה
     if ANDROID_MODE:
@@ -32,12 +33,15 @@ def main(page: ft.Page):
 
     else:
         page.padding = ft.padding.only(45, 15, 45, 30)
-        page.window_height = 760
+        page.window_height = 800
         page.window_width = 850
         auto_focus=True
 
     # Consistent button style definition
     round_button = ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=15))
+
+    # פונקצייה להצגת הודעה קופצת בתחתית המסך עם פרמטרים שונים
+    show_snackbar = lambda message_text, color, mseconds=3000, : ft.SnackBar(content=ft.Text(message_text), bgcolor=color, duration=mseconds)
 
 
     # פונקציה לפתיחת הודעת מה חדש בהפעלה הראשונה של התוכנה
@@ -158,13 +162,13 @@ def main(page: ft.Page):
                         # Adding a Row to include the icon and header
                         ft.Row(
                             [
-                                ft.Icon(icon_name, size=30, color=ft.colors.ON_SECONDARY_CONTAINER) if icon_name else None,
+                                ft.Icon(icon_name, size=30, color=ft.colors.ON_PRIMARY_CONTAINER) if icon_name else None,
                                 ft.Text(
                                     header_content,
                                     theme_style="headlineMedium",
                                     weight=ft.FontWeight.BOLD,
                                     rtl=True,
-                                    color=ft.colors.ON_SECONDARY_CONTAINER,
+                                    color=ft.colors.ON_PRIMARY_CONTAINER,
                                 ),
                             ],
                             alignment=ft.MainAxisAlignment.CENTER,  # Center the icon and header
@@ -181,7 +185,7 @@ def main(page: ft.Page):
                 ),
                 padding=40,
                 expand=True,
-                bgcolor=ft.colors.SECONDARY_CONTAINER,
+                bgcolor=ft.colors.SURFACE_VARIANT,
             ),
             show_drag_handle=True,
             elevation=300,
@@ -268,13 +272,13 @@ def main(page: ft.Page):
                 print("This feature is not supported on Windows.")
 
 
-        
+        # הגדרת תצוגת מידע נוסף על הוספת זמרים
         is_expanded = False
 
         def toggle_content(e):
             nonlocal is_expanded
             is_expanded = not is_expanded
-            content.visible = is_expanded
+            info_add_singers.visible = is_expanded
             icon_arrow.icon = "ARROW_DROP_DOWN" if is_expanded else "ARROW_RIGHT"
             page.update()
 
@@ -283,46 +287,55 @@ def main(page: ft.Page):
             on_click=toggle_content,
             tooltip="למידע נוסף"  # טקסט הסבר לחץ
         )
-        title = ft.Text("הוספת זמרים", weight=ft.FontWeight.BOLD)
-        content = ft.Markdown(add_singers_info, visible=False)
+        title_add_singers = ft.Text("הוספת זמרים", weight=ft.FontWeight.BOLD, size=16)
+        info_add_singers = ft.Markdown(add_singers_info, visible=False)
 
         page.dialog = ft.AlertDialog(
             modal=True,
-            icon=ft.Icon(ft.icons.SETTINGS, size=30, color=ft.colors.ON_SECONDARY_CONTAINER),
-            title=ft.Text("הגדרות מתקדמות", text_align="center"),
+            #bgcolor=ft.colors.SURFACE_VARIANT,
+            icon=ft.Icon(ft.icons.SETTINGS, size=30, color=ft.colors.ON_PRIMARY_CONTAINER),
+            title=ft.Text("הגדרות מתקדמות", text_align="center", color=ft.colors.ON_PRIMARY_CONTAINER, weight=ft.FontWeight.BOLD),
             content=ft.Container( # הוספת Container לשליטה ברוחב
                 width=page.window_width * 0.7, # קביעת רוחב קבוע
                 content=ft.Column(
                     [
-                        ft.Text("מיון דואטים", weight=ft.FontWeight.BOLD),
-                        ft.Text("תכונה זו לא זמינה עדיין, יתכן שהיא תשולב בהמשך", size=12, color='red'),
-                        ft.RadioGroup(content=ft.Column([
-                                ft.Radio(value="auto_singer", label="בחירה אוטומטית",),
-                                ft.Radio(value="first_singer", label="העתק לזמר הראשון בשם השיר", disabled=True),
-                                ft.Radio(value="all_singers", label="העתק לכל הזמרים המופיעים בשם השיר", disabled=True)],
-                                rtl=True,
-                                ),
-                                value="auto_singer"
-                                ),
-
-                        # קטע הקוד המעודכן
                         ft.Column(
                             [
-                                ft.Row([icon_arrow, title]),
-                                content,
+                                ft.Text("מיון דואטים", weight=ft.FontWeight.BOLD, size=16),
+                                ft.Text("תכונה זו לא זמינה עדיין, יתכן שהיא תשולב בהמשך", size=12, color='red'),
+                                ft.RadioGroup(content=ft.Column([
+                                    ft.Radio(value="auto_singer", label="בחירה אוטומטית",),
+                                    ft.Radio(value="first_singer", label="העתק לזמר הראשון בשם השיר", disabled=True),
+                                    ft.Radio(value="all_singers", label="העתק לכל הזמרים המופיעים בשם השיר", disabled=True)],
+                                    rtl=True,
+                                    ),
+                                    value="auto_singer"
+                                ),
                             ],
                         ),
 
-                        ft.Row(
+
+                        ft.Column(
                             [
-                                ft.TextButton("ערוך קובץ", on_click=open_csv),
-                                ft.TextButton("ייבא קובץ", on_click=import_csv, disabled=True),
-                                ft.TextButton("ייצא קובץ", on_click=export_csv, disabled=True),
-                            ]
-                        )
+                                ft.Row([icon_arrow, title_add_singers]),
+                                info_add_singers,
+
+                                ft.Row(
+                                    [
+                                        ft.TextButton("ערוך קובץ", on_click=open_csv),
+                                        ft.TextButton("ייבא קובץ", on_click=import_csv, disabled=True),
+                                        ft.TextButton("ייצא קובץ", on_click=export_csv, disabled=True),
+                                    ]
+                                ),
+                            ],
+                            
+                        ),
+
+
                     ],
 
-                    spacing='10',
+                    spacing='25',
+                    scroll=ft.ScrollMode.AUTO,
                     alignment=ft.MainAxisAlignment.START,
                     horizontal_alignment=ft.CrossAxisAlignment.START,
                     rtl=True,
@@ -349,9 +362,9 @@ def main(page: ft.Page):
     
     round_text_field = ft.border_radius.only(15, 10, 15, 10)
 
-    source_dir_input = ft.TextField(label="תיקית הסינגלים שלך", autofocus=auto_focus, rtl=True, expand=True, border_radius=round_text_field, height='50', hint_text=r"C:\Music\סינגלים", read_only=ANDROID_MODE)
+    source_dir_input = ft.TextField(label="תיקית הסינגלים שלך", autofocus=auto_focus, rtl=True, expand=True, border_radius=round_text_field, border=ft.border.all(2, color=ft.colors.OUTLINE), height='50', hint_text=r"C:\Music\סינגלים", read_only=ANDROID_MODE)
 
-    target_dir_input = ft.TextField(label="תיקית יעד", rtl=True, expand=True,  border_radius=round_text_field, height='50', hint_text=r"C:\Music\המוזיקה שלך",  read_only=ANDROID_MODE)
+    target_dir_input = ft.TextField(label="תיקית יעד", rtl=True, expand=True, border=ft.border.all(2, color=ft.colors.OUTLINE), border_radius=round_text_field, height='50', hint_text=r"C:\Music\המוזיקה שלך",  read_only=ANDROID_MODE)
     
     source_picker = ft.FilePicker(on_result=lambda e: update_path(e, source_dir_input))
     target_picker = ft.FilePicker(on_result=lambda e: update_path(e, target_dir_input))
@@ -409,7 +422,14 @@ def main(page: ft.Page):
 
     # יצירת פונקציה לשמירת הגדרות המשתמש
     def open_save_config(e):
-        save_config(e, copy_mode.value, main_folder_only.value, singles_folder.value, exist_only.value, abc_sort.value)
+        try:
+            save_config(e, copy_mode.value, main_folder_only.value, singles_folder.value, exist_only.value, abc_sort.value)
+            page.snack_bar = show_snackbar("ההגדרות נשמרו בהצלחה!", ft.colors.GREEN)
+        except Exception as error:
+            page.snack_bar = show_snackbar(f"התרחשה שגיאה בעת שמירת ההגדרות: {error}", ft.colors.ERROR)
+        finally:
+            page.snack_bar.open = True
+            page.update()
 
     
     # כפתור שמירת הגדרות
@@ -535,7 +555,7 @@ def main(page: ft.Page):
             ),
 
             margin = ft.margin.all(0),
-            border=ft.border.all(2, color="#27447D"),
+            border=ft.border.all(2, color=ft.colors.OUTLINE),
             border_radius=15,
             padding=10,
             alignment=ft.alignment.center,
@@ -590,8 +610,6 @@ def main(page: ft.Page):
     def organize_files(e, page: ft.Page):
         source_dir = source_dir_input.value
         target_dir = target_dir_input.value
-
-        show_snackbar = lambda message_text, color, mseconds=3000, : ft.SnackBar(content=ft.Text(message_text), bgcolor=color, duration=mseconds)
         
         if not source_dir or not target_dir:
             page.snack_bar = show_snackbar("אנא בחר תיקיית מקור ותיקיית יעד!", ft.colors.ERROR)
