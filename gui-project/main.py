@@ -26,18 +26,28 @@ def main(page: ft.Page):
 
     # הגדרה אוטומטית מותאמת למערכת ההפעלה
     if ANDROID_MODE:
-        page.padding = ft.padding.only(20, 30, 20, 20)
+        page.padding = ft.padding.only(20, 10, 20, 0)
         page.scroll = ft.ScrollMode.AUTO
         auto_focus=False
 
     else:
-        page.padding = ft.padding.only(45, 30, 45, 30)
+        page.padding = ft.padding.only(45, 15, 45, 30)
         page.window_height = 760
         page.window_width = 850
         auto_focus=True
 
     # Consistent button style definition
     round_button = ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=15))
+
+
+    # פונקציה לפתיחת הודעת מה חדש בהפעלה הראשונה של התוכנה
+    def first_run_menu():
+        file_path = os.path.join('app', 'first_run')
+        if os.path.isfile(file_path):
+            # If the file exists, do something (e.g., show content)
+            show_content('whats-new', 'מה חדש', ft.icons.NEW_RELEASES)
+            os.remove(file_path)
+
     
     
     # App bar
@@ -75,7 +85,6 @@ def main(page: ft.Page):
         padding=8,
         height='35',
     )
-
 
 
 
@@ -331,7 +340,13 @@ def main(page: ft.Page):
 
     # Input fields
     height_button = '50'
-    width_button = '150'
+    if ANDROID_MODE:
+        width_button = '100'
+        describe_button = 'בחר'
+    else:
+        width_button = '150'
+        describe_button = 'בחר תיקיה'
+    
     round_text_field = ft.border_radius.only(15, 10, 15, 10)
 
     source_dir_input = ft.TextField(label="תיקית הסינגלים שלך", autofocus=auto_focus, rtl=True, expand=True, border_radius=round_text_field, height='50', hint_text=r"C:\Music\סינגלים", read_only=ANDROID_MODE)
@@ -344,8 +359,8 @@ def main(page: ft.Page):
     page.overlay.extend([source_picker, target_picker])
 
     
-    source_dir_button = ft.ElevatedButton("בחר תיקיה", icon=ft.icons.FOLDER_OPEN, on_click=lambda _: source_picker.get_directory_path(), height=height_button, width=width_button, tooltip='בחירת תיקיה המכילה את המוזיקה שברצונך לסדר', style=round_button,)
-    target_dir_button = ft.ElevatedButton("בחר תיקיה", icon=ft.icons.FOLDER_OPEN, on_click=lambda _: target_picker.get_directory_path(), height=height_button, width=width_button, tooltip='בחירת תיקית יעד אליה יוכנסו תיקיות  המוזיקה שיווצרו', style=round_button)
+    source_dir_button = ft.ElevatedButton(describe_button, icon=ft.icons.FOLDER_OPEN, on_click=lambda _: source_picker.get_directory_path(), height=height_button, width=width_button, tooltip='בחירת תיקיה המכילה את המוזיקה שברצונך לסדר', style=round_button,)
+    target_dir_button = ft.ElevatedButton(describe_button, icon=ft.icons.FOLDER_OPEN, on_click=lambda _: target_picker.get_directory_path(), height=height_button, width=width_button, tooltip='בחירת תיקית יעד אליה יוכנסו תיקיות  המוזיקה שיווצרו', style=round_button)
 
 
     # Checkboxes
@@ -468,7 +483,7 @@ def main(page: ft.Page):
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             ),
  
-            margin = ft.margin.only(0, 0, 0, 20)
+            margin = ft.margin.only(0, 10, 0, 20)
 
         ),
 
@@ -631,6 +646,9 @@ def main(page: ft.Page):
             page.snack_bar.open = True
             organize_button.disabled = False
             page.update()
+
+    # הפעלת פונקצייה שפותחת הודעה "מה חדש" בהפעלה הראשונה
+    first_run_menu()
 
 
 
