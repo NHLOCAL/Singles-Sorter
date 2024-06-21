@@ -210,9 +210,9 @@ def main(page: ft.Page):
             """
             page.dialog.open = False
 
-            import webbrowser
             download_url = "https://nhlocal.github.io/Singles-Sorter/site/download?utm_source=singles_sorter_program&utm_medium=desktop"
-            webbrowser.open(download_url)
+            
+            page.launch_url(download_url)
 
             
             # יישום שיטת עדכון אוטומטי
