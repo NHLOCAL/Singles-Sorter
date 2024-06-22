@@ -1,67 +1,45 @@
-name: Publish Release
+name: Publish EXE
 
 on:
   push:
     tags:
-      - 'v*.*'
+      - 'v*'
 
 jobs:
   build:
     runs-on: windows-latest
+
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       
     - name: Setup Python
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
 
     - name: Install dependencies
       run: |
-        pip install pyinstaller music_tag
+        pip install pyinstaller music_tag jibrish_to_hebrew flet==0.22.0
 
     - name: Build EXE
       run: |
-        # Get the version number from the tag (e.g., v1.0.0)
-        $env:VERSION = $env:GITHUB_REF -replace '^refs/tags/v', ''
-        
-        # Run PyInstaller with custom name and version
-        pyinstaller --noconfirm --onefile --console --name "singles_sorter_func.exe" python-project/singles_sorter_func.py
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        VERSION: ${{ github.ref }}
-
-
+        flet pack -i src/core/assets/icon.ico src/core/main.py --product-name "Singles Sorter" --product-version "13.0" --file-description "Singles Sorter" --copyright "nh.local11@gmail.com"
 
 
     - name: Create Artifact Directory
       run: mkdir -p artifacts
       
     - name: Copy Output File to Artifact Directory
-      run: copy dist\singles_sorter_func.exe artifacts\ 
-
-    - name: Prepare Additional Files
-      run: |
-        copy source_code\*.* artifacts\
+      run: copy dist\main.exe artifacts\ 
 
     - name: Zip Artifact Directory
       run: |
         cd artifacts
         powershell -Command "Compress-Archive -Path * -DestinationPath Singles-Sorter.zip"
 
-
-
-    - name: Set version number
-      run: |
-        # Get the version number from the tag (e.g., v1.0.0)
-        $env:VERSION = $env:GITHUB_REF -replace '^refs/tags/v', ''
-        echo $env:VERSION > version.txt # Update version.txt with your desired version
-
-    - name: Create Release
-      id: create_release
-      uses: softprops/action-gh-release@v1
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
       with:
-        files: "artifacts/Singles-Sorter.zip"
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        name: singles-sorter
+        path: artifacts/Singles-Sorter.zip

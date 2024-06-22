@@ -1,0 +1,56 @@
+name: Build and Release CLI
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        pip install pyinstaller music_tag jibrish_to_hebrew
+
+    - name: Build EXE
+      run: |
+        pyinstaller --onefile --add-data "src/core/app/singer-list.csv;app" --name "Singles-Sorter" --icon "src/core/assets/icon.ico" "src/core/singles_sorter_v3.py"
+
+    - name: Get the version
+      id: get_version
+      run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/v}
+
+    - name: Rename output file
+      run: |
+        move dist\Singles-Sorter.exe dist\Singles-Sorter-cli-${{ steps.get_version.outputs.VERSION }}.exe
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: true
+        prerelease: true
+
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/singles-sorter-cli-${{ steps.get_version.outputs.VERSION }}.exe
+        asset_name: singles-sorter-cli-${{ steps.get_version.outputs.VERSION }}.exe
+        asset_content_type: application/octet-stream
