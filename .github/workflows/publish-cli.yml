@@ -28,29 +28,20 @@ jobs:
 
     - name: Get the version
       id: get_version
-      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
     - name: Rename output file
       run: |
-        move dist\Singles-Sorter.exe dist\Singles-Sorter-cli-${{ env.VERSION }}.exe
+        move dist\Singles-Sorter.exe dist\Singles-Sorter-cli-${{ steps.get_version.outputs.VERSION }}.exe
 
     - name: Create Release
       id: create_release
-      uses: actions/create-release@v1.1.4
+      uses: softprops/action-gh-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
+        name: Release ${{ github.ref }}
         draft: true
         prerelease: true
-
-    - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/singles-sorter-cli-${{ env.VERSION }}.exe
-        asset_name: singles-sorter-cli-${{ env.VERSION }}.exe
-        asset_content_type: application/octet-stream
+        files: ./dist/Singles-Sorter-cli-${{ steps.get_version.outputs.VERSION }}.exe

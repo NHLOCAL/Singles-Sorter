@@ -20,7 +20,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install pyinstaller music_tag jibrish_to_hebrew flet==0.22.0
+        pip install pyinstaller music_tag jibrish_to_hebrew flet
 
     - name: Build EXE
       run: |
