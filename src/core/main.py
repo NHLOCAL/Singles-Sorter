@@ -34,8 +34,8 @@ def main(page: ft.Page):
 
     else:
         page.padding = ft.padding.only(60, 20, 60, 20)
-        page.window_height = 800
-        page.window_width = 900
+        page.window.height = 800
+        page.window.width = 900
         auto_focus=True
 
     # Consistent button style definition
@@ -73,7 +73,7 @@ def main(page: ft.Page):
         center_title=True,
         bgcolor=ft.colors.PRIMARY,
         elevation=4,  # Added elevation for visual depth
-        toolbar_height='60',
+        toolbar_height=60,
     )
 
 
@@ -297,7 +297,7 @@ def main(page: ft.Page):
             icon=ft.Icon(ft.icons.SETTINGS, size=30, color=ft.colors.ON_PRIMARY_CONTAINER),
             title=ft.Text("הגדרות מתקדמות", text_align="center", color=ft.colors.ON_PRIMARY_CONTAINER, weight=ft.FontWeight.BOLD),
             content=ft.Container( # הוספת Container לשליטה ברוחב
-                width=page.window_width * 0.7, # קביעת רוחב קבוע
+                width=page.window.width * 0.7, # קביעת רוחב קבוע
                 content=ft.Column(
                     [
                         ft.Column(
@@ -458,7 +458,7 @@ def main(page: ft.Page):
     
     
     # Progress bar
-    page.window_progress_bar='0.0'
+    page.window.progress_bar='0.0'
     progress_bar = ft.ProgressBar(width=400, value=0)
     
 
@@ -644,7 +644,7 @@ def main(page: ft.Page):
         def progress_callback(progress):
             progress_num = progress / 100
             progress_bar.value = progress_num
-            page.window_progress_bar = str(progress_num)
+            page.window.progress_bar = str(progress_num)
             page.update()
 
         # Call the scan_dir function with arguments and progress callback
@@ -683,7 +683,7 @@ def main(page: ft.Page):
             page.snack_bar = show_snackbar(f"שגיאה במיון הקבצים: {error}", ft.colors.ERROR)
 
         finally: 
-            page.window_progress_bar = '0.0'
+            page.window.progress_bar = '0.0'
             page.snack_bar.open = True
             organize_button.disabled = False
             page.update()
