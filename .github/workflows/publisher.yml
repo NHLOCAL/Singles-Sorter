@@ -2,8 +2,8 @@ name: Publish EXE
 
 on:
   push:
-    branches:
-      - gui
+    tags:
+      - 'v*'
 
 jobs:
   build:
@@ -20,7 +20,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install pyinstaller music_tag jibrish_to_hebrew flet
+        pip install pyinstaller music_tag jibrish_to_hebrew flet==0.22.0
 
     - name: Build EXE
       run: |

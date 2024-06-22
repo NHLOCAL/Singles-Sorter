@@ -3,13 +3,13 @@ import flet as ft
 import os
 
 # קבצי התוכנה
-from singles_sorter_v3 import MusicSorter
+from singles_sorter_v3 import MusicSorter, __VERSION__
 from general_configs import check_for_update, load_config, save_config
 
 
 # גרסת התוכנה
 global VERSION
-VERSION = MusicSorter.VERSION
+VERSION = __VERSION__
 
 
 

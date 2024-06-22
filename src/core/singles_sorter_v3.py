@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
+__VERSION__ = '13.0'
+
 import os
+import sys
 import argparse
 from shutil import copy, move
 from music_tag import load_file
@@ -10,8 +13,6 @@ import json
 import datetime
 
 class MusicSorter:
-
-    VERSION = '13.0'
 
     def __init__(self, source_dir, target_dir, copy_mode=False, abc_sort=False, exist_only=False, singles_folder=True, main_folder_only=False, progress_callback=None):
         self.unusual_list = ["סינגלים", "סינגל", "אבגדהוזחטיכלמנסעפצקרשתךםןץ", "אמן לא ידוע", "טוב", "לא ידוע", "תודה לך ה"]
@@ -195,7 +196,15 @@ class MusicSorter:
     def list_from_csv(self):
         # יבוא רשימת זמרים מקובץ csv
         # Construct the path to the CSV file
-        csv_path = os.path.abspath("app/singer-list.csv")
+
+        # אם הקוד רץ כקובץ מקומפל
+        if getattr(sys, 'frozen', False):
+            csv_path = os.path.join(sys._MEIPASS, 'app', 'singer-list.csv')
+        else:
+            # אם הקוד רץ כסקריפט רגיל
+            csv_path = os.path.abspath("app/singer-list.csv")
+        
+        
         
         with open(csv_path, 'r', encoding='utf-8') as file:
             csv_reader = csv.reader(file)
@@ -347,7 +356,7 @@ class MusicSorter:
 
 
 def main():
-    parser = argparse.ArgumentParser(description=f"Singles Sorter {MusicSorter.VERSION} - Scan and organize music files into folders by artist using advanced automation.")
+    parser = argparse.ArgumentParser(description=f"Singles Sorter {__VERSION__} - Scan and organize music files into folders by artist using advanced automation.")
     parser.add_argument('source_dir', help="Path to the source directory")
     parser.add_argument('target_dir', help="Path to the target directory", nargs='?')
     parser.add_argument('-c', '--copy_mode', help="Enable copy mode (default is move mode)", action='store_true')
