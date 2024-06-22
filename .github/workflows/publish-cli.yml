@@ -29,7 +29,10 @@ jobs:
     - name: Get the version
       id: get_version
       shell: bash
-      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        echo "RELEASE_TITLE=מסדר הסינגלים $VERSION" >> $GITHUB_OUTPUT
 
     - name: Rename output file
       shell: pwsh
@@ -43,7 +46,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ github.ref }}
-        name: Release ${{ github.ref }}
+        name: ${{ steps.get_version.outputs.RELEASE_TITLE }}
         draft: true
         prerelease: true
         files: ./dist/Singles-Sorter-cli-${{ steps.get_version.outputs.VERSION }}.exe
