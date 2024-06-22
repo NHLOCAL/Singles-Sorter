@@ -1,0 +1,100 @@
+name: Publish Installer
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        pip install pyinstaller music_tag jibrish_to_hebrew flet
+
+    - name: Get the version
+      id: get_version
+      shell: bash
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        echo "RELEASE_TITLE=מסדר הסינגלים $VERSION" >> $GITHUB_OUTPUT
+
+    - name: Build EXE
+      run: |
+        flet pack -i src/core/assets/icon.ico src/core/main.py --product-name "Singles Sorter" --product-version "${{ steps.get_version.outputs.VERSION }}" --file-description "Singles Sorter" --copyright "nh.local11@gmail.com"
+
+    - name: Install Inno Setup
+      run: |
+        choco install innosetup -y
+
+    - name: Create Inno Setup Script
+      run: |
+        $script = @"
+        #define MyAppName "מסדר הסינגלים"
+        #define MyAppVersion "${{ steps.get_version.outputs.VERSION }}"
+        #define MyAppPublisher "nhlocal"
+        #define MyAppURL "https://nhlocal.github.io/Singles-Sorter"
+        #define MyAppExeName "main.exe"
+        [Setup]
+        AppId={{C1801B38-3050-4D83-8085-6466145B0A06}
+        AppName={#MyAppName}
+        AppVersion={#MyAppVersion}
+        AppPublisher={#MyAppPublisher}
+        AppPublisherURL={#MyAppURL}
+        AppSupportURL={#MyAppURL}
+        AppUpdatesURL={#MyAppURL}
+        DefaultDirName={autopf}\Singles Sorter
+        DisableProgramGroupPage=yes
+        LicenseFile="license.md"
+        PrivilegesRequired=lowest
+        OutputBaseFilename=מסדר הסינגלים-{#MyAppVersion}
+        SetupIconFile=src\core\assets\icon.ico
+        SolidCompression=yes
+        Compression=lzma2/ultra64
+        LZMAUseSeparateProcess=yes
+        LZMADictionarySize=1048576
+        LZMANumFastBytes=273
+        WizardStyle=modern
+        [Languages]
+        Name: "hebrew"; MessagesFile: "compiler:Languages\Hebrew.isl"
+        [Tasks]
+        Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+        [Files]
+        Source: "dist\main.exe"; DestDir: "{app}"; Flags: ignoreversion
+        Source: "src\core\app\*"; DestDir: "{app}\app"; Flags: ignoreversion recursesubdirs createallsubdirs
+        Source: "src\core\assets\icon.png"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs createallsubdirs
+        [Icons]
+        Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+        Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+        [Run]
+        Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+        "@
+        Set-Content -Path inno_setup_script.iss -Value $script
+
+    - name: Build Installer
+      run: |
+        & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' inno_setup_script.iss
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2.0.6
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        name: ${{ steps.get_version.outputs.RELEASE_TITLE }}
+        draft: true
+        prerelease: true
+        files: |
+          dist/main.exe
+          Output/מסדר הסינגלים-${{ steps.get_version.outputs.VERSION }}.exe
