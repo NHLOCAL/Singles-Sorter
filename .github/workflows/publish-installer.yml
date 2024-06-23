@@ -88,11 +88,11 @@ jobs:
 
     - name: Create Portable Version
       run: |
-        New-Item -ItemType Directory -Force -Path portable
-        Copy-Item -Path dist\main.exe -Destination portable\
-        Copy-Item -Path src\core\app\* -Destination portable\app\ -Recurse
-        Copy-Item -Path src\core\assets\icon.png -Destination portable\assets\
-        Compress-Archive -Path portable\* -DestinationPath singles-sorter-portable-${{ steps.get_version.outputs.VERSION }}.zip
+        New-Item -ItemType Directory -Force -Path dist\portable
+        Copy-Item -Path dist\main.exe -Destination dist\portable\
+        Copy-Item -Path src\core\app\* -Destination dist\portable\app\ -Recurse
+        Copy-Item -Path src\core\assets\icon.png -Destination dist\portable\assets\
+        Compress-Archive -Path dist\portable\* -DestinationPath singles-sorter-portable-${{ steps.get_version.outputs.VERSION }}.zip
 
     - name: Create Release
       uses: softprops/action-gh-release@v2.0.6
