@@ -80,7 +80,7 @@ border-radius: 5px;
 text-decoration: none;
 display: inline-block;
 background-color: #fff;
-color: black;
+color: white;
 font-weight: bold;
 }
 
@@ -339,7 +339,8 @@ div[style="width:100%; float:center; height:100%; margin:30px; position: fixed;"
   display: inline-block;
   padding: 10px 20px;
   font-size: 18px;
-  background: linear-gradient(90deg, #E0E0BD 25%, #FEFFD7 50%, #E0E0BD 75%);
+  background: linear-gradient(90deg, #36618E 25%, #4B82BE 50%, #36618E 75%);
+  color: white;
   background-size: 200% 100%;
   text-decoration: none;
   animation: shimmer 2s infinite; /* Apply the shimmer animation */
