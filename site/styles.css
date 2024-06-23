@@ -174,7 +174,18 @@ body {
   background-color: #005E8A;
 }
 
-/* Responsive top bar for smaller screens */
+.fixed-bottom {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    height: 16vh;
+    background-color: #FFF5A6;
+    padding-bottom: 30px;
+	padding-top: 30px;
+    text-align: center;
+  }
+
+/* Responsive for smaller screens */
 @media screen and (max-width: 767px) {
 .topnav {
 height: auto;
@@ -225,18 +236,10 @@ div[style="width:100%; float:center; height:100%; margin:30px; position: fixed;"
     margin: 0;
     height: calc(100% - 56px); /* Subtract the height of the top navigation menu */
   }
+
+  
+
 }
-
-
-.fixed-bottom {
-    position: fixed;
-    bottom: 0;
-    width: 100%;
-    height: 20vh;
-    background-color: #FFF5A6;
-    padding: 30px;
-    text-align: center;
-  }
 
 
 /* הגדרת עיצוב פס גלילה */
@@ -342,4 +345,5 @@ div[style="width:100%; float:center; height:100%; margin:30px; position: fixed;"
   animation: shimmer 2s infinite; /* Apply the shimmer animation */
   transition: background-position 0.5s ease; /* Smooth transition for the background */
 }
+
 
