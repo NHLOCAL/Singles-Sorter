@@ -1,4 +1,4 @@
-name: Publish Installer
+name: Publish Installer and Portable Version
 
 on:
   push:
@@ -58,7 +58,7 @@ jobs:
         DisableProgramGroupPage=yes
         LicenseFile="license.md"
         PrivilegesRequired=lowest
-        OutputBaseFilename=מסדר הסינגלים-{#MyAppVersion}
+        OutputBaseFilename=singles-sorter-installer-{#MyAppVersion}
         SetupIconFile=src\core\assets\icon.ico
         SolidCompression=yes
         Compression=lzma2/ultra64
@@ -86,6 +86,14 @@ jobs:
       run: |
         & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' inno_setup_script.iss
 
+    - name: Create Portable Version
+      run: |
+        New-Item -ItemType Directory -Force -Path portable
+        Copy-Item -Path dist\main.exe -Destination portable\
+        Copy-Item -Path src\core\app\* -Destination portable\app\ -Recurse
+        Copy-Item -Path src\core\assets\icon.png -Destination portable\assets\
+        Compress-Archive -Path portable\* -DestinationPath singles-sorter-portable-${{ steps.get_version.outputs.VERSION }}.zip
+
     - name: Create Release
       uses: softprops/action-gh-release@v2.0.6
       env:
@@ -96,5 +104,5 @@ jobs:
         draft: true
         prerelease: true
         files: |
-          dist/main.exe
-          Output/מסדר הסינגלים-${{ steps.get_version.outputs.VERSION }}.exe
+          Output/singles-sorter-installer-${{ steps.get_version.outputs.VERSION }}.exe
+          singles-sorter-portable-${{ steps.get_version.outputs.VERSION }}.zip
