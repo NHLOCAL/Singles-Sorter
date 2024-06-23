@@ -58,7 +58,7 @@ jobs:
         DisableProgramGroupPage=yes
         LicenseFile="license.md"
         PrivilegesRequired=lowest
-        OutputBaseFilename=singles-sorter-installer-{#MyAppVersion}
+        OutputBaseFilename=Singles-Sorter-Installer-{#MyAppVersion}
         SetupIconFile=src\core\assets\icon.ico
         SolidCompression=yes
         Compression=lzma2/ultra64
@@ -92,7 +92,7 @@ jobs:
         Copy-Item dist\main.exe portable\
         Copy-Item -Recurse src\core\app portable\
         Copy-Item -Recurse src\core\assets portable\
-        Compress-Archive -Path portable\* -DestinationPath singles-sorter-portable-${{ steps.get_version.outputs.VERSION }}.zip
+        Compress-Archive -Path portable\* -DestinationPath Singles-Sorter-Portable-${{ steps.get_version.outputs.VERSION }}.zip -CompressionLevel Optimal
 
     - name: Create Release
       uses: softprops/action-gh-release@v2.0.6
@@ -104,5 +104,5 @@ jobs:
         draft: true
         prerelease: true
         files: |
-          Output/singles-sorter-installer-${{ steps.get_version.outputs.VERSION }}.exe
-          singles-sorter-portable-${{ steps.get_version.outputs.VERSION }}.zip
+          Output/Singles-Sorter-Installer-${{ steps.get_version.outputs.VERSION }}.exe
+          Singles-Sorter-Portable-${{ steps.get_version.outputs.VERSION }}.zip
