@@ -34,8 +34,9 @@ def main(page: ft.Page):
 
     else:
         page.padding = ft.padding.only(60, 20, 60, 20)
-        page.window.height = 800
-        page.window.width = 900
+        page.window.height = 810
+        page.window.width = 940
+        page.scroll = ft.ScrollMode.ADAPTIVE
         auto_focus=True
 
     # Consistent button style definition
@@ -532,7 +533,7 @@ def main(page: ft.Page):
                             ft.Icon(ft.icons.TUNE),  # סמל כיוון
                             ft.Text("התאמה אישית", size=20, color=ft.colors.PRIMARY, weight=ft.FontWeight.BOLD),
                         ],
-                        alignment=ft.MainAxisAlignment.CENTER, # יישור הסמל והכותרת לשמאל
+                        alignment=ft.MainAxisAlignment.CENTER,
                     ),
 
                     # הגדרות בסיסיות
@@ -569,7 +570,7 @@ def main(page: ft.Page):
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             ),
 
-            margin = ft.margin.all(0),
+            margin = ft.margin.only(0, 5, 0, 10),
             border=ft.border.all(2, color=ft.colors.OUTLINE),
             border_radius=15,
             padding=10,
@@ -602,8 +603,8 @@ def main(page: ft.Page):
                 spacing='20',
             ),
 
-            margin = ft.margin.only(0, 10, 0, 10),
-            padding=10,
+            margin = ft.margin.all(0),
+            padding= ft.padding.only(10, 10, 10, 5),
             alignment=ft.alignment.center,
         )
     )

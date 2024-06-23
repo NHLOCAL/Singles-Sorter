@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-__VERSION__ = '13.0'
+__VERSION__ = '13.1'
 
 import os
 import sys
@@ -193,15 +193,23 @@ class MusicSorter:
         return
 
 
+    def is_cli_mode(self):
+        try:
+            return sys.stdin is not None and sys.stdin.isatty()
+        except AttributeError:
+            return False
+
     def list_from_csv(self):
         # יבוא רשימת זמרים מקובץ csv
         # Construct the path to the CSV file
 
         # אם הקוד רץ כקובץ מקומפל
-        if getattr(sys, 'frozen', False):
+        if getattr(sys, 'frozen', False) and self.is_cli_mode():
+            # מצב CLI וגם מקומפל
             csv_path = os.path.join(sys._MEIPASS, 'app', 'singer-list.csv')
+
         else:
-            # אם הקוד רץ כסקריפט רגיל
+            # כל מקרה אחר (GUI או לא מקומפל)
             csv_path = os.path.abspath("app/singer-list.csv")
         
         
