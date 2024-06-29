@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-__VERSION__ = '13.1'
+__VERSION__ = '13.2'
 
 import os
 import sys
@@ -14,7 +14,7 @@ import datetime
 
 class MusicSorter:
 
-    def __init__(self, source_dir, target_dir, copy_mode=False, abc_sort=False, exist_only=False, singles_folder=True, main_folder_only=False, progress_callback=None):
+    def __init__(self, source_dir, target_dir, copy_mode=False, abc_sort=False, exist_only=False, singles_folder=True, main_folder_only=False, duet_mode=False, progress_callback=None):
         self.unusual_list = ["סינגלים", "סינגל", "אבגדהוזחטיכלמנסעפצקרשתךםןץ", "אמן לא ידוע", "טוב", "לא ידוע", "תודה לך ה"]
         self.substrings_to_remove = [" -מייל מיוזיק", " - ציצו במייל", "-חדשות המוזיקה", " - חדשות המוזיקה", " - ציצו", " מוזיקה מכל הלב", " - מייל מיוזיק"]
         self.source_dir = source_dir
@@ -24,9 +24,10 @@ class MusicSorter:
         self.exist_only = exist_only
         self.singles_folder = singles_folder
         self.main_folder_only = main_folder_only
-        self.log_files = []
-        self.operating_details = [source_dir, target_dir, copy_mode, abc_sort, exist_only, singles_folder, main_folder_only]
+        self.duet_mode = duet_mode
         self.progress_callback = progress_callback
+        self.log_files = []
+        self.operating_details = [source_dir, target_dir, copy_mode, abc_sort, exist_only, singles_folder, main_folder_only, duet_mode]
         self.singer_list =  self.list_from_csv()
 
 
@@ -113,84 +114,85 @@ class MusicSorter:
         # בדיקת שגיאות בארגומנטים של המשתמש
         self.check_errors()
 
-        # סריקת עץ התיקיות או התיקיה הראשית בהתאם לבחירת המשתמש והכנסת שם הקבצים ושם האמן שלהם לרשימה
-        info_list = []  
+        info_list = []
         if self.main_folder_only is False:
             for root, _, files in os.walk(self.source_dir):
                 for my_file in files:
                     file_path = os.path.join(root, my_file)
-                    if my_file.lower().endswith((".mp3",".wma", ".wav")):
-                        artist = self.artist_from_song(file_path)
-                        if artist: info_list.append((file_path, artist))
+                    if my_file.lower().endswith((".mp3", ".wma", ".wav")):
+                        artists = self.artists_from_song(file_path)
+                        if artists:
+                            info_list.append((file_path, artists))
 
-        # סריקת התיקיה הראשית בלבד ללא תיקיות פנימיות
         elif self.main_folder_only:
             for my_file in os.listdir(self.source_dir):
                 file_path = os.path.join(self.source_dir, my_file)
-                if os.path.isfile(file_path):
-                    if my_file.lower().endswith((".mp3",".wma", ".wav")):
-                        artist = self.artist_from_song(file_path)
-                        if artist: info_list.append((file_path, artist))
+                if os.path.isfile(file_path) and my_file.lower().endswith((".mp3", ".wma", ".wav")):
+                    artists = self.artists_from_song(file_path)
+                    if artists:
+                        info_list.append((file_path, artists))
 
         len_dir = len(info_list)
         progress_generator = self.progress_display(len_dir)
 
-        # מעבר על תוצאות הסריקה והדפסתם בכפוף למספר תנאים
-        for file_path, artist in info_list:   
+        for file_path, artists in info_list:
             show_len = next(progress_generator)
-            print(f"{show_len}% completed",end='\r')
-            if self.progress_callback:  # Call the callback with progress
+            print(f"{show_len}% completed", end='\r')
+            if self.progress_callback:
                 self.progress_callback(show_len)
-                        
-            # הגדרת משתנה עבור תיקית יעד בהתאם להתאמות האישיות של המשתמש
-            if self.singles_folder and self.abc_sort:
-                main_target_path = os.path.join(self.target_dir, artist[0], artist)
-                target_path = os.path.join(self.target_dir, artist[0], artist, "סינגלים")
-            elif self.singles_folder:
-                main_target_path = os.path.join(self.target_dir, artist)
-                target_path = os.path.join(self.target_dir, artist, "סינגלים")
-            elif self.abc_sort:
-                main_target_path = os.path.join(self.target_dir, artist[0], artist)
-                target_path = os.path.join(self.target_dir, artist[0], artist)
-            else:
-                main_target_path = os.path.join(self.target_dir, artist)
-                target_path = os.path.join(self.target_dir, artist)
+
+            if not self.duet_mode:
+                artists = [artists[0]]  # Only use the first artist if duet_mode is False
             
-            # יצירת תיקית יעד בתנאים מסויימים
-            if self.exist_only is False:
-                if not os.path.isdir(target_path):
-                    try: 
-                        os.makedirs(target_path)
+            for artist in artists:
+                if self.singles_folder and self.abc_sort:
+                    main_target_path = os.path.join(self.target_dir, artist[0], artist)
+                    target_path = os.path.join(self.target_dir, artist[0], artist, "סינגלים")
+                elif self.singles_folder:
+                    main_target_path = os.path.join(self.target_dir, artist)
+                    target_path = os.path.join(self.target_dir, artist, "סינגלים")
+                elif self.abc_sort:
+                    main_target_path = os.path.join(self.target_dir, artist[0], artist)
+                    target_path = os.path.join(self.target_dir, artist[0], artist)
+                else:
+                    main_target_path = os.path.join(self.target_dir, artist)
+                    target_path = os.path.join(self.target_dir, artist)
+
+                if self.exist_only is False:
+                    if not os.path.isdir(target_path):
+                        try:
+                            os.makedirs(target_path)
+                        except Exception as e:
+                            print(f"Error creating directory {target_path}: {e}")
+                elif self.exist_only and self.singles_folder:
+                    if os.path.isdir(main_target_path) and not os.path.isdir(target_path):
+                        try:
+                            os.makedirs(target_path)
+                        except Exception as e:
+                            print(f"Error creating directory {target_path}: {e}")
+
+                if os.path.isdir(target_path):
+                    try:
+                        if self.duet_mode and len(artists) > 1:
+                            copy(file_path, target_path)
+                        elif self.copy_mode:
+                            copy(file_path, target_path)
+                        else:
+                            move(file_path, target_path)
+                        
+                        self.log_files.append((file_path, target_path))
+                        print(f"{'Copied' if self.copy_mode or (self.duet_mode and len(artists) > 1) else 'Moved'} {file_path} to {target_path}")
+
                     except Exception as e:
-                        print(f"Error creating directory {target_path}: {e}")
-                    
-            elif self.exist_only and self.singles_folder:
-                if os.path.isdir(main_target_path) and not os.path.isdir(target_path):
-                    try: 
-                        os.makedirs(target_path)
-                    except Exception as e:
-                        print(f"Error creating directory {target_path}: {e}")
-            else:
-                pass
+                        print(f"Failed to {'copy' if self.copy_mode or (self.duet_mode and len(artists) > 1) else 'move'} {file_path} to {target_path}: {e}")
 
-
-            # העברה או העתקה בהתאם להגדרות המשתמש
-            if self.copy_mode and os.path.isdir(target_path):
+            # If it's a duet and we've copied to all singers' folders, remove the original
+            if self.duet_mode and len(artists) > 1 and not self.copy_mode:
                 try:
-                    copy(file_path, target_path)
-                    self.log_files.append((file_path, target_path))
-                    print(f"Copied {file_path} to {target_path}")
+                    os.remove(file_path)
+                    print(f"Removed original file: {file_path}")
                 except Exception as e:
-                    print(f"Failed to copy {file_path} to {target_path}: {e}")
-            elif os.path.isdir(target_path):
-                try:
-                    move(file_path, target_path)
-                    self.log_files.append((file_path, target_path))
-                    print(f"Moved {file_path} to {target_path}")
-                except Exception as e:
-                    print(f"Failed to move {file_path} to {target_path}: {e}")
-
-        return
+                    print(f"Failed to remove original file {file_path}: {e}")
 
 
     def is_cli_mode(self):
@@ -227,94 +229,50 @@ class MusicSorter:
         return singer_list
 
 
-    def artist_from_song(self, my_file):
-        """
-        הפונקציה בודקת את שם אמן הקובץ בשם הקובץ לפי מסד נתונים ומכניסה את שם האמן למשתנה
-        אם השם לא קיים היא סורקת את המטאדאטה של השיר ומכניסה את שם האמן למשתנה
-        
-        תנאים:
-            my_file (str) - שם הקובץ שנסרק
-        
-        תוצאה:
-            ערך המכיל את שם אמן הקובץ
-        """
-    
-        # מעבר על רשימת הזמרים בדאטה וחיפוש שלהם בשם הקובץ
-        
-        # קבלת שם הקובץ ללא נתיב מלא
+    def artists_from_song(self, my_file):
         split_file = os.path.split(my_file)[1]
-        
-        # הסרת תווים מטעים בשם הקובץ
-        split_file = split_file.replace('_', ' ')
-        split_file = split_file.replace('-', ' ')
-        
-        
-        # מעבר על רשימת השמות ובדיקה אם אחד מהם קיים בשם השיר
+        split_file = split_file.replace('_', ' ').replace('-', ' ')
+
+        found_artists = []
         for source_name, target_name in self.singer_list:
             if source_name in split_file:
-            
-                # בדיקת דיוק שם הקובץ
                 exact = check_exact_name(split_file, source_name)
-                
                 if exact:
-                    artist = target_name
-                    return artist
+                    found_artists.append(target_name)
 
-        # אם שם הקובץ לא נמצא יתבצע חיפוש במטאדאטה של הקובץ
-        try:
-            # טעינת מטאדאטה של השיר
-            metadata_file = load_file(my_file)
-            # קבלת אמן מטאדאטה של השיר
-            artist = metadata_file['artist']
-            artist = artist.value
-
-            if artist:
-                # המרת שם האמן אם הוא פגום
-                artist = fix_jibrish(artist, "heb")
-                
-                # מעבר על רשימת השמות ובדיקה אם אחד מהם קיים בתגית האמן
-                for source_name, target_name in self.singer_list:
-                    if source_name in artist:
-                        """
-                        # בדיקת דיוק שם הקובץ
-                        exact = check_exact_name(artist, source_name)  
-                        """
-                        artist = target_name
-                        return artist
-                    
-                # הפעלת פונקציה המבצעת בדיקות על שם האמן
-                check_answer = self.check_artist(artist)
-                if check_answer == False:
-                    return
-                    
-                return artist
-            
-            # אם לא נמצא שם אמן תקין יתבצע חיפוש בכותרת הקובץ
-            else:
-                # קבלת כותרת השיר
-                title = metadata_file['title']
-                title = title.value
-                
-                if title:
-                    # המרת שם האמן אם הוא פגום
-                    title = fix_jibrish(title, "heb")
-                    
-                    # מעבר על רשימת השמות ובדיקה אם אחד מהם קיים בתגית האמן
+        if not found_artists:
+            try:
+                metadata_file = load_file(my_file)
+                artist = metadata_file['artist'].value
+                if artist:
+                    artist = fix_jibrish(artist, "heb")
                     for source_name, target_name in self.singer_list:
-                        if source_name in title:
-                            # בדיקת דיוק שם הקובץ
-                            exact = check_exact_name(title, source_name)
-                            
+                        if source_name in artist:
+                            exact = check_exact_name(artist, source_name)
                             if exact:
-                                artist = target_name
-                                return artist
-        except UnicodeDecodeError as e:
-            print(f"Error decoding metadata in file {my_file}: {e}")
-            return
-        except Exception as e:
-            print(f"An unexpected error occurred with file {my_file}: {e}")
-            return
+                                found_artists.append(target_name)
+                    
+                    if not found_artists:
+                        check_answer = self.check_artist(artist)
+                        if check_answer:
+                            found_artists.append(artist)
+                
+                if not found_artists:
+                    title = metadata_file['title'].value
+                    if title:
+                        title = fix_jibrish(title, "heb")
+                        for source_name, target_name in self.singer_list:
+                            if source_name in title:
+                                exact = check_exact_name(title, source_name)
+                                if exact:
+                                    found_artists.append(target_name)
+            except UnicodeDecodeError as e:
+                print(f"Error decoding metadata in file {my_file}: {e}")
+            except Exception as e:
+                print(f"An unexpected error occurred with file {my_file}: {e}")
 
+        return found_artists if found_artists else None
+    
 
     def check_artist(self, artist):
         # החזרת שקר אם שם האמן קיים ברשימת יוצאי הדופן     
@@ -345,6 +303,7 @@ class MusicSorter:
             "exist_only": self.operating_details[4],
             "singles_folder": self.operating_details[5],
             "main_folder_only": self.operating_details[6],
+            "duet_mode": self.operating_details[7],
             "files": [{"old_path": old_path, "new_path": new_path} for old_path, new_path in self.log_files]
         }
         
@@ -366,17 +325,18 @@ class MusicSorter:
 def main():
     parser = argparse.ArgumentParser(description=f"Singles Sorter {__VERSION__} - Scan and organize music files into folders by artist using advanced automation.")
     parser.add_argument('source_dir', help="Path to the source directory")
-    parser.add_argument('target_dir', help="Path to the target directory", nargs='?')
+    parser.add_argument('target_dir', help="Path to the target directory")
     parser.add_argument('-c', '--copy_mode', help="Enable copy mode (default is move mode)", action='store_true')
     parser.add_argument('-a', '--abc_sort', help="Sort folders alphabetically (default: False)", action='store_true')
     parser.add_argument('-e', '--exist_only', help="Transfer to existing folders only (default: False)", action='store_true')
     parser.add_argument('-n', '--no_singles_folder', help="Do not create an internal 'singles' folder", action='store_false', dest='singles_folder', default=True)
     parser.add_argument('-m', '--main_folder_only', help="Sort only the main folder (default: False)", action='store_true')
+    parser.add_argument('-d', '--duet_mode', help="Copy to all singers' folders for duets (default: False)", action='store_true')
 
     args = parser.parse_args()
 
     try:
-        sorter = MusicSorter(args.source_dir, args.target_dir, args.copy_mode, args.abc_sort, args.exist_only, args.singles_folder, args.main_folder_only)
+        sorter = MusicSorter(args.source_dir, args.target_dir, args.copy_mode, args.abc_sort, args.exist_only, args.singles_folder, args.main_folder_only, args.duet_mode)
         sorter.clean_names()
         sorter.scan_dir()
         sorter.log_to_file()
