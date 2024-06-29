@@ -9,12 +9,12 @@ from music_tag import load_file
 from jibrish_to_hebrew import fix_jibrish
 import csv
 from check_name import check_exact_name
-import json
+import logging
 import datetime
 
 class MusicSorter:
 
-    def __init__(self, source_dir, target_dir, copy_mode=False, abc_sort=False, exist_only=False, singles_folder=True, main_folder_only=False, duet_mode=False, progress_callback=None):
+    def __init__(self, source_dir, target_dir, copy_mode=False, abc_sort=False, exist_only=False, singles_folder=True, main_folder_only=False, duet_mode=False, progress_callback=None, log_level=logging.INFO):
         self.unusual_list = ["סינגלים", "סינגל", "אבגדהוזחטיכלמנסעפצקרשתךםןץ", "אמן לא ידוע", "טוב", "לא ידוע", "תודה לך ה"]
         self.substrings_to_remove = [" -מייל מיוזיק", " - ציצו במייל", "-חדשות המוזיקה", " - חדשות המוזיקה", " - ציצו", " מוזיקה מכל הלב", " - מייל מיוזיק"]
         self.source_dir = source_dir
@@ -29,6 +29,9 @@ class MusicSorter:
         self.log_files = []
         self.operating_details = [source_dir, target_dir, copy_mode, abc_sort, exist_only, singles_folder, main_folder_only, duet_mode]
         self.singer_list =  self.list_from_csv()
+
+        # Set up logging
+        self.setup_logging(log_level)
 
 
     def progress_display(self, len_amount):
@@ -111,11 +114,13 @@ class MusicSorter:
             Prints the list of artists that appear in the song metadata and copies them to the target.
         """
 
+        self.logger.info("Starting directory scan")
+
         # בדיקת שגיאות בארגומנטים של המשתמש
         self.check_errors()
 
         info_list = []
-        if self.main_folder_only is False:
+        if not self.main_folder_only:
             for root, _, files in os.walk(self.source_dir):
                 for my_file in files:
                     file_path = os.path.join(root, my_file)
@@ -123,8 +128,7 @@ class MusicSorter:
                         artists = self.artists_from_song(file_path)
                         if artists:
                             info_list.append((file_path, artists))
-
-        elif self.main_folder_only:
+        else:
             for my_file in os.listdir(self.source_dir):
                 file_path = os.path.join(self.source_dir, my_file)
                 if os.path.isfile(file_path) and my_file.lower().endswith((".mp3", ".wma", ".wav")):
@@ -137,7 +141,7 @@ class MusicSorter:
 
         for file_path, artists in info_list:
             show_len = next(progress_generator)
-            print(f"{show_len}% completed", end='\r')
+            self.logger.debug(f"{show_len}% completed")
             if self.progress_callback:
                 self.progress_callback(show_len)
 
@@ -145,55 +149,44 @@ class MusicSorter:
                 artists = [artists[0]]  # Only use the first artist if duet_mode is False
             
             for artist in artists:
-                if self.singles_folder and self.abc_sort:
-                    main_target_path = os.path.join(self.target_dir, artist[0], artist)
-                    target_path = os.path.join(self.target_dir, artist[0], artist, "סינגלים")
-                elif self.singles_folder:
-                    main_target_path = os.path.join(self.target_dir, artist)
-                    target_path = os.path.join(self.target_dir, artist, "סינגלים")
-                elif self.abc_sort:
-                    main_target_path = os.path.join(self.target_dir, artist[0], artist)
-                    target_path = os.path.join(self.target_dir, artist[0], artist)
-                else:
-                    main_target_path = os.path.join(self.target_dir, artist)
-                    target_path = os.path.join(self.target_dir, artist)
+                target_path = self.get_target_path(artist)
 
-                if self.exist_only is False:
-                    if not os.path.isdir(target_path):
-                        try:
-                            os.makedirs(target_path)
-                        except Exception as e:
-                            print(f"Error creating directory {target_path}: {e}")
-                elif self.exist_only and self.singles_folder:
-                    if os.path.isdir(main_target_path) and not os.path.isdir(target_path):
-                        try:
-                            os.makedirs(target_path)
-                        except Exception as e:
-                            print(f"Error creating directory {target_path}: {e}")
+                if not self.exist_only or (self.exist_only and os.path.isdir(os.path.dirname(target_path))):
+                    os.makedirs(target_path, exist_ok=True)
 
                 if os.path.isdir(target_path):
                     try:
                         if self.duet_mode and len(artists) > 1:
                             copy(file_path, target_path)
+                            self.logger.info(f"Copied {file_path} to {target_path}")
                         elif self.copy_mode:
                             copy(file_path, target_path)
+                            self.logger.info(f"Copied {file_path} to {target_path}")
                         else:
                             move(file_path, target_path)
-                        
-                        self.log_files.append((file_path, target_path))
-                        print(f"{'Copied' if self.copy_mode or (self.duet_mode and len(artists) > 1) else 'Moved'} {file_path} to {target_path}")
-
+                            self.logger.info(f"Moved {file_path} to {target_path}")
                     except Exception as e:
-                        print(f"Failed to {'copy' if self.copy_mode or (self.duet_mode and len(artists) > 1) else 'move'} {file_path} to {target_path}: {e}")
+                        self.logger.error(f"Failed to process {file_path}: {str(e)}")
 
             # If it's a duet and we've copied to all singers' folders, remove the original
             if self.duet_mode and len(artists) > 1 and not self.copy_mode:
                 try:
                     os.remove(file_path)
-                    print(f"Removed original file: {file_path}")
+                    self.logger.info(f"Removed original file: {file_path}")
                 except Exception as e:
-                    print(f"Failed to remove original file {file_path}: {e}")
+                    self.logger.error(f"Failed to remove original file {file_path}: {str(e)}")
 
+        self.logger.info("Directory scan completed")
+
+    def get_target_path(self, artist):
+        if self.singles_folder and self.abc_sort:
+            return os.path.join(self.target_dir, artist[0], artist, "סינגלים")
+        elif self.singles_folder:
+            return os.path.join(self.target_dir, artist, "סינגלים")
+        elif self.abc_sort:
+            return os.path.join(self.target_dir, artist[0], artist)
+        else:
+            return os.path.join(self.target_dir, artist)
 
     def is_cli_mode(self):
         try:
@@ -289,37 +282,31 @@ class MusicSorter:
         else:
             return False
 
-    def log_to_file(self):
-        now = datetime.datetime.now()
-        log_filename = f"log_{now.strftime('%Y%m%d_%H%M%S')}.json"
-        log_directory = "log"
-        
-        log_data = {
-            "operation_time": now.strftime('%d/%m/%Y %H:%M:%S'),
-            "source_directory": self.operating_details[0],
-            "target_directory": self.operating_details[1],
-            "copy_mode": self.operating_details[2],
-            "abc_sort": self.operating_details[3],
-            "exist_only": self.operating_details[4],
-            "singles_folder": self.operating_details[5],
-            "main_folder_only": self.operating_details[6],
-            "duet_mode": self.operating_details[7],
-            "files": [{"old_path": old_path, "new_path": new_path} for old_path, new_path in self.log_files]
-        }
-        
-        # יצירת התיקיה אם היא לא קיימת
-        if not os.path.exists(log_directory):
-            os.makedirs(log_directory)
-        
-        log_path = os.path.join(log_directory, log_filename)
-        with open(log_path, 'w', encoding='utf-8') as log_file:
-            json.dump(log_data, log_file, ensure_ascii=False, indent=4)
+    def setup_logging(self, log_level):
+        self.logger = logging.getLogger('MusicSorter')
+        self.logger.setLevel(log_level)
 
-    def load_from_log(self, log_filename):
-        with open(log_filename, 'r', encoding='utf-8') as log_file:
-            log_data = json.load(log_file)
-        return log_data
-    
+        # Create logs directory if it doesn't exist
+        if not os.path.exists('logs'):
+            os.makedirs('logs')
+
+        # File handler
+        log_filename = f'logs/music_sorter_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
+        file_handler = logging.FileHandler(log_filename, encoding='utf-8')
+        file_handler.setLevel(log_level)
+
+        # Console handler
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(log_level)
+
+        # Create a formatter and add it to the handlers
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+        file_handler.setFormatter(formatter)
+        console_handler.setFormatter(formatter)
+
+        # Add the handlers to the logger
+        self.logger.addHandler(file_handler)
+        self.logger.addHandler(console_handler)
 
 
 def main():
@@ -332,16 +319,18 @@ def main():
     parser.add_argument('-n', '--no_singles_folder', help="Do not create an internal 'singles' folder", action='store_false', dest='singles_folder', default=True)
     parser.add_argument('-m', '--main_folder_only', help="Sort only the main folder (default: False)", action='store_true')
     parser.add_argument('-d', '--duet_mode', help="Copy to all singers' folders for duets (default: False)", action='store_true')
+    parser.add_argument('-l', '--log_level', help="Set the logging level", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], default='INFO')
 
     args = parser.parse_args()
 
     try:
-        sorter = MusicSorter(args.source_dir, args.target_dir, args.copy_mode, args.abc_sort, args.exist_only, args.singles_folder, args.main_folder_only, args.duet_mode)
+        log_level = getattr(logging, args.log_level.upper())
+        sorter = MusicSorter(args.source_dir, args.target_dir, args.copy_mode, args.abc_sort, args.exist_only, args.singles_folder, args.main_folder_only, args.duet_mode, log_level=log_level)
         sorter.clean_names()
         sorter.scan_dir()
-        sorter.log_to_file()
     except Exception as e:
-        print("Error: {}".format(e))
+        logging.error(f"An error occurred: {str(e)}")
+        sys.exit(1)
 
 if __name__ == '__main__':
     main()
