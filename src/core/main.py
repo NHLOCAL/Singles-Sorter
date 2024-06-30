@@ -29,7 +29,7 @@ def main(page: ft.Page):
     # הגדרה אוטומטית מותאמת למערכת ההפעלה
     if ANDROID_MODE:
         page.padding = ft.padding.only(20, 10, 20, 0)
-        page.scroll = ft.ScrollMode.AUTO
+        page.scroll = ft.ScrollMode.HIDDEN
         auto_focus=False
 
     else:
@@ -305,7 +305,7 @@ def main(page: ft.Page):
                             [
                                 ft.Text("מיון דואטים", weight=ft.FontWeight.BOLD, size=16),
                                 ft.Text(
-                                    "תכונה זו לא זמינה עדיין, רוצים לזרז את הוספת התכונה? ",
+                                    "זוהי תכונה נסיונית, למילוי משוב על חווית השימוש ",
                                     spans=[
                                         ft.TextSpan(
                                             "מלאו טופס כעת",
