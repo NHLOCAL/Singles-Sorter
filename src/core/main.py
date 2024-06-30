@@ -319,14 +319,8 @@ def main(page: ft.Page):
                                     color='red'
                                 ),
 
-                                ft.RadioGroup(content=ft.Column([
-                                    ft.Radio(value="auto_singer", label="בחירה אוטומטית",),
-                                    ft.Radio(value="first_singer", label="העתק לזמר הראשון בשם השיר", disabled=True),
-                                    ft.Radio(value="all_singers", label="העתק לכל הזמרים המופיעים בשם השיר", disabled=True)],
-                                    rtl=True,
-                                    ),
-                                    value="auto_singer"
-                                ),
+                                # כפתורי בחירה בין מצב דואט למצב רגיל
+                                duet_mode
                             ],
                         ),
 
@@ -393,7 +387,7 @@ def main(page: ft.Page):
 
 
     # Checkboxes
-    global copy_mode, main_folder_only, singles_folder, exist_only, abc_sort
+    global copy_mode, main_folder_only, singles_folder, exist_only, abc_sort, duet_mode
 
     
     # import user config form file
@@ -406,7 +400,8 @@ def main(page: ft.Page):
             'main_folder_only': False,
             'singles_folder': True,
             'exist_only': False,
-            'abc_sort': False},
+            'abc_sort': False,
+            'duet_mode': False},
             'folders': {'source': [], 'target': []}
             }
 
@@ -436,10 +431,18 @@ def main(page: ft.Page):
     value=user_config['general']['abc_sort']
     )
 
+    duet_mode = ft.RadioGroup(
+        content=ft.Column([
+        ft.Radio(value=False, label="העתק לזמר הראשון בשם השיר", disabled=False),
+        ft.Radio(value=True, label="העתק לכל הזמרים המופיעים בשם השיר", disabled=False)
+        ],
+        rtl=True),
+        value=user_config['general']['duet_mode'])
+
     # יצירת פונקציה לשמירת הגדרות המשתמש
     def open_save_config(e):
         try:
-            save_config(e, copy_mode.value, main_folder_only.value, singles_folder.value, exist_only.value, abc_sort.value)
+            save_config(e, copy_mode.value, main_folder_only.value, singles_folder.value, exist_only.value, abc_sort.value, duet_mode.value)
             page.snack_bar = show_snackbar("ההגדרות נשמרו בהצלחה!", ft.colors.GREEN)
         except Exception as error:
             page.snack_bar = show_snackbar(f"התרחשה שגיאה בעת שמירת ההגדרות: {error}", ft.colors.ERROR)
@@ -663,6 +666,7 @@ def main(page: ft.Page):
                 exist_only.value, 
                 singles_folder.value, 
                 main_folder_only.value,
+                duet_mode.value,
                 progress_callback
             )
 
@@ -670,8 +674,6 @@ def main(page: ft.Page):
             sorter.clean_names()
             # מיון הקבצים בפעול
             sorter.scan_dir()
-            # יצירת קובץ לוג
-            sorter.log_to_file()
 
 
             page.snack_bar = show_snackbar("מיון הקבצים הסתיים בהצלחה", ft.colors.GREEN, 10000)

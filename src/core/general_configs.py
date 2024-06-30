@@ -9,7 +9,7 @@ def load_config():
         return user_config
     
 # שמירת הגדרות משתמש לקובץ
-def save_config(e, copy_mode, main_folder_only, singles_folder, exist_only, abc_sort):
+def save_config(e, copy_mode, main_folder_only, singles_folder, exist_only, abc_sort, duet_mode):
 
     user_config = load_config()
     
@@ -18,6 +18,7 @@ def save_config(e, copy_mode, main_folder_only, singles_folder, exist_only, abc_
     user_config['general']['singles_folder'] = singles_folder
     user_config['general']['exist_only'] = exist_only
     user_config['general']['abc_sort'] = abc_sort
+    user_config['general']['duet_mode'] = duet_mode
     
     with open('app/config.pkl', 'wb') as f:
         pickle.dump(user_config, f)
