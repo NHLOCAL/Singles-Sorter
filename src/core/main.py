@@ -25,6 +25,8 @@ def main(page: ft.Page):
     page.rtl = True
     #page.bgcolor = "#f5f5f5"
     page.theme = ft.Theme(color_scheme_seed="#2196f3")
+    ph = ft.PermissionHandler()
+    page.overlay.append(ph)
 
     # הגדרה אוטומטית מותאמת למערכת ההפעלה
     if ANDROID_MODE:
@@ -120,7 +122,7 @@ def main(page: ft.Page):
         ft.PopupMenuItem(text="עזרה", icon=ft.icons.HELP, data="help", on_click=on_menu_selected),
         ft.PopupMenuItem(text="אודות התוכנה", icon=ft.icons.INFO, data="about", on_click=on_menu_selected),
         ft.PopupMenuItem(text="מה חדש", icon=ft.icons.NEW_RELEASES, data="whats_new", on_click=on_menu_selected),
-        ft.PopupMenuItem(text="הגדרות מתקדמות", icon=ft.icons.SETTINGS, data="settings", on_click=on_menu_selected, disabled=ANDROID_MODE),
+        ft.PopupMenuItem(text="הגדרות מתקדמות", icon=ft.icons.SETTINGS, data="settings", on_click=on_menu_selected),
     ]
 
     # הוספת פריט עדכון רק אם זמין
@@ -298,7 +300,7 @@ def main(page: ft.Page):
             icon=ft.Icon(ft.icons.SETTINGS, size=30, color=ft.colors.ON_PRIMARY_CONTAINER),
             title=ft.Text("הגדרות מתקדמות", text_align="center", color=ft.colors.ON_PRIMARY_CONTAINER, weight=ft.FontWeight.BOLD),
             content=ft.Container( # הוספת Container לשליטה ברוחב
-                width=page.window.width * 0.7, # קביעת רוחב קבוע
+                width=page.window.width * 1.0 if ANDROID_MODE else page.window.width * 0.7, # קביעת רוחב קבוע
                 content=ft.Column(
                     [
                         ft.Column(
@@ -332,7 +334,7 @@ def main(page: ft.Page):
 
                                 ft.Row(
                                     [
-                                        ft.TextButton("ערוך קובץ", on_click=open_csv),
+                                        ft.TextButton("ערוך קובץ", on_click=open_csv, disabled=ANDROID_MODE),
                                         ft.TextButton("ייבא קובץ", on_click=import_csv, disabled=True),
                                         ft.TextButton("ייצא קובץ", on_click=export_csv, disabled=True),
                                     ]
@@ -474,6 +476,21 @@ def main(page: ft.Page):
 
         def continue_organization(e):
             page.dialog.open = False
+               
+            # בקשת הרשאת ניהול קבצים מהמשתמש            
+            if ANDROID_MODE:
+                def check_permission():
+                    o = ph.check_permission(ft.PermissionType.MANAGE_EXTERNAL_STORAGE)
+                    return o     
+
+                def request_permission():
+                    o = ph.request_permission(ft.PermissionType.MANAGE_EXTERNAL_STORAGE)
+                    
+                permission_status = check_permission()
+                if str(permission_status) != "PermissionStatus.GRANTED":
+                    request_permission()
+                 
+                 
             organize_files(e, page)
             page.update()
         
