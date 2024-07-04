@@ -4,7 +4,7 @@ import os
 
 # קבצי התוכנה
 from singles_sorter_v3 import MusicSorter, __VERSION__
-from general_configs import check_for_update, load_config, save_config
+from update_config import check_for_update
 
 
 # גרסת התוכנה
@@ -50,11 +50,10 @@ def main(page: ft.Page):
 
     # פונקציה לפתיחת הודעת מה חדש בהפעלה הראשונה של התוכנה
     def first_run_menu():
-        file_path = os.path.join('app', 'first_run')
-        if os.path.isfile(file_path):
-            # If the file exists, do something (e.g., show content)
+        if not page.client_storage.get("first_run"):
             show_content('whats-new', 'מה חדש', ft.icons.NEW_RELEASES)
-            os.remove(file_path)
+            page.client_storage.set("first_run", True)  # סימון שההודעה הוצגה
+            page.update()
 
     
     
@@ -391,66 +390,66 @@ def main(page: ft.Page):
     # Checkboxes
     global copy_mode, main_folder_only, singles_folder, exist_only, abc_sort, duet_mode
 
-    
-    # import user config form file
-    global user_config
-
-    try:
-        user_config = load_config()
-    except:
-        user_config = {'general': {'copy_mode': False,
-            'main_folder_only': False,
-            'singles_folder': True,
-            'exist_only': False,
-            'abc_sort': False,
-            'duet_mode': False},
-            'folders': {'source': [], 'target': []}
-            }
-
+    # טעינת הגדרות שמורות
     copy_mode = ft.Checkbox(
-    label="העתק קבצים (העברה היא ברירת המחדל)",
-    tooltip="סמן אם ברצונך לבצע העתקה של הקבצים כברירת מחדל תתבצע העברה",
-    value=user_config['general']['copy_mode']
+        label="העתק קבצים (העברה היא ברירת המחדל)",
+        tooltip="סמן אם ברצונך לבצע העתקה של הקבצים כברירת מחדל תתבצע העברה",
+        value=page.client_storage.get("copy_mode") or False  # False כברירת מחדל
     )
     main_folder_only = ft.Checkbox(
-    label="סרוק תיקיה ראשית בלבד",
-    tooltip="אם מסומן, התוכנה תסרוק רק את התיקייה הראשית ולא תתי תיקיות",
-    value=user_config['general']['main_folder_only']
+        label="סרוק תיקיה ראשית בלבד",
+        tooltip="אם מסומן, התוכנה תסרוק רק את התיקייה הראשית ולא תתי תיקיות",
+        value=page.client_storage.get("main_folder_only") or False
     )
     singles_folder = ft.Checkbox(
-    label='צור תיקיות סינגלים פנימיות',
-    tooltip="סמן אם ברצונך ליצור תיקיות פנימיות בתוך תיקיות הזמרים אליהם יועברו הסינגלים",
-    value=user_config['general']['singles_folder']
+        label='צור תיקיות סינגלים פנימיות',
+        tooltip="סמן אם ברצונך ליצור תיקיות פנימיות בתוך תיקיות הזמרים אליהם יועברו הסינגלים",
+        value=page.client_storage.get("singles_folder") or True # True כברירת מחדל
     )
     exist_only = ft.Checkbox(
-    label="השתמש בתיקיות קיימות בלבד",
-    tooltip="אם מסומן, התוכנה תעביר קבצים רק לתיקיות זמרים קיימות ולא תיצור חדשות",
-    value=user_config['general']['exist_only']
+        label="השתמש בתיקיות קיימות בלבד",
+        tooltip="אם מסומן, התוכנה תעביר קבצים רק לתיקיות זמרים קיימות ולא תיצור חדשות",
+        value=page.client_storage.get("exist_only") or False
     )
     abc_sort = ft.Checkbox(
-    label="צור תיקיות ראשיות לפי ה-א' ב'",
-    tooltip="אם מסומן, התוכנה תיצור תיקיה ראשית לכל אות באלפבית",
-    value=user_config['general']['abc_sort']
+        label="צור תיקיות ראשיות לפי ה-א' ב'",
+        tooltip="אם מסומן, התוכנה תיצור תיקיה ראשית לכל אות באלפבית",
+        value=page.client_storage.get("abc_sort") or False
     )
+
+
+    # duet_mode
+    def on_duet_mode_changed(e):
+        page.client_storage.set("duet_mode", duet_mode.value)
 
     duet_mode = ft.RadioGroup(
         content=ft.Column([
-        ft.Radio(value=False, label="העתק לזמר הראשון בשם השיר", disabled=False),
-        ft.Radio(value=True, label="העתק לכל הזמרים המופיעים בשם השיר", disabled=False)
+            ft.Radio(value=False, label="העתק לזמר הראשון בשם השיר", disabled=False),
+            ft.Radio(value=True, label="העתק לכל הזמרים המופיעים בשם השיר", disabled=False)
         ],
         rtl=True),
-        value=user_config['general']['duet_mode'])
+        value=page.client_storage.get("duet_mode") or False,
+        on_change=on_duet_mode_changed  # הוספת טיפול באירוע שינוי
+    )
+    
 
-    # יצירת פונקציה לשמירת הגדרות המשתמש
+
+    # פונקציה לשמירת ההגדרות
     def open_save_config(e):
         try:
-            save_config(e, copy_mode.value, main_folder_only.value, singles_folder.value, exist_only.value, abc_sort.value, duet_mode.value)
+            page.client_storage.set("copy_mode", copy_mode.value)
+            page.client_storage.set("main_folder_only", main_folder_only.value)
+            page.client_storage.set("singles_folder", singles_folder.value)
+            page.client_storage.set("exist_only", exist_only.value)
+            page.client_storage.set("abc_sort", abc_sort.value)
+
             page.snack_bar = show_snackbar("ההגדרות נשמרו בהצלחה!", ft.colors.GREEN)
         except Exception as error:
             page.snack_bar = show_snackbar(f"התרחשה שגיאה בעת שמירת ההגדרות: {error}", ft.colors.ERROR)
         finally:
             page.snack_bar.open = True
             page.update()
+
 
     
     # כפתור שמירת הגדרות
