@@ -28,27 +28,32 @@
 ## 📦 גרסאות זמינות
 
 - **גרסת מתקין (53.6 MB)**: התקנה מלאה עם ממשק גרפי.
+- **גרסת אנדרואיד**: גרסת APK עבור אנדרואיד.
 - **גרסת CLI (6.66 MB)**: לשימוש מתקדם ואוטומציה.
 - **גרסה ניידת (76.9 MB)**: ללא צורך בהתקנה, מושלמת לשימוש מכונן נייד.
 - **קוד מקור**: זמין ב-ZIP ו-tar.gz למפתחים.
-- **בקרוב:** גרסת APK עבור אנדרואיד
 
 [⬇️ הורידו את הגרסה האחרונה](https://github.com/NHLOCAL/Singles-Sorter/releases/latest)
 
 ## 💻 הוראות שימוש
 
 ### גרסת מתקין
-1. הורידו והתקינו את `Singles-Sorter-Installer-13.0.exe`.
+1. הורידו והתקינו את `Singles-Sorter-Installer-13.2.exe`.
 2. הפעילו את התוכנה מתפריט ההתחלה או שולחן העבודה.
+
+
+### גרסת APK
+1. הורידו את `Singles-Sorter-13.2.apk` והעתיקו אותו למכשיר האנדרואיד שלכם.
+2. התקינו את הקובץ על המכשיר שלכם.
 
 ### גרסת CLI
 הריצו בשורת הפקודה לקבלת מידע נוסף:
 ```
-Singles-Sorter-cli-13.0.exe -h
+Singles-Sorter-cli-13.2.exe -h
 ```
 
 ### גרסה ניידת
-1. חלצו את `Singles-Sorter-Portable-13.0.zip`.
+1. חלצו את `Singles-Sorter-Portable-13.2.zip`.
 2. הפעילו את הקובץ הראשי מהתיקייה שנוצרה.
 
 ## 🛠 טכנולוגיות
