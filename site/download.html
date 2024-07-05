@@ -155,30 +155,38 @@
   <div class="content-container">
     <main>
       <h2 class="download-title">בחר את הגרסה המתאימה לך:</h2>
+	  
+	  <div class="download-versions">
+		<div class="download-option">
+		  <i class="icon fab fa-usb"></i>
+		  <h3>גרסה ניידת</h3>
+		  <p>גרסה ניידת שאינה דורשת התקנה. מתאימה לשימוש על דיסק און קי או לניוד בין מחשבים</p>
+		  <a href="#" class="butt download-link" data-type="portable">הורד גרסה ניידת</a>
+		</div>
 
-      <div class="download-versions">
-        <div class="download-option">
-          <i class="icon fab fa-usb"></i>
-          <h3>גרסה ניידת</h3>
-          <p>גרסה ניידת שאינה דורשת התקנה. מתאימה לשימוש על דיסק און קי או לניוד בין מחשבים</p>
-          <a href="#" class="butt download-link" data-type="portable">הורד גרסה ניידת</a>
-        </div>
+		<div class="download-option recommended">
+		  <span class="badge">מומלץ</span>
+		  <i class="icon fas fa-desktop"></i>
+		  <h3>גרסת התקנה</h3>
+		  <p>התקנה מלאה עם ממשק גרפי ידידותי למשתמש. מומלץ לרוב המשתמשים</p>
+		  <a href="#" class="butt download-link" data-type="standard">הורד גרסת התקנה</a>
+		</div>
+		
+		<div class="download-option">
+		  <i class="icon fab fa-android"></i>
+		  <h3>גרסת אנדרואיד</h3>
+		  <p>גרסה מותאמת למכשירי אנדרואיד. מאפשרת שימוש בתוכנה על הטלפון, הנגן או הטאבלט שלך</p>
+		  <a href="#" class="butt download-link" data-type="android">הורד גרסת אנדרואיד</a>
+		</div>
 
-        <div class="download-option recommended">
-          <span class="badge">מומלץ</span>
-          <i class="icon fas fa-desktop"></i>
-          <h3>גרסת התקנה</h3>
-          <p>התקנה מלאה עם ממשק גרפי ידידותי למשתמש. מומלץ לרוב המשתמשים</p>
-          <a href="#" class="butt download-link" data-type="standard">הורד גרסת התקנה</a>
-        </div>
+		<div class="download-option">
+		  <i class="icon fas fa-terminal"></i>
+		  <h3>גרסת CLI</h3>
+		  <p>גרסת ממשק שורת הפקודה למשתמשים מתקדמים. מאפשרת אוטומציה ושילוב בסקריפטים</p>
+		  <a href="#" class="butt download-link" data-type="cli">הורד גרסת CLI</a>
+		</div>
 
-        <div class="download-option">
-          <i class="icon fas fa-terminal"></i>
-          <h3>גרסת CLI</h3>
-          <p>גרסת ממשק שורת הפקודה למשתמשים מתקדמים. מאפשרת אוטומציה ושילוב בסקריפטים</p>
-          <a href="#" class="butt download-link" data-type="cli">הורד גרסת CLI</a>
-        </div>
-      </div>
+	  </div>
     </main>
   </div>
 
@@ -205,7 +213,8 @@
         return "13.1"; // Default version if fetch fails
       }
     }
-
+	
+	
     async function getDownloadUrl(type) {
       const version = await getLatestVersion();
       const baseUrl = `https://github.com/NHLOCAL/Singles-Sorter/releases/download/v${version}/Singles-Sorter-`;
@@ -217,6 +226,8 @@
           return `${baseUrl}Portable-${version}.zip`;
         case 'cli':
           return `${baseUrl}cli-${version}.exe`;
+        case 'android':
+          return `${baseUrl}${version}.apk`;
         default:
           return '';
       }
