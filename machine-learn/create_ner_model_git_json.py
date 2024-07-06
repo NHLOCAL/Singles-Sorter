@@ -50,8 +50,21 @@ nlp.tokenizer = custom_tokenizer(nlp)
 ner = nlp.add_pipe("ner")
 ner.add_label("SINGER")
 
-# Replace 'data.json' with the actual path to your JSON data file
-json_file = '/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/scrape_data/data.json'
+# Load data from both JSON files
+json_files = [
+    '/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/scrape_data/cleaned_data.json',
+    '/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/scrape_data/creat_data_auto/cleaned_data_random.json'
+]
+
+training_data = []
+for json_file in json_files:
+    with open(json_file, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+        for example_text, example_entities in data:
+            entities = example_entities.get('entities', [])
+            example = Example.from_dict(nlp.make_doc(example_text), {'entities': entities})
+            training_data.append(example)
+
 
 # Load the data from the JSON file
 with open(json_file, 'r', encoding='utf-8') as f:
@@ -71,17 +84,17 @@ random.shuffle(training_data)
 nlp.begin_training()
 
 # Training loop
-for itn in range(100):
+for itn in range(50):
     losses = {}
     for example in training_data:
         nlp.update([example], drop=0.5, losses=losses)
     print(str(itn) + ": " + str(losses))
-    if int(losses['ner']) <= 600:
+    if int(losses['ner']) <= 800:
         break
 
 # Save the trained model to disk
 nlp.meta['name'] = 'find_singer_heb'
-nlp.to_disk("custom_ner_model1")
+nlp.to_disk("custom_ner_model10git")
 
 # Load the trained model later
 # loaded_nlp = spacy.load("custom_ner_model")
