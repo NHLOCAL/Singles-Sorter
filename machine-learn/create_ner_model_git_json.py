@@ -89,7 +89,7 @@ for itn in range(50):
     for example in training_data:
         nlp.update([example], drop=0.5, losses=losses)
     print(str(itn) + ": " + str(losses))
-    if int(losses['ner']) <= 200:
+    if int(losses['ner']) <= 50:
         break
 
 # Save the trained model to disk
