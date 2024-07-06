@@ -1,7 +1,9 @@
 name: Train NER model
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - machine-learn
 
 jobs:
   train-ner-model:
