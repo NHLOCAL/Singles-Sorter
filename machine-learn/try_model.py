@@ -2,7 +2,7 @@ from spacy import load
 import sys
 
 # Load your trained model
-nlp = load("custom_ner_model")
+nlp = load("custom_ner_model10git")
 
 def machine_learn(text):
     # Process the text with the loaded model
