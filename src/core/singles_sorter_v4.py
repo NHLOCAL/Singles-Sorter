@@ -169,8 +169,12 @@ class MusicSorter:
                 is_album = True
                 should_process = len(artists) == 1  # Process only if there's a single artist
             elif album_name_consistency >= 0.7:  # At least 70% of files have the same album name
-                is_album = True
-                should_process = False  # Process if there are at most 2 artists (allowing for collaborations)
+                if len(artists) == 1:
+                    is_album = True
+                    should_process = False
+                elif len(artists) >= 2:
+                    is_album  = False
+                    should_process = False
 
             # Log the decision
             if is_album:
