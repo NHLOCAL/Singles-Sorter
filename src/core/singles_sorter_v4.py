@@ -327,7 +327,10 @@ class MusicSorter:
                 target_path = self.get_target_path(artist)
 
                 if not self.exist_only or (self.exist_only and os.path.isdir(os.path.dirname(target_path))):
-                    os.makedirs(target_path, exist_ok=True)
+                    try:
+                        os.makedirs(target_path, exist_ok=True)
+                    except Exception as e:               
+                        self.logger.error(f"Failed in folder creating {target_path}: {str(e)}")
 
                 if os.path.isdir(target_path):
                     try:
