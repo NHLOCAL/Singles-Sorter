@@ -2,6 +2,7 @@
 __VERSION__ = '13.2'
 
 import os
+import re
 import sys
 import argparse
 from shutil import copy, move
@@ -97,124 +98,155 @@ class MusicSorter:
 
 
 
-    def handle_album_transfer(self, album_path):
-        files = [f for f in os.listdir(album_path) if f.lower().endswith((".mp3", ".wma", ".wav"))]
-        if not files:
-            return
+    def sanitize_filename(self, filename):
+        # Remove invalid characters and replace spaces
+        filename = re.sub(r'[<>:"/\\|?*]', '', filename)
+        
+        # Truncate filename if it's too long (max 255 characters)
+        return filename[:255]
 
-        # Get metadata from the first file
-        first_file = os.path.join(album_path, files[0])
+    def analyze_album(self, folder_path):
+        """
+        Analyzes a folder to determine if it's an album and if it should be processed or ignored.
+        
+        Args:
+        folder_path (str): Path to the folder to analyze
+        
+        Returns:
+        tuple: (is_album, should_process, album_name, artist_name)
+            is_album (bool): True if the folder is considered an album
+            should_process (bool): True if the album should be processed (not ignored)
+            album_name (str): Name of the album (if applicable)
+            artist_name (str): Name of the artist (if applicable)
+        """
         try:
-            metadata = load_file(first_file)
-            artist = metadata.get('artist')
-            album = metadata.get('album')
-        except  Exception as e:
-            self.logger.error(f"Error reading metadata from {first_file}: {e}")
+            # Check if it's a directory
+            if not os.path.isdir(folder_path):
+                self.logger.debug(f"{folder_path} is not a directory")
+                return False, False, None, None
 
-        if not artist or not album:
-            return
-        
-        artist_value = artist.value
-        album_value = album.value
+            # Get all audio files in the folder
+            audio_files = [f for f in os.listdir(folder_path) if f.lower().endswith((".mp3", ".wma", ".wav"))]
+            
+            # Check if there are enough files to be considered an album
+            if len(audio_files) < 4:
+                self.logger.debug(f"{folder_path} doesn't have enough audio files to be an album")
+                return False, False, None, None
+            
+            # Check if there are any subdirectories (albums typically don't have subdirectories)
+            if any(os.path.isdir(os.path.join(folder_path, item)) for item in os.listdir(folder_path)):
+                self.logger.debug(f"{folder_path} contains subdirectories, not considered an album")
+                return False, False, None, None
 
-        # Determine the target path (always in the main artist folder, not in 'singles')
-        if self.abc_sort:
-            target_path = os.path.join(self.target_dir, artist_value[0], artist_value)
-        else:
-            target_path = os.path.join(self.target_dir, artist_value)
-        
-        album_target_path = os.path.join(target_path, album_value)
+            # Analyze metadata of the files
+            album_names = []
+            artists = set()
+            for file in audio_files:
+                file_path = os.path.join(folder_path, file)
+                try:
+                    metadata = load_file(file_path)
+                    album = metadata.get('album')
+                    artist = metadata.get('artist')
+                    if album and artist:
+                        album_names.append(album.value)
+                        artists.add(artist.value)
+                except Exception as e:
+                    self.logger.error(f"Error reading metadata from {file_path}: {e}")
 
-        # Create the target directory if it doesn't exist and we're allowed to
-        if not self.exist_only or (self.exist_only and os.path.isdir(target_path)):
-            try:
-                os.makedirs(album_target_path, exist_ok=True)
-            except Exception as e:
-                self.logger.error(f"Failed in folder creating {album_target_path}: {str(e)}")
+            # Check if we have valid metadata
+            if not album_names:
+                self.logger.debug(f"No valid album metadata found in {folder_path}")
+                return False, False, None, None
 
-            # Transfer the entire folder
-            for item in os.listdir(album_path):
-                source_item = os.path.join(album_path, item)
-                target_item = os.path.join(album_target_path, item)
-                
-                if self.copy_mode:
-                    if os.path.isfile(source_item):
-                        try:
-                            shutil.copy2(source_item, target_item)
-                        except Exception as e:
-                            self.logger.error(f"Failed to process {source_item}: {str(e)}")
+            # Determine the most common album name
+            most_common_album = max(set(album_names), key=album_names.count)
+            album_name_consistency = album_names.count(most_common_album) / len(album_names)
+
+            # Determine if it's an album and if it should be processed
+            is_album = False
+            should_process = False
+            if len(set(album_names)) == 1:  # All files have the same album name
+                is_album = True
+                should_process = len(artists) == 1  # Process only if there's a single artist
+            elif album_name_consistency >= 0.7:  # At least 70% of files have the same album name
+                is_album = True
+                should_process = False  # Process if there are at most 2 artists (allowing for collaborations)
+
+            # Log the decision
+            if is_album:
+                if should_process:
+                    self.logger.info(f"Album detected and will be processed: {folder_path}")
+                else:
+                    self.logger.info(f"Album detected but will be ignored due to inconsistent artists: {folder_path}")
+            else:
+                self.logger.debug(f"Not considered an album: {folder_path}")
+
+            return is_album, should_process, most_common_album, list(artists)[0] if len(artists) == 1 else None
+
+        except Exception as e:
+            self.logger.error(f"Error in analyze_album for {folder_path}: {e}")
+            return False, False, None, None
+
+    def handle_album_transfer(self, album_path, album_name, artist_name):
+        try:
+            if not album_name or not artist_name:
+                self.logger.warning(f"Missing album name or artist name for {album_path}")
+                return
+
+            # Sanitize the album name for use in file paths
+            safe_album_name = self.sanitize_filename(album_name)
+
+            # Determine the target path
+            if self.abc_sort:
+                target_path = os.path.join(self.target_dir, artist_name[0], artist_name)
+            else:
+                target_path = os.path.join(self.target_dir, artist_name)
+            
+            album_target_path = os.path.join(target_path, safe_album_name)
+
+            # Create the target directory if it doesn't exist and we're allowed to
+            if not self.exist_only or (self.exist_only and os.path.isdir(target_path)):
+                try:
+                    os.makedirs(album_target_path, exist_ok=True)
+                except Exception as e:
+                    self.logger.error(f"Failed in folder creating {album_target_path}: {str(e)}")
+                    return
+
+                # Transfer the entire folder
+                for item in os.listdir(album_path):
+                    source_item = os.path.join(album_path, item)
+                    target_item = os.path.join(album_target_path, self.sanitize_filename(item))
+                    
+                    if self.copy_mode:
+                        if os.path.isfile(source_item):
+                            try:
+                                shutil.copy2(source_item, target_item)
+                                self.logger.info(f"Copied {source_item} to {target_item}")
+                            except Exception as e:
+                                self.logger.error(f"Failed to copy {source_item}: {str(e)}")
+                        else:
+                            try:
+                                shutil.copytree(source_item, target_item)
+                                self.logger.info(f"Copied directory {source_item} to {target_item}")
+                            except Exception as e:
+                                self.logger.error(f"Failed to copy directory {source_item}: {str(e)}")
                     else:
                         try:
-                            shutil.copytree(source_item, target_item)
+                            shutil.move(source_item, target_item)
+                            self.logger.info(f"Moved {source_item} to {target_item}")
                         except Exception as e:
-                            self.logger.error(f"Failed to process {source_item}: {str(e)}")
-                    self.logger.info(f"Copied {source_item} to {target_item}")
-                else:
+                            self.logger.error(f"Failed to move {source_item}: {str(e)}")
+
+                if not self.copy_mode:
                     try:
-                        shutil.move(source_item, target_item)
-                        self.logger.info(f"Moved {source_item} to {target_item}")
+                        os.rmdir(album_path)
+                        self.logger.info(f"Removed original album folder: {album_path}")
                     except Exception as e:
-                        self.logger.error(f"Failed to process {source_item}: {str(e)}")
-
-            if not self.copy_mode:
-                os.rmdir(album_path)
-                self.logger.info(f"Removed original album folder: {album_path}")
-        else:
-            self.logger.info(f"Skipped album transfer: {album_path} (target folder doesn't exist)")
-
-
-    def is_album(self, folder_path):
-        if not os.path.isdir(folder_path):
-            return False
-
-        files = [f for f in os.listdir(folder_path) if f.lower().endswith((".mp3", ".wma", ".wav"))]
-        
-        if not files:
-            print(folder_path + 'a')
-            return False
-        
-        # Check if there are at least 4 audio files
-        if len(files) < 4:
-            print(folder_path + 'b')
-            return False
-
-        # Check if the folder contains any subfolders
-        if any(os.path.isdir(os.path.join(folder_path, item)) for item in os.listdir(folder_path)):
-            return False
-
-        album_names = []
-        artists = set()
-
-        for file in files:
-            file_path = os.path.join(folder_path, file)
-            try:
-                metadata = load_file(file_path)
-                album = metadata.get('album')
-                artist = metadata.get('artist')
-                if album and artist:
-                    album_names.append(album.value)
-                    artists.add(artist.value)
-            except Exception as e:
-                self.logger.error(f"Error reading metadata from {file_path}: {e}")
-
-        if not album_names:
-            print(folder_path + 'c')
-            return False
-
-        # Check if all files have the same album name and artist
-        if len(set(album_names)) == 1 and len(artists) == 1:
-            print(folder_path + 'd')
-            return True
-
-        # If not all files are the same, check if at least 75% are from the same album
-        most_common_album = max(set(album_names), key=album_names.count)
-        if album_names.count(most_common_album) / len(album_names) >= 0.7 and len(artists) <= 2:
-            print(folder_path + 'e')
-            return 'block'
-
-        print(folder_path + 'f')
-        return False            
-
+                        self.logger.error(f"Failed to remove original album folder {album_path}: {str(e)}")
+            else:
+                self.logger.info(f"Skipped album transfer: {album_path} (target folder doesn't exist)")
+        except Exception as e:
+            self.logger.error(f"Error in handle_album_transfer for {album_path}: {e}")
 
     def scan_dir(self):
         """
@@ -239,35 +271,42 @@ class MusicSorter:
 
         self.check_errors()
 
-
         info_list = []
         if not self.main_folder_only:
             for root, _, files in os.walk(self.source_dir):
-                if self.is_album(root) == True:
-                    self.handle_album_transfer(root)
-                    continue
-                elif str(self.is_album(root)) == 'block':
-                    continue
-                for my_file in files:
-                    file_path = os.path.join(root, my_file)
-                    if my_file.lower().endswith((".mp3", ".wma", ".wav")):
-                        artists = self.artists_from_song(file_path)
-                        if artists:
-                            info_list.append((file_path, artists))
+                try:
+                    is_album, should_process, album_name, artist_name = self.analyze_album(root)
+                    if is_album:
+                        if should_process:
+                            self.handle_album_transfer(root, album_name, artist_name)
+                        continue  # Skip individual file processing for albums
+                    
+                    # Process individual files if not an album
+                    for my_file in files:
+                        file_path = os.path.join(root, my_file)
+                        if my_file.lower().endswith((".mp3", ".wma", ".wav")):
+                            artists = self.artists_from_song(file_path)
+                            if artists:
+                                info_list.append((file_path, artists))
+                except Exception as e:
+                    self.logger.error(f"Error processing directory {root}: {e}")
         else:
             for item in os.listdir(self.source_dir):
-                item_path = os.path.join(self.source_dir, item)
-                if os.path.isdir(item_path):
-                    if self.is_album(item_path):
-                        self.handle_album_transfer(item_path)
-                        continue
-                    elif str(self.is_album(root)) == 'block':
-                        continue
-                elif item.lower().endswith((".mp3", ".wma", ".wav")):
-                    artists = self.artists_from_song(item_path)
-                    if artists:
-                        info_list.append((item_path, artists))
-
+                try:
+                    item_path = os.path.join(self.source_dir, item)
+                    if os.path.isdir(item_path):
+                        is_album, should_process, album_name, artist_name = self.analyze_album(item_path)
+                        if is_album:
+                            if should_process:
+                                self.handle_album_transfer(item_path, album_name, artist_name)
+                            continue  # Skip individual file processing for albums
+                    elif item.lower().endswith((".mp3", ".wma", ".wav")):
+                        artists = self.artists_from_song(item_path)
+                        if artists:
+                            info_list.append((item_path, artists))
+                except Exception as e:
+                    self.logger.error(f"Error processing item {item}: {e}")
+                        
         len_dir = len(info_list)
         progress_generator = self.progress_display(len_dir)
 
