@@ -3,7 +3,7 @@ import json
 import re
 
 # Your list of song names
-songs_names_file = "songs_list.txt"
+songs_names_file = "list_all_songs_clean.txt" # songs_list.txt
 
 with open(songs_names_file, mode='r', newline='', encoding='utf-8') as file:
     song_names = [row.strip() for row in file]  # Added strip to remove extra whitespace
@@ -43,7 +43,7 @@ for song_name in song_names:
         examples.append(example)
 
 # Replace 'output.json' with the desired output file name
-output_file = 'data.json'
+output_file = 'new-data.json'
 
 # Write the dataset list to the JSON file
 with open(output_file, 'w', encoding='utf-8') as f:
