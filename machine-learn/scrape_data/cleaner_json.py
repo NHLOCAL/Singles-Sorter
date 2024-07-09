@@ -1,8 +1,8 @@
 import json
 
 # Load the JSON file
-input_file = r'creat_data_auto\song_data.json'
-output_file = r'creat_data_auto\cleaned_data_random.json'
+input_file = r'new-data.json'
+output_file = r'cleaned_new-data.json'
 
 with open(input_file, 'r', encoding='utf-8') as f:
     data = json.load(f)

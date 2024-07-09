@@ -2,52 +2,36 @@ import csv
 import json
 import re
 
-# Your list of song names
-songs_names_file = "list_all_songs_clean.txt" # songs_list.txt
+# קריאת שמות השירים
+with open("list_all_songs_clean.txt", mode='r', encoding='utf-8') as file:
+    song_names = [row.strip() for row in file]
 
-with open(songs_names_file, mode='r', newline='', encoding='utf-8') as file:
-    song_names = [row.strip() for row in file]  # Added strip to remove extra whitespace
-
-# List of singer names
-singer_names_csv = 'singers_list.csv'
-
-with open(singer_names_csv, mode='r', newline='', encoding='utf-8') as file:
+# קריאת שמות הזמרים ויצירת set
+with open('singers_list.csv', mode='r', newline='', encoding='utf-8') as file:
     reader = csv.reader(file)
-    singer_names = [row[0].strip() for row in reader]
+    singer_names = {row[0].strip() for row in reader}
 
-# Create a list to store examples
-examples = []
+# יצירת מילון של ביטויים רגולריים מראש
+singer_regex = {singer: re.compile(r'\b' + re.escape(singer) + r'\b') for singer in singer_names}
 
-# Iterate through each song name
-for song_name in song_names:
-    # Initialize start position for singer's name
-    start = 0
+# פתיחת קובץ JSON לכתיבה
+with open('new-data.json', 'w', encoding='utf-8') as json_file:
+    json_file.write('[\n')
+    first_item = True
 
-    # Create a list to store entities
-    entities = []
+    # עיבוד כל שיר
+    for song_name in song_names:
+        entities = []
+        for singer, regex in singer_regex.items():
+            for match in regex.finditer(song_name):
+                entities.append([match.start(), match.end(), "SINGER"])
+        
+        if entities:
+            if not first_item:
+                json_file.write(',\n')
+            json.dump([song_name, {"entities": entities}], json_file, ensure_ascii=False)
+            first_item = False
 
-    # Iterate through singer names and find their positions
-    for singer in singer_names:
-        # Use regular expression to find whole word matches
-        matches = re.findall(r'\b' + re.escape(singer) + r'\b', song_name)
+    json_file.write('\n]')
 
-        # Add each match as an entity
-        for match in matches:
-            position = song_name.find(match, start)
-            entities.append((position, position + len(match), "SINGER"))
-            start = position + len(match)
-
-    # Only add to examples if entities are present
-    if entities:
-        example = (song_name, {"entities": entities})
-        examples.append(example)
-
-# Replace 'output.json' with the desired output file name
-output_file = 'new-data.json'
-
-# Write the dataset list to the JSON file
-with open(output_file, 'w', encoding='utf-8') as f:
-    json.dump(examples, f, ensure_ascii=False, indent=2)  # Added indentation for better readability
-
-print(f'Dataset saved to {output_file}')
-print(len(examples))
+print('Dataset saved to new-data.json')
