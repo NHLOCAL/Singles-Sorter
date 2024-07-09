@@ -3,7 +3,7 @@ import json
 import re
 
 # קריאת שמות השירים
-with open("list_all_songs_clean.txt", mode='r', encoding='utf-8') as file:
+with open("updated_songs_list.txt", mode='r', encoding='utf-8') as file:
     song_names = [row.strip() for row in file]
 
 # קריאת שמות הזמרים ויצירת set

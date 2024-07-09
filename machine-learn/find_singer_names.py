@@ -5,37 +5,33 @@ from sys import argv
 global nlp
 
 # improved_model / custom_ner_model / he_ner_news_trf
-nlp = load("custom_ner_model2")
+nlp = load("custom_ner_model")
 
 # בצע חיפוש שם אדם במחרוזת באמצעות מודל NER
-def find_name(string):
+def find_name(text):
+    # Process the text with the loaded model
+    doc = nlp(text)
 
-    doc = nlp(string)
-    
-    '''
+    # Access the entities recognized by the model
     for entity in doc.ents:
-        print(f"{entity.text} \t {entity.label_}: {entity._.confidence_score:.4f} ({entity.start_char},{entity.end_char})")
-    '''
-    
-    singers_list = []
-    
-    # מעבר על רשימת אובייקטים המכילים מידע על המחרוזת
-    for entity in doc.ents:
-        if entity.label_ == 'SINGER':
-            singers_list.append(entity.text)
-    
-    if singers_list:
-        singers_list.append(text)
-        return singers_list
-    else:
-        return
+        print(f"{entity.text} \t {entity.label_} ({entity.start_char},{entity.end_char})")
+
+    # Access the tokens in the document
+    for token in doc:
+        print(token.text, token.pos_, token.tag_, token.dep_, end='')
+    print('\n')
 
 # בצע מעבר על רשימת קבצים לסריקה   
 def files_list(file_path):
 
+
+    """
     with open(file_path, mode='r', newline='', encoding='utf-8') as file:
         content = file.readlines()    
-        songs_names = [song.strip() for song in content]    
+        songs_names = [song.strip() for song in content] 
+    """
+    
+    songs_names = os.listdir(file_path)
     
     songs_list = []
     

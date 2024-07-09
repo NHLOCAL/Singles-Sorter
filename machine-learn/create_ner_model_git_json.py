@@ -89,12 +89,12 @@ for itn in range(50):
     for example in training_data:
         nlp.update([example], drop=0.5, losses=losses)
     print(str(itn) + ": " + str(losses))
-    if int(losses['ner']) <= 50:
+    if int(losses['ner']) <= 300:
         break
 
 # Save the trained model to disk
 nlp.meta['name'] = 'find_singer_heb'
-nlp.to_disk("custom_ner_model11git")
+nlp.to_disk("custom_ner_model12git")
 
 # Load the trained model later
 # loaded_nlp = spacy.load("custom_ner_model")
