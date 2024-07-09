@@ -52,8 +52,8 @@ ner.add_label("SINGER")
 
 # Load data from both JSON files
 json_files = [
-    '/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/scrape_data/cleaned_data.json',
-    '/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/scrape_data/creat_data_auto/cleaned_data_random.json'
+    '/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/scrape_data/cleaned_new-data.json'
+    # '/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/scrape_data/cleaned_data.json',
 ]
 
 training_data = []
@@ -94,7 +94,7 @@ for itn in range(50):
 
 # Save the trained model to disk
 nlp.meta['name'] = 'find_singer_heb'
-nlp.to_disk("custom_ner_model10git")
+nlp.to_disk("custom_ner_model11git")
 
 # Load the trained model later
 # loaded_nlp = spacy.load("custom_ner_model")
