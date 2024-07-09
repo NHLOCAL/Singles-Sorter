@@ -11,10 +11,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python environment
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
@@ -32,12 +32,12 @@ jobs:
 
       - name: Move prepared file to internal folder
         run: |
-          mv custom_ner_model12git machine-learn/
+          mv custom_ner_model13git machine-learn/
 
       - name: Commit and push changes
         run: |
           git config --local user.email "actions@github.com"
           git config --local user.name "GitHub Actions"
-          git add machine-learn/custom_ner_model12git
-          git commit -m "Update custom_ner_model12git" || echo "No changes to commit"
+          git add machine-learn/custom_ner_model13git
+          git commit -m "Update custom_ner_model13git" || echo "No changes to commit"
           git push

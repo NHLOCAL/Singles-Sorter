@@ -3,11 +3,11 @@ import json
 import re
 
 # קריאת שמות השירים
-with open("updated_songs_list.txt", mode='r', encoding='utf-8') as file:
+with open(r"level1\list_all_songs_random.txt", mode='r', encoding='utf-8') as file:
     song_names = [row.strip() for row in file]
 
 # קריאת שמות הזמרים ויצירת set
-with open('singers_list.csv', mode='r', newline='', encoding='utf-8') as file:
+with open(r'level1\singers_list.csv', mode='r', newline='', encoding='utf-8') as file:
     reader = csv.reader(file)
     singer_names = {row[0].strip() for row in reader}
 

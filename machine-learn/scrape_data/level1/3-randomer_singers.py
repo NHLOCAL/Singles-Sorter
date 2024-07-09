@@ -54,7 +54,7 @@ def main():
     new_songs = replace_frequent_singers(songs, singer_counter, all_singers)
 
     print("שומר את הרשימה המעודכנת...")
-    with open('updated_songs_list.txt', 'w', encoding='utf-8') as f:
+    with open('list_all_songs_random.txt', 'w', encoding='utf-8') as f:
         for song in new_songs:
             f.write(f"{song}\n")
 

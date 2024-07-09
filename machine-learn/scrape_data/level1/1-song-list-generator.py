@@ -27,7 +27,7 @@ def write_songs_to_file(songs, output_file):
 
 def main():
     root_dir = input("Enter the root directory to scan for songs: ")
-    output_file = "songs-list1.txt"
+    output_file = "list_all_songs.txt"
 
     if not os.path.exists(root_dir):
         print("The specified directory does not exist.")

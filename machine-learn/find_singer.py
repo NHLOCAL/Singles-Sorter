@@ -5,7 +5,7 @@ from sys import argv
 global nlp
 
 # improved_model / custom_ner_model / he_ner_news_trf
-nlp = load("custom_ner_model")
+nlp = load("custom_ner_model12git")
 
 # בצע חיפוש שם אדם במחרוזת באמצעות מודל NER
 def find_name(text):
