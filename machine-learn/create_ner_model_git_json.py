@@ -84,17 +84,17 @@ random.shuffle(training_data)
 nlp.begin_training()
 
 # Training loop
-for itn in range(50):
+for itn in range(42):
     losses = {}
     for example in training_data:
         nlp.update([example], drop=0.5, losses=losses)
     print(str(itn) + ": " + str(losses))
-    if int(losses['ner']) <= 500:
+    if int(losses['ner']) <= 1000:
         break
 
 # Save the trained model to disk
 nlp.meta['name'] = 'find_singer_heb'
-nlp.to_disk("custom_ner_model13git")
+nlp.to_disk("custom_ner_model14git")
 
 # Load the trained model later
 # loaded_nlp = spacy.load("custom_ner_model")
