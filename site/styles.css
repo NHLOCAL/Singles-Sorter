@@ -411,3 +411,37 @@ body {
   margin-left: 10px;
   font-size: 24px;
 }
+
+
+
+.steps {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 20px; /* מרווח בין השלבים */
+}
+
+.step {
+  text-align: center;
+  margin-bottom: 20px; 
+  width: 200px; /* התאמת רוחב לפי הצורך */
+}
+
+.icon-container { 
+    display: flex; 
+    justify-content: center; 
+    margin-bottom: 10px; /* מרווח בין האייקון לטקסט */
+	
+}
+
+.steps .step .icon-container i.feature-icon {
+  margin-left: 0; 
+}
+
+.step i.feature-icon {
+  font-size: 3em;
+}
+
+.step h3 {
+  padding-bottom: 10px;
+}
