@@ -4,8 +4,13 @@ from sys import argv
 
 global nlp
 
-# improved_model / custom_ner_model / he_ner_news_trf
-nlp = load("custom_ner_model13git")
+# read name of model
+with open("model_name.txt", 'r', encoding='utf-8') as f:
+    model_name = f.read()
+    print(f'# {model_name}')
+
+# Load your trained model
+nlp = load(model_name)
 
 # בצע חיפוש שם אדם במחרוזת באמצעות מודל NER
 def find_name(text):

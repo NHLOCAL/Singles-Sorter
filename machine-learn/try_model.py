@@ -1,8 +1,15 @@
 from spacy import load
 import sys
 
+
+
+# read name of model
+with open("model_name.txt", 'r', encoding='utf-8') as f:
+    model_name = f.read()
+    print(f'# {model_name}')
+
 # Load your trained model
-nlp = load("custom_ner_model12git")
+nlp = load(model_name)
 
 def machine_learn(text):
     # Process the text with the loaded model
