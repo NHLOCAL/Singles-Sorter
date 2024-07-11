@@ -362,3 +362,51 @@ body {
   margin-left: 20px;
   color: #01244A;
 }
+
+
+
+.button-container {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.custom-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 12px 24px;
+  font-size: 18px;
+  font-weight: bold;
+  text-decoration: none;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.download-button {
+  background-color: #0077B6;
+  color: white;
+}
+
+.download-button:hover {
+  background-color: #005E8A;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+.github-button {
+  background-color: #24292e;
+  color: white;
+}
+
+.github-button:hover {
+  background-color: #1a1e21;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+.button-icon {
+  margin-left: 10px;
+  font-size: 24px;
+}
