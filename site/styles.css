@@ -445,3 +445,16 @@ body {
 .step h3 {
   padding-bottom: 10px;
 }
+
+
+
+.fixed-bottom {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    height: 16vh;
+    background-color: #FFF5A6;
+    padding-bottom: 30px;
+	padding-top: 30px;
+    text-align: center;
+  }
