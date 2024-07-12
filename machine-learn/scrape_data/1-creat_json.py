@@ -14,6 +14,18 @@ with open(r'level1\singers_list.csv', mode='r', newline='', encoding='utf-8') as
 # יצירת מילון של ביטויים רגולריים מראש
 singer_regex = {singer: re.compile(r'\b' + re.escape(singer) + r'\b') for singer in singer_names}
 
+# פונקציה לעדכון אופסטים בהתאם לתווים מיוחדים
+def adjust_offsets(text, start, end):
+    adjusted_start = start
+    adjusted_end = end
+    for i, char in enumerate(text[:start]):
+        if char == '-':
+            adjusted_start -= 1
+    for i, char in enumerate(text[:end]):
+        if char == '-':
+            adjusted_end -= 1
+    return adjusted_start, adjusted_end
+
 # פתיחת קובץ JSON לכתיבה
 with open('new-data.json', 'w', encoding='utf-8') as json_file:
     json_file.write('[\n')
@@ -24,7 +36,9 @@ with open('new-data.json', 'w', encoding='utf-8') as json_file:
         entities = []
         for singer, regex in singer_regex.items():
             for match in regex.finditer(song_name):
-                entities.append([match.start(), match.end(), "SINGER"])
+                start, end = match.start(), match.end()
+                start, end = adjust_offsets(song_name, start, end)
+                entities.append([start, end, "SINGER"])
         
         if entities:
             if not first_item:

@@ -84,7 +84,7 @@ random.shuffle(training_data)
 nlp.begin_training()
 
 # Training loop
-for itn in range(45):
+for itn in range(35):
     losses = {}
     for example in training_data:
         nlp.update([example], drop=0.5, losses=losses)
@@ -94,7 +94,7 @@ for itn in range(45):
 
 
 # read name of model
-with open("model_name.txt", 'r', encoding='utf-8') as f:
+with open("/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/model_name.txt", 'r', encoding='utf-8') as f:
     model_name = f.read()
     print(f'# {model_name}')   
     

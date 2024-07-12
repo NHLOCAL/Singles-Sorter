@@ -52,8 +52,7 @@ ner.add_label("SINGER")
 
 # Load data from both JSON files
 json_files = [
-    r'scrape_data\cleaned_data.json',
-    r'scrape_data\creat_data_auto\cleaned_data_random.json'
+    r'scrape_data\cleaned_new-data.json',
 ]
 training_data = []
 for json_file in json_files:
@@ -83,7 +82,7 @@ for itn in range(50):
 
 # Save the trained model to disk
 nlp.meta['name'] = 'find_singer_heb'
-nlp.to_disk("custom_ner_model10")
+nlp.to_disk("custom_ner_model01")
 
 # Load the trained model later
 # loaded_nlp = spacy.load("custom_ner_model")
