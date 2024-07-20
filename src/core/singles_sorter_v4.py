@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-__VERSION__ = '13.2'
+__VERSION__ = '13.1'
 
 import os
 import re
@@ -8,7 +8,7 @@ import argparse
 from shutil import copy, move
 import shutil
 from music_tag import load_file
-from jibrish_to_hebrew import fix_jibrish
+from jibrish_to_hebrew import fix_jibrish, check_jibrish
 import csv
 from check_name import check_exact_name
 import logging
@@ -16,7 +16,7 @@ import datetime
 
 class MusicSorter:
 
-    def __init__(self, source_dir, target_dir, copy_mode=False, abc_sort=False, exist_only=False, singles_folder=True, main_folder_only=False, duet_mode=False, progress_callback=None, log_level=logging.INFO):
+    def __init__(self, source_dir, target_dir=None, copy_mode=False, abc_sort=False, exist_only=False, singles_folder=True, main_folder_only=False, duet_mode=False, progress_callback=None, log_level=logging.INFO):
         self.unusual_list = ["סינגלים", "סינגל", "אבגדהוזחטיכלמנסעפצקרשתךםןץ", "אמן לא ידוע", "טוב", "לא ידוע", "תודה לך ה"]
         self.substrings_to_remove = [" -מייל מיוזיק", " - ציצו במייל", "-חדשות המוזיקה", " - חדשות המוזיקה", " - ציצו", " מוזיקה מכל הלב", " - מייל מיוזיק"]
         self.source_dir = source_dir
@@ -78,23 +78,84 @@ class MusicSorter:
             
         return filename
 
-    def clean_names(self):
-        if self.main_folder_only is False:
+
+    def fix_names(self):
+        """
+        Fix filenames and metadata of audio files in the source directory.
+        """
+        self.logger.info("Starting to fix filenames and metadata")
+        
+        files_to_process = []
+        
+        # Collect all audio files
+        if self.main_folder_only:
+            files_to_process = [f for f in os.listdir(self.source_dir) if f.lower().endswith((".mp3", ".wma", ".wav"))]
+        else:
             for root, _, files in os.walk(self.source_dir):
-                for my_file in files:
-                    if my_file.lower().endswith((".mp3", ".wma", ".wav")):
-                        old_file_path = os.path.join(root, my_file)
-                        new_file_name = self.clean_filename(my_file)
-                        new_file_path = os.path.join(root, new_file_name)
-                        os.rename(old_file_path, new_file_path)
-                        
-        elif self.main_folder_only:
-            for my_file in os.listdir(self.source_dir):
-                file_path = os.path.join(self.source_dir, my_file)
-                if os.path.isfile(file_path) and my_file.lower().endswith((".mp3", ".wma", ".wav")):
-                    new_file_name = self.clean_filename(my_file)
-                    new_file_path = os.path.join(self.source_dir, new_file_name)
+                for file in files:
+                    if file.lower().endswith((".mp3", ".wma", ".wav")):
+                        files_to_process.append(os.path.join(root, file))
+        
+        
+        len_dir = len(files_to_process)
+        progress_fix_generator = self.progress_display(len_dir)
+        
+        for file_path in files_to_process:
+
+            try:
+
+                show_len = next(progress_fix_generator)
+                if self.progress_callback:
+                    self.progress_callback(show_len)
+
+                # Fix filename
+                directory, filename = os.path.split(file_path)
+                new_filename = self.clean_filename(filename)
+                new_file_path = os.path.join(directory, new_filename)
+                
+                if file_path != new_file_path:
                     os.rename(file_path, new_file_path)
+                    self.logger.info(f"Renamed file: {file_path} -> {new_file_path}")
+                
+                # Fix metadata
+                metadata = load_file(new_file_path)
+                
+                # Fix artist metadata
+                artist = metadata['artist'].value
+                if artist and check_jibrish(artist):
+                    fixed_artist = fix_jibrish(artist, "heb")
+                    metadata['artist'] = fixed_artist
+                    self.logger.info(f"Fixed artist metadata for {new_file_path}: {artist} -> {fixed_artist}")
+                
+                # Fix title metadata
+                title = metadata['title'].value
+                if title and check_jibrish(title):
+                    fixed_title = fix_jibrish(title, "heb")
+                    metadata['title'] = fixed_title
+                    self.logger.info(f"Fixed title metadata for {new_file_path}: {title} -> {fixed_title}")
+                
+                # Fix album metadata
+                album = metadata['album'].value
+                if album and check_jibrish(album):
+                    fixed_album = fix_jibrish(album, "heb")
+                    metadata['album'] = fixed_album
+                    self.logger.info(f"Fixed album metadata for {new_file_path}: {album} -> {fixed_album}")
+                
+                # Fix genre metadata
+                genre = metadata['genre'].value
+                if genre and check_jibrish(genre):
+                    fixed_genre = fix_jibrish(genre, "heb")
+                    metadata['genre'] = fixed_genre
+                    self.logger.info(f"Fixed genre metadata for {new_file_path}: {genre} -> {fixed_genre}")
+                
+                # Save the changes
+                metadata.save()
+                
+            except Exception as e:
+                self.logger.error(f"Error processing file {file_path}: {str(e)}")
+        
+        self.logger.info("Finished fixing filenames and metadata")
+
 
 
 
@@ -504,7 +565,7 @@ def main():
     try:
         log_level = getattr(logging, args.log_level.upper())
         sorter = MusicSorter(args.source_dir, args.target_dir, args.copy_mode, args.abc_sort, args.exist_only, args.singles_folder, args.main_folder_only, args.duet_mode, log_level=log_level)
-        sorter.clean_names()
+        sorter.fix_names()
         sorter.scan_dir()
     except Exception as e:
         logging.error(f"An error occurred: {str(e)}")
