@@ -1,43 +1,37 @@
 # -*- coding: utf-8 -*-
 import requests
 
-# ישום עדכון וזיהוי גרסה חדשה
 def check_for_update(current_version):
-    # URL של GitHub API לקבלת הגרסה האחרונה
     url = "https://api.github.com/repos/NHLOCAL/Singles-Sorter/releases/latest"
     
     try:
-        # בקשה ל-API לקבלת הגרסה האחרונה
         response = requests.get(url)
-        response.raise_for_status()  # לבדוק אם התקבלה תשובה תקינה
-        latest_release = response.json()  # לקבל JSON
+        response.raise_for_status()
+        latest_release = response.json()
         
-        # לבדוק אם מדובר בגרסת בטא
         is_prerelease = latest_release['prerelease']
-        
-        # לגרסה החדשה ביותר
         latest_version = latest_release['tag_name'].strip()
         
-        # להשוות בין גרסה נוכחית לגרסה באתר
         if latest_version > f"v{current_version}" and not is_prerelease:
-            return latest_version
+            return (
+                latest_version,
+                latest_release.get('body', '')
+            )
         else:
-            return False
+            return None
         
     except requests.RequestException as e:
-        #print(f"Error fetching version data: {e}")
-        return False
+        print(f"שגיאה בקבלת נתוני גרסה: {e}")
+        return None
 
 if __name__ == '__main__':
-
-    from singles_sorter_v3 import __VERSION__
-
-    # גרסה נוכחית מהתוכנה שלך
+    from singles_sorter_v4 import __VERSION__
     current_version = __VERSION__
 
-    # קריאה לפונקציה
-    new_version = check_for_update(current_version)
-    if new_version:
+    update_info = check_for_update(current_version)
+    if update_info:
+        new_version, release_notes = update_info
         print(f"גרסה חדשה זמינה: {new_version} 🚀")
+        print(f"הערות שחרור:\n{release_notes}")
     else:
-        print(f"אין גרסה חדשה זמינה. 🙁")
+        print("אין גרסה חדשה זמינה. 🙁")

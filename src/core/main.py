@@ -3,7 +3,7 @@ import flet as ft
 import os
 
 # קבצי התוכנה
-from singles_sorter_v3 import MusicSorter, __VERSION__
+from singles_sorter_v4 import MusicSorter, __VERSION__
 from update_config import check_for_update
 
 
@@ -82,17 +82,29 @@ def main(page: ft.Page):
     # הגדרת סרגל תחתון
     page.bottom_appbar = ft.BottomAppBar(
         ft.Text(
-                            "© כל הזכויות שמורות ל-nh.local11@gmail.com",
-                            size=10,
-                            text_align=ft.TextAlign.CENTER,
-                            color=ft.colors.ON_SECONDARY,
-                        ),
+            "להורדת סינגלים חינם - ",
+            size=12,
+            text_align=ft.TextAlign.CENTER,
+            color=ft.colors.ON_SECONDARY,
+            spans=[
+                ft.TextSpan(
+                    "שיר בוט",
+                    ft.TextStyle(
+                        decoration=ft.TextDecoration.UNDERLINE,
+                        color=ft.colors.BLUE,
+                        weight="BOLD",
+                    ),
+                    url="https://nhlocal.github.io/shir-bot?utm_source=singles_sorter_program&utm_medium=desktop"
+                ),
+            ],
+        ),
+
+
         bgcolor=ft.colors.ON_PRIMARY_CONTAINER,
         shape=ft.NotchShape.CIRCULAR,
         padding=8,
         height='35',
     )
-
 
 
     # תפריט אפשרויות נוספות
@@ -111,7 +123,7 @@ def main(page: ft.Page):
 
 
     try:
-        update_available = check_for_update(VERSION)
+        update_available, release_notes = check_for_update(VERSION)
     except:
         update_available = False
         
@@ -202,6 +214,7 @@ def main(page: ft.Page):
         
 
     def show_update():
+
         def close_dialog(e):
             page.dialog.open = False
             page.update()
@@ -224,10 +237,17 @@ def main(page: ft.Page):
             modal=True,
             icon=ft.Icon(ft.icons.UPDATE, size=30, color=ft.colors.ON_SECONDARY_CONTAINER),
             title=ft.Text("עדכון גרסה", text_align="center"),
-            content=ft.Text(f"גרסה {update_available} זמינה להורדה\n להוריד כעת?", text_align="center", rtl=True),
+            content=ft.Column([
+                ft.Text(f"גרסה {update_available} זמינה להורדה", text_align="center", rtl=True, size=20),
+                ft.Text(f"מה חדש?", text_align="center", rtl=True, size=18, weight='BOLD'),
+                ft.Markdown(release_notes)
+                ],
+            rtl=True,
+            scroll=ft.ScrollMode.AUTO,
+            ),
 
             actions=[
-                ft.TextButton("אישור", on_click=updating),
+                ft.TextButton("הורד כעת", on_click=updating),
                 ft.TextButton("ביטול", on_click=close_dialog),
             ],
             actions_alignment=ft.MainAxisAlignment.SPACE_AROUND,
@@ -469,13 +489,15 @@ def main(page: ft.Page):
 
     # הצגת הודעת אזהרה לפני הפעלת הסריקה
     def show_warning(e):
+        mode = e.control.data
+
         def close_dialog(e):
             page.dialog.open = False
             page.update()
 
-        def continue_organization(e):
+        def continue_action(e):
             page.dialog.open = False
-               
+
             # בקשת הרשאת ניהול קבצים מהמשתמש            
             if ANDROID_MODE:
                 def check_permission():
@@ -488,18 +510,26 @@ def main(page: ft.Page):
                 permission_status = check_permission()
                 if str(permission_status) != "PermissionStatus.GRANTED":
                     request_permission()
-                 
-                 
-            organize_files(e, page)
+
+            process_files(e, page, mode)
+            
             page.update()
         
+        # קביעת תוכן ההודעה והכותרת בהתאם לכפתור שנלחץ
+        if mode == "organize":
+            title_text = "אשר והתחל"
+            content_text = "התוכנה מיועדת לסינגלים בלבד\n מיון תיקיות אלבומים צפויה לשבש אותם!"
+        elif mode == "fix":
+            title_text = "אשר והתחל"
+            content_text = "פעולה זו תתקן ג'יבריש במאפייני הקובץ\nותסיר תוכן מיותר כמו 'חדשות המוזיקה' משמות הקבצים"
+
         page.dialog = ft.AlertDialog(
             modal=True,
-            title=ft.Text("אשר והתחל", text_align="center"),
-            content=ft.Text("התוכנה מיועדת לסינגלים בלבד\n מיון תיקיות אלבומים צפויה לשבש אותם!", text_align="center", rtl=True),
+            title=ft.Text(title_text, text_align="center"),
+            content=ft.Text(content_text, text_align="center", rtl=True),
 
             actions=[
-                ft.TextButton("אישור", on_click=continue_organization),
+                ft.TextButton("אישור", on_click=continue_action),
                 ft.TextButton("ביטול", on_click=close_dialog),
             ],
             actions_alignment=ft.MainAxisAlignment.SPACE_AROUND,
@@ -507,18 +537,49 @@ def main(page: ft.Page):
         page.dialog.open = True
         page.update()
 
+    
+    # הגדרות עבור כפתורים ראשיים
+    if ANDROID_MODE:
+        organize_button_title = "מיין"
+        fix_button_title = "תקן"
+        width_buttons = None      
+
+    else:
+        organize_button_title = "מיין כעת"
+        fix_button_title = "תקן כעת"
+        width_buttons = '160'
+
+
     organize_button = ft.ElevatedButton(
         content=ft.Row(
             [
-                ft.Icon(ft.icons.AUTO_FIX_HIGH), # הוספת אייקון "אזהרה"
-                ft.Text("הפעל כעת", size=20),
+                ft.Icon(ft.icons.AUTO_FIX_HIGH),
+                ft.Text(organize_button_title, size=20),
             ],
             alignment=ft.MainAxisAlignment.CENTER, # מירכוז תוכן הכפתור
         ),
         on_click=show_warning,
+        data="organize",
+        tooltip="מיון מתקדם של הסינגלים שלך בתיקיות לפי אמנים",
         style=round_button,
         height='60',
-        width='180',
+        width=width_buttons,
+    )
+    
+    fixed_button = ft.ElevatedButton(
+        content=ft.Row(
+            [
+                ft.Icon(ft.icons.CLEANING_SERVICES, size=22),
+                ft.Text(fix_button_title, size=18),
+            ],
+            alignment=ft.MainAxisAlignment.CENTER, # מירכוז תוכן הכפתור
+        ),
+        on_click=show_warning,
+        data="fix",
+        tooltip="תיקון ג'יבריש במאפייני הקובץ\nוהסרת תוכן מיותר בשמות הקבצים",
+        style=round_button,
+        height='60',
+        width=width_buttons,
     )
 
 
@@ -612,6 +673,7 @@ def main(page: ft.Page):
                 ft.Row(
                     [
                         organize_button,
+                        fixed_button,
                     ],
 
                     alignment=ft.MainAxisAlignment.CENTER,
@@ -649,13 +711,19 @@ def main(page: ft.Page):
             # Consider using a Snackbar or AlertDialog to display the error to the user
         
 
-    # טיפול במיון הקבצים בפועל - בעת לחיצה על כפתור הפעל
-    def organize_files(e, page: ft.Page):
+    # פונקציה אחת לטיפול במיון ותיקון שמות
+    def process_files(e, page: ft.Page, mode):
         source_dir = source_path if ANDROID_MODE else source_dir_input.value
         target_dir = target_path if ANDROID_MODE else target_dir_input.value
-        
-        if not source_dir or not target_dir:
+
+        if mode == "organize" and not target_dir:
             page.snack_bar = show_snackbar("אנא בחר תיקיית מקור ותיקיית יעד!", ft.colors.ERROR)
+            page.snack_bar.open = True
+            page.update()
+            return
+
+        if not source_dir:
+            page.snack_bar = show_snackbar("אנא בחר תיקיית מקור!", ft.colors.ERROR)
             page.snack_bar.open = True
             page.update()
             return
@@ -667,44 +735,53 @@ def main(page: ft.Page):
             page.window.progress_bar = str(progress_num)
             page.update()
 
-        # Call the scan_dir function with arguments and progress callback
         try:
-            # השבתת כפתור הפעל בעת הרצת הסריקה
-            organize_button.disabled = True
+            # השבתת כפתור בהתאם לפעולה
+            if mode == "organize":
+                organize_button.disabled = True
+            elif mode == "fix":
+                fixed_button.disabled = True
             page.update()
-            
-            # הפעלת פונקציות חיצוניות ליישום המיון
+
             sorter = MusicSorter(
-                source_dir, 
-                target_dir, 
-                copy_mode.value, 
-                abc_sort.value, 
-                exist_only.value, 
-                singles_folder.value, 
-                main_folder_only.value,
-                duet_mode.value,
-                progress_callback
+                source_dir = source_dir, 
+                target_dir = target_dir if mode == "organize" else None,  # העברת target_dir רק אם צריך
+                copy_mode = copy_mode.value,
+                abc_sort = abc_sort.value,
+                exist_only = exist_only.value,
+                singles_folder = singles_folder.value,
+                main_folder_only = main_folder_only.value,
+                duet_mode = duet_mode.value,
+                progress_callback = progress_callback
             )
 
-            # ניקוי תוכן מיותר משמות הקבצים
-            sorter.clean_names()
-            # מיון הקבצים בפעול
-            sorter.scan_dir()
+            if mode == "organize":
+                # מיון הקבצים
+                sorter.scan_dir()
+                message = "מיון הקבצים הסתיים בהצלחה"
+            elif mode == "fix":
+                # ניקוי תוכן מיותר משמות הקבצים
+                sorter.fix_names()
+                message = "תיקון שמות הקבצים הסתיים בהצלחה"
 
-
-            page.snack_bar = show_snackbar("מיון הקבצים הסתיים בהצלחה", ft.colors.GREEN, 10000)
+            page.snack_bar = show_snackbar(message, ft.colors.GREEN, 10000)
 
         except FileNotFoundError as error:
             page.snack_bar = show_snackbar(f"{error}", ft.colors.ERROR)
         except PermissionError as error:
-            page.snack_bar =  show_snackbar(f"{error}", ft.colors.ERROR)
+            page.snack_bar = show_snackbar(f"{error}", ft.colors.ERROR)
         except Exception as error:
-            page.snack_bar = show_snackbar(f"שגיאה במיון הקבצים: {error}", ft.colors.ERROR)
+            page.snack_bar = show_snackbar(f"שגיאה: {error}", ft.colors.ERROR)
 
         finally: 
             page.window.progress_bar = '0.0'
             page.snack_bar.open = True
-            organize_button.disabled = False
+
+            # הפעלת כפתור בהתאם לפעולה
+            if mode == "organize":
+                organize_button.disabled = False
+            elif mode == "fix":
+                fixed_button.disabled = False
             page.update()
 
     # הפעלת פונקצייה שפותחת הודעה "מה חדש" בהפעלה הראשונה
