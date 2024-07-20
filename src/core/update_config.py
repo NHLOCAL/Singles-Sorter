@@ -18,11 +18,11 @@ def check_for_update(current_version):
                 latest_release.get('body', '')
             )
         else:
-            return None
+            return False
         
     except requests.RequestException as e:
         print(f"שגיאה בקבלת נתוני גרסה: {e}")
-        return None
+        return False
 
 if __name__ == '__main__':
     from singles_sorter_v4 import __VERSION__
