@@ -551,22 +551,36 @@ class MusicSorter:
 def main():
     parser = argparse.ArgumentParser(description=f"Singles Sorter {__VERSION__} - Scan and organize music files into folders by artist using advanced automation.")
     parser.add_argument('source_dir', help="Path to the source directory")
-    parser.add_argument('target_dir', help="Path to the target directory")
+    parser.add_argument('target_dir', nargs="?", help="Path to the target directory")
     parser.add_argument('-c', '--copy_mode', help="Enable copy mode (default is move mode)", action='store_true')
     parser.add_argument('-a', '--abc_sort', help="Sort folders alphabetically (default: False)", action='store_true')
     parser.add_argument('-e', '--exist_only', help="Transfer to existing folders only (default: False)", action='store_true')
     parser.add_argument('-n', '--no_singles_folder', help="Do not create an internal 'singles' folder", action='store_false', dest='singles_folder', default=True)
     parser.add_argument('-m', '--main_folder_only', help="Sort only the main folder (default: False)", action='store_true')
     parser.add_argument('-d', '--duet_mode', help="Copy to all singers' folders for duets (default: False)", action='store_true')
+    parser.add_argument("-f", "--fix_names", action="store_true", help="Fix file names only without sorting files")
     parser.add_argument('-l', '--log_level', help="Set the logging level", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], default='INFO')
 
     args = parser.parse_args()
 
     try:
         log_level = getattr(logging, args.log_level.upper())
-        sorter = MusicSorter(args.source_dir, args.target_dir, args.copy_mode, args.abc_sort, args.exist_only, args.singles_folder, args.main_folder_only, args.duet_mode, log_level=log_level)
-        sorter.fix_names()
-        sorter.scan_dir()
+        sorter = MusicSorter(
+            args.source_dir,
+            args.target_dir,
+            args.copy_mode,
+            args.abc_sort,
+            args.exist_only,
+            args.singles_folder,
+            args.main_folder_only,
+            args.duet_mode,
+            log_level=log_level
+        )
+
+        if args.fix_names:
+            sorter.fix_names()
+        else:
+            sorter.scan_dir()
     except Exception as e:
         logging.error(f"An error occurred: {str(e)}")
         sys.exit(1)
