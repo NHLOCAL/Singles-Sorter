@@ -29,7 +29,7 @@ def replace_frequent_singers(songs, singer_counter, all_singers):
     new_songs = []
     for song in songs:
         current_singer = find_singer(song, all_singers)
-        if current_singer and singer_counter[current_singer] > 10:
+        if current_singer and singer_counter[current_singer] > 5:
             new_singer = random.choice(all_singers)
             new_song = re.sub(r'\b' + re.escape(current_singer) + r'\b', new_singer, song)
             new_songs.append(new_song)
