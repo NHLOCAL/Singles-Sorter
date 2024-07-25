@@ -3,6 +3,20 @@ import random
 from collections import Counter
 import re
 
+class SingerSelector:
+    def __init__(self, singers):
+        self.all_singers = singers
+        self.reset()
+
+    def reset(self):
+        self.available_singers = self.all_singers.copy()
+        random.shuffle(self.available_singers)
+
+    def get_singer(self):
+        if not self.available_singers:
+            self.reset()
+        return self.available_singers.pop()
+
 def load_singers(file_path):
     with open(file_path, 'r', encoding='utf-8') as f:
         return [line.strip() for line in f]
@@ -11,47 +25,47 @@ def load_songs(file_path):
     with open(file_path, 'r', encoding='utf-8') as f:
         return [line.strip() for line in f]
 
-def find_singer(song, singers):
-    for singer in singers:
-        if singer in song:
-            return singer
-    return None
+def find_singers(song, singers):
+    return [singer for singer in singers if singer in song]
 
 def count_singers(songs, singers):
     singer_counter = Counter()
     for song in songs:
-        singer = find_singer(song, singers)
-        if singer:
+        for singer in find_singers(song, singers):
             singer_counter[singer] += 1
     return singer_counter
 
 def balance_singers(songs, all_singers, max_appearances=2, num_rounds=3):
+    singer_selector = SingerSelector(all_singers)
+    
     for round in range(num_rounds):
         print(f"סבב איזון {round + 1}/{num_rounds}")
         singer_counter = count_singers(songs, all_singers)
-        unused_singers = set(all_singers) - set(singer_counter.keys())
         
         new_songs = []
         for song in songs:
-            current_singer = find_singer(song, all_singers)
-            if current_singer and singer_counter[current_singer] > max_appearances:
-                if unused_singers:
-                    new_singer = random.choice(list(unused_singers))
-                    unused_singers.remove(new_singer)
-                else:
-                    new_singer = min(singer_counter, key=singer_counter.get)
-                
-                new_song = re.sub(r'\b' + re.escape(current_singer) + r'\b', new_singer, song)
-                new_songs.append(new_song)
-                singer_counter[current_singer] -= 1
-                singer_counter[new_singer] += 1
-                #print(f"החלפת '{current_singer}' ב-'{new_singer}' בשיר '{song}'")
-            else:
-                new_songs.append(song)
+            current_singers = find_singers(song, all_singers)
+            new_song = song
+            for current_singer in current_singers:
+                if singer_counter[current_singer] > max_appearances:
+                    new_singer = singer_selector.get_singer()
+                    while new_singer in current_singers:
+                        new_singer = singer_selector.get_singer()
+                    
+                    new_song = re.sub(r'\b' + re.escape(current_singer) + r'\b', new_singer, new_song)
+                    singer_counter[current_singer] -= 1
+                    singer_counter[new_singer] += 1
+            new_songs.append(new_song)
         
         songs = new_songs
+        singer_selector.reset()
     
     return songs
+
+def print_top_singers(singer_counter, n=10):
+    print(f"\n{n} הזמרים עם מספר ההופעות הגבוה ביותר:")
+    for singer, count in singer_counter.most_common(n):
+        print(f"{singer}: {count} הופעות")
 
 def main():
     print("טוען את רשימת הזמרים...")
@@ -79,6 +93,9 @@ def main():
     print(f"מספר הופעות מינימלי: {min(final_counter.values())}")
     print(f"מספר הופעות מקסימלי: {max(final_counter.values())}")
     print(f"ממוצע הופעות: {sum(final_counter.values()) / len(final_counter):.2f}")
+
+    # הדפסת 10 הזמרים המובילים
+    print_top_singers(final_counter)
 
 if __name__ == "__main__":
     main()

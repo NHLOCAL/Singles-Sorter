@@ -85,26 +85,26 @@ nlp.begin_training()
 
 # Training loop
 iteration_data = {}
-for itn in range(65):
+for itn in range(55):
     losses = {}
     for example in training_data:
         nlp.update([example], drop=0.5, losses=losses)
     print(str(itn) + ": " + str(losses))
     iteration_data[itn] = losses.copy()  # Save the losses for this iteration
-    if int(losses['ner']) <= 2000:
+    if int(losses['ner']) <= 2900:
         break
-
-# Save iteration data to a JSON file
-try:
-    with open('/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/iteration_data.json', 'w', encoding='utf-8') as f:
-        json.dump(iteration_data, f, ensure_ascii=False, indent=2)
-except:
-    print('was error in Save iteration data to a JSON file')
 
 # read name of model
 with open("/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/model_name.txt", 'r', encoding='utf-8') as f:
     model_name = f.read()
-    print(f'# {model_name}')   
+    print(f'# {model_name}')
+
+# Save iteration data to a JSON file
+try:
+    with open(f'/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/{model_name}/iteration_data.json', 'w', encoding='utf-8') as f:
+        json.dump(iteration_data, f, ensure_ascii=False, indent=2)
+except:
+    print('was error in Save iteration data to a JSON file')    
     
 # Save the trained model to disk
 nlp.meta['name'] = 'find_singer_heb'
