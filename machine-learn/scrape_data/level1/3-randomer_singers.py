@@ -25,7 +25,7 @@ def count_singers(songs, singers):
             singer_counter[singer] += 1
     return singer_counter
 
-def balance_singers(songs, all_singers, max_appearances=1, num_rounds=5):
+def balance_singers(songs, all_singers, max_appearances=2, num_rounds=3):
     for round in range(num_rounds):
         print(f"סבב איזון {round + 1}/{num_rounds}")
         singer_counter = count_singers(songs, all_singers)
@@ -45,7 +45,7 @@ def balance_singers(songs, all_singers, max_appearances=1, num_rounds=5):
                 new_songs.append(new_song)
                 singer_counter[current_singer] -= 1
                 singer_counter[new_singer] += 1
-                print(f"החלפת '{current_singer}' ב-'{new_singer}' בשיר '{song}'")
+                #print(f"החלפת '{current_singer}' ב-'{new_singer}' בשיר '{song}'")
             else:
                 new_songs.append(song)
         
@@ -66,7 +66,7 @@ def main():
     balanced_songs = balance_singers(songs, all_singers)
 
     print("שומר את הרשימה המאוזנת...")
-    with open('list_all_songs_balanced.txt', 'w', encoding='utf-8') as f:
+    with open('list_all_songs_random.txt', 'w', encoding='utf-8') as f:
         for song in balanced_songs:
             f.write(f"{song}\n")
 

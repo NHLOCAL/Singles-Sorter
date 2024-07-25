@@ -24,20 +24,27 @@ jobs:
 
       - name: Set working directory
         run: cd machine-learn/
-        working-directory: ${{ github.workspace }}  # Use the GitHub workspace as the starting directory
+        working-directory: ${{ github.workspace }}
 
       - name: Run training script
         run: |
           python machine-learn/creating_model_git.py
 
+      - name: Read model name from file
+        id: model-name
+        run: echo "MODEL_NAME=$(cat /home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/model_name.txt)" >> $GITHUB_OUTPUT
+
+      - name: Debug model name
+        run: echo "Model name is ${{ steps.model-name.outputs.MODEL_NAME }}"
+
       - name: Move prepared file to internal folder
         run: |
-          mv custom_ner_model18git machine-learn/
+          mv ${{ steps.model-name.outputs.MODEL_NAME }} machine-learn/
 
       - name: Commit and push changes
         run: |
           git config --local user.email "actions@github.com"
           git config --local user.name "GitHub Actions"
-          git add machine-learn/custom_ner_model18git
-          git commit -m "Update custom_ner_model18git" || echo "No changes to commit"
+          git add machine-learn/${{ steps.model-name.outputs.MODEL_NAME }}
+          git commit -m "Update ${{ steps.model-name.outputs.MODEL_NAME }}" || echo "No changes to commit"
           git push
