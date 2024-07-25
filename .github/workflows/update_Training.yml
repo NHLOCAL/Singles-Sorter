@@ -28,7 +28,7 @@ jobs:
 
       - name: Run training script
         run: |
-          python machine-learn/create_ner_model_git_json.py
+          python machine-learn/creating_model_git.py
 
       - name: Move prepared file to internal folder
         run: |
