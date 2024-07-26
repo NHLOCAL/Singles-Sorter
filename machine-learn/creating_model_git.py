@@ -103,7 +103,7 @@ with open("/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/model_n
 try:
     with open(f'/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/{model_name}/iteration_data.json', 'w', encoding='utf-8') as f:
         json.dump(iteration_data, f, ensure_ascii=False, indent=2)
-except Exception as e
+except Exception as e:
     print(f'was error in Save iteration data to a JSON file: {e}')    
     
 # Save the trained model to disk
