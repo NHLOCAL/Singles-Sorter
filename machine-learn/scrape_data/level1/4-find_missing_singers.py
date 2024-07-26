@@ -16,4 +16,6 @@ missing_singers = [singer for singer in singers if not any(singer in song for so
 # הדפסת זמרים חסרים עם מספור
 print("זמרים שאינם מופיעים ברשימת השירים:")
 for idx, singer in enumerate(missing_singers, 1):
-    print(f"{idx}. {singer}")
+    print(singer)
+    
+print(f'\nסה"כ: - {len(missing_singers)} - זמרים חסרים')
