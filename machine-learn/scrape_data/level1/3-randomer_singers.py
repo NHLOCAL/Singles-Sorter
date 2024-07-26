@@ -35,7 +35,7 @@ def count_singers(songs, singers):
             singer_counter[singer] += 1
     return singer_counter
 
-def balance_singers(songs, all_singers, max_appearances=2, num_rounds=3):
+def balance_singers(songs, all_singers, max_appearances=5, num_rounds=3):
     singer_selector = SingerSelector(all_singers)
     
     for round in range(num_rounds):
