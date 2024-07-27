@@ -19,5 +19,5 @@ plt.title('NER Loss per Iteration')
 
 # Display the plot
 plt.grid(True)
-plt.savefig('ner_loss_graph.png')
+#plt.savefig('ner_loss_graph.png')
 plt.show()

@@ -37,15 +37,14 @@ jobs:
       - name: Debug model name
         run: echo "Model name is ${{ steps.model-name.outputs.MODEL_NAME }}"
 
-      - name: Move prepared file to internal folder
+      - name: Move iteration_data.json to model folder
         run: |
-          mv ${{ steps.model-name.outputs.MODEL_NAME }} machine-learn/
+          mv /home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/iteration_data.json machine-learn/${{ steps.model-name.outputs.MODEL_NAME }}/
 
       - name: Commit and push changes
         run: |
           git config --local user.email "actions@github.com"
           git config --local user.name "GitHub Actions"
           git add machine-learn/${{ steps.model-name.outputs.MODEL_NAME }}
-          git add machine-learn/iteration_data.json
-          git commit -m "Update ${{ steps.model-name.outputs.MODEL_NAME }} and iteration_data.json" || echo "No changes to commit"
+          git commit -m "Update ${{ steps.model-name.outputs.MODEL_NAME }} including iteration_data.json" || echo "No changes to commit"
           git push
