@@ -37,6 +37,11 @@ jobs:
       - name: Debug model name
         run: echo "Model name is ${{ steps.model-name.outputs.MODEL_NAME }}"
 
+
+      - name: Move prepared file to internal folder
+        run: |
+          mv ${{ steps.model-name.outputs.MODEL_NAME }} machine-learn/
+
       - name: Move iteration_data.json to model folder
         run: |
           mv /home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/iteration_data.json machine-learn/${{ steps.model-name.outputs.MODEL_NAME }}/
