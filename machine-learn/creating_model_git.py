@@ -85,7 +85,7 @@ nlp.begin_training()
 
 # Training loop
 iteration_data = {}
-for itn in range(2):
+for itn in range(1):
     losses = {}
     for example in training_data:
         nlp.update([example], drop=0.5, losses=losses)
@@ -101,7 +101,7 @@ with open("/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/model_n
 
 # Save iteration data to a JSON file
 try:
-    with open(f'/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/{model_name}/iteration_data.json', 'w', encoding='utf-8') as f:
+    with open(f'/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/iteration_data.json', 'w', encoding='utf-8') as f:
         json.dump(iteration_data, f, ensure_ascii=False, indent=2)
 except Exception as e:
     print(f'was error in Save iteration data to a JSON file: {e}')    

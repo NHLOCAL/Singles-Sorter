@@ -46,6 +46,6 @@ jobs:
           git config --local user.email "actions@github.com"
           git config --local user.name "GitHub Actions"
           git add machine-learn/${{ steps.model-name.outputs.MODEL_NAME }}
-          git add machine-learn/${{ steps.model-name.outputs.MODEL_NAME }}/iteration_data.json
+          git add machine-learn/iteration_data.json
           git commit -m "Update ${{ steps.model-name.outputs.MODEL_NAME }} and iteration_data.json" || echo "No changes to commit"
           git push
