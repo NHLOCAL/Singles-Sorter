@@ -30,21 +30,36 @@ def convert_to_spacy_format(data, ent):
 
     return examples
 
-
 def custom_tokenizer(nlp):
     # Load the default tokenizer
     default_tokenizer = Tokenizer(nlp.vocab)
     nlp2 = Hebrew()
-    # Define the custom tokenization rule for "ו" at the beginning of a word using regex
-    prefixes = nlp2.Defaults.prefixes + [r'^(?!וו)ו']
-    prefix_regex = spacy.util.compile_prefix_regex(prefixes)
-    nlp2.tokenizer.prefix_search = prefix_regex.search
-    return nlp2.tokenizer
+    
+    # Define custom prefix, infix, and suffix patterns to split '-'
+    prefixes = nlp2.Defaults.prefixes + [r'-']
+    infixes = nlp2.Defaults.infixes + [r'-']
+    suffixes = nlp2.Defaults.suffixes + [r'-']
 
+    prefix_regex = spacy.util.compile_prefix_regex(prefixes)
+    infix_regex = spacy.util.compile_infix_regex(infixes)
+    suffix_regex = spacy.util.compile_suffix_regex(suffixes)
+
+    nlp2.tokenizer.prefix_search = prefix_regex.search
+    nlp2.tokenizer.infix_finditer = infix_regex.finditer
+    nlp2.tokenizer.suffix_search = suffix_regex.search
+    
+    return nlp2.tokenizer
+    
 
 # Load a blank spaCy model
 nlp = spacy.blank("he")
 nlp.tokenizer = custom_tokenizer(nlp)
+
+# Test the tokenizer
+test_text = "תומר כהן- הישראלי הבכיר בלינקדין"
+doc = nlp(test_text)
+print([token.text for token in doc])
+
 
 # Add the entity recognizer to the pipeline using its string name
 ner = nlp.add_pipe("ner")
@@ -64,7 +79,6 @@ for json_file in json_files:
             entities = example_entities.get('entities', [])
             example = Example.from_dict(nlp.make_doc(example_text), {'entities': entities})
             training_data.append(example)
-
 
 # Load the data from the JSON file
 with open(json_file, 'r', encoding='utf-8') as f:

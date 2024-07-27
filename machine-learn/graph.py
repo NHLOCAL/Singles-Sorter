@@ -1,8 +1,21 @@
 import matplotlib.pyplot as plt
 import json
 
+
+# read name of model
+with open("model_name.txt", 'r', encoding='utf-8') as f:
+    model_name = f.read()
+    print(f'# {model_name}')
+
+
+
+
 # Read the iteration data from the JSON file
-with open('iteration_data.json', 'r', encoding='utf-8') as f:
+
+
+
+
+with open(f'{model_name}\\iteration_data.json', 'r', encoding='utf-8') as f:
     data = json.load(f)
 
 # Extract the Y-axis values
