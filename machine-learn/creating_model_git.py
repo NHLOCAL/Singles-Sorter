@@ -73,7 +73,7 @@ patience_counter = 0
 best_model_path = "/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/best_model"
 
 iteration_data = {}
-batch_size = 64
+batch_size = 32
 #initial_lr = 0.001  # שיעור למידה התחלתי
 #lr_decay = 0.95  # קצב דעיכת שיעור הלמידה
 # optimizer.learn_rate = initial_lr
