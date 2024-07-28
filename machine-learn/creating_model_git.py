@@ -50,7 +50,7 @@ ner = nlp.add_pipe("ner")
 ner.add_label("SINGER")
 
 json_files = [
-    'scrape_data/cleaned_new-data.json'
+    '/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/scrape_data/cleaned_new-data.json'
 ]
 
 training_data = []
@@ -99,12 +99,12 @@ for itn in range(100):
     # עדכון שיעור הלמידה
     optimizer.learn_rate *= lr_decay
 
-with open("model_name.txt", 'r', encoding='utf-8') as f:
+with open("/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/model_name.txt", 'r', encoding='utf-8') as f:
     model_name = f.read()
     print(f'# {model_name}')
 
 try:
-    with open(f'iteration_data.json', 'w', encoding='utf-8') as f:
+    with open(f'/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/iteration_data.json', 'w', encoding='utf-8') as f:
         json.dump(iteration_data, f, ensure_ascii=False, indent=2)
 except Exception as e:
     print(f'was error in Save iteration data to a JSON file: {e}')
