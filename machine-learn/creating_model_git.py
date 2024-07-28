@@ -66,7 +66,7 @@ random.shuffle(training_data)
 
 nlp.begin_training()
 
-patience = 7
+patience = 5
 min_delta = 0.001
 best_loss = float('inf')
 patience_counter = 0
@@ -82,7 +82,7 @@ for itn in range(100):
     losses = {}
     for i in range(0, len(training_data), batch_size):
         batch = training_data[i:i + batch_size]
-        nlp.update(batch, drop=0.35, losses=losses)
+        nlp.update(batch, drop=0.25, losses=losses)
     print(f"Iteration {itn}: {losses}")
     iteration_data[itn] = losses.copy()
     
