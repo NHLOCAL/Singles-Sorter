@@ -17,11 +17,12 @@ def custom_tokenizer(nlp):
     default_tokenizer = Tokenizer(nlp.vocab)
     nlp2 = Hebrew()
     
-    # Define the custom tokenization rule for "ו" at the beginning of a word using regex
-    prefixes = nlp2.Defaults.prefixes + [r'^(?!וו)ו']
+    
     
     # Define custom prefix, infix, and suffix patterns to split '-'
-    prefixes = nlp2.Defaults.prefixes + [r'-']
+    # Define the custom tokenization rule for "ו" at the beginning of a word using regex
+    prefixes = nlp2.Defaults.prefixes + [r'-'] + [r'^(?!וו)ו']
+    
     infixes = nlp2.Defaults.infixes + [r'-']
     suffixes = nlp2.Defaults.suffixes + [r'-']
 
