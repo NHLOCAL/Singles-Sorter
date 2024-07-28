@@ -81,7 +81,7 @@ for itn in range(100):
     losses = {}
     for i in range(0, len(training_data), batch_size):
         batch = training_data[i:i + batch_size]
-        nlp.update(batch, drop=0.3, losses=losses)
+        nlp.update(batch, drop=0.35, losses=losses)
     print(f"Iteration {itn}: {losses}")
     iteration_data[itn] = losses.copy()
     
