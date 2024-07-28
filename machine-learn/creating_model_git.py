@@ -11,33 +11,17 @@ def check_alignment(nlp, text, entities):
     tags = spacy.training.offsets_to_biluo_tags(doc, entities)
     return list(zip(doc, tags))
 
-# Function to convert the data into spaCy's training format
-def convert_to_spacy_format(data, ent):
-    examples = []
-    for example in data:
-        full_string = example['Column A']
-        entity_string = example['Column B']
-        start_position = full_string.find(entity_string)
-        end_position = start_position + len(entity_string)
-        entities = [(start_position, end_position, ent)]
-
-        # Check alignment and ignore misaligned entities during training
-        aligned_entities = check_alignment(nlp, full_string, entities)
-
-        doc = nlp.make_doc(full_string)
-        example = Example.from_dict(doc, {'entities': entities})
-        examples.append(example)
-
-    return examples
 
 def custom_tokenizer(nlp):
     # Load the default tokenizer
     default_tokenizer = Tokenizer(nlp.vocab)
     nlp2 = Hebrew()
     
+    # Define the custom tokenization rule for "ו" at the beginning of a word using regex
+    prefixes = nlp2.Defaults.prefixes + [r'^(?!וו)ו']
+    
     # Define custom prefix, infix, and suffix patterns to split '-'
     prefixes = nlp2.Defaults.prefixes + [r'-']
-    infixes = nlp2.Defaults.infixes + [r'-']
     suffixes = nlp2.Defaults.suffixes + [r'-']
 
     prefix_regex = spacy.util.compile_prefix_regex(prefixes)
