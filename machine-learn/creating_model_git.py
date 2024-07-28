@@ -70,6 +70,7 @@ patience = 7
 min_delta = 0.001
 best_loss = float('inf')
 patience_counter = 0
+best_model_path = "/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/best_model"
 
 iteration_data = {}
 batch_size = 64
@@ -89,6 +90,8 @@ for itn in range(100):
     if current_loss < best_loss - min_delta:
         best_loss = current_loss
         patience_counter = 0
+        # Save the best model
+        nlp.to_disk(best_model_path)
     else:
         patience_counter += 1
     
@@ -109,5 +112,7 @@ try:
 except Exception as e:
     print(f'was error in Save iteration data to a JSON file: {e}')
 
+# Load the best model before saving with the final name
+nlp = spacy.load(best_model_path)
 nlp.meta['name'] = 'find_singer_heb'
 nlp.to_disk(model_name)
