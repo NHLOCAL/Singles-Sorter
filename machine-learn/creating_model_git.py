@@ -95,9 +95,8 @@ for example_text, example_entities in data:
 # Shuffle the training data
 random.shuffle(training_data)
 
-# Initialize optimizer with Adam and a specific learning rate
-optimizer = nlp.create_optimizer()
-optimizer.alpha = 0.001  # קצב למידה התחלתי
+# Initialize optimizer with a specific learning rate
+optimizer = nlp.create_optimizer(learning_rate=0.001)  # קצב למידה התחלתי
 
 batch_size = 32  # Batch Size בינוני
 
