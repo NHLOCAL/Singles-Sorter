@@ -100,7 +100,7 @@ nlp.begin_training()
 
 # Training loop
 iteration_data = {}
-for itn in range(1):
+for itn in range(55):
     losses = {}
     for example in training_data:
         nlp.update([example], drop=0.5, losses=losses)
