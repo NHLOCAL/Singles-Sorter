@@ -66,13 +66,13 @@ random.shuffle(training_data)
 
 nlp.begin_training()
 
-patience = 5
+patience = 7
 min_delta = 0.001
 best_loss = float('inf')
 patience_counter = 0
 
 iteration_data = {}
-batch_size = 32
+batch_size = 8
 #initial_lr = 0.001  # שיעור למידה התחלתי
 #lr_decay = 0.95  # קצב דעיכת שיעור הלמידה
 # optimizer.learn_rate = initial_lr
