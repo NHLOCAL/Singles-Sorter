@@ -97,7 +97,7 @@ for itn in range(100):
         break
 
     # עדכון שיעור הלמידה
-    optimizer.learn_rate *= lr_decay
+    #optimizer.learn_rate *= lr_decay
 
 with open("/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/model_name.txt", 'r', encoding='utf-8') as f:
     model_name = f.read()
