@@ -95,56 +95,37 @@ for example_text, example_entities in data:
 # Shuffle the training data
 random.shuffle(training_data)
 
-# Initialize optimizer with a specific learning rate
-optimizer = nlp.create_optimizer(learning_rate=0.001)  # קצב למידה התחלתי
+# Start training the spaCy model
+nlp.begin_training()
 
-batch_size = 32  # Batch Size בינוני
-
-# הגדרת פרמטרים ל-Early Stopping
-patience = 10  # מספר האיטרציות להמתין לשיפור
-min_delta = 0.01  # השיפור המינימלי הנחשב כמשמעותי
-
-# משתנים למעקב
+# Early Stopping Parameters
+patience = 5  # מספר האיטרציות לחכות לפני עצירת האימון אם אין שיפור
+min_delta = 0.001  # השיפור המינימלי הנדרש כדי להיחשב שיפור
 best_loss = float('inf')
-best_model = None
-iterations_without_improvement = 0
+patience_counter = 0
+
+# Training loop
 iteration_data = {}
-
-# לולאת האימון
+batch_size = 32
 for itn in range(55):
-    random.shuffle(training_data)
     losses = {}
-
     for i in range(0, len(training_data), batch_size):
         batch = training_data[i:i + batch_size]
-        nlp.update(batch, sgd=optimizer, losses=losses, drop=0.5)
-
-    current_loss = losses['ner']
-    print(f"Iteration {itn}: Loss = {current_loss}")
-    iteration_data[itn] = {'ner': current_loss}
-
-    # בדיקה אם יש שיפור
+        nlp.update(batch, drop=0.3, losses=losses)
+    print(f"Iteration {itn}: {losses}")
+    iteration_data[itn] = losses.copy()
+    
+    # Early Stopping Check
+    current_loss = losses.get('ner', float('inf'))
     if current_loss < best_loss - min_delta:
         best_loss = current_loss
-        iterations_without_improvement = 0
-        best_model = nlp.to_bytes()  # שמירת המודל הטוב ביותר
-        print(f"New best model found at iteration {itn}")
+        patience_counter = 0
     else:
-        iterations_without_improvement += 1
-
-    # בדיקה אם להפסיק את האימון
-    if iterations_without_improvement >= patience:
-        print(f"Early stopping triggered at iteration {itn}")
+        patience_counter += 1
+    
+    if patience_counter >= patience:
+        print(f"Early stopping at iteration {itn}")
         break
-
-    # הפסקה אם ה-Loss נמוך מספיק
-    if current_loss <= 2000:
-        print(f"Loss threshold reached at iteration {itn}")
-        break
-
-# שחזור המודל הטוב ביותר
-if best_model:
-    nlp.from_bytes(best_model)
 
 # read name of model
 with open("/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/model_name.txt", 'r', encoding='utf-8') as f:
@@ -161,6 +142,3 @@ except Exception as e:
 # Save the trained model to disk
 nlp.meta['name'] = 'find_singer_heb'
 nlp.to_disk(model_name)
-
-# Load the trained model later
-# loaded_nlp = spacy.load("custom_ner_model")
