@@ -23,7 +23,7 @@ def custom_tokenizer(nlp):
     LIST_COLON = [r':']
     LIST_COMMA = [r',']
     LIST_PARENS_BRACKETS = [r'\(', r'\)', r'\[', r'\]']
-    LIST_QUOTES = [r'"', r'``', r'\'\'']
+    LIST_QUOTES = [r'"', r'``', r'״', r'\'\'']
     LIST_BREAKING_WORDS = [u'—', r'--', r'-', r'\+']
     LIST_AMPERSAND = [r'&']
     LIST_FULL_STOP = [r'\.']
@@ -47,9 +47,9 @@ def custom_tokenizer(nlp):
     
     # Define custom prefix, infix, and suffix patterns to split '-'
     # Define the custom tokenization rule for "ו" at the beginning of a word using regex
-    prefixes = nlp2.Defaults.prefixes + [r'-'] + [r'^(?!וו)ו']
-    infixes = custom_infixes + [r'-']
-    suffixes = nlp2.Defaults.suffixes + [r'-']
+    prefixes = custom_infixes + [r'^(?!וו)ו']
+    infixes = custom_infixes
+    suffixes = custom_infixes
 
     prefix_regex = spacy.util.compile_prefix_regex(prefixes)
     infix_regex = spacy.util.compile_infix_regex(infixes)
