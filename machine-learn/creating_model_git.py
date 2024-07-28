@@ -68,7 +68,7 @@ ner.add_label("SINGER")
 
 # Load data from both JSON files
 json_files = [
-    'scrape_data/cleaned_new-data.json'
+    '/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/scrape_data/cleaned_new-data.json'
     # '/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/scrape_data/cleaned_data.json',
 ]
 
