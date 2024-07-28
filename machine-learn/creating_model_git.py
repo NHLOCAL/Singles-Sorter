@@ -22,6 +22,7 @@ def custom_tokenizer(nlp):
     
     # Define custom prefix, infix, and suffix patterns to split '-'
     prefixes = nlp2.Defaults.prefixes + [r'-']
+    infixes = nlp2.Defaults.infixes + [r'-']
     suffixes = nlp2.Defaults.suffixes + [r'-']
 
     prefix_regex = spacy.util.compile_prefix_regex(prefixes)
