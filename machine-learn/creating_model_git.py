@@ -18,20 +18,18 @@ def custom_tokenizer(nlp):
     nlp2 = Hebrew()
     
     # Custom infix patterns
-    LIST_ELLIPSES = [u'…', r'\.\.\.']
-    LIST_IC = [u'(?i)\\b(?:et|al|etc)\\.?\\b']
+    LIST_ELLIPSES = [r'\.\.\.', u'…']
     LIST_COLON = [r':']
     LIST_COMMA = [r',']
     LIST_PARENS_BRACKETS = [r'\(', r'\)', r'\[', r'\]']
-    LIST_QUOTES = [r'"', r'``', r'״', r'\'\'']
-    LIST_BREAKING_WORDS = [u'—', r'--', r'-', r'\+']
+    LIST_QUOTES = [r'"', r'``', r'\'\'']
+    LIST_BREAKING_WORDS = [r'—', r'--', r'-', r'\+']
     LIST_AMPERSAND = [r'&']
     LIST_FULL_STOP = [r'\.']
     LIST_SEMI_COLON = [r';']
-    LIST_EMOJI = [u'[\U00010000-\U0010ffff]', u'[😀-🙏]']
+    LIST_EMOJI = [r'[\U00010000-\U0010ffff]', r'[😀-🙏]']
 
     custom_infixes = (
-        nlp2.Defaults.infixes +
         LIST_ELLIPSES +
         LIST_IC +
         LIST_COLON +
@@ -47,9 +45,9 @@ def custom_tokenizer(nlp):
     
     # Define custom prefix, infix, and suffix patterns to split '-'
     # Define the custom tokenization rule for "ו" at the beginning of a word using regex
-    prefixes = custom_infixes + [r'^(?!וו)ו']
-    infixes = custom_infixes
-    suffixes = custom_infixes
+    prefixes = nlp2.Defaults.infixes + custom_infixes + [r'^(?!וו)ו']
+    infixes = nlp2.Defaults.infixes + custom_infixes
+    suffixes = nlp2.Defaults.infixes + custom_infixes
 
     prefix_regex = spacy.util.compile_prefix_regex(prefixes)
     infix_regex = spacy.util.compile_infix_regex(infixes)
