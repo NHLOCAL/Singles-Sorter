@@ -2,6 +2,7 @@ import spacy
 from spacy.lang.he import Hebrew
 from spacy.tokenizer import Tokenizer
 from spacy.training.example import Example
+from spacy.lang.char_classes import LIST_PUNCT, LIST_ELLIPSES, LIST_QUOTES, LIST_CURRENCY, LIST_ICONS
 import json
 import random
 
@@ -18,36 +19,27 @@ def custom_tokenizer(nlp):
     nlp2 = Hebrew()
     
     # Custom infix patterns
-    LIST_ELLIPSES = [r'\.\.\.', u'…']
-    LIST_COLON = [r':']
-    LIST_COMMA = [r',']
-    LIST_PARENS_BRACKETS = [r'\(', r'\)', r'\[', r'\]']
-    LIST_QUOTES = [r'"', r'``', r'\'\'']
     LIST_BREAKING_WORDS = [r'—', r'--', r'-', r'\+']
-    LIST_AMPERSAND = [r'&']
-    LIST_FULL_STOP = [r'\.']
-    LIST_SEMI_COLON = [r';']
-    LIST_EMOJI = [r'[\U00010000-\U0010ffff]', r'[😀-🙏]']
+    LIST_AMPERSAND = [r"[\x2D&]"]
+    LIST_MORE = [r"״", "\."]
+    
 
-    custom_infixes = (
-        LIST_ELLIPSES +
-        LIST_IC +
-        LIST_COLON +
-        LIST_COMMA +
-        LIST_PARENS_BRACKETS +
+    custom_patterns = (
         LIST_QUOTES +
+        LIST_ELLIPSES +
         LIST_BREAKING_WORDS +
         LIST_AMPERSAND +
-        LIST_FULL_STOP +
-        LIST_SEMI_COLON +
-        LIST_EMOJI
+        LIST_CURRENCY +
+        LIST_PUNCT +
+        LIST_ICONS +
+        LIST_MORE
     )
     
     # Define custom prefix, infix, and suffix patterns to split '-'
     # Define the custom tokenization rule for "ו" at the beginning of a word using regex
-    prefixes = nlp2.Defaults.infixes + custom_infixes + [r'^(?!וו)ו']
-    infixes = nlp2.Defaults.infixes + custom_infixes
-    suffixes = nlp2.Defaults.infixes + custom_infixes
+    prefixes =  nlp2.Defaults.prefixes + custom_patterns + [r'^(?!וו)ו']
+    infixes = nlp2.Defaults.infixes + custom_patterns
+    suffixes = nlp2.Defaults.suffixes + custom_patterns
 
     prefix_regex = spacy.util.compile_prefix_regex(prefixes)
     infix_regex = spacy.util.compile_infix_regex(infixes)
@@ -76,7 +68,7 @@ ner.add_label("SINGER")
 
 # Load data from both JSON files
 json_files = [
-    '/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/scrape_data/cleaned_new-data.json'
+    'scrape_data/cleaned_new-data.json'
     # '/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/scrape_data/cleaned_data.json',
 ]
 
