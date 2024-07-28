@@ -72,7 +72,7 @@ best_loss = float('inf')
 patience_counter = 0
 
 iteration_data = {}
-batch_size = 8
+batch_size = 64
 #initial_lr = 0.001  # שיעור למידה התחלתי
 #lr_decay = 0.95  # קצב דעיכת שיעור הלמידה
 # optimizer.learn_rate = initial_lr
@@ -81,7 +81,7 @@ for itn in range(100):
     losses = {}
     for i in range(0, len(training_data), batch_size):
         batch = training_data[i:i + batch_size]
-        nlp.update(batch, drop=0.35, losses=losses)
+        nlp.update(batch, drop=0.3, losses=losses)
     print(f"Iteration {itn}: {losses}")
     iteration_data[itn] = losses.copy()
     
