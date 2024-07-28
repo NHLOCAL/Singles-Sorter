@@ -95,19 +95,57 @@ for example_text, example_entities in data:
 # Shuffle the training data
 random.shuffle(training_data)
 
-# Start training the spaCy model
-nlp.begin_training()
+# Initialize optimizer with Adam and a specific learning rate
+optimizer = nlp.create_optimizer()
+optimizer.alpha = 0.001  # קצב למידה התחלתי
 
-# Training loop
+batch_size = 32  # Batch Size בינוני
+
+# הגדרת פרמטרים ל-Early Stopping
+patience = 10  # מספר האיטרציות להמתין לשיפור
+min_delta = 0.01  # השיפור המינימלי הנחשב כמשמעותי
+
+# משתנים למעקב
+best_loss = float('inf')
+best_model = None
+iterations_without_improvement = 0
 iteration_data = {}
+
+# לולאת האימון
 for itn in range(55):
+    random.shuffle(training_data)
     losses = {}
-    for example in training_data:
-        nlp.update([example], drop=0.5, losses=losses)
-    print(str(itn) + ": " + str(losses))
-    iteration_data[itn] = losses.copy()  # Save the losses for this iteration
-    if int(losses['ner']) <= 2000:
+
+    for i in range(0, len(training_data), batch_size):
+        batch = training_data[i:i + batch_size]
+        nlp.update(batch, sgd=optimizer, losses=losses, drop=0.5)
+
+    current_loss = losses['ner']
+    print(f"Iteration {itn}: Loss = {current_loss}")
+    iteration_data[itn] = {'ner': current_loss}
+
+    # בדיקה אם יש שיפור
+    if current_loss < best_loss - min_delta:
+        best_loss = current_loss
+        iterations_without_improvement = 0
+        best_model = nlp.to_bytes()  # שמירת המודל הטוב ביותר
+        print(f"New best model found at iteration {itn}")
+    else:
+        iterations_without_improvement += 1
+
+    # בדיקה אם להפסיק את האימון
+    if iterations_without_improvement >= patience:
+        print(f"Early stopping triggered at iteration {itn}")
         break
+
+    # הפסקה אם ה-Loss נמוך מספיק
+    if current_loss <= 2000:
+        print(f"Loss threshold reached at iteration {itn}")
+        break
+
+# שחזור המודל הטוב ביותר
+if best_model:
+    nlp.from_bytes(best_model)
 
 # read name of model
 with open("/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/model_name.txt", 'r', encoding='utf-8') as f:
