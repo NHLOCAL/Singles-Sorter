@@ -1,6 +1,7 @@
 import spacy
 from spacy.training.example import Example
 from tabulate import tabulate
+import os
 
 # Function to evaluate model and return evaluation metrics
 def evaluate_model(model_name, data):
@@ -192,8 +193,13 @@ data = [
 models_metrics = []
 
 # Iterate over model versions
-for i in range(1, 10):
-    model_name = f"custom_ner_model23-{i}git"
+model_names = [i for i in os.listdir() if "custom_ner_model" in i]
+
+
+
+
+
+for model_name in model_names:
     print(f"Evaluating {model_name}...")
     f1_score, precision, recall = evaluate_model(model_name, data)
     models_metrics.append({

@@ -63,7 +63,6 @@ for json_file in json_files:
             example = Example.from_dict(nlp.make_doc(example_text), {'entities': entities})
             training_data.append(example)
 
-random.shuffle(training_data)
 
 nlp.begin_training()
 
@@ -75,6 +74,8 @@ best_model_path = "/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn
 
 n_iter = 100
 batch_sizes = compounding(16.0, 64.0, 1.001)
+batch_size = 32
+drop_size = 0.4
 iteration_data = {}
 #initial_lr = 0.001  # שיעור למידה התחלתי
 #lr_decay = 0.95  # קצב דעיכת שיעור הלמידה
@@ -82,11 +83,11 @@ iteration_data = {}
 
 for itn in range(n_iter):
     random.shuffle(training_data)
-    batches = minibatch(training_data, size=batch_sizes)
     losses = {}
-    for batch in batches:
-        nlp.update(batch, drop=0.4, losses=losses)
-    print(f"Iteration {itn}, Losses: {losses}")
+    for i in range(0, len(training_data), batch_size):
+        batch = training_data[i:i + batch_size]
+        nlp.update(batch, drop=drop_size, losses=losses)
+    print(f"Iteration {itn}: {losses}")
     iteration_data[itn] = losses.copy()
     
     current_loss = losses.get('ner', float('inf'))
