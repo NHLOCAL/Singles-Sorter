@@ -74,7 +74,7 @@ patience_counter = 0
 best_model_path = "/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/best_model"
 
 n_iter = 100
-batch_sizes = compounding(8.0, 64.0, 1.001)
+batch_sizes = compounding(4.0, 64.0, 1.002)
 iteration_data = {}
 #initial_lr = 0.001  # שיעור למידה התחלתי
 #lr_decay = 0.95  # קצב דעיכת שיעור הלמידה
@@ -85,7 +85,7 @@ for itn in range(n_iter):
     batches = minibatch(training_data, size=batch_sizes)
     losses = {}
     for batch in batches:
-        nlp.update(batch, drop=0.3, losses=losses)
+        nlp.update(batch, drop=0.4, losses=losses)
     print(f"Iteration {itn}, Losses: {losses}")
     iteration_data[itn] = losses.copy()
     
