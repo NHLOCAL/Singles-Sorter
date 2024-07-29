@@ -1,22 +1,21 @@
-import sys
 import spacy
 from spacy.training.example import Example
+from tabulate import tabulate
 
-# read name of model
-if len(sys.argv) > 1:
-    model_name = f"custom_ner_model{sys.argv[1]}git"
-    print(f"# {model_name}")
-else:
-    with open("model_name.txt", 'r', encoding='utf-8') as f:
-        model_name = f.read()
-        print(f'# {model_name}')
+# Function to evaluate model and return evaluation metrics
+def evaluate_model(model_name, data):
+    nlp = spacy.load(model_name)
+    examples = [Example.from_dict(nlp.make_doc(text), annots) for text, annots in data]
+    eval_result = nlp.evaluate(examples)
+    
+    # Extract metrics
+    f1_score = eval_result['ents_f']
+    precision = eval_result['ents_p']
+    recall = eval_result['ents_r']
+    
+    return f1_score, precision, recall
 
-
-# Load your trained model
-nlp = spacy.load(model_name)
-
-
-examples = []
+# Define the data
 data = [
     ("'רונן שגב' והחברים בקומזיץ 'הבדלה' מושקע.mp3", {'entities': [(1, 9, 'SINGER')]}),
     ("נוי רזון - אנחנו טובים.mp3", {'entities': [(0, 8, 'SINGER')]}),
@@ -189,47 +188,34 @@ data = [
     ("אורן מיזל ויעקב איתמר בשיר ווקאלי ''בואי כלה''", {'entities': [(0, 9, 'SINGER'), (11, 21, 'SINGER')]}),
 ]
 
+# Create a list to store model names and their metrics
+models_metrics = []
 
-for text, annots in data:
-    doc = nlp.make_doc(text)
-    examples.append(Example.from_dict(doc, annots))
-print(nlp.evaluate(examples))
+# Iterate over model versions
+for i in range(1, 10):
+    model_name = f"custom_ner_model23-{i}git"
+    print(f"Evaluating {model_name}...")
+    f1_score, precision, recall = evaluate_model(model_name, data)
+    models_metrics.append({
+        "Model": model_name,
+        "F1 Score": f"{f1_score:.6f}",
+        "Precision": f"{precision:.6f}",
+        "Recall": f"{recall:.6f}"
+    })
 
+# Sort by F1 Score
+models_metrics_sorted = sorted(models_metrics, key=lambda x: x["F1 Score"], reverse=True)
 
+# Prepare data for tabulate
+table = [["Model", "F1 Score", "Precision", "Recall"]]
+for entry in models_metrics_sorted:
+    table.append([entry["Model"], entry["F1 Score"], entry["Precision"], entry["Recall"]])
 
-def analyze_errors(nlp, data):
-    errors = []
-    for text, true_entities in data:
-        doc = nlp(text)
-        pred_entities = [(ent.start_char, ent.end_char, ent.label_) for ent in doc.ents]
-        
-        # Check for false positives and false negatives
-        for start, end, label in set(pred_entities + true_entities['entities']):
-            pred = (start, end, label) in pred_entities
-            true = (start, end, label) in true_entities['entities']
-            
-            if pred != true:
-                error_type = "False Positive" if pred else "False Negative"
-                errors.append({
-                    "text": text,
-                    "error_type": error_type,
-                    "entity": text[start:end],
-                    "start": start,
-                    "end": end,
-                    "label": label
-                })
-    
-    return errors
+# Print the table
+print("\nModel Evaluation Results:")
+print(tabulate(table, headers="firstrow", tablefmt="grid"))
 
-errors = analyze_errors(nlp, data)
-
-print("\nIncorrect Identifications:")
-for error in errors:
-    print(f"Text: {error['text']}")
-    print(f"Error Type: {error['error_type']}")
-    print(f"Entity: {error['entity']}")
-    print(f"Position: {error['start']}:{error['end']}")
-    #print(f"Label: {error['label']}")
-    print()
-
-print(f"Total errors: {len(errors)}")
+# Optional: Save results to a CSV file
+import pandas as pd
+df = pd.DataFrame(models_metrics_sorted)
+df.to_csv("model_metrics.csv", index=False)

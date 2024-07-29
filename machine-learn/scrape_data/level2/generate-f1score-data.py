@@ -28,10 +28,8 @@ def generate_test_data(songs, singers):
     singer_selector = SingerSelector(singers)
     
     for song in songs:
-        song_without_extension = remove_extension(song)
-        
-        if 'SINGER' in song_without_extension:
-            new_title = song_without_extension
+        if 'SINGER' in song:
+            new_title = song
             entities = []
             while 'SINGER' in new_title:
                 singer = singer_selector.get_singer()
@@ -44,15 +42,8 @@ def generate_test_data(songs, singers):
                 for i in range(len(entities)):
                     if entities[i][0] > start:
                         entities[i] = (entities[i][0] + len(singer) - 6, entities[i][1] + len(singer) - 6, entities[i][2])
-        else:
-            # If 'SINGER' is not in the title, append the singer to the end
-            singer = singer_selector.get_singer()
-            new_title = f"{song_without_extension} - {singer}"
-            start = len(song_without_extension) + 3  # Account for the " - " separator
-            end = start + len(singer)
-            entities = [(start, end, 'SINGER')]
-        
-        test_data.append((new_title, {'entities': entities}))
+            
+            test_data.append((new_title, {'entities': entities}))
     
     return test_data
 
