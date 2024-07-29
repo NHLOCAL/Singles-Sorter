@@ -72,18 +72,20 @@ best_loss = float('inf')
 patience_counter = 0
 best_model_path = "/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/best_model"
 
+n_iter = 100
+batch_sizes = compounding(8.0, 64.0, 1.001)
 iteration_data = {}
-batch_size = 32
 #initial_lr = 0.001  # שיעור למידה התחלתי
 #lr_decay = 0.95  # קצב דעיכת שיעור הלמידה
 # optimizer.learn_rate = initial_lr
 
-for itn in range(100):
+for i in range(n_iter):
+    random.shuffle(training_data)
+    batches = minibatch(training_data, size=batch_sizes)
     losses = {}
-    for i in range(0, len(training_data), batch_size):
-        batch = training_data[i:i + batch_size]
-        nlp.update(batch, drop=0.25, losses=losses)
-    print(f"Iteration {itn}: {losses}")
+    for batch in batches:
+        nlp.update(batch, drop=0.3, losses=losses)
+    print(f"Iteration {i}, Losses: {losses}")
     iteration_data[itn] = losses.copy()
     
     current_loss = losses.get('ner', float('inf'))
