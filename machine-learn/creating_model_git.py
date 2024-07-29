@@ -80,13 +80,13 @@ iteration_data = {}
 #lr_decay = 0.95  # קצב דעיכת שיעור הלמידה
 # optimizer.learn_rate = initial_lr
 
-for i in range(n_iter):
+for itn in range(n_iter):
     random.shuffle(training_data)
     batches = minibatch(training_data, size=batch_sizes)
     losses = {}
     for batch in batches:
         nlp.update(batch, drop=0.3, losses=losses)
-    print(f"Iteration {i}, Losses: {losses}")
+    print(f"Iteration {itn}, Losses: {losses}")
     iteration_data[itn] = losses.copy()
     
     current_loss = losses.get('ner', float('inf'))
