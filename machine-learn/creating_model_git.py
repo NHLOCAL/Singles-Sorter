@@ -3,6 +3,7 @@ from spacy.lang.he import Hebrew
 from spacy.tokenizer import Tokenizer
 from spacy.training.example import Example
 from spacy.lang.char_classes import LIST_PUNCT, LIST_ELLIPSES, LIST_QUOTES, LIST_CURRENCY, LIST_ICONS
+from spacy.util import minibatch, compounding
 import json
 import random
 
