@@ -73,9 +73,9 @@ patience_counter = 0
 best_model_path = "/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/best_model"
 
 n_iter = 100
-batch_sizes = compounding(16.0, 64.0, 1.001)
+# batch_sizes = compounding(16.0, 64.0, 1.001)
 batch_size = 32
-drop_size = 0.4
+drop_size = 0.3
 iteration_data = {}
 #initial_lr = 0.001  # שיעור למידה התחלתי
 #lr_decay = 0.95  # קצב דעיכת שיעור הלמידה
