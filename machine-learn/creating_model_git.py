@@ -66,7 +66,7 @@ for json_file in json_files:
 
 nlp.begin_training()
 
-patience = 5
+patience = 7
 min_delta = 0.001
 best_loss = float('inf')
 patience_counter = 0

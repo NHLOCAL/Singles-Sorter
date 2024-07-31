@@ -35,17 +35,25 @@ def count_singers(songs, singers):
             singer_counter[singer] += 1
     return singer_counter
 
-def balance_singers(songs, all_singers, max_appearances=5, num_rounds=3):
+def replace_singer_and_balance(songs, all_singers, max_appearances=5, num_rounds=3):
     singer_selector = SingerSelector(all_singers)
     
     for round in range(num_rounds):
-        print(f"סבב איזון {round + 1}/{num_rounds}")
+        print(f"סבב איזון והחלפה {round + 1}/{num_rounds}")
         singer_counter = count_singers(songs, all_singers)
         
         new_songs = []
         for song in songs:
-            current_singers = find_singers(song, all_singers)
             new_song = song
+            
+            # החלפת SINGER בשם זמר רנדומלי
+            while 'SINGER' in new_song:
+                new_singer = singer_selector.get_singer()
+                new_song = new_song.replace('SINGER', new_singer, 1)
+                singer_counter[new_singer] += 1
+            
+            # איזון הופעות הזמרים
+            current_singers = find_singers(new_song, all_singers)
             for current_singer in current_singers:
                 if singer_counter[current_singer] > max_appearances:
                     new_singer = singer_selector.get_singer()
@@ -55,6 +63,7 @@ def balance_singers(songs, all_singers, max_appearances=5, num_rounds=3):
                     new_song = re.sub(r'\b' + re.escape(current_singer) + r'\b', new_singer, new_song)
                     singer_counter[current_singer] -= 1
                     singer_counter[new_singer] += 1
+            
             new_songs.append(new_song)
         
         songs = new_songs
@@ -73,11 +82,11 @@ def main():
     print(f"נטענו {len(all_singers)} זמרים")
 
     print("טוען את רשימת השירים...")
-    songs = load_songs('list_all_songs_clean.txt')
+    songs = load_songs('list_all_songs_with_singer.txt')  # שימו לב לשינוי בשם הקובץ
     print(f"נטענו {len(songs)} שירים")
 
-    print("מאזן את הופעות הזמרים...")
-    balanced_songs = balance_singers(songs, all_singers)
+    print("מחליף SINGER בשמות זמרים ומאזן את ההופעות...")
+    balanced_songs = replace_singer_and_balance(songs, all_singers)
 
     print("שומר את הרשימה המאוזנת...")
     with open('list_all_songs_random.txt', 'w', encoding='utf-8') as f:
