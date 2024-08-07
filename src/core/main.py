@@ -17,7 +17,7 @@ def main(page: ft.Page):
 
     # הגדרת זיהוי הפעלה על אנדרואיד
     global ANDROID_MODE
-    ANDROID_MODE = True if page.platform == ft.PagePlatform.WINDOWS else False
+    ANDROID_MODE = True if page.platform == ft.PagePlatform.ANDROID else False
 
     page.title = "מסדר הסינגלים"
     page.vertical_alignment = ft.MainAxisAlignment.SPACE_BETWEEN

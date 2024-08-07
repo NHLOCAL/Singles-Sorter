@@ -31,6 +31,10 @@ class MusicSorter:
         self.log_files = []
         self.operating_details = [source_dir, target_dir, copy_mode, abc_sort, exist_only, singles_folder, main_folder_only, duet_mode]
         self.singer_list =  self.list_from_csv()
+        self.songs_sorted = 0
+        self.artist_folders_created = set()
+        self.artist_song_count = {}
+        self.albums_processed = 0
 
         # Set up logging
         self.setup_logging(log_level)
@@ -312,8 +316,39 @@ class MusicSorter:
                         self.logger.error(f"Failed to remove original album folder {album_path}: {str(e)}")
             else:
                 self.logger.info(f"Skipped album transfer: {album_path} (target folder doesn't exist)")
+                
+            self.albums_processed += 1
+            self.artist_song_count[artist_name] = self.artist_song_count.get(artist_name, 0) + len(os.listdir(album_path))
+
         except Exception as e:
             self.logger.error(f"Error in handle_album_transfer for {album_path}: {e}")
+        
+        
+    def generate_summary(self):
+        summary = {
+            "songs_sorted": self.songs_sorted,
+            "artist_folders_created": len(self.artist_folders_created),
+            "albums_processed": self.albums_processed,
+            "top_artists": sorted(self.artist_song_count.items(), key=lambda x: x[1], reverse=True)[:5]
+        }
+        
+        summary_text = f"""
+Summary of Music Sorting:
+-------------------------
+Total songs sorted: {summary['songs_sorted']}
+New artist folders created: {summary['artist_folders_created']}
+Albums processed: {summary['albums_processed']}
+
+Top 5 Artists by Song Count:
+{self._format_top_artists(summary['top_artists'])}
+        """
+        
+        self.logger.info(summary_text)
+        return summary
+
+    def _format_top_artists(self, top_artists):
+        return "\n".join([f"{i+1}. {artist}: {count} songs" for i, (artist, count) in enumerate(top_artists)])
+
 
     def scan_dir(self):
         """
@@ -391,7 +426,9 @@ class MusicSorter:
 
                 if not self.exist_only or (self.exist_only and os.path.isdir(os.path.dirname(target_path))):
                     try:
-                        os.makedirs(target_path, exist_ok=True)
+                        if not os.path.exists(target_path):
+                            os.makedirs(target_path, exist_ok=True)
+                            self.artist_folders_created.add(artist)
                     except Exception as e:               
                         self.logger.error(f"Failed in folder creating {target_path}: {str(e)}")
 
@@ -400,12 +437,18 @@ class MusicSorter:
                         if self.duet_mode and len(artists) > 1:
                             copy(file_path, target_path)
                             self.logger.info(f"Copied {file_path} to {target_path}")
+                            self.songs_sorted += 1
+                            self.artist_song_count[artist] = self.artist_song_count.get(artist, 0) + 1
                         elif self.copy_mode:
                             copy(file_path, target_path)
                             self.logger.info(f"Copied {file_path} to {target_path}")
+                            self.songs_sorted += 1
+                            self.artist_song_count[artist] = self.artist_song_count.get(artist, 0) + 1
                         else:
                             move(file_path, target_path)
                             self.logger.info(f"Moved {file_path} to {target_path}")
+                            self.songs_sorted += 1
+                            self.artist_song_count[artist] = self.artist_song_count.get(artist, 0) + 1
                     except Exception as e:
                         self.logger.error(f"Failed to process {file_path}: {str(e)}")
 
@@ -418,6 +461,8 @@ class MusicSorter:
                     self.logger.error(f"Failed to remove original file {file_path}: {str(e)}")
 
         self.logger.info("Directory scan completed")
+
+        return self.generate_summary()
 
     def get_target_path(self, artist):
         if self.singles_folder and self.abc_sort:
