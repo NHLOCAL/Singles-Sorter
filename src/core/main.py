@@ -17,7 +17,7 @@ def main(page: ft.Page):
 
     # הגדרת זיהוי הפעלה על אנדרואיד
     global ANDROID_MODE
-    ANDROID_MODE = True if page.platform == ft.PagePlatform.ANDROID else False
+    ANDROID_MODE = True if page.platform == ft.PagePlatform.WINDOWS else False
 
     page.title = "מסדר הסינגלים"
     page.vertical_alignment = ft.MainAxisAlignment.SPACE_BETWEEN
@@ -32,6 +32,7 @@ def main(page: ft.Page):
     if ANDROID_MODE:
         page.padding = ft.padding.only(20, 10, 20, 0)
         page.scroll = ft.ScrollMode.HIDDEN
+        scroll_mode = ft.ScrollMode.HIDDEN
         auto_focus=False
 
     else:
@@ -39,6 +40,7 @@ def main(page: ft.Page):
         page.window.height = 810
         page.window.width = 940
         page.scroll = ft.ScrollMode.ADAPTIVE
+        scroll_mode = ft.ScrollMode.AUTO
         auto_focus=True
 
     # Consistent button style definition
@@ -193,7 +195,7 @@ def main(page: ft.Page):
                     ],
                     tight=True,
                     rtl=True,
-                    scroll=ft.ScrollMode.AUTO,
+                    scroll=scroll_mode,
                     alignment=ft.MainAxisAlignment.CENTER,
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     spacing="30",
@@ -243,7 +245,7 @@ def main(page: ft.Page):
                 ft.Markdown(release_notes)
                 ],
             rtl=True,
-            scroll=ft.ScrollMode.AUTO,
+            scroll=scroll_mode,
             ),
 
             actions=[
@@ -366,7 +368,7 @@ def main(page: ft.Page):
                     ],
 
                     spacing='25',
-                    scroll=ft.ScrollMode.AUTO,
+                    scroll=scroll_mode,
                     alignment=ft.MainAxisAlignment.START,
                     horizontal_alignment=ft.CrossAxisAlignment.START,
                     rtl=True,
@@ -545,8 +547,8 @@ def main(page: ft.Page):
         width_buttons = None      
 
     else:
-        organize_button_title = "מיין כעת"
-        fix_button_title = "תקן כעת"
+        organize_button_title = "מיין שירים"
+        fix_button_title = "תקן שמות"
         width_buttons = '160'
 
 
