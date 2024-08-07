@@ -75,6 +75,8 @@ class MusicSorter:
         
         for substring in self.substrings_to_remove:
             filename = filename.replace(substring, "")
+        
+        filename = filename.replace("_", " ")
             
         return filename
 
