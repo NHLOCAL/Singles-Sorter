@@ -759,8 +759,33 @@ def main(page: ft.Page):
 
             if mode == "organize":
                 # מיון הקבצים
-                sorter.scan_dir()
+                summary = sorter.scan_dir()  # קבלת סיכום הסריקה
                 message = "מיון הקבצים הסתיים בהצלחה"
+
+                # יצירת הודעת סיכום
+                summary_message = f"""
+סה"כ שירים שמויינו: {summary['songs_sorted']}
+תיקיות אמנים שנוצרו: {summary['artist_folders_created']}
+אלבומים שעובדו: {summary['albums_processed']}
+
+5 האמנים המובילים:
+{sorter._format_top_artists(summary['top_artists'])}
+"""
+
+                # הצגת הודעת הסיכום ב-AlertDialog
+                page.dialog = ft.AlertDialog(
+                    modal=True,
+                    title=ft.Text("סיכום מיון", text_align="center"),
+                    content=ft.Text(summary_message, text_align="center", rtl=True),
+                    actions=[
+                        ft.TextButton("אישור", on_click=lambda e: (setattr(page.dialog, 'open', False), page.update())),
+                    ],
+                    actions_alignment=ft.MainAxisAlignment.CENTER,
+                    icon=ft.Icon(ft.icons.CHECK_CIRCLE_OUTLINE, color=ft.colors.GREEN)
+                )
+                page.dialog.open = True
+                
+
             elif mode == "fix":
                 # ניקוי תוכן מיותר משמות הקבצים
                 sorter.fix_names()

@@ -323,32 +323,6 @@ class MusicSorter:
         except Exception as e:
             self.logger.error(f"Error in handle_album_transfer for {album_path}: {e}")
         
-        
-    def generate_summary(self):
-        summary = {
-            "songs_sorted": self.songs_sorted,
-            "artist_folders_created": len(self.artist_folders_created),
-            "albums_processed": self.albums_processed,
-            "top_artists": sorted(self.artist_song_count.items(), key=lambda x: x[1], reverse=True)[:5]
-        }
-        
-        summary_text = f"""
-Summary of Music Sorting:
--------------------------
-Total songs sorted: {summary['songs_sorted']}
-New artist folders created: {summary['artist_folders_created']}
-Albums processed: {summary['albums_processed']}
-
-Top 5 Artists by Song Count:
-{self._format_top_artists(summary['top_artists'])}
-        """
-        
-        self.logger.info(summary_text)
-        return summary
-
-    def _format_top_artists(self, top_artists):
-        return "\n".join([f"{i+1}. {artist}: {count} songs" for i, (artist, count) in enumerate(top_artists)])
-
 
     def scan_dir(self):
         """
@@ -593,6 +567,33 @@ Top 5 Artists by Song Count:
         # Add the handlers to the logger
         self.logger.addHandler(file_handler)
         self.logger.addHandler(console_handler)
+
+
+    def generate_summary(self):
+        summary = {
+            "songs_sorted": self.songs_sorted,
+            "artist_folders_created": len(self.artist_folders_created),
+            "albums_processed": self.albums_processed,
+            "top_artists": sorted(self.artist_song_count.items(), key=lambda x: x[1], reverse=True)[:5]
+        }
+        
+        summary_text = f"""
+Summary of Music Sorting:
+-------------------------
+Total songs sorted: {summary['songs_sorted']}
+New artist folders created: {summary['artist_folders_created']}
+Albums processed: {summary['albums_processed']}
+
+Top 5 Artists by Song Count:
+{self._format_top_artists(summary['top_artists'])}
+        """
+        
+        self.logger.info(summary_text)
+        return summary
+
+    def _format_top_artists(self, top_artists):
+        return "\n".join([f"{artist}: {count} שירים" for i, (artist, count) in enumerate(top_artists)])
+
 
 
 def main():
