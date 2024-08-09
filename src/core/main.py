@@ -32,6 +32,7 @@ def main(page: ft.Page):
     if ANDROID_MODE:
         page.padding = ft.padding.only(20, 10, 20, 0)
         page.scroll = ft.ScrollMode.HIDDEN
+        scroll_mode = ft.ScrollMode.HIDDEN
         auto_focus=False
 
     else:
@@ -39,6 +40,7 @@ def main(page: ft.Page):
         page.window.height = 810
         page.window.width = 940
         page.scroll = ft.ScrollMode.ADAPTIVE
+        scroll_mode = ft.ScrollMode.AUTO
         auto_focus=True
 
     # Consistent button style definition
@@ -193,7 +195,7 @@ def main(page: ft.Page):
                     ],
                     tight=True,
                     rtl=True,
-                    scroll=ft.ScrollMode.AUTO,
+                    scroll=scroll_mode,
                     alignment=ft.MainAxisAlignment.CENTER,
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     spacing="30",
@@ -243,7 +245,7 @@ def main(page: ft.Page):
                 ft.Markdown(release_notes)
                 ],
             rtl=True,
-            scroll=ft.ScrollMode.AUTO,
+            scroll=scroll_mode,
             ),
 
             actions=[
@@ -366,7 +368,7 @@ def main(page: ft.Page):
                     ],
 
                     spacing='25',
-                    scroll=ft.ScrollMode.AUTO,
+                    scroll=scroll_mode,
                     alignment=ft.MainAxisAlignment.START,
                     horizontal_alignment=ft.CrossAxisAlignment.START,
                     rtl=True,
@@ -545,8 +547,8 @@ def main(page: ft.Page):
         width_buttons = None      
 
     else:
-        organize_button_title = "מיין כעת"
-        fix_button_title = "תקן כעת"
+        organize_button_title = "מיין שירים"
+        fix_button_title = "תקן שמות"
         width_buttons = '160'
 
 
@@ -757,8 +759,33 @@ def main(page: ft.Page):
 
             if mode == "organize":
                 # מיון הקבצים
-                sorter.scan_dir()
+                summary = sorter.scan_dir()  # קבלת סיכום הסריקה
                 message = "מיון הקבצים הסתיים בהצלחה"
+
+                # יצירת הודעת סיכום
+                summary_message = f"""
+סה"כ שירים שמויינו: {summary['songs_sorted']}
+תיקיות אמנים שנוצרו: {summary['artist_folders_created']}
+אלבומים שעובדו: {summary['albums_processed']}
+
+5 האמנים המובילים:
+{sorter._format_top_artists(summary['top_artists'])}
+"""
+
+                # הצגת הודעת הסיכום ב-AlertDialog
+                page.dialog = ft.AlertDialog(
+                    modal=True,
+                    title=ft.Text("סיכום מיון", text_align="center"),
+                    content=ft.Text(summary_message, text_align="center", rtl=True),
+                    actions=[
+                        ft.TextButton("אישור", on_click=lambda e: (setattr(page.dialog, 'open', False), page.update())),
+                    ],
+                    actions_alignment=ft.MainAxisAlignment.CENTER,
+                    icon=ft.Icon(ft.icons.CHECK_CIRCLE_OUTLINE, color=ft.colors.GREEN)
+                )
+                page.dialog.open = True
+                
+
             elif mode == "fix":
                 # ניקוי תוכן מיותר משמות הקבצים
                 sorter.fix_names()
