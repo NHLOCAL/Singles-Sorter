@@ -776,12 +776,19 @@ def main(page: ft.Page):
                 page.dialog = ft.AlertDialog(
                     modal=True,
                     title=ft.Text("סיכום מיון", text_align="center"),
-                    content=ft.Text(summary_message, text_align="center", rtl=True),
+                    content=ft.Column(
+                        [ft.Text(summary_message, text_align="center", rtl=True)],
+                        rtl=True,
+                        scroll=scroll_mode,
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
                     actions=[
                         ft.TextButton("אישור", on_click=lambda e: (setattr(page.dialog, 'open', False), page.update())),
                     ],
                     actions_alignment=ft.MainAxisAlignment.CENTER,
                     icon=ft.Icon(ft.icons.CHECK_CIRCLE_OUTLINE, color=ft.colors.GREEN)
+                    
                 )
                 page.dialog.open = True
                 
