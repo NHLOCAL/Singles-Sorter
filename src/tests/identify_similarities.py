@@ -1,6 +1,4 @@
 from difflib import SequenceMatcher
-# יבוא פונקציה לקריאת עץ תיקיות
-from os.path import join, getsize
 
 def find_text_similarity(text, text_list):
     """
