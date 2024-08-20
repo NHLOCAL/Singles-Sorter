@@ -265,19 +265,21 @@ class MusicSorter:
                 elif len(artists) == 1:
                     should_process = True
                     main_artist = list(artists.keys())[0]
+                    main_artist = fix_jibrish(main_artist, "heb")
                 else:
                     # Check if one artist appears in 70% or more of the songs
                     total_songs = sum(artists.values())
                     for artist, count in artists.items():
                         if count / total_songs >= 0.7:
                             should_process = True
-                            main_artist = artist
+                            main_artist = fix_jibrish(artist, "heb")
                             break
 
             # Determine album name
             album_name = None
             if album_names:
                 album_name = max(set(album_names), key=album_names.count)
+                album_name = fix_jibrish(album_name, "heb")
             elif is_album:
                 album_name = os.path.basename(folder_path)
 
