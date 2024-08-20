@@ -197,62 +197,101 @@ class MusicSorter:
             
             # Check if there are enough files to be considered an album
             if len(audio_files) < 4:
-                self.logger.debug(f"{folder_path} doesn't have enough audio files to be an album")
                 return False, False, None, None
             
             # Check if there are any subdirectories (albums typically don't have subdirectories)
             if any(os.path.isdir(os.path.join(folder_path, item)) for item in os.listdir(folder_path)):
-                self.logger.debug(f"{folder_path} contains subdirectories, not considered an album")
                 return False, False, None, None
 
             # Analyze metadata of the files
             album_names = []
-            artists = set()
+            artists = {}
+            track_numbers = set()
+            filename_numbers = set()
+
             for file in audio_files:
                 file_path = os.path.join(folder_path, file)
                 try:
                     metadata = load_file(file_path)
                     album = metadata.get('album')
                     artist = metadata.get('artist')
-                    if album and artist:
+                    track = metadata.get('tracknumber')
+                    
+                    if album:
                         album_names.append(album.value)
-                        artists.add(artist.value)
+                    if artist:
+                        artists[artist.value] = artists.get(artist.value, 0) + 1
+                    
+                    if track:
+                        track_number = int(str(track.value).split('/')[0])  # Handle cases like "1/12"
+                        track_numbers.add(track_number)
+                    
+                    # Check for track numbers in filename
+                    filename_match = re.search(r'^(\d+)', file)
+                    if filename_match:
+                        filename_numbers.add(int(filename_match.group(1)))
+
                 except Exception as e:
                     self.logger.error(f"Error reading metadata from {file_path}: {e}")
 
-            # Check if we have valid metadata
-            if not album_names:
-                self.logger.debug(f"No valid album metadata found in {folder_path}")
-                return False, False, None, None
-
-            # Determine the most common album name
-            most_common_album = max(set(album_names), key=album_names.count)
-            album_name_consistency = album_names.count(most_common_album) / len(album_names)
-
-            # Determine if it's an album and if it should be processed
+            # Determine if it's an album based on track numbers
             is_album = False
+            if track_numbers:
+                is_album = len(track_numbers) == len(audio_files) and max(track_numbers) == len(audio_files)
+            elif filename_numbers:
+                is_album = len(filename_numbers) == len(audio_files) and max(filename_numbers) == len(audio_files)
+            
+            # If album is identified by track numbers, but album names are inconsistent, skip it
+            if is_album and album_names:
+                unique_album_names = set(album_names)
+                if len(unique_album_names) > 1:
+                    self.logger.info(f"Album detected but skipped due to inconsistent album names: {folder_path}")
+                    return True, False, None, None
+
+            # If not determined by track numbers, check album name consistency
+            if not is_album and album_names:
+                most_common_album = max(set(album_names), key=album_names.count)
+                album_name_consistency = album_names.count(most_common_album) / len(album_names)
+                is_album = len(set(album_names)) == 1 or album_name_consistency >= 0.7
+
+            # Determine if it should be processed
             should_process = False
-            if len(set(album_names)) == 1:  # All files have the same album name
-                is_album = True
-                should_process = len(artists) == 1  # Process only if there's a single artist
-            elif album_name_consistency >= 0.7:  # At least 70% of files have the same album name
-                if len(artists) == 1:
-                    is_album = True
-                    should_process = False
-                elif len(artists) >= 2:
-                    is_album  = False
-                    should_process = False
+            main_artist = None
+
+            if is_album:
+                if not artists:
+                    self.logger.info(f"Album detected but skipped due to lack of artist information: {folder_path}")
+                    return True, False, None, None
+                elif len(artists) == 1:
+                    should_process = True
+                    main_artist = list(artists.keys())[0]
+                else:
+                    # Check if one artist appears in 70% or more of the songs
+                    total_songs = sum(artists.values())
+                    for artist, count in artists.items():
+                        if count / total_songs >= 0.7:
+                            should_process = True
+                            main_artist = artist
+                            break
+
+            # Determine album name
+            album_name = None
+            if album_names:
+                album_name = max(set(album_names), key=album_names.count)
+            elif is_album:
+                album_name = os.path.basename(folder_path)
 
             # Log the decision
             if is_album:
                 if should_process:
                     self.logger.info(f"Album detected and will be processed: {folder_path}")
+                    self.logger.info(f"Main artist: {main_artist}")
                 else:
                     self.logger.info(f"Album detected but will be ignored due to inconsistent artists: {folder_path}")
             else:
                 self.logger.debug(f"Not considered an album: {folder_path}")
 
-            return is_album, should_process, most_common_album, list(artists)[0] if len(artists) == 1 else None
+            return is_album, should_process, album_name, main_artist
 
         except Exception as e:
             self.logger.error(f"Error in analyze_album for {folder_path}: {e}")
