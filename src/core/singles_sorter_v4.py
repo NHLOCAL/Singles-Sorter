@@ -306,11 +306,23 @@ class MusicSorter:
             # Sanitize the album name for use in file paths
             safe_album_name = self.sanitize_filename(album_name)
 
+            # Determine the artist name based on the singer list
+            determined_artist_name = None
+            for source_name, target_name in self.singer_list:
+                if source_name in artist_name:
+                    exact = check_exact_name(artist_name, source_name)
+                    if exact:
+                        determined_artist_name = target_name
+                        break
+
+            # Use the determined artist name or the original if not found in the list
+            final_artist_name = determined_artist_name if determined_artist_name else self.sanitize_filename(artist_name)
+
             # Determine the target path
             if self.abc_sort:
-                target_path = os.path.join(self.target_dir, artist_name[0], artist_name)
+                target_path = os.path.join(self.target_dir, final_artist_name[0], final_artist_name)
             else:
-                target_path = os.path.join(self.target_dir, artist_name)
+                target_path = os.path.join(self.target_dir, final_artist_name)
             
             album_target_path = os.path.join(target_path, safe_album_name)
 
