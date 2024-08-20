@@ -187,23 +187,23 @@ class MusicSorter:
             artist_name (str): Name of the artist (if applicable)
         """
         try:
-            # Check if it's a directory
+            # בדוק אם זו תיקיה
             if not os.path.isdir(folder_path):
                 self.logger.debug(f"{folder_path} is not a directory")
                 return False, False, None, None
 
-            # Get all audio files in the folder
+            # קבל את כל קבצי האודיו בתיקייה
             audio_files = [f for f in os.listdir(folder_path) if f.lower().endswith((".mp3", ".wma", ".wav"))]
             
-            # Check if there are enough files to be considered an album
+            # בדוק אם יש מספיק קבצים כדי להיחשב כאלבום
             if len(audio_files) < 4:
                 return False, False, None, None
             
-            # Check if there are any subdirectories (albums typically don't have subdirectories)
+            # בדוק אם יש ספריות משנה (לאלבומים בדרך כלל אין ספריות משנה)
             if any(os.path.isdir(os.path.join(folder_path, item)) for item in os.listdir(folder_path)):
                 return False, False, None, None
 
-            # Analyze metadata of the files
+            # נתח מטא נתונים של הקבצים
             album_names = []
             artists = {}
             track_numbers = set()
@@ -223,10 +223,13 @@ class MusicSorter:
                         artists[artist.value] = artists.get(artist.value, 0) + 1
                     
                     if track:
-                        track_number = int(str(track.value).split('/')[0])  # Handle cases like "1/12"
+                        try:
+                            track_number = int(str(track.value).split('/')[0])  # Handle cases like "1/12"
+                        except:
+                            track_number = int(str(track.value))
                         track_numbers.add(track_number)
                     
-                    # Check for track numbers in filename
+                    # בדוק אם יש מספרי רצועות בשם הקובץ
                     filename_match = re.search(r'^(\d+)', file)
                     if filename_match:
                         filename_numbers.add(int(filename_match.group(1)))
@@ -234,27 +237,38 @@ class MusicSorter:
                 except Exception as e:
                     self.logger.error(f"Error reading metadata from {file_path}: {e}")
 
-            # Determine if it's an album based on track numbers
+            # קבע אם זה אלבום על סמך מספרי הרצועות
             is_album = False
             if track_numbers:
                 is_album = len(track_numbers) == len(audio_files) and max(track_numbers) == len(audio_files)
             elif filename_numbers:
                 is_album = len(filename_numbers) == len(audio_files) and max(filename_numbers) == len(audio_files)
             
-            # If album is identified by track numbers, but album names are inconsistent, skip it
+            # אם האלבום מזוהה לפי מספרי הרצועות, אך שמות האלבומים אינם עקביים, דלג עליו
             if is_album and album_names:
                 unique_album_names = set(album_names)
                 if len(unique_album_names) > 1:
                     self.logger.info(f"Album detected but skipped due to inconsistent album names: {folder_path}")
                     return True, False, None, None
 
-            # If not determined by track numbers, check album name consistency
+            # אם לא נקבע לפי מספרי הרצועות, בדוק את עקביות שם האלבום
             if not is_album and album_names:
                 most_common_album = max(set(album_names), key=album_names.count)
-                album_name_consistency = album_names.count(most_common_album) / len(album_names)
-                is_album = len(set(album_names)) == 1 or album_name_consistency >= 0.7
+                album_name_consistency = album_names.count(most_common_album) / len(audio_files)
+                
+                # אם שם האלבום זהה עבור כל הקבצים מוגדר משתנה לניתוח בהמשך
+                if len(set(album_names)) == 1:
+                    is_album = True
 
-            # Determine if it should be processed
+                # אם מעל 60% אך פחות מ-100% מהקבצים מכילים שם אלבום זהה, יתבצע דילוג על התיקיה
+                elif 1 > album_name_consistency >= 0.6:
+                    self.logger.info(f"An inconsistency was found in the album names, it will be skipped to be safe: {folder_path}")
+                    return True, False, None, None
+                # אם יש שמות אלבומים מעורבים - התיקיה תזוהה כתיקית סינגלים
+                else:
+                    return False, False, None, None
+
+            # קבע אם יש לעבד את האלבום או לדלג עליו
             should_process = False
             main_artist = None
 
@@ -267,15 +281,14 @@ class MusicSorter:
                     main_artist = list(artists.keys())[0]
                     main_artist = fix_jibrish(main_artist, "heb")
                 else:
-                    # Check if one artist appears in 70% or more of the songs
-                    total_songs = sum(artists.values())
+                    # בדוק אם אמן אחד מופיע ב-70% או יותר מהשירים
                     for artist, count in artists.items():
-                        if count / total_songs >= 0.7:
+                        if count / audio_files >= 0.7:
                             should_process = True
                             main_artist = fix_jibrish(artist, "heb")
                             break
 
-            # Determine album name
+            # קבע את שם האלבום
             album_name = None
             if album_names:
                 album_name = max(set(album_names), key=album_names.count)
@@ -296,8 +309,9 @@ class MusicSorter:
             return is_album, should_process, album_name, main_artist
 
         except Exception as e:
+            # כרגע בעת שגיאה בניתוח תיקיה - היא תזוהה כאלבום ותדולג ליתר ביטחון
             self.logger.error(f"Error in analyze_album for {folder_path}: {e}")
-            return False, False, None, None
+            return True, False, None, None
 
     def handle_album_transfer(self, album_path, album_name, artist_name):
         try:
@@ -307,6 +321,9 @@ class MusicSorter:
 
             # Sanitize the album name for use in file paths
             safe_album_name = self.sanitize_filename(album_name)
+
+            # שמור את מספר הקבצים בתיקיה
+            files_num = len(os.listdir(album_path))
 
             # Determine the artist name based on the singer list
             determined_artist_name = None
@@ -371,7 +388,7 @@ class MusicSorter:
                 self.logger.info(f"Skipped album transfer: {album_path} (target folder doesn't exist)")
                 
             self.albums_processed += 1
-            self.artist_song_count[artist_name] = self.artist_song_count.get(artist_name, 0) + len(os.listdir(album_path))
+            self.artist_song_count[artist_name] = self.artist_song_count.get(artist_name, 0) + files_num
 
         except Exception as e:
             self.logger.error(f"Error in handle_album_transfer for {album_path}: {e}")
@@ -408,9 +425,9 @@ class MusicSorter:
                     if is_album:
                         if should_process:
                             self.handle_album_transfer(root, album_name, artist_name)
-                        continue  # Skip individual file processing for albums
+                        continue # דלג על עיבוד קבצים בודדים עבור אלבומים
                     
-                    # Process individual files if not an album
+                    # עבד קבצים בודדים אם זה לא אלבום
                     for my_file in files:
                         file_path = os.path.join(root, my_file)
                         if my_file.lower().endswith((".mp3", ".wma", ".wav")):
@@ -639,7 +656,7 @@ Albums processed: {summary['albums_processed']}
 
 Top 5 Artists by Song Count:
 {self._format_top_artists(summary['top_artists'])}
-        """
+"""
         
         self.logger.info(summary_text)
         return summary
