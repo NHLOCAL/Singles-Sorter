@@ -549,7 +549,7 @@ def main(page: ft.Page):
     else:
         organize_button_title = "מיין שירים"
         fix_button_title = "תקן שמות"
-        width_buttons = '160'
+        width_buttons = 170
 
 
     organize_button = ft.ElevatedButton(
@@ -564,8 +564,8 @@ def main(page: ft.Page):
         data="organize",
         tooltip="מיון מתקדם של הסינגלים שלך בתיקיות לפי אמנים",
         style=round_button,
-        height='60',
-        width=width_buttons,
+        height=60,
+        width=180,
     )
     
     fixed_button = ft.ElevatedButton(
