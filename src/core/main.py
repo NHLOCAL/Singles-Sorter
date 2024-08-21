@@ -544,12 +544,14 @@ def main(page: ft.Page):
     if ANDROID_MODE:
         organize_button_title = "מיין"
         fix_button_title = "תקן"
-        width_buttons = None      
+        width_fix_button = None
+        width_organize_button = None  
 
     else:
         organize_button_title = "מיין שירים"
         fix_button_title = "תקן שמות"
-        width_buttons = 170
+        width_fix_button = 170
+        width_organize_button = 180
 
 
     organize_button = ft.ElevatedButton(
@@ -565,7 +567,7 @@ def main(page: ft.Page):
         tooltip="מיון מתקדם של הסינגלים שלך בתיקיות לפי אמנים",
         style=round_button,
         height=60,
-        width=180,
+        width=width_organize_button,
     )
     
     fixed_button = ft.ElevatedButton(
@@ -581,7 +583,7 @@ def main(page: ft.Page):
         tooltip="תיקון ג'יבריש במאפייני הקובץ\nוהסרת תוכן מיותר בשמות הקבצים",
         style=round_button,
         height='60',
-        width=width_buttons,
+        width=width_fix_button,
     )
 
 
