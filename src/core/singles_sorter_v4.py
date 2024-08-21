@@ -319,13 +319,19 @@ class MusicSorter:
                 self.logger.warning(f"Missing album name or artist name for {album_path}")
                 return
 
-            # Sanitize the album name for use in file paths
+            # בדיקה אם שם האמן תקין
+            check_answer = self.check_artist(artist_name)
+            if check_answer is False:
+                self.logger.warning(f"Wrong artist name for {album_path}")
+                return
+            
+            # נקה את שם האלבום לשימוש בנתיבי קבצים
             safe_album_name = self.sanitize_filename(album_name)
 
             # שמור את מספר הקבצים בתיקיה
             files_num = len(os.listdir(album_path))
 
-            # Determine the artist name based on the singer list
+            # קבע את שם האמן על סמך רשימת הזמרים
             determined_artist_name = None
             for source_name, target_name in self.singer_list:
                 if source_name in artist_name:
@@ -334,10 +340,10 @@ class MusicSorter:
                         determined_artist_name = target_name
                         break
 
-            # Use the determined artist name or the original if not found in the list
-            final_artist_name = determined_artist_name if determined_artist_name else self.sanitize_filename(artist_name)
+            # השתמש בשם האמן שנקבע או במקור אם לא נמצא ברשימה
+            final_artist_name = determined_artist_name if determined_artist_name else artist_name
 
-            # Determine the target path
+            # קבע את נתיב היעד
             if self.abc_sort:
                 target_path = os.path.join(self.target_dir, final_artist_name[0], final_artist_name)
             else:
@@ -345,7 +351,7 @@ class MusicSorter:
             
             album_target_path = os.path.join(target_path, safe_album_name)
 
-            # Create the target directory if it doesn't exist and we're allowed to
+            # צור את ספריית היעד אם היא לא קיימת ומותר לנו
             if not self.exist_only or (self.exist_only and os.path.isdir(target_path)):
                 try:
                     os.makedirs(album_target_path, exist_ok=True)
@@ -353,7 +359,7 @@ class MusicSorter:
                     self.logger.error(f"Failed in folder creating {album_target_path}: {str(e)}")
                     return
 
-                # Transfer the entire folder
+                # העבר את כל התיקיה
                 for item in os.listdir(album_path):
                     source_item = os.path.join(album_path, item)
                     target_item = os.path.join(album_target_path, self.sanitize_filename(item))
@@ -674,7 +680,7 @@ def main():
     parser.add_argument('-a', '--abc_sort', help="Sort folders alphabetically (default: False)", action='store_true')
     parser.add_argument('-e', '--exist_only', help="Transfer to existing folders only (default: False)", action='store_true')
     parser.add_argument('-n', '--no_singles_dir', help="Do not create an internal 'singles' folder", action='store_false', dest='singles_folder', default=True)
-    parser.add_argument('-m', '--main_dir_only', help="Sort only the main folder (default: False)", action='store_true')
+    parser.add_argument('-m', '--main_dir_only', help="Sort only the main folder (default: False)", action='store_true', dest='main_folder_only')
     parser.add_argument('-d', '--duet_mode', help="Copy to all singers' folders for duets (default: False)", action='store_true')
     parser.add_argument("-f", "--fix_names", action="store_true", help="Fix file names only without sorting files")
     parser.add_argument('-l', '--log_level', help="Set the logging level", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], default='INFO')
