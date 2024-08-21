@@ -218,14 +218,14 @@ def main(page: ft.Page):
     def show_update():
 
         def close_dialog(e):
-            page.dialog.open = False
+            dialog.open = False
             page.update()
 
         def updating(e):
             """
             פונקציה לפתיחת כתובת האתר להורדת גרסה חדשה בדפדפן
             """
-            page.dialog.open = False
+            dialog.open = False
 
             download_url = "https://nhlocal.github.io/Singles-Sorter/site/download?utm_source=singles_sorter_program&utm_medium=desktop"
             
@@ -235,7 +235,7 @@ def main(page: ft.Page):
             # יישום שיטת עדכון אוטומטי
             page.update()
         
-        page.dialog = ft.AlertDialog(
+        dialog = ft.AlertDialog(
             modal=True,
             icon=ft.Icon(ft.icons.UPDATE, size=30, color=ft.colors.ON_SECONDARY_CONTAINER),
             title=ft.Text("עדכון גרסה", text_align="center"),
@@ -254,7 +254,8 @@ def main(page: ft.Page):
             ],
             actions_alignment=ft.MainAxisAlignment.SPACE_AROUND,
         )
-        page.dialog.open = True
+        page.overlay.append(dialog)
+        dialog.open = True
         page.update()
 
 
@@ -268,7 +269,7 @@ def main(page: ft.Page):
         
 
         def close_dialog(e):
-            page.dialog.open = False
+            dialog.open = False
             page.update()
 
         def import_csv(e):
@@ -315,7 +316,7 @@ def main(page: ft.Page):
         title_add_singers = ft.Text("הוספת זמרים", weight=ft.FontWeight.BOLD, size=16)
         info_add_singers = ft.Markdown(add_singers_info, visible=False)
 
-        page.dialog = ft.AlertDialog(
+        dialog = ft.AlertDialog(
             modal=True,
             #bgcolor=ft.colors.SURFACE_VARIANT,
             icon=ft.Icon(ft.icons.SETTINGS, size=30, color=ft.colors.ON_PRIMARY_CONTAINER),
@@ -380,7 +381,8 @@ def main(page: ft.Page):
             ],
             actions_alignment=ft.MainAxisAlignment.SPACE_AROUND,
         )
-        page.dialog.open = True
+        page.overlay.append(dialog)
+        dialog.open = True
         page.update()
 
 
@@ -465,12 +467,14 @@ def main(page: ft.Page):
             page.client_storage.set("exist_only", exist_only.value)
             page.client_storage.set("abc_sort", abc_sort.value)
 
-            page.snack_bar = show_snackbar("ההגדרות נשמרו בהצלחה!", ft.colors.GREEN)
+            snack_bar = show_snackbar("ההגדרות נשמרו בהצלחה!", ft.colors.GREEN)
         except Exception as error:
-            page.snack_bar = show_snackbar(f"התרחשה שגיאה בעת שמירת ההגדרות: {error}", ft.colors.ERROR)
+            snack_bar = show_snackbar(f"התרחשה שגיאה בעת שמירת ההגדרות: {error}", ft.colors.ERROR)
         finally:
-            page.snack_bar.open = True
+            page.overlay.append(snack_bar)
+            snack_bar.open = True
             page.update()
+            return
 
 
     
@@ -494,11 +498,11 @@ def main(page: ft.Page):
         mode = e.control.data
 
         def close_dialog(e):
-            page.dialog.open = False
+            dialog.open = False
             page.update()
 
         def continue_action(e):
-            page.dialog.open = False
+            dialog.open = False
 
             # בקשת הרשאת ניהול קבצים מהמשתמש            
             if ANDROID_MODE:
@@ -525,18 +529,18 @@ def main(page: ft.Page):
             title_text = "אשר והתחל"
             content_text = "פעולה זו תתקן ג'יבריש במאפייני הקובץ\nותסיר תוכן מיותר כמו 'חדשות המוזיקה' משמות הקבצים"
 
-        page.dialog = ft.AlertDialog(
+        dialog = ft.AlertDialog(
             modal=True,
             title=ft.Text(title_text, text_align="center"),
             content=ft.Text(content_text, text_align="center", rtl=True),
-
             actions=[
                 ft.TextButton("אישור", on_click=continue_action),
                 ft.TextButton("ביטול", on_click=close_dialog),
             ],
             actions_alignment=ft.MainAxisAlignment.SPACE_AROUND,
         )
-        page.dialog.open = True
+        page.overlay.append(dialog)
+        dialog.open = True
         page.update()
 
     
@@ -721,14 +725,16 @@ def main(page: ft.Page):
         target_dir = target_path if ANDROID_MODE else target_dir_input.value
 
         if mode == "organize" and not target_dir:
-            page.snack_bar = show_snackbar("אנא בחר תיקיית מקור ותיקיית יעד!", ft.colors.ERROR)
-            page.snack_bar.open = True
+            snack_bar = show_snackbar("אנא בחר תיקיית מקור ותיקיית יעד!", ft.colors.ERROR)
+            page.overlay.append(snack_bar)
+            snack_bar.open = True
             page.update()
             return
 
         if not source_dir:
-            page.snack_bar = show_snackbar("אנא בחר תיקיית מקור!", ft.colors.ERROR)
-            page.snack_bar.open = True
+            snack_bar = show_snackbar("אנא בחר תיקיית מקור!", ft.colors.ERROR)
+            page.overlay.append(snack_bar)
+            snack_bar.open = True
             page.update()
             return
 
@@ -775,7 +781,7 @@ def main(page: ft.Page):
 """
 
                 # הצגת הודעת הסיכום ב-AlertDialog
-                page.dialog = ft.AlertDialog(
+                dialog = ft.AlertDialog(
                     modal=True,
                     title=ft.Text("סיכום מיון", text_align="center"),
                     content=ft.Column(
@@ -786,13 +792,16 @@ def main(page: ft.Page):
                         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     ),
                     actions=[
-                        ft.TextButton("אישור", on_click=lambda e: (setattr(page.dialog, 'open', False), page.update())),
+                        ft.TextButton("אישור", on_click=lambda e: (setattr(dialog, 'open', False), page.update())),
                     ],
                     actions_alignment=ft.MainAxisAlignment.CENTER,
                     icon=ft.Icon(ft.icons.CHECK_CIRCLE_OUTLINE, color=ft.colors.GREEN)
                     
                 )
-                page.dialog.open = True
+                page.overlay.append(dialog)
+                dialog.open = True
+                page.update()
+
                 
 
             elif mode == "fix":
@@ -800,18 +809,19 @@ def main(page: ft.Page):
                 sorter.fix_names()
                 message = "תיקון שמות הקבצים הסתיים בהצלחה"
 
-            page.snack_bar = show_snackbar(message, ft.colors.GREEN, 10000)
+            snack_bar = show_snackbar(message, ft.colors.GREEN, 10000)
 
         except FileNotFoundError as error:
-            page.snack_bar = show_snackbar(f"{error}", ft.colors.ERROR)
+            snack_bar = show_snackbar(f"{error}", ft.colors.ERROR)
         except PermissionError as error:
-            page.snack_bar = show_snackbar(f"{error}", ft.colors.ERROR)
+            snack_bar = show_snackbar(f"{error}", ft.colors.ERROR)
         except Exception as error:
-            page.snack_bar = show_snackbar(f"שגיאה: {error}", ft.colors.ERROR)
+            snack_bar = show_snackbar(f"שגיאה: {error}", ft.colors.ERROR)
 
         finally: 
             page.window.progress_bar = '0.0'
-            page.snack_bar.open = True
+            page.overlay.append(snack_bar)
+            snack_bar.open = True
 
             # הפעלת כפתור בהתאם לפעולה
             if mode == "organize":
