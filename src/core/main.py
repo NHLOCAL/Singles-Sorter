@@ -401,8 +401,8 @@ def main(page: ft.Page):
 
     target_dir_input = ft.TextField(label="תיקית יעד", rtl=True, expand=True, border=ft.border.all(2, color=ft.colors.OUTLINE), border_radius=round_text_field, height='50', hint_text=r"C:\Music\המוזיקה שלך",  read_only=ANDROID_MODE)
     
-    source_picker = ft.FilePicker(on_result=lambda e: update_path(e, source_dir_input, "src"))
-    target_picker = ft.FilePicker(on_result=lambda e: update_path(e, target_dir_input, "tar"))
+    source_picker = ft.FilePicker(on_result=lambda e: update_path(e, source_dir_input))
+    target_picker = ft.FilePicker(on_result=lambda e: update_path(e, target_dir_input))
     
     page.overlay.extend([source_picker, target_picker])
 
@@ -701,28 +701,20 @@ def main(page: ft.Page):
 
 
 
-    def update_path(e: ft.FilePickerResultEvent, target_input: ft.TextField, src_tar):
+    def update_path(e: ft.FilePickerResultEvent, srctar_input: ft.TextField):
         try:
-            target_input.value = e.path if e.path else None
-            target_input.update()
-
-            if src_tar == "src":
-                global source_path
-                source_path = e.path
-            elif src_tar == "tar":
-                global target_path
-                target_path = e.path
+            srctar_input.value = e.path if e.path else None
+            srctar_input.update()
 
         except Exception as error:
             # Display an error message to the user or log the error
             print(f"Error updating path: {error}")
             # Consider using a Snackbar or AlertDialog to display the error to the user
-        
 
     # פונקציה אחת לטיפול במיון ותיקון שמות
     def process_files(e, page: ft.Page, mode):
-        source_dir = source_path if ANDROID_MODE else source_dir_input.value
-        target_dir = target_path if ANDROID_MODE else target_dir_input.value
+        source_dir = source_dir_input.value
+        target_dir = target_dir_input.value
 
         if mode == "organize" and not target_dir:
             snack_bar = show_snackbar("אנא בחר תיקיית מקור ותיקיית יעד!", ft.colors.ERROR)
