@@ -277,10 +277,24 @@ class MusicSorter:
             should_process = False
             main_artist = None
 
+            # בדיקה אם שירי האלבום מכילים שם אמן
             if is_album:
                 if not artists:
-                    self.logger.info(f"Album detected but skipped due to lack of artist information: {folder_path}")
-                    return True, False, None, None
+                    # חיפוש שם אמן בשם התיקיה
+                    dir_name = os.path.basename(folder_path)
+                    for source_name, target_name in self.singer_list:
+                        if source_name in dir_name:
+                            exact = check_exact_name(dir_name, source_name)
+                            if exact:
+                                should_process = True
+                                main_artist = target_name
+                                break
+
+                    # סיום הפעולה אם לא נמצא אמן בשם התיקיה
+                    if not main_artist:
+                        self.logger.info(f"Album detected but skipped due to lack of artist information: {folder_path}")
+                        return True, False, None, None
+                
                 elif len(artists) == 1:
                     should_process = True
                     main_artist = list(artists.keys())[0]
