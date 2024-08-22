@@ -95,7 +95,12 @@ class MusicSorter:
         
         # Collect all audio files
         if self.main_folder_only:
-            files_to_process = [f for f in os.listdir(self.source_dir) if f.lower().endswith((".mp3", ".wma", ".wav"))]
+            files_to_process = [
+                os.path.join(self.source_dir, file) 
+                for file in os.listdir(self.source_dir) 
+                if file.lower().endswith((".mp3", ".wma", ".wav"))
+            ]
+
         else:
             for root, _, files in os.walk(self.source_dir):
                 for file in files:
