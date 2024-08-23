@@ -9,7 +9,7 @@ def main(page: ft.Page):
     folder_icon = ft.Icon(ft.icons.FOLDER_OPEN_ROUNDED, size=24)
 
     # הגדרת תא טבלה ניתנת לעריכה
-    TABLE_CELL = ft.DataCell(ft.TextField(value="", border=ft.InputBorder.NONE, width=150, expand=True, text_align=ft.TextAlign.RIGHT, rtl=True), show_edit_icon=True,)
+    TABLE_CELL = ft.DataCell(ft.TextField(value="", border=ft.InputBorder.NONE, text_align=ft.TextAlign.RIGHT, rtl=True),)
 
     # פונקציה להוספת שורה
     def add_row_clicked(e):
@@ -44,13 +44,13 @@ def main(page: ft.Page):
         border=ft.border.all(2, ft.colors.OUTLINE),
         border_radius=15,
         column_spacing=20,
-        horizontal_margin=20,
+        horizontal_margin=10,
         divider_thickness=1,
         #heading_row_color=ft.colors.ON_PRIMARY,  # צבע שורת הכותרות
         columns=[
-            ft.DataColumn(ft.Row([singer_icon, ft.Text("שם זמר", text_align=ft.TextAlign.RIGHT, width=150, rtl=True, size=16)], rtl=True, alignment=ft.MainAxisAlignment.CENTER),  # כותרת עמודה א'
+            ft.DataColumn(ft.Row([singer_icon, ft.Text("שם זמר", text_align=ft.TextAlign.RIGHT, rtl=True, size=16)], width=150, rtl=True, alignment=ft.MainAxisAlignment.CENTER),  # כותרת עמודה א'
                           numeric=False),
-            ft.DataColumn(ft.Row([folder_icon, ft.Text("שם תיקיה", text_align=ft.TextAlign.RIGHT, width=150, rtl=True, size=16)], rtl=True, alignment=ft.MainAxisAlignment.CENTER),  # כותרת עמודה ב'
+            ft.DataColumn(ft.Row([folder_icon, ft.Text("שם תיקיה", text_align=ft.TextAlign.RIGHT, rtl=True, size=16)], width=150, rtl=True, alignment=ft.MainAxisAlignment.CENTER),  # כותרת עמודה ב'
                           numeric=False),
         ],
         rows=[
