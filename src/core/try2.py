@@ -7,7 +7,7 @@ def main(page: ft.Page):
     # אייקונים
     singer_icon = ft.Icon(ft.icons.PERSON_2_OUTLINED, size=24)
     folder_icon = ft.Icon(ft.icons.FOLDER_OPEN_ROUNDED, size=24)
-    add_row_icon = ft.icons.ADD_BOX
+    add_row_icon = ft.icons.EXPAND_MORE
 
     # הגדרת תא טבלה ניתנת לעריכה
     TABLE_CELL = ft.DataCell(ft.TextField(value="", border=ft.InputBorder.NONE, text_align=ft.TextAlign.RIGHT, rtl=True),)
@@ -49,43 +49,23 @@ def main(page: ft.Page):
         divider_thickness=1,
         #heading_row_color=ft.colors.ON_PRIMARY,  # צבע שורת הכותרות
         columns=[
-            ft.DataColumn(ft.Row([singer_icon, ft.Text("שם זמר", text_align=ft.TextAlign.RIGHT, rtl=True, size=16)], width=150, rtl=True, alignment=ft.MainAxisAlignment.CENTER),  # כותרת עמודה א'
+            ft.DataColumn(ft.Row([singer_icon, ft.Text("שם תיקיה", text_align=ft.TextAlign.RIGHT, rtl=True, size=16)], width=150, rtl=True, alignment=ft.MainAxisAlignment.CENTER),  # כותרת עמודה א'
                           numeric=False),
-            ft.DataColumn(ft.Row([folder_icon, ft.Text("שם תיקיה", text_align=ft.TextAlign.RIGHT, rtl=True, size=16)], width=150, rtl=True, alignment=ft.MainAxisAlignment.CENTER),  # כותרת עמודה ב'
+            ft.DataColumn(ft.Row([folder_icon, ft.Text("שם זמר", text_align=ft.TextAlign.RIGHT, rtl=True, size=16)], width=150, rtl=True, alignment=ft.MainAxisAlignment.CENTER),  # כותרת עמודה ב'
                           numeric=False),
         ],
-        rows=[
-            ft.DataRow(
-                cells=[
-                    TABLE_CELL,
-                    TABLE_CELL,
-                ]
-            ),
-            ft.DataRow(
-                cells=[
-                    TABLE_CELL,
-                    TABLE_CELL,
-                ]
-            ),
-            ft.DataRow(
-                cells=[
-                    TABLE_CELL,
-                    TABLE_CELL,
-                ]
-            ),
-            ft.DataRow(
-                cells=[
-                    TABLE_CELL,
-                    TABLE_CELL,
-                ]
-            ),
-
-        ]
+        rows=[ft.DataRow(cells=[TABLE_CELL, TABLE_CELL,])] * 5
     )
 
     # יצירת הדיאלוג
     dlg = ft.AlertDialog(
-        title=ft.Text("הוספת זמרים", text_align=ft.TextAlign.CENTER),
+        title=ft.Row([
+            ft.Icon(ft.icons.PERSON_ADD, size=40),  # בחר אייקון מהרשימה למעלה
+            ft.Text("הוספת זמרים", text_align=ft.TextAlign.CENTER),
+        ], 
+        rtl=True,
+        alignment=ft.MainAxisAlignment.CENTER,
+        ),
         content=ft.Column(
             [
                 table,
