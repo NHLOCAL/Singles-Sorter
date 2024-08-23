@@ -1,24 +1,45 @@
 import flet as ft
+import csv
 
 def main(page: ft.Page):
     page.title = "טבלה ניתנת לעריכה"
     page.rtl = True  # הגדרת תצוגת RTL
+
+    # שם הקובץ CSV
+    csv_file = "personal_singers.csv"
 
     # אייקונים
     singer_icon = ft.Icon(ft.icons.PERSON_2_OUTLINED, size=24)
     folder_icon = ft.Icon(ft.icons.FOLDER_OPEN_ROUNDED, size=24)
     add_row_icon = ft.icons.EXPAND_MORE
 
-    # הגדרת תא טבלה ניתנת לעריכה
-    TABLE_CELL = ft.DataCell(ft.TextField(value="", border=ft.InputBorder.NONE, text_align=ft.TextAlign.RIGHT, rtl=True),)
+    # פונקציה ליצירת תא טבלה ניתנת לעריכה
+    def create_table_cell():
+        return ft.DataCell(ft.TextField(value="", border=ft.InputBorder.NONE, text_align=ft.TextAlign.RIGHT, rtl=True))
+
+    # טעינת נתונים מקובץ CSV
+    def load_data():
+        try:
+            with open(csv_file, "r", encoding="utf-8") as file:
+                reader = csv.reader(file)
+                data = [ft.DataRow(cells=[
+                    ft.DataCell(ft.TextField(value=row[0], border=ft.InputBorder.NONE, text_align=ft.TextAlign.RIGHT, rtl=True)),
+                    ft.DataCell(ft.TextField(value=row[1], border=ft.InputBorder.NONE, text_align=ft.TextAlign.RIGHT, rtl=True))
+                ]) for row in reader if any(row)]
+                # אם אין נתונים, הוסף 5 שורות ריקות
+                if not data:
+                    data = [ft.DataRow(cells=[create_table_cell(), create_table_cell()]) for _ in range(5)] # שינוי כאן!
+                return data
+        except FileNotFoundError:
+            return [ft.DataRow(cells=[create_table_cell(), create_table_cell()]) for _ in range(5)] # שינוי כאן!
 
     # פונקציה להוספת שורה
     def add_row_clicked(e):
         table.rows.append(
             ft.DataRow(
                 cells=[
-                    ft.DataCell(ft.TextField(value="", border=ft.InputBorder.NONE, text_align=ft.TextAlign.RIGHT, rtl=True),),
-                    ft.DataCell(ft.TextField(value="", border=ft.InputBorder.NONE, text_align=ft.TextAlign.RIGHT, rtl=True),),
+                    create_table_cell(),
+                    create_table_cell(),
                 ]
             )
         )
@@ -26,16 +47,22 @@ def main(page: ft.Page):
 
     # פונקציה לאישור
     def confirm_clicked(e):
-        # טיפול בנתונים מהטבלה
-        print("אישור נלחץ")
+        # סינון שורות ריקות או עם תא אחד ריק
+        valid_rows = [row for row in table.rows if all(cell.content.value for cell in row.cells)]
+
+        # שמירת נתונים לקובץ CSV
+        with open(csv_file, "w", newline="", encoding="utf-8") as file:
+            writer = csv.writer(file)
+            for row in valid_rows:  # שמירת שורות תקינות בלבד
+                writer.writerow([row.cells[0].content.value, row.cells[1].content.value])
         # סגירת הדיאלוג
-        page.dialog.open = False
+        dialog.open = False
         page.update()
 
     # פונקציה לביטול
     def cancel_clicked(e):
         # סגירת הדיאלוג
-        page.dialog.open = False
+        dialog.open = False
         page.update()
 
     # יצירת הטבלה
@@ -49,12 +76,12 @@ def main(page: ft.Page):
         divider_thickness=1,
         #heading_row_color=ft.colors.ON_PRIMARY,  # צבע שורת הכותרות
         columns=[
-            ft.DataColumn(ft.Row([singer_icon, ft.Text("שם תיקיה", text_align=ft.TextAlign.RIGHT, rtl=True, size=16)], width=150, rtl=True, alignment=ft.MainAxisAlignment.CENTER),  # כותרת עמודה א'
+            ft.DataColumn(ft.Row([folder_icon, ft.Text("שם תיקיה", text_align=ft.TextAlign.RIGHT, rtl=True, size=16)], width=150, rtl=True, alignment=ft.MainAxisAlignment.CENTER),  # כותרת עמודה א'
                           numeric=False),
-            ft.DataColumn(ft.Row([folder_icon, ft.Text("שם זמר", text_align=ft.TextAlign.RIGHT, rtl=True, size=16)], width=150, rtl=True, alignment=ft.MainAxisAlignment.CENTER),  # כותרת עמודה ב'
+            ft.DataColumn(ft.Row([singer_icon, ft.Text("שם זמר", text_align=ft.TextAlign.RIGHT, rtl=True, size=16)], width=150, rtl=True, alignment=ft.MainAxisAlignment.CENTER),  # כותרת עמודה ב'
                           numeric=False),
         ],
-        rows=[ft.DataRow(cells=[TABLE_CELL, TABLE_CELL,])] * 5
+        rows=load_data()
     )
 
     # יצירת הדיאלוג
@@ -90,11 +117,12 @@ def main(page: ft.Page):
         modal=True,
     )
 
-    page.dialog = dlg
+    dialog = dlg
 
     # פונקציה לפתיחת הדיאלוג
     def open_dlg_modal(e):
-        page.dialog.open = True
+        page.overlay.append(dialog)
+        dialog.open = True
         page.update()
 
     page.add(
