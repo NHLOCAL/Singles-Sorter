@@ -7,6 +7,7 @@ def main(page: ft.Page):
     # אייקונים
     singer_icon = ft.Icon(ft.icons.PERSON_2_OUTLINED, size=24)
     folder_icon = ft.Icon(ft.icons.FOLDER_OPEN_ROUNDED, size=24)
+    add_row_icon = ft.icons.ADD_BOX
 
     # הגדרת תא טבלה ניתנת לעריכה
     TABLE_CELL = ft.DataCell(ft.TextField(value="", border=ft.InputBorder.NONE, text_align=ft.TextAlign.RIGHT, rtl=True),)
@@ -16,8 +17,8 @@ def main(page: ft.Page):
         table.rows.append(
             ft.DataRow(
                 cells=[
-                    TABLE_CELL,
-                    TABLE_CELL,
+                    ft.DataCell(ft.TextField(value="", border=ft.InputBorder.NONE, text_align=ft.TextAlign.RIGHT, rtl=True),),
+                    ft.DataCell(ft.TextField(value="", border=ft.InputBorder.NONE, text_align=ft.TextAlign.RIGHT, rtl=True),),
                 ]
             )
         )
@@ -90,7 +91,7 @@ def main(page: ft.Page):
                 table,
                 ft.Row(
                     [
-                        ft.ElevatedButton("הוסף שורה", on_click=add_row_clicked),
+                        ft.IconButton(icon=add_row_icon, on_click=add_row_clicked, icon_size=30, tooltip="הוסף שורה",),
                     ],
                     alignment=ft.MainAxisAlignment.CENTER,
                     rtl=True,
