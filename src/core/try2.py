@@ -105,8 +105,8 @@ def main(page: ft.Page):
                 ),
                 ft.Row(
                     [
-                        ft.ElevatedButton("אישור", on_click=confirm_clicked),
                         ft.ElevatedButton("ביטול", on_click=cancel_clicked),
+                        ft.ElevatedButton("אישור", on_click=confirm_clicked),
                     ],
                     alignment=ft.MainAxisAlignment.CENTER,
                     rtl=True,
