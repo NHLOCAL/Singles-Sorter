@@ -6,7 +6,7 @@ def main(page: ft.Page):
     page.rtl = True  # הגדרת תצוגת RTL
 
     # שם הקובץ CSV
-    csv_file = "personal_singers.csv"
+    csv_file = "app/personal-singer-list.csv"
 
     # אייקונים
     singer_icon = ft.Icon(ft.icons.PERSON_2_OUTLINED, size=24)
