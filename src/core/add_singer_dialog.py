@@ -2,6 +2,7 @@
 
 import flet as ft
 import csv
+import chardet
 
 def create_add_singer_dialog(page: ft.Page, ANDROID_MODE=False, csv_file="app/personal-singer-list.csv"):
     # אייקונים
@@ -13,10 +14,15 @@ def create_add_singer_dialog(page: ft.Page, ANDROID_MODE=False, csv_file="app/pe
     def create_table_cell():
         return ft.DataCell(ft.TextField(value="", border=ft.InputBorder.NONE, text_align=ft.TextAlign.RIGHT, rtl=True))
 
-    # טעינת נתונים מקובץ CSV
+    def detect_encoding(file_path):
+        with open(file_path, 'rb') as file:
+            result = chardet.detect(file.read())
+        return result['encoding']
+
     def load_data():
         try:
-            with open(csv_file, "r", encoding="utf-8") as file:
+            encoding = detect_encoding(csv_file)
+            with open(csv_file, "r", encoding=encoding) as file:
                 reader = csv.reader(file)
                 data = [ft.DataRow(cells=[
                     ft.DataCell(ft.TextField(value=row[1], border=ft.InputBorder.NONE, text_align=ft.TextAlign.RIGHT, rtl=True)),

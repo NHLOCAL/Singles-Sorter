@@ -303,15 +303,23 @@ def main(page: ft.Page):
 
             if file_path:
                 try:
+                    import chardet
+
+                    def detect_encoding(file_path):
+                        with open(file_path, 'rb') as file:
+                            result = chardet.detect(file.read())
+                        return result['encoding']
+
                     # קריאת נתונים מקובץ CSV
-                    with open(file_path, "r", encoding="utf-8") as file:
+                    encoding = detect_encoding(file_path)
+                    with open(file_path, "r", encoding=encoding) as file:
                         reader = csv.reader(file)
                         data = list(reader)
 
                     # שמירת נתונים לקובץ CSV קיים
                     with open("app/personal-singer-list.csv", "a", newline="", encoding="utf-8") as file:
                         writer = csv.writer(file)
-                        writer.writerow([])
+                        writer.writerow([])  # הוספת שורה ריקה לפני הוספת הנתונים החדשים
                         writer.writerows(data)
 
                     # הצגת הודעת הצלחה
