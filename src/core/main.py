@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 import flet as ft
-import os
 
 # קבצי התוכנה
 from singles_sorter_v4 import MusicSorter, __VERSION__
 from update_config import check_for_update
+from add_singer_dialog import create_add_singer_dialog
 
 
 # גרסת התוכנה
@@ -279,23 +279,12 @@ def main(page: ft.Page):
             pass
 
         def open_csv(e):
-            old_csv = os.path.abspath("app/disable-singer-list.csv")
-            personal_csv = os.path.abspath("app/personal-singer-list.csv")
+            # יצירת הדיאלוג באמצעות הפונקציה מיובאת
+            dialog = create_add_singer_dialog(page)
 
-            # שינוי שם קובץ csv לפני ביצוע שינויים
-            if os.path.exists(old_csv):
-                try:
-                    os.rename(old_csv, personal_csv)
-                except PermissionError:
-                    print(f"Permission denied for renaming the file '{old_csv}'.")
-                except Exception as e:
-                    print(f"An error occurred while trying to rename the file: {e}")
-
-            # פתיחת קובץ ה-CSV לצורך עריכה על ידי המשתמש
-            try:
-                os.startfile(personal_csv)
-            except AttributeError:
-                print("This feature is not supported on Windows.")
+            page.overlay.append(dialog)
+            dialog.open = True
+            page.update()
 
 
         # הגדרת תצוגת מידע נוסף על הוספת זמרים
@@ -319,8 +308,14 @@ def main(page: ft.Page):
         dialog = ft.AlertDialog(
             modal=True,
             #bgcolor=ft.colors.SURFACE_VARIANT,
-            icon=ft.Icon(ft.icons.SETTINGS, size=30, color=ft.colors.ON_PRIMARY_CONTAINER),
-            title=ft.Text("הגדרות מתקדמות", text_align="center", color=ft.colors.ON_PRIMARY_CONTAINER, weight=ft.FontWeight.BOLD),
+            title=ft.Row([
+                ft.Icon(ft.icons.SETTINGS, size=40, color=ft.colors.ON_PRIMARY_CONTAINER),
+                ft.Text("הגדרות מתקדמות", text_align="center", color=ft.colors.ON_PRIMARY_CONTAINER, weight=ft.FontWeight.BOLD),
+                ],
+                rtl=True,
+                alignment=ft.MainAxisAlignment.CENTER,
+                ),
+
             content=ft.Container( # הוספת Container לשליטה ברוחב
                 width=page.window.width * 1.0 if ANDROID_MODE else page.window.width * 0.7, # קביעת רוחב קבוע
                 content=ft.Column(
@@ -356,9 +351,9 @@ def main(page: ft.Page):
 
                                 ft.Row(
                                     [
-                                        ft.TextButton("ערוך קובץ", on_click=open_csv, disabled=ANDROID_MODE),
-                                        ft.TextButton("ייבא קובץ", on_click=import_csv, disabled=True),
-                                        ft.TextButton("ייצא קובץ", on_click=export_csv, disabled=True),
+                                        ft.TextButton("ערוך רשימה", on_click=open_csv, disabled=ANDROID_MODE),
+                                        ft.TextButton("יבא קובץ CSV", on_click=import_csv, disabled=True),
+                                        ft.TextButton("יצא לקובץ CSV", on_click=export_csv, disabled=True),
                                     ]
                                 ),
                             ],
