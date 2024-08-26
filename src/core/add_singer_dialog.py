@@ -19,8 +19,8 @@ def create_add_singer_dialog(page: ft.Page, csv_file="app/personal-singer-list.c
             with open(csv_file, "r", encoding="utf-8") as file:
                 reader = csv.reader(file)
                 data = [ft.DataRow(cells=[
-                    ft.DataCell(ft.TextField(value=row[0], border=ft.InputBorder.NONE, text_align=ft.TextAlign.RIGHT, rtl=True)),
-                    ft.DataCell(ft.TextField(value=row[1], border=ft.InputBorder.NONE, text_align=ft.TextAlign.RIGHT, rtl=True))
+                    ft.DataCell(ft.TextField(value=row[1], border=ft.InputBorder.NONE, text_align=ft.TextAlign.RIGHT, rtl=True)),
+                    ft.DataCell(ft.TextField(value=row[0], border=ft.InputBorder.NONE, text_align=ft.TextAlign.RIGHT, rtl=True))
                 ]) for row in reader if any(row)]
                 # אם אין נתונים, הוסף 5 שורות ריקות
                 if not data:
@@ -50,7 +50,7 @@ def create_add_singer_dialog(page: ft.Page, csv_file="app/personal-singer-list.c
         with open(csv_file, "w", newline="", encoding="utf-8") as file:
             writer = csv.writer(file)
             for row in valid_rows:  # שמירת שורות תקינות בלבד
-                writer.writerow([row.cells[0].content.value, row.cells[1].content.value])
+                writer.writerow([row.cells[1].content.value, row.cells[0].content.value])
         # סגירת הדיאלוג
         dialog.open = False
         page.update()

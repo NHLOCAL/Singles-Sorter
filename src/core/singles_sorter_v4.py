@@ -208,7 +208,7 @@ class MusicSorter:
             audio_files = [f for f in os.listdir(folder_path) if f.lower().endswith((".mp3", ".wma", ".wav"))]
             
             # בדוק אם יש מספיק קבצים כדי להיחשב כאלבום
-            if len(audio_files) < 4:
+            if len(audio_files) < 3:
                 return False, False, None, None
             
             # בדוק אם יש ספריות משנה (לאלבומים בדרך כלל אין ספריות משנה)
@@ -568,15 +568,17 @@ class MusicSorter:
         else:
             # כל מקרה אחר (GUI או לא מקומפל)
             csv_path = os.path.abspath("app/singer-list.csv")
-        
+
+        personal_csv_path = os.path.abspath("app/personal-singer-list.csv")
+        print(personal_csv_path)
         
         
         with open(csv_path, 'r', encoding='utf-8') as file:
             csv_reader = csv.reader(file)
             singer_list = [tuple(row) for row in csv_reader]
         
-        if os.path.isfile("app/personal-singer-list.csv"):
-            with open("app/personal-singer-list.csv", 'r') as file:
+        if os.path.isfile(personal_csv_path):
+            with open(personal_csv_path, 'r', encoding="utf-8") as file:
                 csv_reader = csv.reader(file)
                 personal_list = [tuple(row) for row in csv_reader]
             singer_list.extend(personal_list)
