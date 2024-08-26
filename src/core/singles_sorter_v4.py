@@ -137,6 +137,13 @@ class MusicSorter:
                     fixed_artist = fix_jibrish(artist, "heb")
                     metadata['artist'] = fixed_artist
                     self.logger.info(f"Fixed artist metadata for {new_file_path}: {artist} -> {fixed_artist}")
+
+                # Fix album artist metadata
+                album_artist = metadata['albumartist'].value
+                if album_artist and check_jibrish(album_artist):
+                    fixed_album_artist = fix_jibrish(album_artist, "heb")
+                    metadata['albumartist'] = fixed_album_artist
+                    self.logger.info(f"Fixed album artist metadata for {new_file_path}: {album_artist} -> {fixed_album_artist}")
                 
                 # Fix title metadata
                 title = metadata['title'].value
