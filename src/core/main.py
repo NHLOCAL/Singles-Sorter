@@ -55,8 +55,7 @@ def main(page: ft.Page):
     # פונקציה לפתיחת הודעת מה חדש בהפעלה הראשונה של התוכנה
     def first_run_menu():
 
-        first_run_status = page.client_storage.get("singlesorter_first_run")
-        first_run_status = "0.0" if first_run_status is None else first_run_status
+        first_run_status = page.client_storage.get("singlesorter_first_run") or '0.0'
 
         if first_run_status < VERSION:
             show_content('whats-new', 'מה חדש', ft.icons.NEW_RELEASES)
