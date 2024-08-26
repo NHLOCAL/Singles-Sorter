@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import flet as ft
+import csv
 
 # קבצי התוכנה
 from singles_sorter_v4 import MusicSorter, __VERSION__
@@ -273,10 +274,85 @@ def main(page: ft.Page):
             page.update()
 
         def import_csv(e):
-            pass
+            """
+            פונקציה לייבוא נתונים מקובץ CSV חיצוני
+            """
+            # Create the FilePicker instance
+            file_picker = ft.FilePicker(on_result=lambda e: import_csv_result(e))
+
+            # Add the FilePicker to the page overlay
+            page.overlay.extend([file_picker])
+            page.update()
+            file_picker.pick_files(allowed_extensions=["csv"], dialog_title="יבוא רשימת זמרים אישית")
+
+        def import_csv_result(e: ft.FilePickerResultEvent):
+            """
+            פונקציה לטיפול בתוצאת דיאלוג בחירת קובץ
+            """
+            if e.path:
+                try:
+                    # קריאת נתונים מקובץ CSV
+                    with open(e.path, "r", encoding="utf-8") as file:
+                        reader = csv.reader(file)
+                        data = list(reader)
+
+                    # שמירת נתונים לקובץ CSV קיים
+                    with open("app/personal-singer-list.csv", "w", newline="", encoding="utf-8") as file:
+                        writer = csv.writer(file)
+                        writer.writerows(data)
+
+                    # הצגת הודעת הצלחה
+                    snack_bar = show_snackbar("הנתונים יובאו בהצלחה!", ft.colors.GREEN)
+                    page.overlay.append(snack_bar)
+                    snack_bar.open = True
+                    page.update()
+
+                except Exception as error:
+                    # הצגת הודעת שגיאה
+                    snack_bar = show_snackbar(f"שגיאה: {error}", ft.colors.ERROR)
+                    page.overlay.append(snack_bar)
+                    snack_bar.open = True
+                    page.update()
 
         def export_csv(e):
-            pass
+            """
+            פונקציה לייצוא נתונים לקובץ CSV חיצוני
+            """
+            # פתיחת דיאלוג שמירת קובץ
+            file_picker = ft.FilePicker(on_result=lambda e: export_csv_result(e))
+            page.overlay.extend([file_picker])
+            page.update()
+            file_picker.save_file(allowed_extensions=["csv"], file_name="personal_list.csv", dialog_title="יצוא רשימת זמרים אישית")
+
+
+        def export_csv_result(e: ft.FilePickerResultEvent):
+            """
+            פונקציה לטיפול בתוצאת דיאלוג שמירת קובץ
+            """
+            if e.path:
+                try:
+                    # קריאת נתונים מקובץ CSV קיים
+                    with open("app/personal-singer-list.csv", "r", encoding="utf-8") as file:
+                        reader = csv.reader(file)
+                        data = list(reader)
+
+                    # שמירת נתונים לקובץ CSV חדש
+                    with open(e.path, "w", newline="", encoding="utf-8") as file:
+                        writer = csv.writer(file)
+                        writer.writerows(data)
+
+                    # הצגת הודעת הצלחה
+                    snack_bar = show_snackbar("הנתונים יוצאו בהצלחה!", ft.colors.GREEN)
+                    page.overlay.append(snack_bar)
+                    snack_bar.open = True
+                    page.update()
+
+                except Exception as error:
+                    # הצגת הודעת שגיאה
+                    snack_bar = show_snackbar(f"שגיאה: {error}", ft.colors.ERROR)
+                    page.overlay.append(snack_bar)
+                    snack_bar.open = True
+                    page.update()
 
         def open_csv(e):
             # יצירת הדיאלוג באמצעות הפונקציה מיובאת
@@ -352,8 +428,8 @@ def main(page: ft.Page):
                                 ft.Row(
                                     [
                                         ft.TextButton("ערוך רשימה", on_click=open_csv, disabled=ANDROID_MODE),
-                                        ft.TextButton("יבא קובץ CSV", on_click=import_csv, disabled=True),
-                                        ft.TextButton("יצא לקובץ CSV", on_click=export_csv, disabled=True),
+                                        ft.TextButton("יבא קובץ CSV", on_click=import_csv),
+                                        ft.TextButton("יצא לקובץ CSV", on_click=export_csv),
                                     ]
                                 ),
                             ],
