@@ -61,7 +61,7 @@ def create_add_singer_dialog(page: ft.Page, ANDROID_MODE=False, csv_file="app/pe
         dialog.open = False
         page.update()
     
-    cell_width = page.window.width * 0.3 if ANDROID_MODE else 150
+    cell_width = None if ANDROID_MODE else 150
 
     # יצירת הטבלה
     table = ft.DataTable(

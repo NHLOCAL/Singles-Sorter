@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import flet as ft
 import csv
+from shutil import copy
 
 # קבצי התוכנה
 from singles_sorter_v4 import MusicSorter, __VERSION__
@@ -304,6 +305,7 @@ def main(page: ft.Page):
                     # שמירת נתונים לקובץ CSV קיים
                     with open("app/personal-singer-list.csv", "a", newline="", encoding="utf-8") as file:
                         writer = csv.writer(file)
+                        writer.writerow([])
                         writer.writerows(data)
 
                     # הצגת הודעת הצלחה
@@ -336,18 +338,16 @@ def main(page: ft.Page):
             """
             if e.path:
                 try:
-                    # קריאת נתונים מקובץ CSV קיים
-                    with open("app/personal-singer-list.csv", "r", encoding="utf-8") as file:
-                        reader = csv.reader(file)
-                        data = list(reader)
+                    # העתקת קובץ CSV קיים לקובץ חדש
+                    src_path = "app/personal-singer-list.csv"
+                    dest_path = e.path
 
-                    # שמירת נתונים לקובץ CSV חדש
-                    if not e.path.endswith(".csv"):
-                        e.path += ".csv"
+                    # לוודא שנתיב היעד כולל סיומת .csv
+                    if not dest_path.endswith(".csv"):
+                        dest_path += ".csv"
                     
-                    with open(e.path, "w", newline="", encoding="utf-8") as file:
-                        writer = csv.writer(file)
-                        writer.writerows(data)
+                    # העתקת הקובץ
+                    copy(src_path, dest_path)
 
                     # הצגת הודעת הצלחה
                     snack_bar = show_snackbar(f"הנתונים יוצאו בהצלחה לקובץ {e.path}", ft.colors.GREEN, mseconds=4000)
@@ -416,7 +416,7 @@ def main(page: ft.Page):
                 ),
 
             content=ft.Container( # הוספת Container לשליטה ברוחב
-                width=page.window.width if ANDROID_MODE else page.window.width * 0.7, # קביעת רוחב קבוע
+                width=None if ANDROID_MODE else page.window.width * 0.7, # קביעת רוחב קבוע
                 #height=page.window.width if ANDROID_MODE else page.window.width * 0.7
                 content=ft.Column(
                     [
