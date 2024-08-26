@@ -242,8 +242,15 @@ def main(page: ft.Page):
         
         dialog = ft.AlertDialog(
             modal=True,
-            icon=ft.Icon(ft.icons.UPDATE, size=30, color=ft.colors.ON_SECONDARY_CONTAINER),
-            title=ft.Text("עדכון גרסה", text_align="center"),
+            inset_padding=0 if ANDROID_MODE else None,
+            title=ft.Row([
+                ft.Icon(ft.icons.UPDATE, size=40, color=ft.colors.ON_PRIMARY_CONTAINER),
+                ft.Text("עדכון גרסה", text_align="center", color=ft.colors.ON_PRIMARY_CONTAINER, weight=ft.FontWeight.BOLD),
+            ],
+            rtl=True,
+            alignment=ft.MainAxisAlignment.CENTER,     
+            ), 
+
             content=ft.Column([
                 ft.Text(f"גרסה {update_available} זמינה להורדה", text_align="center", rtl=True, size=20),
                 ft.Text(f"מה חדש?", text_align="center", rtl=True, size=18, weight='BOLD'),
