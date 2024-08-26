@@ -278,26 +278,27 @@ def main(page: ft.Page):
             פונקציה לייבוא נתונים מקובץ CSV חיצוני
             """
             # Create the FilePicker instance
-            file_picker = ft.FilePicker(on_result=lambda e: import_csv_result(e))
-
-            # Add the FilePicker to the page overlay
-            page.overlay.extend([file_picker])
+            input_file_picker = ft.FilePicker(on_result=lambda e: import_csv_result(e))
+            page.overlay.extend([input_file_picker])
             page.update()
-            file_picker.pick_files(allowed_extensions=["csv"], dialog_title="יבוא רשימת זמרים אישית")
+            input_file_picker.pick_files(allowed_extensions=["csv"], dialog_title="יבוא רשימת זמרים אישית", allow_multiple=False)
 
         def import_csv_result(e: ft.FilePickerResultEvent):
             """
             פונקציה לטיפול בתוצאת דיאלוג בחירת קובץ
             """
-            if e.path:
+
+            file_path = str(e.files[0].path) if e.files else None
+
+            if file_path:
                 try:
                     # קריאת נתונים מקובץ CSV
-                    with open(e.path, "r", encoding="utf-8") as file:
+                    with open(file_path, "r", encoding="utf-8") as file:
                         reader = csv.reader(file)
                         data = list(reader)
 
                     # שמירת נתונים לקובץ CSV קיים
-                    with open("app/personal-singer-list.csv", "w", newline="", encoding="utf-8") as file:
+                    with open("app/personal-singer-list.csv", "a", newline="", encoding="utf-8") as file:
                         writer = csv.writer(file)
                         writer.writerows(data)
 
@@ -319,10 +320,10 @@ def main(page: ft.Page):
             פונקציה לייצוא נתונים לקובץ CSV חיצוני
             """
             # פתיחת דיאלוג שמירת קובץ
-            file_picker = ft.FilePicker(on_result=lambda e: export_csv_result(e))
-            page.overlay.extend([file_picker])
+            output_file_picker = ft.FilePicker(on_result=lambda e: export_csv_result(e))
+            page.overlay.extend([output_file_picker])
             page.update()
-            file_picker.save_file(allowed_extensions=["csv"], file_name="personal_list.csv", dialog_title="יצוא רשימת זמרים אישית")
+            output_file_picker.save_file(allowed_extensions=["csv"], file_name="personal-singer-list.csv", dialog_title="יצוא רשימת זמרים אישית")
 
 
         def export_csv_result(e: ft.FilePickerResultEvent):
@@ -337,12 +338,22 @@ def main(page: ft.Page):
                         data = list(reader)
 
                     # שמירת נתונים לקובץ CSV חדש
+                    if not e.path.endswith(".csv"):
+                        e.path += ".csv"
+                    
                     with open(e.path, "w", newline="", encoding="utf-8") as file:
                         writer = csv.writer(file)
                         writer.writerows(data)
 
                     # הצגת הודעת הצלחה
-                    snack_bar = show_snackbar("הנתונים יוצאו בהצלחה!", ft.colors.GREEN)
+                    snack_bar = show_snackbar(f"הנתונים יוצאו בהצלחה לקובץ {e.path}", ft.colors.GREEN, mseconds=4000)
+                    page.overlay.append(snack_bar)
+                    snack_bar.open = True
+                    page.update()
+
+                except FileNotFoundError:
+                    # הצגת הודעה במקרה שלא נמצא קובץ
+                    snack_bar = show_snackbar("לא יצרת עדיין רשימת זמרים אישית!", ft.colors.ERROR, mseconds=4000)
                     page.overlay.append(snack_bar)
                     snack_bar.open = True
                     page.update()
