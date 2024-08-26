@@ -399,7 +399,7 @@ def main(page: ft.Page):
         add_singers_options = [
             ft.TextButton("ערוך רשימה", on_click=open_csv),
             ft.TextButton("יבא קובץ CSV", on_click=import_csv),
-            ft.TextButton("יצא לקובץ CSV", on_click=export_csv),
+            ft.TextButton("יצא לקובץ CSV", on_click=export_csv, disabled=ANDROID_MODE),
         ]
 
 
