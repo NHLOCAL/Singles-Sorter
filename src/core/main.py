@@ -53,9 +53,13 @@ def main(page: ft.Page):
 
     # פונקציה לפתיחת הודעת מה חדש בהפעלה הראשונה של התוכנה
     def first_run_menu():
-        if not page.client_storage.get("first_run"):
+
+        first_run_status = page.client_storage.get("singlesorter_first_run")
+        first_run_status = "0.0" if first_run_status is None else first_run_status
+
+        if first_run_status < VERSION:
             show_content('whats-new', 'מה חדש', ft.icons.NEW_RELEASES)
-            page.client_storage.set("first_run", True)  # סימון שההודעה הוצגה
+            page.client_storage.set("singlesorter_first_run", VERSION)  # סימון שההודעה הוצגה
             page.update()
 
     
@@ -367,7 +371,7 @@ def main(page: ft.Page):
 
         def open_csv(e):
             # יצירת הדיאלוג באמצעות הפונקציה מיובאת
-            dialog = create_add_singer_dialog(page)
+            dialog = create_add_singer_dialog(page, ANDROID_MODE)
 
             page.overlay.append(dialog)
             dialog.open = True
@@ -392,7 +396,15 @@ def main(page: ft.Page):
         title_add_singers = ft.Text("הוספת זמרים", weight=ft.FontWeight.BOLD, size=16)
         info_add_singers = ft.Markdown(add_singers_info, visible=False)
 
+        add_singers_options = [
+            ft.TextButton("ערוך רשימה", on_click=open_csv),
+            ft.TextButton("יבא קובץ CSV", on_click=import_csv),
+            ft.TextButton("יצא לקובץ CSV", on_click=export_csv),
+        ]
+
+
         dialog = ft.AlertDialog(
+            inset_padding=0 if ANDROID_MODE else 20,
             modal=True,
             #bgcolor=ft.colors.SURFACE_VARIANT,
             title=ft.Row([
@@ -404,7 +416,8 @@ def main(page: ft.Page):
                 ),
 
             content=ft.Container( # הוספת Container לשליטה ברוחב
-                width=page.window.width * 1.0 if ANDROID_MODE else page.window.width * 0.7, # קביעת רוחב קבוע
+                width=page.window.width if ANDROID_MODE else page.window.width * 0.7, # קביעת רוחב קבוע
+                #height=page.window.width if ANDROID_MODE else page.window.width * 0.7
                 content=ft.Column(
                     [
                         ft.Column(
@@ -436,13 +449,7 @@ def main(page: ft.Page):
                                 ft.Row([icon_arrow, title_add_singers]),
                                 info_add_singers,
 
-                                ft.Row(
-                                    [
-                                        ft.TextButton("ערוך רשימה", on_click=open_csv, disabled=ANDROID_MODE),
-                                        ft.TextButton("יבא קובץ CSV", on_click=import_csv),
-                                        ft.TextButton("יצא לקובץ CSV", on_click=export_csv),
-                                    ]
-                                ),
+                                ft.Row(add_singers_options, wrap=ANDROID_MODE,)
                             ],
                             
                         ),
@@ -529,10 +536,11 @@ def main(page: ft.Page):
         page.client_storage.set("duet_mode", duet_mode.value)
 
     duet_mode = ft.RadioGroup(
-        content=ft.Column([
+        content=ft.Row([
             ft.Radio(value=False, label="העתק לזמר הראשון בשם השיר", disabled=False),
             ft.Radio(value=True, label="העתק לכל הזמרים המופיעים בשם השיר", disabled=False)
         ],
+        wrap=True,
         rtl=True),
         value=page.client_storage.get("duet_mode") or False,
         on_change=on_duet_mode_changed  # הוספת טיפול באירוע שינוי

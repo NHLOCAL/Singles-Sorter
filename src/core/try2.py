@@ -1,21 +1,18 @@
 import flet as ft
-from add_singer_dialog import create_add_singer_dialog
 
 def main(page: ft.Page):
-    page.title = "טבלה ניתנת לעריכה"
-    page.rtl = True
-
-    # יצירת הדיאלוג באמצעות הפונקציה מיובאת
-    dialog = create_add_singer_dialog(page)
-
-    # פונקציה לפתיחת הדיאלוג
-    def open_dlg_modal(e):
-        page.overlay.append(dialog)
-        dialog.open = True
+    def radio_changed(e):
+        print(f"Selected value: {e.control.value}")
         page.update()
 
     page.add(
-        ft.ElevatedButton("פתח טבלה", on_click=open_dlg_modal),
+        ft.Row(
+            controls=[
+                ft.Radio(value="Option 1", label=ft.Text("Option 1 with a very long label that should wrap", overflow=ft.TextOverflow.ELLIPSIS),),
+                ft.Radio(value="Option 2", label=ft.Text("Option 2 with a very long label that should wrap", overflow=ft.TextOverflow.ELLIPSIS),),
+            ],
+            wrap=True,
+        ),
     )
 
 ft.app(target=main)
