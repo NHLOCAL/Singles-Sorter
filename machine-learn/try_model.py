@@ -1,5 +1,4 @@
 from spacy import load
-import sys
 
 
 

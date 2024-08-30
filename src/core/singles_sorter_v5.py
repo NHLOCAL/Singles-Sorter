@@ -14,6 +14,8 @@ from check_name import check_exact_name
 import logging
 import datetime
 
+from spacy import load
+
 class MusicSorter:
 
     def __init__(self, source_dir, target_dir=None, copy_mode=False, abc_sort=False, exist_only=False, singles_folder=True, main_folder_only=False, duet_mode=False, progress_callback=None, log_level=logging.INFO):
@@ -38,6 +40,28 @@ class MusicSorter:
 
         # Set up logging
         self.setup_logging(log_level)
+
+
+        # Load the NER model
+        try:
+            model_name = r"C:\Users\משתמש\Documents\GitHub\Singles-Sorter-ml\machine-learn\custom_ner_model23-12git"
+            self.nlp = load(model_name)
+            self.logger.info(f"Loaded NER model: {model_name}")
+        except Exception as e:
+            self.logger.error(f"Failed to load NER model: {str(e)}")
+            self.nlp = None
+
+
+
+    def process_with_ner(self, text):
+        if not self.nlp:
+            return []
+        
+        doc = self.nlp(text)
+        return [ent.text for ent in doc.ents if ent.label_ == "SINGER"]
+
+
+
 
 
     def progress_display(self, len_amount):
@@ -587,10 +611,12 @@ class MusicSorter:
 
 
     def artists_from_song(self, my_file):
-        split_file = os.path.split(my_file)[1]
+        split_file = os.path.splitext(os.path.basename(my_file))[0]
         split_file = split_file.replace('_', ' ').replace('-', ' ')
 
         found_artists = []
+
+        # Check filename using original logic
         for source_name, target_name in self.singer_list:
             if source_name in split_file:
                 exact = check_exact_name(split_file, source_name)
@@ -599,7 +625,10 @@ class MusicSorter:
 
         if not found_artists:
             try:
+                """
                 metadata_file = load_file(my_file)
+
+                # Check artist metadata
                 artist = metadata_file['artist'].value
                 if artist:
                     artist = fix_jibrish(artist, "heb")
@@ -614,6 +643,7 @@ class MusicSorter:
                         if check_answer:
                             found_artists.append(artist)
                 
+                # Check title metadata
                 if not found_artists:
                     title = metadata_file['title'].value
                     if title:
@@ -623,12 +653,19 @@ class MusicSorter:
                                 exact = check_exact_name(title, source_name)
                                 if exact:
                                     found_artists.append(target_name)
+                """
+
+                # If still no artists found, use NER on filename and title
+                if not found_artists and self.nlp:
+                    found_artists = self.process_with_ner(split_file)
+
             except UnicodeDecodeError as e:
-                print(f"Error decoding metadata in file {my_file}: {e}")
+                self.logger.error(f"Error decoding metadata in file {my_file}: {e}")
             except Exception as e:
-                print(f"An unexpected error occurred with file {my_file}: {e}")
+                self.logger.error(f"An unexpected error occurred with file {my_file}: {e}")
 
         return found_artists if found_artists else None
+
     
 
     def check_artist(self, artist):

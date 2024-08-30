@@ -2,6 +2,7 @@ Model,F1 Score,Precision,Recall
 custom_ner_model23git,0.900149,0.977346,0.834254
 custom_ner_model23-4git,0.896142,0.967949,0.834254
 custom_ner_model23-1git,0.895522,0.974026,0.828729
+custom_ner_model24git,0.895126,0.961905,0.837017
 custom_ner_model22git,0.891566,0.957929,0.833803
 custom_ner_model23-3git,0.889894,0.980066,0.814917
 custom_ner_model23-5git,0.889881,0.964516,0.825967
