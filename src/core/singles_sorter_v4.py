@@ -212,8 +212,15 @@ class MusicSorter:
                 return False, False, None, None
             
             # בדוק אם יש ספריות משנה (לאלבומים בדרך כלל אין ספריות משנה)
-            if any(os.path.isdir(os.path.join(folder_path, item)) for item in os.listdir(folder_path)):
+            folder_count = sum(os.path.isdir(os.path.join(folder_path, item)) for item in os.listdir(folder_path))
+
+            if folder_count == 1:
+                contain_folder = True
+            elif folder_count > 1:
                 return False, False, None, None
+            else:
+                contain_folder = False                
+                
 
             # נתח מטא נתונים של הקבצים
             album_names = []
@@ -272,8 +279,8 @@ class MusicSorter:
                 if len(set(album_names)) == 1:
                     is_album = True
 
-                # אם מעל 60% אך פחות מ-100% מהקבצים מכילים שם אלבום זהה, יתבצע דילוג על התיקיה
-                elif 1 > album_name_consistency >= 0.6:
+                # אם מעל 60% אך פחות מ-100% מהקבצים מכילים שם אלבום זהה, יתבצע דילוג על התיקיה, בתנאי שהתיקיה לא מכילה תיקיות משנה
+                elif 1 > album_name_consistency >= 0.6 and not contain_folder:
                     self.logger.info(f"An inconsistency was found in the album names, it will be skipped to be safe: {folder_path}")
                     return True, False, None, None
                 # אם יש שמות אלבומים מעורבים - התיקיה תזוהה כתיקית סינגלים
@@ -283,6 +290,11 @@ class MusicSorter:
             # קבע אם יש לעבד את האלבום או לדלג עליו
             should_process = False
             main_artist = None
+
+            # דילוג על התיקיה אם היא מזוהה כאלבום, אך מכילה תיקיה פנימית
+            if is_album and contain_folder:
+                self.logger.info(f"An album will be skipped, because it contains an internal folder: {folder_path}")
+                return True, False, None, None
 
             # בדיקה אם שירי האלבום מכילים שם אמן
             if is_album:
