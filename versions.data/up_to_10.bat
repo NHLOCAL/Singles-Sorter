@@ -10,7 +10,7 @@ echo                         !תבצועמהו השדחה הסרגה דרת דימ
 echo.
 timeout 3
 
-start https://nhlocal.github.io/Singles-Sorter/site/download.html
+start https://nhlocal.github.io/Singles-Sorter/site/download?utm_source=singles_sorter_program&utm_medium=desktop
 
 del %0%
 

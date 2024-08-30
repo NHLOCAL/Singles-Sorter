@@ -1,48 +1,47 @@
 /* Button hover effect */
 .button-image:hover {
-opacity: 0.95;
-transform: scale(0.98);
-transition: all 0.3s ease-in-out;
-cursor: pointer;
+  opacity: 0.95;
+  transform: scale(0.98);
+  transition: all 0.3s ease-in-out;
+  cursor: pointer;
 }
 
 main {
-margin-top: 30px;
+  margin-top: 30px;
 }
 
 /* Top bar menu */
-
-*  {
+* {
   margin: 0;
   padding: 0;
 }
 
 .topnav {
-padding: 10px;
-text-align: center;
-height: 60px;
-width: 100%;
-z-index: 0;
-top: 0;
-right: 0;
-background-color: #005E8A;
-box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 10px;
+  text-align: center;
+  height: 60px;
+  width: 100%;
+  z-index: 0;
+  top: 0;
+  right: 0;
+  background-color: #005E8A;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Navigation menu links */
 .topnav h3 {
-font-size: 24px;
-font-weight: 600;
-text-transform: uppercase;
-letter-spacing: 2px;
-margin: 0;
-padding: 0 20px;
-line-height: 60px;
-display: inline-block;
-transition: all 0.2s ease-in-out;
-background-color: #fff;
-color: #005E8A;
-border-radius: 5px;
+  font-size: 24px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin: 0;
+  padding: 0 20px;
+  line-height: 60px;
+  display: inline-block;
+  transition: all 0.2s ease-in-out;
+  background-color: #fff;
+  color: #005E8A;
+  border-radius: 5px;
 }
 
 /* Default link style for top bar */
@@ -63,25 +62,24 @@ border-radius: 5px;
   background-color: #C0C0C0;
 }
 
-
 /* Content on the left side */
 .left_item {
-left: 50px;
-float: left;
-top: 5px;
-position: absolute;
+  left: 50px;
+  float: left;
+  top: 5px;
+  position: absolute;
 }
 
 /* Button style */
 a:link.butt, a:visited.butt {
-padding: 10px;
-text-align: center;
-border-radius: 5px;
-text-decoration: none;
-display: inline-block;
-background-color: #fff;
-color: black;
-font-weight: bold;
+  padding: 10px;
+  text-align: center;
+  border-radius: 5px;
+  text-decoration: none;
+  display: inline-block;
+  background-color: #fff;
+  color: white;
+  font-weight: bold;
 }
 
 a:hover.butt, a:active.butt {
@@ -91,13 +89,13 @@ a:hover.butt, a:active.butt {
 
 /* Centered red button style */
 a:link.center_butt, a:visited.center_butt {
-border-radius: 10px;
-background-color: #f44336;
-color: white;
-padding: 15px 25px;
-text-align: center;
-text-decoration: none;
-display: inline-block;
+  border-radius: 10px;
+  background-color: #f44336;
+  color: white;
+  padding: 15px 25px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
 }
 
 a:hover.center_butt, a:active.center_butt {
@@ -113,112 +111,126 @@ body {
 /* הגדרת הודעה קופצת */
 .alert {
   border-radius: 10px;
-  background-color: #0800E0;
-  width: 70%;
-  color: white;
-  padding: 25px 25px;  
+  background-color: #F097FF;
+  max-width: 450px;
+  margin: 20px auto;
+  padding: 15px;
   text-align: center;
   text-decoration: none;
-  margin: auto;
+  position: relative;
+  box-shadow: 2px 4px 8px rgba(0, 0, 0.2, 0.4);
+}
+
+.close-container {
+  position: absolute;
+  top: 10px;
+  right: 10px;
 }
 
 .closebtn {
-  margin-left: 15px;
-  color: white;
+  color: #FF4D00;
   font-weight: bold;
-  float: right;
-  font-size: 22px;
-  line-height: 20px;
+  font-size: 20px;
   cursor: pointer;
   transition: 0.3s;
 }
 
 .closebtn:hover {
-  color: black;
+  color: #0077B6;
 }
 
-/* Responsive top bar for smaller screens */
+.content {
+  margin: 10px;
+}
+
+.promo-text {
+  color: #0015FF;
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 12px;
+}
+
+.description {
+  font-size: 16px;
+  margin-top: 5px;
+  margin-bottom: 20px;
+}
+
+.cta-button {
+  display: inline-block;
+  padding: 10px 20px;
+  background-color: #0015FF;
+  color: white;
+  font-weight: bold;
+  text-decoration: none;
+  border-radius: 5px;
+  transition: background-color 0.3s;
+}
+
+.cta-button:hover {
+  background-color: #000A7D;
+}
+
+/* Responsive for smaller screens */
 @media screen and (max-width: 767px) {
-.topnav {
-height: auto;
-padding: 10px 0;
-position: static;
-overflow: hidden;
-}
-
-.topnav img {
-position: static;
-margin: 0 auto;
-}
-
-img.button-image {
-  max-width: 100%;
-  height: auto;
-}
-
-.topnav h3 {
-font-size: 20px;
-padding: 10px 0;
-display: block;
-}
-
-.topnav a {
-display: block;
-float: none;
-text-align: center;
-padding: 10px;
-}
-
-.topnav a:hover,
-.topnav a:active,
-.topnav h3.current {
-color: #005E8A;
-}
-
-/* Content on the left side */
-.topnav .left_item {
-left: auto;
-right: auto;
-float: center;
-position: static;
-}
-  
-  /* Adjust the size and position of the iframe */
-div[style="width:100%; float:center; height:100%; margin:30px; position: fixed;"] {
-    margin: 0;
-    height: calc(100% - 56px); /* Subtract the height of the top navigation menu */
+  .topnav {
+    height: auto;
+    padding: 10px 0;
+    position: static;
+    overflow: hidden;
   }
-}
 
+  .topnav img {
+    position: static;
+    margin: 0 auto;
+  }
 
-.fixed-bottom {
-    position: fixed;
-    bottom: 0;
-    width: 100%;
-    height: 20vh;
-    background-color: #FFF5A6;
-    padding: 30px;
+  img.button-image {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .topnav h3 {
+    font-size: 20px;
+    padding: 10px 0;
+    display: block;
+  }
+
+  .topnav a {
+    display: block;
+    float: none;
     text-align: center;
+    padding: 10px;
   }
 
+  .topnav a:hover,
+  .topnav a:active,
+  .topnav h3.current {
+    color: #005E8A;
+  }
+
+  /* Content on the left side */
+  .topnav .left_item {
+    left: auto;
+    right: auto;
+    float: center;
+    position: static;
+  }
+}
 
 /* הגדרת עיצוב פס גלילה */
-  
-  ::-webkit-scrollbar {
-    width: 8px;
-  }
+::-webkit-scrollbar {
+  width: 8px;
+}
 
+::-webkit-scrollbar-thumb {
+  background-color: #0077b3;
+  border-radius: 4px;
+}
 
-  ::-webkit-scrollbar-thumb {
-    background-color:  #0077b3;
-    border-radius: 4px;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background-color:  #005580;
-  }
-  
-
+::-webkit-scrollbar-thumb:hover {
+  background-color: #005580;
+}
 
 /* הגדרת הקו המהבהב */
 .search-input {
@@ -252,32 +264,196 @@ div[style="width:100%; float:center; height:100%; margin:30px; position: fixed;"
   border-color: #2d4373;
 }
 
-
 .about-program {
   padding: 30px;
-  width: 40%;
+  width: 100%;
   text-align: center;
 }
 
-
 .about-program h3 {
-  margin-bottom: 10px;	
+  margin-bottom: 10px;
 }
-
 
 .about-program p {
-  margin-bottom: 30px;	
+  margin-bottom: 30px;
 }
-
 
 /* CSS for the animated effect */
 .scale-div {
   opacity: 0;
   transform: scale(0.8);
   transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+  padding: 30px 0;
 }
 
 .scale-div.active {
   opacity: 1;
   transform: scale(1);
 }
+
+/* אפקטים של זוהר עבור כפתור הקישור */
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: 200px 0;
+  }
+}
+
+/* Apply styles to your button */
+.butt {
+  display: inline-block;
+  padding: 10px 20px;
+  font-size: 18px;
+  background: linear-gradient(90deg, #36618E 25%, #4B82BE 50%, #36618E 75%);
+  color: white;
+  background-size: 200% 100%;
+  text-decoration: none;
+  animation: shimmer 2s infinite;
+  transition: background-position 0.5s ease;
+}
+
+
+/* Feature section styles */
+.container {
+  max-width: 100#;
+  margin: 0 auto;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.feature-list {
+  display: flex;
+  flex-direction: column;
+  padding-right: 20px;
+  padding-left: 20px;
+  gap: 30px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+
+.feature-title {
+  color: #01244A;
+  padding-bottom: 10px;
+}
+
+.feature-item {
+  background-color: #ffffff;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  display: flex;
+  align-items: center; 
+}
+
+.feature-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.feature-icon {
+  font-size: 2em; /* הגדלת גודל הסמלים */
+  margin-left: 20px;
+  color: #01244A;
+}
+
+
+
+.button-container {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 15px;
+  margin-bottom: 50px;
+}
+
+.custom-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 12px 24px;
+  font-size: 18px;
+  font-weight: bold;
+  text-decoration: none;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.download-button {
+  background-color: #0077B6;
+  color: white;
+}
+
+.download-button:hover {
+  background-color: #005E8A;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+.github-button {
+  background-color: #24292e;
+  color: white;
+}
+
+.github-button:hover {
+  background-color: #1a1e21;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+.button-icon {
+  margin-left: 10px;
+  font-size: 24px;
+}
+
+
+
+.steps {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 20px; /* מרווח בין השלבים */
+}
+
+.step {
+  text-align: center;
+  margin-bottom: 20px; 
+  width: 200px; /* התאמת רוחב לפי הצורך */
+}
+
+.icon-container { 
+    display: flex; 
+    justify-content: center; 
+    margin-bottom: 10px; /* מרווח בין האייקון לטקסט */
+	
+}
+
+.steps .step .icon-container i.feature-icon {
+  margin-left: 0; 
+}
+
+.step i.feature-icon {
+  font-size: 3em;
+}
+
+.step h3 {
+  padding-bottom: 10px;
+}
+
+
+
+.fixed-bottom {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    height: 16vh;
+    background-color: #FFF5A6;
+    padding-bottom: 30px;
+	padding-top: 30px;
+    text-align: center;
+  }

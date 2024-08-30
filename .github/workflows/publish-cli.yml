@@ -1,0 +1,52 @@
+name: Build and Release CLI
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        pip install pyinstaller music_tag jibrish_to_hebrew
+
+    - name: Build EXE
+      run: |
+        pyinstaller --onefile --add-data "src/core/app/singer-list.csv;app" --name "Singles-Sorter" --icon "src/core/assets/icon.ico" "src/core/singles_sorter_v4.py"
+
+    - name: Get the version
+      id: get_version
+      shell: bash
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        echo "RELEASE_TITLE=מסדר הסינגלים $VERSION" >> $GITHUB_OUTPUT
+
+    - name: Rename output file
+      shell: pwsh
+      run: |
+        $version = "${{ steps.get_version.outputs.VERSION }}"
+        Move-Item -Path "dist\Singles-Sorter.exe" -Destination "dist\singles-sorter-cli-$version.exe"
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2.0.6
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        name: ${{ steps.get_version.outputs.RELEASE_TITLE }}
+        draft: true
+        prerelease: true
+        files: ./dist/singles-sorter-cli-${{ steps.get_version.outputs.VERSION }}.exe

@@ -3,77 +3,254 @@
 <head>
   <meta charset="utf-8">
   <title>דף ההורדות</title>  
+  <meta name="viewport" content="height=device-height, width=device-width, initial-scale=1.0">
   <meta name="description" content="דף ההורדות של תוכנת מסדר הסינגלים, להורדה, download">
   <meta name="keywords" content="תוכנה שמסדרת שירים חרדיים לפי אמן, download, להורדה, מסדר הסינגלים">
   <link rel="stylesheet" href="styles.css">
+  <link rel="canonical" href="https://nhlocal.github.io/Singles-Sorter/site/download" />
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <body dir="rtl" style="background-color:#FFFEDB;">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-TGD4VQW4X8"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-TGD4VQW4X8"></script>
+  <script src="https://nhlocal.github.io/general-settings.js"></script>
 
-  gtag('config', 'G-TGD4VQW4X8');
-</script>
+  <style>
+    .download-versions {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      padding: 30px;
+
+    }
+
+    .download-versions>div {
+      flex: 1;
+      min-width: 200px;
+      margin: 10px;
+      padding: 15px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+
+    .download-option {
+      position: relative;
+      background-color: #f5f5f5;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      width: 300px;
+      text-align: center;
+      flex-wrap: wrap;
+      margin: 50px auto;
+      justify-content: center;
+      max-width: 350px;
+    }
+
+
+    .download-option h3 {
+      color: #005E8A;
+      margin-bottom: 15px;
+      font-size: 1.4em;
+    }
+
+    .download-option p {
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    .download-title {
+      text-align: center;
+      color: #005E8A;
+      margin-top: 40px;
+      font-size: 2em;
+    }
+
+    .icon {
+      font-size: 48px;
+      color: #005E8A;
+      margin-bottom: 20px;
+    }
+
+    body {
+      font-family: Tahoma;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topnav {
+      /* Keep your existing styles */
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    .content-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    main {
+      margin-top: 0;
+    }
+
+    .fixed-bottom {
+      position: sticky;
+      bottom: 0;
+      z-index: 1000;
+    }
+
+    /* Scrollbar styles for the content container */
+    .content-container::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .content-container::-webkit-scrollbar-thumb {
+      background-color: #0077b3;
+      border-radius: 4px;
+    }
+
+    .content-container::-webkit-scrollbar-thumb:hover {
+      background-color: #005580;
+    }
+
+
+    .download-option.recommended {
+      border: 2px solid #0077B6;
+      box-shadow: 0 0 10px rgba(0, 119, 182, 0.3);
+    }
+
+
+    .badge {
+      position: absolute;
+      top: -10px;
+      right: 10px;
+      padding: 3px 7px;
+      font-size: 12px;
+      font-weight: bold;
+      color: white;
+      background-color: #0077B6;
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-weight: bold;
+    }
+  </style>
 </head>
 
 <body>
+  <div class="topnav">
+    <a class="left_item" href="https://nhlocal.github.io/?utm_source=download-page&utm_medium=site" title="לשאר התוכנות של היוצר">
+    <img width="50" style="border-radius: 48%;" src="NH.LOCAL.jpg" alt="הסמל של המחבר"></a>
+    <a href="https://nhlocal.github.io/Singles-Sorter/?utm_source=download-page&utm_medium=site">עמוד ראשי</a>
+    <h3>דף ההורדות</h3>
+  </div>
 
-
-<div style="background-color: blue; color: lightyellow; padding: 40px; text-align: center; width: 450px; font-size: 22px; display: flex; align-items: center; justify-content: center; margin: 50px auto; border-radius: 10px; font-weight: bold;">
- 👀מעוניין להצטרף לקבלת 500 ג'יגה של מוזיקה בדרייב?
-  <br>
-  <a href="https://forms.gle/couZadvYGJ41hhYs7" target="_blank" style="color: green; background-color: yellow; padding: 5px; border-radius: 5px; font-weight: bold;">לחץ כאן!</a>
-  
-</div>
-
-
-<h1 id="countdown" style="text-align:center"></h1>
-
-
-<div class="fixed-bottom">
-  <h2>רוצה להתעדכן ראשון על הגרסה הבאה?</h2>
-  <br>
-    <a class="butt" id="registing" href="https://mail.google.com/mail/u/0/?view=cm&fs=1&tf=1&source=mailto&su=%D7%9E%D7%A2%D7%95%D7%A0%D7%99%D7%99%D7%9F+%D7%9C%D7%94%D7%A6%D7%98%D7%A8%D7%A3+%D7%9C%D7%A7%D7%91%D7%9C%D7%AA+%D7%A2%D7%93%D7%9B%D7%95%D7%A0%D7%99%D7%9D&to=mesader-singelim%2Bsubscribe@googlegroups.com" target="_blank">שלח מייל כעת</a>
-</div>
-
-<script>
-  var countdown = 4;
-  var intervalId = setInterval(function() {
-    countdown--;
-    document.getElementById("countdown").innerHTML = "<span style='color:red'>" + countdown + "</span> ההורדה שלך תתחיל מיד!... ";
-    if (countdown === 0) {
-      clearInterval(intervalId);
-    }
-  }, 1000);
-
-  // הגדרת משתנה להחלפה בכל עדכון גרסה
-  var cur_ver = "";
-
-  // השהייה של מספר שניות לפני הורדה וסגירת הכרטיסיה
-  setTimeout(myFunc, 4000);
-
-  // הורדת הגרסה האחרונה
-  function myFunc() {
-    fetchFileContent('https://nhlocal.github.io/Singles-Sorter/versions.data/new-ver-exist')
-      .then(fileContent => {
+  <div class="content-container" style="background-color: #ECF5FF">
+    <main>
+      <h2 class="download-title">בחר את הגרסה המתאימה לך:</h2>
 	  
-        cur_ver = fileContent.trim();
+	  <div class="download-versions">
+		<div class="download-option">
+		  <i class="icon fab fa-usb"></i>
+		  <h3>גרסה ניידת</h3>
+		  <p>גרסה ניידת שאינה דורשת התקנה. מתאימה לשימוש על דיסק און קי או לניוד בין מחשבים</p>
+		  <a href="#" class="butt download-link" data-type="portable">הורד גרסה ניידת</a>
+		</div>
 
-        document.location.href = 'https://github.com/NHLOCAL/Singles-Sorter/releases/download/v' + cur_ver + '/Singles-Sorter-' + cur_ver + '.exe';
-      })
-  }
+		<div class="download-option recommended">
+		  <span class="badge">מומלץ</span>
+		  <i class="icon fas fa-desktop"></i>
+		  <h3>גרסת התקנה</h3>
+		  <p>התקנה מלאה עם ממשק גרפי ידידותי למשתמש. מומלץ לרוב המשתמשים</p>
+		  <a href="#" class="butt download-link" data-type="standard">הורד גרסת התקנה</a>
+		</div>
+		
+		<div class="download-option">
+		  <i class="icon fab fa-android"></i>
+		  <h3>גרסת אנדרואיד</h3>
+		  <p>גרסה מותאמת למכשירי אנדרואיד. מאפשרת שימוש בתוכנה על הטלפון, הנגן או הטאבלט שלך</p>
+		  <a href="#" class="butt download-link" data-type="android">הורד גרסת אנדרואיד</a>
+		</div>
 
-  function fetchFileContent(url) {
-    return fetch(url)
-      .then(response => response.text());
-  }
-</script>
+		<div class="download-option">
+		  <i class="icon fas fa-terminal"></i>
+		  <h3>גרסת CLI</h3>
+		  <p>גרסת ממשק שורת הפקודה למשתמשים מתקדמים. מאפשרת אוטומציה ושילוב בסקריפטים</p>
+		  <a href="#" class="butt download-link" data-type="cli">הורד גרסת CLI</a>
+		</div>
 
+	  </div>
+    </main>
+  </div>
 
+  <div class="fixed-bottom" style="background-color: #cde3fc">
+    <h2>מעוניין לקבל גישה למאגר מוזיקה בדרייב</h2>
+    <h2>המכיל מעל 70,000 שירים - ב-50% הנחה?</h2>
+    <br>
+    <a class="butt" id="registing"
+      href="https://docs.google.com/forms/d/e/1FAIpQLSffA3oncsWKu06mF7B5k39rz2gjMYrzYHGJAkfJIbBmuE79uQ/viewform?usp=pp_url&entry.1611797152=https://nhlocal.github.io/singles-sorter"
+      target="_blank">כן, אני רוצה!</a>
+  </div>
 
+  <script>
+    async function getLatestVersion() {
+      try {
+        const response = await fetch('https://api.github.com/repos/NHLOCAL/Singles-Sorter/releases/latest');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        return data.tag_name.replace('v', ''); // Removing 'v' prefix if present
+      } catch (error) {
+        console.error("Error fetching latest version:", error);
+        return "13.1"; // Default version if fetch fails
+      }
+    }
+	
+	
+    async function getDownloadUrl(type) {
+      const version = await getLatestVersion();
+      const baseUrl = `https://github.com/NHLOCAL/Singles-Sorter/releases/download/v${version}/Singles-Sorter-`;
+
+      switch (type) {
+        case 'standard':
+          return `${baseUrl}Installer-${version}.exe`;
+        case 'portable':
+          return `${baseUrl}Portable-${version}.zip`;
+        case 'cli':
+          return `${baseUrl}cli-${version}.exe`;
+        case 'android':
+          return `${baseUrl}${version}.apk`;
+        default:
+          return '';
+      }
+    }
+
+    document.querySelectorAll('.download-link').forEach(link => {
+      link.addEventListener('click', async function (e) {
+        e.preventDefault();
+        const type = this.getAttribute('data-type');
+        const url = await getDownloadUrl(type);
+        window.location.href = url;
+      });
+    });
+
+    // Update version number on the page
+    (async function updateVersionDisplay() {
+      const version = await getLatestVersion();
+      const versionElements = document.querySelectorAll('.version-number');
+      versionElements.forEach(el => {
+        el.textContent = version;
+      });
+    })();
+  </script>
 </body>
+
 </html>
