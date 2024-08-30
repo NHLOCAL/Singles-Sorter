@@ -30,7 +30,7 @@ jobs:
     - name: Rename output file
       shell: pwsh
       run: |
-        Move-Item -Path "dist\Singles-Sorter.exe" -Destination "dist\singles-sorter-cli.exe"
+        Move-Item -Path "dist\Singles-Sorter.exe" -Destination "dist\singles-sorter-cli-ml.exe"
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4

@@ -44,7 +44,7 @@ class MusicSorter:
 
         # Load the NER model
         try:
-            model_name = r"C:\Users\משתמש\Documents\GitHub\Singles-Sorter-ml\machine-learn\custom_ner_model23-12git"
+            model_name = r"C:\Users\משתמש\Documents\GitHub\Singles-Sorter-ml\machine-learn\custom_ner_model23git"
             self.nlp = load(model_name)
             self.logger.info(f"Loaded NER model: {model_name}")
         except Exception as e:
