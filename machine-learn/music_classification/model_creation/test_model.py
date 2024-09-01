@@ -29,6 +29,14 @@ with open('test_set.csv', newline='', encoding='utf-8') as csvfile:
 # חיזוי על כל הדאטה
 predicted = loaded_model.predict(texts)
 
+# יצירת קובץ תוצאות
+with open('classified_strings.csv', 'w', newline='', encoding='utf-8') as outfile:
+    writer = csv.writer(outfile)
+    writer.writerow(['מחרוזת', 'סיווג אמיתי', 'סיווג חזוי'])
+
+    for i in range(len(texts)):
+        writer.writerow([texts[i], label_mapping[labels[i]], label_mapping[predicted[i]]])
+
 # יצירת Confusion Matrix
 cm = metrics.confusion_matrix(labels, predicted)
 
@@ -42,7 +50,7 @@ plt.title('Confusion Matrix')
 plt.show()
 
 # הדפסת דוח סיווג
-print(metrics.classification_report(labels, predicted, target_names=label_mapping.values()))
+print(metrics.classification_report(labels, predicted, target_names=label_mapping.values(), zero_division=0)) 
 
 # חישוב דיוק כללי
 accuracy = metrics.accuracy_score(labels, predicted)
