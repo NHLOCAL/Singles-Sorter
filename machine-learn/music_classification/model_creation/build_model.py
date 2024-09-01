@@ -22,7 +22,11 @@ with open('dataset.csv', newline='', encoding='utf-8') as csvfile:
     for row in reader:
         try:
             texts.append(row['text'])
-            labels.append(int(row['label']))  # המרת תוויות למספרים שלמים
+            label_value = row['label']
+            if label_value.isdigit():  # בדיקה אם הערך הוא מספר שלם
+                labels.append(int(label_value))
+            else:
+                print(f"ערך לא תקין בתווית: {label_value}, דילוג על שורה")
         except Exception as e:
             print(f"שגיאה בקריאת שורה: {e}, דילוג על שורה")
 
