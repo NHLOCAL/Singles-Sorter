@@ -1,5 +1,5 @@
 מחרוזת,סיווג אמיתי,סיווג חזוי
--גולדוואג,ARTIST,RANDOM
+-גולדוואג,ARTIST,ALBUM
 01.נצח ישראל,ARTIST,SONG
 01.קבלת פנים,ARTIST,SONG
 03.אנחנו ניסים,ARTIST,SONG
@@ -43,10 +43,10 @@ i. grave,ARTIST,RANDOM
 just do it,ARTIST,SONG
 ko keili,ARTIST,RANDOM
 lavan garti,ARTIST,RANDOM
-love you,ARTIST,RANDOM
-ma nehedar,ARTIST,SONG
+love you,ARTIST,SONG
+ma nehedar,ARTIST,RANDOM
 orech yumim,ARTIST,RANDOM
-purim breslev,ARTIST,RANDOM
+purim breslev,ARTIST,SONG
 shma koleinu,ARTIST,RANDOM
 ton pere,ARTIST,RANDOM
 toras hashem,ARTIST,SONG
@@ -60,7 +60,7 @@ toras hashem,ARTIST,SONG
 ¬ ק ש ש,ARTIST,RANDOM
 ¬ ש,ARTIST,RANDOM
 îìê îìëé,ARTIST,RANDOM
-אַיֶכָּה יצירת,ARTIST,RANDOM
+אַיֶכָּה יצירת,ARTIST,ALBUM
 אבא גבר,ARTIST,RANDOM
 אבא שבשמיים,ARTIST,RANDOM
 אבא שכזה,ARTIST,RANDOM
@@ -69,7 +69,7 @@ toras hashem,ARTIST,SONG
 אבדע פי מן,ARTIST,RANDOM
 אבו מאזן,ARTIST,ARTIST
 אבטח אבי,ARTIST,ARTIST
-אבטח בך,ARTIST,SONG
+אבטח בך,ARTIST,RANDOM
 אבי אבי,ARTIST,ARTIST
 אבי אנא,ARTIST,SONG
 אבי בוזגלו,ARTIST,ARTIST
@@ -131,7 +131,7 @@ toras hashem,ARTIST,SONG
 אדולף קטלה,ARTIST,ARTIST
 אדומי הראש,ARTIST,RANDOM
 אדון אשר,ARTIST,ARTIST
-אדון חולי,ARTIST,SONG
+אדון חולי,ARTIST,RANDOM
 אדון שקלים,ARTIST,RANDOM
 אדיר איום,ARTIST,ARTIST
 אדיר במרומים,ARTIST,ARTIST
@@ -155,7 +155,7 @@ toras hashem,ARTIST,SONG
 אדם צריך,ARTIST,RANDOM
 אדם שבע,ARTIST,RANDOM
 אדם שירה,ARTIST,ARTIST
-אדמת קודש,ARTIST,RANDOM
+אדמת קודש,ARTIST,ALBUM
 אדר מירום,ARTIST,ARTIST
 אדר עז,ARTIST,ARTIST
 אדר עח,ARTIST,ARTIST
@@ -163,10 +163,10 @@ toras hashem,ARTIST,SONG
 אה יאי,ARTIST,RANDOM
 אהבה סודית,ARTIST,ALBUM
 אהבה שלומי,ARTIST,ARTIST
-אהבת צפורה,ARTIST,SONG
-אהה...ה,ARTIST,RANDOM
+אהבת צפורה,ARTIST,ALBUM
+אהה...ה,ARTIST,ALBUM
 אהוב ליבי,ARTIST,ALBUM
-אהובת לבבי,ARTIST,ARTIST
+אהובת לבבי,ARTIST,ALBUM
 אהין זאל,ARTIST,RANDOM
 אהל יוסף,ARTIST,ARTIST
 אהל מועד,ARTIST,RANDOM
@@ -184,7 +184,7 @@ toras hashem,ARTIST,SONG
 אהרן-רזאל,ARTIST,SONG
 אהרן_רזאל,ARTIST,RANDOM
 אודה ויזניץ,ARTIST,ALBUM
-אודה לאל,ARTIST,ARTIST
+אודה לאל,ARTIST,ALBUM
 אודה לאלי,ARTIST,ALBUM
 אודי אוסטר,ARTIST,ARTIST
 אוהד ויחון,ARTIST,ARTIST
@@ -209,7 +209,7 @@ toras hashem,ARTIST,SONG
 אוכל חמין,ARTIST,RANDOM
 אולימפיאדה ביוון,ARTIST,RANDOM
 אולפני בודקה,ARTIST,RANDOM
-אומץ גבורותיך,ARTIST,RANDOM
+אומץ גבורותיך,ARTIST,ALBUM
 און אלעמאל,ARTIST,ARTIST
 און ביעקב,ARTIST,ARTIST
 און בעטן,ARTIST,ARTIST
@@ -223,48 +223,48 @@ toras hashem,ARTIST,SONG
 און שעפסל,ARTIST,ARTIST
 אונטרן חופה,ARTIST,RANDOM
 אוסרי לגפן,ARTIST,RANDOM
-אוף אוריגין,ARTIST,ARTIST
+אוף אוריגין,ARTIST,RANDOM
 אוף פורים,ARTIST,SONG
 אופטי גופטי,ARTIST,RANDOM
 אופטיקה הלפרין,ARTIST,ARTIST
 אופטלגין לגמלים,ARTIST,RANDOM
 אופל אלמנה,ARTIST,RANDOM
 אופנוע חולף,ARTIST,RANDOM
-אופניים בבמבה,ARTIST,RANDOM
-אופניים חשמליים,ARTIST,RANDOM
+אופניים בבמבה,ARTIST,ALBUM
+אופניים חשמליים,ARTIST,ALBUM
 אופסייד סטורי,ARTIST,RANDOM
 אוקי טוקי,ARTIST,RANDOM
-אור אדום,ARTIST,ARTIST
+אור אדום,ARTIST,ALBUM
 אור באפלה,ARTIST,ALBUM
 אור בחדר,ARTIST,ARTIST
 אור בחושך,ARTIST,ALBUM
 אור בליבי,ARTIST,ALBUM
 אור בצל,ARTIST,ALBUM
 אור בקצה,ARTIST,ALBUM
-אור גדול,ARTIST,RANDOM
-אור גנוז,ARTIST,ARTIST
+אור גדול,ARTIST,ALBUM
+אור גנוז,ARTIST,ALBUM
 אור דודי,ARTIST,ARTIST
 אור האל,ARTIST,ARTIST
-אור הארות,ARTIST,ARTIST
+אור הארות,ARTIST,ALBUM
 אור הגאולה,ARTIST,ALBUM
-אור היזמת,ARTIST,ARTIST
+אור היזמת,ARTIST,ALBUM
 אור הנר,ARTIST,SONG
 אור וירושלים,ARTIST,ARTIST
-אור זרוע,ARTIST,ARTIST
+אור זרוע,ARTIST,ALBUM
 אור חדש,ARTIST,ALBUM
 אור חיים,ARTIST,ARTIST
 אור יהודה,ARTIST,ARTIST
 אור יהושע,ARTIST,ARTIST
-אור כשלמה,ARTIST,ARTIST
+אור כשלמה,ARTIST,ALBUM
 אור מזמרים,ARTIST,ARTIST
-אור פניך,ARTIST,SONG
+אור פניך,ARTIST,ALBUM
 אור קדוש,ARTIST,ARTIST
 אור שמואל,ARTIST,ARTIST
-אורגינל מדליי,ARTIST,RANDOM
+אורגינל מדליי,ARTIST,ALBUM
 אורגן לתלמיד,ARTIST,RANDOM
-אורה כרמיאל,ARTIST,ARTIST
+אורה כרמיאל,ARTIST,SONG
 אורות נוצצים,ARTIST,ALBUM
-אורח פורח,ARTIST,RANDOM
+אורח פורח,ARTIST,ALBUM
 אורח שכנזי,ARTIST,RANDOM
 אוריאל גם,ARTIST,RANDOM
 אוריאל שלומי,ARTIST,ARTIST
@@ -279,11 +279,11 @@ toras hashem,ARTIST,SONG
 אותם באויר,ARTIST,RANDOM
 אזי בשלישי,ARTIST,RANDOM
 אזכרה אלקים,ARTIST,ALBUM
-אזכרה חטאי,ARTIST,SONG
+אזכרה חטאי,ARTIST,ALBUM
 אזכרה נגינתי,ARTIST,ALBUM
 אזכרה שמך,ARTIST,SONG
 אזמין אושפיזין,ARTIST,RANDOM
-אזמיר בשבחין,ARTIST,SONG
+אזמיר בשבחין,ARTIST,RANDOM
 אזעקה קצרה,ARTIST,RANDOM
 אזעקות חירום,ARTIST,RANDOM
 אזעקת גניבה,ARTIST,RANDOM
@@ -291,8 +291,8 @@ toras hashem,ARTIST,SONG
 אחד בדור,ARTIST,RANDOM
 אחד מהם,ARTIST,RANDOM
 אחד קורנפלד,ARTIST,RANDOM
-אחדות לאומית,ARTIST,ARTIST
-אחדות ראפי,ARTIST,ARTIST
+אחדות לאומית,ARTIST,ALBUM
+אחדות ראפי,ARTIST,ALBUM
 אחיי גיבורי,ARTIST,RANDOM
 אחיי ורעיי,ARTIST,RANDOM
 אחיי מאתיופיה,ARTIST,RANDOM
@@ -303,7 +303,7 @@ toras hashem,ARTIST,SONG
 איבערן וואסער,ARTIST,RANDOM
 אידילע שריי,ARTIST,RANDOM
 אידילעך אינאיינעם,ARTIST,RANDOM
-אידיש שניצלער,ARTIST,ARTIST
+אידיש שניצלער,ARTIST,ALBUM
 אידן אונאיינם,ARTIST,ARTIST
 אידן אינאיינם,ARTIST,ARTIST
 אידן אינאיינעם,ARTIST,ARTIST
@@ -322,7 +322,7 @@ toras hashem,ARTIST,SONG
 אייזנבאך גראמן,ARTIST,ARTIST
 אייל וילנר,ARTIST,ARTIST
 איילון דרום,ARTIST,ARTIST
-איילת השחר,ARTIST,RANDOM
+איילת השחר,ARTIST,ALBUM
 איילת חן,ARTIST,ARTIST
 איין טאג,ARTIST,RANDOM
 איינהורן אברהם,ARTIST,ARTIST
@@ -341,14 +341,14 @@ toras hashem,ARTIST,SONG
 אילנגה לפישה,ARTIST,RANDOM
 אילתרו יחד,ARTIST,ALBUM
 אימוץ לרפואה,ARTIST,RANDOM
-אינאיינעס לאמיר,ARTIST,RANDOM
+אינאיינעס לאמיר,ARTIST,SONG
 אינגער רבי,ARTIST,RANDOM
 אינטה עומרי,ARTIST,ARTIST
 אינטלגנציה רגשית,ARTIST,RANDOM
 אינטליגנציה לשונית,ARTIST,RANDOM
 אינטליגנציה רגשית,ARTIST,RANDOM
 אינטערן בריק,ARTIST,RANDOM
-אינטערן חופה,ARTIST,RANDOM
+אינטערן חופה,ARTIST,ALBUM
 איני דר,ARTIST,RANDOM
 איני יודע,ARTIST,RANDOM
 אינם עוזרים,ARTIST,RANDOM
@@ -384,20 +384,20 @@ toras hashem,ARTIST,SONG
 אל נבקש,ARTIST,RANDOM
 אל נורא,ARTIST,RANDOM
 אל קורדובז,ARTIST,RANDOM
-אלבומים חדשה,ARTIST,RANDOM
+אלבומים חדשה,ARTIST,ALBUM
 אלה אזכרה,ARTIST,SONG
 אלה ברכב,ARTIST,RANDOM
 אלה דברים,ARTIST,RANDOM
 אלה היו,ARTIST,RANDOM
 אלה חמדה,ARTIST,SONG
-אלה מועדי,ARTIST,RANDOM
+אלה מועדי,ARTIST,ALBUM
 אלוהי אבי,ARTIST,ARTIST
 אלוהי שבמרום,ARTIST,RANDOM
 אלוהים אשאלה,ARTIST,RANDOM
 אלוהים חי,ARTIST,ALBUM
 אלוירה מאדיגן,ARTIST,RANDOM
 אלוף השחמט,ARTIST,RANDOM
-אלוקיכם אמת,ARTIST,SONG
+אלוקיכם אמת,ARTIST,ALBUM
 אלחי -,ARTIST,ARTIST
 אלטא ניגונים,ARTIST,ALBUM
 אלטע זאכען,ARTIST,RANDOM
@@ -412,7 +412,7 @@ toras hashem,ARTIST,SONG
 אלי גרסנר08,ARTIST,ARTIST
 אלי גרסנר09,ARTIST,ARTIST
 אלי גרסנר10,ARTIST,ARTIST
-אלי הטוב,ARTIST,SONG
+אלי הטוב,ARTIST,ARTIST
 אלי וויס,ARTIST,ARTIST
 אלי חביבי,ARTIST,ARTIST
 אלי חיש,ARTIST,ARTIST
@@ -437,7 +437,7 @@ toras hashem,ARTIST,SONG
 אליהו חי,ARTIST,ARTIST
 אליהו יבנה,ARTIST,ARTIST
 אליהו,ARTIST,ARTIST
-אליהן חי,ARTIST,ALBUM
+אליהן חי,ARTIST,ARTIST
 אליו השי,ARTIST,RANDOM
 אליזר חזן,ARTIST,ARTIST
 אליזרבט ריד,ARTIST,RANDOM
@@ -472,18 +472,18 @@ toras hashem,ARTIST,SONG
 אם אן,ARTIST,RANDOM
 אם יתמהמה,ARTIST,RANDOM
 אםי מאמין,ARTIST,SONG
-אמונה גדולה,ARTIST,RANDOM
+אמונה גדולה,ARTIST,ALBUM
 אמונה שבלב,ARTIST,ALBUM
 אמור אמור,ARTIST,RANDOM
 אמור ליוסף הבכור,ARTIST,RANDOM
 אמור מעט,ARTIST,RANDOM
 אמורי סלם,ARTIST,ARTIST
 אמיר שבט,ARTIST,ARTIST
-אמיתי קאתי,ARTIST,RANDOM
+אמיתי קאתי,ARTIST,ARTIST
 אמלין פנקהרסט,ARTIST,RANDOM
 אמעריטשקע א,ARTIST,RANDOM
 אמץ קהלך,ARTIST,RANDOM
-אמצו לבכם,ARTIST,ARTIST
+אמצו לבכם,ARTIST,ALBUM
 אמרי אש,ARTIST,ARTIST
 אמרי גלאי,ARTIST,ARTIST
 אמרי דעת,ARTIST,ARTIST
@@ -494,23 +494,23 @@ toras hashem,ARTIST,SONG
 אמרי נעם,ARTIST,ARTIST
 אמרי שאול,ARTIST,ARTIST
 אמת בליבי,ARTIST,ALBUM
-אמת טעיתי,ARTIST,RANDOM
-אמת מלכנו,ARTIST,SONG
+אמת טעיתי,ARTIST,ALBUM
+אמת מלכנו,ARTIST,ALBUM
 אן דארק,ARTIST,ARTIST
 אן דודי,ARTIST,ARTIST
 אן דעתי,ARTIST,ARTIST
 אנא עבדה,ARTIST,SONG
 אנה אילך,ARTIST,ARTIST
-אנה אלך,ARTIST,SONG
+אנה אלך,ARTIST,ALBUM
 אנה אפנה,ARTIST,ARTIST
-אנה בכח,ARTIST,ARTIST
+אנה בכח,ARTIST,SONG
 אנה דלווי,ARTIST,ARTIST
 אנה פרנק,ARTIST,ARTIST
 אנו בניך,ARTIST,RANDOM
-אנו עמך,ARTIST,RANDOM
+אנו עמך,ARTIST,ALBUM
 אנו רצים,ARTIST,RANDOM
 אנו שירו,ARTIST,ALBUM
-אנחנו יחד,ARTIST,ALBUM
+אנחנו יחד,ARTIST,SONG
 אנחנו נעלה,ARTIST,RANDOM
 אנחנו נתגבר,ARTIST,RANDOM
 אנחנו עולמך,ARTIST,RANDOM
@@ -524,20 +524,20 @@ toras hashem,ARTIST,SONG
 אנריקו מאסייס,ARTIST,ARTIST
 אנש רחיצנא,ARTIST,RANDOM
 אנשי הבוקר,ARTIST,RANDOM
-אנשי הפורים,ARTIST,SONG
+אנשי הפורים,ARTIST,RANDOM
 אנשי צפת,ARTIST,RANDOM
 אנתוני שור,ARTIST,ARTIST
 אסד לסעודתא,ARTIST,RANDOM
-אסדר לסעודתא,ARTIST,RANDOM
+אסדר לסעודתא,ARTIST,SONG
 אסומה טלולה,ARTIST,RANDOM
 אסור לאיתיאש,ARTIST,RANDOM
 אסור להתייאש,ARTIST,RANDOM
 אסיר ציון בציון,ARTIST,ARTIST
 אסמאס בערבית,ARTIST,RANDOM
 אסף שלום,ARTIST,ARTIST
-אספרה כבודך,ARTIST,ALBUM
+אספרה כבודך,ARTIST,RANDOM
 אספרה שמך,ARTIST,ALBUM
-אסתר המלכה,ARTIST,RANDOM
+אסתר המלכה,ARTIST,ARTIST
 אערך צפצופי,ARTIST,RANDOM
 אפאר מיליאן,ARTIST,RANDOM
 אפונה מתוקה,ARTIST,RANDOM
@@ -576,12 +576,12 @@ toras hashem,ARTIST,SONG
 ארצי שלי,ARTIST,RANDOM
 ארצנו הקטנטונת,ARTIST,RANDOM
 ארקדי בפרסומת,ARTIST,RANDOM
-אש רוקדת,ARTIST,RANDOM
-אשא מבטי,ARTIST,RANDOM
+אש רוקדת,ARTIST,ALBUM
+אשא מבטי,ARTIST,ALBUM
 אשא עניי,ARTIST,RANDOM
 אשדודית באליטה,ARTIST,RANDOM
-אשורר שירה,ARTIST,ARTIST
-אשינעם חלום,ARTIST,RANDOM
+אשורר שירה,ARTIST,ALBUM
+אשינעם חלום,ARTIST,ALBUM
 אשכימה לאל,ARTIST,ARTIST
 אשכנזי מקלל,ARTIST,ARTIST
 אשל מתחזק,ARTIST,SONG
@@ -613,27 +613,27 @@ toras hashem,ARTIST,SONG
 אתיופי בורגראנץ,ARTIST,RANDOM
 אתיופי כריש,ARTIST,RANDOM
 אתם ראיתם,ARTIST,RANDOM
-אתם שלום,ARTIST,ARTIST
+אתם שלום,ARTIST,ALBUM
 אתניקס גשם,ARTIST,ALBUM
-אתקינו סעודתא,ARTIST,RANDOM
+אתקינו סעודתא,ARTIST,SONG
 אתקיתא סעודתא,ARTIST,RANDOM
 ב ציון שנקר,ARTIST,ARTIST
 ב- מזרחי,ARTIST,ARTIST
 ב.לוין,ARTIST,ARTIST
 ב.צ שנקר,ARTIST,ARTIST
 בְּכֵּיף פרק,ARTIST,RANDOM
-באור פניך,ARTIST,RANDOM
+באור פניך,ARTIST,ALBUM
 באלד באלד,ARTIST,RANDOM
 באמצע החורף,ARTIST,RANDOM
 באר אברהם,ARTIST,ARTIST
 באר יצחק,ARTIST,ARTIST
 בארי-רומניה,ARTIST,ARTIST
-בארץ ישראל,ARTIST,ALBUM
+בארץ ישראל,ARTIST,RANDOM
 באשעפער רחמים,ARTIST,ARTIST
 בבואו מאדום,ARTIST,RANDOM
 בגטו וורשא,ARTIST,RANDOM
 בגיטו וורשא,ARTIST,RANDOM
-בדגל אגודה,ARTIST,RANDOM
+בדגל אגודה,ARTIST,ALBUM
 בדם הרשע,ARTIST,RANDOM
 בדרכים פוסע,ARTIST,ALBUM
 בהברה עברית,ARTIST,RANDOM
@@ -647,11 +647,11 @@ toras hashem,ARTIST,SONG
 בול בזמן,ARTIST,RANDOM
 בונוס חברותא,ARTIST,RANDOM
 בונוס מגה,ARTIST,RANDOM
-בוער באהבת ה,ARTIST,RANDOM
+בוער באהבת ה,ARTIST,ALBUM
 בורו פארק,ARTIST,ARTIST
 בוריס מדבר,ARTIST,ARTIST
 בוריס צלצל,ARTIST,ARTIST
-בזוטשקא הרבי,ARTIST,RANDOM
+בזוטשקא הרבי,ARTIST,ALBUM
 בזק שלום,ARTIST,ARTIST
 בחוף אכזיב,ARTIST,RANDOM
 בחורי ישיבה,ARTIST,RANDOM
@@ -669,7 +669,7 @@ toras hashem,ARTIST,SONG
 ביומא דשבתא,ARTIST,RANDOM
 ביז קיטעוו,ARTIST,RANDOM
 בייג זיך,ARTIST,SONG
-ביכורי ספרות,ARTIST,RANDOM
+ביכורי ספרות,ARTIST,ALBUM
 ביני בריסקמן,ARTIST,ARTIST
 ביסטו שאולי,ARTIST,ARTIST
 ביסטו שיין,ARTIST,ARTIST
@@ -680,7 +680,7 @@ toras hashem,ARTIST,SONG
 בכה תבכה,ARTIST,RANDOM
 בכו תבכה,ARTIST,RANDOM
 בכי בסלסולים,ARTIST,RANDOM
-בכי צחוק,ARTIST,RANDOM
+בכי צחוק,ARTIST,ALBUM
 בכסא הוד,ARTIST,ARTIST
 בלו פיטר,ARTIST,ARTIST
 בלי מיצור,ARTIST,RANDOM
@@ -691,10 +691,10 @@ toras hashem,ARTIST,SONG
 במבה אסם‬,ARTIST,RANDOM
 בממלכת הכפור,ARTIST,RANDOM
 במרומי ערץ,ARTIST,RANDOM
-במרכז מים הר ציון,ARTIST,RANDOM
+במרכז מים הר ציון,ARTIST,ALBUM
 בן אדם,ARTIST,RANDOM
 בן אדמה,ARTIST,RANDOM
-בן אהוב,ARTIST,ARTIST
+בן אהוב,ARTIST,RANDOM
 בן אהובך,ARTIST,ARTIST
 בן בג בג,ARTIST,ARTIST
 בן בן ברוך,ARTIST,ARTIST
@@ -709,7 +709,7 @@ toras hashem,ARTIST,SONG
 בן מהללאל,ARTIST,ARTIST
 בן מלאך,ARTIST,RANDOM
 בן מלך,ARTIST,SONG
-בן מלך שעשוי,ARTIST,SONG
+בן מלך שעשוי,ARTIST,RANDOM
 בן סהר,ARTIST,ARTIST
 בן פיגא,ARTIST,RANDOM
 בן פייגא,ARTIST,RANDOM
@@ -733,7 +733,7 @@ toras hashem,ARTIST,SONG
 בני בראתי,ARTIST,ARTIST
 בני ברק,ARTIST,ARTIST
 בני היכלא,ARTIST,ALBUM
-בני חיי,ARTIST,RANDOM
+בני חיי,ARTIST,SONG
 בני יששכר,ARTIST,ARTIST
 בני מוסר,ARTIST,RANDOM
 בני מנדי וויס,ARTIST,ARTIST
@@ -790,21 +790,21 @@ toras hashem,ARTIST,SONG
 ברק בריק,ARTIST,ARTIST
 ברק שלמה,ARTIST,ARTIST
 בש ששווה,ARTIST,ARTIST
-בשבחין-סאטמאר,ARTIST,RANDOM
+בשבחין-סאטמאר,ARTIST,ALBUM
 בשבתך בביתך,ARTIST,RANDOM
-בשירי זמרה,ARTIST,ARTIST
-בשמש צהוב,ARTIST,RANDOM
+בשירי זמרה,ARTIST,ALBUM
+בשמש צהוב,ARTIST,ALBUM
 בת גנשטיין,ARTIST,RANDOM
 בתי צאי,ARTIST,RANDOM
 ג [High quality,ARTIST,RANDOM
 ג וג,ARTIST,RANDOM
-ג'קוב,ARTIST,ARTIST
+ג'קוב,ARTIST,RANDOM
 ג- מזרחי,ARTIST,ARTIST
 ג. אליהו,ARTIST,ARTIST
 ג. פוטולסקי,ARTIST,ARTIST
 ג_ון ווד,ARTIST,RANDOM
 ג_ון צ_או,ARTIST,RANDOM
-ג_ורג_ וושינגטון,ARTIST,RANDOM
+ג_ורג_ וושינגטון,ARTIST,ALBUM
 גאווין סאס,ARTIST,RANDOM
 גאול גאל,ARTIST,ARTIST
 גאולת ישראל,ARTIST,ARTIST
@@ -812,9 +812,9 @@ toras hashem,ARTIST,SONG
 גאי לרר,ARTIST,ARTIST
 גאל אותי,ARTIST,RANDOM
 גאלדענע רענדל,ARTIST,RANDOM
-גאלדענע רענדעל,ARTIST,RANDOM
+גאלדענע רענדעל,ARTIST,ALBUM
 גאסן פויקער,ARTIST,RANDOM
-גבורה אמונית,ARTIST,RANDOM
+גבורה אמונית,ARTIST,ALBUM
 גבי הארון,ARTIST,ARTIST
 גבינה לכובע,ARTIST,RANDOM
 גביר בנאום,ARTIST,RANDOM
@@ -828,7 +828,7 @@ toras hashem,ARTIST,SONG
 גוואלדשע ברודר,ARTIST,ARTIST
 גוט מרגן,ARTIST,ARTIST
 גוטא וואך,ARTIST,RANDOM
-גולדה מאיר,ARTIST,RANDOM
+גולדה מאיר,ARTIST,ARTIST
 גולני שלי,ARTIST,RANDOM
 גור חופה,ARTIST,ARTIST
 גור לדורותיה,ARTIST,ARTIST
@@ -864,17 +864,17 @@ toras hashem,ARTIST,SONG
 גינגל דגל,ARTIST,RANDOM
 גינה אימא,ARTIST,RANDOM
 גינת אגוז,ARTIST,RANDOM
-גירסת רוק,ARTIST,ARTIST
+גירסת רוק,ARTIST,ALBUM
 גישמעק טו,ARTIST,RANDOM
 גל אדם,ARTIST,ARTIST
 גל גל,ARTIST,ARTIST
 גל מרחב,ARTIST,ARTIST
 גל נתניה,ARTIST,ARTIST
-גל עיני,ARTIST,ARTIST
+גל עיני,ARTIST,SONG
 גל עינינו,ARTIST,ARTIST
 גל רימון,ARTIST,ARTIST
 גלגל הזמן,ARTIST,ALBUM
-גלגל החוזר,ARTIST,RANDOM
+גלגל החוזר,ARTIST,ALBUM
 גלגל מסתובב,ARTIST,RANDOM
 גלה זיו,ARTIST,ARTIST
 גלה כבוד,ARTIST,RANDOM
@@ -892,14 +892,14 @@ toras hashem,ARTIST,SONG
 גפן פוריה,ARTIST,ARTIST
 גפני עצבני,ARTIST,ARTIST
 גראמן אידיש,ARTIST,ARTIST
-גרוב סגול,ARTIST,ARTIST
-גרויסע שמחה,ARTIST,ARTIST
+גרוב סגול,ARTIST,ALBUM
+גרויסע שמחה,ARTIST,ALBUM
 גרויסער באשעפער,ARTIST,RANDOM
 גרין בלעטער,ARTIST,ARTIST
 גרין דיי,ARTIST,ARTIST
-גרמן קבלפ,ARTIST,RANDOM
+גרמן קבלפ,ARTIST,ARTIST
 גרסא עברית,ARTIST,RANDOM
-גרסאת רדיו,ARTIST,RANDOM
+גרסאת רדיו,ARTIST,ALBUM
 גשר אלנבי,ARTIST,RANDOM
 גשר ביילי,ARTIST,RANDOM
 ד. וינבך,ARTIST,ARTIST
@@ -914,7 +914,7 @@ toras hashem,ARTIST,SONG
 דב ליפמן,ARTIST,ARTIST
 דב_צבי,ARTIST,RANDOM
 דביקות מהריל,ARTIST,ALBUM
-דבקים בך,ARTIST,SONG
+דבקים בך,ARTIST,RANDOM
 דג מנקה,ARTIST,RANDOM
 דגל אגודה,ARTIST,ALBUM
 דדה ביה,ARTIST,RANDOM
@@ -965,7 +965,7 @@ toras hashem,ARTIST,SONG
 דור אבוחצירה,ARTIST,ARTIST
 דור אחרון,ARTIST,ARTIST
 דור דור,ARTIST,ARTIST
-דור חדש,ARTIST,ARTIST
+דור חדש,ARTIST,ALBUM
 דור מצויין,ARTIST,ARTIST
 דור מצוין,ARTIST,ARTIST
 דור סקולר,ARTIST,ARTIST
@@ -990,14 +990,14 @@ toras hashem,ARTIST,SONG
 דיין זיסע,ARTIST,ARTIST
 דיין טלפון,ARTIST,ARTIST
 דיין קרוין,ARTIST,ARTIST
-דיכאון מניק,ARTIST,RANDOM
+דיכאון מניק,ARTIST,ALBUM
 דין במשרד,ARTIST,ARTIST
 דין הערבי,ARTIST,ARTIST
 דין נעים,ARTIST,ARTIST
 דיסקרייב יאלילי,ARTIST,RANDOM
 דירת ארעי,ARTIST,RANDOM
 דלעילא ותתא,ARTIST,RANDOM
-דלת חורקת,ARTIST,RANDOM
+דלת חורקת,ARTIST,ALBUM
 דם דם הופה,ARTIST,RANDOM
 דם יהודי,ARTIST,RANDOM
 דם צפרדע,ARTIST,RANDOM
@@ -1007,7 +1007,7 @@ toras hashem,ARTIST,SONG
 דני מציל,ARTIST,ARTIST
 דניאל יוסף,ARTIST,ARTIST
 דניאלי זוננפלד,ARTIST,ARTIST
-דער פאסטוך,ARTIST,SONG
+דער פאסטוך,ARTIST,RANDOM
 דער קאצקער,ARTIST,SONG
 דקודשא בריך,ARTIST,RANDOM
 דקת מתניים,ARTIST,RANDOM
@@ -1023,7 +1023,7 @@ toras hashem,ARTIST,SONG
 דרכי נועם,ARTIST,ARTIST
 דרמה טורקית,ARTIST,RANDOM
 דרר יקרא,ARTIST,SONG
-ה12 פסוקים,ARTIST,RANDOM
+ה12 פסוקים,ARTIST,ALBUM
 הא יגאל,ARTIST,ARTIST
 האזינה אלקים,ARTIST,ALBUM
 האחים המאומצים,ARTIST,ARTIST
@@ -1046,17 +1046,17 @@ toras hashem,ARTIST,SONG
 הדריכנו באמתך,ARTIST,RANDOM
 הודאה ובקשה,ARTIST,RANDOM
 הודעה לבוס,ARTIST,RANDOM
-הווי שש,ARTIST,RANDOM
+הווי שש,ARTIST,SONG
 הווקאל רבותי,ARTIST,ARTIST
 הוי גביר,ARTIST,RANDOM
 הוי דן,ARTIST,ARTIST
-הוי משיח,ARTIST,ALBUM
+הוי משיח,ARTIST,RANDOM
 הוי מתחמם,ARTIST,RANDOM
 הוי קישינב,ARTIST,RANDOM
 הוי שש,ARTIST,RANDOM
 הוסטי גוסטי,ARTIST,RANDOM
-הורה ירושלמית,ARTIST,SONG
-הורה פיצוץ,ARTIST,RANDOM
+הורה ירושלמית,ARTIST,ALBUM
+הורה פיצוץ,ARTIST,ALBUM
 הזמיר ממרסיי,ARTIST,RANDOM
 החברים חגגו,ARTIST,RANDOM
 החסיד שהותקף,ARTIST,RANDOM
@@ -1075,7 +1075,7 @@ toras hashem,ARTIST,SONG
 הלו ילד,ARTIST,RANDOM
 הלוחש לקוונטים,ARTIST,RANDOM
 הליכה בחלון,ARTIST,ALBUM
-הליכה לחופה,ARTIST,RANDOM
+הליכה לחופה,ARTIST,ALBUM
 הליכה לקיסריה,ARTIST,ALBUM
 הליכה לקסרייה,ARTIST,ALBUM
 הלל אהלל,ARTIST,ARTIST
@@ -1091,9 +1091,9 @@ toras hashem,ARTIST,SONG
 המצב במדינה,ARTIST,RANDOM
 המשך הוק,ARTIST,RANDOM
 המשך סיום,ARTIST,SONG
-המשך קריאה,ARTIST,RANDOM
+המשך קריאה,ARTIST,ALBUM
 המשך ריקוד,ARTIST,SONG
-המשך שורות,ARTIST,RANDOM
+המשך שורות,ARTIST,SONG
 המשך שיר,ARTIST,SONG
 המשך שפיל,ARTIST,RANDOM
 המשפיע שעה,ARTIST,RANDOM
@@ -1123,9 +1123,9 @@ toras hashem,ARTIST,SONG
 הרב לאו,ARTIST,RANDOM
 הרב לוין,ARTIST,RANDOM
 הרב מנשה ישראל רייזמן,ARTIST,ARTIST
-הרבי מילובביץ,ARTIST,RANDOM
-הרבי מלובאביץ,ARTIST,RANDOM
-הרבי מלובביץ,ARTIST,RANDOM
+הרבי מילובביץ,ARTIST,ALBUM
+הרבי מלובאביץ,ARTIST,ALBUM
+הרבי מלובביץ,ARTIST,ALBUM
 הרי געש,ARTIST,RANDOM
 הרמן בורנשטיין,ARTIST,ARTIST
 הרמן בורשטיין,ARTIST,ARTIST
@@ -1133,7 +1133,7 @@ toras hashem,ARTIST,SONG
 הרשי הראשון,ARTIST,RANDOM
 השבח לאל,ARTIST,ARTIST
 השוטר אזולאי,ARTIST,ARTIST
-השומר אמת,ARTIST,RANDOM
+השומר אמת,ARTIST,ALBUM
 השומר שבת,ARTIST,ALBUM
 השידוך בעצת,ARTIST,RANDOM
 השידוך מהמכה,ARTIST,RANDOM
@@ -1146,7 +1146,7 @@ toras hashem,ARTIST,SONG
 ואטהר,ARTIST,RANDOM
 ואילו פינו,ARTIST,RANDOM
 ואלס בחמש,ARTIST,RANDOM
-ואני בחסדך,ARTIST,SONG
+ואני בחסדך,ARTIST,RANDOM
 ואני בעודי,ARTIST,RANDOM
 ואני ברוב,ARTIST,RANDOM
 ואני קרבת,ARTIST,RANDOM
@@ -1168,7 +1168,7 @@ toras hashem,ARTIST,SONG
 וויסקי במכס,ARTIST,RANDOM
 וולח ניקוליוב,ARTIST,RANDOM
 וולט רומני,ARTIST,RANDOM
-וולס אודך,ARTIST,SONG
+וולס אודך,ARTIST,ARTIST
 וולס גור,ARTIST,ARTIST
 וולס מודז'יץ,ARTIST,ARTIST
 וולס מודזיץ,ARTIST,ARTIST
@@ -1194,26 +1194,26 @@ toras hashem,ARTIST,SONG
 ומרדכי יושב,ARTIST,RANDOM
 ומרדכי יצא,ARTIST,RANDOM
 ונהיה אנחנו,ARTIST,RANDOM
-ונישא ברכה,ARTIST,RANDOM
+ונישא ברכה,ARTIST,ALBUM
 ועתה אמרת,ARTIST,RANDOM
 ועתה כתבו,ARTIST,RANDOM
 ותאמר ציון,ARTIST,ARTIST
 ותוסף אסתר,ARTIST,SONG
 ותוסף באסתר,ARTIST,RANDOM
 ותורתך שעשועי,ARTIST,RANDOM
-ותן בלבינו,ARTIST,SONG
+ותן בלבינו,ARTIST,RANDOM
 ותן חלקינו,ARTIST,RANDOM
 ותן חלקנו,ARTIST,RANDOM
 ותערב ולס,ARTIST,SONG
-ותערב לפניך,ARTIST,RANDOM
-ותערב קצבי,ARTIST,ARTIST
+ותערב לפניך,ARTIST,SONG
+ותערב קצבי,ARTIST,SONG
 ז [High quality,ARTIST,RANDOM
 ז הבט,ARTIST,SONG
 ז מפני,ARTIST,RANDOM
 ז סעודה,ARTIST,RANDOM
 ז''ך וישר,ARTIST,RANDOM
-ז. ה' העולם,ARTIST,RANDOM
-ז. קוורטין,ARTIST,RANDOM
+ז. ה' העולם,ARTIST,ALBUM
+ז. קוורטין,ARTIST,ARTIST
 זאבי קופמן,ARTIST,ARTIST
 זאל שויין,ARTIST,RANDOM
 זאל שוין,ARTIST,RANDOM
@@ -1226,7 +1226,7 @@ toras hashem,ARTIST,SONG
 זאנוויל נשמה,ARTIST,SONG
 זאנוויל שערי,ARTIST,SONG
 זארג נישט,ARTIST,RANDOM
-זארג פון,ARTIST,SONG
+זארג פון,ARTIST,ALBUM
 זארה סייפי,ARTIST,RANDOM
 זבח פסח,ARTIST,ARTIST
 זבת חלב,ARTIST,RANDOM
@@ -1241,7 +1241,7 @@ toras hashem,ARTIST,SONG
 זוהר לבקוביץ,ARTIST,ARTIST
 זוט עני,ARTIST,RANDOM
 זוכרי זמירות,ARTIST,ALBUM
-זול שוין,ARTIST,RANDOM
+זול שוין,ARTIST,ALBUM
 זורע צדקות,ARTIST,ARTIST
 זושא והעניים,ARTIST,ARTIST
 זושא ופויתא,ARTIST,ARTIST
@@ -1256,7 +1256,7 @@ toras hashem,ARTIST,SONG
 זייד קטאר,ARTIST,RANDOM
 זיידל רובנר,ARTIST,RANDOM
 זייטס מצליח,ARTIST,RANDOM
-זיין פריילאך,ARTIST,ARTIST
+זיין פריילאך,ARTIST,SONG
 זיך איבערבייטן,ARTIST,SONG
 זיך איבערבעטען,ARTIST,SONG
 זיך איברבעטין,ARTIST,SONG
@@ -1265,8 +1265,8 @@ toras hashem,ARTIST,SONG
 זינדיגער מענטש,ARTIST,RANDOM
 זיע רביניו,ARTIST,RANDOM
 זכאי מחמת,ARTIST,RANDOM
-זכני לילד,ARTIST,RANDOM
-זכני לשמח,ARTIST,RANDOM
+זכני לילד,ARTIST,ALBUM
+זכני לשמח,ARTIST,ALBUM
 זכר חסדו,ARTIST,RANDOM
 זכר חסדו‏,ARTIST,RANDOM
 זכר עמלק,ARTIST,RANDOM
@@ -1277,11 +1277,11 @@ toras hashem,ARTIST,SONG
 זכרונות מצפת,ARTIST,ALBUM
 זכרני נא,ARTIST,SONG
 זמיר שר,ARTIST,ARTIST
-זמרו אלקים,ARTIST,ARTIST
+זמרו אלקים,ARTIST,ALBUM
 זמרו לשם,ARTIST,ARTIST
 זעלנער פון ציון,ARTIST,ARTIST
 זעקה גדולה,ARTIST,RANDOM
-זר פרחים,ARTIST,RANDOM
+זר פרחים,ARTIST,ALBUM
 זרוע לצדיק,ARTIST,RANDOM
 זרוע קודשיך,ARTIST,RANDOM
 זרח בשטח,ARTIST,ARTIST
@@ -1289,7 +1289,7 @@ toras hashem,ARTIST,SONG
 זרע אברהם,ARTIST,ARTIST
 זרע חייא,ARTIST,RANDOM
 זרעא חיא,ARTIST,RANDOM
-זרעא חיה,ARTIST,ARTIST
+זרעא חיה,ARTIST,ALBUM
 זרעא חייא,ARTIST,RANDOM
 זרעה חייא,ARTIST,RANDOM
 זשוריטצי כלאפצי,ARTIST,RANDOM
@@ -1297,9 +1297,9 @@ toras hashem,ARTIST,SONG
 חביב חובני,ARTIST,ARTIST
 חביב חיים,ARTIST,ARTIST
 חביבין ישראל,ARTIST,ALBUM
-חביבין עלי,ARTIST,RANDOM
+חביבין עלי,ARTIST,ALBUM
 חבילת מונדיאל,ARTIST,RANDOM
-חבלי מוות,ARTIST,RANDOM
+חבלי מוות,ARTIST,ALBUM
 חבלי משיח,ARTIST,ALBUM
 חבצלת השרון,ARTIST,RANDOM
 חבר שלי,ARTIST,RANDOM
@@ -1336,11 +1336,11 @@ toras hashem,ARTIST,SONG
 חזק (פריד,ARTIST,SONG
 חזק אלקטרו,ARTIST,SONG
 חזק ימלא,ARTIST,SONG
-חזק ישראל,ARTIST,SONG
-חזק לשמים,ARTIST,RANDOM
+חזק ישראל,ARTIST,ALBUM
+חזק לשמים,ARTIST,ALBUM
 חזק קרוב,ARTIST,ALBUM
-חזק קרייתי,ARTIST,SONG
-חזק קריתי,ARTIST,SONG
+חזק קרייתי,ARTIST,ALBUM
+חזק קריתי,ARTIST,ALBUM
 חזק שמואל,ARTIST,ARTIST
 חזקיהו יוסף קרלנשטיין,ARTIST,ARTIST
 חזרחה למוטב,ARTIST,RANDOM
@@ -1348,11 +1348,11 @@ toras hashem,ARTIST,SONG
 חזרת מוסף,ARTIST,RANDOM
 חטא העגל,ARTIST,RANDOM
 חטא שחטאנו,ARTIST,RANDOM
-חטאנו לפניך,ARTIST,RANDOM
+חטאנו לפניך,ARTIST,ALBUM
 חי בורא,ARTIST,ALBUM
 חי גרסת,ARTIST,ALBUM
 חי וקיים,ARTIST,ARTIST
-חי נורא,ARTIST,ARTIST
+חי נורא,ARTIST,ALBUM
 חי קורקוס,ARTIST,ARTIST
 חיה פסח,ARTIST,ALBUM
 חיוך אחד,ARTIST,RANDOM
@@ -1371,7 +1371,7 @@ toras hashem,ARTIST,SONG
 חיים פסח,ARTIST,ARTIST
 חיים פשוטים,ARTIST,ARTIST
 חיים שיר,ARTIST,ARTIST
-חיים שך תורה,ARTIST,RANDOM
+חיים שך תורה,ARTIST,ALBUM
 חיים שלי,ARTIST,ARTIST
 חיים שלמה,ARTIST,ARTIST
 חיים שתהא,ARTIST,ARTIST
@@ -1379,16 +1379,16 @@ toras hashem,ARTIST,SONG
 חיכו ממתקים,ARTIST,RANDOM
 חילי גנוד,ARTIST,ARTIST
 חים אדלר,ARTIST,ARTIST
-חינוך חובה,ARTIST,RANDOM
+חינוך חובה,ARTIST,ALBUM
 חיש אלופי,ARTIST,RANDOM
-חכם חתן,ARTIST,RANDOM
+חכם חתן,ARTIST,ARTIST
 חכם עובדיה,ARTIST,ARTIST
-חכמה בינה,ARTIST,RANDOM
+חכמה בינה,ARTIST,ALBUM
 חכמי ישראל,ARTIST,ARTIST
 חכמי לובלין,ARTIST,RANDOM
 חכמת יוון,ARTIST,RANDOM
-חלא ג'דיד,ARTIST,ARTIST
-חלון בשמים,ARTIST,RANDOM
+חלא ג'דיד,ARTIST,RANDOM
+חלון בשמים,ARTIST,ALBUM
 חליל רועים,ARTIST,ALBUM
 חלל גדול,ARTIST,RANDOM
 חלף הגשם,ARTIST,RANDOM
@@ -1403,18 +1403,18 @@ toras hashem,ARTIST,SONG
 חנה בצד,ARTIST,ARTIST
 חנה ויינרוט,ARTIST,ARTIST
 חניון קרתא,ARTIST,RANDOM
-חנינא בני,ARTIST,SONG
+חנינא בני,ARTIST,ARTIST
 חנן_הנחמד,ARTIST,RANDOM
-חסד חסד,ARTIST,RANDOM
+חסד חסד,ARTIST,ALBUM
 חסד יבנה,ARTIST,RANDOM
-חסד ליפא,ARTIST,ARTIST
-חסד נעוריך,ARTIST,RANDOM
-חסד שבחסד,ARTIST,RANDOM
+חסד ליפא,ARTIST,SONG
+חסד נעוריך,ARTIST,ALBUM
+חסד שבחסד,ARTIST,ALBUM
 חסדאי קרשקש,ARTIST,ARTIST
 חסדי יצחק,ARTIST,ARTIST
 חסדימלך זינגן,ARTIST,RANDOM
 חסדך ליודעיך,ARTIST,RANDOM
-חסידים דמונטריאל,ARTIST,ARTIST
+חסידים דמונטריאל,ARTIST,ALBUM
 חסן נסראלה,ARTIST,RANDOM
 חפץ חיים,ARTIST,ARTIST
 חצי יובל,ARTIST,ARTIST
@@ -1439,13 +1439,13 @@ toras hashem,ARTIST,SONG
 טבת עח,ARTIST,RANDOM
 טוב באלאלייקא,ARTIST,RANDOM
 טוב ילד,ARTIST,SONG
-טוב לפניך,ARTIST,RANDOM
+טוב לפניך,ARTIST,ALBUM
 טויזנטער געטענץ,ARTIST,RANDOM
 טום באלאלייקא,ARTIST,ARTIST
 טום באלאלייקע,ARTIST,ARTIST
 טונה סחרחורת,ARTIST,RANDOM
-טוקר שואו,ARTIST,SONG
-טז אלול,ARTIST,RANDOM
+טוקר שואו,ARTIST,ARTIST
+טז אלול,ARTIST,ALBUM
 טיולי ג'יפים,ARTIST,RANDOM
 טייער קינד,ARTIST,RANDOM
 טיפ קטן,ARTIST,RANDOM
@@ -1469,8 +1469,8 @@ toras hashem,ARTIST,SONG
 טל_-_אל_תשכחני,ARTIST,RANDOM
 טלפון דספסיטו,ARTIST,RANDOM
 טמיר ברלינר,ARTIST,ARTIST
-טמפל שירה,ARTIST,ARTIST
-טנא ראשון,ARTIST,RANDOM
+טמפל שירה,ARTIST,ALBUM
+טנא ראשון,ARTIST,ALBUM
 טנק יו,ARTIST,SONG
 טסטים בהנאה,ARTIST,RANDOM
 טעטע העלף,ARTIST,ARTIST
@@ -1478,11 +1478,11 @@ toras hashem,ARTIST,SONG
 טעמי מקרא,ARTIST,RANDOM
 טקסונומיה (אבולוציה,ARTIST,RANDOM
 טראכט גוט,ARTIST,ALBUM
-טראכטין נאר,ARTIST,RANDOM
+טראכטין נאר,ARTIST,ALBUM
 טראמפ'לה,ARTIST,RANDOM
 טראנס פריק,ARTIST,SONG
 טראפ וואסער,ARTIST,RANDOM
-טראפ טאנץ,ARTIST,ALBUM
+טראפ טאנץ,ARTIST,SONG
 טראפאלא אקאפלע,ARTIST,RANDOM
 טראק טכנו,ARTIST,RANDOM
 טרגדיה מזעזעת,ARTIST,RANDOM
@@ -1503,8 +1503,8 @@ toras hashem,ARTIST,SONG
 י. רזאל,ARTIST,SONG
 י. שליסקי,ARTIST,ARTIST
 יא ג'מעה,ARTIST,SONG
-יא טייר,ARTIST,RANDOM
-יא פיטו,ARTIST,RANDOM
+יא טייר,ARTIST,SONG
+יא פיטו,ARTIST,SONG
 יא קצבי,ARTIST,RANDOM
 יא רייאה,ARTIST,SONG
 יא רית,ARTIST,SONG
@@ -1524,9 +1524,9 @@ toras hashem,ARTIST,SONG
 יאר אלט,ARTIST,ARTIST
 יאר פריילאך,ARTIST,ARTIST
 יאר פרייליך,ARTIST,ARTIST
-יאר פריילך,ARTIST,ARTIST
+יאר פריילך,ARTIST,SONG
 יאר פריילעך,ARTIST,SONG
-יארן יארן,ARTIST,ARTIST
+יארן יארן,ARTIST,RANDOM
 יב מוריה,ARTIST,RANDOM
 יב רקודים,ARTIST,RANDOM
 יבא אדיר,ARTIST,ARTIST
@@ -1545,8 +1545,8 @@ toras hashem,ARTIST,SONG
 ידב גרמען,ARTIST,RANDOM
 ידיד נפשש,ARTIST,SONG
 ידידיה חממי,ARTIST,ARTIST
-ידידים ירוממוך,ARTIST,ALBUM
-ידידים רוממוך,ARTIST,ALBUM
+ידידים ירוממוך,ARTIST,SONG
+ידידים רוממוך,ARTIST,SONG
 ידיים באויר,ARTIST,RANDOM
 ידיים לשמיים,ARTIST,RANDOM
 ידין בגויים,ARTIST,ARTIST
@@ -1565,7 +1565,7 @@ toras hashem,ARTIST,SONG
 יהלא בילערוס,ARTIST,RANDOM
 יהלום ירושלמי,ARTIST,ARTIST
 יהללו המלאכים,ARTIST,RANDOM
-יהללו ישיבה,ARTIST,RANDOM
+יהללו ישיבה,ARTIST,ALBUM
 יהללו שמו,ARTIST,ALBUM
 יואב -,ARTIST,ARTIST
 יואב רוזנברג,ARTIST,ARTIST
@@ -1582,7 +1582,7 @@ toras hashem,ARTIST,SONG
 יואלי-דיקמן,ARTIST,SONG
 יובל מטלון,ARTIST,ARTIST
 יובל_טייב,ARTIST,RANDOM
-יודו לד,ARTIST,ARTIST
+יודו לד,ARTIST,ALBUM
 יודו שמך,ARTIST,SONG
 יודי יגאלי,ARTIST,ARTIST
 יודע בגוים,ARTIST,RANDOM
@@ -1594,7 +1594,7 @@ toras hashem,ARTIST,SONG
 יולי קליין,ARTIST,ARTIST
 יוליה פבזנר,ARTIST,ARTIST
 יום אשר,ARTIST,ARTIST
-יום גאולה,ARTIST,SONG
+יום גאולה,ARTIST,RANDOM
 יום הבסטיליה,ARTIST,RANDOM
 יום השמיני,ARTIST,RANDOM
 יום חולף,ARTIST,RANDOM
@@ -1619,7 +1619,7 @@ toras hashem,ARTIST,SONG
 יונתן הקטן,ARTIST,ARTIST
 יונתן הקטן2,ARTIST,ARTIST
 יונתן-רזאל,ARTIST,SONG
-יונתן-שינפלד,ARTIST,ARTIST
+יונתן-שינפלד,ARTIST,SONG
 יונתן_שינפלד,ARTIST,RANDOM
 יוסי בובה,ARTIST,ARTIST
 יוסי גולד,ARTIST,ARTIST
@@ -1644,26 +1644,26 @@ toras hashem,ARTIST,SONG
 יוסף שוארץ,ARTIST,ARTIST
 יוסף-ג'ואי ניוקם,ARTIST,ARTIST
 יועץ נשואין,ARTIST,RANDOM
-יור פריילך,ARTIST,RANDOM
+יור פריילך,ARTIST,SONG
 יורם ציבורי,ARTIST,ARTIST
 יושיע ציון,ARTIST,ARTIST
-יושר ישר,ARTIST,RANDOM
+יושר ישר,ARTIST,ARTIST
 יותם לאור,ARTIST,ARTIST
 יזמים צעירים,ARTIST,RANDOM
 יח אדר,ARTIST,SONG
 יח גרמען,ARTIST,SONG
 יחד יחד,ARTIST,ALBUM
 יחד לב,ARTIST,ALBUM
-יחד ליבם,ARTIST,RANDOM
+יחד ליבם,ARTIST,SONG
 יחד נהלל,ARTIST,ALBUM
 יחד נתקרב,ARTIST,ALBUM
 יחד רם,ARTIST,ARTIST
-יחד שמך,ARTIST,ALBUM
+יחד שמך,ARTIST,SONG
 יחדיו נלך,ARTIST,RANDOM
 יחזקאל לעפקאוויטש,ARTIST,ARTIST
 יחי הנשיא,ARTIST,RANDOM
 יחיאל מיכל,ARTIST,ARTIST
-יחל ישראל,ARTIST,ARTIST
+יחל ישראל,ARTIST,ALBUM
 ייאוש בעולם,ARTIST,RANDOM
 יידי איינהורן,ARTIST,SONG
 יידל אגדלך,ARTIST,SONG
@@ -1675,7 +1675,7 @@ toras hashem,ARTIST,SONG
 ייטב דאלי,ARTIST,RANDOM
 ייטב לב,ARTIST,ALBUM
 יין גרפא,ARTIST,RANDOM
-ילבשו צדק,ARTIST,ARTIST
+ילבשו צדק,ARTIST,ALBUM
 ילד בעולם,ARTIST,RANDOM
 ילד מאומץ,ARTIST,RANDOM
 ילד פרסי,ARTIST,RANDOM
@@ -1707,7 +1707,7 @@ toras hashem,ARTIST,SONG
 יעל מנדל,ARTIST,ARTIST
 יעלה רימינוב,ARTIST,SONG
 יענק'לה הכונס,ARTIST,RANDOM
-יענקל דודל,ARTIST,RANDOM
+יענקל דודל,ARTIST,ARTIST
 יענקל פעסטער,ARTIST,ARTIST
 יעצור אותי,ARTIST,RANDOM
 יעקב - סאטמאר,ARTIST,ARTIST
@@ -1730,9 +1730,9 @@ toras hashem,ARTIST,SONG
 יפול מצדך,ARTIST,RANDOM
 יפן ברחמיו,ARTIST,RANDOM
 יפן הקלאסית,ARTIST,RANDOM
-יפרדו דרכנו,ARTIST,ARTIST
+יפרדו דרכנו,ARTIST,RANDOM
 יפרח בימיו,ARTIST,ARTIST
-יפת עיניים,ARTIST,ARTIST
+יפת עיניים,ARTIST,ALBUM
 יפתח לבינו,ARTIST,ARTIST
 יפתח ליבנו,ARTIST,ARTIST
 יצווה חסדו,ARTIST,RANDOM
@@ -1762,8 +1762,8 @@ toras hashem,ARTIST,SONG
 ירוחם שעיבי,ARTIST,ARTIST
 ירון גרשובסקי,ARTIST,ARTIST
 ירון-בר-שלהבת,ARTIST,ARTIST
-ירוץ עבדך,ARTIST,SONG
-ירושלמית שמחה,ARTIST,ARTIST
+ירוץ עבדך,ARTIST,RANDOM
+ירושלמית שמחה,ARTIST,ALBUM
 ירחמיאל (רוקי) זיגלר,ARTIST,ARTIST
 ירחמיאל והפרחי,ARTIST,ARTIST
 יריה אחת,ARTIST,RANDOM
@@ -1794,9 +1794,9 @@ toras hashem,ARTIST,SONG
 ישראל בחיפה,ARTIST,ARTIST
 ישראל בטח,ARTIST,ARTIST
 ישראל ביינסאי,ARTIST,ARTIST
-ישראל בלב,ARTIST,ALBUM
+ישראל בלב,ARTIST,ARTIST
 ישראל בלבבות,ARTIST,SONG
-ישראל בלי,ARTIST,ALBUM
+ישראל בלי,ARTIST,RANDOM
 ישראל היפה,ARTIST,ARTIST
 ישראל ויהודה,ARTIST,ARTIST
 ישראל חזין,ARTIST,ARTIST
@@ -1809,17 +1809,17 @@ toras hashem,ARTIST,SONG
 ישראל לאם,ARTIST,ARTIST
 ישראל לשס,ARTIST,ARTIST
 ישראל מאפטא,ARTIST,ARTIST
-ישראל מודז'יץ,ARTIST,SONG
+ישראל מודז'יץ,ARTIST,ARTIST
 ישראל מודזיץ,ARTIST,ARTIST
 ישראל נושע,ARTIST,ARTIST
 ישראל עבדיך,ARTIST,ARTIST
-ישראל עמך,ARTIST,ALBUM
+ישראל עמך,ARTIST,SONG
 ישראל צבי,ARTIST,ARTIST
 ישראל צפת,ARTIST,ARTIST
 ישראל שהציל,ARTIST,ARTIST
 ישראל שלום,ARTIST,ARTIST
 ישראל-וויגודה,ARTIST,ARTIST
-ישתבך שמך,ARTIST,ALBUM
+ישתבך שמך,ARTIST,SONG
 יתוש קטן,ARTIST,RANDOM
 יתוש תמני,ARTIST,RANDOM
 יתן לנשמתי,ARTIST,RANDOM
@@ -1844,7 +1844,7 @@ toras hashem,ARTIST,SONG
 כנור דוד,ARTIST,ARTIST
 כנור ירושלים,ARTIST,SONG
 כעץ שתול,ARTIST,RANDOM
-כפיים ליוצר,ARTIST,RANDOM
+כפיים ליוצר,ARTIST,ALBUM
 כפר טודרא,ARTIST,RANDOM
 כציפור נודדת,ARTIST,RANDOM
 כרטיס לא גנוב,ARTIST,RANDOM
@@ -1862,7 +1862,7 @@ toras hashem,ARTIST,SONG
 לאה שבת,ARTIST,ALBUM
 לאונטין פרייס,ARTIST,RANDOM
 לאוניד בלקינד,ARTIST,ARTIST
-לאופר מנגן,ARTIST,ARTIST
+לאופר מנגן,ARTIST,ALBUM
 לאור ירח,ARTIST,RANDOM
 לאור יװם,ARTIST,RANDOM
 לאטקל_ה,ARTIST,RANDOM
@@ -1871,23 +1871,23 @@ toras hashem,ARTIST,SONG
 לאל ברוך,ARTIST,ARTIST
 לאלא להלה,ARTIST,RANDOM
 לאלוקים דומי,ARTIST,RANDOM
-לאמיר דערציליין,ARTIST,RANDOM
+לאמיר דערציליין,ARTIST,SONG
 לאמיר שטייגן,ARTIST,RANDOM
 לאן ברחו,ARTIST,RANDOM
 לאנגזם פלדמן,ARTIST,ARTIST
 לאנגער וועג,ARTIST,ARTIST
 לב מרגיש,ARTIST,RANDOM
 לב פתוח,ARTIST,ALBUM
-לב צמא,ARTIST,ARTIST
+לב צמא,ARTIST,ALBUM
 לב שופכים,ARTIST,ALBUM
-לבבי גועש,ARTIST,ARTIST
+לבבי גועש,ARTIST,ALBUM
 לבני אדום,ARTIST,RANDOM
 לבני קורח,ARTIST,RANDOM
 לבסומי בנצי,ARTIST,ARTIST
 לגבי המשך,ARTIST,RANDOM
 לגן עדן,ARTIST,ARTIST
 לגן עדנו,ARTIST,RANDOM
-לד חסדו,ARTIST,SONG
+לד חסדו,ARTIST,ALBUM
 להגר_ד כהן,ARTIST,ARTIST
 להצביע ברקת,ARTIST,ARTIST
 להקת ''אי שם,ARTIST,ARTIST
@@ -1900,7 +1900,7 @@ toras hashem,ARTIST,SONG
 להקת יום השמיני,ARTIST,ARTIST
 להקת פריילך,ARTIST,ARTIST
 להקת קול,ARTIST,ARTIST
-להקת קול איש,ARTIST,ARTIST
+להקת קול איש,ARTIST,SONG
 להקת קרג'יושנקפיה,ARTIST,ARTIST
 להקת רימונים,ARTIST,ARTIST
 להקת שיר ושבח,ARTIST,ARTIST
@@ -1909,7 +1909,7 @@ toras hashem,ARTIST,SONG
 לוחם יעקב,ARTIST,ARTIST
 לוי ישראל,ARTIST,ARTIST
 לויפן שאולי,ARTIST,ARTIST
-לולי האמנתי,ARTIST,SONG
+לולי האמנתי,ARTIST,RANDOM
 לומיר זיך,ARTIST,RANDOM
 לוס ביבליקוס,ARTIST,RANDOM
 לזרעך נתתי,ARTIST,RANDOM
@@ -1941,7 +1941,7 @@ toras hashem,ARTIST,SONG
 ליב דעהם,ARTIST,ARTIST
 ליב האבן,ARTIST,RANDOM
 ליבי בוער,ARTIST,SONG
-ליבי במזרח,ARTIST,SONG
+ליבי במזרח,ARTIST,ALBUM
 ליבי המר,ARTIST,SONG
 ליבי ליבי,ARTIST,SONG
 ליבי שם,ARTIST,RANDOM
@@ -1951,25 +1951,25 @@ toras hashem,ARTIST,SONG
 ליהודים גרין,ARTIST,SONG
 ליהושע בן נון,ARTIST,ARTIST
 ליהיא סגל,ARTIST,ARTIST
-ליטל לשם,ARTIST,RANDOM
+ליטל לשם,ARTIST,ARTIST
 ליי יערב,ARTIST,RANDOM
-לייב בבאר,ARTIST,SONG
-לייב בקון,ARTIST,SONG
+לייב בבאר,ARTIST,ARTIST
+לייב בקון,ARTIST,ARTIST
 לייב וולדמן,ARTIST,ARTIST
 לייבדיק אברהם,ARTIST,ARTIST
 לייג דיין,ARTIST,ARTIST
 לייז אונז,ARTIST,ARTIST
 לייזר שוובר,ARTIST,ARTIST
-ליישב כוכבי,ARTIST,RANDOM
+ליישב כוכבי,ARTIST,ALBUM
 לילי האמנתי,ARTIST,RANDOM
 לילי הייתה,ARTIST,RANDOM
 ליסטיג אן,ARTIST,ARTIST
 ליעקב גור,ARTIST,ARTIST
 ליפא אשר יצר,ARTIST,ARTIST
 ליפא בזק,ARTIST,SONG
-ליפא ביקר חולים,ARTIST,ARTIST
+ליפא ביקר חולים,ARTIST,SONG
 ליפא דיאט,ARTIST,SONG
-ליפא דייטש,ARTIST,ARTIST
+ליפא דייטש,ARTIST,SONG
 ליפא ופריד,ARTIST,SONG
 ליפא שמע,ARTIST,SONG
 לכובע שלי,ARTIST,RANDOM
@@ -1980,7 +1980,7 @@ toras hashem,ARTIST,SONG
 למדני חוקיך,ARTIST,SONG
 למה ישבת,ARTIST,RANDOM
 למוט רגלך,ARTIST,RANDOM
-למען אחיי,ARTIST,SONG
+למען אחיי,ARTIST,RANDOM
 למען יחלצון,ARTIST,SONG
 למען ירבו,ARTIST,RANDOM
 למען ציון,ARTIST,ARTIST
@@ -1988,7 +1988,7 @@ toras hashem,ARTIST,SONG
 למען שמך,ARTIST,SONG
 למענך להקת,ARTIST,ARTIST
 למצוא חן,ARTIST,ARTIST
-לעבעדיג יענק'ל,ARTIST,ALBUM
+לעבעדיג יענק'ל,ARTIST,ARTIST
 לעד צילצול,ARTIST,RANDOM
 לעלוב צדקת,ARTIST,RANDOM
 לפיד לחרדים,ARTIST,ARTIST
@@ -1998,15 +1998,15 @@ toras hashem,ARTIST,SONG
 לפסח שחל,ARTIST,RANDOM
 לציון גואל,ARTIST,ARTIST
 לצעוד לבד,ARTIST,ALBUM
-לצעוד קדימה,ARTIST,RANDOM
+לצעוד קדימה,ARTIST,ALBUM
 לקא דיליה,ARTIST,RANDOM
 לשון הטוב,ARTIST,RANDOM
 לשון רמיה,ARTIST,RANDOM
 לשוק הקריפטו,ARTIST,RANDOM
 לשכת התעסוקה,ARTIST,RANDOM
-לשכת עבודה,ARTIST,RANDOM
+לשכת עבודה,ARTIST,ALBUM
 לשם שמיים,ARTIST,RANDOM
-לשם שמים,ARTIST,ALBUM
+לשם שמים,ARTIST,RANDOM
 לשפה שרגילים,ARTIST,RANDOM
 מ איליייק,ARTIST,RANDOM
 מ ב ד,ARTIST,RANDOM
@@ -2014,21 +2014,21 @@ toras hashem,ARTIST,SONG
 מ ב ד בספר חיים,ARTIST,ARTIST
 מ ב ד היום הרת,ARTIST,SONG
 מ ב ד וחוסה,ARTIST,RANDOM
-מ ב ד ומוטי,ARTIST,SONG
-מ ב ד יום תרועה,ARTIST,RANDOM
+מ ב ד ומוטי,ARTIST,RANDOM
+מ ב ד יום תרועה,ARTIST,SONG
 מ ב ד מובדלים,ARTIST,SONG
 מ ב ד פתח,ARTIST,RANDOM
 מ גולדמן,ARTIST,ARTIST
 מ זוכט,ARTIST,RANDOM
 מ זיידמן,ARTIST,ARTIST
 מ מאזוז,ARTIST,RANDOM
-מ. אלכסנדרוביץ,ARTIST,RANDOM
+מ. אלכסנדרוביץ,ARTIST,ARTIST
 מ. בן מור,ARTIST,ARTIST
 מ. ג'רופי,ARTIST,ARTIST
-מ. חופה,ARTIST,RANDOM
+מ. חופה,ARTIST,ALBUM
 מ. טסה,ARTIST,SONG
 מ. ירדני,ARTIST,ARTIST
-מ. ישיבש,ARTIST,RANDOM
+מ. ישיבש,ARTIST,ALBUM
 מ. כניסה,ARTIST,RANDOM
 מ. לאופר,ARTIST,ARTIST
 מ. פתיחה,ARTIST,SONG
@@ -2058,7 +2058,7 @@ toras hashem,ARTIST,SONG
 מאיר ל מיין קינד,ARTIST,ARTIST
 מאיר לוריא,ARTIST,ARTIST
 מאיר שיר למעלות,ARTIST,ARTIST
-מאך שוין,ARTIST,RANDOM
+מאך שוין,ARTIST,ALBUM
 מאל געטאנצט,ARTIST,ARTIST
 מאמעס געבעט,ARTIST,RANDOM
 מארגן שעפעלע,ARTIST,RANDOM
@@ -2066,25 +2066,25 @@ toras hashem,ARTIST,SONG
 מבחן ללהקת,ARTIST,RANDOM
 מבט אחרון,ARTIST,ALBUM
 מבניני זופניק,ARTIST,ARTIST
-מברני באהבה,ARTIST,SONG
+מברני באהבה,ARTIST,ALBUM
 מבתי זופניק,ARTIST,ARTIST
 מגדיל ישועות,ARTIST,RANDOM
-מגה מיקס,ARTIST,SONG
+מגה מיקס,ARTIST,ALBUM
 מגן דוד,ARTIST,ARTIST
 מגן ישעי,ARTIST,ARTIST
 מגן ישראל,ARTIST,ARTIST
 מדארף רידערן,ARTIST,RANDOM
-מדינה סוערת,ARTIST,ARTIST
+מדינה סוערת,ARTIST,RANDOM
 מדע מהיר,ARTIST,RANDOM
 מדענים אשר,ARTIST,ARTIST
-מהדר חתן,ARTIST,SONG
+מהדר חתן,ARTIST,RANDOM
 מהו גן,ARTIST,RANDOM
 מהו שבת,ARTIST,ALBUM
 מהישיבה בעיר,ARTIST,RANDOM
 מהסלון זושא,ARTIST,ARTIST
-מהר יקדמונו,ARTIST,RANDOM
-מהר ליהודה,ARTIST,RANDOM
-מהר ענני,ARTIST,RANDOM
+מהר יקדמונו,ARTIST,ALBUM
+מהר ליהודה,ARTIST,ALBUM
+מהר ענני,ARTIST,ALBUM
 מהרב אשלג,ARTIST,RANDOM
 מודי שפירא,ARTIST,ARTIST
 מודים אנחנו,ARTIST,ALBUM
@@ -2095,7 +2095,7 @@ toras hashem,ARTIST,SONG
 מוטי-שיין,ARTIST,ARTIST
 מוישל'ה גנב,ARTIST,RANDOM
 מויתור לשידוך,ARTIST,RANDOM
-מוכרח להיות,ARTIST,RANDOM
+מוכרח להיות,ARTIST,ALBUM
 מול קלי,ARTIST,RANDOM
 מולאן רוז,ARTIST,ARTIST
 מונופול והעתיד,ARTIST,RANDOM
@@ -2112,7 +2112,7 @@ toras hashem,ARTIST,SONG
 מזמן לזמן,ARTIST,RANDOM
 מחדר ייחוד,ARTIST,RANDOM
 מחוף לחוף,ARTIST,RANDOM
-מחיה מתים,ARTIST,RANDOM
+מחיה מתים,ARTIST,ALBUM
 מחלת קרינה,ARTIST,RANDOM
 מחמן פלימר,ARTIST,ARTIST
 מחניך קדוש,ARTIST,ARTIST
@@ -2130,7 +2130,7 @@ toras hashem,ARTIST,SONG
 מיטן קינד,ARTIST,RANDOM
 מיי דהוה,ARTIST,RANDOM
 מיילך בראנדמארק,ARTIST,ARTIST
-מיילך טאנץ,ARTIST,ARTIST
+מיילך טאנץ,ARTIST,SONG
 מייק התרנגול,ARTIST,ARTIST
 מיכאל שמחי,ARTIST,ARTIST
 מיכאל_דבורקין,ARTIST,RANDOM
@@ -2173,24 +2173,24 @@ toras hashem,ARTIST,SONG
 מלך רם,ARTIST,ARTIST
 מלך שהשלום,ARTIST,ALBUM
 מלכא דעלמא,ARTIST,ARTIST
-מלכה'לה-ש. גרטנר,ARTIST,ARTIST
+מלכה'לה-ש. גרטנר,ARTIST,SONG
 מלכהל'ה קומטנץ,ARTIST,RANDOM
 מלכותו ברצון,ARTIST,ALBUM
 מלכותו נצח,ARTIST,ALBUM
-מלכנו פתח,ARTIST,SONG
-מלכנו שמע,ARTIST,SONG
+מלכנו פתח,ARTIST,ALBUM
+מלכנו שמע,ARTIST,ALBUM
 ממיסדי סייבריזון,ARTIST,RANDOM
 ממש בסוף,ARTIST,RANDOM
 ממש מוגזם,ARTIST,RANDOM
 מן המיצר,ARTIST,RANDOM
-מנגינה אלוהית,ARTIST,SONG
+מנגינה אלוהית,ARTIST,RANDOM
 מנגינה אתנית,ARTIST,SONG
 מנגינה יפה,ARTIST,RANDOM
-מנגינה יקרה,ARTIST,SONG
+מנגינה יקרה,ARTIST,RANDOM
 מנגינה מוטעמת,ARTIST,SONG
 מנגינה משוגעת,ARTIST,SONG
 מנגינה פריד,ARTIST,SONG
-מנגינה רומנית,ARTIST,SONG
+מנגינה רומנית,ARTIST,RANDOM
 מנדי ג_רופי,ARTIST,ARTIST
 מנדי ג׳י,ARTIST,ARTIST
 מנדי וויס,ARTIST,ARTIST
@@ -2202,21 +2202,21 @@ toras hashem,ARTIST,SONG
 מנהלי לב שומע,ARTIST,ALBUM
 מנוחה וקדושה,ARTIST,SONG
 מנוחה קרליבך,ARTIST,SONG
-מנועי משחקים,ARTIST,RANDOM
+מנועי משחקים,ARTIST,ALBUM
 מנורת זהב,ARTIST,ALBUM
 מנחם משיב,ARTIST,ARTIST
-מסור שרשרת,ARTIST,RANDOM
+מסור שרשרת,ARTIST,ALBUM
 מסע צלב,ARTIST,ALBUM
 מספרי טלפון,ARTIST,RANDOM
 מסתוריות שאין,ARTIST,RANDOM
-מסתורין במצולות,ARTIST,RANDOM
+מסתורין במצולות,ARTIST,ALBUM
 מעוז צור,ARTIST,ARTIST
 מעוז ציר,ARTIST,ARTIST
 מעון ביתך,ARTIST,RANDOM
-מעיורון לחתונה,ARTIST,ALBUM
+מעיורון לחתונה,ARTIST,RANDOM
 מעיין החיים,ARTIST,ALBUM
 מעיין חיים,ARTIST,ARTIST
-מעמע שניצלער,ARTIST,RANDOM
+מעמע שניצלער,ARTIST,ARTIST
 מען טרעפט,ARTIST,RANDOM
 מענדי בריעטא,ARTIST,ARTIST
 מענטש טראכט,ARTIST,RANDOM
@@ -2226,14 +2226,14 @@ toras hashem,ARTIST,SONG
 מצוה גדולה,ARTIST,RANDOM
 מצוה גוררת,ARTIST,RANDOM
 מצוה טאנז,ARTIST,SONG
-מצוה קליגר,ARTIST,ARTIST
+מצוה קליגר,ARTIST,SONG
 מצוה רביעית,ARTIST,SONG
 מצווה גדולה,ARTIST,RANDOM
 מציל אותי,ARTIST,RANDOM
-מצילתיים במירון,ARTIST,ALBUM
+מצילתיים במירון,ARTIST,RANDOM
 מצליח בעולם,ARTIST,RANDOM
 מצליח משיח,ARTIST,ARTIST
-מקבץ מלכותי,ARTIST,RANDOM
+מקבץ מלכותי,ARTIST,ALBUM
 מקהלת אזמרה ישראל,ARTIST,ARTIST
 מקהלת היהודים בשבי,ARTIST,ARTIST
 מקהלת היהודים תחת כישוף,ARTIST,ARTIST
@@ -2274,9 +2274,9 @@ toras hashem,ARTIST,SONG
 מרקו פולו,ARTIST,ARTIST
 מרש גור,ARTIST,ARTIST
 מרש מילוקי,ARTIST,ARTIST
-מרש ריקוד,ARTIST,SONG
+מרש ריקוד,ARTIST,ALBUM
 משאת כפי,ARTIST,RANDOM
-משאת נפש,ARTIST,RANDOM
+משאת נפש,ARTIST,ALBUM
 משברי הים,ARTIST,RANDOM
 משגב אמהות,ARTIST,ARTIST
 משה בן יוכבד,ARTIST,ARTIST
@@ -2328,45 +2328,45 @@ toras hashem,ARTIST,SONG
 משך נעם,ARTIST,RANDOM
 משכבי בלילות,ARTIST,RANDOM
 משכן אשר,ARTIST,ARTIST
-משכן שלום,ARTIST,ARTIST
+משכן שלום,ARTIST,SONG
 משפ' לפקוביץ,ARTIST,ARTIST
 משפחת קלצקו,ARTIST,ARTIST
 משפט אייכמן,ARTIST,RANDOM
 משפט בבודפסט,ARTIST,RANDOM
 מתי באמת,ARTIST,RANDOM
 מתי ווען,ARTIST,SONG
-מתי יבושר,ARTIST,SONG
+מתי יבושר,ARTIST,ARTIST
 מתי יוודע,ARTIST,SONG
-מתי יתוודע,ARTIST,SONG
-מתי לחזור,ARTIST,SONG
-מתי נתנשק,ARTIST,SONG
+מתי יתוודע,ARTIST,ARTIST
+מתי לחזור,ARTIST,RANDOM
+מתי נתנשק,ARTIST,ARTIST
 מתכלית הירידה,ARTIST,RANDOM
 מתן הדאיה,ARTIST,ARTIST
 מתעורר לחיים,ARTIST,ALBUM
 מתתיהו גייט,ARTIST,ARTIST
-נאלמתי דומיה,ARTIST,RANDOM
+נאלמתי דומיה,ARTIST,ALBUM
 נאמן אתה,ARTIST,RANDOM
 נאסר כליפה,ARTIST,RANDOM
 נבואי קוסמי,ARTIST,RANDOM
 נביט לשמים,ARTIST,RANDOM
 נגד פפסי,ARTIST,RANDOM
 נגון דאנסס,ARTIST,RANDOM
-נגון הלב,ARTIST,RANDOM
+נגון הלב,ARTIST,ALBUM
 נגון חתן,ARTIST,SONG
 נגון לשבת,ARTIST,ALBUM
-נגון שמחה,ARTIST,ARTIST
+נגון שמחה,ARTIST,SONG
 נגון תתברך,ARTIST,RANDOM
-נגוני שמחה,ARTIST,ARTIST
-נגלית גרליץ,ARTIST,RANDOM
+נגוני שמחה,ARTIST,ALBUM
+נגלית גרליץ,ARTIST,ALBUM
 נגנו לאל,ARTIST,ARTIST
 נגנו לי,ARTIST,RANDOM
 נדב ״ו,ARTIST,ARTIST
 נדבורנה י-ם,ARTIST,ARTIST
-נדבורנה ירושלים,ARTIST,ALBUM
-נדבר אמת,ARTIST,RANDOM
+נדבורנה ירושלים,ARTIST,SONG
+נדבר אמת,ARTIST,ALBUM
 נדבר מחר,ARTIST,RANDOM
-נדודים נדודים,ARTIST,RANDOM
-נדיר יזרעאל,ARTIST,ARTIST
+נדודים נדודים,ARTIST,ALBUM
+נדיר יזרעאל,ARTIST,RANDOM
 נדר לאלוקי,ARTIST,RANDOM
 נהגי מונית,ARTIST,RANDOM
 נהיגה מרוקאי,ARTIST,RANDOM
@@ -2374,11 +2374,11 @@ toras hashem,ARTIST,SONG
 נו נו,ARTIST,RANDOM
 נובו שיראזה,ARTIST,RANDOM
 נודה לשימך,ARTIST,RANDOM
-נודה לשמך,ARTIST,SONG
+נודה לשמך,ARTIST,RANDOM
 נודע ביהודה,ARTIST,RANDOM
 נודעת להם,ARTIST,RANDOM
 נווד נתי,ARTIST,ARTIST
-נווה קיץ,ARTIST,ARTIST
+נווה קיץ,ARTIST,ALBUM
 נווה תלאות,ARTIST,SONG
 נוי פדלון,ARTIST,ARTIST
 נוי צריצי,ARTIST,ARTIST
@@ -2394,10 +2394,10 @@ toras hashem,ARTIST,SONG
 נועם שבת,ARTIST,ALBUM
 נוער מצויין,ARTIST,RANDOM
 נוער מתבולל,ARTIST,RANDOM
-נוף קסום,ARTIST,RANDOM
+נוף קסום,ARTIST,ALBUM
 נופיה ידידיה,ARTIST,ARTIST
 נוקיה טרנס,ARTIST,RANDOM
-נור אמונה,ARTIST,SONG
+נור אמונה,ARTIST,ALBUM
 נורא ונשגב,ARTIST,RANDOM
 נורא עלילא,ARTIST,RANDOM
 נורה נורה,ARTIST,RANDOM
@@ -2409,7 +2409,7 @@ toras hashem,ARTIST,SONG
 נחמן אלחדד,ARTIST,ARTIST
 נחמן בן פייגא,ARTIST,ARTIST
 נחמן וילהלם,ARTIST,ARTIST
-נחמן חתונה,ARTIST,SONG
+נחמן חתונה,ARTIST,ARTIST
 נחמן טראנס,ARTIST,ARTIST
 נחמן מתקן,ARTIST,ARTIST
 נחמן נחמן,ARTIST,ARTIST
@@ -2439,7 +2439,7 @@ toras hashem,ARTIST,SONG
 ניסן יוסט,ARTIST,ARTIST
 ניסן עו,ARTIST,ARTIST
 ניסן עז,ARTIST,ARTIST
-ניצחון צודק,ARTIST,RANDOM
+ניצחון צודק,ARTIST,ALBUM
 ניקולאייב קאפליה,ARTIST,RANDOM
 ניקלואי גדה,ARTIST,RANDOM
 ניר פקין,ARTIST,ARTIST
@@ -2447,7 +2447,7 @@ toras hashem,ARTIST,SONG
 נישט גדעייגט,ARTIST,RANDOM
 ניתן להפריד,ARTIST,RANDOM
 נכבש הרי,ARTIST,RANDOM
-נכון ליבי,ARTIST,SONG
+נכון ליבי,ARTIST,RANDOM
 נלי בליי,ARTIST,RANDOM
 נלך עימך,ARTIST,RANDOM
 נלמד לתת,ARTIST,RANDOM
@@ -2455,7 +2455,7 @@ toras hashem,ARTIST,SONG
 נמואל אמונה,ARTIST,ALBUM
 נמואל בסינגל,ARTIST,SONG
 נמואל וארי,ARTIST,ARTIST
-נמואל ודני,ARTIST,RANDOM
+נמואל ודני,ARTIST,ARTIST
 נמואל והיה,ARTIST,RANDOM
 נמואל לסינגל,ARTIST,ARTIST
 נמואל מבצע וידרקר,ARTIST,ARTIST
@@ -2478,8 +2478,8 @@ toras hashem,ARTIST,SONG
 נעימת השלום,ARTIST,SONG
 נעימת סיום,ARTIST,SONG
 נעימת ערבית,ARTIST,RANDOM
-נעימת פתיחה,ARTIST,RANDOM
-נעליים חדשות,ARTIST,RANDOM
+נעימת פתיחה,ARTIST,SONG
+נעליים חדשות,ARTIST,ALBUM
 נעלמה במצולות,ARTIST,RANDOM
 נעם עס אהן,ARTIST,RANDOM
 נפל חלל,ARTIST,RANDOM
@@ -2491,19 +2491,19 @@ toras hashem,ARTIST,SONG
 נפשנו כציפור,ARTIST,RANDOM
 נפתלי דוד,ARTIST,ARTIST
 נפתלי וגלעד,ARTIST,ARTIST
-נצור לשונך,ARTIST,SONG
+נצור לשונך,ARTIST,ALBUM
 נצח ישראל,ARTIST,ARTIST
 נקוב לב,ARTIST,ALBUM
 נקם פעמיו,ARTIST,RANDOM
-נר זרח,ARTIST,RANDOM
+נר זרח,ARTIST,ARTIST
 נר נשמה,ARTIST,ALBUM
 נר רגלי,ARTIST,RANDOM
 נר שבת,ARTIST,ALBUM
 נראתה לאחרונה,ARTIST,RANDOM
 נרדי נתן,ARTIST,ARTIST
 נריה חובב,ARTIST,ARTIST
-נרננה בישועתך,ARTIST,SONG
-נרננה מציגה,ARTIST,SONG
+נרננה בישועתך,ARTIST,ALBUM
+נרננה מציגה,ARTIST,RANDOM
 נרננה קרליבך,ARTIST,SONG
 נרקיס הולכת,ARTIST,ARTIST
 נרקיס שדות,ARTIST,ARTIST
@@ -2514,7 +2514,7 @@ toras hashem,ARTIST,SONG
 נתי חסיד,ARTIST,ARTIST
 נתי שיש,ARTIST,RANDOM
 נתיב חיי,ARTIST,ARTIST
-נתינה מולידה,ARTIST,RANDOM
+נתינה מולידה,ARTIST,ALBUM
 נתן חביבי,ARTIST,ARTIST
 נתן לרבינו,ARTIST,ARTIST
 נתנאל בין,ARTIST,RANDOM
@@ -2548,12 +2548,12 @@ toras hashem,ARTIST,SONG
 סוף דבר,ARTIST,RANDOM
 סוף הסדר,ARTIST,RANDOM
 סוף השבוע,ARTIST,RANDOM
-סוף זמן,ARTIST,RANDOM
+סוף זמן,ARTIST,ALBUM
 סוף מוסף,ARTIST,ALBUM
-סוף קיץ,ARTIST,RANDOM
+סוף קיץ,ARTIST,ALBUM
 סופר סטאר,ARTIST,ARTIST
 סורו ממני,ARTIST,RANDOM
-סטאו יא פיטו,ARTIST,RANDOM
+סטאו יא פיטו,ARTIST,SONG
 סטייט מנג׳מנט,ARTIST,RANDOM
 סי געווען,ARTIST,RANDOM
 סידור קידושין,ARTIST,RANDOM
@@ -2590,7 +2590,7 @@ toras hashem,ARTIST,SONG
 ספר מזויף,ARTIST,RANDOM
 ספרי תמה,ARTIST,RANDOM
 סקספון אלוף,ARTIST,RANDOM
-סרט ויזניץ,ARTIST,RANDOM
+סרט ויזניץ,ARTIST,ALBUM
 סרטי אימה,ARTIST,RANDOM
 סרטי דוקו,ARTIST,RANDOM
 סתלבט בקיבוץ,ARTIST,RANDOM
@@ -2616,16 +2616,16 @@ toras hashem,ARTIST,SONG
 עוז לעמו,ARTIST,ARTIST
 עוזי אליך,ARTIST,ARTIST
 עוזיהו אלי,ARTIST,ARTIST
-עוכר שמחה,ARTIST,ARTIST
+עוכר שמחה,ARTIST,ALBUM
 עולה אביעד,ARTIST,ARTIST
 עולו אושפוזין,ARTIST,SONG
 עומר כילף,ARTIST,ARTIST
 עומר עגיב,ARTIST,ARTIST
 עוסקים בתורה,ARTIST,RANDOM
-עופי נט,ARTIST,RANDOM
+עופי נט,ARTIST,ARTIST
 עופר האיילים,ARTIST,ARTIST
-עוצרי נשימה,ARTIST,RANDOM
-עורה כבודי,ARTIST,RANDOM
+עוצרי נשימה,ARTIST,ALBUM
+עורה כבודי,ARTIST,ALBUM
 עורו קומו,ARTIST,SONG
 עורי עורי,ARTIST,RANDOM
 עושין תשובה,ARTIST,RANDOM
@@ -2649,15 +2649,15 @@ toras hashem,ARTIST,SONG
 עיר האמת,ARTIST,RANDOM
 עיר ציון,ARTIST,ARTIST
 עירבוב שירי,ARTIST,ALBUM
-עירין קדישין,ARTIST,SONG
+עירין קדישין,ARTIST,RANDOM
 עיתים לתורה,ARTIST,RANDOM
 עלזו רעי,ARTIST,ARTIST
-עלי אור,ARTIST,RANDOM
+עלי אור,ARTIST,ALBUM
 עלי באר,ARTIST,RANDOM
 עלי גמל,ARTIST,RANDOM
 עלי כת,ARTIST,RANDOM
 עלי שיח,ARTIST,RANDOM
-עליון אגדלך,ARTIST,ALBUM
+עליון אגדלך,ARTIST,SONG
 עליון נורא,ARTIST,RANDOM
 עליזה בלוך,ARTIST,ARTIST
 עליזה לביא,ARTIST,ARTIST
@@ -2690,7 +2690,7 @@ toras hashem,ARTIST,SONG
 עצוב אדם,ARTIST,RANDOM
 עצי הזית,ARTIST,RANDOM
 עצי זית,ARTIST,RANDOM
-עצם זר),ARTIST,RANDOM
+עצם זר),ARTIST,ALBUM
 עקדת יצחק,ARTIST,ARTIST
 עקוב אחרי,ARTIST,RANDOM
 עקיבא -,ARTIST,ARTIST
@@ -2730,7 +2730,7 @@ toras hashem,ARTIST,SONG
 פאר דטעטע,ARTIST,ARTIST
 פאר הדור,ARTIST,ARTIST
 פאר וכבוד,ARTIST,ARTIST
-פארביטענע קינד,ARTIST,ARTIST
+פארביטענע קינד,ARTIST,RANDOM
 פארו עלי,ARTIST,RANDOM
 פארוואס וויינסטו,ARTIST,RANDOM
 פארוואס זינגט,ARTIST,RANDOM
@@ -2764,16 +2764,16 @@ toras hashem,ARTIST,SONG
 פיני פולק,ARTIST,ARTIST
 פיני-איינהורן,ARTIST,ARTIST
 פינקיס הלל,ARTIST,ARTIST
-פיסת גן,ARTIST,RANDOM
+פיסת גן,ARTIST,ALBUM
 פיסת חיים,ARTIST,ARTIST
 פיפיות גור,ARTIST,ARTIST
-פיפיות פסנתר,ARTIST,ARTIST
+פיפיות פסנתר,ARTIST,ALBUM
 פיקודי ה פריד,ARTIST,SONG
 פיש פיש,ARTIST,ARTIST
 פישל בייגעל,ARTIST,RANDOM
 פיתחי לי,ARTIST,RANDOM
 פלא גרין,ARTIST,ARTIST
-פלא טבעי,ARTIST,RANDOM
+פלא טבעי,ARTIST,ALBUM
 פלאץ פאר,ARTIST,ARTIST
 פלברבוים טלר,ARTIST,ARTIST
 פלורנס נייטינגייל,ARTIST,RANDOM
@@ -2798,40 +2798,40 @@ toras hashem,ARTIST,SONG
 פסח בגטאו,ARTIST,ALBUM
 פסח בלוז,ARTIST,ARTIST
 פסח במלון,ARTIST,ARTIST
-פסח הלל,ARTIST,ALBUM
+פסח הלל,ARTIST,ARTIST
 פסח לעצרת,ARTIST,ALBUM
 פסח ממלסטובקה,ARTIST,ALBUM
 פסח שארף,ARTIST,ARTIST
 פסנתר בנט,ARTIST,ARTIST
 פעמון זהב,ARTIST,ALBUM
-פעמון כנסייה,ARTIST,RANDOM
+פעמון כנסייה,ARTIST,ALBUM
 פערל פישערס,ARTIST,ARTIST
 פקה פקה,ARTIST,RANDOM
 פרדה אקלום,ARTIST,ARTIST
 פרדונה אנטור,ARTIST,RANDOM
 פרדס חנה,ARTIST,ARTIST
-פרוג'קט,ARTIST,RANDOM
-פרוייקט קפיצת הדרך,ARTIST,SONG
+פרוג'קט,ARTIST,ALBUM
+פרוייקט קפיצת הדרך,ARTIST,ALBUM
 פרופסור יהושע,ARTIST,ARTIST
 פרח הלילך,ARTIST,ARTIST
 פרח הלימון,ARTIST,ARTIST
-פרח תקווה,ARTIST,RANDOM
+פרח תקווה,ARTIST,ALBUM
 פרחי - ויעשו,ARTIST,ARTIST
 פרחי אורגינל,ARTIST,ARTIST
 פרחי זקני,ARTIST,ARTIST
 פרחי יצחק,ARTIST,ARTIST
 פרחי קומה,ARTIST,ARTIST
-פרחי-ירושלים,ARTIST,SONG
+פרחי-ירושלים,ARTIST,ARTIST
 פרחי_ירושלים,ARTIST,RANDOM
 פרחים אקזוטים,ARTIST,RANDOM
 פרחים בקנה,ARTIST,RANDOM
 פריטה קצרה,ARTIST,RANDOM
-פריילאך זיין,ARTIST,ARTIST
+פריילאך זיין,ARTIST,SONG
 פריילאך יידן,ARTIST,ARTIST
 פרייליך אינטרו,ARTIST,ARTIST
 פרייליך במירון,ARTIST,ARTIST
 פרייליך זיין,ARTIST,ARTIST
-פריילך אוריינטלי,ARTIST,RANDOM
+פריילך אוריינטלי,ARTIST,SONG
 פריילעך זיין,ARTIST,SONG
 פרילייך באנד,ARTIST,RANDOM
 פריץ הבר,ARTIST,ARTIST
@@ -2843,10 +2843,10 @@ toras hashem,ARTIST,SONG
 פתחו לי,ARTIST,SONG
 פתחי שעריך,ARTIST,RANDOM
 פתיח למדנצ'יק,ARTIST,ARTIST
-פתיח ריקוד,ARTIST,SONG
+פתיח ריקוד,ARTIST,ALBUM
 פתיחת אירועי,ARTIST,RANDOM
 פתיחת הארון,ARTIST,RANDOM
-פתיחת הורה,ARTIST,RANDOM
+פתיחת הורה,ARTIST,ALBUM
 פתקא מרבינו,ARTIST,RANDOM
 צ. ויטלר,ARTIST,RANDOM
 צ_יו ג_ין,ARTIST,RANDOM
@@ -2867,7 +2867,7 @@ toras hashem,ARTIST,SONG
 צוויי פעסער,ARTIST,RANDOM
 צווישן קאסיב,ARTIST,RANDOM
 צווישען קאסוב,ARTIST,RANDOM
-צוות אולפני,ARTIST,RANDOM
+צוות אולפני,ARTIST,ALBUM
 צוות שבע,ARTIST,ALBUM
 צוחק מרוקאי,ARTIST,RANDOM
 צוחק פרסי,ARTIST,RANDOM
@@ -2884,20 +2884,20 @@ toras hashem,ARTIST,SONG
 צור משלו07,ARTIST,ARTIST
 צור פסגות,ARTIST,ARTIST
 צורי תומך,ARTIST,ARTIST
-צחוק מבוגר,ARTIST,RANDOM
-צחוק מדהים,ARTIST,RANDOM
-צחוק ממשבקים,ARTIST,ARTIST
-צחוק נשי,ARTIST,ARTIST
-צחוק קורע,ARTIST,RANDOM
-צחוק..,ARTIST,ARTIST
-צי לאנג,ARTIST,ARTIST
+צחוק מבוגר,ARTIST,ALBUM
+צחוק מדהים,ARTIST,ALBUM
+צחוק ממשבקים,ARTIST,ALBUM
+צחוק נשי,ARTIST,ALBUM
+צחוק קורע,ARTIST,ALBUM
+צחוק..,ARTIST,ALBUM
+צי לאנג,ARTIST,RANDOM
 צי פארן,ARTIST,ARTIST
 ציבי גבע,ARTIST,ARTIST
 ציו ציון,ARTIST,ARTIST
 ציון הלא,ARTIST,ARTIST
 ציון ציון,ARTIST,ARTIST
 ציוני תברח,ARTIST,RANDOM
-ציירתי שמש,ARTIST,ARTIST
+ציירתי שמש,ARTIST,ALBUM
 צילא דמהימנותא,ARTIST,RANDOM
 צילצול גרוזיני,ARTIST,RANDOM
 צילצול פלאפון,ARTIST,RANDOM
@@ -2914,7 +2914,7 @@ toras hashem,ARTIST,SONG
 צליל וזמר,ARTIST,ARTIST
 צליל מחשב,ARTIST,RANDOM
 צלילי העבר,ARTIST,ALBUM
-צלילי מחשב,ARTIST,RANDOM
+צלילי מחשב,ARTIST,ALBUM
 צלצול טעטע,ARTIST,RANDOM
 צלצולי מחשב,ARTIST,RANDOM
 צלקות באספלט,ARTIST,RANDOM
@@ -2928,10 +2928,10 @@ toras hashem,ARTIST,SONG
 צעדים עקיבא,ARTIST,ARTIST
 צעירים גני,ARTIST,RANDOM
 צען שטארקע,ARTIST,RANDOM
-צעקה חרחור,ARTIST,RANDOM
+צעקה חרחור,ARTIST,ALBUM
 צער השכינה,ARTIST,RANDOM
 צפצוף מחשב,ARTIST,RANDOM
-צפרא דשבתא,ARTIST,RANDOM
+צפרא דשבתא,ARTIST,ALBUM
 צפרדע מזרחי,ARTIST,ARTIST
 צפת גלבך,ARTIST,ARTIST
 צפת לזר,ARTIST,RANDOM
@@ -2942,7 +2942,7 @@ toras hashem,ARTIST,SONG
 ק      ק ש,ARTIST,RANDOM
 ק-ה ריבון,ARTIST,SONG
 קאלטע קאווע,ARTIST,RANDOM
-קבלה בידינו,ARTIST,RANDOM
+קבלה בידינו,ARTIST,ALBUM
 קדוש קדוש,ARTIST,ARTIST
 קדרותא דצפרא,ARTIST,RANDOM
 קדשנו במצותיך,ARTIST,RANDOM
@@ -2960,7 +2960,7 @@ toras hashem,ARTIST,SONG
 קולות בליל,ARTIST,ALBUM
 קולות גבוהים,ARTIST,ALBUM
 קולות מגירוש,ARTIST,ALBUM
-קום צוריק,ARTIST,RANDOM
+קום צוריק,ARTIST,SONG
 קומזיץ בגשם,ARTIST,ALBUM
 קומט אן,ARTIST,ARTIST
 קומט שויין,ARTIST,RANDOM
@@ -2969,7 +2969,7 @@ toras hashem,ARTIST,SONG
 קומי רוני,ARTIST,ARTIST
 קונספירציה מהסרטים,ARTIST,RANDOM
 קונצרט חזנות,ARTIST,ALBUM
-קונצרט קרליבך,ARTIST,SONG
+קונצרט קרליבך,ARTIST,ALBUM
 קורא בשמך,ARTIST,RANDOM
 קוריץ מחומר,ARTIST,ARTIST
 קחו חמש,ARTIST,RANDOM
@@ -2982,14 +2982,14 @@ toras hashem,ARTIST,SONG
 קינדערלעך פארברענגען,ARTIST,RANDOM
 קינדרלך 2016,ARTIST,RANDOM
 קיפ קליימינג,ARTIST,RANDOM
-קיץ פנסי,ARTIST,RANDOM
-קיץ פרואני,ARTIST,RANDOM
+קיץ פנסי,ARTIST,ALBUM
+קיץ פרואני,ARTIST,ALBUM
 קיר אחד,ARTIST,RANDOM
 קירסטן פלגסטאד,ARTIST,RANDOM
 קישינעווער שטיקעלע,ARTIST,RANDOM
 קישקע צולנט,ARTIST,RANDOM
 קלונדייק ג_ו,ARTIST,RANDOM
-קלידי קסם,ARTIST,ARTIST
+קלידי קסם,ARTIST,ALBUM
 קלידן וסגירה,ARTIST,RANDOM
 קלמן גולדשמידט,ARTIST,ARTIST
 קלמן רוזנגרטן,ARTIST,ARTIST
@@ -2999,7 +2999,7 @@ toras hashem,ARTIST,SONG
 קסם באויר,ARTIST,ALBUM
 קסם נעוריי,ARTIST,ALBUM
 קסם תאי,ARTIST,ALBUM
-קפה שחור,ARTIST,RANDOM
+קפה שחור,ARTIST,ALBUM
 קפוב קגן,ARTIST,ARTIST
 קפטן קוק,ARTIST,ARTIST
 קצב אנגלי,ARTIST,ARTIST
@@ -3012,7 +3012,7 @@ toras hashem,ARTIST,SONG
 קראתיך יהודה,ARTIST,ARTIST
 קרה למורן,ARTIST,RANDOM
 קרויס רוטשטיין,ARTIST,ARTIST
-קרוץ מחומר,ARTIST,RANDOM
+קרוץ מחומר,ARTIST,SONG
 קריה יפהפיה,ARTIST,RANDOM
 קריה יפיפיה,ARTIST,RANDOM
 קריה נאמנה,ARTIST,RANDOM
@@ -3030,7 +3030,7 @@ toras hashem,ARTIST,SONG
 ראה ענני,ARTIST,RANDOM
 ראו באורי,ARTIST,RANDOM
 ראיון אבו,ARTIST,ARTIST
-ראיון בצבא,ARTIST,RANDOM
+ראיון בצבא,ARTIST,SONG
 ראיתי בענייך,ARTIST,RANDOM
 ראם שיר,ARTIST,ARTIST
 ראפ באידיש,ARTIST,SONG
@@ -3052,9 +3052,9 @@ toras hashem,ARTIST,SONG
 רוברט מריל,ARTIST,ARTIST
 רודפים צללים,ARTIST,ALBUM
 רוזן במיטבו,ARTIST,ARTIST
-רוח אפינו,ARTIST,RANDOM
-רוח חדשה,ARTIST,RANDOM
-רוח סתיו,ARTIST,ARTIST
+רוח אפינו,ARTIST,ALBUM
+רוח חדשה,ARTIST,ALBUM
+רוח סתיו,ARTIST,ALBUM
 רויטמן. רומשינסקי,ARTIST,ARTIST
 רום קשוק,ARTIST,ARTIST
 רומניה רומניה,ARTIST,RANDOM
@@ -3072,22 +3072,22 @@ toras hashem,ARTIST,SONG
 רחובות קמפיין,ARTIST,RANDOM
 רחום שמך,ARTIST,ARTIST
 רחל אמנו,ARTIST,SONG
-רחל וויין,ARTIST,ARTIST
+רחל וויין,ARTIST,SONG
 רחל פרייליך,ARTIST,ARTIST
 ריבה ריבה,ARTIST,RANDOM
 ריבים צ'יריבום,ARTIST,RANDOM
 ריו בראבו,ARTIST,ARTIST
-ריח פרדסים,ARTIST,RANDOM
+ריח פרדסים,ARTIST,ALBUM
 רייכל גפן,ARTIST,ARTIST
 רייכל_,ARTIST,RANDOM
 ריין חזנות,ARTIST,ALBUM
 רימון בכנסת,ARTIST,ARTIST
 רימון יד,ARTIST,RANDOM
 רין קורקרן,ARTIST,RANDOM
-ריקוד איישישוק,ARTIST,SONG
+ריקוד איישישוק,ARTIST,ALBUM
 ריקוד גור,ARTIST,ARTIST
-ריקוד סלוניקי,ARTIST,SONG
-ריקוד קלימאוויטש,ARTIST,SONG
+ריקוד סלוניקי,ARTIST,ALBUM
+ריקוד קלימאוויטש,ARTIST,ALBUM
 ריקודים02 רצועה,ARTIST,SONG
 ריקודים03 רצועה,ARTIST,SONG
 רכב אוטונומי,ARTIST,RANDOM
@@ -3097,15 +3097,15 @@ toras hashem,ARTIST,SONG
 רם ונישא,ARTIST,ARTIST
 רם לחסדך,ARTIST,ARTIST
 רם לעמך,ARTIST,ARTIST
-רמזור אדום,ARTIST,RANDOM
+רמזור אדום,ARTIST,ALBUM
 רמי טריסמן,ARTIST,ARTIST
-רמת הגולן,ARTIST,RANDOM
+רמת הגולן,ARTIST,ARTIST
 רני ולינגשטיין,ARTIST,ARTIST
 רני ושמחי,ARTIST,ARTIST
 רעדן לשון,ARTIST,RANDOM
 רעי סוויד,ARTIST,ARTIST
 רעיא מהימנא,ARTIST,RANDOM
-רעידת האדמה,ARTIST,RANDOM
+רעידת האדמה,ARTIST,ALBUM
 רעיה רצוני,ARTIST,ARTIST
 רענן נהרי,ARTIST,ARTIST
 רפסודה הונגרית,ARTIST,RANDOM
@@ -3139,7 +3139,7 @@ toras hashem,ARTIST,SONG
 שאולי -,ARTIST,ARTIST
 שאי סביב,ARTIST,RANDOM
 שאין להכחישה,ARTIST,RANDOM
-שאלו שלום ירושלים,ARTIST,ALBUM
+שאלו שלום ירושלים,ARTIST,SONG
 שאנון איגלנד,ARTIST,RANDOM
 שאנחנו יהודים,ARTIST,RANDOM
 שאני חי,ARTIST,ALBUM
@@ -3149,19 +3149,19 @@ toras hashem,ARTIST,SONG
 שבות עמי,ARTIST,ARTIST
 שבח צורי,ARTIST,ARTIST
 שבח שוורץ,ARTIST,ARTIST
-שבחין אסדר,ARTIST,RANDOM
+שבחין אסדר,ARTIST,ALBUM
 שבי אחריך,ARTIST,ARTIST
 שבי ירושלים,ARTIST,SONG
 שביט בשמי,ARTIST,ARTIST
 שביל לחופה,ARTIST,RANDOM
 שבירת כלים,ARTIST,RANDOM
-שבע שערה,ARTIST,ALBUM
+שבע שערה,ARTIST,RANDOM
 שבעה ירחים,ARTIST,RANDOM
-שבעה פלאי,ARTIST,ARTIST
-שבראנו לכבודו,ARTIST,RANDOM
+שבעה פלאי,ARTIST,SONG
+שבראנו לכבודו,ARTIST,ALBUM
 שבת בכותל,ARTIST,ALBUM
 שבתי בחזרה,ARTIST,ARTIST
-שבתי ירושלים,ARTIST,ARTIST
+שבתי ירושלים,ARTIST,ALBUM
 שגיא נירי,ARTIST,ARTIST
 שגעגוע יחלוף,ARTIST,RANDOM
 שדה חמד,ARTIST,ARTIST
@@ -3169,8 +3169,8 @@ toras hashem,ARTIST,SONG
 שדכנטע שדכנטע,ARTIST,RANDOM
 שדרני קול חי,ARTIST,ALBUM
 שהבעיר עיר,ARTIST,RANDOM
-שהנשמה בקרבי,ARTIST,RANDOM
-שהשלום שלו,ARTIST,RANDOM
+שהנשמה בקרבי,ARTIST,SONG
+שהשלום שלו,ARTIST,ALBUM
 שהשם ישמור,ARTIST,RANDOM
 שוא שקד,ARTIST,ARTIST
 שובי רוני,ARTIST,ARTIST
@@ -3178,7 +3178,7 @@ toras hashem,ARTIST,SONG
 שוויגערא פיגארא,ARTIST,RANDOM
 שוורצע קארשאלאך,ARTIST,RANDOM
 שוטר מהרשפ,ARTIST,RANDOM
-שוין אידלעך,ARTIST,RANDOM
+שוין אידלעך,ARTIST,ALBUM
 שוין זיין,ARTIST,SONG
 שוין לעכטיג,ARTIST,ALBUM
 שוכי מג_סקי,ARTIST,ARTIST
@@ -3201,9 +3201,9 @@ toras hashem,ARTIST,SONG
 שושן הבירה,ARTIST,ARTIST
 שושן חוחים,ARTIST,ARTIST
 שושן נעלם,ARTIST,RANDOM
-שזופת שמש,ARTIST,ARTIST
+שזופת שמש,ARTIST,ALBUM
 שזוריצי חלאפצ,ARTIST,RANDOM
-שחור טרנס,ARTIST,RANDOM
+שחור טרנס,ARTIST,ALBUM
 שחי לאל,ARTIST,ARTIST
 שחיו בסרט,ARTIST,RANDOM
 שחר חדש,ARTIST,ARTIST
@@ -3276,24 +3276,24 @@ toras hashem,ARTIST,SONG
 שיר משוגע,ARTIST,ALBUM
 שיר סופה,ARTIST,ALBUM
 שיר סיום,ARTIST,SONG
-שיר עצוב,ARTIST,ALBUM
+שיר עצוב,ARTIST,RANDOM
 שיר ערבי,ARTIST,ALBUM
-שיר ערש,ARTIST,SONG
+שיר ערש,ARTIST,ALBUM
 שיר עתיק,ARTIST,ALBUM
 שיר ציון,ARTIST,ALBUM
 שיר קצבי,ARTIST,ALBUM
 שיר רוגע,ARTIST,ALBUM
 שיר שיצא,ARTIST,ALBUM
-שיר שלום,ARTIST,ALBUM
+שיר שלום,ARTIST,SONG
 שיר שקטה,ARTIST,ALBUM
 שיר תפילה,ARTIST,ALBUM
 שיר תקווה,ARTIST,ALBUM
 שיר-שטרן,ARTIST,ARTIST
-שירה באשקלון,ARTIST,ARTIST
-שירה בזימרה,ARTIST,ARTIST
-שירה הזאת,ARTIST,SONG
-שירה כים,ARTIST,ARTIST
-שירה קיים,ARTIST,ARTIST
+שירה באשקלון,ARTIST,ALBUM
+שירה בזימרה,ARTIST,ALBUM
+שירה הזאת,ARTIST,ALBUM
+שירה כים,ARTIST,ALBUM
+שירה קיים,ARTIST,ALBUM
 שירו לד,ARTIST,ALBUM
 שירו למלך,ARTIST,SONG
 שירו לשם,ARTIST,ALBUM
@@ -3302,7 +3302,7 @@ toras hashem,ARTIST,SONG
 שירן למלך,ARTIST,ARTIST
 שישא טאובר,ARTIST,ARTIST
 שכולה אכולה,ARTIST,RANDOM
-שכולו ציפיה,ARTIST,RANDOM
+שכולו ציפיה,ARTIST,ALBUM
 שכולם ניסים,ARTIST,ARTIST
 שכינה בינהם,ARTIST,RANDOM
 שכל חכמה,ARTIST,RANDOM
@@ -3315,7 +3315,7 @@ toras hashem,ARTIST,SONG
 שלוות הנפש,ARTIST,RANDOM
 שלוימל_ה קרישבסקי,ARTIST,ARTIST
 שלום בארץ,ARTIST,ALBUM
-שלום בבית,ARTIST,ARTIST
+שלום בבית,ARTIST,ALBUM
 שלום בחילינו,ARTIST,ARTIST
 שלום בחילך,ARTIST,ARTIST
 שלום בחלינו,ARTIST,ARTIST
@@ -3329,7 +3329,7 @@ toras hashem,ARTIST,SONG
 שלום חבר,ARTIST,ARTIST
 שלום חיים,ARTIST,ARTIST
 שלום טובה,ARTIST,ALBUM
-שלום לבן,ARTIST,ARTIST
+שלום לבן,ARTIST,ALBUM
 שלום מנדי וויס,ARTIST,ARTIST
 שלום עליכם,ARTIST,SONG
 שלום פליסר,ARTIST,ARTIST
@@ -3340,7 +3340,7 @@ toras hashem,ARTIST,SONG
 שלומי_שבת,ARTIST,RANDOM
 שלוש דרכים,ARTIST,RANDOM
 שלוש סעודות‏,ARTIST,RANDOM
-שלח אודך,ARTIST,SONG
+שלח אודך,ARTIST,ARTIST
 שלח אורך,ARTIST,ARTIST
 שלח בן דוד,ARTIST,ARTIST
 שלח גואל,ARTIST,ARTIST
@@ -3350,7 +3350,7 @@ toras hashem,ARTIST,SONG
 שלי סמרטוטים,ARTIST,RANDOM
 שלך אורך,ARTIST,RANDOM
 שלך הם,ARTIST,RANDOM
-שלכת בלב,ARTIST,RANDOM
+שלכת בלב,ARTIST,ALBUM
 שלם ישלם,ARTIST,RANDOM
 שלמה הדרשן,ARTIST,ARTIST
 שלמה השלם,ARTIST,ARTIST
@@ -3373,7 +3373,7 @@ toras hashem,ARTIST,SONG
 שלש נקודות,ARTIST,RANDOM
 שלשלת ושלשת,ARTIST,ALBUM
 שם שדי,ARTIST,RANDOM
-שמאמין 33היסח,ARTIST,ARTIST
+שמאמין 33היסח,ARTIST,RANDOM
 שמו מפארים,ARTIST,ALBUM
 שמו של,ARTIST,RANDOM
 שמואל בכור,ARTIST,ARTIST
@@ -3386,30 +3386,30 @@ toras hashem,ARTIST,SONG
 שמולי אונגאר,ARTIST,ARTIST
 שמוליק _ Shmulik,ARTIST,ARTIST
 שמועס מיטן,ARTIST,RANDOM
-שמחה ביקאווסקא,ARTIST,ARTIST
+שמחה ביקאווסקא,ARTIST,ALBUM
 שמחה בליבי,ARTIST,ALBUM
 שמחה בעלזא,ARTIST,SONG
-שמחה גדולה,ARTIST,SONG
-שמחה דקדושה,ARTIST,ARTIST
+שמחה גדולה,ARTIST,RANDOM
+שמחה דקדושה,ARTIST,ALBUM
 שמחה ויזניץ,ARTIST,ALBUM
-שמחה וריקוד,ARTIST,ARTIST
-שמחה חבדי,ARTIST,ARTIST
+שמחה וריקוד,ARTIST,ALBUM
+שמחה חבדי,ARTIST,ALBUM
 שמחה לארצך,ARTIST,ALBUM
 שמחה לארצנו,ARTIST,SONG
-שמחה לנשמה,ARTIST,ARTIST
-שמחה לרבינו,ARTIST,ARTIST
-שמחה ניע,ARTIST,ARTIST
+שמחה לנשמה,ARTIST,ALBUM
+שמחה לרבינו,ARTIST,ALBUM
+שמחה ניע,ARTIST,ALBUM
 שמחה סאטמאר,ARTIST,ALBUM
 שמחה עתיק,ARTIST,ALBUM
-שמחה פורמת,ARTIST,ARTIST
-שמחה קלאגסברוין,ARTIST,ARTIST
+שמחה פורמת,ARTIST,ALBUM
+שמחה קלאגסברוין,ARTIST,ALBUM
 שמחה קרלין,ARTIST,SONG
 שמחה רבה,ARTIST,SONG
-שמחה תשלט,ARTIST,ARTIST
+שמחה תשלט,ARTIST,ALBUM
 שמחים בצאתם,ARTIST,RANDOM
 שמחים ישראל,ARTIST,ARTIST
-שמחם בבנין,ARTIST,RANDOM
-שמחם שמחם,ARTIST,SONG
+שמחם בבנין,ARTIST,ALBUM
+שמחם שמחם,ARTIST,ALBUM
 שמחתי באומרים,ARTIST,RANDOM
 שמי שמים,ARTIST,RANDOM
 שמילי אונגאר,ARTIST,ARTIST
@@ -3430,9 +3430,9 @@ toras hashem,ARTIST,SONG
 שמעי בת,ARTIST,RANDOM
 שמעי לי,ARTIST,RANDOM
 שמרי לי,ARTIST,RANDOM
-שמש אלעשייה,ARTIST,ARTIST
-שמש בוקר,ARTIST,RANDOM
-שנאה ב.net,ARTIST,RANDOM
+שמש אלעשייה,ARTIST,ALBUM
+שמש בוקר,ARTIST,ALBUM
+שנאה ב.net,ARTIST,ALBUM
 שנזכה לבנין,ARTIST,RANDOM
 שני זבובים,ARTIST,RANDOM
 שני טמבלים,ARTIST,RANDOM
@@ -3448,10 +3448,10 @@ toras hashem,ARTIST,SONG
 שעיה לברון,ARTIST,ARTIST
 שעיה מקרעסטיר,ARTIST,ARTIST
 שעפעלע פאסטעך,ARTIST,RANDOM
-שערי חכמה,ARTIST,RANDOM
+שערי חכמה,ARTIST,ALBUM
 שפוך שיחה,ARTIST,RANDOM
 שפטו דל,ARTIST,RANDOM
-שפע ברכה,ARTIST,RANDOM
+שפע ברכה,ARTIST,ARTIST
 שפרו יכולותיכם,ARTIST,RANDOM
 שקעה חמה,ARTIST,RANDOM
 שקר החן,ARTIST,RANDOM
@@ -3476,15 +3476,15 @@ toras hashem,ARTIST,SONG
 שתתרגלי אליי,ARTIST,ARTIST
 תא קולי,ARTIST,RANDOM
 תאור עשרת,ARTIST,RANDOM
-תבא לפניך,ARTIST,RANDOM
+תבא לפניך,ARTIST,ALBUM
 תבקש תבקש,ARTIST,RANDOM
 תהא אמונתי,ARTIST,RANDOM
-תהליל לברית,ARTIST,RANDOM
+תהליל לברית,ARTIST,ALBUM
 תוב קומטנץ,ARTIST,RANDOM
 תומר-כהן,ARTIST,ARTIST
 תוף מרים,ARTIST,RANDOM
 תורי זהב,ARTIST,ALBUM
-תורני ראשון,ARTIST,RANDOM
+תורני ראשון,ARTIST,ALBUM
 תורת מרדכי,ARTIST,ARTIST
 תורת רפאל,ARTIST,ARTIST
 תזמורת להבה,ARTIST,ARTIST
@@ -3504,7 +3504,7 @@ toras hashem,ARTIST,SONG
 תנה עוזך,ARTIST,RANDOM
 תנני בדרכך,ARTIST,RANDOM
 תעזבני גולדמן,ARTIST,ARTIST
-תעתועי שמש,ARTIST,ARTIST
+תעתועי שמש,ARTIST,ALBUM
 תף מרים,ARTIST,RANDOM
 תפארת הלוי,ARTIST,ARTIST
 תפוח בדבש,ARTIST,RANDOM
