@@ -38,7 +38,7 @@ model = make_pipeline(TfidfVectorizer(), LogisticRegression())
 
 # הגדרת רשת פרמטרים לבדיקה
 param_grid = {
-    'logisticregression__max_iter': [200, 300],  # בדיקת ערכים גדולים יותר
+    'logisticregression__max_iter': [150, 200],
     'tfidfvectorizer__ngram_range': [(1, 2)],
 }
 
