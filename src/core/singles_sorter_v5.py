@@ -16,7 +16,6 @@ import datetime
 
 from spacy import load
 import pickle
-from sklearn import metrics
 
 class MusicSorter:
 
