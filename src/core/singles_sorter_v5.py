@@ -17,6 +17,7 @@ import datetime
 from spacy import load
 import pickle
 import sklearn.pipeline
+import sklearn.feature_extraction.text
 
 class MusicSorter:
 
