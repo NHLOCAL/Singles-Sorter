@@ -21,7 +21,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install pyinstaller music_tag jibrish_to_hebrew spacy==3.7.5
+        pip install pyinstaller music_tag jibrish_to_hebrew spacy==3.7.5 scikit-learn
 
     - name: Build EXE
       run: |
