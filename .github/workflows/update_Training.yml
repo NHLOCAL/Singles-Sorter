@@ -22,7 +22,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install spacy pandas
+          pip install spacy==3.7.5 pandas
 
       - name: Set working directory
         run: cd machine-learn/
