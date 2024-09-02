@@ -19,6 +19,6 @@ def remove_duplicates(input_file, output_file):
 
 # שימוש בפונקציה
 input_file = 'singers_list.csv'
-output_file = 'singers_list2.csv'
+output_file = 'singers_list.csv'
 remove_duplicates(input_file, output_file)
 print("הוסרו שורות כפולות בהצלחה!")
