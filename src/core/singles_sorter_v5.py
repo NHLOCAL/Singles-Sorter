@@ -13,11 +13,7 @@ import csv
 from check_name import check_exact_name
 import logging
 import datetime
-
-from spacy import load
-import pickle
-import sklearn.pipeline
-import sklearn.feature_extraction.text
+from ai_models import AIModels  # Import the new AIModels class
 
 class MusicSorter:
 
@@ -41,89 +37,11 @@ class MusicSorter:
         self.artist_song_count = {}
         self.albums_processed = 0
 
-        # Set up logging
+        # Setup logging
         self.setup_logging(log_level)
 
-
-        # Load the NER model
-        try:
-            model_name = r"C:\Users\משתמש\Documents\GitHub\Singles-Sorter-ml\machine-learn\custom_ner_model23git"
-            self.nlp = load(model_name)
-            self.logger.info(f"Loaded NER model: {model_name}")
-        except Exception as e:
-            self.logger.error(f"Failed to load NER model: {str(e)}")
-            self.nlp = None
-
-        # Load the sklearn model
-        try:
-            with open(r'C:\Users\משתמש\Documents\GitHub\Singles-Sorter-ml\machine-learn\music_classification\model_creation\music_classifier.pkl', 'rb') as model_file:
-                self.sklearn_model = pickle.load(model_file)
-            self.logger.info("Loaded sklearn model successfully")
-        except Exception as e:
-            self.logger.error(f"Failed to load sklearn model: {str(e)}")
-            self.sklearn_model = None
-
-
-
-    def verify_artist_with_sklearn(self, artist_name):
-        if not self.sklearn_model:
-            self.logger.warning("sklearn model not available for verification")
-            return True  # Assume it's an artist if model is not available
-
-        # Prepare the input for the model
-        input_data = [artist_name]
-
-        try:
-            # Make prediction
-            prediction = self.sklearn_model.predict(input_data)
-            probabilities = self.sklearn_model.predict_proba(input_data)[0]
-
-            # Get the predicted class and its probability
-            predicted_class = prediction[0]
-            class_probability = probabilities[predicted_class]
-
-            # Define class names for logging
-            class_names = ["ARTIST", "ALBUM", "SONG", "RANDOM"]
-
-            # Log the prediction details
-            self.logger.info(f"sklearn model prediction for '{artist_name}': "
-                            f"class={class_names[predicted_class]}, "
-                            f"probability={class_probability:.2f}")
-
-            # Check if the predicted class is "אמן" (0)
-            is_artist = predicted_class == 0
-
-            if is_artist:
-                self.logger.info(f"'{artist_name}' verified as an artist")
-            else:
-                self.logger.info(f"'{artist_name}' not verified as an artist. "
-                                f"Predicted as: {class_names[predicted_class]}")
-
-            return is_artist
-
-        except Exception as e:
-            self.logger.error(f"Error during sklearn prediction for '{artist_name}': {str(e)}")
-            return True  # Assume it's an artist if prediction fails
-    def process_with_ner(self, text):
-        if not self.nlp:
-            return []
-        
-        doc = self.nlp(text)
-        potential_artists = [ent.text for ent in doc.ents if ent.label_ == "SINGER"]
-        
-        verified_artists = []
-        for artist in potential_artists:
-            self.logger.info(f"NER model identified potential artist: {artist}")
-            if self.verify_artist_with_sklearn(artist):
-                verified_artists.append(artist)
-                self.logger.info(f"sklearn model verified '{artist}' as an artist")
-            else:
-                self.logger.info(f"sklearn model rejected '{artist}' as an artist")
-        
-        return verified_artists
-
-
-
+        # Initialize AIModels with the same logger
+        self.ai_models = AIModels(logger=self.logger)
 
     def progress_display(self, len_amount):
         for len_item in range(1, len_amount + 1):
@@ -715,10 +633,16 @@ class MusicSorter:
                                 if exact:
                                     found_artists.append(target_name)
                 """
-
-                # If still no artists found, use NER on filename and title
-                if not found_artists and self.nlp:
-                    found_artists = self.process_with_ner(split_file)
+                # If no artists found, use NER on filename
+                if self.ai_models.nlp:
+                    self.logger.debug(f"Using NER to process filename: {split_file}")
+                    found_artists = self.ai_models.process_with_ner(split_file)
+                    if found_artists:
+                        self.logger.debug(f"NER found artists: {found_artists}")
+                    else:
+                        self.logger.debug("NER did not find any artists")
+                else:
+                    self.logger.warning("NLP model not available for processing")
 
             except UnicodeDecodeError as e:
                 self.logger.error(f"Error decoding metadata in file {my_file}: {e}")
