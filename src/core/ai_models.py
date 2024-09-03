@@ -35,7 +35,7 @@ class AIModels:
 
         # Load the sklearn model
         try:
-            model_path = 'models/music_classifier.pkl'
+            model_path = 'models/music_entity_clf/music_entity_clf.pkl'
             with open(model_path, 'rb') as model_file:
                 self.sklearn_model = pickle.load(model_file)
             self.logger.debug("Loaded sklearn model successfully")
