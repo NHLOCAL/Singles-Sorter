@@ -640,8 +640,7 @@ class MusicSorter:
                         self.logger.debug(f"NER found artists: {found_artists}")
                     else:
                         self.logger.debug("NER did not find any artists")
-                else:
-                    self.logger.warning("NLP model not available for processing")
+                    
 
             except UnicodeDecodeError as e:
                 self.logger.error(f"Error decoding metadata in file {my_file}: {e}")
