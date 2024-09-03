@@ -118,5 +118,10 @@ except Exception as e:
 
 # Load the best model before saving with the final name
 nlp = spacy.load(best_model_path)
-nlp.meta['name'] = 'find_singer_heb'
+nlp.meta['name'] = 'singer_ner_he'
+nlp.meta['description'] = 'Model for recognizing singer names in Hebrew song titles'
+nlp.meta['author'] = 'nhlocal'
+nlp.meta['email'] = 'nh.local11@gmail.com'
+nlp.meta['license'] = 'MIT'
+nlp.meta['tags'] = ['NER', 'Hebrew', 'Singer', 'Named Entity Recognition', 'Text Classification']
 nlp.to_disk(model_name)

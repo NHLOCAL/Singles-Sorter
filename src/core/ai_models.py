@@ -27,7 +27,7 @@ class AIModels:
     def load_models(self):
         # Load the NER model
         try:
-            model_name = r"C:\Users\משתמש\Documents\GitHub\Singles-Sorter-ml\machine-learn\custom_ner_model23git"
+            model_name = 'models/singer_ner_he'
             self.nlp = load(model_name)
             self.logger.debug(f"Loaded NER model: {model_name}")
         except Exception as e:
@@ -35,7 +35,7 @@ class AIModels:
 
         # Load the sklearn model
         try:
-            model_path = r'C:\Users\משתמש\Documents\GitHub\Singles-Sorter-ml\machine-learn\music_classification\model_creation\music_classifier.pkl'
+            model_path = 'models/music_classifier.pkl'
             with open(model_path, 'rb') as model_file:
                 self.sklearn_model = pickle.load(model_file)
             self.logger.debug("Loaded sklearn model successfully")
