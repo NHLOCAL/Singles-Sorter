@@ -13,7 +13,7 @@ import csv
 from check_name import check_exact_name
 import logging
 import datetime
-from ai_models import AIModels  # Import the new AIModels class
+from ai_models import AIModels
 
 class MusicSorter:
 
@@ -604,7 +604,6 @@ class MusicSorter:
 
         if not found_artists:
             try:
-                """
                 metadata_file = load_file(my_file)
 
                 # Check artist metadata
@@ -632,9 +631,9 @@ class MusicSorter:
                                 exact = check_exact_name(title, source_name)
                                 if exact:
                                     found_artists.append(target_name)
-                """
+                
                 # If no artists found, use NER on filename
-                if self.ai_models.nlp:
+                if not found_artists and self.ai_models.nlp:
                     self.logger.debug(f"Using NER to process filename: {split_file}")
                     found_artists = self.ai_models.process_with_ner(split_file)
                     if found_artists:
