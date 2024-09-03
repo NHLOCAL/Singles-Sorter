@@ -4,7 +4,7 @@ import pickle
 label_mapping = {0: "ARTIST", 1: "ALBUM", 2: "SONG", 3: "RANDOM"}
 
 # טעינת המודל
-with open('music_classifier.pkl', 'rb') as f:
+with open('../model_creation/music_classifier.pkl', 'rb') as f:
     loaded_model = pickle.load(f)
 
 # פונקציה לחיזוי על מחרוזת טקסט בודדת
