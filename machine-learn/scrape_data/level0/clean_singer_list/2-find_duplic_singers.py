@@ -34,7 +34,7 @@ def split_names(names):
     return first_names, last_names
 
 # הסרת שמות נפוצים מרשימה או הגבלתם ל-5 מופעים
-def limit_common_names(name_list, max_occurrences=5):
+def limit_common_names(name_list, max_occurrences=20):
     name_counts = Counter(name_list)
     limited_list = []
     for name in name_list:
