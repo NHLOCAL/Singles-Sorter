@@ -5,7 +5,7 @@ on:
     branches:
       - machine-learn
     paths:
-      - 'machine-learn/scrape_data/**'  # An action will only be performed if a file in the machine-learn folder changes
+      - 'machine-learn/**'  # An action will only be performed if a file in the machine-learn folder changes
 
 jobs:
   train-ner-model:
