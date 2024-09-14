@@ -15,6 +15,29 @@ from jibrish_to_hebrew import fix_jibrish, check_jibrish
 from check_name import check_exact_name
 import shutil
 
+# הגדרת רשימות כקבועים גלובליים
+UNUSUAL_LIST = [
+    "סינגלים",
+    "סינגל",
+    "אבגדהוזחטיכלמנסעפצקרשתךםןץ",
+    "אמן לא ידוע",
+    "טוב",
+    "לא ידוע",
+    "תודה לך ה"
+]
+
+SUBSTRINGS_TO_REMOVE = [
+    " -מייל מיוזיק",
+    " - ציצו במייל",
+    "-חדשות המוזיקה",
+    " - חדשות המוזיקה",
+    " - ציצו",
+    " מוזיקה מכל הלב",
+    " - מייל מיוזיק"
+]
+
+SUPPORTED_EXTENSIONS = {'.mp3', '.wma', '.wav', '.flac', '.aac', '.ogg'}
+
 class MusicSorter:
 
     def __init__(
@@ -31,24 +54,6 @@ class MusicSorter:
         log_level=logging.INFO,
         logger=None
     ):
-        self.unusual_list = [
-            "סינגלים",
-            "סינגל",
-            "אבגדהוזחטיכלמנסעפצקרשתךםןץ",
-            "אמן לא ידוע",
-            "טוב",
-            "לא ידוע",
-            "תודה לך ה"
-        ]
-        self.substrings_to_remove = [
-            " -מייל מיוזיק",
-            " - ציצו במייל",
-            "-חדשות המוזיקה",
-            " - חדשות המוזיקה",
-            " - ציצו",
-            " מוזיקה מכל הלב",
-            " - מייל מיוזיק"
-        ]
         self.source_dir = Path(source_dir)
         self.target_dir = Path(target_dir) if target_dir else None
         self.copy_mode = copy_mode
@@ -108,10 +113,17 @@ class MusicSorter:
             raise ValueError("תיקיית המקור ריקה")
 
     def clean_filename(self, filename):
-        for substring in self.substrings_to_remove:
+        for substring in SUBSTRINGS_TO_REMOVE:
             filename = filename.replace(substring, "")
         filename = filename.replace("_", " ")
         return filename
+
+    def fix_metadata_field(self, metadata, field_name, file_path):
+        value = metadata[field_name].value
+        if value and check_jibrish(value):
+            fixed_value = fix_jibrish(value, "heb")
+            metadata[field_name] = fixed_value
+            self.logger.info(f"Fixed {field_name} for {file_path}: {value} -> {fixed_value}")
 
     def fix_names(self):
         """
@@ -119,23 +131,11 @@ class MusicSorter:
         """
         self.logger.info("Starting to fix filenames and metadata")
 
-        files_to_process = []
-
         # Collect all audio files
         if self.main_folder_only:
-            files_to_process = list(self.source_dir.glob('*.mp3')) + \
-                               list(self.source_dir.glob('*.wma')) + \
-                               list(self.source_dir.glob('*.wav')) + \
-                               list(self.source_dir.glob('*.flac')) + \
-                               list(self.source_dir.glob('*.aac')) + \
-                               list(self.source_dir.glob('*.ogg'))
+            files_to_process = [f for f in self.source_dir.glob('*') if f.suffix.lower() in SUPPORTED_EXTENSIONS]
         else:
-            files_to_process = list(self.source_dir.rglob('*.mp3')) + \
-                               list(self.source_dir.rglob('*.wma')) + \
-                               list(self.source_dir.rglob('*.wav')) + \
-                               list(self.source_dir.rglob('*.flac')) + \
-                               list(self.source_dir.rglob('*.aac')) + \
-                               list(self.source_dir.rglob('*.ogg'))
+            files_to_process = [f for f in self.source_dir.rglob('*') if f.suffix.lower() in SUPPORTED_EXTENSIONS]
 
         total_files = len(files_to_process)
         progress_fix_generator = self.progress_display(total_files)
@@ -143,7 +143,6 @@ class MusicSorter:
         for file_path in files_to_process:
 
             try:
-
                 progress = next(progress_fix_generator)
                 if self.progress_callback:
                     self.progress_callback(progress)
@@ -153,56 +152,14 @@ class MusicSorter:
                 new_file_path = file_path.with_name(new_filename)
 
                 if file_path != new_file_path:
-                    shutil.move(str(file_path), str(new_file_path))
+                    shutil.move(file_path, new_file_path)
                     self.logger.info(f"Renamed file: {file_path} -> {new_file_path}")
 
                 # Fix metadata
                 metadata = load_file(new_file_path)
 
-                # Fix artist metadata
-                artist = metadata['artist'].value
-                if artist and check_jibrish(artist):
-                    fixed_artist = fix_jibrish(artist, "heb")
-                    metadata['artist'] = fixed_artist
-                    self.logger.info(
-                        f"Fixed artist metadata for {new_file_path}: {artist} -> {fixed_artist}"
-                    )
-
-                # Fix album artist metadata
-                album_artist = metadata['albumartist'].value
-                if album_artist and check_jibrish(album_artist):
-                    fixed_album_artist = fix_jibrish(album_artist, "heb")
-                    metadata['albumartist'] = fixed_album_artist
-                    self.logger.info(
-                        f"Fixed album artist metadata for {new_file_path}: {album_artist} -> {fixed_album_artist}"
-                    )
-
-                # Fix title metadata
-                title = metadata['title'].value
-                if title and check_jibrish(title):
-                    fixed_title = fix_jibrish(title, "heb")
-                    metadata['title'] = fixed_title
-                    self.logger.info(
-                        f"Fixed title metadata for {new_file_path}: {title} -> {fixed_title}"
-                    )
-
-                # Fix album metadata
-                album = metadata['album'].value
-                if album and check_jibrish(album):
-                    fixed_album = fix_jibrish(album, "heb")
-                    metadata['album'] = fixed_album
-                    self.logger.info(
-                        f"Fixed album metadata for {new_file_path}: {album} -> {fixed_album}"
-                    )
-
-                # Fix genre metadata
-                genre = metadata['genre'].value
-                if genre and check_jibrish(genre):
-                    fixed_genre = fix_jibrish(genre, "heb")
-                    metadata['genre'] = fixed_genre
-                    self.logger.info(
-                        f"Fixed genre metadata for {new_file_path}: {genre} -> {fixed_genre}"
-                    )
+                for field in ['artist', 'albumartist', 'title', 'album', 'genre']:
+                    self.fix_metadata_field(metadata, field, new_file_path)
 
                 # Save the changes
                 metadata.save()
@@ -239,12 +196,7 @@ class MusicSorter:
                 return False, False, None, None
 
             # Get all audio files in the folder
-            audio_files = list(folder_path.glob('*.mp3')) + \
-                          list(folder_path.glob('*.wma')) + \
-                          list(folder_path.glob('*.wav')) + \
-                          list(folder_path.glob('*.flac')) + \
-                          list(folder_path.glob('*.aac')) + \
-                          list(folder_path.glob('*.ogg'))
+            audio_files = [f for f in folder_path.glob('*') if f.suffix.lower() in SUPPORTED_EXTENSIONS]
 
             # Check if there are enough files to be considered an album
             if len(audio_files) < 3:
@@ -453,21 +405,21 @@ class MusicSorter:
                     if self.copy_mode:
                         if source_item.is_file():
                             try:
-                                shutil.copy2(str(source_item), str(target_item))
+                                shutil.copy2(source_item, target_item)
                                 self.logger.info(f"Copied {source_item} to {target_item}")
                             except Exception as e:
                                 self.logger.error(f"Failed to copy {source_item}: {str(e)}")
                                 self.logger.debug(traceback.format_exc())
                         else:
                             try:
-                                shutil.copytree(str(source_item), str(target_item))
+                                shutil.copytree(source_item, target_item)
                                 self.logger.info(f"Copied directory {source_item} to {target_item}")
                             except Exception as e:
                                 self.logger.error(f"Failed to copy directory {source_item}: {str(e)}")
                                 self.logger.debug(traceback.format_exc())
                     else:
                         try:
-                            shutil.move(str(source_item), str(target_item))
+                            shutil.move(source_item, target_item)
                             self.logger.info(f"Moved {source_item} to {target_item}")
                         except Exception as e:
                             self.logger.error(f"Failed to move {source_item}: {str(e)}")
@@ -503,42 +455,32 @@ class MusicSorter:
         self.check_errors()
 
         info_list = []
+        items_to_process = []
         if not self.main_folder_only:
             for root, dirs, files in os.walk(self.source_dir):
                 root_path = Path(root)
-                try:
-                    is_album, should_process, album_name, artist_name = self.analyze_album(root_path)
+                items_to_process.append(root_path)
+        else:
+            items_to_process = [item for item in self.source_dir.iterdir()]
+
+        for item in items_to_process:
+            try:
+                if item.is_dir():
+                    is_album, should_process, album_name, artist_name = self.analyze_album(item)
                     if is_album:
                         if should_process:
-                            self.handle_album_transfer(root_path, album_name, artist_name)
+                            self.handle_album_transfer(item, album_name, artist_name)
                         continue  # Skip processing individual files for albums
 
-                    # Process individual files if not an album
-                    for my_file in files:
-                        file_path = root_path / my_file
-                        if file_path.suffix.lower() in (".mp3", ".wma", ".wav", ".flac", ".aac", ".ogg"):
-                            artists = self.artists_from_song(file_path)
-                            if artists:
-                                info_list.append((file_path, artists))
-                except Exception as e:
-                    self.logger.error(f"Error processing directory {root_path}: {e}")
-                    self.logger.debug(traceback.format_exc())
-        else:
-            for item in self.source_dir.iterdir():
-                try:
-                    if item.is_dir():
-                        is_album, should_process, album_name, artist_name = self.analyze_album(item)
-                        if is_album:
-                            if should_process:
-                                self.handle_album_transfer(item, album_name, artist_name)
-                            continue  # Skip individual file processing for albums
-                    elif item.suffix.lower() in (".mp3", ".wma", ".wav", ".flac", ".aac", ".ogg"):
-                        artists = self.artists_from_song(item)
+                audio_files = [item] if item.is_file() else [f for f in item.glob('*') if f.is_file()]
+                for my_file in audio_files:
+                    if my_file.suffix.lower() in SUPPORTED_EXTENSIONS:
+                        artists = self.artists_from_song(my_file)
                         if artists:
-                            info_list.append((item, artists))
-                except Exception as e:
-                    self.logger.error(f"Error processing item {item}: {e}")
-                    self.logger.debug(traceback.format_exc())
+                            info_list.append((my_file, artists))
+            except Exception as e:
+                self.logger.error(f"Error processing item {item}: {e}")
+                self.logger.debug(traceback.format_exc())
 
         total_files = len(info_list)
         progress_generator = self.progress_display(total_files)
@@ -568,20 +510,16 @@ class MusicSorter:
                     if target_path.is_dir():
                         try:
                             if self.duet_mode and len(artists) > 1:
-                                shutil.copy2(str(file_path), str(target_path))
+                                shutil.copy2(file_path, target_path)
                                 self.logger.info(f"Copied {file_path} to {target_path}")
-                                self.songs_sorted += 1
-                                self.artist_song_count[artist] = self.artist_song_count.get(artist, 0) + 1
                             elif self.copy_mode:
-                                shutil.copy2(str(file_path), str(target_path))
+                                shutil.copy2(file_path, target_path)
                                 self.logger.info(f"Copied {file_path} to {target_path}")
-                                self.songs_sorted += 1
-                                self.artist_song_count[artist] = self.artist_song_count.get(artist, 0) + 1
                             else:
-                                shutil.move(str(file_path), str(target_path))
+                                shutil.move(file_path, target_path)
                                 self.logger.info(f"Moved {file_path} to {target_path}")
-                                self.songs_sorted += 1
-                                self.artist_song_count[artist] = self.artist_song_count.get(artist, 0) + 1
+                            self.songs_sorted += 1
+                            self.artist_song_count[artist] = self.artist_song_count.get(artist, 0) + 1
                         except Exception as e:
                             self.logger.error(f"Failed to process {file_path}: {str(e)}")
                             self.logger.debug(traceback.format_exc())
@@ -618,39 +556,35 @@ class MusicSorter:
         except AttributeError:
             return False
 
+    def load_csv(self, path):
+        try:
+            with path.open('r', encoding='utf-8') as file:
+                return [tuple(row) for row in csv.reader(file)]
+        except FileNotFoundError as e:
+            self.logger.error(f"CSV file not found: {path}")
+            raise e
+        except Exception as e:
+            self.logger.error(f"Error reading CSV file {path}: {e}")
+            self.logger.debug(traceback.format_exc())
+            return []
+
     def list_from_csv(self):
         # Import singer list from CSV file
-
         if getattr(sys, 'frozen', False):
             # Running in a bundle (e.g., PyInstaller)
             base_path = Path(sys._MEIPASS)
         else:
             base_path = Path(__file__).parent
 
-        csv_path = base_path / 'app' / 'singer-list.csv'
-        personal_csv_path = base_path / 'app' / 'personal-singer-list.csv'
+        csv_paths = [base_path / 'app' / 'singer-list.csv', base_path / 'app' / 'personal-singer-list.csv']
 
         singer_list = []
-        try:
-            with csv_path.open('r', encoding='utf-8') as file:
-                csv_reader = csv.reader(file)
-                singer_list = [tuple(row) for row in csv_reader]
-        except FileNotFoundError as e:
-            self.logger.error(f"CSV file not found: {csv_path}")
-            raise e  # Stop execution if the main CSV is missing
-        except Exception as e:
-            self.logger.error(f"Error reading CSV file {csv_path}: {e}")
-            self.logger.debug(traceback.format_exc())
+        for csv_path in csv_paths:
+            if csv_path.is_file():
+                singer_list.extend(self.load_csv(csv_path))
 
-        if personal_csv_path.is_file():
-            try:
-                with personal_csv_path.open('r', encoding="utf-8") as file:
-                    csv_reader = csv.reader(file)
-                    personal_list = [tuple(row) for row in csv_reader]
-                singer_list.extend(personal_list)
-            except Exception as e:
-                self.logger.error(f"Error reading personal CSV file {personal_csv_path}: {e}")
-                self.logger.debug(traceback.format_exc())
+        if not singer_list:
+            raise FileNotFoundError("No singer lists found.")
 
         return singer_list
 
@@ -676,9 +610,8 @@ class MusicSorter:
                             if exact:
                                 found_artists.append(target_name)
 
-                    if not found_artists:
-                        if self.check_artist(artist):
-                            found_artists.append(artist)
+                    if not found_artists and self.check_artist(artist):
+                        found_artists.append(artist)
 
                 if not found_artists:
                     title = metadata_file['title'].value
@@ -699,20 +632,14 @@ class MusicSorter:
         return found_artists if found_artists else None
 
     def check_artist(self, artist):
-        if not artist:
-            return False
-
-        if artist in self.unusual_list:
+        if not artist or artist in UNUSUAL_LIST:
             return False
 
         words = artist.split()
-        if len(words) == 0 or len(words) >= 4:
+        if not (1 <= len(words) < 4):
             return False
 
-        if all(c in "אבגדהוזחטיכלמנסעפצקרשתךםןףץ'׳ " for c in artist):
-            return True
-        else:
-            return False
+        return all(c in "אבגדהוזחטיכלמנסעפצקרשתךםןףץ'׳- " for c in artist)
 
     def generate_summary(self):
         summary = {
