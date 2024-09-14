@@ -1,20 +1,19 @@
 # -*- coding: utf-8 -*-
-__VERSION__ = '13.7'
+__VERSION__ = '13.8'
 
 import os
-import re
 import sys
+import re
 import argparse
-from shutil import copy, move
-import shutil
-from music_tag import load_file
-from jibrish_to_hebrew import fix_jibrish, check_jibrish
 import csv
-from check_name import check_exact_name
 import logging
 import datetime
 import traceback
-
+from pathlib import Path
+from music_tag import load_file
+from jibrish_to_hebrew import fix_jibrish, check_jibrish
+from check_name import check_exact_name
+import shutil
 
 class MusicSorter:
 
@@ -29,7 +28,8 @@ class MusicSorter:
         main_folder_only=False,
         duet_mode=False,
         progress_callback=None,
-        log_level=logging.INFO
+        log_level=logging.INFO,
+        logger=None
     ):
         self.unusual_list = [
             "סינגלים",
@@ -49,8 +49,8 @@ class MusicSorter:
             " מוזיקה מכל הלב",
             " - מייל מיוזיק"
         ]
-        self.source_dir = source_dir
-        self.target_dir = target_dir
+        self.source_dir = Path(source_dir)
+        self.target_dir = Path(target_dir) if target_dir else None
         self.copy_mode = copy_mode
         self.abc_sort = abc_sort
         self.exist_only = exist_only
@@ -74,13 +74,14 @@ class MusicSorter:
         self.artist_song_count = {}
         self.albums_processed = 0
 
-        # Set up logging
-        self.setup_logging(log_level)
+        # Use the provided logger or create a new one
+        self.logger = logger or logging.getLogger('MusicSorter')
+        self.logger.setLevel(log_level)
 
-    def progress_display(self, len_amount):
-        for len_item in range(1, len_amount + 1):
-            show_len = len_item * 100 // len_amount
-            yield show_len
+    def progress_display(self, total_amount):
+        for current_item in range(1, total_amount + 1):
+            progress = (current_item / total_amount) * 100
+            yield progress
 
     def check_errors(self):
         """
@@ -91,19 +92,19 @@ class MusicSorter:
             PermissionError: If the script does not have write access to the target directory.
             ValueError: If the source and target directories are the same or source directory is empty.
         """
-        if not os.path.exists(self.source_dir):
+        if not self.source_dir.exists():
             raise FileNotFoundError("תיקיית המקור לא נמצאה")
 
-        if not os.path.exists(self.target_dir):
+        if not self.target_dir.exists():
             raise FileNotFoundError("תיקיית היעד לא נמצאה")
 
         if not os.access(self.target_dir, os.W_OK):
             raise PermissionError("אין הרשאת כתיבה לתיקיית היעד")
 
-        if os.path.samefile(self.source_dir, self.target_dir):
+        if self.source_dir.samefile(self.target_dir):
             raise ValueError("תיקיית המקור ותיקיית היעד לא יכולות להיות זהות")
 
-        if not os.listdir(self.source_dir):
+        if not any(self.source_dir.iterdir()):
             raise ValueError("תיקיית המקור ריקה")
 
     def clean_filename(self, filename):
@@ -122,35 +123,37 @@ class MusicSorter:
 
         # Collect all audio files
         if self.main_folder_only:
-            files_to_process = [
-                os.path.join(self.source_dir, file)
-                for file in os.listdir(self.source_dir)
-                if file.lower().endswith((".mp3", ".wma", ".wav"))
-            ]
+            files_to_process = list(self.source_dir.glob('*.mp3')) + \
+                               list(self.source_dir.glob('*.wma')) + \
+                               list(self.source_dir.glob('*.wav')) + \
+                               list(self.source_dir.glob('*.flac')) + \
+                               list(self.source_dir.glob('*.aac')) + \
+                               list(self.source_dir.glob('*.ogg'))
         else:
-            for root, _, files in os.walk(self.source_dir):
-                for file in files:
-                    if file.lower().endswith((".mp3", ".wma", ".wav")):
-                        files_to_process.append(os.path.join(root, file))
+            files_to_process = list(self.source_dir.rglob('*.mp3')) + \
+                               list(self.source_dir.rglob('*.wma')) + \
+                               list(self.source_dir.rglob('*.wav')) + \
+                               list(self.source_dir.rglob('*.flac')) + \
+                               list(self.source_dir.rglob('*.aac')) + \
+                               list(self.source_dir.rglob('*.ogg'))
 
-        len_dir = len(files_to_process)
-        progress_fix_generator = self.progress_display(len_dir)
+        total_files = len(files_to_process)
+        progress_fix_generator = self.progress_display(total_files)
 
         for file_path in files_to_process:
 
             try:
 
-                show_len = next(progress_fix_generator)
+                progress = next(progress_fix_generator)
                 if self.progress_callback:
-                    self.progress_callback(show_len)
+                    self.progress_callback(progress)
 
                 # Fix filename
-                directory, filename = os.path.split(file_path)
-                new_filename = self.clean_filename(filename)
-                new_file_path = os.path.join(directory, new_filename)
+                new_filename = self.clean_filename(file_path.name)
+                new_file_path = file_path.with_name(new_filename)
 
                 if file_path != new_file_path:
-                    os.rename(file_path, new_file_path)
+                    shutil.move(str(file_path), str(new_file_path))
                     self.logger.info(f"Renamed file: {file_path} -> {new_file_path}")
 
                 # Fix metadata
@@ -220,7 +223,7 @@ class MusicSorter:
         Analyzes a folder to determine if it's an album and if it should be processed or ignored.
 
         Args:
-            folder_path (str): Path to the folder to analyze
+            folder_path (Path): Path to the folder to analyze
 
         Returns:
             tuple: (is_album, should_process, album_name, artist_name)
@@ -231,23 +234,24 @@ class MusicSorter:
         """
         try:
             # Check if it's a directory
-            if not os.path.isdir(folder_path):
+            if not folder_path.is_dir():
                 self.logger.debug(f"{folder_path} is not a directory")
                 return False, False, None, None
 
             # Get all audio files in the folder
-            audio_files = [
-                f for f in os.listdir(folder_path) if f.lower().endswith((".mp3", ".wma", ".wav"))
-            ]
+            audio_files = list(folder_path.glob('*.mp3')) + \
+                          list(folder_path.glob('*.wma')) + \
+                          list(folder_path.glob('*.wav')) + \
+                          list(folder_path.glob('*.flac')) + \
+                          list(folder_path.glob('*.aac')) + \
+                          list(folder_path.glob('*.ogg'))
 
             # Check if there are enough files to be considered an album
             if len(audio_files) < 3:
                 return False, False, None, None
 
             # Check for subdirectories (albums usually don't have subdirectories)
-            folder_count = sum(
-                os.path.isdir(os.path.join(folder_path, item)) for item in os.listdir(folder_path)
-            )
+            folder_count = sum(1 for item in folder_path.iterdir() if item.is_dir())
 
             if folder_count == 1:
                 contain_folder = True
@@ -263,7 +267,7 @@ class MusicSorter:
             filename_numbers = set()
 
             for file in audio_files:
-                file_path = os.path.join(folder_path, file)
+                file_path = file
                 try:
                     metadata = load_file(file_path)
                     album = metadata.get('album')
@@ -273,7 +277,8 @@ class MusicSorter:
                     if album:
                         album_names.append(album.value)
                     if artist:
-                        artists[artist.value] = artists.get(artist.value, 0) + 1
+                        artist_name = fix_jibrish(artist.value, "heb")
+                        artists[artist_name] = artists.get(artist_name, 0) + 1
 
                     if track:
                         try:
@@ -283,7 +288,7 @@ class MusicSorter:
                         track_numbers.add(track_number)
 
                     # Check for track numbers in filename
-                    filename_match = re.search(r'^(\d+)', file)
+                    filename_match = re.search(r'^(\d+)', file.name)
                     if filename_match:
                         filename_numbers.add(int(filename_match.group(1)))
 
@@ -339,7 +344,7 @@ class MusicSorter:
             if is_album:
                 if not artists:
                     # Search for artist name in folder name
-                    dir_name = os.path.basename(folder_path)
+                    dir_name = folder_path.name
                     for source_name, target_name in self.singer_list:
                         if source_name in dir_name:
                             exact = check_exact_name(dir_name, source_name)
@@ -357,14 +362,13 @@ class MusicSorter:
                 elif len(artists) == 1:
                     should_process = True
                     main_artist = list(artists.keys())[0]
-                    main_artist = fix_jibrish(main_artist, "heb")
                 else:
                     # Check if one artist appears in 70% or more of the songs
                     total_songs = sum(artists.values())
                     for artist, count in artists.items():
                         if count / total_songs >= 0.7:
                             should_process = True
-                            main_artist = fix_jibrish(artist, "heb")
+                            main_artist = artist
                             break
 
             # Determine album name
@@ -373,7 +377,7 @@ class MusicSorter:
                 album_name = max(set(album_names), key=album_names.count)
                 album_name = fix_jibrish(album_name, "heb")
             elif is_album:
-                album_name = os.path.basename(folder_path)
+                album_name = folder_path.name
 
             # Log the decision
             if is_album:
@@ -410,13 +414,7 @@ class MusicSorter:
             safe_album_name = self.sanitize_filename(album_name)
 
             # Get number of audio files in the folder
-            files_num = len(
-                [
-                    f
-                    for f in os.listdir(album_path)
-                    if os.path.isfile(os.path.join(album_path, f))
-                ]
-            )
+            files_num = sum(1 for f in album_path.iterdir() if f.is_file())
 
             # Determine artist name from the singer list
             determined_artist_name = None
@@ -432,44 +430,44 @@ class MusicSorter:
 
             # Determine target path
             if self.abc_sort:
-                target_path = os.path.join(self.target_dir, final_artist_name[0], final_artist_name)
+                target_path = self.target_dir / final_artist_name[0] / final_artist_name
             else:
-                target_path = os.path.join(self.target_dir, final_artist_name)
+                target_path = self.target_dir / final_artist_name
 
-            album_target_path = os.path.join(target_path, safe_album_name)
+            album_target_path = target_path / safe_album_name
 
             # Create target directory if it doesn't exist and allowed
-            if not self.exist_only or (self.exist_only and os.path.isdir(target_path)):
+            if not self.exist_only or (self.exist_only and target_path.is_dir()):
                 try:
-                    os.makedirs(album_target_path, exist_ok=True)
+                    album_target_path.mkdir(parents=True, exist_ok=True)
                 except Exception as e:
                     self.logger.error(f"Failed to create folder {album_target_path}: {str(e)}")
                     self.logger.debug(traceback.format_exc())
                     return
 
                 # Transfer the entire folder
-                for item in os.listdir(album_path):
-                    source_item = os.path.join(album_path, item)
-                    target_item = os.path.join(album_target_path, self.sanitize_filename(item))
+                for item in album_path.iterdir():
+                    source_item = item
+                    target_item = album_target_path / self.sanitize_filename(item.name)
 
                     if self.copy_mode:
-                        if os.path.isfile(source_item):
+                        if source_item.is_file():
                             try:
-                                shutil.copy2(source_item, target_item)
+                                shutil.copy2(str(source_item), str(target_item))
                                 self.logger.info(f"Copied {source_item} to {target_item}")
                             except Exception as e:
                                 self.logger.error(f"Failed to copy {source_item}: {str(e)}")
                                 self.logger.debug(traceback.format_exc())
                         else:
                             try:
-                                shutil.copytree(source_item, target_item)
+                                shutil.copytree(str(source_item), str(target_item))
                                 self.logger.info(f"Copied directory {source_item} to {target_item}")
                             except Exception as e:
                                 self.logger.error(f"Failed to copy directory {source_item}: {str(e)}")
                                 self.logger.debug(traceback.format_exc())
                     else:
                         try:
-                            shutil.move(source_item, target_item)
+                            shutil.move(str(source_item), str(target_item))
                             self.logger.info(f"Moved {source_item} to {target_item}")
                         except Exception as e:
                             self.logger.error(f"Failed to move {source_item}: {str(e)}")
@@ -477,7 +475,7 @@ class MusicSorter:
 
                 if not self.copy_mode:
                     try:
-                        os.rmdir(album_path)
+                        album_path.rmdir()
                         self.logger.info(f"Removed original album folder: {album_path}")
                     except Exception as e:
                         self.logger.error(
@@ -506,51 +504,51 @@ class MusicSorter:
 
         info_list = []
         if not self.main_folder_only:
-            for root, _, files in os.walk(self.source_dir):
+            for root, dirs, files in os.walk(self.source_dir):
+                root_path = Path(root)
                 try:
-                    is_album, should_process, album_name, artist_name = self.analyze_album(root)
+                    is_album, should_process, album_name, artist_name = self.analyze_album(root_path)
                     if is_album:
                         if should_process:
-                            self.handle_album_transfer(root, album_name, artist_name)
+                            self.handle_album_transfer(root_path, album_name, artist_name)
                         continue  # Skip processing individual files for albums
 
                     # Process individual files if not an album
                     for my_file in files:
-                        file_path = os.path.join(root, my_file)
-                        if my_file.lower().endswith((".mp3", ".wma", ".wav")):
+                        file_path = root_path / my_file
+                        if file_path.suffix.lower() in (".mp3", ".wma", ".wav", ".flac", ".aac", ".ogg"):
                             artists = self.artists_from_song(file_path)
                             if artists:
                                 info_list.append((file_path, artists))
                 except Exception as e:
-                    self.logger.error(f"Error processing directory {root}: {e}")
+                    self.logger.error(f"Error processing directory {root_path}: {e}")
                     self.logger.debug(traceback.format_exc())
         else:
-            for item in os.listdir(self.source_dir):
+            for item in self.source_dir.iterdir():
                 try:
-                    item_path = os.path.join(self.source_dir, item)
-                    if os.path.isdir(item_path):
-                        is_album, should_process, album_name, artist_name = self.analyze_album(item_path)
+                    if item.is_dir():
+                        is_album, should_process, album_name, artist_name = self.analyze_album(item)
                         if is_album:
                             if should_process:
-                                self.handle_album_transfer(item_path, album_name, artist_name)
+                                self.handle_album_transfer(item, album_name, artist_name)
                             continue  # Skip individual file processing for albums
-                    elif item.lower().endswith((".mp3", ".wma", ".wav")):
-                        artists = self.artists_from_song(item_path)
+                    elif item.suffix.lower() in (".mp3", ".wma", ".wav", ".flac", ".aac", ".ogg"):
+                        artists = self.artists_from_song(item)
                         if artists:
-                            info_list.append((item_path, artists))
+                            info_list.append((item, artists))
                 except Exception as e:
                     self.logger.error(f"Error processing item {item}: {e}")
                     self.logger.debug(traceback.format_exc())
 
-        len_dir = len(info_list)
-        progress_generator = self.progress_display(len_dir)
+        total_files = len(info_list)
+        progress_generator = self.progress_display(total_files)
 
         for file_path, artists in info_list:
             try:
-                show_len = next(progress_generator)
-                self.logger.debug(f"{show_len}% completed")
+                progress = next(progress_generator)
+                self.logger.debug(f"{progress:.2f}% completed")
                 if self.progress_callback:
-                    self.progress_callback(show_len)
+                    self.progress_callback(progress)
 
                 if not self.duet_mode:
                     artists = [artists[0]]  # Only use the first artist if duet_mode is False
@@ -558,29 +556,29 @@ class MusicSorter:
                 for artist in artists:
                     target_path = self.get_target_path(artist)
 
-                    if not self.exist_only or (self.exist_only and os.path.isdir(os.path.dirname(target_path))):
+                    if not self.exist_only or (self.exist_only and target_path.parent.is_dir()):
                         try:
-                            if not os.path.exists(target_path):
-                                os.makedirs(target_path, exist_ok=True)
+                            if not target_path.exists():
+                                target_path.mkdir(parents=True, exist_ok=True)
                                 self.artist_folders_created.add(artist)
                         except Exception as e:
                             self.logger.error(f"Failed to create folder {target_path}: {str(e)}")
                             self.logger.debug(traceback.format_exc())
 
-                    if os.path.isdir(target_path):
+                    if target_path.is_dir():
                         try:
                             if self.duet_mode and len(artists) > 1:
-                                copy(file_path, target_path)
+                                shutil.copy2(str(file_path), str(target_path))
                                 self.logger.info(f"Copied {file_path} to {target_path}")
                                 self.songs_sorted += 1
                                 self.artist_song_count[artist] = self.artist_song_count.get(artist, 0) + 1
                             elif self.copy_mode:
-                                copy(file_path, target_path)
+                                shutil.copy2(str(file_path), str(target_path))
                                 self.logger.info(f"Copied {file_path} to {target_path}")
                                 self.songs_sorted += 1
                                 self.artist_song_count[artist] = self.artist_song_count.get(artist, 0) + 1
                             else:
-                                move(file_path, target_path)
+                                shutil.move(str(file_path), str(target_path))
                                 self.logger.info(f"Moved {file_path} to {target_path}")
                                 self.songs_sorted += 1
                                 self.artist_song_count[artist] = self.artist_song_count.get(artist, 0) + 1
@@ -591,7 +589,7 @@ class MusicSorter:
                 # If it's a duet and we've copied to all singers' folders, remove the original
                 if self.duet_mode and len(artists) > 1 and not self.copy_mode:
                     try:
-                        os.remove(file_path)
+                        file_path.unlink()
                         self.logger.info(f"Removed original file: {file_path}")
                     except Exception as e:
                         self.logger.error(f"Failed to remove original file {file_path}: {str(e)}")
@@ -606,13 +604,13 @@ class MusicSorter:
 
     def get_target_path(self, artist):
         if self.singles_folder and self.abc_sort:
-            return os.path.join(self.target_dir, artist[0], artist, "סינגלים")
+            return self.target_dir / artist[0] / artist / "סינגלים"
         elif self.singles_folder:
-            return os.path.join(self.target_dir, artist, "סינגלים")
+            return self.target_dir / artist / "סינגלים"
         elif self.abc_sort:
-            return os.path.join(self.target_dir, artist[0], artist)
+            return self.target_dir / artist[0] / artist
         else:
-            return os.path.join(self.target_dir, artist)
+            return self.target_dir / artist
 
     def is_cli_mode(self):
         try:
@@ -622,31 +620,31 @@ class MusicSorter:
 
     def list_from_csv(self):
         # Import singer list from CSV file
-        # Construct the path to the CSV file
 
         if getattr(sys, 'frozen', False):
             # Running in a bundle (e.g., PyInstaller)
-            base_path = sys._MEIPASS
+            base_path = Path(sys._MEIPASS)
         else:
-            base_path = os.path.dirname(os.path.abspath(__file__))
+            base_path = Path(__file__).parent
 
-        csv_path = os.path.join(base_path, 'app', 'singer-list.csv')
-        personal_csv_path = os.path.join(base_path, 'app', 'personal-singer-list.csv')
+        csv_path = base_path / 'app' / 'singer-list.csv'
+        personal_csv_path = base_path / 'app' / 'personal-singer-list.csv'
 
         singer_list = []
         try:
-            with open(csv_path, 'r', encoding='utf-8') as file:
+            with csv_path.open('r', encoding='utf-8') as file:
                 csv_reader = csv.reader(file)
                 singer_list = [tuple(row) for row in csv_reader]
-        except FileNotFoundError:
+        except FileNotFoundError as e:
             self.logger.error(f"CSV file not found: {csv_path}")
+            raise e  # Stop execution if the main CSV is missing
         except Exception as e:
             self.logger.error(f"Error reading CSV file {csv_path}: {e}")
             self.logger.debug(traceback.format_exc())
 
-        if os.path.isfile(personal_csv_path):
+        if personal_csv_path.is_file():
             try:
-                with open(personal_csv_path, 'r', encoding="utf-8") as file:
+                with personal_csv_path.open('r', encoding="utf-8") as file:
                     csv_reader = csv.reader(file)
                     personal_list = [tuple(row) for row in csv_reader]
                 singer_list.extend(personal_list)
@@ -658,7 +656,7 @@ class MusicSorter:
 
     def artists_from_song(self, my_file):
         found_artists = []
-        split_file = os.path.basename(my_file).replace('_', ' ').replace('-', ' ')
+        split_file = my_file.name.replace('_', ' ').replace('-', ' ')
 
         for source_name, target_name in self.singer_list:
             if source_name in split_file:
@@ -715,34 +713,6 @@ class MusicSorter:
             return True
         else:
             return False
-
-    def setup_logging(self, log_level):
-        self.logger = logging.getLogger('MusicSorter')
-        self.logger.setLevel(log_level)
-
-        # Create logs directory if it doesn't exist
-        if not os.path.exists('logs'):
-            os.makedirs('logs')
-
-        # File handler
-        log_filename = f'logs/music_sorter_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
-        file_handler = logging.FileHandler(log_filename, encoding='utf-8')
-        file_handler.setLevel(log_level)
-
-        # Console handler
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(log_level)
-
-        # Create a formatter and add it to the handlers
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'
-        )
-        file_handler.setFormatter(formatter)
-        console_handler.setFormatter(formatter)
-
-        # Add the handlers to the logger
-        self.logger.addHandler(file_handler)
-        self.logger.addHandler(console_handler)
 
     def generate_summary(self):
         summary = {
@@ -829,8 +799,36 @@ def main():
 
     args = parser.parse_args()
 
+    # Set up logging
+    logger = logging.getLogger('MusicSorter')
+    log_level = getattr(logging, args.log_level.upper())
+    logger.setLevel(log_level)
+
+    # Create logs directory if it doesn't exist
+    logs_dir = Path('logs')
+    logs_dir.mkdir(exist_ok=True)
+
+    # File handler with unique identifier
+    log_filename = logs_dir / f'music_sorter_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}_{os.getpid()}.log'
+    file_handler = logging.FileHandler(log_filename, encoding='utf-8')
+    file_handler.setLevel(log_level)
+
+    # Console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(log_level)
+
+    # Create a formatter and add it to the handlers
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    file_handler.setFormatter(formatter)
+    console_handler.setFormatter(formatter)
+
+    # Add the handlers to the logger
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+
     try:
-        log_level = getattr(logging, args.log_level.upper())
         sorter = MusicSorter(
             args.source_dir,
             args.target_dir,
@@ -840,16 +838,29 @@ def main():
             args.singles_folder,
             args.main_folder_only,
             args.duet_mode,
-            log_level=log_level
+            log_level=log_level,
+            logger=None
         )
 
         if args.fix_names:
             sorter.fix_names()
         else:
             sorter.scan_dir()
+    except FileNotFoundError as e:
+        logger.error(f"File not found: {str(e)}")
+        logger.debug(traceback.format_exc())
+        sys.exit(1)
+    except PermissionError as e:
+        logger.error(f"Permission error: {str(e)}")
+        logger.debug(traceback.format_exc())
+        sys.exit(1)
+    except ValueError as e:
+        logger.error(f"Value error: {str(e)}")
+        logger.debug(traceback.format_exc())
+        sys.exit(1)
     except Exception as e:
-        logging.error(f"An error occurred: {str(e)}")
-        logging.debug(traceback.format_exc())
+        logger.error(f"An unexpected error occurred: {str(e)}")
+        logger.debug(traceback.format_exc())
         sys.exit(1)
 
 
