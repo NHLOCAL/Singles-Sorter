@@ -36,7 +36,7 @@ SUBSTRINGS_TO_REMOVE = [
     " - מייל מיוזיק"
 ]
 
-SUPPORTED_EXTENSIONS = {'.mp3', '.wma', '.wav', '.flac', '.aac', '.ogg'}
+SUPPORTED_EXTENSIONS = {'.m4a', '.wma', '.wav', '.aiff', '.flac', '.aac', '.wv', '.ogg', '.dsf', '.opus', '.mp3'}
 
 class MusicSorter:
 
@@ -568,15 +568,24 @@ class MusicSorter:
             self.logger.debug(traceback.format_exc())
             return []
 
+
+    def is_cli_mode(self):
+        try:
+            return sys.stdin is not None and sys.stdin.isatty()
+        except AttributeError:
+            return False
+
     def list_from_csv(self):
         # Import singer list from CSV file
-        if getattr(sys, 'frozen', False):
+        if getattr(sys, 'frozen', False) and self.is_cli_mode():
             # Running in a bundle (e.g., PyInstaller)
-            base_path = Path(sys._MEIPASS)
+            main_csv_path = Path(sys._MEIPASS) / 'app' / 'singer-list.csv'
         else:
-            base_path = Path(__file__).parent
+            main_csv_path = Path(__file__).parent / 'app' / 'singer-list.csv'
+            
+        personal_csv_path = Path(__file__).parent / 'app' / 'personal-singer-list.csv'
 
-        csv_paths = [base_path / 'app' / 'singer-list.csv', base_path / 'app' / 'personal-singer-list.csv']
+        csv_paths = [main_csv_path, personal_csv_path]
 
         singer_list = []
         for csv_path in csv_paths:
