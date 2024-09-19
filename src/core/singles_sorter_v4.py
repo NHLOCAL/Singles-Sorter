@@ -36,7 +36,7 @@ SUBSTRINGS_TO_REMOVE = [
     " - מייל מיוזיק"
 ]
 
-SUPPORTED_EXTENSIONS = {'.m4a', '.wma', '.wav', '.aiff', '.flac', '.aac', '.wv', '.ogg', '.dsf', '.opus', '.mp3'}
+SUPPORTED_EXTENSIONS = {'.m4a', '.wma', '.wav', '.aiff', '.flac', '.aac', '.alac', '.wv', '.ogg', '.dsf', '.opus', '.mp3'}
 
 class MusicSorter:
 
