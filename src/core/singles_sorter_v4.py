@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-__VERSION__ = '13.8'
+__VERSION__ = '14.0'
 
 import os
 import sys
@@ -149,11 +149,22 @@ class MusicSorter:
 
                 # Fix filename
                 new_filename = self.clean_filename(file_path.name)
+                new_filename = self.sanitize_filename(new_filename)
+                if not new_filename:
+                    self.logger.warning(f"Filename is empty after sanitization for {file_path}, skipping")
+                    continue
+
                 new_file_path = file_path.with_name(new_filename)
 
                 if file_path != new_file_path:
-                    shutil.move(file_path, new_file_path)
-                    self.logger.info(f"Renamed file: {file_path} -> {new_file_path}")
+                    if new_file_path.exists():
+                        new_file_path = self.generate_unique_filename(new_file_path)
+                    try:
+                        file_path.rename(new_file_path)
+                        self.logger.info(f"Renamed file: {file_path} -> {new_file_path}")
+                    except Exception as e:
+                        self.logger.error(f"Failed to rename {file_path} to {new_file_path}: {str(e)}")
+                        self.logger.debug(traceback.format_exc())
 
                 # Fix metadata
                 metadata = load_file(new_file_path)
@@ -171,9 +182,44 @@ class MusicSorter:
         self.logger.info("Finished fixing filenames and metadata")
 
     def sanitize_filename(self, filename):
-        # Remove invalid characters and truncate if necessary
+        # Remove invalid characters
         filename = re.sub(r'[<>:"/\\|?*]', '', filename)
-        return filename[:255]
+        # Trim whitespace
+        filename = filename.strip()
+        # Truncate to 255 characters
+        filename = filename[:255]
+        # If filename is empty, return None
+        if not filename:
+            return None
+        return filename
+
+    def generate_unique_filename(self, target_path):
+        """
+        If target_path exists, append a number to make it unique.
+        """
+        counter = 1
+        original_stem = target_path.stem
+        original_suffix = target_path.suffix
+        parent = target_path.parent
+        while target_path.exists():
+            target_path = parent / f"{original_stem}_{counter}{original_suffix}"
+            counter += 1
+        return target_path
+
+    def move_file(self, source, target):
+        try:
+            source.rename(target)
+            return True
+        except Exception as e:
+            self.logger.debug(f"rename failed for {source} to {target}: {e}, trying shutil.move")
+            try:
+                shutil.move(str(source), str(target))
+                return True
+            except Exception as e2:
+                self.logger.error(f"Failed to move {source} to {target}: {str(e2)}")
+                self.logger.debug(traceback.format_exc())
+                # Do not raise exception; just log the error
+                return False  # Indicate failure
 
     def analyze_album(self, folder_path):
         """
@@ -364,9 +410,9 @@ class MusicSorter:
 
             # Sanitize album name
             safe_album_name = self.sanitize_filename(album_name)
-
-            # Get number of audio files in the folder
-            files_num = sum(1 for f in album_path.iterdir() if f.is_file())
+            if not safe_album_name:
+                self.logger.warning(f"Album name is empty after sanitization for {album_path}")
+                return
 
             # Determine artist name from the singer list
             determined_artist_name = None
@@ -380,13 +426,25 @@ class MusicSorter:
             # Use the determined artist name or the original if not found in the list
             final_artist_name = determined_artist_name if determined_artist_name else artist_name
 
+            if not final_artist_name:
+                self.logger.warning(f"Empty artist name for album {album_path}, skipping")
+                return
+
             # Determine target path
             if self.abc_sort:
+                if not final_artist_name:
+                    self.logger.warning(f"Empty artist name for album {album_path}, skipping")
+                    return
                 target_path = self.target_dir / final_artist_name[0] / final_artist_name
             else:
                 target_path = self.target_dir / final_artist_name
 
             album_target_path = target_path / safe_album_name
+
+            # Check if album already exists
+            if album_target_path.exists():
+                self.logger.info(f"Album {album_name} already exists at {album_target_path}, skipping")
+                return
 
             # Create target directory if it doesn't exist and allowed
             if not self.exist_only or (self.exist_only and target_path.is_dir()):
@@ -400,7 +458,11 @@ class MusicSorter:
                 # Transfer the entire folder
                 for item in album_path.iterdir():
                     source_item = item
-                    target_item = album_target_path / self.sanitize_filename(item.name)
+                    safe_item_name = self.sanitize_filename(item.name)
+                    if not safe_item_name:
+                        self.logger.warning(f"Item name is empty after sanitization for {item}, skipping")
+                        continue  # Skip this item
+                    target_item = album_target_path / safe_item_name
 
                     if self.copy_mode:
                         if source_item.is_file():
@@ -418,12 +480,11 @@ class MusicSorter:
                                 self.logger.error(f"Failed to copy directory {source_item}: {str(e)}")
                                 self.logger.debug(traceback.format_exc())
                     else:
-                        try:
-                            shutil.move(source_item, target_item)
+                        success = self.move_file(source_item, target_item)
+                        if success:
                             self.logger.info(f"Moved {source_item} to {target_item}")
-                        except Exception as e:
-                            self.logger.error(f"Failed to move {source_item}: {str(e)}")
-                            self.logger.debug(traceback.format_exc())
+                        else:
+                            self.logger.error(f"Failed to move {source_item} to {target_item}")
 
                 if not self.copy_mode:
                     try:
@@ -439,6 +500,8 @@ class MusicSorter:
                     f"Skipped album transfer: {album_path} (target folder doesn't exist)"
                 )
 
+            # Update counters
+            files_num = sum(1 for f in album_target_path.iterdir() if f.is_file())
             self.albums_processed += 1
             self.artist_song_count[artist_name] = self.artist_song_count.get(artist_name, 0) + files_num
 
@@ -509,15 +572,28 @@ class MusicSorter:
 
                     if target_path.is_dir():
                         try:
+                            destination_file_name = self.sanitize_filename(file_path.name)
+                            if not destination_file_name:
+                                self.logger.warning(f"Filename is empty after sanitization for {file_path}, skipping")
+                                continue
+                            destination_file = target_path / destination_file_name
+
+                            if destination_file.exists():
+                                destination_file = self.generate_unique_filename(destination_file)
+
                             if self.duet_mode and len(artists) > 1:
-                                shutil.copy2(file_path, target_path)
-                                self.logger.info(f"Copied {file_path} to {target_path}")
+                                shutil.copy2(file_path, destination_file)
+                                self.logger.info(f"Copied {file_path} to {destination_file}")
                             elif self.copy_mode:
-                                shutil.copy2(file_path, target_path)
-                                self.logger.info(f"Copied {file_path} to {target_path}")
+                                shutil.copy2(file_path, destination_file)
+                                self.logger.info(f"Copied {file_path} to {destination_file}")
                             else:
-                                shutil.move(file_path, target_path)
-                                self.logger.info(f"Moved {file_path} to {target_path}")
+                                success = self.move_file(file_path, destination_file)
+                                if success:
+                                    self.logger.info(f"Moved {file_path} to {destination_file}")
+                                else:
+                                    self.logger.error(f"Failed to move {file_path} to {destination_file}")
+
                             self.songs_sorted += 1
                             self.artist_song_count[artist] = self.artist_song_count.get(artist, 0) + 1
                         except Exception as e:
@@ -527,8 +603,9 @@ class MusicSorter:
                 # If it's a duet and we've copied to all singers' folders, remove the original
                 if self.duet_mode and len(artists) > 1 and not self.copy_mode:
                     try:
-                        file_path.unlink()
-                        self.logger.info(f"Removed original file: {file_path}")
+                        if file_path.exists():
+                            file_path.unlink()
+                            self.logger.info(f"Removed original file: {file_path}")
                     except Exception as e:
                         self.logger.error(f"Failed to remove original file {file_path}: {str(e)}")
                         self.logger.debug(traceback.format_exc())
@@ -550,7 +627,6 @@ class MusicSorter:
         else:
             return self.target_dir / artist
 
-
     def load_csv(self, path):
         try:
             with path.open('r', encoding='utf-8') as file:
@@ -562,7 +638,6 @@ class MusicSorter:
             self.logger.error(f"Error reading CSV file {path}: {e}")
             self.logger.debug(traceback.format_exc())
             return []
-
 
     def is_cli_mode(self):
         try:
@@ -577,7 +652,7 @@ class MusicSorter:
             main_csv_path = Path(sys._MEIPASS) / 'app' / 'singer-list.csv'
         else:
             main_csv_path = Path(__file__).parent / 'app' / 'singer-list.csv'
-            
+
         personal_csv_path = Path(__file__).parent / 'app' / 'personal-singer-list.csv'
 
         csv_paths = [main_csv_path, personal_csv_path]
