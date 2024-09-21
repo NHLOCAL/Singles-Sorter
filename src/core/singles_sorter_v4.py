@@ -770,7 +770,7 @@ def main():
             args.main_folder_only,
             args.duet_mode,
             log_level=log_level,
-            logger=None
+            logger=logger
         )
 
         if args.fix_names:
