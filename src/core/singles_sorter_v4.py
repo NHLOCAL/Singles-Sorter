@@ -550,11 +550,6 @@ class MusicSorter:
         else:
             return self.target_dir / artist
 
-    def is_cli_mode(self):
-        try:
-            return sys.stdin is not None and sys.stdin.isatty()
-        except AttributeError:
-            return False
 
     def load_csv(self, path):
         try:
