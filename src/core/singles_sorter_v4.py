@@ -561,44 +561,44 @@ class MusicSorter:
                 for artist in artists:
                     target_path = self.get_target_path(artist)
 
-                    if not self.exist_only or (self.exist_only and target_path.parent.is_dir()):
+                    if not self.exist_only or (self.exist_only and target_path.is_dir()):
                         try:
-                            if not target_path.exists():
+                            if not target_path.exists() and not self.exist_only:
                                 target_path.mkdir(parents=True, exist_ok=True)
                                 self.artist_folders_created.add(artist)
                         except Exception as e:
                             self.logger.error(f"Failed to create folder {target_path}: {str(e)}")
                             self.logger.debug(traceback.format_exc())
 
-                    if target_path.is_dir():
-                        try:
-                            destination_file_name = self.sanitize_filename(file_path.name)
-                            if not destination_file_name:
-                                self.logger.warning(f"Filename is empty after sanitization for {file_path}, skipping")
-                                continue
-                            destination_file = target_path / destination_file_name
+                        if target_path.is_dir():
+                            try:
+                                destination_file_name = self.sanitize_filename(file_path.name)
+                                if not destination_file_name:
+                                    self.logger.warning(f"Filename is empty after sanitization for {file_path}, skipping")
+                                    continue
+                                destination_file = target_path / destination_file_name
 
-                            if destination_file.exists():
-                                destination_file = self.generate_unique_filename(destination_file)
+                                if destination_file.exists():
+                                    destination_file = self.generate_unique_filename(destination_file)
 
-                            if self.duet_mode and len(artists) > 1:
-                                shutil.copy2(file_path, destination_file)
-                                self.logger.info(f"Copied {file_path} to {destination_file}")
-                            elif self.copy_mode:
-                                shutil.copy2(file_path, destination_file)
-                                self.logger.info(f"Copied {file_path} to {destination_file}")
-                            else:
-                                success = self.move_file(file_path, destination_file)
-                                if success:
-                                    self.logger.info(f"Moved {file_path} to {destination_file}")
+                                if self.duet_mode and len(artists) > 1:
+                                    shutil.copy2(file_path, destination_file)
+                                    self.logger.info(f"Copied {file_path} to {destination_file}")
+                                elif self.copy_mode:
+                                    shutil.copy2(file_path, destination_file)
+                                    self.logger.info(f"Copied {file_path} to {destination_file}")
                                 else:
-                                    self.logger.error(f"Failed to move {file_path} to {destination_file}")
+                                    success = self.move_file(file_path, destination_file)
+                                    if success:
+                                        self.logger.info(f"Moved {file_path} to {destination_file}")
+                                    else:
+                                        self.logger.error(f"Failed to move {file_path} to {destination_file}")
 
-                            self.songs_sorted += 1
-                            self.artist_song_count[artist] = self.artist_song_count.get(artist, 0) + 1
-                        except Exception as e:
-                            self.logger.error(f"Failed to process {file_path}: {str(e)}")
-                            self.logger.debug(traceback.format_exc())
+                                self.songs_sorted += 1
+                                self.artist_song_count[artist] = self.artist_song_count.get(artist, 0) + 1
+                            except Exception as e:
+                                self.logger.error(f"Failed to process {file_path}: {str(e)}")
+                                self.logger.debug(traceback.format_exc())
 
                 # If it's a duet and we've copied to all singers' folders, remove the original
                 if self.duet_mode and len(artists) > 1 and not self.copy_mode:
@@ -616,6 +616,7 @@ class MusicSorter:
         self.logger.info("Directory scan completed")
 
         return self.generate_summary()
+
 
     def get_target_path(self, artist):
         if self.singles_folder and self.abc_sort:
