@@ -446,59 +446,59 @@ class MusicSorter:
                 self.logger.info(f"Album {album_name} already exists at {album_target_path}, skipping")
                 return
 
-            # Create target directory if it doesn't exist and allowed
-            if not self.exist_only or (self.exist_only and target_path.is_dir()):
-                try:
-                    album_target_path.mkdir(parents=True, exist_ok=True)
-                except Exception as e:
-                    self.logger.error(f"Failed to create folder {album_target_path}: {str(e)}")
-                    self.logger.debug(traceback.format_exc())
-                    return
+            # Check if artist folder exists when exist_only is True
+            if self.exist_only and not target_path.exists():
+                self.logger.info(f"Skipped album transfer: {album_path} (artist folder does not exist)")
+                return
 
-                # Transfer the entire folder
-                for item in album_path.iterdir():
-                    source_item = item
-                    safe_item_name = self.sanitize_filename(item.name)
-                    if not safe_item_name:
-                        self.logger.warning(f"Item name is empty after sanitization for {item}, skipping")
-                        continue  # Skip this item
-                    target_item = album_target_path / safe_item_name
+            # Create album directory if it doesn't exist
+            try:
+                album_target_path.mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                self.logger.error(f"Failed to create folder {album_target_path}: {str(e)}")
+                self.logger.debug(traceback.format_exc())
+                return
 
-                    if self.copy_mode:
-                        if source_item.is_file():
-                            try:
-                                shutil.copy2(source_item, target_item)
-                                self.logger.info(f"Copied {source_item} to {target_item}")
-                            except Exception as e:
-                                self.logger.error(f"Failed to copy {source_item}: {str(e)}")
-                                self.logger.debug(traceback.format_exc())
-                        else:
-                            try:
-                                shutil.copytree(source_item, target_item)
-                                self.logger.info(f"Copied directory {source_item} to {target_item}")
-                            except Exception as e:
-                                self.logger.error(f"Failed to copy directory {source_item}: {str(e)}")
-                                self.logger.debug(traceback.format_exc())
+            # Transfer the entire folder
+            for item in album_path.iterdir():
+                source_item = item
+                safe_item_name = self.sanitize_filename(item.name)
+                if not safe_item_name:
+                    self.logger.warning(f"Item name is empty after sanitization for {item}, skipping")
+                    continue  # Skip this item
+                target_item = album_target_path / safe_item_name
+
+                if self.copy_mode:
+                    if source_item.is_file():
+                        try:
+                            shutil.copy2(source_item, target_item)
+                            self.logger.info(f"Copied {source_item} to {target_item}")
+                        except Exception as e:
+                            self.logger.error(f"Failed to copy {source_item}: {str(e)}")
+                            self.logger.debug(traceback.format_exc())
                     else:
-                        success = self.move_file(source_item, target_item)
-                        if success:
-                            self.logger.info(f"Moved {source_item} to {target_item}")
-                        else:
-                            self.logger.error(f"Failed to move {source_item} to {target_item}")
+                        try:
+                            shutil.copytree(source_item, target_item)
+                            self.logger.info(f"Copied directory {source_item} to {target_item}")
+                        except Exception as e:
+                            self.logger.error(f"Failed to copy directory {source_item}: {str(e)}")
+                            self.logger.debug(traceback.format_exc())
+                else:
+                    success = self.move_file(source_item, target_item)
+                    if success:
+                        self.logger.info(f"Moved {source_item} to {target_item}")
+                    else:
+                        self.logger.error(f"Failed to move {source_item} to {target_item}")
 
-                if not self.copy_mode:
-                    try:
-                        album_path.rmdir()
-                        self.logger.info(f"Removed original album folder: {album_path}")
-                    except Exception as e:
-                        self.logger.error(
-                            f"Failed to remove original album folder {album_path}: {str(e)}"
-                        )
-                        self.logger.debug(traceback.format_exc())
-            else:
-                self.logger.info(
-                    f"Skipped album transfer: {album_path} (target folder doesn't exist)"
-                )
+            if not self.copy_mode:
+                try:
+                    album_path.rmdir()
+                    self.logger.info(f"Removed original album folder: {album_path}")
+                except Exception as e:
+                    self.logger.error(
+                        f"Failed to remove original album folder {album_path}: {str(e)}"
+                    )
+                    self.logger.debug(traceback.format_exc())
 
             # Update counters
             files_num = sum(1 for f in album_target_path.iterdir() if f.is_file())
