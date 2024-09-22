@@ -55,11 +55,11 @@ def main(page: ft.Page):
     # פונקציה לפתיחת הודעת מה חדש בהפעלה הראשונה של התוכנה
     def first_run_menu():
 
-        first_run_status = page.client_storage.get("singlesorter_first_run") or '0.0'
+        first_run_status = page.client_storage.get("singlesorter.first_run") or '0.0'
 
         if first_run_status < VERSION:
             show_content('whats-new', 'מה חדש', ft.icons.NEW_RELEASES)
-            page.client_storage.set("singlesorter_first_run", VERSION)  # סימון שההודעה הוצגה
+            page.client_storage.set("singlesorter.first_run", VERSION)  # סימון שההודעה הוצגה
             page.update()
 
     
@@ -531,7 +531,7 @@ def main(page: ft.Page):
     singles_folder = ft.Checkbox(
         label='צור תיקיות סינגלים פנימיות',
         tooltip="סמן אם ברצונך ליצור תיקיות פנימיות בתוך תיקיות הזמרים אליהם יועברו הסינגלים",
-        value=page.client_storage.get("singles_folder") or True # True כברירת מחדל
+        value=page.client_storage.get("singles_folder") if page.client_storage.get("singles_folder") is not None else True # True כברירת מחדל
     )
     exist_only = ft.Checkbox(
         label="השתמש בתיקיות קיימות בלבד",
