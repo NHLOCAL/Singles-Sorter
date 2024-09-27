@@ -35,15 +35,12 @@ def main(page: ft.Page):
         auto_focus=False
 
     else:
-        page.padding = ft.padding.only(60, 20, 60, 20)
-        page.window.height = 810
-        page.window.width = 940
+        page.padding = ft.padding.all(20)
+        page.window.height = 620
+        page.window.width = 950
         page.scroll = ft.ScrollMode.ADAPTIVE
         scroll_mode = ft.ScrollMode.AUTO
         auto_focus=True
-
-    # Consistent button style definition
-    round_button = ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=15))
 
     # פונקצייה להצגת הודעה קופצת בתחתית המסך עם פרמטרים שונים
     show_snackbar = lambda message_text, color, mseconds=3000, : ft.SnackBar(content=ft.Text(message_text), bgcolor=color, duration=mseconds)
@@ -487,9 +484,14 @@ def main(page: ft.Page):
         describe_button = 'בחר תיקיה'
     
 
-    # הגדרת סגנון עקבי לשדות טקסט
-    round_text_field = ft.border_radius.all(15)  # שינוי ל-all(15)
-    text_field_border = ft.border.all(2, color=ft.colors.PRIMARY) # הוספת צבע גבול
+    # הגדרת סגנון עקבי לכפתורים
+    round_button = ft.ButtonStyle(
+        shape=ft.RoundedRectangleBorder(radius=10),
+        padding=10
+    )
+
+    # הגדרת סגנון עקבי לשדות טקסט – הסר round_text_field
+    text_field_border = ft.border.all(1, color=ft.colors.OUTLINE_VARIANT)
     text_field_height = 50
 
     # שדות קלט - עיצוב משופר
@@ -498,11 +500,13 @@ def main(page: ft.Page):
         autofocus=auto_focus,
         rtl=True,
         expand=True,
-        border_radius=round_text_field,
         border=text_field_border,
         height=text_field_height,
         hint_text=r"C:\Music\סינגלים",
-        read_only=ANDROID_MODE
+        read_only=ANDROID_MODE,
+        content_padding=ft.padding.only(10,15,10,15),
+        filled=True,
+        border_color=ft.colors.OUTLINE_VARIANT,
     )
 
     target_dir_input = ft.TextField(
@@ -510,10 +514,13 @@ def main(page: ft.Page):
         rtl=True,
         expand=True,
         border=text_field_border,
-        border_radius=round_text_field,
         height=text_field_height,
         hint_text=r"C:\Music\המוזיקה שלך",
-        read_only=ANDROID_MODE
+        read_only=ANDROID_MODE,
+        content_padding=ft.padding.only(10,15,10,15),  # הוספת content padding
+        filled=True, # הוספת filled
+        border_color=ft.colors.OUTLINE_VARIANT,
+
     )
     
     source_picker = ft.FilePicker(on_result=lambda e: update_path(e, source_dir_input))
@@ -724,108 +731,106 @@ def main(page: ft.Page):
 
     # הגדרות הממשק הגרפי של התוכנה
     page.add(
-   
-        ft.Container(
-            content=ft.Column(
-                [
-                    ft.Row([source_dir_button, source_dir_input], alignment=ft.MainAxisAlignment.CENTER),
-                    ft.Row([target_dir_button, target_dir_input], alignment=ft.MainAxisAlignment.CENTER),
-                ],
-    
-                spacing='20',
-                alignment=ft.MainAxisAlignment.CENTER,
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            ),
- 
-            margin = ft.margin.only(0, 10, 0, 20)
+        ft.Row(  # Main Row
+            controls=[
+                 # עמודה לבחירת תיקיות, סרגל התקדמות וכפתורים בצד ימין
+                # עמודה לבחירת תיקיות, סרגל התקדמות וכפתורים בצד ימין
+                ft.Column(
+                    [   
+                        ft.Column( # עמודה עליונה עבור שדות טקסט וכפתורים
+                            [
+                                ft.Row([source_dir_button, source_dir_input], alignment=ft.MainAxisAlignment.CENTER),
+                                ft.Row([target_dir_button, target_dir_input], alignment=ft.MainAxisAlignment.CENTER),
+                            ],
+                            spacing=15,
+                            expand=1,
+                        ),
 
-        ),
-
-
-        ft.Container(
-            content=ft.Column(
-                [
-                    # התאמה אישית
-                    ft.Row(
-                        [
-                            ft.Icon(ft.icons.TUNE, color=ft.colors.PRIMARY),
-                            ft.Text("התאמה אישית", size=20, color=ft.colors.PRIMARY, weight=ft.FontWeight.BOLD),
-                        ],
-                        alignment=ft.MainAxisAlignment.CENTER,
-                    ),
-
-                    # הגדרות בסיסיות - עיצוב משופר
-                    ft.Column(
-                        [
-                            ft.Text("הגדרות בסיסיות", weight=ft.FontWeight.BOLD),
-                            copy_mode,
-                            main_folder_only,
-                        ],
-                        spacing=10, # מרווח בין ה-Switches
-                        alignment=ft.MainAxisAlignment.START,
-                        horizontal_alignment=ft.CrossAxisAlignment.START # יישור לשמאל
-                    ),
-
-                    # מתקדם
-                    ft.Row(
-                        [
-                            #ft.Icon(ft.icons.BUILD),  # סמל בנייה
-                            ft.Text("מתקדם", weight=ft.FontWeight.BOLD),
-                        ],
-                        alignment=ft.MainAxisAlignment.START,
-                    ),
-                    singles_folder,
-                    exist_only,
-
-                    ft.Row(
-                        [
-                            abc_sort,
-                            save_config_button,
-                        ],
-                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                    ),
-                ],
-                spacing=10,
-                alignment=ft.MainAxisAlignment.START,
-                horizontal_alignment=ft.CrossAxisAlignment.START
-            ),
-            margin=ft.margin.only(0, 5, 0, 10),
-            border=ft.border.all(2, color=ft.colors.PRIMARY),  # שינוי צבע הגבול
-            border_radius=round_text_field, # שימוש באותו radius כמו בשדות טקסט
-            padding=15,
-        ),
-
-
-        ft.Container(
-            content=ft.Column(
-               [
-
-                ft.Row(
-                    [
-                        progress_bar,
+                        ft.Column( # עמודה תחתונה עבור סרגל התקדמות וכפתורים
+                            [
+                                progress_bar,
+                                ft.Row(
+                                    [
+                                        organize_button,
+                                        fixed_button,
+                                    ],
+                                    alignment=ft.MainAxisAlignment.CENTER,
+                                ),
+                            ],
+                            spacing=15,
+                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                            expand=2,
+                        )
+                        
                     ],
-
-                    alignment=ft.MainAxisAlignment.CENTER,
-                ),
-                  
-                ft.Row(
-                    [
-                        organize_button,
-                        fixed_button,
-                    ],
-
-                    alignment=ft.MainAxisAlignment.CENTER,
+                    #spacing=100,
+                    alignment=ft.MainAxisAlignment.START, # לא נדרש כאן
+                    expand=True, # הרחבה אנכית
+                    width=450,  # הגדרת רוחב לעמודה הימנית
+                    #height=page.window.height - 200
+                    
                 ),
 
-                ],
-                
-                spacing='20',
-            ),
+                # כרטיס "התאמה אישית" בצד שמאל
+                ft.Card(
+                    content=ft.Container(
+                        content=ft.Column(
+                            [
+                                # כותרת "התאמה אישית"
+                                ft.Row(
+                                    [
+                                        ft.Icon(ft.icons.TUNE, color=ft.colors.PRIMARY),
+                                        ft.Text("התאמה אישית", size=20, color=ft.colors.PRIMARY, weight=ft.FontWeight.BOLD),
+                                    ],
+                                    alignment=ft.MainAxisAlignment.CENTER,
+                                ),
 
-            margin = ft.margin.all(0),
-            padding= ft.padding.only(10, 10, 10, 5),
+
+                            # הגדרות בסיסיות - שימוש ב-Row ו-Column לעיצוב
+                            ft.Column(
+                                [
+                                    ft.Text("הגדרות בסיסיות", weight=ft.FontWeight.BOLD, size=14),
+                                    copy_mode,
+                                    main_folder_only,
+                                ],
+                                spacing=15
+                            ),
+
+                            # מתקדם
+                            ft.Row(
+                                [
+                                    #ft.Icon(ft.icons.BUILD),  # סמל בנייה
+                                    ft.Text("מתקדם", weight=ft.FontWeight.BOLD),
+                                ],
+                                alignment=ft.MainAxisAlignment.START,
+                            ),
+                            singles_folder,
+                            exist_only,
+
+                            ft.Row(
+                                [
+                                    abc_sort,
+                                    save_config_button,
+                                ],
+                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                            ),
+
+                            ],
+                            spacing=15,
+                            horizontal_alignment=ft.CrossAxisAlignment.START,
+                            expand=True, # <--- הוספת expand כאן
+                        ),
+                        padding=20,
+                        width=450, # רוחב קבוע לכרטיס
+                    ),
+                    margin=10,
+                    elevation=2,
+                    expand=True, # הרחבה אנכית
+                ),
+
+            ],
             alignment=ft.alignment.center,
-        )
+        ),
     )
 
 
