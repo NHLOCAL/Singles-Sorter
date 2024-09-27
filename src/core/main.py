@@ -10,15 +10,12 @@ from add_singer_dialog import create_add_singer_dialog
 
 
 # גרסת התוכנה
-global VERSION
 VERSION = __VERSION__
-
 
 
 def main(page: ft.Page):
 
     # הגדרת זיהוי הפעלה על אנדרואיד
-    global ANDROID_MODE
     ANDROID_MODE = True if page.platform == ft.PagePlatform.ANDROID else False
 
     page.title = "מסדר הסינגלים"
@@ -128,11 +125,6 @@ def main(page: ft.Page):
         elif e.control.data == "settings":
             show_settings()
 
-
-    try:
-        update_available, release_notes = check_for_update(VERSION)
-    except:
-        update_available = False
         
 
     # תפריט אפשרויות נוספות
@@ -143,10 +135,7 @@ def main(page: ft.Page):
         ft.PopupMenuItem(text="הגדרות מתקדמות", icon=ft.icons.SETTINGS, data="settings", on_click=on_menu_selected),
     ]
 
-    # הוספת פריט עדכון רק אם זמין
-    if update_available:
-        update_item = ft.PopupMenuItem(text="עדכן כעת", icon=ft.icons.UPDATE, data="upadte", on_click=on_menu_selected)
-        menu_items.insert(0, update_item)  # הוספת פריט העדכון לתחילת הרשימה
+
 
     # כפתור אפשרויות נוספות בסרגל העליון
     # כולל הצגת התראה אדומה אם קיים עדכון זמין
@@ -159,9 +148,8 @@ def main(page: ft.Page):
             tooltip="אפשרויות נוספות",
         ),
         text='up',
-        label_visible=bool(update_available),
+        label_visible=False,
         offset=ft.transform.Offset(0, -2),
-
         )
 
     
@@ -940,9 +928,32 @@ def main(page: ft.Page):
                 fixed_button.disabled = False
             page.update()
 
+
+    def update_view():
+
+        # בדיקה אם קיים עדכון זמין
+        try:
+            update_available, release_notes = check_for_update(VERSION)
+        except:
+            update_available = False
+            release_notes = None
+
+        # הוספת פריט עדכון רק אם זמין
+        if update_available:
+            update_item = ft.PopupMenuItem(text="עדכן כעת", icon=ft.icons.UPDATE, data="upadte", on_click=on_menu_selected)
+            menu_items.insert(0, update_item)  # הוספת פריט העדכון לתחילת הרשימה
+
+        menu_button.label_visible = bool(update_available)
+        menu_button.content.items = menu_items
+
+        menu_button.update()
+
+        return update_available, release_notes
+
     # הפעלת פונקצייה שפותחת הודעה "מה חדש" בהפעלה הראשונה
     first_run_menu()
 
-
+    # בדיקה אם קיים עדכון זמין ועדכון התצוגה
+    update_available, release_notes =  update_view()
 
 ft.app(target=main)
