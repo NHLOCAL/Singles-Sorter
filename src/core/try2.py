@@ -1,18 +1,15 @@
 import flet as ft
 
 def main(page: ft.Page):
-    def radio_changed(e):
-        print(f"Selected value: {e.control.value}")
-        page.update()
-
     page.add(
-        ft.Row(
-            controls=[
-                ft.Radio(value="Option 1", label=ft.Text("Option 1 with a very long label that should wrap", overflow=ft.TextOverflow.ELLIPSIS),),
-                ft.Radio(value="Option 2", label=ft.Text("Option 2 with a very long label that should wrap", overflow=ft.TextOverflow.ELLIPSIS),),
+        ft.AutoComplete(
+            suggestions=[
+                ft.AutoCompleteSuggestion(key="one 1", value="One"),
+                ft.AutoCompleteSuggestion(key="two 2", value="Two"),
+                ft.AutoCompleteSuggestion(key="three 3 אורי", value="Three"),
             ],
-            wrap=True,
-        ),
+            on_select=lambda e: print(e.control.selected_index, e.selection),
+        )
     )
 
-ft.app(target=main)
+ft.app(main)

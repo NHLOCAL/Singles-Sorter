@@ -517,27 +517,41 @@ def main(page: ft.Page):
     # Checkboxes
     global copy_mode, main_folder_only, singles_folder, exist_only, abc_sort, duet_mode
 
-    # טעינת הגדרות שמורות
-    copy_mode = ft.Checkbox(
-        label="העתק קבצים (העברה היא ברירת המחדל)",
-        tooltip="סמן אם ברצונך לבצע העתקה של הקבצים כברירת מחדל תתבצע העברה",
-        value=page.client_storage.get("copy_mode") or False  # False כברירת מחדל
+    # הגדרות בסיסיות - שימוש ב-Switch עם label דינאמי
+    copy_mode = ft.Switch(
+        tooltip="בחר אם ברצונך להעתיק או להעביר את הקבצים",
+        label="העתק קבצים" if page.client_storage.get("copy_mode")    else "העבר קבצים",
+        value=page.client_storage.get("copy_mode") or False,
+        on_change=lambda e: update_switch_label(copy_mode) # עדכון label בעת שינוי
     )
-    main_folder_only = ft.Checkbox(
-        label="סרוק תיקיה ראשית בלבד",
-        tooltip="אם מסומן, התוכנה תסרוק רק את התיקייה הראשית ולא תתי תיקיות",
-        value=page.client_storage.get("main_folder_only") or False
+
+    main_folder_only = ft.Switch(
+        tooltip="בחר אם לסרוק את כל התיקיות או רק את הראשית",
+        label="סרוק תיקיה ראשית בלבד" if page.client_storage.get("main_folder_only") else "סרוק עץ תיקיות",
+        value=page.client_storage.get("main_folder_only") or False,
+        on_change=lambda e: update_switch_label(main_folder_only) # עדכון label בעת שינוי
     )
+
+    # פונקציה לעדכון label של ה-Switch
+    def update_switch_label(switch):
+        if switch == copy_mode:
+            switch.label = "העתק קבצים" if switch.value else "העבר קבצים"
+        elif switch == main_folder_only:
+            switch.label = "סרוק תיקיה ראשית בלבד" if switch.value else "סרוק עץ תיקיות"
+        switch.update()
+    
     singles_folder = ft.Checkbox(
         label='צור תיקיות סינגלים פנימיות',
         tooltip="סמן אם ברצונך ליצור תיקיות פנימיות בתוך תיקיות הזמרים אליהם יועברו הסינגלים",
         value=page.client_storage.get("singles_folder") if page.client_storage.get("singles_folder") is not None else True # True כברירת מחדל
     )
+
     exist_only = ft.Checkbox(
         label="השתמש בתיקיות קיימות בלבד",
         tooltip="אם מסומן, התוכנה תעביר קבצים רק לתיקיות זמרים קיימות ולא תיצור חדשות",
         value=page.client_storage.get("exist_only") or False
     )
+
     abc_sort = ft.Checkbox(
         label="צור תיקיות ראשיות לפי ה-א' ב'",
         tooltip="אם מסומן, התוכנה תיצור תיקיה ראשית לכל אות באלפבית",
@@ -728,16 +742,17 @@ def main(page: ft.Page):
                         alignment=ft.MainAxisAlignment.CENTER,
                     ),
 
-                    # הגדרות בסיסיות
-                    ft.Row(
+                    # הגדרות בסיסיות - עיצוב משופר
+                    ft.Column(
                         [
-                            #ft.Icon(ft.icons.HOME),  # סמל בית
                             ft.Text("הגדרות בסיסיות", weight=ft.FontWeight.BOLD),
+                            copy_mode,
+                            main_folder_only,
                         ],
+                        spacing=10, # מרווח בין ה-Switches
                         alignment=ft.MainAxisAlignment.START,
+                        horizontal_alignment=ft.CrossAxisAlignment.START # יישור לשמאל
                     ),
-                    copy_mode,
-                    main_folder_only,
 
                     # מתקדם
                     ft.Row(
@@ -758,15 +773,14 @@ def main(page: ft.Page):
                         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     ),
                 ],
-                alignment=ft.MainAxisAlignment.CENTER,
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=10, # מרווח בין הקטעים
+                alignment=ft.MainAxisAlignment.START,
+                horizontal_alignment=ft.CrossAxisAlignment.START
             ),
-
-            margin = ft.margin.only(0, 5, 0, 10),
-            border=ft.border.all(2, color=ft.colors.OUTLINE),
+            margin=ft.margin.only(0, 5, 0, 10),
+            border=ft.border.all(2, color=ft.colors.OUTLINE), # מסגרת סביב הקונטיינר
             border_radius=15,
-            padding=10,
-            alignment=ft.alignment.center,
+            padding=15, # ריפוד פנימי
         ),
 
 
