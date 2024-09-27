@@ -929,9 +929,8 @@ def main(page: ft.Page):
             page.update()
 
 
+     # בדיקה אם קיים עדכון זמין
     def update_view():
-
-        # בדיקה אם קיים עדכון זמין
         try:
             update_available, release_notes = check_for_update(VERSION)
         except:
