@@ -486,11 +486,35 @@ def main(page: ft.Page):
         width_button = '150'
         describe_button = 'בחר תיקיה'
     
-    round_text_field = ft.border_radius.only(15, 10, 15, 10)
 
-    source_dir_input = ft.TextField(label="תיקית הסינגלים שלך", autofocus=auto_focus, rtl=True, expand=True, border_radius=round_text_field, border=ft.border.all(2, color=ft.colors.OUTLINE), height='50', hint_text=r"C:\Music\סינגלים", read_only=ANDROID_MODE)
+    # הגדרת סגנון עקבי לשדות טקסט
+    round_text_field = ft.border_radius.all(15)  # שינוי ל-all(15)
+    text_field_border = ft.border.all(2, color=ft.colors.PRIMARY) # הוספת צבע גבול
+    text_field_height = 50
 
-    target_dir_input = ft.TextField(label="תיקית יעד", rtl=True, expand=True, border=ft.border.all(2, color=ft.colors.OUTLINE), border_radius=round_text_field, height='50', hint_text=r"C:\Music\המוזיקה שלך",  read_only=ANDROID_MODE)
+    # שדות קלט - עיצוב משופר
+    source_dir_input = ft.TextField(
+        label="תיקית הסינגלים שלך",
+        autofocus=auto_focus,
+        rtl=True,
+        expand=True,
+        border_radius=round_text_field,
+        border=text_field_border,
+        height=text_field_height,
+        hint_text=r"C:\Music\סינגלים",
+        read_only=ANDROID_MODE
+    )
+
+    target_dir_input = ft.TextField(
+        label="תיקית יעד",
+        rtl=True,
+        expand=True,
+        border=text_field_border,
+        border_radius=round_text_field,
+        height=text_field_height,
+        hint_text=r"C:\Music\המוזיקה שלך",
+        read_only=ANDROID_MODE
+    )
     
     source_picker = ft.FilePicker(on_result=lambda e: update_path(e, source_dir_input))
     target_picker = ft.FilePicker(on_result=lambda e: update_path(e, target_dir_input))
@@ -724,7 +748,7 @@ def main(page: ft.Page):
                     # התאמה אישית
                     ft.Row(
                         [
-                            ft.Icon(ft.icons.TUNE),  # סמל כיוון
+                            ft.Icon(ft.icons.TUNE, color=ft.colors.PRIMARY),
                             ft.Text("התאמה אישית", size=20, color=ft.colors.PRIMARY, weight=ft.FontWeight.BOLD),
                         ],
                         alignment=ft.MainAxisAlignment.CENTER,
@@ -761,14 +785,14 @@ def main(page: ft.Page):
                         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     ),
                 ],
-                spacing=10, # מרווח בין הקטעים
+                spacing=10,
                 alignment=ft.MainAxisAlignment.START,
                 horizontal_alignment=ft.CrossAxisAlignment.START
             ),
             margin=ft.margin.only(0, 5, 0, 10),
-            border=ft.border.all(2, color=ft.colors.OUTLINE), # מסגרת סביב הקונטיינר
-            border_radius=15,
-            padding=15, # ריפוד פנימי
+            border=ft.border.all(2, color=ft.colors.PRIMARY),  # שינוי צבע הגבול
+            border_radius=round_text_field, # שימוש באותו radius כמו בשדות טקסט
+            padding=15,
         ),
 
 
