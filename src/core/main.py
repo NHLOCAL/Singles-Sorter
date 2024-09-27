@@ -743,7 +743,7 @@ def main(page: ft.Page):
                                 ft.Row([target_dir_button, target_dir_input], alignment=ft.MainAxisAlignment.CENTER),
                             ],
                             spacing=15,
-                            expand=1,
+                            expand=True,
                         ),
 
                         ft.Column( # עמודה תחתונה עבור סרגל התקדמות וכפתורים
@@ -759,11 +759,10 @@ def main(page: ft.Page):
                             ],
                             spacing=15,
                             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                            expand=2,
                         )
                         
                     ],
-                    #spacing=100,
+                    spacing=150,
                     alignment=ft.MainAxisAlignment.START, # לא נדרש כאן
                     expand=True, # הרחבה אנכית
                     width=450,  # הגדרת רוחב לעמודה הימנית
@@ -830,6 +829,7 @@ def main(page: ft.Page):
 
             ],
             alignment=ft.alignment.center,
+            expand=True,
         ),
     )
 
