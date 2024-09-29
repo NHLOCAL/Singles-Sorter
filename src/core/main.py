@@ -16,23 +16,28 @@ VERSION = __VERSION__
 def main(page: ft.Page):
 
     # הגדרת זיהוי הפעלה על אנדרואיד
-    ANDROID_MODE = True if page.platform == ft.PagePlatform.ANDROID else False
+    ANDROID_MODE = page.platform == ft.PagePlatform.ANDROID
 
     page.title = "מסדר הסינגלים"
     page.vertical_alignment = ft.MainAxisAlignment.SPACE_BETWEEN
     page.theme_mode = ft.ThemeMode.LIGHT
     page.rtl = True
-    #page.bgcolor = "#f5f5f5"
     page.theme = ft.Theme(color_scheme_seed="#2196f3")
     ph = ft.PermissionHandler()
     page.overlay.append(ph)
 
-    # הגדרה אוטומטית מותאמת למערכת ההפעלה
+    # הגדרות דינאמיות בהתאם לפלטפורמה
     if ANDROID_MODE:
         page.padding = ft.padding.only(20, 10, 20, 0)
-        page.scroll = ft.ScrollMode.HIDDEN
+        page.scroll = ft.ScrollMode.HIDDEN  # הסתרת גלילה באנדרואיד
         scroll_mode = ft.ScrollMode.HIDDEN
-        auto_focus=False
+        auto_focus = False
+        width_button = '100%'  # כפתורים ברוחב מלא באנדרואיד
+        describe_button = 'בחר'
+        organize_button_title = "מיין"
+        fix_button_title = "תקן"
+        width_fix_button = None
+        width_organize_button = None
 
     else:
         page.padding = ft.padding.all(20)
@@ -40,7 +45,13 @@ def main(page: ft.Page):
         page.window.width = 930
         page.scroll = ft.ScrollMode.ADAPTIVE
         scroll_mode = ft.ScrollMode.AUTO
-        auto_focus=True
+        auto_focus = True
+        width_button = '150'
+        describe_button = 'בחר תיקיה'
+        organize_button_title = "מיין שירים"
+        fix_button_title = "תקן שמות"
+        width_fix_button = 170
+        width_organize_button = 180
 
     # פונקצייה להצגת הודעה קופצת בתחתית המסך עם פרמטרים שונים
     show_snackbar = lambda message_text, color, mseconds=3000, : ft.SnackBar(content=ft.Text(message_text), bgcolor=color, duration=mseconds)
@@ -731,48 +742,47 @@ def main(page: ft.Page):
 
     # הגדרות הממשק הגרפי של התוכנה
     page.add(
-        ft.Row(  # Main Row
+        ft.ResponsiveRow(  # Using ResponsiveRow
             controls=[
-                 # עמודה לבחירת תיקיות, סרגל התקדמות וכפתורים בצד ימין
-                # עמודה לבחירת תיקיות, סרגל התקדמות וכפתורים בצד ימין
+                 # עמודה לבחירת תיקיות, סרגל התקדמות וכפתורים – גמישה ברוחב
                 ft.Column(
-                    [   
-                        ft.Column( # עמודה עליונה עבור שדות טקסט וכפתורים
-                            [
+                    expand=True,
+                    rtl=True,
+                    col={"xs": 2, "sm": 1, "md": 1},
+                    controls=[
+                        # עמודה לבחירת תיקיות, סרגל התקדמות וכפתורים בצד ימין
+                        ft.Column(
+                            controls=[   
                                 ft.Row([source_dir_button, source_dir_input], alignment=ft.MainAxisAlignment.CENTER),
                                 ft.Row([target_dir_button, target_dir_input], alignment=ft.MainAxisAlignment.CENTER),
-                            ],
-                            spacing=15,
-                            expand=True,
-                        ),
 
-                        ft.Column( # עמודה תחתונה עבור סרגל התקדמות וכפתורים
-                            [
                                 progress_bar,
+
                                 ft.Row(
                                     [
                                         organize_button,
                                         fixed_button,
                                     ],
                                     alignment=ft.MainAxisAlignment.CENTER,
+                                    expand=True,
                                 ),
+                                
                             ],
                             spacing=15,
-                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                        )
-                        
+                            alignment=ft.MainAxisAlignment.CENTER,
+                            horizontal_alignment=ft.CrossAxisAlignment.END,
+                            expand=True,
+                        ),
                     ],
-                    spacing=150,
-                    alignment=ft.MainAxisAlignment.START, # לא נדרש כאן
-                    expand=True, # הרחבה אנכית
-                    width=450,  # הגדרת רוחב לעמודה הימנית
-                    #height=page.window.height - 200
-                    
                 ),
 
-                # כרטיס "התאמה אישית" בצד שמאל
+                # כרטיס "התאמה אישית" – גמיש ברוחב
                 ft.Card(
+                    expand=True,  # Important for responsiveness
+                    col={"xs": 2, "sm": 1, "md": 1},
                     content=ft.Container(
+                        #width=card_width,  # set a fixed width for desktop, flexible for mobile
+                        padding=20,
                         content=ft.Column(
                             [
                                 # כותרת "התאמה אישית"
@@ -782,18 +792,21 @@ def main(page: ft.Page):
                                         ft.Text("התאמה אישית", size=20, color=ft.colors.PRIMARY, weight=ft.FontWeight.BOLD),
                                     ],
                                     alignment=ft.MainAxisAlignment.CENTER,
+                                    expand=True,
                                 ),
 
 
                             # הגדרות בסיסיות - שימוש ב-Row ו-Column לעיצוב
-                            ft.Column(
+                            ft.Row(
                                 [
                                     ft.Text("הגדרות בסיסיות", weight=ft.FontWeight.BOLD, size=14),
-                                    copy_mode,
-                                    main_folder_only,
                                 ],
-                                spacing=15
+                                alignment=ft.MainAxisAlignment.START,
+                                expand=True,
                             ),
+
+                            copy_mode,
+                            main_folder_only,
 
                             # מתקדם
                             ft.Row(
@@ -802,7 +815,9 @@ def main(page: ft.Page):
                                     ft.Text("מתקדם", weight=ft.FontWeight.BOLD),
                                 ],
                                 alignment=ft.MainAxisAlignment.START,
+                                expand=True,
                             ),
+
                             singles_folder,
                             exist_only,
 
@@ -812,27 +827,25 @@ def main(page: ft.Page):
                                     save_config_button,
                                 ],
                                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                expand=True,
                             ),
 
                             ],
-                            spacing=15,
-                            horizontal_alignment=ft.CrossAxisAlignment.START,
-                            expand=True, # <--- הוספת expand כאן
+                            expand=True,
                         ),
-                        padding=20,
-                        width=450, # רוחב קבוע לכרטיס
                     ),
-                    margin=10,
-                    elevation=2,
-                    expand=True, # הרחבה אנכית
                 ),
 
             ],
-            alignment=ft.alignment.center,
+            alignment=ft.MainAxisAlignment.START,  # Distribute space around items
+            vertical_alignment=ft.CrossAxisAlignment.START, # align items to top
+            spacing=20,
+            run_spacing=10,
+            columns=2,
             expand=True,
-        ),
+            rtl=True,
+        )
     )
-
 
 
 
