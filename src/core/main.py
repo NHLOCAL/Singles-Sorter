@@ -41,8 +41,8 @@ def main(page: ft.Page):
 
     else:
         page.padding = ft.padding.all(20)
-        page.window.height = 620
-        page.window.width = 930
+        page.window.height = 600
+        page.window.width = 900
         page.scroll = ft.ScrollMode.ADAPTIVE
         scroll_mode = ft.ScrollMode.AUTO
         auto_focus = True
@@ -750,28 +750,30 @@ def main(page: ft.Page):
                     rtl=True,
                     col={"xs": 2, "sm": 1, "md": 1},
                     controls=[
-                        # עמודה לבחירת תיקיות, סרגל התקדמות וכפתורים בצד ימין
-                        ft.Column(
-                            controls=[   
-                                ft.Row([source_dir_button, source_dir_input], alignment=ft.MainAxisAlignment.CENTER),
-                                ft.Row([target_dir_button, target_dir_input], alignment=ft.MainAxisAlignment.CENTER),
+                        ft.Container( # הוספנו Container
+                            padding=0, # padding מסביב לכל התוכן
+                            margin=10,  # margin מסביב ל-Container
+                            content=ft.Column( # התוכן הקודם נכנס כאן
+                                controls=[   
+                                    ft.Row([source_dir_button, source_dir_input], alignment=ft.MainAxisAlignment.CENTER),
+                                    ft.Row([target_dir_button, target_dir_input], alignment=ft.MainAxisAlignment.CENTER),
 
-                                progress_bar,
-
-                                ft.Row(
-                                    [
-                                        organize_button,
-                                        fixed_button,
-                                    ],
-                                    alignment=ft.MainAxisAlignment.CENTER,
-                                    expand=True,
-                                ),
-                                
-                            ],
-                            spacing=15,
-                            alignment=ft.MainAxisAlignment.CENTER,
-                            horizontal_alignment=ft.CrossAxisAlignment.END,
-                            expand=True,
+                                    ft.Row([progress_bar], alignment=ft.MainAxisAlignment.CENTER),
+                                    
+                                    ft.Row(
+                                        [
+                                            organize_button,
+                                            fixed_button,
+                                        ],
+                                        alignment=ft.MainAxisAlignment.CENTER,
+                                        expand=True,
+                                    ),
+                                ],
+                                spacing=15,
+                                alignment=ft.MainAxisAlignment.CENTER,
+                                horizontal_alignment=ft.CrossAxisAlignment.END,
+                                expand=True,
+                            ),
                         ),
                     ],
                 ),
@@ -782,7 +784,8 @@ def main(page: ft.Page):
                     col={"xs": 2, "sm": 1, "md": 1},
                     content=ft.Container(
                         #width=card_width,  # set a fixed width for desktop, flexible for mobile
-                        padding=20,
+                        padding=30,
+                        margin= ft.padding.only(0, 0, 0, 10),
                         content=ft.Column(
                             [
                                 # כותרת "התאמה אישית"
