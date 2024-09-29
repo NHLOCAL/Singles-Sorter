@@ -41,8 +41,8 @@ def main(page: ft.Page):
 
     else:
         page.padding = ft.padding.all(20)
-        page.window.height = 600
-        page.window.width = 900
+        page.window.height = 700
+        page.window.width = 1050
         page.scroll = ft.ScrollMode.ADAPTIVE
         scroll_mode = ft.ScrollMode.AUTO
         auto_focus = True
@@ -785,8 +785,8 @@ def main(page: ft.Page):
                     col={"xs": 2, "sm": 1, "md": 1},
                     content=ft.Container(
                         #width=card_width,  # set a fixed width for desktop, flexible for mobile
-                        padding=30,
-                        margin= ft.padding.only(0, 0, 0, 10),
+                        padding=ft.padding.only(30, 30, 30, 20),
+                        margin= ft.padding.all(0),
                         content=ft.Column(
                             [
                                 # כותרת "התאמה אישית"
@@ -803,7 +803,7 @@ def main(page: ft.Page):
                             # הגדרות בסיסיות - שימוש ב-Row ו-Column לעיצוב
                             ft.Row(
                                 [
-                                    ft.Text("הגדרות בסיסיות", weight=ft.FontWeight.BOLD, size=14),
+                                    ft.Text("הגדרות בסיסיות", weight=ft.FontWeight.BOLD, size=15),
                                 ],
                                 alignment=ft.MainAxisAlignment.START,
                                 expand=True,
@@ -816,7 +816,7 @@ def main(page: ft.Page):
                             ft.Row(
                                 [
                                     #ft.Icon(ft.icons.BUILD),  # סמל בנייה
-                                    ft.Text("מתקדם", weight=ft.FontWeight.BOLD),
+                                    ft.Text("מתקדם", weight=ft.FontWeight.BOLD, size=15),
                                 ],
                                 alignment=ft.MainAxisAlignment.START,
                                 expand=True,
@@ -826,16 +826,21 @@ def main(page: ft.Page):
                             exist_only,
 
                             ft.Row(
-                                [
-                                    abc_sort,
-                                    save_config_button,
-                                ],
-                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                [abc_sort],
                                 expand=True,
+                                spacing=0,
+                            ),
+
+                            ft.Row(
+                                [save_config_button],
+                                alignment=ft.MainAxisAlignment.END,
+                                expand=True,
+                                spacing=0,
                             ),
 
                             ],
                             expand=True,
+                            spacing=15,
                         ),
                     ),
                 ),
