@@ -37,7 +37,7 @@ def main(page: ft.Page):
     else:
         page.padding = ft.padding.all(20)
         page.window.height = 620
-        page.window.width = 950
+        page.window.width = 930
         page.scroll = ft.ScrollMode.ADAPTIVE
         scroll_mode = ft.ScrollMode.AUTO
         auto_focus=True
