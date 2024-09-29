@@ -753,6 +753,7 @@ def main(page: ft.Page):
                         ft.Container( # הוספנו Container
                             padding=0, # padding מסביב לכל התוכן
                             margin=10,  # margin מסביב ל-Container
+                            expand=True,
                             content=ft.Column( # התוכן הקודם נכנס כאן
                                 controls=[   
                                     ft.Row([source_dir_button, source_dir_input], alignment=ft.MainAxisAlignment.CENTER),
@@ -771,7 +772,7 @@ def main(page: ft.Page):
                                 ],
                                 spacing=15,
                                 alignment=ft.MainAxisAlignment.CENTER,
-                                horizontal_alignment=ft.CrossAxisAlignment.END,
+                                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                                 expand=True,
                             ),
                         ),
