@@ -9,10 +9,7 @@ import random
 import os
 import tqdm
 import numpy as np
-import logging
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.FileHandler("training.log"), logging.StreamHandler()])
 
 def custom_tokenizer(nlp):
     default_tokenizer = Tokenizer(nlp.vocab)
@@ -45,13 +42,14 @@ def custom_tokenizer(nlp):
 
     return nlp2.tokenizer
 
+
 nlp = spacy.blank("he")
 nlp.tokenizer = custom_tokenizer(nlp)
 
 # Adding NER pipe
 if "ner" not in nlp.pipe_names:
     ner = nlp.add_pipe("ner")
-    ner.add_label("SINGER")
+ner.add_label("SINGER")
 
 json_files = [
     os.path.join(os.getenv('GITHUB_WORKSPACE', '.'), 'machine-learn', 'scrape_data', 'cleaned_new-data.json')
@@ -60,34 +58,25 @@ json_files = [
 training_data = []
 for json_file in json_files:
     if os.path.exists(json_file):
-        try:
-            with open(json_file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                for example_text, example_entities in data:
-                    entities = example_entities.get('entities', [])
-                    valid_entities = []
-                    for start, end, label in entities:
-                        if label == "SINGER":
-                            valid_entities.append((start, end, label))
-                    example = Example.from_dict(nlp.make_doc(example_text), {'entities': valid_entities})
-                    training_data.append(example)
-        except json.JSONDecodeError as e:
-            logging.error(f"Error loading JSON from {json_file}: {e}")
-        except KeyError as e:
-            logging.error(f"Missing expected key in data from {json_file}: {e}")
+        with open(json_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            for example_text, example_entities in data:
+                entities = example_entities.get('entities', [])
+                example = Example.from_dict(nlp.make_doc(example_text), {'entities': entities})
+                training_data.append(example)
     else:
-        logging.warning(f"Warning: {json_file} not found.")
+        print(f"Warning: {json_file} not found.")
 
 # Begin training
 optimizer = nlp.create_optimizer()
-patience = int(os.getenv('PATIENCE', 10))
-min_delta = float(os.getenv('MIN_DELTA', 0.001))
+patience = 10
+min_delta = 0.001
 best_loss = float('inf')
 patience_counter = 0
 best_model_path = os.path.join(os.getenv('GITHUB_WORKSPACE', '.'), "machine-learn", "best_model")
-n_iter = int(os.getenv('N_ITER', 100))
-batch_size = int(os.getenv('BATCH_SIZE', 32))
-drop_size = float(os.getenv('DROP_SIZE', 0.3))
+n_iter = 100
+batch_size = 32
+drop_size = 0.3
 iteration_data = {}
 learning_rates = np.linspace(0.001, 0.0001, n_iter)
 
@@ -97,7 +86,7 @@ for itn in tqdm.tqdm(range(n_iter), desc="Training iterations"):
     batches = minibatch(training_data, size=batch_size)
     for batch in batches:
         nlp.update(batch, drop=drop_size, sgd=optimizer, losses=losses)
-    logging.info(f"Iteration {itn}: Losses: {losses}")
+    print(f"Iteration {itn}: {losses}")
     iteration_data[itn] = losses.copy()
 
     current_loss = losses.get('ner', float('inf'))
@@ -106,17 +95,15 @@ for itn in tqdm.tqdm(range(n_iter), desc="Training iterations"):
         patience_counter = 0
         # Save the best model
         nlp.to_disk(best_model_path)
-        logging.info(f"New best model saved at iteration {itn} with loss {current_loss}")
     else:
         patience_counter += 1
-        logging.info(f"No improvement in iteration {itn}. Patience counter: {patience_counter}")
 
     # Update learning rate
     for g in optimizer.optimizer.param_groups:
         g['lr'] = learning_rates[itn]
 
     if patience_counter >= patience:
-        logging.info(f"Early stopping at iteration {itn} due to no improvement")
+        print(f"Early stopping at iteration {itn}")
         break
 
 # Load the best model before saving with the final name
@@ -134,17 +121,16 @@ if os.path.exists(best_model_path):
         with open(model_name_path, 'r', encoding='utf-8') as f:
             model_name = f.read().strip()
             nlp.to_disk(model_name)
-            logging.info(f'Model saved as {model_name}')
+            print(f'# Model saved as {model_name}')
     else:
-        logging.error(f"Error: {model_name_path} not found.")
+        print(f"Error: {model_name_path} not found.")
 else:
-    logging.error("Error: Best model not found.")
+    print("Error: Best model not found.")
 
 # Save iteration data to a JSON file
 iteration_data_path = os.path.join(os.getenv('GITHUB_WORKSPACE', '.'), 'machine-learn', 'iteration_data.json')
 try:
     with open(iteration_data_path, 'w', encoding='utf-8') as f:
         json.dump(iteration_data, f, ensure_ascii=False, indent=2)
-    logging.info(f'Iteration data saved to {iteration_data_path}')
 except Exception as e:
-    logging.error(f'Error saving iteration data to a JSON file: {e}')
+    print(f'Error saving iteration data to a JSON file: {e}')
