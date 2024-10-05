@@ -65,7 +65,11 @@ for json_file in json_files:
                 data = json.load(f)
                 for example_text, example_entities in data:
                     entities = example_entities.get('entities', [])
-                    example = Example.from_dict(nlp.make_doc(example_text), {'entities': entities})
+                    valid_entities = []
+                    for start, end, label in entities:
+                        if label == "SINGER":
+                            valid_entities.append((start, end, label))
+                    example = Example.from_dict(nlp.make_doc(example_text), {'entities': valid_entities})
                     training_data.append(example)
         except json.JSONDecodeError as e:
             logging.error(f"Error loading JSON from {json_file}: {e}")
