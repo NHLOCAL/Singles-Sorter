@@ -6,7 +6,7 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 # הגדרת קונפיגורציה עבור המודל
 generation_config = {
-    "temperature": 1.0,
+    "temperature": 0.9,
     "top_p": 0.95,
     "top_k": 40,
     "max_output_tokens": 8192,
@@ -61,8 +61,8 @@ chat_session = model.start_chat(
 )
 
 # קבועים להגדרת הטווח לסריקה
-START_LINE = 10001  # קו ההתחלה
-END_LINE = 12000  # קו הסיום
+START_LINE = 14001  # קו ההתחלה
+END_LINE = 16000  # קו הסיום
 
 # פונקציה לקריאת קובץ בטווח שורות מוגדר
 def read_file_in_chunks(file_path, chunk_size=100, start_line=1, end_line=None):
