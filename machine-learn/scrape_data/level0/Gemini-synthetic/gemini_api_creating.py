@@ -1,10 +1,10 @@
 import os
 import google.generativeai as genai
 
-# Configure the API key from environment variables (GitHub Actions Secret)
+# קונפיגורציה של ה-API Key
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-# Define the configuration for the generation model
+# הגדרת קונפיגורציה עבור המודל
 generation_config = {
     "temperature": 0.9,
     "top_p": 0.95,
@@ -13,13 +13,13 @@ generation_config = {
     "response_mime_type": "text/plain"
 }
 
-# Load the model (latest version of Gemini Flash)
+# הגדרת המודל
 model = genai.GenerativeModel(
     model_name="gemini-1.5-flash-002",
-    generation_config=generation_config,
+    generation_config=generation_config
 )
 
-# Define the task instruction for the model
+# הוראות מערכת עבור המשימה
 system_instruction = """
 # יצירת וריאציות של כותרות שירים בעברית
 
@@ -42,7 +42,7 @@ system_instruction = """
 * **תפוקת המערכת:**  תפוקת המערכת תהיה רשימה של כותרות שירים חדשות, שהן וריאציות על הכותרות המקוריות.  **אל תוסיף הערות, מספור, או כל מידע נוסף מלבד כותרות השירים.**
 """
 
-# Function to read chunks of the file (100 lines at a time)
+# פונקציה לקריאת קובץ בחתיכות (100 שורות בכל פעם)
 def read_file_in_chunks(file_path, chunk_size=100):
     with open(file_path, 'r', encoding='utf-8') as file:
         while True:
@@ -51,28 +51,32 @@ def read_file_in_chunks(file_path, chunk_size=100):
                 break
             yield [line for line in lines if line]
 
-# Process song titles and save results to a file
+# פונקציה לעיבוד כותרות השירים ושמירת התוצאות לקובץ
 def process_song_titles(file_path, output_file):
+    # פתיחת סשן צ'אט עם ההוראות
     chat_session = model.start_chat(
         history=[
-            {"role": "system", "content": system_instruction}
+            {
+                "parts": [{"text": system_instruction}]
+            }
         ]
     )
     
+    # קריאה וכתיבה לקובץ הפלט
     with open(output_file, 'w', encoding='utf-8') as f:
         for chunk in read_file_in_chunks(file_path):
             input_text = "\n".join(chunk)
             prompt = f"להלן 100 כותרות שירים:\n{input_text}\n"
             
-            # Send the request to the model
+            # שליחת השאלה למודל וקבלת התשובה
             response = chat_session.send_message(prompt)
             
-            # Write the response to the file and print it for feedback
+            # כתיבת התשובה לקובץ והדפסה
             f.write(response.text + "\n\n")
             print(response.text)
 
-# Example usage
+# שימוש לדוגמה
 if __name__ == "__main__":
-    file_path = "machine-learn/scrape_data/level0/Gemini-synthetic/songs_data.txt"  # Input file with song titles
-    output_file = "song_variations_output.txt"  # Output file to store variations
+    file_path = "machine-learn/scrape_data/level0/Gemini-synthetic/songs_data.txt"  # קובץ הכניסה עם כותרות השירים
+    output_file = "song_variations_output.txt"  # קובץ הפלט לאחסון הווריאציות
     process_song_titles(file_path, output_file)
