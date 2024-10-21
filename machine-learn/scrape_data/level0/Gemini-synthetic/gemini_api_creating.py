@@ -13,14 +13,11 @@ generation_config = {
     "response_mime_type": "text/plain"
 }
 
-# הגדרת המודל
+# יצירת המודל עם ההוראות
 model = genai.GenerativeModel(
     model_name="gemini-1.5-flash-002",
-    generation_config=generation_config
-)
-
-# הוראות מערכת עבור המשימה
-system_instruction = """
+    generation_config=generation_config,
+    system_instruction="""
 # יצירת וריאציות של כותרות שירים בעברית
 
 **מטרת המשימה:**  ליצור כותרות שירים מגוונות בעברית, תוך שימוש במילה  "SINGER" כמחזיק מקום לשם הזמר/המקהלה.  הדגש הוא על יצירת וריאציות שונות של אותן כותרות, ולא על כתיבת כותרות חדשות לחלוטין.
@@ -41,6 +38,25 @@ system_instruction = """
 
 * **תפוקת המערכת:**  תפוקת המערכת תהיה רשימה של כותרות שירים חדשות, שהן וריאציות על הכותרות המקוריות.  **אל תוסיף הערות, מספור, או כל מידע נוסף מלבד כותרות השירים.**
 """
+)
+
+# התחלת סשן צ'אט עם היסטוריה של שיחה
+chat_session = model.start_chat(
+    history=[
+        {
+            "role": "user",
+            "parts": [
+                {"text": "להלן כותרות השירים המקוריות ליצירת וריאציות."}
+            ],
+        },
+        {
+            "role": "model",
+            "parts": [
+                {"text": "התחלת יצירת וריאציות לכותרות."}
+            ],
+        }
+    ]
+)
 
 # פונקציה לקריאת קובץ בחתיכות (100 שורות בכל פעם)
 def read_file_in_chunks(file_path, chunk_size=100):
@@ -53,16 +69,6 @@ def read_file_in_chunks(file_path, chunk_size=100):
 
 # פונקציה לעיבוד כותרות השירים ושמירת התוצאות לקובץ
 def process_song_titles(file_path, output_file):
-    # פתיחת סשן צ'אט עם ההוראות
-    chat_session = model.start_chat(
-        history=[
-            {
-                "parts": [{"text": system_instruction}]
-            }
-        ]
-    )
-    
-    # קריאה וכתיבה לקובץ הפלט
     with open(output_file, 'w', encoding='utf-8') as f:
         for chunk in read_file_in_chunks(file_path):
             input_text = "\n".join(chunk)
