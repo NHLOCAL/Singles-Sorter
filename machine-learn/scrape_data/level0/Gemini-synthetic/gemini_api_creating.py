@@ -60,8 +60,8 @@ chat_session = model.start_chat(
 )
 
 # קבועים להגדרת הטווח לסריקה
-START_LINE = 1  # קו ההתחלה
-END_LINE = 1000  # קו הסיום
+START_LINE = 1001  # קו ההתחלה
+END_LINE = 3000  # קו הסיום
 
 # פונקציה לקריאת קובץ בטווח שורות מוגדר
 def read_file_in_chunks(file_path, chunk_size=100, start_line=1, end_line=None):
