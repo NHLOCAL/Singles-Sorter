@@ -59,21 +59,31 @@ chat_session = model.start_chat(
     ]
 )
 
-# פונקציה לקריאת קובץ בחתיכות (100 שורות בכל פעם)
-def read_file_in_chunks(file_path, chunk_size=100):
+# קבועים להגדרת הטווח לסריקה
+START_LINE = 1  # קו ההתחלה
+END_LINE = 1000  # קו הסיום
+
+# פונקציה לקריאת קובץ בטווח שורות מוגדר
+def read_file_in_chunks(file_path, chunk_size=100, start_line=1, end_line=None):
     with open(file_path, 'r', encoding='utf-8') as file:
+        for current_line in range(start_line - 1):
+            file.readline()  # דילוג על שורות עד לקו ההתחלה
+        line_count = start_line
         while True:
+            if end_line and line_count > end_line:
+                break
             lines = [file.readline().strip() for _ in range(chunk_size)]
+            line_count += chunk_size
             if not any(lines):
                 break
             yield [line for line in lines if line]
 
 # פונקציה לעיבוד כותרות השירים ושמירת התוצאות לקובץ
-def process_song_titles(file_path, output_file):
+def process_song_titles(file_path, output_file, start_line, end_line):
     with open(output_file, 'w', encoding='utf-8') as f:
-        for chunk in read_file_in_chunks(file_path):
+        for chunk in read_file_in_chunks(file_path, start_line=start_line, end_line=end_line):
             input_text = "\n".join(chunk)
-            prompt = f"להלן 100 כותרות שירים:\n{input_text}\n"
+            prompt = f"להלן כותרות השירים:\n{input_text}\n"
             
             # שליחת השאלה למודל וקבלת התשובה
             response = chat_session.send_message(prompt)
@@ -86,4 +96,4 @@ def process_song_titles(file_path, output_file):
 if __name__ == "__main__":
     file_path = "machine-learn/scrape_data/level0/Gemini-synthetic/songs_data.txt"  # קובץ הכניסה עם כותרות השירים
     output_file = "song_variations_output.txt"  # קובץ הפלט לאחסון הווריאציות
-    process_song_titles(file_path, output_file)
+    process_song_titles(file_path, output_file, START_LINE, END_LINE)
