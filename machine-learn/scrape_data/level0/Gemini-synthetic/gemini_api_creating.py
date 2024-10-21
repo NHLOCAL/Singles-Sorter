@@ -6,7 +6,7 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 # הגדרת קונפיגורציה עבור המודל
 generation_config = {
-    "temperature": 0.9,
+    "temperature": 1.0,
     "top_p": 0.95,
     "top_k": 40,
     "max_output_tokens": 8192,
