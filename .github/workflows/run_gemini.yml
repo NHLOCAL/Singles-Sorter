@@ -3,8 +3,9 @@ name: Run Gemini API Processing
 on:
   push:
     branches:
-      - main
-  workflow_dispatch:
+      - machine-learn
+    paths:
+      - 'machine-learn/scrape_data/level0/Gemini-synthetic/**'
 
 jobs:
   process_songs:
