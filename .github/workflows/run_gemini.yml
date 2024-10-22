@@ -25,12 +25,24 @@ jobs:
           python -m pip install --upgrade pip
           pip install google-generativeai
 
-      - name: Run Python Script
+      - name: Run Python Script for lines 0-1000
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          python machine-learn/scrape_data/level0/Gemini-synthetic/gemini_api_creating.py
-          
+          python machine-learn/scrape_data/level0/Gemini-synthetic/gemini_api_creating.py 1 200
+
+      - name: Run Python Script for lines 1000-2000
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python machine-learn/scrape_data/level0/Gemini-synthetic/gemini_api_creating.py 201 400
+
+      - name: Run Python Script for lines 2000-3000
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python machine-learn/scrape_data/level0/Gemini-synthetic/gemini_api_creating.py 401 600
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:

@@ -1,12 +1,13 @@
 import os
 import google.generativeai as genai
+import sys
 
 # קונפיגורציה של ה-API Key
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 # הגדרת קונפיגורציה עבור המודל
 generation_config = {
-    "temperature": 1.0,
+    "temperature": 1.2,
     "top_p": 0.95,
     "top_k": 40,
     "max_output_tokens": 8192,
@@ -18,64 +19,55 @@ model = genai.GenerativeModel(
     model_name="gemini-1.5-flash-002",
     generation_config=generation_config,
     system_instruction="""
-# יצירת וריאציות של שמות שירים
+# צור וריאציות של כותרות שירים
 
-**מטרה:** ליצור גרסאות שונות ומגוונות של כותרות שירים קיימות, תוך שימוש במילה "SINGER" כמציין מיקום לשם הזמר/ה.  הדגש הוא על שינוי צורה וניסוח של הכותרות המקוריות, **לא** על יצירת כותרות חדשות לגמרי.
+**מטרה מרכזית:**  ליצור וראיציות של שמות שירים על ידי להוסיף ולהחליף מילים על בסיס רשימת המשתמש
 
-**כללים:**
+## **הנחיות:**
 
-1. **"SINGER" כמציין מיקום:** השתמש אך ורק במילה "SINGER" במקום שם הזמר/ה.  **אל תשתמש בשמות אמיתיים.**
+1. **רק "SINGER" כשם הזמר/ת.** - אל תשתמש בשמות אמיתיים. אפשר להשתמש ב"SINGER" כמה פעמים.
 
-2. **בסיס נתונים:** השתמש אך ורק ברשימת הכותרות המופיעה למטה.  **אסור להמציא כותרות חדשות.**
+2. **החלפת והוספת מילים:** - תחליף ותוסיף מילים לשמות השירים.
 
-3. **יצירת וריאציות:**  צור גרסאות שונות של כל כותרת על ידי:
-    * שינוי סדר המילים.
-    * הוספת מידע רלוונטי (סגנון מוזיקלי, שם אלבום וכו').
-    * הסרת מידע לא חיוני.
-    * שינוי ניסוח תוך שמירה על המשמעות המקורית.
+3. **תוכן פגום:** - הוסף מספרי רצועות ותוכן פגום כמו "copy" "#" או "$" לחלק מהשירים.
 
-4. **סגנון:** חקה את הסגנון והמבנה של כותרות השירים המקוריות.  למד את הדוגמאות היטב.
+4. **תווים אסורים:**  **אסור להשתמש בתווים הבאים:**  `\ / : * ? " < > |`
 
-5. **איכות:** הקפד על דקדוק ותקינות לשונית.  הכותרות צריכות להיות ברורות ומובנות.  **אל תיצור כותרות חסרות משמעות או בעלות ניסוח גרוע.**
+5.  **תפוקה:**  רשימה של **שמות שירים** בלבד. אין הערות או מידע נוסף.
 
-6. **שימוש בסוגריים:** הימנע משימוש מוגזם בסוגריים. השתמש בהם רק כשזה הכרחי להבהרת הכותרת.
+## דוגמאות:
 
-7. **איסור על נקודתיים:** **אסור להשתמש בנקודתיים בכותרות.**
+### קלט המשתמש:
+בוא לפה  ווקאלי SINGER וSINGER
+סט להיטים קיץ 2021 SINGER
+SINGER - סיפור אחר   שיר הנושא מתוך סרטו של אבי נשר
+Keracheim Acapella - Simcha Leiner (ft. Meshorerim Choir) - כרחם - SINGER‬ - YouTube וואקלי
+2 תוגת הלב- SINGER וSINGER
+14-SINGER
+SINGER וSINGER עם ילד הפלא SINGER - תפילין - שמע ישראל
+הסינגל החדש של SINGER אילו פינו
+03 SINGER שר מה אשיב במעמד אלפים
 
-8. **תפוקה:** רשימה של כותרות שירים בלבד – וריאציות של הכותרות המקוריות. **אין להוסיף הערות, מספור רשימה או כל מידע אחר, מלבד מספרי רצועות או תוכן מספרי דומה, אם רלוונטי לכותרת המקורית.**
-
-9. **וריאציה אינה כותרת חדשה:**  וריאציה היא שינוי של הכותרת *המקורית*.  אל תיצור כותרות חדשות וקצרות.  המטרה היא לשנות את הניסוח והמבנה, לא לכתוב כותרת חדשה לגמרי.
-
-**דוגמאות למה *לא* לעשות:**
-
-```
-SINGER במחרוזת מקפיצה וסוערת ''די טרעק'' - די טרעק: SINGER  (לא נכון - יצירת כותרת מקוצרת ושימוש בנקודתיים)
-SINGER בסינגל חדש ''מזמור לתודה'' - מזמור לתודה: SINGER (לא נכון - יצירת כותרת מקוצרת ושימוש בנקודתיים)
-```
+### תפוקה רצויה:
+SINGER & SINGER בשיר ווקאלי - גש הנה!
+11 SINGER מציג את הלהיטים המדהימים של אביב 2019
+SINGER וSINGER - השיר מתוך הסרט של אביב נשר האיש בחליפה
+Keracheim Acapella - Simcha Leiner (ft. Meshorerim Choir) - כרחם
+09 לב עצוב SINGER עם SINGER
+עותק של 19 SINGER @
+הילדSINGER שר את תפילת שמע ישראל, תפילין
+SINGER SINGER SINGER וSINGER בסינגל חדש ''ואילו'' ץץץ
+SINGER ריגש את ההמונים עם מה אשיב
 """
 )
 
 # התחלת סשן צ'אט עם היסטוריה של שיחה
 chat_session = model.start_chat(
     history=[
-        {
-            "role": "user",
-            "parts": [
-                {"text": "להלן כותרות השירים המקוריות ליצירת וריאציות."}
-            ],
-        },
-        {
-            "role": "model",
-            "parts": [
-                {"text": "התחלת יצירת וריאציות לכותרות."}
-            ],
-        }
+        {"role": "user", "parts": [{"text": "להלן כותרות השירים המקוריות ליצירת וריאציות."}]},
+        {"role": "model", "parts": [{"text": "התחלת יצירת וריאציות לכותרות."}]}
     ]
 )
-
-# קבועים להגדרת הטווח לסריקה
-START_LINE = 16001  # קו ההתחלה
-END_LINE = 17600  # קו הסיום
 
 # פונקציה לקריאת קובץ בטווח שורות מוגדר
 def read_file_in_chunks(file_path, chunk_size=100, start_line=1, end_line=None):
@@ -94,7 +86,7 @@ def read_file_in_chunks(file_path, chunk_size=100, start_line=1, end_line=None):
 
 # פונקציה לעיבוד כותרות השירים ושמירת התוצאות לקובץ
 def process_song_titles(file_path, output_file, start_line, end_line):
-    with open(output_file, 'w', encoding='utf-8') as f:
+    with open(output_file, 'a', encoding='utf-8') as f:  # Append mode
         for chunk in read_file_in_chunks(file_path, start_line=start_line, end_line=end_line):
             input_text = "\n".join(chunk)
             prompt = f"להלן כותרות השירים:\n{input_text}\n"
@@ -110,4 +102,14 @@ def process_song_titles(file_path, output_file, start_line, end_line):
 if __name__ == "__main__":
     file_path = "machine-learn/scrape_data/level0/Gemini-synthetic/songs_data.txt"  # קובץ הכניסה עם כותרות השירים
     output_file = "song_variations_output.txt"  # קובץ הפלט לאחסון הווריאציות
-    process_song_titles(file_path, output_file, START_LINE, END_LINE)
+    
+    # קריאה לארגומנטים משורת הפקודה
+    if len(sys.argv) != 3:
+        print("Usage: python gemini_api_creating.py <START_LINE> <END_LINE>")
+        sys.exit(1)
+
+    # קבלת הטווח משורת הפקודה
+    start_line = int(sys.argv[1])
+    end_line = int(sys.argv[2])
+
+    process_song_titles(file_path, output_file, start_line, end_line)
