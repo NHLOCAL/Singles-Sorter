@@ -25,23 +25,65 @@ jobs:
           python -m pip install --upgrade pip
           pip install google-generativeai
 
-      - name: Run Python Script for lines 0-1000
+      - name: Run Python Script for lines 1-500
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          python machine-learn/scrape_data/level0/Gemini-synthetic/gemini_api_creating.py 1 200
+          python machine-learn/scrape_data/level0/Gemini-synthetic/gemini_api_creating.py 1 500
 
-      - name: Run Python Script for lines 1000-2000
+      - name: Run Python Script for lines 501-1000
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          python machine-learn/scrape_data/level0/Gemini-synthetic/gemini_api_creating.py 201 400
+          python machine-learn/scrape_data/level0/Gemini-synthetic/gemini_api_creating.py 501 1000
 
-      - name: Run Python Script for lines 2000-3000
+      - name: Run Python Script for lines 1001-1500
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          python machine-learn/scrape_data/level0/Gemini-synthetic/gemini_api_creating.py 401 600
+          python machine-learn/scrape_data/level0/Gemini-synthetic/gemini_api_creating.py 1001 1500
+
+      - name: Run Python Script for lines 1501-2000
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python machine-learn/scrape_data/level0/Gemini-synthetic/gemini_api_creating.py 1501 2000
+
+      - name: Run Python Script for lines 2001-2500
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python machine-learn/scrape_data/level0/Gemini-synthetic/gemini_api_creating.py 2001 2500
+
+      - name: Run Python Script for lines 2501-3000
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python machine-learn/scrape_data/level0/Gemini-synthetic/gemini_api_creating.py 2501 3000
+
+      - name: Run Python Script for lines 3001-3500
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python machine-learn/scrape_data/level0/Gemini-synthetic/gemini_api_creating.py 3001 3500
+
+      - name: Run Python Script for lines 3501-4000
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python machine-learn/scrape_data/level0/Gemini-synthetic/gemini_api_creating.py 3501 4000
+
+      - name: Run Python Script for lines 4001-4500
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python machine-learn/scrape_data/level0/Gemini-synthetic/gemini_api_creating.py 4001 4500
+
+      - name: Run Python Script for lines 4501-5000
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python machine-learn/scrape_data/level0/Gemini-synthetic/gemini_api_creating.py 4501 5000
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
