@@ -88,7 +88,7 @@ def main():
         best_model_path = "/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/best_model"
         n_iter = 100
         batch_size = 64
-        drop_size = 0.35
+        drop_size = 0.4
         iteration_data = {}
         
         logger.info("Starting training...")
