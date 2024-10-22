@@ -6,6 +6,7 @@ on:
       - machine-learn
     paths:
       - 'machine-learn/scrape_data/cleaned_new-data.json'
+      - 'machine-learn/creating_model_git.py'
 
 jobs:
   train-ner-model:
@@ -18,11 +19,11 @@ jobs:
       - name: Set up Python environment
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: Install dependencies
         run: |
-          pip install spacy==3.7.5 pandas
+          pip install spacy==3.7.5 pandas tqdm
 
       - name: Set working directory
         run: cd machine-learn/
