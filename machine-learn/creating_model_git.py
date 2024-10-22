@@ -86,7 +86,7 @@ def main():
         best_loss = float('inf')
         patience_counter = 0
         best_model_path = "/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/best_model"
-        n_iter = 60
+        n_iter = 45
         batch_size = 128
         drop_size = 0.3
         iteration_data = {}
