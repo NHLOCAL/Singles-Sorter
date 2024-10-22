@@ -15,7 +15,13 @@ class SingerSelector:
     def get_singer(self):
         if not self.available_singers:
             self.reset()
-        return self.available_singers.pop()
+        new_singer = self.available_singers.pop()
+        # Ensure the singer is not 'SINGER'
+        while new_singer == "SINGER":
+            if not self.available_singers:  # Reset again if needed
+                self.reset()
+            new_singer = self.available_singers.pop()
+        return new_singer
 
 def load_singers(file_path):
     with open(file_path, 'r', encoding='utf-8') as f:
@@ -35,7 +41,7 @@ def count_singers(songs, singers):
             singer_counter[singer] += 1
     return singer_counter
 
-def replace_singer_and_balance(songs, all_singers, max_appearances=5, num_rounds=3):
+def replace_singer_and_balance(songs, all_singers, max_appearances=10, num_rounds=3):
     singer_selector = SingerSelector(all_singers)
     
     for round in range(num_rounds):
