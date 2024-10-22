@@ -2,3 +2,4 @@ music_tag
 jibrish_to_hebrew
 requests
 scikit-learn==1.5.1
+spacy==3.7.5
