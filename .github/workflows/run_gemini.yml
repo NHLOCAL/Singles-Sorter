@@ -6,7 +6,7 @@ on:
       - machine-learn
     paths:
       - 'machine-learn/scrape_data/level0/Gemini-synthetic/**'
-      - '      - '.github/workflows/run_gemini.yml'
+      - '.github/workflows/run_gemini.yml'
 
 jobs:
   process_songs:
