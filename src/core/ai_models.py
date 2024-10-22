@@ -82,7 +82,7 @@ class AIModels:
                             f"class={class_names[predicted_class]}, "
                             f"probability={class_probability:.2f}")
 
-            # Check if the predicted class is "אמן" (0)
+            # Check if the predicted class is "ARTIST" (0)
             is_artist = predicted_class == 0
 
             if is_artist:
