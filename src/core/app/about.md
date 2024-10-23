@@ -8,6 +8,13 @@
 - **[שליחת טופס למפתח](https://docs.google.com/forms/d/e/1FAIpQLScOaX1wWW1YXXlX4cylMA6LWpO7yIb2fStmjzfSqmLc_V9CIw/viewform?usp=sf_link)**
 
 ### אודות המפתח:
-פותח ועוצב על ידי **[nh.local11@gmail.com](mailto:nh.local11@gmail.com)**
+פותח ועוצב על ידי **[mesader.singelim@gmail.com](mailto:mesader.singelim@gmail.com)**
 
-© כל הזכויות שמורות - ניתן להעתיק ולהפיץ גרסה זו ללא תשלום
+ליצירת קשר עם המפתח, לבקשת תכונות ולמתן רעיונות ניתן לפנות למייל זה.
+
+נשמח לשמוע מכם!
+
+
+### רישיון:
+
+**© כל הזכויות שמורות** - ניתן להעתיק ולהפיץ גרסה זו ללא תשלום
