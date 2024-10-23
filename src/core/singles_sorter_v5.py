@@ -117,14 +117,20 @@ class MusicSorter:
             raise ValueError("תיקיית המקור ריקה")
 
     def clean_filename(self, filename):
-        # First, remove all predefined substrings
+        # הסרת תתי-מחרוזות מוגדרות מראש
         for substring in SUBSTRINGS_TO_REMOVE:
             filename = filename.replace(substring, "")
 
-        # Replace underscores with spaces
-        filename = filename.replace("_", " ")
+        # טיפול בקווים תחתונים
+        if "_" in filename:
+            if " " not in filename:
+                # אם אין רווחים, החלף את כל הקווים התחתונים ברווחים
+                filename = filename.replace("_", " ")
+            else:
+                # הסר קווים תחתונים שמופיעים בין אותיות ללא רווחים
+                filename = re.sub(r'(?<=\w)_(?=\w)', '', filename)
 
-        # Remove hyphens that are attached to other letters without spaces
+        # הסרת מקפים שמחוברים לאותיות ללא רווח
         filename = re.sub(r'(?<=\w)-(?=\w)', ' ', filename)
 
         return filename
