@@ -117,9 +117,16 @@ class MusicSorter:
             raise ValueError("תיקיית המקור ריקה")
 
     def clean_filename(self, filename):
+        # First, remove all predefined substrings
         for substring in SUBSTRINGS_TO_REMOVE:
             filename = filename.replace(substring, "")
+
+        # Replace underscores with spaces
         filename = filename.replace("_", " ")
+
+        # Remove hyphens that are attached to other letters without spaces
+        filename = re.sub(r'(?<=\w)-(?=\w)', ' ', filename)
+
         return filename
 
     def fix_metadata_field(self, metadata, field_name, file_path):
@@ -186,15 +193,22 @@ class MusicSorter:
         self.logger.info("Finished fixing filenames and metadata")
 
     def sanitize_filename(self, filename):
-        # Remove invalid characters
+        # Remove invalid characters for Windows filenames
         filename = re.sub(r'[<>:"/\\|?*]', '', filename)
-        # Trim whitespace
+
+        # Replace multiple spaces with a single space
+        filename = re.sub(r'\s+', ' ', filename)
+
+        # Trim leading and trailing whitespace
         filename = filename.strip()
-        # Truncate to 255 characters
+
+        # Truncate to 255 characters (limit for filenames)
         filename = filename[:255]
-        # If filename is empty, return None
+
+        # If filename is empty after sanitization, return None
         if not filename:
             return None
+
         return filename
 
     def generate_unique_filename(self, target_path):
@@ -673,8 +687,13 @@ class MusicSorter:
         return singer_list
 
     def artists_from_song(self, my_file):
-        split_file = my_file.stem  # קבלת שם הקובץ ללא הסיומת
-        split_file = split_file.replace('_', ' ').replace('-', ' ')
+        # ניקוי ושינוי שם הקובץ לפני ניתוח
+        original_filename = my_file.name
+        cleaned_filename = self.clean_filename(original_filename)
+        sanitized_filename = self.sanitize_filename(cleaned_filename) if cleaned_filename else original_filename
+
+        # שימוש בשם הקובץ הנקי להמשך העיבוד בלבד
+        split_file = Path(sanitized_filename).stem  # קבלת שם הקובץ ללא הסיומת
 
         found_artists = []
 
@@ -692,6 +711,16 @@ class MusicSorter:
             self.logger.error(f"Error loading metadata for file {my_file}: {e}")
             self.logger.debug(traceback.format_exc())
             metadata_file = None
+
+        if metadata_file:
+            # ניקוי ושינוי שם הכותרת במטאדאטה בלבד פנימית
+            original_title = metadata_file['title'].value
+            if original_title:
+                cleaned_title = self.clean_filename(original_title)
+                sanitized_title = self.sanitize_filename(cleaned_title) if cleaned_title else original_title
+                # שימוש בכותרת המסוננת להמשך העיבוד בלבד
+            else:
+                sanitized_title = original_title  # אם אין כותרת, נשאר עם הערך המקורי
 
         if not found_artists and metadata_file:
             # שלב שני: בדיקת שם האמן במטאדאטה
@@ -715,8 +744,9 @@ class MusicSorter:
 
         if not found_artists and metadata_file:
             # שלב שלישי: בדיקת שם הזמר בכותרת השיר במטאדאטה
-            title = metadata_file['title'].value
-            if title:
+            if original_title:
+                # שימוש בכותרת המסוננת
+                title = sanitized_title
                 title = fix_jibrish(title, "heb")
                 for source_name, target_name in self.singer_list:
                     if source_name in title:
@@ -734,18 +764,18 @@ class MusicSorter:
             else:
                 self.logger.debug("NER did not find any artists in filename")
                 # שלב חמישי: שימוש ב-NER על כותרת השיר במטאדאטה
-                if metadata_file:
-                    title = metadata_file['title'].value
-                    if title:
-                        title = fix_jibrish(title, "heb")
-                        self.logger.debug(f"Using NER to process title: {title}")
-                        found_artists = self.ai_models.process_with_ner(title)
-                        if found_artists:
-                            self.logger.debug(f"NER found artists in title: {found_artists}")
-                        else:
-                            self.logger.debug("NER did not find any artists in title")
+                if metadata_file and original_title:
+                    title = sanitized_title
+                    title = fix_jibrish(title, "heb")
+                    self.logger.debug(f"Using NER to process title: {title}")
+                    found_artists = self.ai_models.process_with_ner(title)
+                    if found_artists:
+                        self.logger.debug(f"NER found artists in title: {found_artists}")
+                    else:
+                        self.logger.debug("NER did not find any artists in title")
 
         return found_artists if found_artists else None
+
 
     def check_artist(self, artist):
         if not artist or artist in UNUSUAL_LIST:

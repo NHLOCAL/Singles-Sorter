@@ -1,7 +1,7 @@
 {
   "lang":"he",
-  "name":"find_singer_heb",
-  "version":"25.1",
+  "name":"singer_ner_he",
+  "version":"0.23.0",
   "spacy_version":">=3.7.5,<3.8.0",
   "description":"Model for recognizing singer names in Hebrew song titles",
   "author":"nhlocal",
