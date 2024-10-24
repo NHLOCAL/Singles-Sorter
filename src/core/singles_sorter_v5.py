@@ -39,6 +39,9 @@ SUBSTRINGS_TO_REMOVE = [
 
 SUPPORTED_EXTENSIONS = {'.m4a', '.wma', '.wav', '.aiff', '.flac', '.aac', '.alac', '.wv', '.ogg', '.dsf', '.opus', '.mp3'}
 
+# הוספת רשימת מילות המפתח לזיהוי סינגלים
+SINGLE_KEYWORDS = ["סינגל", "סינגלים", "single", "singles"]
+
 class MusicSorter:
 
     def __init__(
@@ -297,7 +300,8 @@ class MusicSorter:
                     track = metadata.get('tracknumber')
 
                     if album:
-                        album_names.append(album.value)
+                        album_value = album.value
+                        album_names.append(album_value)
                     if artist:
                         artist_name = fix_jibrish(artist.value, "heb")
                         artists[artist_name] = artists.get(artist_name, 0) + 1
@@ -317,6 +321,22 @@ class MusicSorter:
                 except Exception as e:
                     self.logger.error(f"Error reading metadata from {file_path}: {e}")
                     self.logger.debug(traceback.format_exc())
+
+            # הוספת בדיקה למילות מפתח של סינגלים
+            contains_single_keyword = False
+            for name in album_names + list(artists.keys()):
+                if name:
+                    name_lower = name.lower()
+                    for keyword in SINGLE_KEYWORDS:
+                        if keyword.lower() in name_lower:
+                            contains_single_keyword = True
+                            break
+                    if contains_single_keyword:
+                        break
+
+            if contains_single_keyword:
+                self.logger.info(f"Album or artist name contains single keyword, treating files as singles: {folder_path}")
+                return False, False, None, None  # Treat as not an album, so files will be processed individually
 
             # Determine if it's an album based on track numbers
             is_album = False
