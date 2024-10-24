@@ -14,7 +14,10 @@ from music_tag import load_file
 from jibrish_to_hebrew import fix_jibrish, check_jibrish
 from check_name import check_exact_name
 import shutil
-from ai_models import AIModels  # הוספת ייבוא של AIModels
+# הוספת בדיקה אם הקוד רץ על אנדרואיד
+is_android = 'ANDROID_ROOT' in os.environ
+if not is_android:
+    from ai_models import AIModels  # יבוא של AIModels אם לא באנדרואיד
 
 # הגדרת רשימות כקבועים גלובליים
 UNUSUAL_LIST = [
@@ -87,8 +90,11 @@ class MusicSorter:
         self.logger = logger or logging.getLogger('MusicSorter')
         self.logger.setLevel(log_level)
 
-        # יצירת מופע של AIModels
-        self.ai_models = AIModels(logger=self.logger)
+        # יצירת מופע של AIModels אם לא באנדרואיד
+        if not is_android:
+            self.ai_models = AIModels(logger=self.logger)
+        else:
+            self.ai_models = None  # אם באנדרואיד, לא משתמשים ב-AIModels
 
     def progress_display(self, total_amount):
         for current_item in range(1, total_amount + 1):
@@ -762,11 +768,15 @@ class MusicSorter:
                             break
 
                 if not found_artists and self.check_artist(artist):
-                    # אם האמן לא נמצא ברשימה, אימות באמצעות מודל SKLEARN
-                    if self.ai_models.verify_artist_with_sklearn(artist):
-                        found_artists.append(artist)
+                    # אם האמן לא נמצא ברשימה, וב-AIModels זמין
+                    if self.ai_models and not is_android:
+                        # אימות באמצעות מודל SKLEARN
+                        if self.ai_models.verify_artist_with_sklearn(artist):
+                            found_artists.append(artist)
+                        else:
+                            self.logger.debug(f"Artist '{artist}' not verified by SKLEARN model")
                     else:
-                        self.logger.debug(f"Artist '{artist}' not verified by SKLEARN model")
+                        self.logger.debug("AI-based checks are disabled on Android.")
 
         if not found_artists and metadata_file:
             # שלב שלישי: בדיקת שם הזמר בכותרת השיר במטאדאטה
@@ -781,24 +791,27 @@ class MusicSorter:
                             found_artists.append(target_name)
                             break
 
-        if not found_artists:
+        if not found_artists and not is_android:
             # שלב רביעי: שימוש ב-NER על שם הקובץ
-            self.logger.debug(f"Using NER to process filename: {split_file}")
-            found_artists = self.ai_models.process_with_ner(split_file)
-            if found_artists:
-                self.logger.debug(f"NER found artists in filename: {found_artists}")
+            if self.ai_models:
+                self.logger.debug(f"Using NER to process filename: {split_file}")
+                found_artists = self.ai_models.process_with_ner(split_file)
+                if found_artists:
+                    self.logger.debug(f"NER found artists in filename: {found_artists}")
+                else:
+                    self.logger.debug("NER did not find any artists in filename")
+                    # שלב חמישי: שימוש ב-NER על כותרת השיר במטאדאטה
+                    if metadata_file and original_title:
+                        title = sanitized_title
+                        title = fix_jibrish(title, "heb")
+                        self.logger.debug(f"Using NER to process title: {title}")
+                        found_artists = self.ai_models.process_with_ner(title)
+                        if found_artists:
+                            self.logger.debug(f"NER found artists in title: {found_artists}")
+                        else:
+                            self.logger.debug("NER did not find any artists in title")
             else:
-                self.logger.debug("NER did not find any artists in filename")
-                # שלב חמישי: שימוש ב-NER על כותרת השיר במטאדאטה
-                if metadata_file and original_title:
-                    title = sanitized_title
-                    title = fix_jibrish(title, "heb")
-                    self.logger.debug(f"Using NER to process title: {title}")
-                    found_artists = self.ai_models.process_with_ner(title)
-                    if found_artists:
-                        self.logger.debug(f"NER found artists in title: {found_artists}")
-                    else:
-                        self.logger.debug("NER did not find any artists in title")
+                self.logger.debug("AI-based checks are disabled on Android.")
 
         return found_artists if found_artists else None
 
