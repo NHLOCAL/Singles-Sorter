@@ -18,7 +18,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0  # נדרש כדי לאפשר יצירת תגיות ושחרורים
+        fetch-depth: 0  # נדרש כדי לאפשר יצירת תגיות חדשות
 
     - name: Setup Python
       uses: actions/setup-python@v5
@@ -44,14 +44,10 @@ jobs:
     - name: Create Tag (if manually triggered)
       if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version != '' }}
       run: |
-        if git rev-parse "v${{ steps.get_version.outputs.VERSION }}" >/dev/null 2>&1; then
-          echo "Tag v${{ steps.get_version.outputs.VERSION }} כבר קיים. דילוג על יצירת תג."
-        else
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git tag v${{ steps.get_version.outputs.VERSION }}
-          git push origin v${{ steps.get_version.outputs.VERSION }}
-        fi
+        git config user.name "github-actions"
+        git config user.email "github-actions@github.com"
+        git tag v${{ steps.get_version.outputs.VERSION }}
+        git push origin v${{ steps.get_version.outputs.VERSION }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -121,48 +117,15 @@ jobs:
         Copy-Item -Recurse src\core\assets portable\
         Compress-Archive -Path portable\* -DestinationPath Singles-Sorter-Portable-AI-${{ steps.get_version.outputs.VERSION }}.zip -CompressionLevel Optimal
 
-    - name: Check if Release Exists
-      id: check_release
-      uses: actions/github-script@v6
+    - name: Create or Update Release
+      uses: ncipollo/release-action@v1
       with:
-        script: |
-          const tag = 'v${{ steps.get_version.outputs.VERSION }}';
-          const releases = await github.rest.repos.listReleases({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            per_page: 100
-          });
-          const release = releases.data.find(r => r.tag_name === tag);
-          if (release) {
-            core.setOutput('exists', 'true');
-            core.setOutput('release_id', release.id);
-          } else {
-            core.setOutput('exists', 'false');
-          }
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Create Release (if not exists)
-      if: steps.check_release.outputs.exists == 'false'
-      uses: softprops/action-gh-release@v2.0.6
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: "v${{ steps.get_version.outputs.VERSION }}"
+        tag: "v${{ steps.get_version.outputs.VERSION }}"
         name: ${{ steps.get_version.outputs.RELEASE_TITLE }}
         draft: true
         prerelease: true
         files: |
           Output/Singles-Sorter-Installer-AI-${{ steps.get_version.outputs.VERSION }}.exe
           Singles-Sorter-Portable-AI-${{ steps.get_version.outputs.VERSION }}.zip
-
-    - name: Upload Assets to Existing Release
-      if: steps.check_release.outputs.exists == 'true'
-      uses: softprops/action-gh-release@v2.0.6
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: "v${{ steps.get_version.outputs.VERSION }}"
-        files: |
-          Output/Singles-Sorter-Installer-AI-${{ steps.get_version.outputs.VERSION }}.exe
-          Singles-Sorter-Portable-AI-${{ steps.get_version.outputs.VERSION }}.zip
