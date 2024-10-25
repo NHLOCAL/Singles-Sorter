@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -92,6 +93,7 @@ jobs:
         New-Item -ItemType Directory -Force -Path portable
         Copy-Item dist\main.exe portable\
         Copy-Item -Recurse src\core\app portable\
+        Copy-Item -Recurse src\core\models portable\
         Copy-Item -Recurse src\core\assets portable\
         Compress-Archive -Path portable\* -DestinationPath Singles-Sorter-Portable-${{ steps.get_version.outputs.VERSION }}.zip -CompressionLevel Optimal
 
