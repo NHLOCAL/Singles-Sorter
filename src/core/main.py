@@ -76,7 +76,7 @@ def main(page: ft.Page):
                 ft.Image(src="assets/icon.png", width=40),  # Adjusted icon size
                 ft.Text(
                     f"מסדר הסינגלים {VERSION}",
-                    size=24,  # Adjusted title size
+                    size=20 if ANDROID_MODE else 24,  # Adjusted title size
                     text_align=ft.TextAlign.CENTER,
                     color=ft.colors.ON_PRIMARY,  # Assumed color for better contrast
                     weight=ft.FontWeight.BOLD,
@@ -493,7 +493,7 @@ def main(page: ft.Page):
 
     # שדות קלט - עיצוב משופר
     source_dir_input = ft.TextField(
-        label="תיקית הסינגלים שלך",
+        label="תיקית מקור",
         autofocus=auto_focus,
         rtl=True,
         expand=True,
