@@ -433,21 +433,7 @@ def main(page: ft.Page):
                         ft.Column(
                             [
                                 ft.Text("מיון דואטים", weight=ft.FontWeight.BOLD, size=16),
-                                ft.Text(
-                                    "זוהי תכונה נסיונית, למילוי משוב על חווית השימוש ",
-                                    spans=[
-                                        ft.TextSpan(
-                                            "מלאו טופס כעת",
-                                            ft.TextStyle(
-                                                decoration=ft.TextDecoration.UNDERLINE,
-                                                color=ft.colors.BLUE
-                                            ),
-                                            url="https://docs.google.com/forms/d/e/1FAIpQLScOaX1wWW1YXXlX4cylMA6LWpO7yIb2fStmjzfSqmLc_V9CIw/viewform?usp=sf_link"
-                                        ),
-                                    ],
-                                    color='red'
-                                ),
-
+                                ft.Text("בחר להיכן יועתקו שירי דואט"),
                                 # כפתורי בחירה בין מצב דואט למצב רגיל
                                 duet_mode
                             ],
@@ -593,8 +579,8 @@ def main(page: ft.Page):
 
     duet_mode = ft.RadioGroup(
         content=ft.Row([
-            ft.Radio(value=False, label="העתק לזמר הראשון בשם השיר", disabled=False),
-            ft.Radio(value=True, label="העתק לכל הזמרים המופיעים בשם השיר", disabled=False)
+            ft.Radio(value=False, label="לזמר הראשון בשם השיר", disabled=False),
+            ft.Radio(value=True, label="לכל הזמרים המופיעים בשיר", disabled=False)
         ],
         wrap=True,
         rtl=True),
