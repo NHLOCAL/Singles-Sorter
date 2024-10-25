@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'שם הגרסה (למשל, 1.0.0)'
+        required: false
 
 jobs:
   build:
@@ -13,7 +17,9 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      
+      with:
+        fetch-depth: 0  # נדרש כדי לאפשר יצירת תגיות חדשות
+
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
@@ -27,9 +33,23 @@ jobs:
       id: get_version
       shell: bash
       run: |
-        VERSION=${GITHUB_REF#refs/tags/v}
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.version }}" ]; then
+          VERSION=${{ github.event.inputs.version }}
+        else
+          VERSION=${GITHUB_REF#refs/tags/v}
+        fi
         echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
         echo "RELEASE_TITLE=מסדר הסינגלים $VERSION" >> $GITHUB_OUTPUT
+
+    - name: Create Tag (if manually triggered)
+      if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version != '' }}
+      run: |
+        git config user.name "github-actions"
+        git config user.email "github-actions@github.com"
+        git tag v${{ steps.get_version.outputs.VERSION }}
+        git push origin v${{ steps.get_version.outputs.VERSION }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build EXE
       run: |
@@ -102,10 +122,10 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.ref }}
+        tag_name: "v${{ steps.get_version.outputs.VERSION }}"
         name: ${{ steps.get_version.outputs.RELEASE_TITLE }}
         draft: true
         prerelease: true
         files: |
           Output/Singles-Sorter-Installer-AI-${{ steps.get_version.outputs.VERSION }}.exe
-          Singles-Sorter-Portable-AI${{ steps.get_version.outputs.VERSION }}.zip
+          Singles-Sorter-Portable-AI-${{ steps.get_version.outputs.VERSION }}.zip
