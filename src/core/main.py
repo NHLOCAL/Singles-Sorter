@@ -16,7 +16,7 @@ VERSION = __VERSION__
 def main(page: ft.Page):
 
     # הגדרת זיהוי הפעלה על אנדרואיד
-    ANDROID_MODE = page.platform != ft.PagePlatform.ANDROID
+    ANDROID_MODE = page.platform == ft.PagePlatform.ANDROID
 
     page.title = "מסדר הסינגלים"
     page.vertical_alignment = ft.MainAxisAlignment.SPACE_BETWEEN
