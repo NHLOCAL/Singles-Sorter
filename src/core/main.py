@@ -4,7 +4,7 @@ import csv
 from shutil import copy
 
 # קבצי התוכנה
-from singles_sorter_v4 import MusicSorter, __VERSION__
+from singles_sorter_v5 import MusicSorter, __VERSION__
 from update_config import check_for_update
 from add_singer_dialog import create_add_singer_dialog
 
@@ -16,7 +16,7 @@ VERSION = __VERSION__
 def main(page: ft.Page):
 
     # הגדרת זיהוי הפעלה על אנדרואיד
-    ANDROID_MODE = page.platform == ft.PagePlatform.ANDROID
+    ANDROID_MODE = page.platform != ft.PagePlatform.ANDROID
 
     page.title = "מסדר הסינגלים"
     page.vertical_alignment = ft.MainAxisAlignment.SPACE_BETWEEN
@@ -549,15 +549,15 @@ def main(page: ft.Page):
 
     # הגדרות בסיסיות - שימוש ב-Switch עם label דינאמי
     copy_mode = ft.Switch(
-        tooltip="בחר אם ברצונך להעתיק או להעביר את הקבצים",
+        tooltip="קבע אם להעתיק או להעביר את הקבצים לתיקיית היעד",
         label="העתק קבצים" if page.client_storage.get("copy_mode")    else "העבר קבצים",
         value=page.client_storage.get("copy_mode") or False,
         on_change=lambda e: update_switch_label(copy_mode) # עדכון label בעת שינוי
     )
 
     main_folder_only = ft.Switch(
-        tooltip="בחר אם לסרוק את כל התיקיות או רק את הראשית",
         label="סרוק תיקיה ראשית בלבד" if page.client_storage.get("main_folder_only") else "סרוק עץ תיקיות",
+        tooltip="בחר אם לסרוק את כל תיקיות המשנה או רק את תיקיית המקור הראשית",
         value=page.client_storage.get("main_folder_only") or False,
         on_change=lambda e: update_switch_label(main_folder_only) # עדכון label בעת שינוי
     )
@@ -571,22 +571,20 @@ def main(page: ft.Page):
         switch.update()
     
     singles_folder = ft.Checkbox(
-        label='צור תיקיות סינגלים פנימיות',
-        tooltip="סמן אם ברצונך ליצור תיקיות פנימיות בתוך תיקיות הזמרים אליהם יועברו הסינגלים",
+        label='צור תיקיות סינגלים',
         value=page.client_storage.get("singles_folder") if page.client_storage.get("singles_folder") is not None else True # True כברירת מחדל
     )
 
     exist_only = ft.Checkbox(
-        label="השתמש בתיקיות קיימות בלבד",
-        tooltip="אם מסומן, התוכנה תעביר קבצים רק לתיקיות זמרים קיימות ולא תיצור חדשות",
+        label="שימוש בתיקיות קיימות",
         value=page.client_storage.get("exist_only") or False
     )
 
     abc_sort = ft.Checkbox(
-        label="צור תיקיות ראשיות לפי ה-א' ב'",
-        tooltip="אם מסומן, התוכנה תיצור תיקיה ראשית לכל אות באלפבית",
+        label="מיון אלפביתי",
         value=page.client_storage.get("abc_sort") or False
     )
+
 
 
     # duet_mode
@@ -696,8 +694,8 @@ def main(page: ft.Page):
     if ANDROID_MODE:
         organize_button_title = "מיין"
         fix_button_title = "תקן"
-        width_fix_button = None
-        width_organize_button = None  
+        width_fix_button = '120'
+        width_organize_button = '120'
 
     else:
         organize_button_title = "מיין שירים"
@@ -738,6 +736,8 @@ def main(page: ft.Page):
         width=width_fix_button,
     )
 
+
+    PADDING_ITEMS_LIST = ft.padding.only(10, 0, 10, 0)
 
 
     # הגדרות הממשק הגרפי של התוכנה
@@ -781,70 +781,61 @@ def main(page: ft.Page):
 
                 # כרטיס "התאמה אישית" – גמיש ברוחב
                 ft.Card(
-                    expand=True,  # Important for responsiveness
+                    expand=True,
                     col={"xs": 2, "sm": 1, "md": 1},
                     content=ft.Container(
-                        #width=card_width,  # set a fixed width for desktop, flexible for mobile
-                        padding=ft.padding.only(30, 30, 30, 20),
-                        margin= ft.padding.all(0),
+                        padding=ft.padding.all(10) if ANDROID_MODE else ft.padding.only(30, 30, 30, 20),
+                        margin=ft.padding.all(0),
                         content=ft.Column(
                             [
-                                # כותרת "התאמה אישית"
                                 ft.Row(
                                     [
                                         ft.Icon(ft.icons.TUNE, color=ft.colors.PRIMARY),
-                                        ft.Text("התאמה אישית", size=20, color=ft.colors.PRIMARY, weight=ft.FontWeight.BOLD),
+                                        ft.Text("אפשרויות מיון", size=20, color=ft.colors.PRIMARY, weight=ft.FontWeight.BOLD),
                                     ],
                                     alignment=ft.MainAxisAlignment.CENTER,
-                                    expand=True,
                                 ),
 
+                                ft.ListTile(
+                                    title=ft.Text("בסיסי", weight=ft.FontWeight.BOLD, size=16),
+                                    content_padding=ft.padding.only(5, 0, 10, 0),
+                                    ),
+                                
+                                ft.ListTile(title=copy_mode,
+                                    content_padding=PADDING_ITEMS_LIST,
+                                    ),
+                                ft.ListTile(title=main_folder_only,
+                                    content_padding=PADDING_ITEMS_LIST,
+                                    ),
 
-                            # הגדרות בסיסיות - שימוש ב-Row ו-Column לעיצוב
-                            ft.Row(
-                                [
-                                    ft.Text("הגדרות בסיסיות", weight=ft.FontWeight.BOLD, size=15),
-                                ],
-                                alignment=ft.MainAxisAlignment.START,
-                                expand=True,
-                            ),
+                                ft.ListTile(
+                                    title=ft.Text("מתקדם", weight=ft.FontWeight.BOLD, size=16),
+                                    content_padding=ft.padding.only(5, 0, 10, 0),
+                                    ),
 
-                            copy_mode,
-                            main_folder_only,
+                                ft.ListTile(title=singles_folder,
+                                    content_padding=PADDING_ITEMS_LIST,
+                                    subtitle=ft.Text('יצירת תיקייה ייעודית בשם "סינגלים" בתוך כל תיקיית אמן',)      
+                                    ),
+                                ft.ListTile(title=abc_sort,
+                                    content_padding=PADDING_ITEMS_LIST,
+                                    subtitle=ft.Text("יצירת תיקיות ראשיות לפי אותיות הא'-ב' וארגון תיקיות האמנים בתוכן בהתאם"),
+                                    ),
+                                ft.ListTile(title=exist_only,
+                                    content_padding=PADDING_ITEMS_LIST,
+                                    subtitle=ft.Text(" העברת קבצים רק לתיקיות אמנים הקיימות כבר בתיקית היעד, ללא יצירת תיקיות חדשות")
+                                        ),
 
-                            # מתקדם
-                            ft.Row(
-                                [
-                                    #ft.Icon(ft.icons.BUILD),  # סמל בנייה
-                                    ft.Text("מתקדם", weight=ft.FontWeight.BOLD, size=15),
-                                ],
-                                alignment=ft.MainAxisAlignment.START,
-                                expand=True,
-                            ),
-
-                            singles_folder,
-                            exist_only,
-
-                            ft.Row(
-                                [abc_sort],
-                                expand=True,
-                                spacing=0,
-                            ),
-
-                            ft.Row(
-                                [save_config_button],
-                                alignment=ft.MainAxisAlignment.END,
-                                expand=True,
-                                spacing=0,
-                            ),
+                                ft.Row(
+                                    [save_config_button],
+                                    alignment=ft.MainAxisAlignment.END
+                                ),
 
                             ],
-                            expand=True,
-                            spacing=15,
+                            spacing=0,
                         ),
                     ),
                 ),
-
             ],
             alignment=ft.MainAxisAlignment.START,  # Distribute space around items
             vertical_alignment=ft.CrossAxisAlignment.START, # align items to top

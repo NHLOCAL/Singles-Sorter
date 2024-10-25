@@ -1,60 +1,73 @@
 import flet as ft
 
-def main(page: ft.Page):
-    page.title = "Responsive Layout Demo - Corrected Order"
-
-    # יצירת הרכיבים
-    component1 = ft.Container(
-        content=ft.Text("רכיב 1", style="headlineMedium"),
-        bgcolor=ft.colors.BLUE_100,
-        padding=20,
-    )
-    component2 = ft.Container(
-        content=ft.Text("רכיב 2", style="headlineMedium"),
-        bgcolor=ft.colors.RED_100,
-        padding=20,
-    )
-    component3 = ft.Container(
-        content=ft.Text("רכיב 3", style="headlineMedium"),
-        bgcolor=ft.colors.GREEN_100,
-        padding=20,
-    )
-
+def main(page):
+    page.title = "ListTile Examples"
     page.add(
-        ft.ResponsiveRow( # שורה רספונסיבית ראשית
-            [
-                ft.Column( # עמודה ראשונה - רכיב 1
-                    [component1],
-                    col={"md": 6, "xs":12},  # 6 עמודות ב-md ומעלה, 12 ב-xs
-                    expand=True,
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        ft.Card(
+            content=ft.Container(
+                width=500,
+                content=ft.Column(
+                    [
+                        ft.ListTile(
+                            title=ft.Text("One-line list tile"),
+                        ),
+                        ft.ListTile(title=ft.Text("One-line dense list tile"), dense=True),
+                        ft.ListTile(
+                            leading=ft.Icon(ft.icons.SETTINGS),
+                            title=ft.Text("One-line selected list tile"),
+                            selected=True,
+                        ),
+                        ft.ListTile(
+                            leading=ft.Image(src="/icons/icon-192.png", fit="contain"),
+                            title=ft.Text("One-line with leading control"),
+                        ),
+                        ft.ListTile(
+                            title=ft.Text("One-line with trailing control"),
+                            trailing=ft.PopupMenuButton(
+                                icon=ft.icons.MORE_VERT,
+                                items=[
+                                    ft.PopupMenuItem(text="Item 1"),
+                                    ft.PopupMenuItem(text="Item 2"),
+                                ],
+                            ),
+                        ),
+                        ft.ListTile(
+                            leading=ft.Icon(ft.icons.ALBUM),
+                            title=ft.Text("One-line with leading and trailing controls"),
+                            trailing=ft.PopupMenuButton(
+                                icon=ft.icons.MORE_VERT,
+                                items=[
+                                    ft.PopupMenuItem(text="Item 1"),
+                                    ft.PopupMenuItem(text="Item 2"),
+                                ],
+                            ),
+                        ),
+                        ft.ListTile(
+                            leading=ft.Checkbox(
+                                value=page.client_storage.get("abc_sort") or False
+                                ),
+                            subtitle=ft.Text("התוכנה תיצור תיקיות ראשיות לכל אות באלפבית, ותכניס את תיקיות האמנים לתוכן"),
+                            title=ft.Text("מיון אלפביתי"),
+                            ),
+                        
+                        ft.ListTile(
+                            leading=ft.Icon(ft.icons.SNOOZE),
+                            title=ft.Text("Two-line with leading and trailing controls"),
+                            subtitle=ft.Text("Here is a second title."),
+                            trailing=ft.PopupMenuButton(
+                                icon=ft.icons.MORE_VERT,
+                                items=[
+                                    ft.PopupMenuItem(text="Item 1"),
+                                    ft.PopupMenuItem(text="Item 2"),
+                                ],
+                            ),
+                        ),
+                    ],
+                    spacing=0,
                 ),
-                ft.Column( # עמודה שנייה - רכיב 3 *רק* במסך גדול
-                    [component3],
-                    col={"md": 6},  # 6 עמודות ב-md ומעלה. לא מוגדר ב-xs, אז לא יוצג
-                    expand=True,
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-
-                ),
-
-            ],
-            alignment=ft.MainAxisAlignment.SPACE_BETWEEN, # מרווח בין העמודות
-            vertical_alignment=ft.CrossAxisAlignment.START, # יישור למעלה
-            run_spacing=20,
-
-        ),
-        ft.Column( # עמודה *מחוץ* ל-ResponsiveRow - רכיב 3 *רק* במסך קטן + רכיב 2
-            [
-                ft.Container( # רכיב 3 *רק* במסך קטן
-                    content=component3,
-                    col={"xs": 12}, # 12 עמודות (רוחב מלא) ב-xs. לא מוגדר ב-md, אז לא יוצג.
-                ),
-                component2,
-            ],
-            col={"xs": 12},  # 12 עמודות ב-xs. לא מוגדר ב-md, אז לא ישפיע.
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                padding=ft.padding.symmetric(vertical=10),
+            )
         )
-
     )
 
-ft.app(target=main)
+ft.app(main)
