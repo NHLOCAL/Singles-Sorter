@@ -124,7 +124,7 @@ jobs:
         name: ${{ steps.get_version.outputs.RELEASE_TITLE }}
         draft: true
         prerelease: true
-        files: |
+        assets: |
           Output/Singles-Sorter-Installer-AI-${{ steps.get_version.outputs.VERSION }}.exe
           Singles-Sorter-Portable-AI-${{ steps.get_version.outputs.VERSION }}.zip
       env:
