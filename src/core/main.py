@@ -784,7 +784,7 @@ def main(page: ft.Page):
                     expand=True,
                     col={"xs": 2, "sm": 1, "md": 1},
                     content=ft.Container(
-                        padding=ft.padding.all(10) if ANDROID_MODE else ft.padding.only(30, 30, 30, 20),
+                        padding=ft.padding.only(10, 20, 10, 10) if ANDROID_MODE else ft.padding.only(30, 30, 30, 20),
                         margin=ft.padding.all(0),
                         content=ft.Column(
                             [
@@ -797,7 +797,7 @@ def main(page: ft.Page):
                                 ),
 
                                 ft.ListTile(
-                                    title=ft.Text("בסיסי", weight=ft.FontWeight.BOLD, size=16),
+                                    title=ft.Text("בסיסי", weight=ft.FontWeight.BOLD, size=18),
                                     content_padding=ft.padding.only(5, 0, 10, 0),
                                     ),
                                 
@@ -809,7 +809,7 @@ def main(page: ft.Page):
                                     ),
 
                                 ft.ListTile(
-                                    title=ft.Text("מתקדם", weight=ft.FontWeight.BOLD, size=16),
+                                    title=ft.Text("מתקדם", weight=ft.FontWeight.BOLD, size=18),
                                     content_padding=ft.padding.only(5, 0, 10, 0),
                                     ),
 
@@ -819,11 +819,11 @@ def main(page: ft.Page):
                                     ),
                                 ft.ListTile(title=abc_sort,
                                     content_padding=PADDING_ITEMS_LIST,
-                                    subtitle=ft.Text("יצירת תיקיות ראשיות לפי אותיות הא'-ב' וארגון תיקיות האמנים בתוכן בהתאם"),
+                                    subtitle=ft.Text("יצירת תיקיות ראשיות לפי אותיות הא'-ב' וארגון תיקיות האמנים בתוכן"),
                                     ),
                                 ft.ListTile(title=exist_only,
                                     content_padding=PADDING_ITEMS_LIST,
-                                    subtitle=ft.Text(" העברת קבצים רק לתיקיות אמנים הקיימות כבר בתיקית היעד, ללא יצירת תיקיות חדשות")
+                                    subtitle=ft.Text(" העברת קבצים רק לתיקיות אמנים הקיימות כבר בתיקית היעד")
                                         ),
 
                                 ft.Row(
