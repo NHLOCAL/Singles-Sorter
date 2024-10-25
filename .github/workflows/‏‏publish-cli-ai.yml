@@ -1,4 +1,4 @@
-name: Build and Release CLI
+name: Build and Release AI CLI
 
 on:
   push:
@@ -20,7 +20,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install pyinstaller music_tag jibrish_to_hebrew chardet
+        pip install pyinstaller music_tag jibrish_to_hebrew chardet spacy==3.7.5 scikit-learn==1.5.1
 
     - name: Build EXE
       run: |
@@ -38,7 +38,7 @@ jobs:
       shell: pwsh
       run: |
         $version = "${{ steps.get_version.outputs.VERSION }}"
-        Move-Item -Path "dist\Singles-Sorter.exe" -Destination "dist\singles-sorter-cli-$version.exe"
+        Move-Item -Path "dist\Singles-Sorter.exe" -Destination "dist\singles-sorter-cli-ai-$version.exe"
 
     - name: Create Release
       uses: softprops/action-gh-release@v2.0.6
@@ -49,4 +49,4 @@ jobs:
         name: ${{ steps.get_version.outputs.RELEASE_TITLE }}
         draft: true
         prerelease: true
-        files: ./dist/singles-sorter-cli-${{ steps.get_version.outputs.VERSION }}.exe
+        files: ./dist/singles-sorter-cli-ai${{ steps.get_version.outputs.VERSION }}.exe

@@ -1,4 +1,4 @@
-name: Publish Installer and Portable Version
+name: Publish AI Installer and Portable Version
 
 on:
   push:
@@ -20,7 +20,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install pyinstaller music_tag jibrish_to_hebrew flet chardet
+        pip install pyinstaller music_tag jibrish_to_hebrew flet spacy==3.7.5 scikit-learn==1.5.1 chardet
 
     - name: Get the version
       id: get_version
@@ -58,7 +58,7 @@ jobs:
         DisableProgramGroupPage=yes
         LicenseFile="license.md"
         PrivilegesRequired=lowest
-        OutputBaseFilename=Singles-Sorter-Installer-{#MyAppVersion}
+        OutputBaseFilename=Singles-Sorter-Installer-AI-{#MyAppVersion}
         SetupIconFile=src\core\assets\icon.ico
         SolidCompression=yes
         Compression=lzma2/ultra64
@@ -73,6 +73,7 @@ jobs:
         [Files]
         Source: "dist\main.exe"; DestDir: "{app}"; Flags: ignoreversion
         Source: "src\core\app\*"; DestDir: "{app}\app"; Flags: ignoreversion recursesubdirs createallsubdirs
+        Source: "src\core\models\*"; DestDir: "{app}\models"; Flags: ignoreversion recursesubdirs createallsubdirs
         Source: "src\core\assets\icon.png"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs createallsubdirs
         [Icons]
         Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
@@ -104,5 +105,5 @@ jobs:
         draft: true
         prerelease: true
         files: |
-          Output/Singles-Sorter-Installer-${{ steps.get_version.outputs.VERSION }}.exe
-          Singles-Sorter-Portable-${{ steps.get_version.outputs.VERSION }}.zip
+          Output/Singles-Sorter-Installer-AI-${{ steps.get_version.outputs.VERSION }}.exe
+          Singles-Sorter-Portable-AI${{ steps.get_version.outputs.VERSION }}.zip
