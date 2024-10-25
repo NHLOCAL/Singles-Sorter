@@ -7,9 +7,8 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'הזן את שם הגרסה (למשל, 1.0.0)'
+        description: 'Version number'
         required: false
-        default: ''
 
 jobs:
   build:
@@ -32,10 +31,13 @@ jobs:
       id: get_version
       shell: bash
       run: |
-        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-          VERSION=${{ github.event.inputs.version }}
+        if [ -n "${{ github.event.inputs.version }}" ]; then
+          VERSION="${{ github.event.inputs.version }}"
+        elif [[ "${GITHUB_REF}" =~ ^refs/tags/v(.+)$ ]]; then
+          VERSION="${BASH_REMATCH[1]}"
         else
-          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "No version specified and could not extract version from tag."
+          exit 1
         fi
         echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
         echo "RELEASE_TITLE=מסדר הסינגלים $VERSION" >> $GITHUB_OUTPUT
@@ -110,7 +112,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.ref_type == 'tag' && github.ref || 'v' + steps.get_version.outputs.VERSION }}
+        tag_name: v${{ steps.get_version.outputs.VERSION }}
         name: ${{ steps.get_version.outputs.RELEASE_TITLE }}
         draft: true
         prerelease: true
