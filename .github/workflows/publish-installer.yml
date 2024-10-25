@@ -20,7 +20,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install pyinstaller music_tag jibrish_to_hebrew flet
+        pip install pyinstaller music_tag jibrish_to_hebrew flet chardet
 
     - name: Get the version
       id: get_version
