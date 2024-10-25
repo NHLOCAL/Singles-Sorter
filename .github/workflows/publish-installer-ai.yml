@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'הזן את שם הגרסה (למשל, 1.0.0)'
+        required: false
+        default: ''
 
 jobs:
   build:
@@ -21,19 +27,27 @@ jobs:
     - name: Install dependencies
       run: |
         pip install pyinstaller music_tag jibrish_to_hebrew flet spacy==3.7.5 scikit-learn==1.5.1 chardet
+
     - name: Get the version
       id: get_version
       shell: bash
       run: |
-        VERSION=${GITHUB_REF#refs/tags/v}
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          VERSION=${{ github.event.inputs.version }}
+        else
+          VERSION=${GITHUB_REF#refs/tags/v}
+        fi
         echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
         echo "RELEASE_TITLE=מסדר הסינגלים $VERSION" >> $GITHUB_OUTPUT
+
     - name: Build EXE
       run: |
         flet pack -i src/core/assets/icon.ico src/core/main.py --product-name "Singles Sorter" --product-version "${{ steps.get_version.outputs.VERSION }}" --file-description "Singles Sorter" --copyright "nh.local11@gmail.com"
+
     - name: Install Inno Setup
       run: |
         choco install innosetup -y
+
     - name: Create Inno Setup Script
       run: |
         $script = @"
@@ -78,9 +92,11 @@ jobs:
         Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
         "@
         Set-Content -Path inno_setup_script.iss -Value $script
+
     - name: Build Installer
       run: |
         & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' inno_setup_script.iss
+
     - name: Create Portable Version
       run: |
         New-Item -ItemType Directory -Force -Path portable
@@ -88,15 +104,16 @@ jobs:
         Copy-Item -Recurse src\core\app portable\
         Copy-Item -Recurse src\core\assets portable\
         Compress-Archive -Path portable\* -DestinationPath Singles-Sorter-Portable-AI-${{ steps.get_version.outputs.VERSION }}.zip -CompressionLevel Optimal
+
     - name: Create Release
       uses: softprops/action-gh-release@v2.0.6
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.ref }}
+        tag_name: ${{ github.ref_type == 'tag' && github.ref || 'v' + steps.get_version.outputs.VERSION }}
         name: ${{ steps.get_version.outputs.RELEASE_TITLE }}
         draft: true
         prerelease: true
         files: |
           Output/Singles-Sorter-Installer-AI-${{ steps.get_version.outputs.VERSION }}.exe
-          Singles-Sorter-Portable-AI${{ steps.get_version.outputs.VERSION }}.zip
+          Singles-Sorter-Portable-AI-${{ steps.get_version.outputs.VERSION }}.zip
