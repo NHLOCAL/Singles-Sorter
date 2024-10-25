@@ -4,11 +4,6 @@ on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'שם הגרסה (למשל, 1.0.0)'
-        required: false
 
 jobs:
   build:
@@ -17,9 +12,7 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # נדרש כדי לאפשר יצירת תגיות חדשות
-
+      
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
@@ -28,37 +21,19 @@ jobs:
     - name: Install dependencies
       run: |
         pip install pyinstaller music_tag jibrish_to_hebrew flet spacy==3.7.5 scikit-learn==1.5.1 chardet
-
     - name: Get the version
       id: get_version
       shell: bash
       run: |
-        if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.version }}" ]; then
-          VERSION=${{ github.event.inputs.version }}
-        else
-          VERSION=${GITHUB_REF#refs/tags/v}
-        fi
+        VERSION=${GITHUB_REF#refs/tags/v}
         echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
         echo "RELEASE_TITLE=מסדר הסינגלים $VERSION" >> $GITHUB_OUTPUT
-
-    - name: Create Tag (if manually triggered)
-      if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version != '' }}
-      run: |
-        git config user.name "github-actions"
-        git config user.email "github-actions@github.com"
-        git tag v${{ steps.get_version.outputs.VERSION }}
-        git push origin v${{ steps.get_version.outputs.VERSION }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
     - name: Build EXE
       run: |
         flet pack -i src/core/assets/icon.ico src/core/main.py --product-name "Singles Sorter" --product-version "${{ steps.get_version.outputs.VERSION }}" --file-description "Singles Sorter" --copyright "nh.local11@gmail.com"
-
     - name: Install Inno Setup
       run: |
         choco install innosetup -y
-
     - name: Create Inno Setup Script
       run: |
         $script = @"
@@ -103,29 +78,25 @@ jobs:
         Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
         "@
         Set-Content -Path inno_setup_script.iss -Value $script
-
     - name: Build Installer
       run: |
         & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' inno_setup_script.iss
-
     - name: Create Portable Version
       run: |
         New-Item -ItemType Directory -Force -Path portable
         Copy-Item dist\main.exe portable\
         Copy-Item -Recurse src\core\app portable\
-        Copy-Item -Recurse src\core\models portable\
         Copy-Item -Recurse src\core\assets portable\
         Compress-Archive -Path portable\* -DestinationPath Singles-Sorter-Portable-AI-${{ steps.get_version.outputs.VERSION }}.zip -CompressionLevel Optimal
-
-    - name: Create or Update Release
-      uses: ncipollo/release-action@v1
+    - name: Create Release
+      uses: softprops/action-gh-release@v2.0.6
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag: "v${{ steps.get_version.outputs.VERSION }}"
+        tag_name: ${{ github.ref }}
         name: ${{ steps.get_version.outputs.RELEASE_TITLE }}
         draft: true
         prerelease: true
-        assets: |
+        files: |
           Output/Singles-Sorter-Installer-AI-${{ steps.get_version.outputs.VERSION }}.exe
-          Singles-Sorter-Portable-AI-${{ steps.get_version.outputs.VERSION }}.zip
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          Singles-Sorter-Portable-AI${{ steps.get_version.outputs.VERSION }}.zip
