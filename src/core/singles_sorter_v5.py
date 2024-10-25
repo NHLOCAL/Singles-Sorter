@@ -14,10 +14,17 @@ from music_tag import load_file
 from jibrish_to_hebrew import fix_jibrish, check_jibrish
 from check_name import check_exact_name
 import shutil
-# הוספת בדיקה אם הקוד רץ על אנדרואיד
-is_android = 'ANDROID_ROOT' in os.environ
-if not is_android:
-    from ai_models import AIModels  # יבוא של AIModels אם לא באנדרואיד
+
+# פונקציה לבדיקת קיום קבצי מודל AI
+def check_model_files():
+    model_clf_path = 'models/music_entity_clf/music_entity_clf.pkl'
+    meta_json_path = 'models/singer_ner_he/meta.json'
+    return os.path.isfile(model_clf_path) and os.path.isfile(meta_json_path)
+
+# קריאה לפונקציה בתחילת הקוד
+ai_invalid = False if check_model_files() else True
+if not ai_invalid:
+    from ai_models import AIModels
 
 # הגדרת רשימות כקבועים גלובליים
 UNUSUAL_LIST = [
@@ -91,7 +98,7 @@ class MusicSorter:
         self.logger.setLevel(log_level)
 
         # יצירת מופע של AIModels אם לא באנדרואיד
-        if not is_android:
+        if not ai_invalid:
             self.ai_models = AIModels(logger=self.logger)
         else:
             self.ai_models = None  # אם באנדרואיד, לא משתמשים ב-AIModels
@@ -769,7 +776,7 @@ class MusicSorter:
 
                 if not found_artists and self.check_artist(artist):
                     # אם האמן לא נמצא ברשימה, וב-AIModels זמין
-                    if self.ai_models and not is_android:
+                    if self.ai_models and not ai_invalid:
                         # אימות באמצעות מודל SKLEARN
                         if self.ai_models.verify_artist_with_sklearn(artist):
                             found_artists.append(artist)
@@ -791,7 +798,7 @@ class MusicSorter:
                             found_artists.append(target_name)
                             break
 
-        if not found_artists and not is_android:
+        if not found_artists and not ai_invalid:
             # שלב רביעי: שימוש ב-NER על שם הקובץ
             if self.ai_models:
                 self.logger.debug(f"Using NER to process filename: {split_file}")
