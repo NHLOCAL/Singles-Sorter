@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.0)'
+        required: false
 
 jobs:
   build:
@@ -30,7 +35,16 @@ jobs:
       id: get_version
       shell: bash
       run: |
-        VERSION=${GITHUB_REF#refs/tags/v}
+        if [ -n "${{ github.event.inputs.version }}" ]; then
+          VERSION="${{ github.event.inputs.version }}"
+          # הסרת "v" מהתחלה אם קיים
+          VERSION="${VERSION#v}"
+        elif [[ "${GITHUB_REF}" =~ ^refs/tags/v(.+)$ ]]; then
+          VERSION="${BASH_REMATCH[1]}"
+        else
+          echo "No version specified and could not extract version from tag."
+          exit 1
+        fi
         echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
         echo "RELEASE_TITLE=מסדר הסינגלים $VERSION" >> $GITHUB_OUTPUT
 
@@ -45,8 +59,9 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.ref }}
+        tag_name: v${{ steps.get_version.outputs.VERSION }}
         name: ${{ steps.get_version.outputs.RELEASE_TITLE }}
         draft: true
         prerelease: true
+        allow_updates: true
         files: ./dist/singles-sorter-cli-ai-${{ steps.get_version.outputs.VERSION }}.exe
