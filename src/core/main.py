@@ -813,7 +813,7 @@ def main(page: ft.Page):
 
                                 ],
                                 spacing=15,
-                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                alignment=ft.MainAxisAlignment.CENTER if ANDROID_MODE else ft.MainAxisAlignment.SPACE_AROUND,
                                 horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
                                 expand=True,
                             ),
