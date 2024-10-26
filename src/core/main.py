@@ -29,7 +29,7 @@ def main(page: ft.Page):
     # הגדרות דינאמיות בהתאם לפלטפורמה
     if ANDROID_MODE:
         page.padding = ft.padding.only(20, 10, 20, 0)
-        page.scroll = ft.ScrollMode.HIDDEN  # הסתרת גלילה באנדרואיד
+        page.scroll = ft.ScrollMode.HIDDEN
         scroll_mode = ft.ScrollMode.HIDDEN
         auto_focus = False
         width_button = '100%'  # כפתורים ברוחב מלא באנדרואיד
@@ -43,7 +43,7 @@ def main(page: ft.Page):
         page.padding = ft.padding.all(20)
         page.window.height = 700
         page.window.width = 1050
-        page.scroll = ft.ScrollMode.ADAPTIVE
+        #page.scroll = ft.ScrollMode.ADAPTIVE
         scroll_mode = ft.ScrollMode.AUTO
         auto_focus = True
         width_button = '150'
@@ -819,6 +819,7 @@ def main(page: ft.Page):
 
                             ],
                             spacing=0,
+                            scroll=scroll_mode,
                         ),
                     ),
                 ),
