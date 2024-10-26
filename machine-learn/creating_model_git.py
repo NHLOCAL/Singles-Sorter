@@ -54,7 +54,7 @@ def custom_tokenizer(nlp):
 
 def main():
     try:
-        nlp = spacy.load("/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/custom_ner_model23git")
+        nlp = spacy.load("/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/custom_ner_model23-4git")
         
         test_text = "תומר כהן- הישראלי הבכיר בלינקדין"
         doc = nlp(test_text)
