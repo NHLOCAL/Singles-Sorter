@@ -59,9 +59,15 @@ def main():
         test_text = "תומר כהן- הישראלי הבכיר בלינקדין"
         doc = nlp(test_text)
         logger.info(f"Tokenized Text: {[token.text for token in doc]}")
-        
-        ner = nlp.add_pipe("ner")
-        ner.add_label("SINGER")
+ 
+ 
+        if "ner" not in nlp.pipe_names:
+            ner = nlp.add_pipe("ner", last=True)
+        else:
+            ner = nlp.get_pipe("ner")
+
+        if "SINGER" not in ner.labels:
+            ner.add_label("SINGER")
         
         json_files = [
             '/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/scrape_data/cleaned_new-data.json'
