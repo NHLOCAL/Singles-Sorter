@@ -92,8 +92,8 @@ def main():
         patience_counter = 0
         best_model_path = "/home/runner/work/Singles-Sorter/Singles-Sorter/machine-learn/best_model"
         n_iter = 45
-        batch_size = 64
-        drop_size = 0.4
+        batch_size = 32
+        drop_size = 0.3
         iteration_data = {}
         
         logger.info("Starting training...")
