@@ -1,0 +1,3 @@
+[submodule "src/models"]
+	path = src/models
+	url = https://github.com/NHLOCAL/SingNER.git
