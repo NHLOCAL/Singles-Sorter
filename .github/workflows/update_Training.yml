@@ -6,6 +6,7 @@ on:
       - machine-learn
     paths:
       - 'machine-learn/scrape_data/cleaned_new-data.json'
+      - 'machine-learn/model_name.txt'
       - 'machine-learn/creating_model_git.py'
 
 jobs:
