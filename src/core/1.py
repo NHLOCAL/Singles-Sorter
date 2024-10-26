@@ -1,24 +1,42 @@
 import flet as ft
 
 def main(page: ft.Page):
-    def on_column_scroll(e: ft.OnScrollEvent):
-        print(
-            f"Type: {e.event_type}, pixels: {e.pixels}, min_scroll_extent: {e.min_scroll_extent}, max_scroll_extent: {e.max_scroll_extent}"
+    page.title = "Icon Explorer"
+
+    icons = [
+        ft.icons.INFO,
+        ft.icons.QUESTION_MARK,
+        ft.icons.LIGHTBULB,
+        ft.icons.TOUCH_APP,
+        ft.icons.GESTURE,
+        ft.icons.MORE_HORIZ,
+        ft.icons.MORE_VERT,
+    ]
+
+    icon_grid = ft.GridView(
+        runs_count=3,
+        spacing=10,
+        run_spacing=10,
+        padding=20,
+        child_aspect_ratio=1.0,
+    )
+
+
+    for icon_name in icons:
+        icon_grid.controls.append(
+            ft.Container(
+                content=ft.Column(
+                    [
+                        ft.Icon(icon_name, size=40),
+                        ft.Text(str(icon_name)),  # Correct: just use str(icon_name)
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+            )
         )
 
-    cl = ft.Column(
-        spacing=10,
-        rtl=True,
-        height=200,
-        width=200,
-        scroll=ft.ScrollMode.ADAPTIVE,
-        on_scroll=on_column_scroll,
-    )
-    for i in range(0, 50):
-        cl.controls.append(ft.Text(f"Text line ----lksdh ofuss9--------  {i}", key=str(i)))
+    page.add(icon_grid)
 
-    page.add(
-        ft.Container(cl, border=ft.border.all(1)),
-    )
 
-ft.app(main)
+ft.app(target=main)
