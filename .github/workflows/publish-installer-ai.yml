@@ -117,7 +117,6 @@ jobs:
         name: ${{ steps.get_version.outputs.RELEASE_TITLE }}
         draft: true
         prerelease: true
-        allow_updates: true  # הוספנו את השורה הזו
         files: |
           Output/Singles-Sorter-Installer-AI-${{ steps.get_version.outputs.VERSION }}.exe
           Singles-Sorter-Portable-AI-${{ steps.get_version.outputs.VERSION }}.zip
