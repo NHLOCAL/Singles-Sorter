@@ -533,44 +533,85 @@ def main(page: ft.Page):
     # Checkboxes
     global copy_mode, main_folder_only, singles_folder, exist_only, abc_sort, duet_mode
 
-    # הגדרות בסיסיות - שימוש ב-Switch עם label דינאמי
-    copy_mode = ft.Switch(
-        tooltip="קבע אם להעתיק או להעביר את הקבצים לתיקיית היעד",
-        label="העתק קבצים" if page.client_storage.get("copy_mode")    else "העבר קבצים",
-        value=page.client_storage.get("copy_mode") or False,
-        on_change=lambda e: update_switch_label(copy_mode) # עדכון label בעת שינוי
-    )
-
-    main_folder_only = ft.Switch(
-        label="סרוק תיקיה ראשית בלבד" if page.client_storage.get("main_folder_only") else "סרוק עץ תיקיות",
-        tooltip="בחר אם לסרוק את כל תיקיות המשנה או רק את תיקיית המקור הראשית",
-        value=page.client_storage.get("main_folder_only") or False,
-        on_change=lambda e: update_switch_label(main_folder_only) # עדכון label בעת שינוי
-    )
-
-    # פונקציה לעדכון label של ה-Switch
+        # פונקציה לעדכון label של ה-Switch
     def update_switch_label(switch):
-        if switch == copy_mode:
+        if switch == copy_mode.controls[0]:
             switch.label = "העתק קבצים" if switch.value else "העבר קבצים"
-        elif switch == main_folder_only:
+        elif switch == main_folder_only.controls[0]:
             switch.label = "סרוק תיקיה ראשית בלבד" if switch.value else "סרוק עץ תיקיות"
         switch.update()
-    
-    singles_folder = ft.Checkbox(
-        label='צור תיקיות סינגלים',
-        value=page.client_storage.get("singles_folder") if page.client_storage.get("singles_folder") is not None else True # True כברירת מחדל
+
+
+
+    # Function to create a styled tooltip with markdown content
+    def create_tooltip(text):
+        return ft.Tooltip(
+            message=text,
+            bgcolor=ft.colors.BLACK87, # Dark background
+            text_style=ft.TextStyle(color=ft.colors.WHITE), # White text
+            padding=10,
+            border_radius=5,
+            prefer_below=True,
+        )
+
+    # Checkboxes with help icons and tooltips
+    copy_mode = ft.Row(
+        [
+            ft.Switch(
+                label="העתק קבצים" if page.client_storage.get("copy_mode") else "העבר קבצים",
+                value=page.client_storage.get("copy_mode") or False,
+                on_change=lambda e: update_switch_label(copy_mode.controls[0]), # Update label on change
+            ),
+            ft.Icon(ft.icons.TIPS_AND_UPDATES, tooltip=create_tooltip("קבע אם להעתיק או להעביר את הקבצים לתיקיית היעד"), size=18, color=ft.colors.SECONDARY),
+        ],
     )
 
-    exist_only = ft.Checkbox(
-        label="שימוש בתיקיות קיימות",
-        value=page.client_storage.get("exist_only") or False
+
+
+    main_folder_only = ft.Row(
+        [
+        ft.Switch(
+            label="סרוק תיקיה ראשית בלבד" if page.client_storage.get("main_folder_only") else "סרוק עץ תיקיות",
+            value=page.client_storage.get("main_folder_only") or False,
+            on_change=lambda e: update_switch_label(main_folder_only.controls[0]), # Update label on change
+        ),
+        ft.Icon(ft.icons.TIPS_AND_UPDATES, tooltip=create_tooltip("בחר אם לסרוק את כל תיקיות המשנה או רק את תיקיית המקור הראשית"), size=18, color=ft.colors.SECONDARY),
+        ],
     )
 
-    abc_sort = ft.Checkbox(
-        label="מיון אלפביתי",
-        value=page.client_storage.get("abc_sort") or False
+    singles_folder = ft.Row(
+        [
+        ft.Checkbox(
+            label='צור תיקיות סינגלים',
+            value=page.client_storage.get("singles_folder") if page.client_storage.get("singles_folder") is not None else True,
+
+        ),
+        ft.Icon(ft.icons.TIPS_AND_UPDATES, tooltip=create_tooltip('יצירת תיקייה ייעודית בשם "סינגלים" בתוך כל תיקיית אמן'), size=18, color=ft.colors.SECONDARY),
+
+        ]
     )
 
+
+
+    exist_only = ft.Row(
+        [
+        ft.Checkbox(
+            label="שימוש בתיקיות קיימות",
+            value=page.client_storage.get("exist_only") or False
+        ),
+        ft.Icon(ft.icons.TIPS_AND_UPDATES, tooltip=create_tooltip("העברת קבצים רק לתיקיות אמנים הקיימות כבר בתיקית היעד"), size=18, color=ft.colors.SECONDARY),
+        ]
+    )
+
+    abc_sort = ft.Row(
+        [
+        ft.Checkbox(
+            label="מיון אלפביתי",
+            value=page.client_storage.get("abc_sort") or False
+        ),
+        ft.Icon(ft.icons.TIPS_AND_UPDATES, tooltip=create_tooltip("יצירת תיקיות ראשיות לפי אותיות הא'-ב' וארגון תיקיות האמנים בתוכן"), size=18, color=ft.colors.SECONDARY),
+        ]
+    )
 
 
     # duet_mode
@@ -593,11 +634,11 @@ def main(page: ft.Page):
     # פונקציה לשמירת ההגדרות
     def open_save_config(e):
         try:
-            page.client_storage.set("copy_mode", copy_mode.value)
-            page.client_storage.set("main_folder_only", main_folder_only.value)
-            page.client_storage.set("singles_folder", singles_folder.value)
-            page.client_storage.set("exist_only", exist_only.value)
-            page.client_storage.set("abc_sort", abc_sort.value)
+            page.client_storage.set("copy_mode", copy_mode.controls[0].value) # Access Switch inside Row
+            page.client_storage.set("main_folder_only", main_folder_only.controls[0].value) # Access Switch inside Row
+            page.client_storage.set("singles_folder", singles_folder.controls[0].value) # Access Checkbox inside Row
+            page.client_storage.set("exist_only", exist_only.controls[0].value) # Access Checkbox inside Row
+            page.client_storage.set("abc_sort", abc_sort.controls[0].value)  # Access Checkbox inside Row
 
             snack_bar = show_snackbar("ההגדרות נשמרו בהצלחה!", ft.colors.GREEN)
         except Exception as error:
@@ -622,7 +663,7 @@ def main(page: ft.Page):
     
     # Progress bar
     page.window.progress_bar='0.0'
-    progress_bar = ft.ProgressBar(width=400, value=0)
+    progress_bar = ft.ProgressBar(width=250 if ANDROID_MODE else 400, value=0)
     
 
     # הצגת הודעת אזהרה לפני הפעלת הסריקה
@@ -741,24 +782,39 @@ def main(page: ft.Page):
                             margin=10,  # margin מסביב ל-Container
                             expand=True,
                             content=ft.Column( # התוכן הקודם נכנס כאן
-                                controls=[   
-                                    ft.Row([source_dir_button, source_dir_input], alignment=ft.MainAxisAlignment.CENTER),
-                                    ft.Row([target_dir_button, target_dir_input], alignment=ft.MainAxisAlignment.CENTER),
-
-                                    ft.Row([progress_bar], alignment=ft.MainAxisAlignment.CENTER),
-                                    
-                                    ft.Row(
-                                        [
-                                            organize_button,
-                                            fixed_button,
-                                        ],
-                                        alignment=ft.MainAxisAlignment.CENTER,
-                                        expand=True,
+                                controls=[
+                                    ft.Column(
+                                        #expand=True,
+                                        horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
+                                        controls=[
+                                        ft.Row([source_dir_button, source_dir_input], alignment=ft.MainAxisAlignment.CENTER, expand=True),
+                                        ft.Row([target_dir_button, target_dir_input], alignment=ft.MainAxisAlignment.CENTER, expand=True),
+                                        ]
                                     ),
+
+                                    ft.Column(
+                                        #expand=True,
+                                        alignment=ft.MainAxisAlignment.CENTER,
+                                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                                        spacing=15,
+                                        controls=[
+                                            progress_bar,
+                                            ft.Row(
+                                                [
+                                                    organize_button,
+                                                    fixed_button,
+                                                ],
+                                                alignment=ft.MainAxisAlignment.CENTER,
+                                                expand=True,
+                                            ),
+                                        ],
+                                    ),
+                                    
+
                                 ],
                                 spacing=15,
-                                alignment=ft.MainAxisAlignment.CENTER,
-                                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                                alignment=ft.MainAxisAlignment.CENTER if ANDROID_MODE else ft.MainAxisAlignment.SPACE_AROUND,
+                                horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
                                 expand=True,
                             ),
                         ),
@@ -771,6 +827,7 @@ def main(page: ft.Page):
                     col={"xs": 2, "sm": 1, "md": 1},
                     content=ft.Container(
                         padding=ft.padding.only(10, 20, 10, 10) if ANDROID_MODE else ft.padding.only(30, 30, 30, 20),
+                        expand=True,
                         margin=ft.padding.all(0),
                         content=ft.Column(
                             [
@@ -790,6 +847,7 @@ def main(page: ft.Page):
                                 ft.ListTile(title=copy_mode,
                                     content_padding=PADDING_ITEMS_LIST,
                                     ),
+
                                 ft.ListTile(title=main_folder_only,
                                     content_padding=PADDING_ITEMS_LIST,
                                     ),
@@ -800,16 +858,16 @@ def main(page: ft.Page):
                                     ),
 
                                 ft.ListTile(title=singles_folder,
-                                    content_padding=PADDING_ITEMS_LIST,
-                                    subtitle=ft.Text('יצירת תיקייה ייעודית בשם "סינגלים" בתוך כל תיקיית אמן',)      
+                                    content_padding=PADDING_ITEMS_LIST,      
                                     ),
+                                
+
                                 ft.ListTile(title=abc_sort,
                                     content_padding=PADDING_ITEMS_LIST,
-                                    subtitle=ft.Text("יצירת תיקיות ראשיות לפי אותיות הא'-ב' וארגון תיקיות האמנים בתוכן"),
                                     ),
+
                                 ft.ListTile(title=exist_only,
                                     content_padding=PADDING_ITEMS_LIST,
-                                    subtitle=ft.Text(" העברת קבצים רק לתיקיות אמנים הקיימות כבר בתיקית היעד")
                                         ),
 
                                 ft.Row(
@@ -824,8 +882,8 @@ def main(page: ft.Page):
                     ),
                 ),
             ],
-            alignment=ft.MainAxisAlignment.START,  # Distribute space around items
-            vertical_alignment=ft.CrossAxisAlignment.START, # align items to top
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            vertical_alignment=ft.CrossAxisAlignment.STRETCH, # align items to top
             spacing=20,
             run_spacing=10,
             columns=2,
@@ -883,11 +941,11 @@ def main(page: ft.Page):
             sorter = MusicSorter(
                 source_dir = source_dir, 
                 target_dir = target_dir if mode == "organize" else None,  # העברת target_dir רק אם צריך
-                copy_mode = copy_mode.value,
-                abc_sort = abc_sort.value,
-                exist_only = exist_only.value,
-                singles_folder = singles_folder.value,
-                main_folder_only = main_folder_only.value,
+                copy_mode = copy_mode.controls[0].value,
+                abc_sort = abc_sort.controls[0].value,
+                exist_only = exist_only.controls[0].value,
+                singles_folder = singles_folder.controls[0].value,
+                main_folder_only = main_folder_only.controls[0].value,
                 duet_mode = duet_mode.value,
                 progress_callback = progress_callback
             )
