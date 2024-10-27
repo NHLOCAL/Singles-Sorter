@@ -26,13 +26,14 @@ jobs:
       run: |
         pyinstaller --onefile --add-data "src/core/app/singer-list.csv;app" --name "Singles-Sorter" --icon "src/core/assets/icon.ico" "src/core/singles_sorter_v5.py"
 
-    - name: Get the version
-      id: get_version
-      shell: bash
-      run: |
-        VERSION=${GITHUB_REF#refs/tags/v}
-        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-        echo "RELEASE_TITLE=מסדר הסינגלים $VERSION" >> $GITHUB_OUTPUT
+   - name: Get the version
+     id: get_version
+     shell: bash
+     run: |
+       VERSION=${GITHUB_REF#refs/tags/}
+       echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+       echo "RELEASE_TITLE=מסדר הסינגלים $VERSION" >> $GITHUB_OUTPUT
+
 
     - name: Rename output file
       shell: pwsh
@@ -40,13 +41,13 @@ jobs:
         $version = "${{ steps.get_version.outputs.VERSION }}"
         Move-Item -Path "dist\Singles-Sorter.exe" -Destination "dist\singles-sorter-cli-$version.exe"
 
-    - name: Create Release
-      uses: softprops/action-gh-release@v2.0.6
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        name: ${{ steps.get_version.outputs.RELEASE_TITLE }}
-        draft: true
-        prerelease: true
-        files: ./dist/singles-sorter-cli-${{ steps.get_version.outputs.VERSION }}.exe
+   - name: Create Release
+     uses: softprops/action-gh-release@v2.0.6
+     env:
+       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+     with:
+       tag_name: ${{ steps.get_version.outputs.VERSION }}
+       name: ${{ steps.get_version.outputs.RELEASE_TITLE }}
+       draft: true
+       prerelease: true
+       files: ./dist/singles-sorter-cli-${{ steps.get_version.outputs.VERSION }}.exe
