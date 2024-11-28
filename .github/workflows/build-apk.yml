@@ -1,0 +1,84 @@
+name: Build Flet APK
+
+on:
+  push:
+    branches:
+      - apk-build
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # Use Python 3.x
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential zlib1g-dev libncurses5-dev libffi-dev libssl-dev
+
+      - name: Set up Java (for Android)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+
+      - name: Install Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24' # Or a specific version if required
+          channel: 'stable'
+
+      - name: Set Android SDK environment variables
+        run: |
+          echo "ANDROID_SDK_ROOT=$HOME/Android/Sdk" >> ~/.bashrc
+          echo "NDK_VERSION=27.2.12479018" >> ~/.bashrc
+          echo "SDK_VERSION=android-35" >> ~/.bashrc
+          echo "PATH=$ANDROID_SDK_ROOT/tools/bin:$PATH" >> ~/.bashrc
+          source ~/.bashrc
+
+      - name: Accept Android SDK licenses
+        run: yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
+
+      - name: Install Android SDK components
+        run: |
+          # List available NDK versions (for debugging)
+          $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT --list | grep ndk
+
+          # Install a supported NDK version (replace with a valid version from the list)
+          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT --install "ndk;27.2.12479018" --channel=3 # Or another suitable NDK version/channel
+          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT --install "platforms;android-35"
+
+      - name: Create and activate virtual environment
+        run: |
+          python3 -m venv .venv
+          source .venv/bin/activate
+
+      - name: Install Flet and cython
+        run: |
+          python -m pip install --upgrade pip
+          pip install flet cython
+          pip install git+https://github.com/flet-dev/python-for-android.git@3.11.6 # Install p4a from the correct branch
+
+      - name: Create Flet app
+        run: |
+          flet create my_flet_app
+          cd my_flet_app
+      
+
+      - name: Build APK
+        run: |
+          cd my_flet_app  # Navigate to the project directory
+          flet build apk # No signing arguments needed here
+
+      - name: Upload APK as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: my_flet_app_apk
+          path: my_flet_app/build/apk/*.apk 
