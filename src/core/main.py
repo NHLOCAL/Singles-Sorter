@@ -90,7 +90,6 @@ def main(page: ft.Page):
         toolbar_height=60,
     )
 
-
     # הגדרת סרגל תחתון
     page.bottom_appbar = ft.BottomAppBar(
         ft.Text(
@@ -133,8 +132,6 @@ def main(page: ft.Page):
         elif e.control.data == "settings":
             show_settings()
 
-        
-
     # תפריט אפשרויות נוספות
     menu_items = [
         ft.PopupMenuItem(text="עזרה", icon=ft.icons.HELP, data="help", on_click=on_menu_selected),
@@ -147,19 +144,16 @@ def main(page: ft.Page):
 
     # כפתור אפשרויות נוספות בסרגל העליון
     # כולל הצגת התראה אדומה אם קיים עדכון זמין
-    menu_button = ft.Badge(
-        content=ft.PopupMenuButton(
-            items=menu_items,
-            icon=ft.icons.MORE_VERT,
-            icon_color=ft.colors.ON_PRIMARY,
-            icon_size=28,
-            tooltip="אפשרויות נוספות",
+    menu_button = ft.PopupMenuButton(
+        items=menu_items,
+        icon=ft.Icon(
+            ft.icons.MORE_VERT,
+            badge=ft.Badge(text='up', label_visible=False, offset=ft.transform.Offset(0, -2))
         ),
-        text='up',
-        label_visible=False,
-        offset=ft.transform.Offset(0, -2),
-        )
-
+        icon_color=ft.colors.ON_PRIMARY,
+        icon_size=28,
+        tooltip="אפשרויות נוספות",
+    )
     
     page.appbar.actions.append(menu_button)
 
@@ -1024,15 +1018,21 @@ def main(page: ft.Page):
             update_available = False
             release_notes = None
 
-        # הוספת פריט עדכון רק אם זמין
+        new_menu_items = menu_items[:]
+
         if update_available:
             update_item = ft.PopupMenuItem(text="עדכן כעת", icon=ft.icons.UPDATE, data="upadte", on_click=on_menu_selected)
-            menu_items.insert(0, update_item)  # הוספת פריט העדכון לתחילת הרשימה
+            new_menu_items.insert(0, update_item)
 
-        menu_button.label_visible = bool(update_available)
-        menu_button.content.items = menu_items
+        menu_button.items = new_menu_items
 
-        menu_button.update()
+        #  עדכון ה-badge בצורה נכונה
+        if menu_button.icon and menu_button.icon.badge: # Check if icon and badge exist
+            menu_button.icon.badge.visible = update_available
+            if update_available:
+                menu_button.icon.badge.text = "!" # Or any other text you want to display
+
+        menu_button.update() # Important: Update the menu_button itself!
 
         return update_available, release_notes
 
