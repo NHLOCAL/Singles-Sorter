@@ -23,8 +23,11 @@ def main(page: ft.Page):
     page.theme_mode = ft.ThemeMode.LIGHT
     page.rtl = True
     page.theme = ft.Theme(color_scheme_seed="#2196f3")
-    ph = ft.PermissionHandler()
-    page.overlay.append(ph)
+    
+    # הוספת שכבה עבור בקשת הרשאות באפליקצייה
+    if ANDROID_MODE:
+        ph = ft.PermissionHandler()
+        page.overlay.append(ph)
 
     # הגדרות דינאמיות בהתאם לפלטפורמה
     if ANDROID_MODE:
