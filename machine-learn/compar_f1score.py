@@ -6,15 +6,41 @@ import os
 # Function to evaluate model and return evaluation metrics
 def evaluate_model(model_name, data):
     nlp = spacy.load(model_name)
-    examples = [Example.from_dict(nlp.make_doc(text), annots) for text, annots in data]
-    eval_result = nlp.evaluate(examples)
-    
-    # Extract metrics
-    f1_score = eval_result['ents_f']
-    precision = eval_result['ents_p']
-    recall = eval_result['ents_r']
-    
+
+    filtered_data = [
+        (text, {'entities': [(start, end, label) for start, end, label in annots['entities'] if label == 'SINGER']})
+        for text, annots in data
+    ]
+
+    # Calculate metrics manually
+    true_positive = 0
+    false_positive = 0
+    false_negative = 0
+
+    for text, annotations in filtered_data:
+        doc = nlp(text)
+        pred_entities = [(ent.start_char, ent.end_char, ent.label_) for ent in doc.ents if ent.label_ == 'SINGER']
+        true_entities = [(start, end, label) for start, end, label in annotations['entities']]
+
+        # Calculate True Positives
+        for entity in pred_entities:
+            if entity in true_entities:
+                true_positive += 1
+            else:
+                false_positive += 1
+
+        # Calculate False Negatives
+        for entity in true_entities:
+            if entity not in pred_entities:
+                false_negative += 1
+
+    # Precision, Recall, and F1 Score calculations
+    precision = true_positive / (true_positive + false_positive) if (true_positive + false_positive) > 0 else 0
+    recall = true_positive / (true_positive + false_negative) if (true_positive + false_negative) > 0 else 0
+    f1_score = (2 * precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+
     return f1_score, precision, recall
+
 
 # Define the data
 data = [

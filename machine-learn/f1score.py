@@ -297,14 +297,20 @@ print(nlp.evaluate(examples))
 def analyze_errors(nlp, data):
     errors = []
     for text, true_entities in data:
+        # Filter entities to include only 'SINGER'
+        true_entities_filtered = [
+            (start, end, label) for start, end, label in true_entities['entities'] if label == 'SINGER'
+        ]
         doc = nlp(text)
-        pred_entities = [(ent.start_char, ent.end_char, ent.label_) for ent in doc.ents]
-        
+        pred_entities_filtered = [
+            (ent.start_char, ent.end_char, ent.label_) for ent in doc.ents if ent.label_ == 'SINGER'
+        ]
+
         # Check for false positives and false negatives
-        for start, end, label in set(pred_entities + true_entities['entities']):
-            pred = (start, end, label) in pred_entities
-            true = (start, end, label) in true_entities['entities']
-            
+        for start, end, label in set(pred_entities_filtered + true_entities_filtered):
+            pred = (start, end, label) in pred_entities_filtered
+            true = (start, end, label) in true_entities_filtered
+
             if pred != true:
                 error_type = "False Positive" if pred else "False Negative"
                 errors.append({
@@ -315,8 +321,9 @@ def analyze_errors(nlp, data):
                     "end": end,
                     "label": label
                 })
-    
+
     return errors
+
 
 errors = analyze_errors(nlp, data)
 
