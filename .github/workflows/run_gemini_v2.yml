@@ -1,0 +1,40 @@
+name: Run Gemini API Processing
+
+on:
+  push:
+    branches:
+      - machine-learn
+    paths:
+      - 'machine-learn/scrape_data/level0/Gemini-synthetic-v2/**'
+      - '.github/workflows/run_gemini_v2.yml'
+
+jobs:
+  process_songs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install google-generativeai
+
+      - name: Run Python Script for lines 10001-10500
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python machine-learn/scrape_data/level0/Gemini-synthetic-v2/gemini_api_creating.py 10001 10500
+
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: song-variations-output
+          path: song_variations_output.txt

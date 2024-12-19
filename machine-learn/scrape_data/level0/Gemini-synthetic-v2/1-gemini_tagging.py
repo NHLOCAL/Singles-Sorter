@@ -11,7 +11,7 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 
 # קביעת מספר השורות שהקוד מעבד
-MAX_LINES = 200
+MAX_LINES = 1000
 CHUNK_SIZE = 50
 
 # הגדרת הקונפיגורציה ליצירת המודל

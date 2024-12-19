@@ -107,7 +107,7 @@ def inspect_samples(tagged_data, sample_size=10):
     logging.info(f"הוצגו {sample_size} דוגמאות אקראיות לבדיקה ידנית.")
 
 def main():
-    output_file = 'tagged_songs_ner.json'
+    output_file = 'new-data.json'
     
     # טען את הנתונים התויגים
     tagged_data = load_tagged_data(output_file)

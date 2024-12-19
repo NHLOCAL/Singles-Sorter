@@ -32,6 +32,6 @@ def convert_json_for_ner(input_file, output_file):
 
 if __name__ == '__main__':
     input_file = 'tagged_songs.json'  # שנה לנתיב קובץ הקלט שלך
-    output_file = 'tagged_songs_ner.json' # שנה לנתיב קובץ הפלט שלך
+    output_file = 'new-data.json' # שנה לנתיב קובץ הפלט שלך
     convert_json_for_ner(input_file, output_file)
     print(f"הקובץ {input_file} הומר בהצלחה לקובץ {output_file}")
