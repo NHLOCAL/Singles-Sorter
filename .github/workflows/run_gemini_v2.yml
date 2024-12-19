@@ -9,7 +9,7 @@ on:
       - '.github/workflows/run_gemini_v2.yml'
 
 jobs:
-  process_songs 1000-2000:
+  process_songs_1000-2000:
     runs-on: ubuntu-latest
 
     steps:
@@ -40,7 +40,7 @@ jobs:
           path: tagged_songs.json
 
 
-  process_songs 2000-3000:
+  process_songs_2000-3000:
     runs-on: ubuntu-latest
 
     steps:
@@ -71,7 +71,7 @@ jobs:
           path: tagged_songs.json
           
           
-  process_songs 3000-4000:
+  process_songs_3000-4000:
     runs-on: ubuntu-latest
 
     steps:
@@ -102,7 +102,7 @@ jobs:
           path: tagged_songs.json
           
 
-  process_songs 4000-5000:
+  process_songs_4000-5000:
     runs-on: ubuntu-latest
 
     steps:
