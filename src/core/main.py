@@ -5,9 +5,8 @@ from shutil import copy
 
 # קבצי התוכנה
 from singles_sorter_v5 import MusicSorter, __VERSION__
-from update_config import check_for_update
+from update_config import check_for_update, check_ai_model_update, download_and_update_ai_model
 from add_singer_dialog import create_add_singer_dialog
-
 
 # גרסת התוכנה
 VERSION = __VERSION__
@@ -70,8 +69,41 @@ def main(page: ft.Page):
             page.client_storage.set("singlesorter.first_run", VERSION)  # סימון שההודעה הוצגה
             page.update()
 
-    
-    
+    # בדיקת עדכון למודל AI
+    def check_and_update_ai_model():
+        is_ai_update_available, ai_latest_version, ai_release_notes = check_ai_model_update()
+
+        if is_ai_update_available:
+            def update_model(e):
+                dialog.open = False
+                snack_bar = show_snackbar("העדכון מתבצע כעת. נא להמתין...", ft.colors.BLUE)
+                page.overlay.append(snack_bar)
+                snack_bar.open = True
+                page.update()
+
+                success = download_and_update_ai_model(ai_latest_version)
+                if success:
+                    snack_bar = show_snackbar(f"המודל עודכן לגרסה {ai_latest_version} בהצלחה!", ft.colors.GREEN)
+                else:
+                    snack_bar = show_snackbar("עדכון מודל ה-AI נכשל.", ft.colors.ERROR)
+                page.overlay.append(snack_bar)
+                snack_bar.open = True
+                page.update()
+
+            dialog = ft.AlertDialog(
+                modal=True,
+                title=ft.Text("עדכון מודל AI", text_align="center", rtl=True, size=16, weight=ft.FontWeight.BOLD),
+                content=ft.Text(f"גרסה {ai_latest_version} זמינה לעדכון.", text_align="center", rtl=True, size=14),
+                actions=[
+                    ft.TextButton("עדכן", on_click=update_model),
+                    ft.TextButton("בטל", on_click=lambda e: (setattr(dialog, 'open', False), page.update())),
+                ],
+                actions_alignment=ft.MainAxisAlignment.SPACE_AROUND,
+            )
+            page.overlay.append(dialog)
+            dialog.open = True
+            page.update()
+            
     # App bar
     page.appbar = ft.AppBar(
         title=ft.Row(
@@ -1041,6 +1073,9 @@ def main(page: ft.Page):
 
     # הפעלת פונקצייה שפותחת הודעה "מה חדש" בהפעלה הראשונה
     first_run_menu()
+    
+    # הפעלת בדיקה למודל AI בעת הפעלת התוכנה
+    check_and_update_ai_model()
 
     # בדיקה אם קיים עדכון זמין ועדכון התצוגה
     update_available, release_notes =  update_view()
