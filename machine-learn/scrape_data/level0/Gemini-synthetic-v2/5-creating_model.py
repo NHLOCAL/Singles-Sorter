@@ -129,9 +129,9 @@ def main():
                 logger.info(f"Early stopping at iteration {itn} due to no improvement.")
                 break
         
-        with open(r"C:\Users\me\Documents\GitHub\Singles-Sorter\machine-learn\model_name.txt", 'r', encoding='utf-8') as f:
-            model_name = f.read().strip()
-            logger.info(f'Final Model Name: {model_name}')
+
+        model_name = "custom_ner_model30git"
+        logger.info(f'Final Model Name: {model_name}')
         
         try:
             with open('iteration_data.json', 'w', encoding='utf-8') as f:
