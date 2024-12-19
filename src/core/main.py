@@ -92,12 +92,16 @@ def main(page: ft.Page):
 
             dialog = ft.AlertDialog(
                 modal=True,
-                title=ft.Text("עדכון מודל AI", text_align="center", rtl=True, size=16, weight=ft.FontWeight.BOLD),
-                content=ft.Text(f"גרסה {ai_latest_version} זמינה לעדכון.", text_align="center", rtl=True, size=14),
+                title=ft.Row([
+                    ft.Icon(ft.icons.AUTO_AWESOME_ROUNDED, size=35, color=ft.colors.ON_PRIMARY_CONTAINER),
+                    ft.Text("עדכון מודל AI", text_align="center", color=ft.colors.ON_PRIMARY_CONTAINER, weight=ft.FontWeight.BOLD, size=18),
+                ], rtl=True, alignment=ft.MainAxisAlignment.CENTER),
+                content=ft.Text(f"גרסה {ai_latest_version} זמינה לעדכון\n הפעל עדכון אוטומטי כעת!", text_align="center", rtl=True, size=16),
                 actions=[
                     ft.TextButton("עדכן", on_click=update_model),
                     ft.TextButton("בטל", on_click=lambda e: (setattr(dialog, 'open', False), page.update())),
                 ],
+                content_padding=ft.padding.all(20),
                 actions_alignment=ft.MainAxisAlignment.SPACE_AROUND,
             )
             page.overlay.append(dialog)
