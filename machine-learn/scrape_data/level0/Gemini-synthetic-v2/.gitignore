@@ -1,2 +1,4 @@
 song-tags-output/
+best_model/
+custom_ner_model30git/
 *.log
