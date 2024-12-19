@@ -116,7 +116,7 @@ def main():
         print(f"שגיאה בקלט: {e}, יש להזין מספרי שורות חיוביים שלמים")
         sys.exit(1)
         
-    input_file = "machine-learn/scrape_data/level0/Gemini-synthetic-v2/all_songs.txt"
+    input_file = "machine-learn/scrape_data/level0/Gemini-synthetic-v2/all_songs2.txt"
     output_file = 'tagged_songs.json'
     
     # יצירת חוברת הצ'אט
