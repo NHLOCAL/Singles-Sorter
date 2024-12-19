@@ -8,7 +8,7 @@ on:
       - '.github/workflows/run_gemini_v2.yml'
 
 jobs:
-  process_songs_30001-32000:
+  process_songs_40001-42000:
     runs-on: ubuntu-latest
 
     steps:
@@ -25,19 +25,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install google-generativeai
 
-      - name: Run Python Script for lines 30001-32000
+      - name: Run Python Script for lines 40001-42000
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          python machine-learn/scrape_data/level0/Gemini-synthetic-v2/1-gemini_tagging-api.py 30001 32000
+          python machine-learn/scrape_data/level0/Gemini-synthetic-v2/1-gemini_tagging-api.py 40001 42000
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: song-tags-output-30001-32000
+          name: song-tags-output-40001-42000
           path: tagged_songs.json
 
-  process_songs_32001-34000:
+  process_songs_42001-44000:
     runs-on: ubuntu-latest
 
     steps:
@@ -54,19 +54,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install google-generativeai
 
-      - name: Run Python Script for lines 32001-34000
+      - name: Run Python Script for lines 42001-44000
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          python machine-learn/scrape_data/level0/Gemini-synthetic-v2/1-gemini_tagging-api.py 32001 34000
+          python machine-learn/scrape_data/level0/Gemini-synthetic-v2/1-gemini_tagging-api.py 42001 44000
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: song-tags-output-32001-34000
+          name: song-tags-output-42001-44000
           path: tagged_songs.json
 
-  process_songs_34001-36000:
+  process_songs_44001-46000:
     runs-on: ubuntu-latest
 
     steps:
@@ -83,19 +83,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install google-generativeai
 
-      - name: Run Python Script for lines 34001-36000
+      - name: Run Python Script for lines 44001-46000
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          python machine-learn/scrape_data/level0/Gemini-synthetic-v2/1-gemini_tagging-api.py 34001 36000
+          python machine-learn/scrape_data/level0/Gemini-synthetic-v2/1-gemini_tagging-api.py 44001 46000
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: song-tags-output-34001-36000
+          name: song-tags-output-44001-46000
           path: tagged_songs.json
 
-  process_songs_36001-38000:
+  process_songs_46001-48000:
     runs-on: ubuntu-latest
 
     steps:
@@ -112,19 +112,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install google-generativeai
 
-      - name: Run Python Script for lines 36001-38000
+      - name: Run Python Script for lines 46001-48000
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          python machine-learn/scrape_data/level0/Gemini-synthetic-v2/1-gemini_tagging-api.py 36001 38000
+          python machine-learn/scrape_data/level0/Gemini-synthetic-v2/1-gemini_tagging-api.py 46001 48000
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: song-tags-output-36001-38000
+          name: song-tags-output-46001-48000
           path: tagged_songs.json
 
-  process_songs_38001-40000:
+  process_songs_48001-50000:
     runs-on: ubuntu-latest
 
     steps:
@@ -141,14 +141,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install google-generativeai
 
-      - name: Run Python Script for lines 38001-40000
+      - name: Run Python Script for lines 48001-50000
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          python machine-learn/scrape_data/level0/Gemini-synthetic-v2/1-gemini_tagging-api.py 38001 40000
+          python machine-learn/scrape_data/level0/Gemini-synthetic-v2/1-gemini_tagging-api.py 48001 50000
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: song-tags-output-38001-40000
+          name: song-tags-output-48001-50000
           path: tagged_songs.json
