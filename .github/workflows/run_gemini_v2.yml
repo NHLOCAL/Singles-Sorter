@@ -9,7 +9,7 @@ on:
       - '.github/workflows/run_gemini_v2.yml'
 
 jobs:
-  process_songs_0-1999:
+  process_songs_1-2000:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,19 +26,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install google-generativeai
 
-      - name: Run Python Script for lines 0-1999
+      - name: Run Python Script for lines 1-2000
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          python machine-learn/scrape_data/level0/Gemini-synthetic-v2/1-gemini_tagging-api.py 0 1999
+          python machine-learn/scrape_data/level0/Gemini-synthetic-v2/1-gemini_tagging-api.py 1 2000
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: song-tags-output-0-1999
+          name: song-tags-output-1-2000
           path: tagged_songs.json
 
-  process_songs_2000-3999:
+  process_songs_2001-4000:
     runs-on: ubuntu-latest
 
     steps:
@@ -55,19 +55,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install google-generativeai
 
-      - name: Run Python Script for lines 2000-3999
+      - name: Run Python Script for lines 2001-4000
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          python machine-learn/scrape_data/level0/Gemini-synthetic-v2/1-gemini_tagging-api.py 2000 3999
+          python machine-learn/scrape_data/level0/Gemini-synthetic-v2/1-gemini_tagging-api.py 2001 4000
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: song-tags-output-2000-3999
+          name: song-tags-output-2001-4000
           path: tagged_songs.json
 
-  process_songs_4000-5999:
+  process_songs_4001-6000:
     runs-on: ubuntu-latest
 
     steps:
@@ -84,19 +84,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install google-generativeai
 
-      - name: Run Python Script for lines 4000-5999
+      - name: Run Python Script for lines 4001-6000
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          python machine-learn/scrape_data/level0/Gemini-synthetic-v2/1-gemini_tagging-api.py 4000 5999
+          python machine-learn/scrape_data/level0/Gemini-synthetic-v2/1-gemini_tagging-api.py 4001 6000
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: song-tags-output-4000-5999
+          name: song-tags-output-4001-6000
           path: tagged_songs.json
 
-  process_songs_6000-7999:
+  process_songs_6001-8000:
     runs-on: ubuntu-latest
 
     steps:
@@ -113,19 +113,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install google-generativeai
 
-      - name: Run Python Script for lines 6000-7999
+      - name: Run Python Script for lines 6001-8000
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          python machine-learn/scrape_data/level0/Gemini-synthetic-v2/1-gemini_tagging-api.py 6000 7999
+          python machine-learn/scrape_data/level0/Gemini-synthetic-v2/1-gemini_tagging-api.py 6001 8000
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: song-tags-output-6000-7999
+          name: song-tags-output-6001-8000
           path: tagged_songs.json
 
-  process_songs_8000-9999:
+  process_songs_8001-10000:
     runs-on: ubuntu-latest
 
     steps:
@@ -142,14 +142,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install google-generativeai
 
-      - name: Run Python Script for lines 8000-9999
+      - name: Run Python Script for lines 8001-10000
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          python machine-learn/scrape_data/level0/Gemini-synthetic-v2/1-gemini_tagging-api.py 8000 9999
+          python machine-learn/scrape_data/level0/Gemini-synthetic-v2/1-gemini_tagging-api.py 8001 10000
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: song-tags-output-8000-9999
+          name: song-tags-output-8001-10000
           path: tagged_songs.json
