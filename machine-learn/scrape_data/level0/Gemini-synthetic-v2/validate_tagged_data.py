@@ -87,7 +87,6 @@ def visualize_statistics(stats):
     plt.title('חלוקת סוגי הישויות בתיוג הנתונים')
     plt.xticks(rotation=45)
     plt.tight_layout()
-    plt.savefig('entity_distribution.png')
     plt.show()
     logging.info("הוצג גרף חלוקת סוגי הישויות ושמירה בקובץ 'entity_distribution.png'.")
 
@@ -108,7 +107,7 @@ def inspect_samples(tagged_data, sample_size=10):
     logging.info(f"הוצגו {sample_size} דוגמאות אקראיות לבדיקה ידנית.")
 
 def main():
-    output_file = 'tagged_songs.json'
+    output_file = 'tagged_songs_ner.json'
     
     # טען את הנתונים התויגים
     tagged_data = load_tagged_data(output_file)
