@@ -2,6 +2,7 @@ import os
 import json
 import google.generativeai as genai
 from dotenv import load_dotenv
+import sys
 
 # טעינת משתני הסביבה מקובץ .env
 load_dotenv()
@@ -9,14 +10,12 @@ load_dotenv()
 # קביעת מפתח ה-API של ג'מיני
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-
-# קביעת מספר השורות שהקוד מעבד
-MAX_LINES = 1000
+# קביעת גודל ה-chunks
 CHUNK_SIZE = 50
 
 # הגדרת הקונפיגורציה ליצירת המודל
 generation_config = {
-    "temperature": 1,
+    "temperature": 0.9,
     "top_p": 0.95,
     "top_k": 40,
     "max_output_tokens": 8192,
@@ -62,20 +61,19 @@ model = genai.GenerativeModel(
 """,
 )
 
-def read_in_chunks(file_object, chunk_size=CHUNK_SIZE, max_lines=300):
-    """Generator לקריאת קובץ ב-chunks של מספר שורות מוגדר, עם מגבלה על סך השורות."""
+def read_in_chunks(file_object, chunk_size, start_line, end_line):
+    """Generator לקריאת קובץ ב-chunks של מספר שורות מוגדר, עם מגבלה על טווח שורות."""
     chunk = []
     line_count = 0
-    for line in file_object:
+    for line_number, line in enumerate(file_object, start=1):
         line = line.strip()
-        if line:
+        if line and line_number >= start_line and line_number <= end_line:
             chunk.append(line)
             line_count += 1
             if len(chunk) == chunk_size:
                 yield chunk
                 chunk = []
-            if line_count >= max_lines:
-                break
+            
     if chunk:
         yield chunk
 
@@ -108,6 +106,20 @@ def parse_response(response_text):
         return None
 
 def main():
+    if len(sys.argv) != 3:
+        print("שימוש: python script.py <שורה_התחלה> <שורה_סיום>")
+        sys.exit(1)
+
+    try:
+        start_line = int(sys.argv[1])
+        end_line = int(sys.argv[2])
+        if start_line <= 0 or end_line <= 0 or start_line > end_line:
+          raise ValueError("מספרי שורות לא תקינים")
+
+    except ValueError as e:
+        print(f"שגיאה בקלט: {e}, יש להזין מספרי שורות חיוביים שלמים")
+        sys.exit(1)
+        
     input_file = 'all_songs.txt'
     output_file = 'tagged_songs.json'
     
@@ -120,7 +132,7 @@ def main():
         first_entry = True  # לצורך הוספת פסיק בין האיברים
         
         with open(input_file, 'r', encoding='utf-8') as f:
-            for chunk_number, songs_chunk in enumerate( read_in_chunks(f, chunk_size=100, max_lines=MAX_LINES), start=1):
+            for chunk_number, songs_chunk in enumerate( read_in_chunks(f, chunk_size=100, start_line=start_line, end_line=end_line), start=1):
                 print(f"מעבד חבילה מספר {chunk_number} עם {len(songs_chunk)} שירים...")
                 response_text = process_chunk(chat_session, songs_chunk)
                 print(f"תשובה מחבילה מספר {chunk_number}:")
