@@ -80,6 +80,7 @@ def main():
             'cleaned_new-data.json'
         ]
         
+        # טעינת הנתונים
         training_data = []
         for json_file in json_files:
             with open(json_file, 'r', encoding='utf-8') as f:
@@ -88,10 +89,16 @@ def main():
                     entities = example_entities.get('entities', [])
                     example = Example.from_dict(nlp.make_doc(example_text), {'entities': entities})
                     training_data.append(example)
-        
+
         logger.info(f"Loaded {len(training_data)} training examples.")
-        
+
+        # ערבוב רנדומלי ראשוני
+        random.shuffle(training_data)
+        logger.info("Initial shuffle of training data completed.")
+
+        # התחלת אימון
         nlp.begin_training()
+
         
         patience = 5
         min_delta = 1
