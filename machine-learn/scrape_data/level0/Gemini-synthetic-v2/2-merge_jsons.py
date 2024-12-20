@@ -3,7 +3,7 @@ import glob
 import zipfile
 
 # הגדר תיקייה
-zip_folder = "song-tags-output"  # תיקייה שבה נמצאים קבצי ה-ZIP
+zip_folder = "song-tags-lists"  # תיקייה שבה נמצאים קבצי ה-ZIP
 output_file = "tagged_songs.json"  # שם קובץ JSON הממוזג
 
 # רשימה לאחסון הנתונים מכל הקבצים
