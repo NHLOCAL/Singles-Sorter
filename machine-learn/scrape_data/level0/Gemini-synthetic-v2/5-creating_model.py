@@ -107,7 +107,7 @@ def main():
         best_model_path = "best_model"
         n_iter = 50
         batch_size = 64
-        drop_size = 0.35
+        drop_size = 0.3
         iteration_data = {}
         
         logger.info("Starting training...")
