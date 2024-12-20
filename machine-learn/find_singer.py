@@ -28,26 +28,20 @@ def find_name(text):
 
 # בצע מעבר על רשימת קבצים לסריקה   
 def files_list(file_path):
-
-
-    """
-    with open(file_path, mode='r', newline='', encoding='utf-8') as file:
-        content = file.readlines()    
-        songs_names = [song.strip() for song in content] 
-    """
-    
     songs_names = os.listdir(file_path)
-    
     songs_list = []
-    
+
     for filename in songs_names:
+        # הסרת סיומת הקובץ
+        file_name_without_extension, _ = os.path.splitext(filename)
         
         # הרץ זיהוי שם אדם מתוך המחרוזת
-        singer_name = find_name(filename)
+        singer_name = find_name(file_name_without_extension)
         
         songs_list.append(singer_name)
     
     return songs_list
+
 
 
 def print_list(songs_list):
