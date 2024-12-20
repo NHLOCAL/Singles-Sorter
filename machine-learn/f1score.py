@@ -4,7 +4,7 @@ from spacy.training.example import Example
 
 # read name of model
 if len(sys.argv) > 1:
-    model_name = f"models/custom_ner_model{sys.argv[1]}git"
+    model_name = "custom_ner_model{sys.argv[1]}git"
     print(f"# {model_name}")
 else:
     with open("model_name.txt", 'r', encoding='utf-8') as f:
@@ -13,7 +13,7 @@ else:
 
 
 # Load your trained model
-nlp = spacy.load(model_name)
+nlp = spacy.load(f"models/{model_name}")
 
 
 examples = []
