@@ -6,6 +6,7 @@ models/custom_ner_model24git,0.893119,0.974441,0.824324
 models/custom_ner_model29+23.4git,0.893119,0.974441,0.824324
 models/custom_ner_model27-5git,0.892805,0.977492,0.821622
 models/custom_ner_model23git,0.892489,0.980583,0.818919
+models/custom_ner_model30git,0.892388,0.867347,0.918919
 models/custom_ner_model28git,0.891813,0.971338,0.824324
 models/custom_ner_model29+23-3git,0.889868,0.974277,0.818919
 models/custom_ner_model29+23.4-1git,0.889868,0.974277,0.818919
