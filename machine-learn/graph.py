@@ -7,7 +7,7 @@ with open("model_name.txt", 'r', encoding='utf-8') as f:
     print(f'# {model_name}')
 
 # לקרוא את נתוני האיטרציה מקובץ ה-JSON
-with open(f'{model_name}\\iteration_data.json', 'r', encoding='utf-8') as f:
+with open(f'models\\{model_name}\\iteration_data.json', 'r', encoding='utf-8') as f:
     data = json.load(f)
 
 # חילוץ ערכי ציר ה-Y

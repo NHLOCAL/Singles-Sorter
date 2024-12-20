@@ -10,7 +10,7 @@ with open("model_name.txt", 'r', encoding='utf-8') as f:
     print(f'# {model_name}')
 
 # Load your trained model
-nlp = load(model_name)
+nlp = load(f'models/{model_name}')
 
 # בצע חיפוש שם אדם במחרוזת באמצעות מודל NER
 def find_name(text):

@@ -316,10 +316,7 @@ data = [
 models_metrics = []
 
 # Iterate over model versions
-model_names = [i for i in os.listdir() if "custom_ner_model" in i]
-
-
-
+model_names = [f"models/{i}" for i in os.listdir("models") if "custom_ner_model" in i]
 
 
 for model_name in model_names:
