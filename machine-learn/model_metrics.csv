@@ -1,12 +1,12 @@
 Model,F1 Score,Precision,Recall
 models/custom_ner_model23-4git,0.896652,0.971609,0.832432
 models/custom_ner_model23-1git,0.895742,0.980707,0.824324
+models/custom_ner_model30git,0.895442,0.888298,0.902703
 models/custom_ner_model25-1git,0.895044,0.971519,0.829730
 models/custom_ner_model24git,0.893119,0.974441,0.824324
 models/custom_ner_model29+23.4git,0.893119,0.974441,0.824324
 models/custom_ner_model27-5git,0.892805,0.977492,0.821622
 models/custom_ner_model23git,0.892489,0.980583,0.818919
-models/custom_ner_model30git,0.892388,0.867347,0.918919
 models/custom_ner_model28git,0.891813,0.971338,0.824324
 models/custom_ner_model29+23-3git,0.889868,0.974277,0.818919
 models/custom_ner_model29+23.4-1git,0.889868,0.974277,0.818919

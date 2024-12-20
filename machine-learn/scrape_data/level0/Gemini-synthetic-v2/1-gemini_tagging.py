@@ -11,7 +11,7 @@ load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 # קביעת גודל ה-chunks
-CHUNK_SIZE = 50
+CHUNK_SIZE = 100
 
 # הגדרת הקונפיגורציה ליצירת המודל
 generation_config = {
@@ -120,7 +120,7 @@ def main():
         print(f"שגיאה בקלט: {e}, יש להזין מספרי שורות חיוביים שלמים")
         sys.exit(1)
         
-    input_file = 'all_songs.txt'
+    input_file = "all_songs2.txt"
     output_file = 'tagged_songs.json'
     
     # יצירת חוברת הצ'אט
@@ -132,7 +132,7 @@ def main():
         first_entry = True  # לצורך הוספת פסיק בין האיברים
         
         with open(input_file, 'r', encoding='utf-8') as f:
-            for chunk_number, songs_chunk in enumerate( read_in_chunks(f, chunk_size=100, start_line=start_line, end_line=end_line), start=1):
+            for chunk_number, songs_chunk in enumerate( read_in_chunks(f, chunk_size=CHUNK_SIZE, start_line=start_line, end_line=end_line), start=1):
                 print(f"מעבד חבילה מספר {chunk_number} עם {len(songs_chunk)} שירים...")
                 response_text = process_chunk(chat_session, songs_chunk)
                 print(f"תשובה מחבילה מספר {chunk_number}:")

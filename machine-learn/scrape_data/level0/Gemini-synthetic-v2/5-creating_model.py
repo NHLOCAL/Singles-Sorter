@@ -100,12 +100,12 @@ def main():
         nlp.begin_training()
 
         
-        patience = 4
-        min_delta = 1
+        patience = 3
+        min_delta = 1000
         best_loss = float('inf')
         patience_counter = 0
         best_model_path = "best_model"
-        n_iter = 50
+        n_iter = 15
         batch_size = 64
         drop_size = 0.3
         iteration_data = {}
