@@ -1,5 +1,5 @@
 Model,F1 Score,Precision,Recall
-models/custom_ner_model30git,0.973893,0.966216,0.981693
+models/custom_ner_model30git,0.953250,0.950000,0.956522
 models/custom_ner_model27-5git,0.820639,0.885942,0.764302
 models/custom_ner_model28git,0.819753,0.890080,0.759725
 models/custom_ner_model29-2git,0.819188,0.885638,0.762014
