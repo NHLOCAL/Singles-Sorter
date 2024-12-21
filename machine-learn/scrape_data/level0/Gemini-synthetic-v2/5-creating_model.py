@@ -105,7 +105,7 @@ def main():
         best_loss = float('inf')
         patience_counter = 0
         best_model_path = "best_model"
-        n_iter = 9
+        n_iter = 15
         batch_size = 64
         drop_size = 0.3
         iteration_data = {}
