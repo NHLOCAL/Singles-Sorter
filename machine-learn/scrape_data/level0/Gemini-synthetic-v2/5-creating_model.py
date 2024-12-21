@@ -105,7 +105,7 @@ def main():
         best_loss = float('inf')
         patience_counter = 0
         best_model_path = "best_model"
-        n_iter = 20
+        n_iter = 30
         batch_size = 64
         drop_size = 0.25
         iteration_data = {}
@@ -137,7 +137,7 @@ def main():
                 break
         
         # הגדרת שם מודל על פי קובץ חיצוני
-        with open("model_name.txt", 'r', encoding='utf-8') as f:
+        with open(r"C:\Users\me\Documents\GitHub\Singles-Sorter-ml\machine-learn\model_name.txt", 'r', encoding='utf-8') as f:
             model_name = f.read()
             
         logger.info(f'Final Model Name: {model_name}')
