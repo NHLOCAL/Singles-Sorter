@@ -105,9 +105,9 @@ def main():
         best_loss = float('inf')
         patience_counter = 0
         best_model_path = "best_model"
-        n_iter = 15
+        n_iter = 20
         batch_size = 64
-        drop_size = 0.3
+        drop_size = 0.35
         iteration_data = {}
         
         logger.info("Starting training...")
