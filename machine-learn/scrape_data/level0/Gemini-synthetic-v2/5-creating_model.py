@@ -107,7 +107,7 @@ def main():
         best_model_path = "best_model"
         n_iter = 20
         batch_size = 64
-        drop_size = 0.35
+        drop_size = 0.25
         iteration_data = {}
         
         logger.info("Starting training...")
@@ -136,8 +136,10 @@ def main():
                 logger.info(f"Early stopping at iteration {itn} due to no improvement.")
                 break
         
-
-        model_name = "custom_ner_model30git"
+        # הגדרת שם מודל על פי קובץ חיצוני
+        with open("model_name.txt", 'r', encoding='utf-8') as f:
+            model_name = f.read()
+            
         logger.info(f'Final Model Name: {model_name}')
         
         try:
