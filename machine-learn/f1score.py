@@ -19,7 +19,7 @@ nlp = spacy.load(f"models/{model_name}")
 examples = []
 
 # Load data from data.json
-with open("f1score_dataset_v1.json", 'r', encoding='utf-8') as f:
+with open("f1score_dataset_v2.json", 'r', encoding='utf-8') as f:
     data = json.load(f)
 
 

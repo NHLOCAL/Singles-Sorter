@@ -44,7 +44,7 @@ def evaluate_model(model_name, data):
 
 
 # Load data from data.json
-with open("f1score_dataset_v1.json", 'r', encoding='utf-8') as f:
+with open("f1score_dataset_v2.json", 'r', encoding='utf-8') as f:
     data = json.load(f)
 
 # Create a list to store model names and their metrics
