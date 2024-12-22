@@ -13,6 +13,7 @@ on:
   # Allows you to run this workflow manually from the Actions tab of the repository
   workflow_dispatch:
 
+    
 env:
   # https://flet.dev/docs/publish#versioning
   BUILD_NUMBER: 1

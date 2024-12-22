@@ -6,7 +6,6 @@ authors = [{ name = "NHLOCAL", email = "nh.local11@gmail.com" }]
 dependencies = [
   "flet",
   "music_tag",
-  "jibrish_to_hebrew",
   "requests",
   "chardet"
 ]
