@@ -42,5 +42,5 @@ android = true # ספלש עבור אנדרואיד
 
 [tool.flet.compile]
 # app = true # קומפילציה של קבצי האפליקציה
-# packages = true # השבתת קומפילציה עבור ספריות
+# packages = false # השבתת קומפילציה עבור ספריות
 # cleanup = true # ניקוי קבצים מיותרים לאחר הקומפילציה
