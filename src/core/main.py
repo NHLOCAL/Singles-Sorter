@@ -797,8 +797,6 @@ def main(page: ft.Page):
         "מאחורי הקלעים": ft.colors.ORANGE_ACCENT_700,
     }
 
-    # ... הקוד הקודם ...
-
     # Tips card - עיצוב משופר
     tips_card = ft.Card(
         elevation=4,  # הגדלת הצל
@@ -826,7 +824,6 @@ def main(page: ft.Page):
                         selectable=True,
                         extension_set="gitHubWeb",
                         auto_follow_links=True,
-                        # הוסר text_align
                     ),
                 ],
                 tight=True,
@@ -840,7 +837,6 @@ def main(page: ft.Page):
             border_radius=ft.border_radius.all(10),  # עידון עיגול פינות
         ),
     )
-    # ... המשך הקוד ...
 
     # הגדרות הממשק הגרפי של התוכנה
     page.add(
