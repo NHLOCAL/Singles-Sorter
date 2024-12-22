@@ -35,6 +35,11 @@ def check_ai_model_update():
     github_repo = "NHLOCAL/SingNER"
     url = f"https://api.github.com/repos/{github_repo}/releases/latest"
     local_version_file = "models/version"
+    model_directory = "models"
+
+    # Check if the 'models' directory exists before proceeding
+    if not os.path.exists(model_directory):
+        return False, None, None
 
     try:
         # Fetch the latest release information from GitHub
