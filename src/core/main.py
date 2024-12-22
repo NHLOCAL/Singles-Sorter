@@ -2,6 +2,8 @@
 import flet as ft
 import csv
 from shutil import copy
+import random
+import json
 
 # קבצי התוכנה
 from singles_sorter_v5 import MusicSorter, __VERSION__
@@ -10,7 +12,6 @@ from add_singer_dialog import create_add_singer_dialog
 
 # גרסת התוכנה
 VERSION = __VERSION__
-
 
 def main(page: ft.Page):
 
@@ -22,7 +23,7 @@ def main(page: ft.Page):
     page.theme_mode = ft.ThemeMode.LIGHT
     page.rtl = True
     page.theme = ft.Theme(color_scheme_seed="#2196f3")
-    
+
     # הוספת שכבה עבור בקשת הרשאות באפליקצייה
     if ANDROID_MODE:
         ph = ft.PermissionHandler()
@@ -57,7 +58,6 @@ def main(page: ft.Page):
 
     # פונקצייה להצגת הודעה קופצת בתחתית המסך עם פרמטרים שונים
     show_snackbar = lambda message_text, color, mseconds=3000, : ft.SnackBar(content=ft.Text(message_text), bgcolor=color, duration=mseconds)
-
 
     # פונקציה לפתיחת הודעת מה חדש בהפעלה הראשונה של התוכנה
     def first_run_menu():
@@ -107,7 +107,7 @@ def main(page: ft.Page):
             page.overlay.append(dialog)
             dialog.open = True
             page.update()
-            
+
     # App bar
     page.appbar = ft.AppBar(
         title=ft.Row(
@@ -149,13 +149,11 @@ def main(page: ft.Page):
             ],
         ),
 
-
         bgcolor=ft.colors.ON_PRIMARY_CONTAINER,
         shape=ft.NotchShape.CIRCULAR,
         padding=8,
         height='35',
     )
-
 
     # תפריט אפשרויות נוספות
     # Define menu items
@@ -163,7 +161,7 @@ def main(page: ft.Page):
         if e.control.data == "upadte":
             show_update()
         elif e.control.data == "help":
-            show_content('help', 'עזרה', ft.icons.HELP)        
+            show_content('help', 'עזרה', ft.icons.HELP)
         elif e.control.data == "about":
             show_content('about', 'אודות התוכנה', ft.icons.INFO)
         elif e.control.data == "whats_new":
@@ -179,8 +177,6 @@ def main(page: ft.Page):
         ft.PopupMenuItem(text="הגדרות מתקדמות", icon=ft.icons.SETTINGS, data="settings", on_click=on_menu_selected),
     ]
 
-
-
     # כפתור אפשרויות נוספות בסרגל העליון
     # כולל הצגת התראה אדומה אם קיים עדכון זמין
     menu_button = ft.PopupMenuButton(
@@ -193,7 +189,7 @@ def main(page: ft.Page):
         icon_size=28,
         tooltip="אפשרויות נוספות",
     )
-    
+
     page.appbar.actions.append(menu_button)
 
     # Define handlers for menu items
@@ -247,7 +243,6 @@ def main(page: ft.Page):
         page.overlay.append(help_sheet)
         help_sheet.open = True
         page.update()
-        
 
     def show_update():
 
@@ -262,13 +257,12 @@ def main(page: ft.Page):
             dialog.open = False
 
             download_url = "https://nhlocal.github.io/Singles-Sorter/site/download?utm_source=singles_sorter_program&utm_medium=desktop"
-            
+
             page.launch_url(download_url)
 
-            
             # יישום שיטת עדכון אוטומטי
             page.update()
-        
+
         dialog = ft.AlertDialog(
             modal=True,
             inset_padding=0 if ANDROID_MODE else None,
@@ -277,8 +271,8 @@ def main(page: ft.Page):
                 ft.Text("עדכון גרסה", text_align="center", color=ft.colors.ON_PRIMARY_CONTAINER, weight=ft.FontWeight.BOLD),
             ],
             rtl=True,
-            alignment=ft.MainAxisAlignment.CENTER,     
-            ), 
+            alignment=ft.MainAxisAlignment.CENTER,
+            ),
 
             content=ft.Column([
                 ft.Text(f"גרסה {update_available} זמינה להורדה", text_align="center", rtl=True, size=20),
@@ -299,7 +293,6 @@ def main(page: ft.Page):
         dialog.open = True
         page.update()
 
-
     def show_settings():
         # Open the help file
         try:
@@ -307,7 +300,6 @@ def main(page: ft.Page):
                 add_singers_info = file.read()
         except FileNotFoundError:
             pass
-        
 
         def close_dialog(e):
             dialog.open = False
@@ -374,7 +366,6 @@ def main(page: ft.Page):
             page.update()
             output_file_picker.save_file(allowed_extensions=["csv"], file_name="personal-singer-list.csv", dialog_title="יצוא רשימת זמרים אישית")
 
-
         def export_csv_result(e: ft.FilePickerResultEvent):
             """
             פונקציה לטיפול בתוצאת דיאלוג שמירת קובץ
@@ -388,7 +379,7 @@ def main(page: ft.Page):
                     # לוודא שנתיב היעד כולל סיומת .csv
                     if not dest_path.endswith(".csv"):
                         dest_path += ".csv"
-                    
+
                     # העתקת הקובץ
                     copy(src_path, dest_path)
 
@@ -420,7 +411,6 @@ def main(page: ft.Page):
             dialog.open = True
             page.update()
 
-
         # הגדרת תצוגת מידע נוסף על הוספת זמרים
         is_expanded = False
 
@@ -444,7 +434,6 @@ def main(page: ft.Page):
             ft.TextButton("יבא קובץ CSV", on_click=import_csv),
             ft.TextButton("יצא לקובץ CSV", on_click=export_csv, disabled=ANDROID_MODE),
         ]
-
 
         dialog = ft.AlertDialog(
             inset_padding=0 if ANDROID_MODE else 20,
@@ -472,7 +461,6 @@ def main(page: ft.Page):
                             ],
                         ),
 
-
                         ft.Column(
                             [
                                 ft.Row([icon_arrow, title_add_singers]),
@@ -480,9 +468,8 @@ def main(page: ft.Page):
 
                                 ft.Row(add_singers_options, wrap=ANDROID_MODE,)
                             ],
-                            
-                        ),
 
+                        ),
 
                     ],
 
@@ -503,7 +490,6 @@ def main(page: ft.Page):
         dialog.open = True
         page.update()
 
-
     # Input fields
     height_button = '50'
     if ANDROID_MODE:
@@ -512,7 +498,6 @@ def main(page: ft.Page):
     else:
         width_button = '150'
         describe_button = 'בחר תיקיה'
-    
 
     # הגדרת סגנון עקבי לכפתורים
     round_button = ft.ButtonStyle(
@@ -552,16 +537,14 @@ def main(page: ft.Page):
         border_color=ft.colors.OUTLINE_VARIANT,
 
     )
-    
+
     source_picker = ft.FilePicker(on_result=lambda e: update_path(e, source_dir_input))
     target_picker = ft.FilePicker(on_result=lambda e: update_path(e, target_dir_input))
-    
+
     page.overlay.extend([source_picker, target_picker])
 
-    
     source_dir_button = ft.ElevatedButton(describe_button, icon=ft.icons.FOLDER_OPEN, on_click=lambda _: source_picker.get_directory_path(), height=height_button, width=width_button, tooltip='בחירת תיקיה המכילה את המוזיקה שברצונך לסדר', style=round_button,)
     target_dir_button = ft.ElevatedButton(describe_button, icon=ft.icons.FOLDER_OPEN, on_click=lambda _: target_picker.get_directory_path(), height=height_button, width=width_button, tooltip='בחירת תיקית יעד אליה יוכנסו תיקיות  המוזיקה שיווצרו', style=round_button)
-
 
     # Checkboxes
     global copy_mode, main_folder_only, singles_folder, exist_only, abc_sort, duet_mode
@@ -646,7 +629,6 @@ def main(page: ft.Page):
         ]
     )
 
-
     # duet_mode
     def on_duet_mode_changed(e):
         page.client_storage.set("duet_mode", duet_mode.value)
@@ -661,7 +643,7 @@ def main(page: ft.Page):
         value=page.client_storage.get("duet_mode") or False,
         on_change=on_duet_mode_changed  # הוספת טיפול באירוע שינוי
     )
-    
+
 
 
     # פונקציה לשמירת ההגדרות
@@ -682,8 +664,6 @@ def main(page: ft.Page):
             page.update()
             return
 
-
-    
     # כפתור שמירת הגדרות
     save_config_button = ft.IconButton(
         icon=ft.icons.SAVE,
@@ -692,12 +672,10 @@ def main(page: ft.Page):
         tooltip='שמור הגדרות מותאמות אישית',
         disabled=False,
     )
-    
-    
+
     # Progress bar
     page.window.progress_bar='0.0'
     progress_bar = ft.ProgressBar(width=250 if ANDROID_MODE else 400, value=0)
-    
 
     # הצגת הודעת אזהרה לפני הפעלת הסריקה
     def show_warning(e):
@@ -710,23 +688,23 @@ def main(page: ft.Page):
         def continue_action(e):
             dialog.open = False
 
-            # בקשת הרשאת ניהול קבצים מהמשתמש            
+            # בקשת הרשאת ניהול קבצים מהמשתמש
             if ANDROID_MODE:
                 def check_permission():
                     o = ph.check_permission(ft.PermissionType.MANAGE_EXTERNAL_STORAGE)
-                    return o     
+                    return o
 
                 def request_permission():
                     o = ph.request_permission(ft.PermissionType.MANAGE_EXTERNAL_STORAGE)
-                    
+
                 permission_status = check_permission()
                 if str(permission_status) != "PermissionStatus.GRANTED":
                     request_permission()
 
             process_files(e, page, mode)
-            
+
             page.update()
-        
+
         # קביעת תוכן ההודעה והכותרת בהתאם לכפתור שנלחץ
         if mode == "organize":
             title_text = "אשר והתחל"
@@ -749,7 +727,6 @@ def main(page: ft.Page):
         dialog.open = True
         page.update()
 
-    
     # הגדרות עבור כפתורים ראשיים
     if ANDROID_MODE:
         organize_button_title = "מיין"
@@ -762,7 +739,6 @@ def main(page: ft.Page):
         fix_button_title = "תקן שמות"
         width_fix_button = 170
         width_organize_button = 180
-
 
     organize_button = ft.ElevatedButton(
         content=ft.Row(
@@ -779,7 +755,7 @@ def main(page: ft.Page):
         height=60,
         width=width_organize_button,
     )
-    
+
     fixed_button = ft.ElevatedButton(
         content=ft.Row(
             [
@@ -796,8 +772,71 @@ def main(page: ft.Page):
         width=width_fix_button,
     )
 
-
     PADDING_ITEMS_LIST = ft.padding.only(10, 0, 10, 0)
+
+    # Load tips from JSON file
+    with open("tips3.json", "r", encoding="utf-8") as f:
+        tips_data = json.load(f)
+
+    # Function to get a random tip
+    def get_random_tip():
+        return random.choice(tips_data)
+
+    # Get a random tip on startup
+    current_tip = get_random_tip()
+
+    # Define icons and colors for tip types
+    tip_icons = {
+        "טיפ": ft.icons.LIGHTBULB_OUTLINE,
+        "הידעת?": ft.icons.INFO_OUTLINE,
+        "מאחורי הקלעים": ft.icons.SETTINGS_OUTLINED,
+    }
+    tip_colors = {
+        "טיפ": ft.colors.LIGHT_BLUE_ACCENT_700,
+        "הידעת?": ft.colors.GREEN_ACCENT_700,
+        "מאחורי הקלעים": ft.colors.ORANGE_ACCENT_700,
+    }
+
+    # Tips card - עיצוב מעודכן
+    tips_card = ft.Card(
+        elevation=2,  # הוספת צל עדין
+        margin=ft.margin.only(top=15, bottom=0),  # מרווח עליון ותחתון
+        content=ft.Container(
+            content=ft.Column(
+                [
+                    ft.Row(
+                        [
+                            ft.Icon(
+                                tip_icons.get(current_tip["type"]),
+                                color=ft.colors.ON_PRIMARY_CONTAINER,  # צבע אייקון
+                            ),
+                            ft.Text(
+                                current_tip["type"],
+                                theme_style="titleMedium",
+                                weight=ft.FontWeight.BOLD,
+                                color=ft.colors.ON_PRIMARY_CONTAINER,  # צבע כותרת
+                            ),
+                        ],
+                        alignment=ft.MainAxisAlignment.CENTER,
+                    ),
+                    ft.Markdown(
+                        current_tip["content"],
+                        selectable=True,  # מאפשר בחירת טקסט
+                        extension_set="gitHubWeb",  # תמיכה בעיצוב Markdown מתקדם
+                        # תיקון שגיאת TypeError
+                        # rtl=True,  # הוסר
+                        auto_follow_links=True,  # פתיחת קישורים אוטומטית
+                    ),
+                ],
+                tight=True,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=10,  # מרווח בין שורות
+            ),
+            padding=ft.padding.all(20),  # מרווח פנימי
+            bgcolor=tip_colors.get(current_tip["type"], ft.colors.BLUE_GREY_50),  # צבע רקע מעודכן
+            border_radius=ft.border_radius.all(15),  # שוליים מעוגלים
+        ),
+    )
 
 
     # הגדרות הממשק הגרפי של התוכנה
@@ -840,9 +879,9 @@ def main(page: ft.Page):
                                                 alignment=ft.MainAxisAlignment.CENTER,
                                                 expand=True,
                                             ),
+                                            tips_card, # Add tips card here
                                         ],
                                     ),
-                                    
 
                                 ],
                                 spacing=15,
@@ -876,7 +915,7 @@ def main(page: ft.Page):
                                     title=ft.Text("בסיסי", weight=ft.FontWeight.BOLD, size=18),
                                     content_padding=ft.padding.only(5, 0, 10, 0),
                                     ),
-                                
+
                                 ft.ListTile(title=copy_mode,
                                     content_padding=PADDING_ITEMS_LIST,
                                     ),
@@ -891,9 +930,8 @@ def main(page: ft.Page):
                                     ),
 
                                 ft.ListTile(title=singles_folder,
-                                    content_padding=PADDING_ITEMS_LIST,      
+                                    content_padding=PADDING_ITEMS_LIST,
                                     ),
-                                
 
                                 ft.ListTile(title=abc_sort,
                                     content_padding=PADDING_ITEMS_LIST,
@@ -956,7 +994,6 @@ def main(page: ft.Page):
             page.update()
             return
 
-
         def progress_callback(progress):
             progress_num = progress / 100
             progress_bar.value = progress_num
@@ -972,7 +1009,7 @@ def main(page: ft.Page):
             page.update()
 
             sorter = MusicSorter(
-                source_dir = source_dir, 
+                source_dir = source_dir,
                 target_dir = target_dir if mode == "organize" else None,  # העברת target_dir רק אם צריך
                 copy_mode = copy_mode.controls[0].value,
                 abc_sort = abc_sort.controls[0].value,
@@ -1014,13 +1051,13 @@ def main(page: ft.Page):
                     ],
                     actions_alignment=ft.MainAxisAlignment.CENTER,
                     icon=ft.Icon(ft.icons.CHECK_CIRCLE_OUTLINE, color=ft.colors.GREEN)
-                    
+
                 )
                 page.overlay.append(dialog)
                 dialog.open = True
                 page.update()
 
-                
+
 
             elif mode == "fix":
                 # ניקוי תוכן מיותר משמות הקבצים
@@ -1036,7 +1073,7 @@ def main(page: ft.Page):
         except Exception as error:
             snack_bar = show_snackbar(f"שגיאה: {error}", ft.colors.ERROR)
 
-        finally: 
+        finally:
             page.window.progress_bar = '0.0'
             page.overlay.append(snack_bar)
             snack_bar.open = True
@@ -1047,7 +1084,6 @@ def main(page: ft.Page):
             elif mode == "fix":
                 fixed_button.disabled = False
             page.update()
-
 
      # בדיקה אם קיים עדכון זמין
     def update_view():
@@ -1077,7 +1113,7 @@ def main(page: ft.Page):
 
     # הפעלת פונקצייה שפותחת הודעה "מה חדש" בהפעלה הראשונה
     first_run_menu()
-    
+
     # הפעלת בדיקה למודל AI בעת הפעלת התוכנה
     check_and_update_ai_model()
 
