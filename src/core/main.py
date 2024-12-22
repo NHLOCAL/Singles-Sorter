@@ -797,10 +797,12 @@ def main(page: ft.Page):
         "מאחורי הקלעים": ft.colors.ORANGE_ACCENT_700,
     }
 
-    # Tips card - עיצוב מעודכן
+    # ... הקוד הקודם ...
+
+    # Tips card - עיצוב משופר
     tips_card = ft.Card(
-        elevation=2,  # הוספת צל עדין
-        margin=ft.margin.only(top=15, bottom=0),  # מרווח עליון ותחתון
+        elevation=4,  # הגדלת הצל
+        margin=ft.margin.only(top=15, bottom=0),
         content=ft.Container(
             content=ft.Column(
                 [
@@ -808,36 +810,37 @@ def main(page: ft.Page):
                         [
                             ft.Icon(
                                 tip_icons.get(current_tip["type"]),
-                                color=ft.colors.ON_PRIMARY_CONTAINER,  # צבע אייקון
+                                color=tip_colors.get(current_tip["type"], ft.colors.PRIMARY),  # צבע אייקון מותאם
                             ),
                             ft.Text(
                                 current_tip["type"],
-                                theme_style="titleMedium",
+                                theme_style="titleLarge",  # הגדלת גודל טקסט
                                 weight=ft.FontWeight.BOLD,
-                                color=ft.colors.ON_PRIMARY_CONTAINER,  # צבע כותרת
+                                color=tip_colors.get(current_tip["type"], ft.colors.PRIMARY),  # צבע כותרת מותאם
                             ),
                         ],
                         alignment=ft.MainAxisAlignment.CENTER,
                     ),
                     ft.Markdown(
                         current_tip["content"],
-                        selectable=True,  # מאפשר בחירת טקסט
-                        extension_set="gitHubWeb",  # תמיכה בעיצוב Markdown מתקדם
-                        # תיקון שגיאת TypeError
-                        # rtl=True,  # הוסר
-                        auto_follow_links=True,  # פתיחת קישורים אוטומטית
+                        selectable=True,
+                        extension_set="gitHubWeb",
+                        auto_follow_links=True,
+                        # הוסר text_align
                     ),
                 ],
                 tight=True,
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                spacing=10,  # מרווח בין שורות
+                alignment=ft.MainAxisAlignment.CENTER, # added
+                spacing=10,
             ),
-            padding=ft.padding.all(20),  # מרווח פנימי
-            bgcolor=tip_colors.get(current_tip["type"], ft.colors.BLUE_GREY_50),  # צבע רקע מעודכן
-            border_radius=ft.border_radius.all(15),  # שוליים מעוגלים
+            padding=ft.padding.all(20),
+            bgcolor=ft.colors.PRIMARY_CONTAINER,  # שינוי צבע רקע
+            border=ft.border.all(2, tip_colors.get(current_tip["type"], ft.colors.PRIMARY)),  # הוספת מסגרת
+            border_radius=ft.border_radius.all(10),  # עידון עיגול פינות
         ),
     )
-
+    # ... המשך הקוד ...
 
     # הגדרות הממשק הגרפי של התוכנה
     page.add(
