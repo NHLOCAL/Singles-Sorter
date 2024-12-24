@@ -775,7 +775,7 @@ def main(page: ft.Page):
     PADDING_ITEMS_LIST = ft.padding.only(10, 0, 10, 0)
 
     # Load tips from JSON file
-    with open("tips.json", "r", encoding="utf-8") as f:
+    with open("app/tips.json", "r", encoding="utf-8") as f:
         tips_data = json.load(f)
 
     # Function to get a random tip
@@ -878,9 +878,11 @@ def main(page: ft.Page):
                                                 alignment=ft.MainAxisAlignment.CENTER,
                                                 expand=True,
                                             ),
-                                            tips_card, # Add tips card here
+                                            
                                         ],
                                     ),
+                                    
+                                    tips_card, # Add tips card here
 
                                 ],
                                 spacing=15,
