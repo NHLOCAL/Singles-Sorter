@@ -833,7 +833,7 @@ def main(page: ft.Page):
             ),
             padding=ft.padding.all(20),
             bgcolor=ft.colors.PRIMARY_CONTAINER,  # שינוי צבע רקע
-            border=ft.border.all(2, tip_colors.get(current_tip["type"], ft.colors.PRIMARY)),  # הוספת מסגרת
+            border=ft.border.all(1, tip_colors.get(current_tip["type"], ft.colors.PRIMARY)),  # הוספת מסגרת
             border_radius=ft.border_radius.all(10),  # עידון עיגול פינות
         ),
     )
