@@ -789,7 +789,7 @@ def main(page: ft.Page):
     tip_icons = {
         "טיפ": ft.icons.LIGHTBULB_OUTLINE,
         "הידעת?": ft.icons.INFO_OUTLINE,
-        "מאחורי הקלעים": ft.icons.SETTINGS_OUTLINED,
+        "מאחורי הקלעים": ft.icons.VISIBILITY_OUTLINED,
     }
     tip_colors = {
         "טיפ": ft.colors.LIGHT_BLUE_ACCENT_700,
