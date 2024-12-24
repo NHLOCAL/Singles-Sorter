@@ -319,22 +319,12 @@ class MusicSorter:
                     metadata = load_file(file_path)
                     album = metadata.get('album')
                     artist = metadata.get('artist')
-                    album_artist = metadata.get('albumartist')  # קריאת אמן אלבום
                     track = metadata.get('tracknumber')
 
                     if album:
                         album_value = album.value
                         album_names.append(album_value)
-
-                    # שינוי: בדיקת אמן אלבום תחילה
-                    if album_artist:
-                        artist_name = fix_jibrish(album_artist.value, "heb")
-                        if self.check_artist(artist_name):  # בדיקה אם אמן אלבום תקין
-                            artists[artist_name] = artists.get(artist_name, 0) + 1
-                        elif artist:  # אם לא תקין, נסה את אמן רגיל
-                            artist_name = fix_jibrish(artist.value, "heb")
-                            artists[artist_name] = artists.get(artist_name, 0) + 1
-                    elif artist:  # אם אין אמן אלבום, נסה את אמן רגיל
+                    if artist:
                         artist_name = fix_jibrish(artist.value, "heb")
                         artists[artist_name] = artists.get(artist_name, 0) + 1
 
