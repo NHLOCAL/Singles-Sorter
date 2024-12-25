@@ -1,7 +1,7 @@
 # מסדר הסינגלים - Singles Sorter
 
 <p align="center">
-    <img src="https://github.com/NHLOCAL/Singles-Sorter/blob/main/versions.data/program-screen.png?raw=true" width="500"/>
+    <img src="https://github.com/NHLOCAL/Singles-Sorter/blob/main/versions.data/program-screen.png?raw=true"/>
 </p>
 
 ## 🎵 אודות מסדר הסינגלים
