@@ -93,7 +93,7 @@ jobs:
         Copy-Item dist\main.exe portable\
         Copy-Item -Recurse src\core\app portable\
         Copy-Item -Recurse src\core\assets portable\
-        Compress-Archive -Path portable\* -DestinationPath Singles-Sorter-Portable-${{ steps.get_version.outputs.VERSION }}.zip -CompressionLevel Optimal
+        Compress-Archive -Path portable\* -DestinationPath Singles-Sorter-Portable-AI-${{ steps.get_version.outputs.VERSION }}.zip -CompressionLevel Optimal
 
     - name: Create Release
       uses: softprops/action-gh-release@v2.0.6
@@ -106,4 +106,4 @@ jobs:
         prerelease: true
         files: |
           Output/Singles-Sorter-Installer-AI-${{ steps.get_version.outputs.VERSION }}.exe
-          Singles-Sorter-Portable-AI${{ steps.get_version.outputs.VERSION }}.zip
+          Singles-Sorter-Portable-AI-${{ steps.get_version.outputs.VERSION }}.zip
