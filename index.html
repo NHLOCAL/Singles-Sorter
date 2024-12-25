@@ -170,11 +170,16 @@
     </section>
   </main>
 
-  <a class="button-image" href="https://www.buymeacoffee.com/NHLOCAL" title="עזרו לי לעזור לכם!" target="_blank">
-    <div id="bmc-wbtn" style="display: flex; align-items: center; justify-content: center; width: 64px; height: 64px; background: #D3FAA5; color: white; border-radius: 32px; position: fixed; left: 18px; bottom: 18px; box-shadow: rgba(0, 0, 0, 0.4) 0px 4px 8px; z-index: 9999; cursor: pointer; font-weight: 600; transition: all 0.2s ease 0s; transform: scale(1);">
-      <font style="vertical-align: inherit; font-size: 40px;">💎</font>
-    </div>
-  </a> 
+
+  <script src='https://storage.ko-fi.com/cdn/scripts/overlay-widget.js'></script>
+	<script>
+	  kofiWidgetOverlay.draw('nhlocal', {
+		'type': 'floating-chat',
+		'floating-chat.donateButton.text': 'תמוך בי',
+		'floating-chat.donateButton.background-color': '#0183C4',
+		'floating-chat.donateButton.text-color': '#F3FF28'
+	  });
+  </script>
 
   <script>
     // JavaScript for the scrolling effect

@@ -652,9 +652,9 @@ class MusicSorter:
             # Running in a bundle (e.g., PyInstaller)
             main_csv_path = Path(sys._MEIPASS) / 'app' / 'singer-list.csv'
         else:
-            main_csv_path = Path(__file__).parent / 'app' / 'singer-list.csv'
+            main_csv_path = Path("app/singer-list.csv").resolve()
 
-        personal_csv_path = Path(__file__).parent / 'app' / 'personal-singer-list.csv'
+        personal_csv_path = Path("app/personal-singer-list.csv").resolve()
 
         csv_paths = [main_csv_path, personal_csv_path]
 
