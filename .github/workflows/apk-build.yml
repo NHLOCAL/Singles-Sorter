@@ -2,13 +2,8 @@ name: APK Build
 
 on:
   push:
-    branches:
-      - dev
-      - main
     paths:
       - '.github/workflows/apk-build.yml'
-    tags:
-      - '*'
 
 
   # Allows you to run this workflow manually from the Actions tab of the repository
