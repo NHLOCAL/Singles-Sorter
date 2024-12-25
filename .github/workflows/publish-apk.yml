@@ -50,23 +50,25 @@ jobs:
       shell: bash
       run: |
         VERSION=${GITHUB_REF#refs/tags/}
-        FILENAME="Singles-Sorter-$VERSION.apk"
+        VERSION_CLEAN=${VERSION#v}
+        FILENAME="Singles-Sorter-$VERSION_CLEAN.apk"
         echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        echo "VERSION_CLEAN=$VERSION_CLEAN" >> $GITHUB_OUTPUT
         echo "FILENAME=$FILENAME" >> $GITHUB_OUTPUT
-        echo "RELEASE_TITLE=APK Build Release $VERSION" >> $GITHUB_OUTPUT
+        echo "RELEASE_TITLE=APK Build Release $VERSION_CLEAN" >> $GITHUB_OUTPUT
 
     - name: Rename APK File
       run: |
         mv build/apk/*.apk build/apk/${{ steps.get_version.outputs.FILENAME }}
 
-    - name: Create Release
+    - name: Create Draft Release
       uses: softprops/action-gh-release@v2.0.6
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ steps.get_version.outputs.VERSION }}
         name: ${{ steps.get_version.outputs.RELEASE_TITLE }}
-        draft: false
+        draft: true
         prerelease: false
         files: |
           build/apk/${{ steps.get_version.outputs.FILENAME }}
