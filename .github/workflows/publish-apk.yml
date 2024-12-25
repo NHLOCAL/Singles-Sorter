@@ -3,7 +3,7 @@ name: APK Build and Release
 on:
   push:
     tags:
-      - '*'
+      - 'v*'
 
   workflow_dispatch:
 
@@ -49,13 +49,12 @@ jobs:
       id: get_version
       shell: bash
       run: |
-        VERSION=${GITHUB_REF#refs/tags/}
-        VERSION_CLEAN=${VERSION#v}
+        VERSION=${GITHUB_REF#refs/tags/v}
         FILENAME="Singles-Sorter-$VERSION_CLEAN.apk"
         echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
         echo "VERSION_CLEAN=$VERSION_CLEAN" >> $GITHUB_OUTPUT
         echo "FILENAME=$FILENAME" >> $GITHUB_OUTPUT
-        echo "RELEASE_TITLE=APK Build Release $VERSION_CLEAN" >> $GITHUB_OUTPUT
+        echo "RELEASE_TITLE=מסדר הסינגלים $VERSION" >> $GITHUB_OUTPUT
 
     - name: Rename APK File
       run: |
@@ -66,9 +65,9 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ steps.get_version.outputs.VERSION }}
+        tag_name: ${{ github.ref }}
         name: ${{ steps.get_version.outputs.RELEASE_TITLE }}
         draft: true
-        prerelease: false
+        prerelease: true
         files: |
           build/apk/${{ steps.get_version.outputs.FILENAME }}
