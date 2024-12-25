@@ -1,0 +1,46 @@
+[project]
+name = "singlesorter"
+version = "14.0.0beta"
+description = "מסדר הסינגלים"
+authors = [{ name = "NHLOCAL", email = "nh.local11@gmail.com" }]
+dependencies = [
+  "flet",
+  "music_tag",
+  "requests",
+  "chardet"
+]
+
+[tool.flet]
+org = "com.nhlocal" # מזהה ארגוני ייחודי
+product = "מסדר הסינגלים" # שם המוצר המוצג
+company = "NHLOCAL" # שם החברה
+copyright = "Copyright (C) 2024 by NHLOCAL"
+build_number = 1 # מספר בנייה פנימי
+# permissions = ["READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE", "READ_MEDIA_IMAGES", "ACCESS_MEDIA_LOCATION", "MANAGE_EXTERNAL_STORAGE"] # הרשאות אפשריות
+
+[tool.flet.app]
+module = "main" # קובץ הכניסה הראשי
+path = "src/core" # שורש הפרויקט
+exclude = ["requirements.txt", "pyproject.toml", "1.py", "models", "logs", ] # קבצים שלא יתווספו לארכיון
+
+
+[tool.flet.android.permission] # --android-permissions
+"android.permission.READ_EXTERNAL_STORAGE" = true
+"android.permission.WRITE_EXTERNAL_STORAGE" = true
+"android.permission.READ_MEDIA_IMAGES" = true
+"android.permission.ACCESS_MEDIA_LOCATION" = true
+"android.permission.MANAGE_EXTERNAL_STORAGE" = true
+
+
+flutter.dependencies = ["flet_permission_handler"] # --include-packages
+
+[tool.flet.splash]
+color = "#0E2B59" # צבע רקע לספלש
+dark_color = "#FFC300" # צבע רקע לספלש במצב כהה
+web = false # השבתת ספלש עבור גרסת ווב
+android = true # ספלש עבור אנדרואיד
+
+[tool.flet.compile]
+# app = true # קומפילציה של קבצי האפליקציה
+# packages = false # השבתת קומפילציה עבור ספריות
+# cleanup = true # ניקוי קבצים מיותרים לאחר הקומפילציה

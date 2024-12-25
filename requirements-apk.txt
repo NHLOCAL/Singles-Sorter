@@ -1,0 +1,4 @@
+flet
+music_tag
+requests
+chardet

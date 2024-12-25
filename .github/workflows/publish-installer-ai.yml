@@ -119,4 +119,5 @@ jobs:
         prerelease: true
         files: |
           Output/Singles-Sorter-Installer-AI-${{ steps.get_version.outputs.VERSION }}.exe
+
           Singles-Sorter-Portable-AI-${{ steps.get_version.outputs.VERSION }}.zip

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-__VERSION__ = '13.9'
+__VERSION__ = '14.0'
 
 import os
 import sys
@@ -38,13 +38,14 @@ UNUSUAL_LIST = [
 ]
 
 SUBSTRINGS_TO_REMOVE = [
-    " -מייל מיוזיק",
-    " - ציצו במייל",
-    "-חדשות המוזיקה",
-    " - חדשות המוזיקה",
-    " - ציצו",
-    " מוזיקה מכל הלב",
-    " - מייל מיוזיק"
+    "מייל מיוזיק",
+    "ציצו במייל",
+    "חדשות המוזיקה",
+    "חדשות המוזיקה",
+    "ציצו",
+    "מוזיקה מכל הלב",
+    "מייל מיוזיק",
+    "המחדש",
 ]
 
 SUPPORTED_EXTENSIONS = {'.m4a', '.wma', '.wav', '.aiff', '.flac', '.aac', '.alac', '.wv', '.ogg', '.dsf', '.opus', '.mp3'}
@@ -132,11 +133,8 @@ class MusicSorter:
         if not any(self.source_dir.iterdir()):
             raise ValueError("תיקיית המקור ריקה")
 
-    def clean_filename(self, filename):
-        # הסרת תתי-מחרוזות מוגדרות מראש
-        for substring in SUBSTRINGS_TO_REMOVE:
-            filename = filename.replace(substring, "")
 
+    def clean_filename(self, filename):
         # טיפול בקווים תחתונים
         if "_" in filename:
             if " " not in filename:
@@ -149,7 +147,18 @@ class MusicSorter:
         # הסרת מקפים שמחוברים לאותיות ללא רווח
         filename = re.sub(r'(?<=\w)-(?=\w)', ' ', filename)
 
+        # הסרת תתי-מחרוזות מוגדרות מראש, מבלי להסיר רווחים
+        for substring in SUBSTRINGS_TO_REMOVE:
+            if substring.strip():  # מוודא שהמחרוזת אינה רווח או מחרוזת ריקה
+                filename = filename.replace(substring, "")
+
+        # החלפת רווחים מרובים ברווח בודד
+        filename = re.sub(r'\s+', ' ', filename).strip()
+
         return filename
+
+
+
 
     def fix_metadata_field(self, metadata, field_name, file_path):
         value = metadata[field_name].value
@@ -310,12 +319,22 @@ class MusicSorter:
                     metadata = load_file(file_path)
                     album = metadata.get('album')
                     artist = metadata.get('artist')
+                    album_artist = metadata.get('albumartist')  # קריאת אמן אלבום
                     track = metadata.get('tracknumber')
 
                     if album:
                         album_value = album.value
                         album_names.append(album_value)
-                    if artist:
+
+                    # שינוי: בדיקת אמן אלבום תחילה
+                    if album_artist:
+                        artist_name = fix_jibrish(album_artist.value, "heb")
+                        if self.check_artist(artist_name):  # בדיקה אם אמן אלבום תקין
+                            artists[artist_name] = artists.get(artist_name, 0) + 1
+                        elif artist:  # אם לא תקין, נסה את אמן רגיל
+                            artist_name = fix_jibrish(artist.value, "heb")
+                            artists[artist_name] = artists.get(artist_name, 0) + 1
+                    elif artist:  # אם אין אמן אלבום, נסה את אמן רגיל
                         artist_name = fix_jibrish(artist.value, "heb")
                         artists[artist_name] = artists.get(artist_name, 0) + 1
 

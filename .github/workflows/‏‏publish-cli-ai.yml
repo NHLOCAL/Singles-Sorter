@@ -63,4 +63,5 @@ jobs:
         name: ${{ steps.get_version.outputs.RELEASE_TITLE }}
         draft: true
         prerelease: true
+
         files: ./dist/singles-sorter-cli-ai-${{ steps.get_version.outputs.VERSION }}.exe
