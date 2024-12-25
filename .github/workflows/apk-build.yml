@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - dev
+      - main
     paths:
       - '.github/workflows/apk-build.yml'
     tags:
