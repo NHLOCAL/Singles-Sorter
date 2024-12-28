@@ -24,11 +24,7 @@ jobs:
 
     - name: Build EXE
       run: |
-        pyinstaller --onefile \
-          --add-data "src/core/app/singer-list.csv;app" \
-          --name "Singles-Sorter" \
-          --icon "src/core/assets/icon.ico" \
-          "src/core/singles_sorter_v5.py"
+        pyinstaller --onefile --add-data "src/core/app/singer-list.csv;app" --name "Singles-Sorter" --icon "src/core/assets/icon.ico" "src/core/singles_sorter_v5.py"
 
     - name: Get the version
       id: get_version
