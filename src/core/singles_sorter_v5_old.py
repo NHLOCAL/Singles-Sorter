@@ -272,175 +272,206 @@ class MusicSorter:
 
     def analyze_album(self, folder_path):
         """
-        Analyzes a folder to determine if it's an album or a collection of singles.
-        Returns: (is_album, should_process, album_name, artist_name)
-            is_album (bool): True if the folder is considered an album
-            should_process (bool): True if the album should be processed (not ignored)
-            album_name (str | None): the chosen album name if relevant
-            artist_name (str | None): the chosen "main artist" name if relevant
+        Analyzes a folder to determine if it's an album and if it should be processed or ignored.
+
+        Args:
+            folder_path (Path): Path to the folder to analyze
+
+        Returns:
+            tuple: (is_album, should_process, album_name, artist_name)
+                is_album (bool): True if the folder is considered an album
+                should_process (bool): True if the album should be processed (not ignored)
+                album_name (str): Name of the album (if applicable)
+                artist_name (str): Name of the artist (if applicable)
         """
         try:
-            # 1. בדיקות בסיסיות על התיקיה
+            # Check if it's a directory
             if not folder_path.is_dir():
+                self.logger.debug(f"{folder_path} is not a directory")
                 return False, False, None, None
-            
+
+            # Get all audio files in the folder
             audio_files = [f for f in folder_path.glob('*') if f.suffix.lower() in SUPPORTED_EXTENSIONS]
+
+            # Check if there are enough files to be considered an album
             if len(audio_files) < 3:
-                # פחות מ-3 קבצים, כנראה סינגלים
                 return False, False, None, None
 
+            # Check for subdirectories (albums usually don't have subdirectories)
             folder_count = sum(1 for item in folder_path.iterdir() if item.is_dir())
-            if folder_count > 1:
-                # יש יותר מתיקיית-משנה אחת => לא "אלבום" בודד
+
+            if folder_count == 1:
+                contain_folder = True
+            elif folder_count > 1:
                 return False, False, None, None
+            else:
+                contain_folder = False
 
-            # 2. אוספים מידע מכל הקבצים
+            # Analyze metadata of the files
             album_names = []
-            artists_dict = {}
-            track_numbers = []
-            filename_numbers = []
+            artists = {}
+            track_numbers = set()
+            filename_numbers = set()
 
-            # לצורך מעקב אם *כל* הקבצים באמת ריקים לגמרי
-            empty_files_count = 0  
-
-            for file_path in audio_files:
+            for file in audio_files:
+                file_path = file
                 try:
                     metadata = load_file(file_path)
+                    album = metadata.get('album')
+                    artist = metadata.get('artist')
+                    album_artist = metadata.get('albumartist')  # קריאת אמן אלבום
+                    track = metadata.get('tracknumber')
 
-                    # album
-                    album_val = metadata.get('album').value if metadata.get('album') else ""
-                    if not album_val.strip():
-                        album_val = "___EMPTY___"
-                    album_names.append(album_val)
+                    if album:
+                        album_value = album.value
+                        album_names.append(album_value)
 
-                    # artist (או albumartist)
-                    artist_val = metadata.get('artist').value if metadata.get('artist') else ""
-                    album_artist_val = metadata.get('albumartist').value if metadata.get('albumartist') else ""
-                    chosen_artist = album_artist_val.strip() if album_artist_val.strip() else artist_val.strip()
-                    chosen_artist = fix_jibrish(chosen_artist, "heb")
+                    # שינוי: בדיקת אמן אלבום תחילה
+                    if album_artist:
+                        artist_name = fix_jibrish(album_artist.value, "heb")
+                        if self.check_artist(artist_name):  # בדיקה אם אמן אלבום תקין
+                            artists[artist_name] = artists.get(artist_name, 0) + 1
+                        elif artist:  # אם לא תקין, נסה את אמן רגיל
+                            artist_name = fix_jibrish(artist.value, "heb")
+                            artists[artist_name] = artists.get(artist_name, 0) + 1
+                    elif artist:  # אם אין אמן אלבום, נסה את אמן רגיל
+                        artist_name = fix_jibrish(artist.value, "heb")
+                        artists[artist_name] = artists.get(artist_name, 0) + 1
 
-                    # tracknumber
-                    tn = metadata.get('tracknumber').value if metadata.get('tracknumber') else None
-                    has_track = False
-                    if tn:
+                    if track:
                         try:
-                            tn_int = int(str(tn).split('/')[0])  # אם "3/10" ⇒ רק 3
-                            track_numbers.append(tn_int)
-                            has_track = True
-                        except:
-                            pass
+                            track_number = int(str(track.value).split('/')[0])  # Handle "1/12"
+                        except ValueError:
+                            track_number = int(str(track.value))
+                        track_numbers.add(track_number)
 
-                    # מספרים בתחילת שם הקובץ
-                    match = re.search(r'^(\d+)', file_path.name)
-                    if match:
-                        filename_numbers.append(int(match.group(1)))
-
-                    # בניית מילון אמנים
-                    if chosen_artist:
-                        artists_dict[chosen_artist] = artists_dict.get(chosen_artist, 0) + 1
-
-                    # בדיקה אם הקובץ ריק *לגמרי* (אמן ריק, אלבום ריק, בלי tracknumber)
-                    if chosen_artist.strip() == "" and album_val == "___EMPTY___" and not has_track and not match:
-                        empty_files_count += 1
+                    # Check for track numbers in filename
+                    filename_match = re.search(r'^(\d+)', file.name)
+                    if filename_match:
+                        filename_numbers.add(int(filename_match.group(1)))
 
                 except Exception as e:
                     self.logger.error(f"Error reading metadata from {file_path}: {e}")
                     self.logger.debug(traceback.format_exc())
 
-            # 3. אם **כל** הקבצים ריקים לגמרי => סינגלים
-            if empty_files_count == len(audio_files):
-                self.logger.debug(f"All files in {folder_path} are fully empty => singles.")
-                return False, False, None, None
-
-            # 4. בדיקת מילות מפתח "סינגל/סינגלים" 
-            #    אם שם האלבום או שם האמן מכיל אותן ⇒ סינגלים
+            # הוספת בדיקה למילות מפתח של סינגלים
             contains_single_keyword = False
-            # נבדוק בכל ה-album_names וגם בשמות האמנים
-            for name in album_names + list(artists_dict.keys()):
-                if name and name != "___EMPTY___":
+            for name in album_names + list(artists.keys()):
+                if name:
                     name_lower = name.lower()
-                    for keyword in SINGLE_KEYWORDS:  # ["סינגל", "סינגלים", "single", "singles"]
+                    for keyword in SINGLE_KEYWORDS:
                         if keyword.lower() in name_lower:
                             contains_single_keyword = True
                             break
-                if contains_single_keyword:
-                    break
+                    if contains_single_keyword:
+                        break
 
             if contains_single_keyword:
-                self.logger.debug(f"Folder {folder_path} has single-keyword in album/artist => singles.")
-                return False, False, None, None
+                self.logger.info(f"Album or artist name contains single keyword, treating files as singles: {folder_path}")
+                return False, False, None, None  # Treat as not an album, so files will be processed individually
 
-            # 5. חישוב "רוב" שם האלבום
-            from collections import Counter
-            c = Counter(album_names)  # ספירת כמה פעמים מופיע כל שם אלבום
-            most_common_album, most_common_count = c.most_common(1)[0]  # (album_val, count)
-            majority_album_ratio = most_common_count / len(audio_files)
-
-            # 6. בדיקת מספור רציף ב-tracknumber או בשם הקובץ
-            #    נגדיר "רציף" = לפחות 70% מהקבצים ממוספרים 1..N
-            def is_consistent_track(nums_list, total_count):
-                """ בודקת אם רשימת המספרים מהווה רצף קרוב ל-1..N ב-70% לפחות. """
-                if not nums_list:
-                    return False
-                unique_nums = set(nums_list)
-                n = len(nums_list)  # כמה קבצים ממוספרים בכלל
-                # min=1, max=n מעיד על רצף מלא (קצת פשטני)
-                if min(unique_nums) == 1 and max(unique_nums) == n and n >= 0.7 * total_count:
-                    return True
-                return False
-
-            has_consistent_tracks = (
-                is_consistent_track(track_numbers, len(audio_files)) or
-                is_consistent_track(filename_numbers, len(audio_files))
-            )
-
-            # 7. זיהוי "אמן ראשי" אם מופיע ב-70%+
-            main_artist = None
-            total_artists_count = sum(artists_dict.values())
-            for art, art_count in artists_dict.items():
-                if art_count / total_artists_count >= 0.7:
-                    main_artist = art
-                    break
-
-            # 8. קבלת החלטה: האם אלבום?
-            ALBUM_THRESHOLD = 0.7
+            # Determine if it's an album based on track numbers
             is_album = False
+            if track_numbers:
+                is_album = len(track_numbers) == len(audio_files) and max(track_numbers) == len(
+                    audio_files
+                )
+            elif filename_numbers:
+                is_album = len(filename_numbers) == len(audio_files) and max(
+                    filename_numbers
+                ) == len(audio_files)
+
+            # Skip if album names are inconsistent
+            if is_album and album_names:
+                unique_album_names = set(album_names)
+                if len(unique_album_names) > 1:
+                    self.logger.info(
+                        f"Album detected but skipped due to inconsistent album names: {folder_path}"
+                    )
+                    return True, False, None, None
+
+            # Check consistency of album name
+            if not is_album and album_names:
+                most_common_album = max(set(album_names), key=album_names.count)
+                album_name_consistency = album_names.count(most_common_album) / len(audio_files)
+
+                if len(set(album_names)) == 1:
+                    is_album = True
+                elif 1 > album_name_consistency >= 0.6 and not contain_folder:
+                    self.logger.info(
+                        f"Inconsistency found in album names, skipping: {folder_path}"
+                    )
+                    return True, False, None, None
+                else:
+                    return False, False, None, None
+
+            # Determine whether to process the album
             should_process = False
+            main_artist = None
 
-            # אם לרוב (>=70%) מהשירים יש שם אלבום זהה (שאינו ריק)
-            # או שיש רציפות מספור => נניח שזה אלבום
-            if (most_common_album != "___EMPTY___" and majority_album_ratio >= ALBUM_THRESHOLD) or has_consistent_tracks:
-                is_album = True
+            if is_album and contain_folder:
+                self.logger.info(
+                    f"Album skipped due to containing internal folder: {folder_path}"
+                )
+                return True, False, None, None
 
-            # אם כבר זוהה שזה אלבום, נבדוק האם יש אמן ראשי. אם כן => נרצה לעבד
             if is_album:
-                if main_artist:
+                if not artists:
+                    # Search for artist name in folder name
+                    dir_name = folder_path.name
+                    for source_name, target_name in self.singer_list:
+                        if source_name in dir_name:
+                            exact = check_exact_name(dir_name, source_name)
+                            if exact:
+                                should_process = True
+                                main_artist = target_name
+                                break
+
+                    if not main_artist:
+                        self.logger.info(
+                            f"Album detected but skipped due to lack of artist info: {folder_path}"
+                        )
+                        return True, False, None, None
+
+                elif len(artists) == 1:
                     should_process = True
+                    main_artist = list(artists.keys())[0]
                 else:
-                    # אין אמן ברור => תלוי בך אם לעבד בכל זאת
-                    should_process = False  # פה אפשר לשנות ל-True, בהתאם ללוגיקה הרצויה
-            else:
-                # אחרת => לא אלבום => סינגלים
-                return False, False, None, None
+                    # Check if one artist appears in 70% or more of the songs
+                    total_songs = sum(artists.values())
+                    for artist, count in artists.items():
+                        if count / total_songs >= 0.7:
+                            should_process = True
+                            main_artist = artist
+                            break
 
-            # 9. שם האלבום הסופי
+            # Determine album name
             album_name = None
+            if album_names:
+                album_name = max(set(album_names), key=album_names.count)
+                album_name = fix_jibrish(album_name, "heb")
+            elif is_album:
+                album_name = folder_path.name
+
+            # Log the decision
             if is_album:
-                # אם יש לנו שם אלבום נפוץ ואינו ריק, ניקח אותו
-                if most_common_album != "___EMPTY___":
-                    album_name = fix_jibrish(most_common_album, "heb")
+                if should_process:
+                    self.logger.info(f"Album detected and will be processed: {folder_path}")
+                    self.logger.info(f"Main artist: {main_artist}")
                 else:
-                    # אם "___EMPTY___", ניקח את שם התיקיה
-                    album_name = fix_jibrish(folder_path.name, "heb")
+                    self.logger.info(
+                        f"Album detected but will be ignored due to inconsistent artists: {folder_path}"
+                    )
+            else:
+                self.logger.debug(f"Not considered an album: {folder_path}")
 
             return is_album, should_process, album_name, main_artist
 
         except Exception as e:
+            # In case of an error, identify as an album and skip to be safe
             self.logger.error(f"Error in analyze_album for {folder_path}: {e}")
             self.logger.debug(traceback.format_exc())
-            # במקרה חריג, מחזירים ערכים שמדלגים על תיקיה זו
             return True, False, None, None
-        
 
     def handle_album_transfer(self, album_path, album_name, artist_name):
         try:
