@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="he">
+
 <head>
   <meta charset="utf-8">
-  <title>דף ההורדות</title>  
+  <title>דף ההורדות</title>
   <meta name="viewport" content="height=device-height, width=device-width, initial-scale=1.0">
   <meta name="description" content="דף ההורדות של תוכנת מסדר הסינגלים, להורדה, download">
   <meta name="keywords" content="תוכנה שמסדרת שירים חרדיים לפי אמן, download, להורדה, מסדר הסינגלים">
@@ -141,6 +142,30 @@
       border-radius: 5px;
       font-weight: bold;
     }
+
+    .additional-versions-container {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+      }
+
+    .additional-versions-button {
+       padding: 15px 30px; /* Increased padding for size */
+        border-radius: 5px;
+        text-decoration: none;
+         display: inline-block;
+         background-color: #fff;
+          color: #005E8A;
+          font-weight: bold;
+		      font-size: 1.2em; /* Larger font size */
+          border: 1px solid #005E8A;
+          transition: all 0.3s ease-in-out;
+    }
+
+      .additional-versions-button:hover {
+          color: #73FBFD;
+          background-color: #C0C0C0;
+      }
   </style>
 </head>
 
@@ -185,8 +210,10 @@
 		  <p>גרסת ממשק שורת הפקודה למשתמשים מתקדמים. מאפשרת אוטומציה ושילוב בסקריפטים</p>
 		  <a href="#" class="butt download-link" data-type="cli">הורד גרסת CLI</a>
 		</div>
-
 	  </div>
+    <div class="additional-versions-container">
+        <a href="#" class="additional-versions-button" id="additional-versions-link">בחירת גרסאות אחרות</a>
+      </div>
     </main>
   </div>
 
@@ -241,6 +268,15 @@
         window.location.href = url;
       });
     });
+
+
+      // Update additional versions link
+      (async function updateAdditionalVersionsLink() {
+      const version = await getLatestVersion();
+        const additionalVersionsLink = document.getElementById('additional-versions-link');
+          additionalVersionsLink.href = `https://github.com/NHLOCAL/Singles-Sorter/releases/tag/v${version}`;
+      })();
+
 
     // Update version number on the page
     (async function updateVersionDisplay() {
