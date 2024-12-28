@@ -1,6 +1,6 @@
 [project]
 name = "singlesorter"
-version = "14.0.0beta"
+version = "14.0.0"
 description = "מסדר הסינגלים"
 authors = [{ name = "NHLOCAL", email = "nh.local11@gmail.com" }]
 dependencies = [
