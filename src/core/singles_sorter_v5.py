@@ -14,6 +14,7 @@ from music_tag import load_file
 from jibrish_to_hebrew import fix_jibrish, check_jibrish
 from check_name import check_exact_name
 import shutil
+from collections import Counter
 
 # פונקציה לבדיקת קיום קבצי מודל AI
 def check_model_files():
@@ -371,7 +372,6 @@ class MusicSorter:
                 return False, False, None, None
 
             # 5. חישוב "רוב" שם האלבום
-            from collections import Counter
             c = Counter(album_names)  # ספירת כמה פעמים מופיע כל שם אלבום
             most_common_album, most_common_count = c.most_common(1)[0]  # (album_val, count)
             majority_album_ratio = most_common_count / len(audio_files)
