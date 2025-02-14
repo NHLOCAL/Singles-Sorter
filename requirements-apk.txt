@@ -2,3 +2,4 @@ flet
 music_tag
 requests
 chardet
+flet-permission-handler
