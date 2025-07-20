@@ -1,0 +1,91 @@
+name: Publish AI Installer and Portable Version for macOS
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Homebrew dependencies
+        run: |
+          # אם Homebrew אינו מותקן, מתקין אותו
+          if ! command -v brew >/dev/null; then
+            echo "Installing Homebrew..."
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          fi
+          brew update
+          brew install pyinstaller
+          brew install create-dmg
+
+      - name: Install Python dependencies
+        run: |
+          pip install pyinstaller music_tag jibrish_to_hebrew flet spacy==3.7.5 scikit-learn==1.5.1 chardet
+
+      - name: Get version
+        id: get_version
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "RELEASE_TITLE=מסדר הסינגלים $VERSION" >> $GITHUB_OUTPUT
+
+      - name: Build macOS App Bundle
+        run: |
+          # הסרת בניות קודמות
+          rm -rf build dist
+          # יצירת .app באמצעות PyInstaller
+          pyinstaller --name "Singles Sorter" \
+                      --windowed \
+                      --icon src/core/assets/icon.icns \
+                      --add-data "src/core/app:app" \
+                      --add-data "src/core/models:models" \
+                      --add-data "src/core/assets:assets" \
+                      src/core/main.py
+          # שינוי שם האפליקציה לתבנית אחידה
+          mv dist/"Singles Sorter.app" dist/Singles-Sorter-${{ steps.get_version.outputs.VERSION }}.app
+
+      - name: Create DMG Installer
+        run: |
+          mkdir -p dist/dmg
+          cp -R dist/Singles-Sorter-${{ steps.get_version.outputs.VERSION }}.app dist/dmg/
+          create-dmg \
+            --volname "מסדר הסינגלים" \
+            --volicon src/core/assets/icon.icns \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "Singles-Sorter-${{ steps.get_version.outputs.VERSION }}.app" 175 120 \
+            --app-drop-link 425 120 \
+            dist/Singles-Sorter-${{ steps.get_version.outputs.VERSION }}.dmg \
+            dist/dmg/
+
+      - name: Package Portable Zip
+        run: |
+          mkdir -p portable
+          cp -R dist/Singles-Sorter-${{ steps.get_version.outputs.VERSION }}.app portable/
+          zip -ry "Singles-Sorter-Portable-AI-${{ steps.get_version.outputs.VERSION }}.zip" portable
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2.0.6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          name: ${{ steps.get_version.outputs.RELEASE_TITLE }}
+          draft: true
+          prerelease: true
+          files: |
+            dist/Singles-Sorter-${{ steps.get_version.outputs.VERSION }}.dmg
+            Singles-Sorter-Portable-AI-${{ steps.get_version.outputs.VERSION }}.zip
