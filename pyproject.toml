@@ -14,7 +14,7 @@ dependencies = [
 org = "com.nhlocal" # מזהה ארגוני ייחודי
 product = "מסדר הסינגלים" # שם המוצר המוצג
 company = "NHLOCAL" # שם החברה
-copyright = "Copyright (C) 2024 by NHLOCAL"
+copyright = "Copyright (C) 2025 by NHLOCAL"
 build_number = 1 # מספר בנייה פנימי
 # permissions = ["READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE", "READ_MEDIA_IMAGES", "ACCESS_MEDIA_LOCATION", "MANAGE_EXTERNAL_STORAGE"] # הרשאות אפשריות
 

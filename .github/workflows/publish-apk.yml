@@ -9,7 +9,7 @@ on:
 
 env:
   PYTHON_VERSION: 3.12.2
-  FLUTTER_VERSION: 3.24.0
+  FLUTTER_VERSION: 3.27.0
 
 jobs:
   build:
