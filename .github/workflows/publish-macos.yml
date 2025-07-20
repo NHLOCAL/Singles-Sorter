@@ -1,4 +1,4 @@
-name: Publish AI Installer and Portable Version for macOS
+name: macOS Publish AI Installer and Portable
 
 on:
   push:
@@ -20,14 +20,43 @@ jobs:
 
       - name: Install Homebrew dependencies
         run: |
-          # אם Homebrew אינו מותקן, מתקין אותו
+          # אם Homebrew לא מותקן, מתקין אותו
           if ! command -v brew >/dev/null; then
-            echo "Installing Homebrew..."
             /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
           fi
           brew update
-          brew install pyinstaller
-          brew install create-dmg
+          brew install pyinstaller create-dmg imagemagick
+
+      - name: Generate ICNS from PNG
+        run: |
+          ICON_SRC="src/core/assets/icon.png"
+          ICONSET_DIR="build/icon.iconset"
+          ICNS_OUT="src/core/assets/icon.icns"
+
+          # וידוא קיום קובץ ה‑PNG
+          if [ ! -f "$ICON_SRC" ]; then
+            echo "❌ מקור האיקון לא נמצא: $ICON_SRC"
+            exit 1
+          fi
+
+          # יצירת תיקיית .iconset
+          rm -rf "$ICONSET_DIR"
+          mkdir -p "$ICONSET_DIR"
+
+          # המרה לגווני גודל שונים
+          sips -z 16 16     "$ICON_SRC" --out "$ICONSET_DIR/icon_16x16.png"
+          sips -z 32 32     "$ICON_SRC" --out "$ICONSET_DIR/icon_16x16@2x.png"
+          sips -z 32 32     "$ICON_SRC" --out "$ICONSET_DIR/icon_32x32.png"
+          sips -z 64 64     "$ICON_SRC" --out "$ICONSET_DIR/icon_32x32@2x.png"
+          sips -z 128 128   "$ICON_SRC" --out "$ICONSET_DIR/icon_128x128.png"
+          sips -z 256 256   "$ICON_SRC" --out "$ICONSET_DIR/icon_128x128@2x.png"
+          sips -z 256 256   "$ICON_SRC" --out "$ICONSET_DIR/icon_256x256.png"
+          sips -z 512 512   "$ICON_SRC" --out "$ICONSET_DIR/icon_256x256@2x.png"
+          sips -z 512 512   "$ICON_SRC" --out "$ICONSET_DIR/icon_512x512.png"
+          sips -z 1024 1024 "$ICON_SRC" --out "$ICONSET_DIR/icon_512x512@2x.png"
+
+          # המרת ה‑iconset ל‑.icns
+          iconutil -c icns "$ICONSET_DIR" -o "$ICNS_OUT"
 
       - name: Install Python dependencies
         run: |
@@ -43,17 +72,15 @@ jobs:
 
       - name: Build macOS App Bundle
         run: |
-          # הסרת בניות קודמות
           rm -rf build dist
-          # יצירת .app באמצעות PyInstaller
-          pyinstaller --name "Singles Sorter" \
-                      --windowed \
-                      --icon src/core/assets/icon.icns \
-                      --add-data "src/core/app:app" \
-                      --add-data "src/core/models:models" \
-                      --add-data "src/core/assets:assets" \
-                      src/core/main.py
-          # שינוי שם האפליקציה לתבנית אחידה
+          pyinstaller \
+            --name "Singles Sorter" \
+            --windowed \
+            --icon src/core/assets/icon.icns \
+            --add-data "src/core/app:app" \
+            --add-data "src/core/models:models" \
+            --add-data "src/core/assets:assets" \
+            src/core/main.py
           mv dist/"Singles Sorter.app" dist/Singles-Sorter-${{ steps.get_version.outputs.VERSION }}.app
 
       - name: Create DMG Installer
