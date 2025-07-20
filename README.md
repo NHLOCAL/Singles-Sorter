@@ -10,7 +10,7 @@
 
 זוהי תוכנה מתקדמת אך פשוטה לשימוש, שנועדה לארגן באופן אוטומטי את אוסף המוזיקה שלכם, במיוחד אם אתם חובבים של זמרים יהודיים וחרדיים. מסדר הסינגלים סורק, מזהה וממיין את קבצי המוזיקה שלכם לתיקיות מסודרות לפי שם האמן, כך שתוכלו למצוא את כל השירים האהובים עליכם בקלות ובמהירות.
 
-[🌐 בקרו באתר הרשמי של התוכנה](https://nhlocal.github.io/Singles-Sorter/)
+[🌐 בקרו באתר הרשמי של התוכנה](https://singles-sorter.ze-kal.top)
 
 ## 🚀 תכונות עיקריות
 

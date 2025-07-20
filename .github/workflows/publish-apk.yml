@@ -50,9 +50,8 @@ jobs:
       shell: bash
       run: |
         VERSION=${GITHUB_REF#refs/tags/v}
-        FILENAME="Singles-Sorter-$VERSION_CLEAN.apk"
+        FILENAME="Singles-Sorter-${VERSION}.apk"
         echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-        echo "VERSION_CLEAN=$VERSION_CLEAN" >> $GITHUB_OUTPUT
         echo "FILENAME=$FILENAME" >> $GITHUB_OUTPUT
         echo "RELEASE_TITLE=מסדר הסינגלים $VERSION" >> $GITHUB_OUTPUT
 

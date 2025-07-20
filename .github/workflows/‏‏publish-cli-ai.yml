@@ -40,6 +40,17 @@ jobs:
         $version = "${{ steps.get_version.outputs.VERSION }}"
         Move-Item -Path "dist\Singles-Sorter.exe" -Destination "dist\singles-sorter-cli-ai-$version.exe"
 
+    - name: Copy models directory
+      shell: pwsh
+      run: |
+        Copy-Item -Path "src\core\models" -Destination "dist\models" -Recurse
+
+    - name: Create ZIP Archive
+      shell: pwsh
+      run: |
+        $version = "${{ steps.get_version.outputs.VERSION }}"
+        Compress-Archive -Path @("dist\singles-sorter-cli-ai-$version.exe", "dist\models") -DestinationPath "dist\singles-sorter-cli-ai-$version.zip"
+
     - name: Create Release
       uses: softprops/action-gh-release@v2.0.6
       env:
@@ -49,4 +60,4 @@ jobs:
         name: ${{ steps.get_version.outputs.RELEASE_TITLE }}
         draft: true
         prerelease: true
-        files: ./dist/singles-sorter-cli-ai-${{ steps.get_version.outputs.VERSION }}.exe
+        files: ./dist/singles-sorter-cli-ai-${{ steps.get_version.outputs.VERSION }}.zip
