@@ -11,8 +11,10 @@
   <link rel="canonical" href="{{ page.canonical_url | default: page.url | absolute_url }}" />
   <link rel="stylesheet" href="{{ '/assets/css/styles.css' | relative_url }}">
   <link rel="icon" type="image/x-icon" href="{{ '/assets/favicon.ico' | relative_url }}">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <script src="https://nhlocal.github.io/general-settings.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&display=swap" rel="stylesheet">
   
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-TGD4VQW4X8"></script>
@@ -20,15 +22,23 @@
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-   
     gtag('config', 'G-TGD4VQW4X8');
   </script>
 </head>
-<body style="{{ page.body_style }}">
+<body>
 
   {% include header.html %}
 
-  {{ content }}
+  <main>
+    {{ content }}
+  </main>
+
+  <footer class="main-footer">
+    <div class="container">
+      <p>&copy; 2024 מסדר הסינגלים | פותח על ידי NH.LOCAL</p>
+      <a href="https://mail.google.com/mail/u/0/?view=cm&fs=1&tf=1&source=mailto&to=mesader.singelim%40gmail.com" target="_blank">צור קשר</a>
+    </div>
+  </footer>
 
 </body>
 </html>
