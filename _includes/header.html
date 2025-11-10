@@ -1,34 +1,13 @@
-<div class="topnav">
-  <a class="left_item" href="https://nhlocal.github.io/" title="לשאר התוכנות של היוצר">
-    <img width="50" style="border-radius: 48%;" src="{{ '/assets/images/NH.LOCAL.jpg' | relative_url }}" alt="הסמל של המחבר">
-  </a>
-  
-  {% assign current_path = page.url | replace: '.html', '' %}
-
-  {% if current_path == '/site/download' %}
-    <a href="{{ '/' | relative_url }}?utm_source=download-page&utm_medium=site">עמוד ראשי</a>
-    <h3>דף ההורדות</h3>
-  {% else %}
-    {% if current_path == '/' or current_path == '/index' %}
-      <h3>עמוד ראשי</h3>
-    {% else %}
-      <a href="{{ '/' | relative_url }}">עמוד ראשי</a>
-    {% endif %}
-
-    {% if current_path == '/site/Survey' %}
-      <h3>מלא משוב</h3>
-    {% else %}
-      <a href="{{ '/site/Survey' | relative_url }}" style="color: rgb(236, 255, 91)"><b>מילוי משוב</b></a>
-    {% endif %}
-
-    {% if current_path == '/site/help' %}
-      <h3>קבל עזרה</h3>
-    {% else %}
-      <a href="{{ '/site/help' | relative_url }}">קבל עזרה</a>
-    {% endif %}
-
-    <a href="https://mail.google.com/mail/u/0/?view=cm&fs=1&tf=1&source=mailto&to=mesader.singelim%40gmail.com" target="_blank">
-      {% if current_path == '/' or current_path == '/index' %}צור קשר{% else %}שלח מייל{% endif %}
+<header class="topnav">
+  <div class="topnav-content">
+    <a class="left_item" href="https://nhlocal.github.io/" title="לשאר התוכנות של היוצר">
+      <img src="{{ '/assets/images/NH.LOCAL.jpg' | relative_url }}" alt="הסמל של המחבר">
     </a>
-  {% endif %}
-</div>
+    <nav class="nav-links">
+      <a href="{{ '/' | relative_url }}" {% if page.url == '/' %}class="active"{% endif %}>עמוד ראשי</a>
+      <a href="{{ '/site/help' | relative_url }}" {% if page.url == '/site/help.html' %}class="active"{% endif %}>קבל עזרה</a>
+      <a href="{{ '/site/Survey' | relative_url }}" {% if page.url == '/site/Survey.html' %}class="active highlight"{% endif %}><b>מילוי משוב</b></a>
+      <a href="https://mail.google.com/mail/u/0/?view=cm&fs=1&tf=1&source=mailto&to=mesader.singelim%40gmail.com" target="_blank">צור קשר</a>
+    </nav>
+  </div>
+</header>

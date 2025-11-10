@@ -1,186 +1,156 @@
 ---
 layout: default
-title: מסדר הסינגלים - אתר רשמי
-description: "הדף הראשי של תוכנת מסדר הסינגלים. תוכנה שמסדרת שירים חרדיים לפי אמן."
-keywords: "הורדת סינגלים, מוזיקה בדרייב, שיר בוט, מוזיקה חסידית, מיון שירים, מיון, מיון מוזיקה, איך למיין שירים, איך למיין קבצים, מערכת הקבצים, סדר בקבצים"
+title: מסדר הסינגלים - סדר אוטומטי בספריית המוזיקה שלך
+description: "התוכנה היחידה שמזהה וממיינת אוטומטית מוזיקה חסידית וישראלית. הורד בחינם והפוך תיקייה מפוזרת לספרייה מסודרת בשניות."
+keywords: "מיון שירים, סידור מוזיקה, תוכנה לסידור שירים, מוזיקה חסידית, סינגלים, ארגון קבצים, מסדר הסינגלים"
 canonical_url: https://singles-sorter.ze-kal.top/
 ---
-<body>
-  <main>
-	<section class="hero scale-div">
-	
-      <div class="alert">
-        <div class="close-container">
-          <span class="closebtn" onclick="this.parentElement.parentElement.style.display='none';">×</span>
-        </div>
-        <div class="content">
-          <strong class="promo-text">מאגר המוזיקה בדרייב - הרישום לשנה ג' נפתח</strong>
-          <p class="description">השנה השלישית מתחילה כעת! קבלו גישה למאגר מוזיקלי עצום ונדיר המכיל 500 ג'יגה של תוכן!</p>
-          <a class="cta-button" id="music-in-drive" href="https://docs.google.com/forms/d/e/1FAIpQLScfzba0porXVkKOPQR2OhY2kevGLFoPvnAkjC-Cs6KLm5idLg/viewform?usp=dialog" target="_blank" onclick="conversion_music_drive()">אני רוצה לבדוק!</a>
-        </div>
-      </div>
 
-	  <div class="container text-center"> 
-		<h1 >מסדר הסינגלים - האתר הרשמי</h1><br>
-		<p>תוכנה שמסדרת קבצי מוזיקה בודדים בתיקיות מסודרות לפי אמנים</p>
-		<br>
-		<a id="download-file" href="{{ 'site/download' | relative_url }}">
-		  <img class="button-image" title="נסה אותי!" style="border-radius: 1%; max-width: 90%; height: auto;" src="https://github.com/NHLOCAL/Singles-Sorter/blob/main/versions.data/program-screen.png?raw=true" alt="צילום מסך - מסדר הסינגלים" width="650">
-		</a>
-	  </div>
-	</section>
-
-<div class="button-container">
-  <a href="{{ 'site/download' | relative_url }}" class="custom-button download-button">
-    <i class="fas fa-download button-icon"></i>
-    הורד כעת
-  </a>
-  <a href="https://github.com/NHLOCAL/Singles-Sorter" target="_blank" class="custom-button github-button">
-	<i class="fab fa-github button-icon"></i>
-    דרג בגיטהאב
-  </a>
-</div>
-
- <section class="how-it-works scale-div" style="background-color: #deeeff;">
-      <div class="container text-center">
-        <h2>כיצד זה עובד?</h2> <br>
-        <div class="steps">
-          <div class="step">
-            <div class="icon-container"><i class="fas fa-search feature-icon"></i> </div>
-            <h3>סריקת קבצים</h3>
-            <p>בשלב הראשון, מסדר הסינגלים סורק את תיקיית המוזיקה שבחרתם</p>
-          </div>
-          <div class="step">
-            <div class="icon-container"> <i class="fas fa-music feature-icon"></i> </div>
-            <h3>זיהוי אמנים</h3>
-            <p>התוכנה מנתחת את שמות הקבצים והתגים שלהם כדי לזהות במדויק מי מבצע את השיר</p>
-          </div>
-          <div class="step">
-            <div class="icon-container"> <i class="fas fa-folder-plus feature-icon"></i> </div>
-            <h3>יצירת מבנה תיקיות</h3>
-            <p>לאחר זיהוי האמנים, התוכנה יוצרת תיקיות חדשות עבור כל אמן בתיקיית היעד שבחרתם</p>
-          </div>
-          <div class="step">
-            <div class="icon-container"> <i class="fas fa-file-import feature-icon"></i> </div>
-            <h3>העברת קבצים</h3>
-            <p>לבסוף, התוכנה מעבירה את קבצי המוזיקה לתיקיות המתאימות לפי האמן שזוהה</p>
-          </div>
+<!-- 
+    Hero Section (שדרוג מלא):
+    - בהתאם להנחייתך, נמנעתי מ"כאוס". הניסוח החדש "Stop searching. Start listening" הוא חד, ממוקד תועלת ומעביר את המסר.
+    - הרקע הכהה עם טקסט בהיר יוצר קונטרסט חזק ומראה מודרני.
+    - שילוב צילום המסך (כפי שביקשת) מספק הוכחה ויזואלית מיידית למוצר ועונה על השאלה "מה אני מקבל?".
+    - ההוכחה החברתית שזורה בתוך הקריאה לפעולה כדי לחזק אותה ברגע ההחלטה.
+-->
+<main class="main-content">
+  <section class="hero-section">
+    <div class="container hero-container">
+      <div class="hero-text">
+        <h1>תפסיקו לחפש. תתחילו להקשיב.</h1>
+        <p class="subtitle">הפכו תיקיית סינגלים מפוזרת לספריית מוזיקה מושלמת. מסדר הסינגלים מזהה וממיין אוטומטית שירים של אמנים ישראלים וחרדיים, וחוסך לכם שעות של עבודה ידנית.</p>
+        <div class="hero-cta-group">
+            <a href="#download-section" class="cta-button primary large">
+              <i class="fas fa-download"></i> הורד עכשיו ובחינם
+            </a>
+            <p class="social-proof-text">הצטרפו ל-<strong>6,986+</strong> משתמשים שכבר עשו סדר במוזיקה!</p>
         </div>
       </div>
-    </section>
+      <div class="hero-image">
+        <img src="https://github.com/NHLOCAL/Singles-Sorter/blob/main/versions.data/program-screen.png?raw=true" alt="צילום מסך של תוכנת מסדר הסינגלים">
+      </div>
+    </div>
+  </section>
 
-    <section class="shir-bot scale-div" style="background-color: #cde3fc">
-      <center>
-        <h2>מחפשים מאגר סינגלים להורדה?<br>הכנסו לאתר שיר-בוט</h2><br>
-        <a class="butt" id="registing" href="https://shir-bot.ze-kal.top/?utm_source=singles-sorter.ze-kal.top&utm_medium=site" target="_blank">למעבר לאתר</a>
-      </center>
-    </section>
+  <!-- 
+      How It Works Section:
+      - נשאר עם המבנה הפשוט והמוצלח של שלושה שלבים, המדריך את המשתמש במסעו.
+  -->
+  <section class="how-it-works-section">
+    <div class="container">
+      <h2>החיים שלכם עומדים להפוך להרבה יותר מסודרים</h2>
+      <div class="steps-container">
+        <div class="step">
+          <i class="fas fa-folder-open step-icon"></i>
+          <h3>1. בחרו את התיקייה</h3>
+          <p>הראו לתוכנה איפה נמצאת תיקיית הסינגלים שלכם.</p>
+        </div>
+        <div class="step">
+          <i class="fas fa-magic step-icon"></i>
+          <h3>2. לחצו על כפתור המיון</h3>
+          <p>האלגוריתם החכם שלנו ינתח ויזהה כל שיר ואמן תוך שניות.</p>
+        </div>
+        <div class="step">
+          <i class="fas fa-smile-beam step-icon"></i>
+          <h3>3. תיהנו מהסדר</h3>
+          <p>קבלו ספריית מוזיקה מושלמת, מסודרת בתיקיות לפי שם אמן.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+  
+  <!-- 
+    Download Section (חדש):
+    - מקטע ייעודי להורדות עם Anchor ID (כפי שביקשת).
+    - כל גרסה מוצגת בכרטיסייה נפרדת וברורה עם אייקון, תיאור וכפתור ייעודי.
+    - הגרסה המומלצת (Windows Installer) מודגשת כדי להנחות את רוב המשתמשים, אך לא מסתירה את האחרות.
+  -->
+  <section id="download-section" class="download-section">
+    <div class="container">
+        <h2>בחרו את הגרסה המתאימה לכם</h2>
+        <div class="download-grid">
+            <div class="download-card recommended">
+                <div class="badge">מומלץ</div>
+                <i class="fab fa-windows download-icon"></i>
+                <h3>גרסת התקנה ל-Windows</h3>
+                <p>התקנה פשוטה ומהירה למחשב האישי. הבחירה הטובה ביותר לרוב המשתמשים.</p>
+                <a href="https://github.com/NHLOCAL/Singles-Sorter/releases/latest/download/Singles-Sorter-Installer-AI-14.0.exe" class="cta-button secondary">הורד גרסת התקנה</a>
+            </div>
+            <div class="download-card">
+                <i class="fas fa-box-open download-icon"></i>
+                <h3>גרסה ניידת (Portable)</h3>
+                <p>הפעלה ישירה ללא התקנה. מושלם לשימוש מ-Disk-on-key או במחשבים מוגבלים.</p>
+                <a href="https://github.com/NHLOCAL/Singles-Sorter/releases/latest/download/Singles-Sorter-Portable-AI-14.0.zip" class="cta-button secondary">הורד גרסה ניידת</a>
+            </div>
+            <div class="download-card">
+                <i class="fab fa-android download-icon"></i>
+                <h3>גרסת אנדרואיד</h3>
+                <p>סדרו את המוזיקה ישירות מהסמארטפון, הטאבלט או הנגן שלכם בקלות ובנוחות.</p>
+                <a href="https://github.com/NHLOCAL/Singles-Sorter/releases/latest/download/Singles-Sorter-14.0.apk" class="cta-button secondary">הורד לאנדרואיד</a>
+            </div>
+            <div class="download-card">
+                <i class="fas fa-terminal download-icon"></i>
+                <h3>גרסת CLI למתקדמים</h3>
+                <p>גרסת שורת פקודה למפתחים ולמשתמשי Power-Users. אידיאלי לאוטומציה וסקריפטים.</p>
+                <a href="https://github.com/NHLOCAL/Singles-Sorter/releases/latest/download/Singles-Sorter-cli-ai-14.0.zip" class="cta-button secondary">הורד גרסת CLI</a>
+            </div>
+        </div>
+    </div>
+</section>
 
-    <section class="features scale-div" style="background-color: #deeeff;">
+
+  <!-- 
+      Features Section (עיצוב משופר):
+      - העיצוב עודכן כך שהכותרת והטקסט נמצאים אחד מעל השני, לשיפור הקריאות.
+      - האייקונים הוגדלו והודגשו כדי לתת לכל תכונה משקל ויזואלי.
+  -->
+  <section class="features-section">
+    <div class="container">
+      <h2>כל מה שצריך כדי להחזיר את השליטה לידיים שלכם</h2>
+      <div class="features-grid">
+        <div class="feature-card">
+          <i class="fas fa-music feature-icon"></i>
+          <div class="feature-text-content">
+            <h3>בנוי במיוחד לאוסף שלך</h3>
+            <p>עם מאגר של אלפי זמרים מהעולם היהודי והחרדי, התוכנה מזהה אמנים שאחרות מפספסות.</p>
+          </div>
+        </div>
+        <div class="feature-card">
+          <i class="fas fa-users feature-icon"></i>
+          <div class="feature-text-content">
+            <h3>מסדר גם דואטים מורכבים</h3>
+            <p>בחרו אם לשכפל שירים משותפים לתיקייה של כל אמן בנפרד, לנוחות גישה מקסימלית.</p>
+          </div>
+        </div>
+        <div class="feature-card">
+          <i class="fas fa-broom feature-icon"></i>
+          <div class="feature-text-content">
+            <h3>מנקה את הבלגן בשמות</h3>
+            <p>הסרה אוטומטית של טקסט מיותר ותיקון ג'יבריש במאפייני הקובץ, לספרייה שנראית מקצועית.</p>
+          </div>
+        </div>
+        <div class="feature-card">
+          <i class="fas fa-cogs feature-icon"></i>
+          <div class="feature-text-content">
+            <h3>גמישות ושליטה מלאה</h3>
+            <p>התאימו את אופן המיון להעדפותיכם עם מגוון הגדרות מתקדמות שנותנות לכם את המילה האחרונה.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 
+      Shir-Bot Section (שוחזר אסטרטגית):
+      - ממוקם לאחר שהצגנו את כל הערך של המוצר.
+      - ממוצב כ"שלב הבא" טבעי: אחרי שיש לך כלי לארגון, אתה צריך תוכן לארגן.
+      - העיצוב שלו ייחודי כדי להפריד אותו משאר האתר, אך עדיין משתלב בפלטת הצבעים.
+  -->
+  <section class="shir-bot-section">
       <div class="container">
-        <h2 class="text-center">תכונות עיקריות</h2> <br> <br>
-        <div class="feature-list">
-          <div class="feature-item">
-            <i class="fas fa-mobile-alt feature-icon"></i>
-            <div class="feature-text"> 
-              <h3 class="feature-title">ממשק משתמש מודרני ואינטואיטיבי</h3>
-              <p class="feature-description">התוכנה בנויה על בסיס Flutter, טכנולוגיה מתקדמת  לפיתוח אפליקציות, ומציעה ממשק משתמש מודרני ונוח לשימוש, הן במחשבים והן במכשירי אנדרואיד</p>
-            </div>
-          </div>
-          <div class="feature-item">
-            <i class="fas fa-brain feature-icon"></i>
-            <div class="feature-text"> 
-              <h3 class="feature-title">זיהוי אוטומטי של אמנים</h3> 
-              <p class="feature-description">מסדר הסינגלים מנתח שמות קבצים ותגי מטא-נתונים כדי לזהות במדויק את שם האמן של כל שיר, גם אם שם הקובץ אינו מסודר</p>
-            </div>
-          </div> 
-          <div class="feature-item">
-            <i class="fas fa-folder-tree feature-icon"></i>
-            <div class="feature-text"> 
-              <h3 class="feature-title">יצירת מבנה תיקיות מסודר</h3> 
-              <p class="feature-description">התוכנה יוצרת באופן אוטומטי תיקיות עבור כל אמן, ומאפשר לכם לבחור בין מגוון מבני תיקיה רצויים</p>
-            </div>
-          </div>
-          <div class="feature-item">
-            <i class="fas fa-globe feature-icon"></i>
-            <div class="feature-text"> 
-              <h3 class="feature-title">תמיכה נרחבת</h3> 
-              <p class="feature-description">מכיל מאגר עצום של מעל אלף זמרים יהודיים וחרדיים, ומאפשר זיהוי  מגוון רחב של אמנים, גם פחות מוכרים</p>
-            </div>
-          </div> 
-          <div class="feature-item">
-            <i class="fas fa-tools feature-icon"></i> 
-            <div class="feature-text"> 
-              <h3 class="feature-title">גמישות מירבית</h3>
-              <p class="feature-description">התאימו את אופן פעולת התוכנה להעדפותיכם! מסדר הסינגלים מציע מגוון אפשרויות התאמה אישית, כך שתוכלו לבחור בדיוק איך ימויינו הקבצים שלכם</p>
-            </div>
-          </div>
-          <div class="feature-item">
-            <i class="fas fa-microphone-alt feature-icon"></i> 
-            <div class="feature-text"> 
-              <h3 class="feature-title">טיפול בדואטים</h3>
-              <p class="feature-description">מצב דואט ייחודי מאפשר לכם להעתיק שירים שבוצעו על ידי מספר אמנים לתיקיות של כל אחד מהם</p>
-            </div>
-          </div>
-          <div class="feature-item">
-            <i class="fas fa-broom feature-icon"></i>
-            <div class="feature-text"> 
-              <h3 class="feature-title">תיקון שמות קבצים</h3>
-              <p class="feature-description">התוכנה מסירה באופן אוטומטי מחרוזות טקסט מיותרות משמות קבצים, כמו "מייל מיוזיק" או "חדשות המוזיקה", ומתקנת ג'יבריש במאפייני הקבצים</p>
-            </div>
-          </div>
-		  <div class="feature-item coming-soon">
-            <i class="fas fa-compact-disc feature-icon"></i>
-            <div class="feature-text"> 
-              <h3 class="feature-title">ניתוח תיקיות אלבומים!</h3>
-              <p class="feature-description">החל מהעדכון האחרון, מסדר הסינגלים מסוגל לנתח תיקיות אלבומים ולמיין אותם בתיקיות המתאימות</p>
-            </div>
-          </div>
-
-        </div>
+          <h2>צריכים עוד סינגלים לארגן?</h2>
+          <p>גלו והורידו מוזיקה חדשה מאתר 'שיר-בוט' - המאגר המושלם למלא את הספרייה שלכם.</p>
+          <a href="https://shir-bot.ze-kal.top/?utm_source=singles-sorter.ze-kal.top&utm_medium=site" target="_blank" class="cta-button primary">למעבר לאתר שיר-בוט</a>
       </div>
-    </section>
-
-
-    <section class="updates scale-div" style="background-color: #cde3fc">
-      <center>
-        <h2>רוצה להתעדכן ראשון על הגרסה הבאה?</h2><br>
-        <a class="butt" id="registing" href="https://mail.google.com/mail/u/0/?view=cm&fs=1&tf=1&source=mailto&su=%D7%9E%D7%A2%D7%95%D7%A0%D7%99%D7%9F+%D7%9C%D7%A7%D7%91%D7%9C%D7%AA+%D7%A2%D7%93%D7%9B%D7%95%D7%A0%D7%99%D7%9D&to=mesader-singelim%2Bsubscribe@googlegroups.com" target="_blank">הצטרף כעת!</a>
-      </center>
-    </section>
-  </main>
-
-
-  <script src='https://storage.ko-fi.com/cdn/scripts/overlay-widget.js'></script>
-	<script>
-	  kofiWidgetOverlay.draw('nhlocal', {
-		'type': 'floating-chat',
-		'floating-chat.donateButton.text': 'תמוך בי',
-		'floating-chat.donateButton.background-color': '#0183C4',
-		'floating-chat.donateButton.text-color': '#F3FF28'
-	  });
-  </script>
-
-  <script>
-    // JavaScript for the scrolling effect
-    document.addEventListener("DOMContentLoaded", function() {
-      var divs = document.querySelectorAll(".scale-div");
-
-      function scrollHandler() {
-        for (var i = 0; i < divs.length; i++) {
-          var div = divs[i];
-          var rect = div.getBoundingClientRect();
-
-          if (rect.top < window.innerHeight && rect.bottom >= 0) {
-            div.classList.add("active");
-          } else {
-            div.classList.remove("active");
-          }
-        }
-      }
-
-      window.addEventListener("scroll", scrollHandler);
-      scrollHandler();
-    });
-  </script>
-</body>
+  </section>
+</main>
