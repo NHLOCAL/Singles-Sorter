@@ -1,5 +1,5 @@
 @echo off
 
-npx repomix --style markdown --include "Gemfile,_config.yml,index.html,site/**,README.md,assets/**
+npx repomix --style markdown -i "src/**,.github/**,legacy/**,versions.data/**,requirements*.txt,docs/**,versions.data/**"
 
 pause
