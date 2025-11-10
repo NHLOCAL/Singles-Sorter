@@ -1,4 +1,17 @@
 document.addEventListener('DOMContentLoaded', () => {
+  // --- Mobile Nav Toggle ---
+  const navToggle = document.querySelector('.nav-toggle');
+  const mainNav = document.querySelector('.main-nav');
+
+  if (navToggle && mainNav) {
+    navToggle.addEventListener('click', () => {
+      mainNav.classList.toggle('is-open');
+      navToggle.classList.toggle('is-open');
+      document.body.classList.toggle('nav-open');
+    });
+  }
+
+  // --- Download Links ---
   const GITHUB_REPO = 'NHLOCAL/Singles-Sorter';
   const API_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
   const FALLBACK_URL = `https://github.com/${GITHUB_REPO}/releases/latest`;

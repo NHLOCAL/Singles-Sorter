@@ -29,6 +29,10 @@ body {
   overflow-x: hidden;
 }
 
+body.nav-open {
+  overflow: hidden;
+}
+
 .container {
   max-width: 1100px;
   margin: 0 auto;
@@ -72,7 +76,12 @@ body {
   font-size: 20px;
 }
 
-.main-header nav a {
+.main-nav {
+  display: flex;
+  align-items: center;
+}
+
+.main-nav a {
   color: var(--text-secondary);
   text-decoration: none;
   margin: 0 15px;
@@ -80,16 +89,58 @@ body {
   transition: color 0.3s ease;
 }
 
-.main-header nav a:hover {
+.main-nav a:hover {
   color: var(--gold);
 }
 
-.main-header nav a.feedback-link {
+.main-nav a.feedback-link {
   background-color: var(--light-gold);
   color: var(--dark-blue);
   padding: 8px 15px;
   border-radius: 20px;
 }
+
+.nav-toggle {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 10px;
+  z-index: 1001;
+}
+
+.hamburger,
+.hamburger::before,
+.hamburger::after {
+  content: '';
+  display: block;
+  background-color: var(--dark-blue);
+  height: 3px;
+  width: 25px;
+  border-radius: 3px;
+  transition: all 0.3s ease-in-out;
+}
+
+.hamburger::before {
+  transform: translateY(-8px);
+}
+
+.hamburger::after {
+  transform: translateY(8px);
+}
+
+.nav-toggle.is-open .hamburger {
+  background-color: transparent;
+}
+
+.nav-toggle.is-open .hamburger::before {
+  transform: rotate(45deg);
+}
+
+.nav-toggle.is-open .hamburger::after {
+  transform: translateY(-3px) rotate(-45deg);
+}
+
 
 /* --- Hero Section --- */
 .hero {
@@ -307,23 +358,22 @@ section.bg-light {
 
 .download-options {
   display: flex;
-  justify-content: center;
-  align-items: stretch;
-  gap: 30px;
   flex-wrap: wrap;
+  justify-content: center;
+  gap: 25px;
 }
 
 .download-card {
   background-color: var(--white);
   color: var(--text-primary);
-  padding: 30px;
+  padding: 25px;
   border-radius: 10px;
   text-align: center;
-  width: 250px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  flex: 0 1 320px; /* Do not grow, shrink if needed, with a 320px basis */
 }
 .download-card:hover {
     transform: translateY(-5px);
@@ -355,19 +405,19 @@ section.bg-light {
 }
 
 .download-card .icon {
-  font-size: 48px;
+  font-size: 40px;
   color: var(--dark-blue);
-  margin-bottom: 20px;
+  margin-bottom: 15px;
 }
 
 .download-card h3 {
-  font-size: 22px;
-  margin-bottom: 15px;
+  font-size: 20px;
+  margin-bottom: 10px;
   color: var(--dark-blue);
 }
 
 .download-card p {
-  margin-bottom: 30px;
+  margin-bottom: 25px;
   font-size: 15px;
   flex-grow: 1;
 }
@@ -426,11 +476,57 @@ section.bg-light {
     font-weight: 600;
 }
 
-/* --- Responsive Design --- */
-@media (max-width: 768px) {
-  .main-header .container { flex-direction: column; height: auto; padding: 10px; gap: 10px; }
-  .main-header nav a { margin: 0 8px; font-size: 14px; }
+/* --- 404 Page --- */
+.not-found-container {
+  text-align: center;
+  padding: 100px 20px;
+}
+.not-found-container h1 {
+  font-size: 5rem;
+  color: var(--dark-blue);
+  margin-bottom: 20px;
+}
+.not-found-container p {
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+  margin-bottom: 30px;
+}
 
+/* --- Responsive Design --- */
+
+@media (max-width: 820px) {
+  .nav-toggle {
+    display: block;
+  }
+  
+  .main-nav {
+    position: fixed;
+    top: var(--header-height);
+    right: 0;
+    width: 100%;
+    height: calc(100vh - var(--header-height));
+    background-color: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(5px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 25px;
+    transform: translateX(100%);
+    transition: transform 0.3s ease-in-out;
+  }
+
+  .main-nav.is-open {
+    transform: translateX(0);
+  }
+
+  .main-nav a {
+    font-size: 22px;
+    color: var(--dark-blue);
+  }
+}
+
+@media (max-width: 768px) {
   .hero h1 { font-size: 36px; }
   .hero p.subtitle { font-size: 18px; }
 
