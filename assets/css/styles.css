@@ -323,7 +323,7 @@ section.bg-light {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  transition: transform 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 .download-card:hover {
     transform: translateY(-5px);
@@ -333,9 +333,11 @@ section.bg-light {
   border: 3px solid var(--gold);
   transform: scale(1.05);
   position: relative;
+  box-shadow: 0 0 15px 5px rgba(230, 193, 59, 0.25);
 }
 .download-card.recommended:hover {
     transform: scale(1.08) translateY(-5px);
+    box-shadow: 0 0 25px 8px rgba(230, 193, 59, 0.35);
 }
 
 
