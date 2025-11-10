@@ -2,7 +2,7 @@
 :root {
   --dark-blue: #0A162E;
   --gold: #E6C13B;
-  --light-gold: #FDF3D1;
+  --light-gold: #FFFBEB; /* A very light, creamy gold for backgrounds */
   --light-blue: #F0F4F8;
   --white: #FFFFFF;
   --text-primary: #333333;
@@ -52,20 +52,24 @@ body {
   height: 100%;
 }
 
-.main-header .logo {
+.logo-area {
   display: flex;
   align-items: center;
+  gap: 12px;
+}
+
+.logo-area img {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  display: block;
+}
+
+.logo-text {
   text-decoration: none;
   color: var(--dark-blue);
   font-weight: 700;
   font-size: 20px;
-}
-
-.main-header .logo img {
-  width: 45px;
-  height: 45px;
-  border-radius: 50%;
-  margin-left: 12px;
 }
 
 .main-header nav a {
@@ -105,8 +109,17 @@ body {
 .hero p.subtitle {
   font-size: 20px;
   max-width: 700px;
-  margin: 0 auto 30px;
+  margin: 0 auto 40px;
   opacity: 0.9;
+}
+
+.hero .program-screenshot {
+  display: block;
+  margin: 0 auto 30px;
+  max-width: 90%;
+  width: 700px;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
 }
 
 .cta-button {
@@ -127,13 +140,6 @@ body {
   box-shadow: 0 6px 20px rgba(230, 193, 59, 0.3);
 }
 
-.hero .program-screenshot {
-  margin-top: 50px;
-  max-width: 90%;
-  width: 700px;
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-}
 
 /* --- Social Proof Section --- */
 .social-proof {
@@ -147,6 +153,7 @@ body {
   align-items: center;
   gap: 50px;
   text-align: center;
+  flex-wrap: wrap;
 }
 
 .proof-item {
@@ -200,7 +207,7 @@ section.bg-light {
 /* --- How it Works Section --- */
 .steps-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 40px;
   text-align: center;
 }
@@ -223,8 +230,9 @@ section.bg-light {
 
 /* --- Features Section --- */
 .features-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
   gap: 30px;
 }
 
@@ -237,6 +245,8 @@ section.bg-light {
   align-items: flex-start;
   gap: 20px;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  max-width: 500px;
+  flex-basis: 500px;
 }
 
 .feature-card:hover {
@@ -253,6 +263,33 @@ section.bg-light {
 .feature-card h3 {
   font-size: 20px;
   margin-bottom: 8px;
+  color: var(--dark-blue);
+}
+
+/* --- Promo Section (Shir-Bot) --- */
+.promo-section {
+  background-color: var(--light-gold);
+  text-align: center;
+}
+
+.promo-section h2 {
+  color: var(--dark-blue);
+}
+
+.promo-button {
+  border: 2px solid var(--dark-blue);
+  color: var(--dark-blue);
+  background: transparent;
+  padding: 12px 30px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 700;
+  transition: all 0.3s ease;
+}
+
+.promo-button:hover {
+  background-color: var(--dark-blue);
+  color: var(--white);
 }
 
 /* --- Download Section --- */
@@ -282,12 +319,14 @@ section.bg-light {
   padding: 30px;
   border-radius: 10px;
   text-align: center;
-  flex: 1;
-  min-width: 220px;
-  max-width: 280px;
+  width: 250px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  transition: transform 0.3s ease;
+}
+.download-card:hover {
+    transform: translateY(-5px);
 }
 
 .download-card.recommended {
@@ -295,6 +334,10 @@ section.bg-light {
   transform: scale(1.05);
   position: relative;
 }
+.download-card.recommended:hover {
+    transform: scale(1.08) translateY(-5px);
+}
+
 
 .recommended-badge {
     background-color: var(--gold);
@@ -318,6 +361,7 @@ section.bg-light {
 .download-card h3 {
   font-size: 22px;
   margin-bottom: 15px;
+  color: var(--dark-blue);
 }
 
 .download-card p {
@@ -352,17 +396,28 @@ section.bg-light {
     background-color: #1a2a4c;
 }
 
+.advanced-versions-link {
+    text-align: center;
+    margin-top: 40px;
+}
+
+.advanced-versions-link a {
+    color: var(--light-blue);
+    text-decoration: underline;
+    font-weight: 600;
+}
+
 /* --- Footer --- */
 .main-footer {
   background-color: var(--light-blue);
   padding: 20px 0;
-  text-align: center;
-  font-size: 14px;
 }
 .main-footer .container {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 .main-footer a {
     color: var(--dark-blue);
@@ -371,19 +426,13 @@ section.bg-light {
 
 /* --- Responsive Design --- */
 @media (max-width: 768px) {
-  .main-header .container { flex-direction: column; height: auto; padding: 10px; }
-  .main-header nav { margin-top: 10px; }
-  .main-header nav a { margin: 0 8px; }
+  .main-header .container { flex-direction: column; height: auto; padding: 10px; gap: 10px; }
+  .main-header nav a { margin: 0 8px; font-size: 14px; }
 
   .hero h1 { font-size: 36px; }
   .hero p.subtitle { font-size: 18px; }
 
   .social-proof-grid { flex-direction: column; gap: 30px; }
-
-  .steps-grid { grid-template-columns: 1fr; }
-
-  .download-options { flex-direction: column; align-items: center; }
-  .download-card.recommended { transform: scale(1); }
   
-  .main-footer .container { flex-direction: column; gap: 10px; }
+  .main-footer .container { flex-direction: column; gap: 10px; text-align: center; }
 }

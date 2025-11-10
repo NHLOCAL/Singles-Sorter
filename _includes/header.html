@@ -1,14 +1,18 @@
 <header class="main-header">
   <div class="container">
-    <a class="logo" href="{{ '/' | relative_url }}">
-      <img src="{{ '/assets/images/NH.LOCAL.jpg' | relative_url }}" alt="לוגו היוצר">
-      <span>מסדר הסינגלים</span>
-    </a>
+    <div class="logo-area">
+      <a href="https://nhlocal.github.io/" target="_blank" rel="noopener noreferrer" title="לאתר של היוצר">
+        <img src="{{ '/assets/images/NH.LOCAL.jpg' | relative_url }}" alt="לוגו היוצר NH.LOCAL">
+      </a>
+      <a class="logo-text" href="{{ '/' | relative_url }}">
+        <span>מסדר הסינגלים</span>
+      </a>
+    </div>
     <nav>
       <a href="#features">תכונות</a>
       <a href="#download">הורדה</a>
       <a href="{{ '/site/help' | relative_url }}">עזרה</a>
-      <a href="{{ '/site/Survey' | relative_url }}" class="feedback-link">מילוי משוב</a>
+      <a href="mailto:mesader.singelim@gmail.com" class="feedback-link">שלח משוב</a>
     </nav>
   </div>
 </header>
