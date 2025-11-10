@@ -1,12 +1,20 @@
-title: מסדר הסינגלים - אתר רשמי
+title: מסדר הסינגלים
 description: >-
-  האתר הרשמי של תוכנת מסדר הסינגלים - תוכנה שמסדרת קבצי מוזיקה בודדים
-  בתיקיות מסודרות לפי אמנים.
+  האתר הרשמי של מסדר הסינגלים. התוכנה היחידה שמזהה, ממיינת ומסדרת אוטומטית את אוסף המוזיקה היהודית והישראלית שלך, וחוסכת לך שעות של עבודה ידנית.
 baseurl: ""
 url: "https://singles-sorter.ze-kal.top"
+logo: /assets/images/icon.png
+author: NH.LOCAL
+
+plugins:
+  - jekyll-seo-tag
+  - jekyll-sitemap
 
 exclude:
   - Gemfile
   - Gemfile.lock
   - README.md
   - legacy/
+  - src/
+  - docs/
+  - versions.data/

@@ -1,13 +1,21 @@
-<header class="topnav">
-  <div class="topnav-content">
-    <a class="left_item" href="https://nhlocal.github.io/" title="לשאר התוכנות של היוצר">
-      <img src="{{ '/assets/images/NH.LOCAL.jpg' | relative_url }}" alt="הסמל של המחבר">
-    </a>
-    <nav class="nav-links">
-      <a href="{{ '/' | relative_url }}" {% if page.url == '/' %}class="active"{% endif %}>עמוד ראשי</a>
-      <a href="{{ '/site/help' | relative_url }}" {% if page.url == '/site/help.html' %}class="active"{% endif %}>קבל עזרה</a>
-      <a href="{{ '/site/Survey' | relative_url }}" {% if page.url == '/site/Survey.html' %}class="active highlight"{% endif %}><b>מילוי משוב</b></a>
-      <a href="https://mail.google.com/mail/u/0/?view=cm&fs=1&tf=1&source=mailto&to=mesader.singelim%40gmail.com" target="_blank">צור קשר</a>
+<header class="main-header">
+  <div class="container">
+    <div class="logo-area">
+      <a href="https://nhlocal.github.io/" target="_blank" rel="noopener noreferrer" title="לאתר של היוצר">
+        <img src="{{ '/assets/images/NH.LOCAL.jpg' | relative_url }}" alt="לוגו היוצר NH.LOCAL">
+      </a>
+      <a class="logo-text" href="{{ '/' | relative_url }}">
+        <span>מסדר הסינגלים</span>
+      </a>
+    </div>
+    <button class="nav-toggle" aria-label="פתח תפריט">
+      <span class="hamburger"></span>
+    </button>
+    <nav class="main-nav">
+      <a href="#features">תכונות</a>
+      <a href="#download">הורדה</a>
+      <a href="{{ '/site/help' | relative_url }}">עזרה</a>
+      <a href="mailto:mesader.singelim@gmail.com" class="feedback-link">שלח משוב</a>
     </nav>
   </div>
 </header>
