@@ -1,30 +1,11 @@
-<!DOCTYPE html>
-<html lang="he" dir="rtl">
-<head>
-  <link rel="canonical" href="https://singles-sorter.ze-kal.top" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta charset="utf-8">
-  <title>מסדר הסינגלים - אתר רשמי</title>
-  <meta name="description" content="הדף הראשי של תוכנת מסדר הסינגלים">
-  <meta name="description" content="תוכנה שמסדרת שירים חרדיים לפי אמן">
-  <meta name="keywords" content="הורדת סינגלים, מוזיקה בדרייב, שיר בוט, מוזיקה חסידית, מיון שירים, מיון, מיון מוזיקה, איך למיין שירים, איך למיין קבצים, מערכת הקבצים, סדר בקבצים">
-  <link rel="stylesheet" href="site/styles.css">
-  <link rel="icon" type="image/x-icon" href="site/favicon.ico">
-  <script src="https://nhlocal.github.io/general-settings.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-</head>
-
+---
+layout: default
+title: מסדר הסינגלים - אתר רשמי
+description: "הדף הראשי של תוכנת מסדר הסינגלים. תוכנה שמסדרת שירים חרדיים לפי אמן."
+keywords: "הורדת סינגלים, מוזיקה בדרייב, שיר בוט, מוזיקה חסידית, מיון שירים, מיון, מיון מוזיקה, איך למיין שירים, איך למיין קבצים, מערכת הקבצים, סדר בקבצים"
+canonical_url: https://singles-sorter.ze-kal.top/
+---
 <body>
-  <div class="topnav">
-    <a class="left_item" href="https://nhlocal.github.io/" title="לשאר התוכנות של היוצר">
-      <img width="50" style="border-radius: 48%;" src="site/NH.LOCAL.jpg" alt="הסמל של המחבר">
-    </a>
-    <h3>עמוד ראשי</h3>
-    <a href="site/Survey" style="color: rgb(236, 255, 91)"><b>מילוי משוב</b></a>
-    <a id="help_file" href="site/help">קבל עזרה</a>
-    <a id="Feedback" href="https://mail.google.com/mail/u/0/?view=cm&fs=1&tf=1&source=mailto&to=mesader.singelim%40gmail.com" target="_blank">צור קשר</a>
-  </div>
-
   <main>
 	<section class="hero scale-div">
 	
@@ -43,14 +24,14 @@
 		<h1 >מסדר הסינגלים - האתר הרשמי</h1><br>
 		<p>תוכנה שמסדרת קבצי מוזיקה בודדים בתיקיות מסודרות לפי אמנים</p>
 		<br>
-		<a id="download-file" href="site/download">
+		<a id="download-file" href="{{ 'site/download' | relative_url }}">
 		  <img class="button-image" title="נסה אותי!" style="border-radius: 1%; max-width: 90%; height: auto;" src="https://github.com/NHLOCAL/Singles-Sorter/blob/main/versions.data/program-screen.png?raw=true" alt="צילום מסך - מסדר הסינגלים" width="650">
 		</a>
 	  </div>
 	</section>
 
 <div class="button-container">
-  <a href="site/download" class="custom-button download-button">
+  <a href="{{ 'site/download' | relative_url }}" class="custom-button download-button">
     <i class="fas fa-download button-icon"></i>
     הורד כעת
   </a>
@@ -203,4 +184,3 @@
     });
   </script>
 </body>
-</html>
