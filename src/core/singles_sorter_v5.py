@@ -462,11 +462,10 @@ class MusicSorter:
             # Determine artist name from the singer list
             determined_artist_name = None
             for source_name, target_name in self.singer_list:
-                if source_name in artist_name:
-                    exact = check_exact_name(artist_name, source_name)
-                    if exact:
-                        determined_artist_name = target_name
-                        break
+                exact = check_exact_name(artist_name, source_name)
+                if exact:
+                    determined_artist_name = target_name
+                    break
 
             # Use the determined artist name or the original if not found in the list
             final_artist_name = determined_artist_name if determined_artist_name else artist_name
@@ -726,11 +725,10 @@ class MusicSorter:
 
         # שלב ראשון: בדיקת שם הקובץ באמצעות רשימת הזמרים
         for source_name, target_name in self.singer_list:
-            if source_name in split_file:
-                exact = check_exact_name(split_file, source_name)
-                if exact:
-                    found_artists.append(target_name)
-                    break  # מצאנו אמן, אין צורך להמשיך
+            exact = check_exact_name(split_file, source_name)
+            if exact:
+                found_artists.append(target_name)
+                break  # מצאנו אמן, אין צורך להמשיך
 
         try:
             metadata_file = load_file(my_file)
@@ -756,11 +754,10 @@ class MusicSorter:
                 artist = fix_jibrish(artist, "heb")
                 # בדיקת אם האמן נמצא ברשימת הזמרים
                 for source_name, target_name in self.singer_list:
-                    if source_name in artist:
-                        exact = check_exact_name(artist, source_name)
-                        if exact:
-                            found_artists.append(target_name)
-                            break
+                    exact = check_exact_name(artist, source_name)
+                    if exact:
+                        found_artists.append(target_name)
+                        break
 
                 if not found_artists and self.check_artist(artist):
                     # אם האמן לא נמצא ברשימה, וב-AIModels זמין
@@ -780,11 +777,10 @@ class MusicSorter:
                 title = sanitized_title
                 title = fix_jibrish(title, "heb")
                 for source_name, target_name in self.singer_list:
-                    if source_name in title:
-                        exact = check_exact_name(title, source_name)
-                        if exact:
-                            found_artists.append(target_name)
-                            break
+                    exact = check_exact_name(title, source_name)
+                    if exact:
+                        found_artists.append(target_name)
+                        break
 
         if not found_artists and not ai_invalid:
             # שלב רביעי: שימוש ב-NER על שם הקובץ
