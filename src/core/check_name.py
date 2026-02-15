@@ -166,26 +166,21 @@ def _is_similar_name_match(filename, artist_to_search):
     for start_index in range(max_window_index):
         candidate_words = filename_words[start_index:start_index + artist_words_count]
         total_distance = 0
-        is_valid_window = True
 
         for candidate_word, artist_word in zip(candidate_words, artist_words):
             if _is_prefix_or_suffix_expansion(candidate_word, artist_word):
-                is_valid_window = False
                 break
 
             max_word_distance = _max_allowed_word_distance(len(artist_word))
             word_distance = _levenshtein_distance(candidate_word, artist_word, max_word_distance)
 
             if word_distance > max_word_distance:
-                is_valid_window = False
                 break
 
             total_distance += word_distance
             if total_distance > max_phrase_distance:
-                is_valid_window = False
                 break
-
-        if is_valid_window:
+        else:
             return True
 
     return False
