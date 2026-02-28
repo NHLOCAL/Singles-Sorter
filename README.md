@@ -12,6 +12,25 @@
 
 [🌐 בקרו באתר הרשמי של התוכנה](https://singles-sorter.ze-kal.top)
 
+
+## 📦 PyPI Installation
+
+```bash
+pip install singlesorter
+```
+
+After installation, run:
+
+```bash
+singlesorter --help
+```
+
+For local development and packaging checks:
+
+```bash
+python -m build
+```
+
 ## 🚀 תכונות עיקריות
 
 - **מיון חכם:**  🧠  התוכנה מנתחת את שמות הקבצים ומאפייני המטה-נתונים שלהם כדי לזהות במדויק את שם האמן. היא מסוגלת להתמודד גם עם שמות קבצים מורכבים ותקנים שונים של תיוג.
