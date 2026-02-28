@@ -1,4 +1,4 @@
-# file: add_singer_dialog.py
+﻿# file: add_singer_dialog.py
 
 import flet as ft
 import csv
@@ -6,9 +6,9 @@ import chardet
 
 def create_add_singer_dialog(page: ft.Page, ANDROID_MODE=False, csv_file="app/personal-singer-list.csv"):
     # אייקונים
-    singer_icon = ft.Icon(ft.icons.PERSON_2_OUTLINED, size=24)
-    folder_icon = ft.Icon(ft.icons.FOLDER_OPEN_ROUNDED, size=24)
-    add_row_icon = ft.icons.EXPAND_MORE
+    singer_icon = ft.Icon(ft.Icons.PERSON_2_OUTLINED, size=24)
+    folder_icon = ft.Icon(ft.Icons.FOLDER_OPEN_ROUNDED, size=24)
+    add_row_icon = ft.Icons.EXPAND_MORE
 
     # פונקציה ליצירת תא טבלה ניתנת לעריכה
     def create_table_cell():
@@ -71,9 +71,9 @@ def create_add_singer_dialog(page: ft.Page, ANDROID_MODE=False, csv_file="app/pe
 
     # יצירת הטבלה
     table = ft.DataTable(
-        vertical_lines=ft.BorderSide(1, ft.colors.ON_PRIMARY_CONTAINER),
-        horizontal_lines=ft.BorderSide(1, ft.colors.ON_PRIMARY_CONTAINER),
-        border=ft.border.all(2, ft.colors.OUTLINE),
+        vertical_lines=ft.BorderSide(1, ft.Colors.ON_PRIMARY_CONTAINER),
+        horizontal_lines=ft.BorderSide(1, ft.Colors.ON_PRIMARY_CONTAINER),
+        border=ft.border.all(2, ft.Colors.OUTLINE),
         border_radius=15,
         column_spacing=20,
         horizontal_margin=10,
@@ -91,8 +91,8 @@ def create_add_singer_dialog(page: ft.Page, ANDROID_MODE=False, csv_file="app/pe
     dialog = ft.AlertDialog(
         inset_padding=0 if ANDROID_MODE else 24,
         title=ft.Row([
-            ft.Icon(ft.icons.PERSON_ADD, size=40,  color=ft.colors.ON_PRIMARY_CONTAINER),
-            ft.Text("הוספת זמרים",  color=ft.colors.ON_PRIMARY_CONTAINER, text_align=ft.TextAlign.CENTER, weight=ft.FontWeight.BOLD),
+            ft.Icon(ft.Icons.PERSON_ADD, size=40,  color=ft.Colors.ON_PRIMARY_CONTAINER),
+            ft.Text("הוספת זמרים",  color=ft.Colors.ON_PRIMARY_CONTAINER, text_align=ft.TextAlign.CENTER, weight=ft.FontWeight.BOLD),
         ], 
         rtl=True,
         alignment=ft.MainAxisAlignment.CENTER,

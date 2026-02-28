@@ -1,4 +1,4 @@
-import flet as ft
+﻿import flet as ft
 import json
 
 # הגדרות משתמש שמורות
@@ -76,7 +76,7 @@ def main(page: ft.Page):
         return [
             ft.Control(
                 ft.ListTile(
-                    leading=ft.Icon(ft.icons.FOLDER),
+                    leading=ft.Icon(ft.Icons.FOLDER),
                     title=ft.Text(path),
                     on_click=lambda e, p=path: update_input_with_path(p, input_field),
                 )
@@ -99,7 +99,7 @@ def main(page: ft.Page):
                 source_dir_input,
                 ft.ElevatedButton(
                     "בחר תיקית מקור",
-                    icon=ft.icons.FOLDER_OPEN,
+                    icon=ft.Icons.FOLDER_OPEN,
                     on_click=lambda _: source_picker.get_directory_path(),
                 ),
             ]
@@ -109,7 +109,7 @@ def main(page: ft.Page):
                 target_dir_input,
                 ft.ElevatedButton(
                     "בחר תיקית יעד",
-                    icon=ft.icons.FOLDER_OPEN,
+                    icon=ft.Icons.FOLDER_OPEN,
                     on_click=lambda _: target_picker.get_directory_path(),
                 ),
             ]

@@ -22,11 +22,6 @@ def check_model_files():
     meta_json_path = 'models/singer_ner_he/meta.json'
     return os.path.isfile(model_clf_path) and os.path.isfile(meta_json_path)
 
-# קריאה לפונקציה בתחילת הקוד
-ai_invalid = False if check_model_files() else True
-if not ai_invalid:
-    from ai_models import AIModels
-
 # הגדרת רשימות כקבועים גלובליים
 UNUSUAL_LIST = [
     "סינגלים",
@@ -67,6 +62,7 @@ class MusicSorter:
         main_folder_only=False,
         duet_mode=False,
         progress_callback=None,
+        enable_ai=None,
         log_level=logging.INFO,
         logger=None
     ):
@@ -99,11 +95,15 @@ class MusicSorter:
         self.logger = logger or logging.getLogger('MusicSorter')
         self.logger.setLevel(log_level)
 
-        # יצירת מופע של AIModels אם לא באנדרואיד
-        if not ai_invalid:
-            self.ai_models = AIModels(logger=self.logger)
-        else:
-            self.ai_models = None  # אם באנדרואיד, לא משתמשים ב-AIModels
+        # שליטה מפורשת ב-AI; בגרסאות ללא תלויות AI הוא יכבה אוטומטית.
+        self.enable_ai = True if enable_ai is None else bool(enable_ai)
+        self.ai_models = None
+        if self.enable_ai and check_model_files():
+            try:
+                from ai_models import AIModels
+                self.ai_models = AIModels(logger=self.logger)
+            except Exception as error:
+                self.logger.debug(f"AI modules are unavailable; continuing without AI. {error}")
 
     def progress_display(self, total_amount):
         for current_item in range(1, total_amount + 1):
@@ -764,14 +764,14 @@ class MusicSorter:
 
                 if not found_artists and self.check_artist(artist):
                     # אם האמן לא נמצא ברשימה, וב-AIModels זמין
-                    if self.ai_models and not ai_invalid:
+                    if self.ai_models:
                         # אימות באמצעות מודל SKLEARN
                         if self.ai_models.verify_artist_with_sklearn(artist):
                             found_artists.append(artist)
                         else:
                             self.logger.debug(f"Artist '{artist}' not verified by SKLEARN model")
                     else:
-                        self.logger.debug("AI-based checks are disabled on Android.")
+                        self.logger.debug("AI-based checks are disabled.")
 
         if not found_artists and metadata_file:
             # שלב שלישי: בדיקת שם הזמר בכותרת השיר במטאדאטה
@@ -786,27 +786,24 @@ class MusicSorter:
                             found_artists.append(target_name)
                             break
 
-        if not found_artists and not ai_invalid:
+        if not found_artists and self.ai_models:
             # שלב רביעי: שימוש ב-NER על שם הקובץ
-            if self.ai_models:
-                self.logger.debug(f"Using NER to process filename: {split_file}")
-                found_artists = self.ai_models.process_with_ner(split_file)
-                if found_artists:
-                    self.logger.debug(f"NER found artists in filename: {found_artists}")
-                else:
-                    self.logger.debug("NER did not find any artists in filename")
-                    # שלב חמישי: שימוש ב-NER על כותרת השיר במטאדאטה
-                    if metadata_file and original_title:
-                        title = sanitized_title
-                        title = fix_jibrish(title, "heb")
-                        self.logger.debug(f"Using NER to process title: {title}")
-                        found_artists = self.ai_models.process_with_ner(title)
-                        if found_artists:
-                            self.logger.debug(f"NER found artists in title: {found_artists}")
-                        else:
-                            self.logger.debug("NER did not find any artists in title")
+            self.logger.debug(f"Using NER to process filename: {split_file}")
+            found_artists = self.ai_models.process_with_ner(split_file)
+            if found_artists:
+                self.logger.debug(f"NER found artists in filename: {found_artists}")
             else:
-                self.logger.debug("AI-based checks are disabled on Android.")
+                self.logger.debug("NER did not find any artists in filename")
+                # שלב חמישי: שימוש ב-NER על כותרת השיר במטאדאטה
+                if metadata_file and original_title:
+                    title = sanitized_title
+                    title = fix_jibrish(title, "heb")
+                    self.logger.debug(f"Using NER to process title: {title}")
+                    found_artists = self.ai_models.process_with_ner(title)
+                    if found_artists:
+                        self.logger.debug(f"NER found artists in title: {found_artists}")
+                    else:
+                        self.logger.debug("NER did not find any artists in title")
 
         return found_artists if found_artists else None
 
