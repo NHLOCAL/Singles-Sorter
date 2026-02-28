@@ -1,4 +1,4 @@
-flet
+flet==0.28.3
 music_tag
 jibrish_to_hebrew
 requests

@@ -1,46 +1,63 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "singlesorter"
 version = "14.0.0"
-description = "מסדר הסינגלים"
+description = "Singles Sorter CLI for organizing music by artist"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "NHLOCAL", email = "nh.local11@gmail.com" }]
+keywords = ["music", "organizer", "cli", "sorter"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: End Users/Desktop",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Multimedia :: Sound/Audio",
+]
 dependencies = [
-  "flet",
-  "music_tag",
-  "requests",
-  "chardet"
+  "music-tag>=0.4.3",
 ]
 
-[tool.flet]
-org = "com.nhlocal" # מזהה ארגוני ייחודי
-product = "מסדר הסינגלים" # שם המוצר המוצג
-company = "NHLOCAL" # שם החברה
-copyright = "Copyright (C) 2025 by NHLOCAL"
-build_number = 1 # מספר בנייה פנימי
-# permissions = ["READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE", "READ_MEDIA_IMAGES", "ACCESS_MEDIA_LOCATION", "MANAGE_EXTERNAL_STORAGE"] # הרשאות אפשריות
+[project.optional-dependencies]
+dev = [
+  "build>=1.2.2",
+  "pytest>=8.3.4",
+  "ruff>=0.9.0",
+  "twine>=6.1.0",
+]
 
-[tool.flet.app]
-module = "main" # קובץ הכניסה הראשי
-path = "src/core" # שורש הפרויקט
-exclude = ["requirements.txt", "pyproject.toml", "1.py", "models", "logs", ] # קבצים שלא יתווספו לארכיון
+[project.urls]
+Homepage = "https://github.com/NHLOCAL/Singles-Sorter"
+Repository = "https://github.com/NHLOCAL/Singles-Sorter"
+Issues = "https://github.com/NHLOCAL/Singles-Sorter/issues"
 
+[project.scripts]
+singlesorter = "singlesorter.cli:main"
 
-[tool.flet.android.permission] # --android-permissions
-"android.permission.READ_EXTERNAL_STORAGE" = true
-"android.permission.WRITE_EXTERNAL_STORAGE" = true
-"android.permission.READ_MEDIA_IMAGES" = true
-"android.permission.ACCESS_MEDIA_LOCATION" = true
-"android.permission.MANAGE_EXTERNAL_STORAGE" = true
+[tool.setuptools]
+package-dir = {"" = "src"}
 
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["singlesorter*"]
 
-flutter.dependencies = ["flet_permission_handler"] # --include-packages
+[tool.setuptools.package-data]
+singlesorter = ["data/*.csv"]
 
-[tool.flet.splash]
-color = "#0E2B59" # צבע רקע לספלש
-dark_color = "#FFC300" # צבע רקע לספלש במצב כהה
-web = false # השבתת ספלש עבור גרסת ווב
-android = true # ספלש עבור אנדרואיד
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
-[tool.flet.compile]
-# app = true # קומפילציה של קבצי האפליקציה
-# packages = false # השבתת קומפילציה עבור ספריות
-# cleanup = true # ניקוי קבצים מיותרים לאחר הקומפילציה
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]

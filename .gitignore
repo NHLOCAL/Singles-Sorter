@@ -5,3 +5,5 @@ _site
 .jekyll-metadata
 vendor
 repomix-output.xml
+repomix-output.md
+*.pyc
