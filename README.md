@@ -19,11 +19,21 @@
 pip install singlesorter
 ```
 
+To enable AI-based detection (spaCy + scikit-learn models):
+
+```bash
+pip install "singlesorter[ai]"
+```
+
 After installation, run:
 
 ```bash
 singlesorter --help
 ```
+
+Custom singer lists:
+- Place `personal-singer-list.csv` in the current working directory, or
+- Set `SINGLESORTER_PERSONAL_LIST` to an absolute/relative CSV path.
 
 For local development and packaging checks:
 
