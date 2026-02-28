@@ -87,3 +87,4 @@ dependencies = [
   "requests",
   "chardet",
 ]
+source_packages = ["music-tag"]
