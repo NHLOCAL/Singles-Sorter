@@ -15,7 +15,7 @@ env:
   BUILD_NUMBER: 1
   BUILD_VERSION: 1.0.0
   PYTHON_VERSION: 3.12.2
-  FLUTTER_VERSION: 3.27.0
+  FLUTTER_VERSION: 3.29.2
 
 jobs:
   build:
@@ -49,7 +49,7 @@ jobs:
     - name: Flet Build APK
       run: |
         flutter config --no-analytics # disable flutter analytics
-        flet build apk --verbose --yes --module-name main src/core # adapt the command to your needs - https://docs.flet.dev/publish/
+        flet build apk --verbose --module-name main # flet-cli 0.28.3: no --yes flag
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4.3.4  # https://github.com/marketplace/actions/upload-a-build-artifact

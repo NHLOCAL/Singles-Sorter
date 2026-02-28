@@ -75,3 +75,15 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
+
+[tool.flet.app]
+path = "src/core"
+module = "main"
+
+[tool.flet.android]
+dependencies = [
+  "flet==0.28.3",
+  "flet-permission-handler",
+  "requests",
+  "chardet",
+]

@@ -9,7 +9,7 @@ on:
 
 env:
   PYTHON_VERSION: 3.12.2
-  FLUTTER_VERSION: 3.27.0
+  FLUTTER_VERSION: 3.29.2
 
 jobs:
   build:
@@ -43,7 +43,7 @@ jobs:
     - name: Flet Build APK
       run: |
         flutter config --no-analytics
-        flet build apk --verbose --yes --module-name main src/core
+        flet build apk --verbose --module-name main # flet-cli 0.28.3: no --yes flag
 
     - name: Get Version and Set Release Metadata
       id: get_version
