@@ -43,7 +43,7 @@ jobs:
     - name: Flet Build APK
       run: |
         flutter config --no-analytics
-        flet build apk -v
+        flet build apk --verbose --yes --module-name main src/core
 
     - name: Get Version and Set Release Metadata
       id: get_version
