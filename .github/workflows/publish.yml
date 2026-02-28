@@ -11,6 +11,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    env:
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,8 +39,8 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
 
       - name: Fallback publish using API token
-        if: steps.trusted_publish.outcome == 'failure' && secrets.PYPI_API_TOKEN != ''
+        if: steps.trusted_publish.outcome == 'failure' && env.PYPI_API_TOKEN != ''
         env:
           TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+          TWINE_PASSWORD: ${{ env.PYPI_API_TOKEN }}
         run: twine upload dist/*
