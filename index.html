@@ -139,9 +139,19 @@ description: "התוכנה היחידה שמזהה, ממיינת ומסדרת א
       <div class="download-card">
         <div class="icon"><i class="fas fa-terminal"></i></div>
         <h3>גרסת CLI (למתקדמים)</h3>
-        <p>גרסת שורת פקודה קלת משקל המאפשרת אוטומציה ושילוב בסקריפטים אישיים.</p>
+        <p>גרסת שורת פקודה קלת משקל המאפשרת אוטומציה ושילוב בסקריפטים אישיים. כוללת גם תמיכה בהתקנה דרך PIP.</p>
         <a id="download-cli" href="https://github.com/NHLOCAL/Singles-Sorter/releases/latest" class="download-button">הורדה (ZIP)</a>
       </div>
+    </div>
+    <div class="pip-install-callout" aria-label="פקודת התקנת PIP">
+      <p class="pip-install-title">למפתחים ומשתמשי CLI: התקנה ישירה עם PIP</p>
+      <div class="pip-install-actions">
+        <pre id="pip-install-command" class="pip-install-code"><code>pip install singlesorter</code></pre>
+        <button id="copy-pip-command" class="pip-copy-button" type="button" aria-label="העתק פקודה" title="העתק פקודה" aria-describedby="pip-copy-status">
+          <i class="fas fa-copy" aria-hidden="true"></i>
+        </button>
+      </div>
+      <p id="pip-copy-status" class="pip-copy-status" aria-live="polite"></p>
     </div>
     <div class="advanced-versions-link">
       <p><a href="https://github.com/NHLOCAL/Singles-Sorter/releases/latest" target="_blank" rel="noopener noreferrer">לחיפוש גרסאות קודמות וקוד מקור (GitHub)</a></p>

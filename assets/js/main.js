@@ -64,4 +64,72 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   updateDownloadLinks();
+
+  // --- Copy PIP Command ---
+  const copyPipButton = document.getElementById('copy-pip-command');
+  const pipCommandElement = document.getElementById('pip-install-command');
+  const pipCopyStatus = document.getElementById('pip-copy-status');
+
+  function setCopyStatus(message, isError = false) {
+    if (!pipCopyStatus) {
+      return;
+    }
+
+    pipCopyStatus.textContent = message;
+    pipCopyStatus.classList.toggle('is-error', isError);
+  }
+
+  function copyTextWithFallback(text) {
+    const tempTextArea = document.createElement('textarea');
+    tempTextArea.value = text;
+    tempTextArea.setAttribute('readonly', '');
+    tempTextArea.style.position = 'absolute';
+    tempTextArea.style.left = '-9999px';
+    tempTextArea.style.top = '0';
+    document.body.appendChild(tempTextArea);
+    tempTextArea.focus();
+    tempTextArea.select();
+    let copySucceeded = false;
+
+    try {
+      copySucceeded = document.execCommand('copy');
+    } catch (error) {
+      copySucceeded = false;
+    }
+
+    document.body.removeChild(tempTextArea);
+    return copySucceeded;
+  }
+
+  async function copyCommandText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (error) {
+        console.warn('Clipboard API failed, falling back to execCommand copy.', error);
+      }
+    }
+
+    return copyTextWithFallback(text);
+  }
+
+  if (copyPipButton && pipCommandElement) {
+    copyPipButton.addEventListener('click', async () => {
+      const commandText = pipCommandElement.textContent.trim();
+
+      if (!commandText) {
+        setCopyStatus('לא נמצאה פקודה להעתקה.', true);
+        return;
+      }
+
+      const copySucceeded = await copyCommandText(commandText);
+      if (copySucceeded) {
+        setCopyStatus('הפקודה הועתקה ללוח.');
+      } else {
+        console.error('Failed to copy PIP command with all available methods.');
+        setCopyStatus('לא הצלחנו להעתיק אוטומטית. אפשר לסמן ולהעתיק ידנית.', true);
+      }
+    });
+  }
 });

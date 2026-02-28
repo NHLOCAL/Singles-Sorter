@@ -363,6 +363,83 @@ section.bg-light {
   gap: 25px;
 }
 
+.pip-install-callout {
+  max-width: 760px;
+  margin: 34px auto 0;
+  padding: 18px;
+  border: 1px solid rgba(230, 193, 59, 0.7);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  text-align: center;
+}
+
+.pip-install-title {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.pip-install-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pip-install-code {
+  margin: 0;
+  padding: 11px 16px;
+  display: inline-block;
+  direction: ltr;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 19px;
+  font-weight: 600;
+  color: #f7de7e;
+  background-color: rgba(6, 12, 26, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+}
+
+.pip-copy-button {
+  border: 1px solid var(--gold);
+  color: var(--dark-blue);
+  background-color: var(--gold);
+  font-weight: 700;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  line-height: 1;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.pip-copy-button:hover {
+  transform: translateY(-1px);
+}
+
+.pip-copy-button:active {
+  transform: translateY(0);
+  opacity: 0.9;
+}
+
+.pip-copy-status {
+  min-height: 20px;
+  margin: 10px 0 0;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.pip-copy-status.is-error {
+  color: #ffd3d3;
+}
+
 .download-card {
   background-color: var(--white);
   color: var(--text-primary);
@@ -529,6 +606,30 @@ section.bg-light {
 @media (max-width: 768px) {
   .hero h1 { font-size: 36px; }
   .hero p.subtitle { font-size: 18px; }
+
+  .pip-install-callout {
+    padding: 15px;
+  }
+
+  .pip-install-title {
+    font-size: 16px;
+  }
+
+  .pip-install-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pip-install-code {
+    width: 100%;
+    font-size: 18px;
+    text-align: center;
+  }
+
+  .pip-copy-button {
+    width: 100%;
+    height: 44px;
+  }
 
   .social-proof-grid { flex-direction: column; gap: 30px; }
   
