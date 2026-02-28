@@ -33,10 +33,11 @@ jobs:
 
       - name: Publish with Trusted Publishing (OIDC)
         id: trusted_publish
+        continue-on-error: true
         uses: pypa/gh-action-pypi-publish@release/v1
 
       - name: Fallback publish using API token
-        if: failure() && secrets.PYPI_API_TOKEN != ''
+        if: steps.trusted_publish.outcome == 'failure' && secrets.PYPI_API_TOKEN != ''
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}

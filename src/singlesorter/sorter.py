@@ -13,19 +13,9 @@ from pathlib import Path
 from music_tag import load_file
 from .jibrish_to_hebrew import fix_jibrish, check_jibrish
 from .check_name import check_exact_name
+from .ai_models import AIModels
 import shutil
 from collections import Counter
-
-# פונקציה לבדיקת קיום קבצי מודל AI
-def check_model_files():
-    model_clf_path = 'models/music_entity_clf/music_entity_clf.pkl'
-    meta_json_path = 'models/singer_ner_he/meta.json'
-    return os.path.isfile(model_clf_path) and os.path.isfile(meta_json_path)
-
-# קריאה לפונקציה בתחילת הקוד
-ai_invalid = False if check_model_files() else True
-if not ai_invalid:
-    from .ai_models import AIModels
 
 # הגדרת רשימות כקבועים גלובליים
 UNUSUAL_LIST = [
@@ -89,21 +79,17 @@ class MusicSorter:
             main_folder_only,
             duet_mode
         ]
+        self.logger = logger or logging.getLogger('MusicSorter')
+        self.logger.setLevel(log_level)
+
         self.singer_list = self.list_from_csv()
         self.songs_sorted = 0
         self.artist_folders_created = set()
         self.artist_song_count = {}
         self.albums_processed = 0
 
-        # Use the provided logger or create a new one
-        self.logger = logger or logging.getLogger('MusicSorter')
-        self.logger.setLevel(log_level)
-
-        # יצירת מופע של AIModels אם לא באנדרואיד
-        if not ai_invalid:
-            self.ai_models = AIModels(logger=self.logger)
-        else:
-            self.ai_models = None  # אם באנדרואיד, לא משתמשים ב-AIModels
+        ai_models = AIModels(logger=self.logger)
+        self.ai_models = ai_models if ai_models.available else None
 
     def progress_display(self, total_amount):
         for current_item in range(1, total_amount + 1):
@@ -121,6 +107,9 @@ class MusicSorter:
         """
         if not self.source_dir.exists():
             raise FileNotFoundError("תיקיית המקור לא נמצאה")
+
+        if self.target_dir is None:
+            raise ValueError("תיקיית היעד נדרשת במצב מיון")
 
         if not self.target_dir.exists():
             raise FileNotFoundError("תיקיית היעד לא נמצאה")
@@ -694,15 +683,26 @@ class MusicSorter:
     def list_from_csv(self):
         """Load bundled and user-provided singer lists."""
         bundled_csv_path = Path(__file__).resolve().parent / "data" / "singer-list.csv"
-        cwd_app_csv_path = Path("app/singer-list.csv").resolve()
-        personal_csv_path = Path("app/personal-singer-list.csv").resolve()
+        cwd_csv_path = Path("singer-list.csv").resolve()
+        personal_csv_path = Path("personal-singer-list.csv").resolve()
+        legacy_app_csv_path = Path("app/singer-list.csv").resolve()
+        legacy_app_personal_csv_path = Path("app/personal-singer-list.csv").resolve()
+        env_personal_csv = os.getenv("SINGLESORTER_PERSONAL_LIST")
 
-        csv_paths = [bundled_csv_path, cwd_app_csv_path, personal_csv_path]
+        csv_paths = [bundled_csv_path, cwd_csv_path, personal_csv_path, legacy_app_csv_path, legacy_app_personal_csv_path]
+        if env_personal_csv:
+            csv_paths.insert(1, Path(env_personal_csv).expanduser().resolve())
 
         singer_list = []
+        seen_paths = set()
         for csv_path in csv_paths:
-            if csv_path.is_file():
-                singer_list.extend(self.load_csv(csv_path))
+            resolved_path = csv_path.resolve()
+            if resolved_path in seen_paths:
+                continue
+            seen_paths.add(resolved_path)
+
+            if resolved_path.is_file():
+                singer_list.extend(self.load_csv(resolved_path))
 
         if not singer_list:
             raise FileNotFoundError("No singer lists found.")
@@ -719,14 +719,19 @@ class MusicSorter:
         split_file = Path(sanitized_filename).stem  # קבלת שם הקובץ ללא הסיומת
 
         found_artists = []
+        original_title = None
+        sanitized_title = None
+
+        def add_artist(artist_name):
+            if artist_name and artist_name not in found_artists:
+                found_artists.append(artist_name)
 
         # שלב ראשון: בדיקת שם הקובץ באמצעות רשימת הזמרים
         for source_name, target_name in self.singer_list:
             if source_name in split_file:
                 exact = check_exact_name(split_file, source_name)
                 if exact:
-                    found_artists.append(target_name)
-                    break  # מצאנו אמן, אין צורך להמשיך
+                    add_artist(target_name)
 
         try:
             metadata_file = load_file(my_file)
@@ -745,7 +750,7 @@ class MusicSorter:
             else:
                 sanitized_title = original_title  # אם אין כותרת, נשאר עם הערך המקורי
 
-        if not found_artists and metadata_file:
+        if metadata_file and (self.duet_mode or not found_artists):
             # שלב שני: בדיקת שם האמן במטאדאטה
             artist = metadata_file['artist'].value
             if artist:
@@ -755,21 +760,20 @@ class MusicSorter:
                     if source_name in artist:
                         exact = check_exact_name(artist, source_name)
                         if exact:
-                            found_artists.append(target_name)
-                            break
+                            add_artist(target_name)
 
                 if not found_artists and self.check_artist(artist):
                     # אם האמן לא נמצא ברשימה, וב-AIModels זמין
-                    if self.ai_models and not ai_invalid:
+                    if self.ai_models:
                         # אימות באמצעות מודל SKLEARN
                         if self.ai_models.verify_artist_with_sklearn(artist):
-                            found_artists.append(artist)
+                            add_artist(artist)
                         else:
                             self.logger.debug(f"Artist '{artist}' not verified by SKLEARN model")
                     else:
-                        self.logger.debug("AI-based checks are disabled on Android.")
+                        self.logger.debug("AI-based checks are disabled.")
 
-        if not found_artists and metadata_file:
+        if metadata_file and (self.duet_mode or not found_artists):
             # שלב שלישי: בדיקת שם הזמר בכותרת השיר במטאדאטה
             if original_title:
                 # שימוש בכותרת המסוננת
@@ -779,10 +783,9 @@ class MusicSorter:
                     if source_name in title:
                         exact = check_exact_name(title, source_name)
                         if exact:
-                            found_artists.append(target_name)
-                            break
+                            add_artist(target_name)
 
-        if not found_artists and not ai_invalid:
+        if not found_artists:
             # שלב רביעי: שימוש ב-NER על שם הקובץ
             if self.ai_models:
                 self.logger.debug(f"Using NER to process filename: {split_file}")
@@ -802,7 +805,7 @@ class MusicSorter:
                         else:
                             self.logger.debug("NER did not find any artists in title")
             else:
-                self.logger.debug("AI-based checks are disabled on Android.")
+                self.logger.debug("AI-based checks are disabled.")
 
         return found_artists if found_artists else None
 

@@ -27,6 +27,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+ai = [
+  "scikit-learn>=1.3",
+  "spacy>=3.7",
+]
 dev = [
   "build>=1.2.2",
   "pytest>=8.3.4",
@@ -50,7 +54,17 @@ where = ["src"]
 include = ["singlesorter*"]
 
 [tool.setuptools.package-data]
-singlesorter = ["data/*.csv"]
+singlesorter = [
+  "data/*.csv",
+  "models/version",
+  "models/music_entity_clf/*.json",
+  "models/music_entity_clf/*.pkl",
+  "models/singer_ner_he/*.cfg",
+  "models/singer_ner_he/*.json",
+  "models/singer_ner_he/tokenizer",
+  "models/singer_ner_he/ner/*",
+  "models/singer_ner_he/vocab/*",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

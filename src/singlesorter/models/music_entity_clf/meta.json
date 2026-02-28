@@ -1,0 +1,6 @@
+{
+	"version": "1.0.0",
+	"author": "nhlocal",
+	"description": "Model for classifying text as singer, album, song name or random text",
+	"email": "nh.local11@gmail.com"
+}
