@@ -91,6 +91,44 @@ class MusicSorter:
         ai_models = AIModels(logger=self.logger)
         self.ai_models = ai_models if ai_models.available else None
 
+    def _normalize_singer_list(self, singer_rows):
+        normalized_rows = []
+        for row in singer_rows:
+            if len(row) < 2:
+                continue
+            source_name = row[0].strip()
+            target_name = row[1].strip()
+            if source_name and target_name:
+                normalized_rows.append((source_name, target_name))
+
+        # Keep the last mapping for each source name so user-provided lists can override bundled data.
+        deduped_rows = []
+        seen_sources = set()
+        for source_name, target_name in reversed(normalized_rows):
+            if source_name in seen_sources:
+                continue
+            seen_sources.add(source_name)
+            deduped_rows.append((source_name, target_name))
+        deduped_rows.reverse()
+
+        # Prefer longer names first to avoid partial matches (e.g., "יצחק מאיר" before "יצחק מאיר הלפגוט").
+        deduped_rows.sort(key=lambda item: len(item[0]), reverse=True)
+        return deduped_rows
+
+    def _find_artists_in_text(self, text, first_match_only=False):
+        matched_artists = []
+        if not text:
+            return matched_artists
+
+        for source_name, target_name in self.singer_list:
+            if source_name in text and check_exact_name(text, source_name):
+                if target_name not in matched_artists:
+                    matched_artists.append(target_name)
+                    if first_match_only:
+                        break
+
+        return matched_artists
+
     def progress_display(self, total_amount):
         for current_item in range(1, total_amount + 1):
             progress = (current_item / total_amount) * 100
@@ -449,13 +487,8 @@ class MusicSorter:
                 return
 
             # Determine artist name from the singer list
-            determined_artist_name = None
-            for source_name, target_name in self.singer_list:
-                if source_name in artist_name:
-                    exact = check_exact_name(artist_name, source_name)
-                    if exact:
-                        determined_artist_name = target_name
-                        break
+            matched_artists = self._find_artists_in_text(artist_name, first_match_only=True)
+            determined_artist_name = matched_artists[0] if matched_artists else None
 
             # Use the determined artist name or the original if not found in the list
             final_artist_name = determined_artist_name if determined_artist_name else artist_name
@@ -535,9 +568,15 @@ class MusicSorter:
                     self.logger.debug(traceback.format_exc())
 
             # Update counters
-            files_num = sum(1 for f in album_target_path.iterdir() if f.is_file())
+            files_num = sum(
+                1 for f in album_target_path.iterdir()
+                if f.is_file() and f.suffix.lower() in SUPPORTED_EXTENSIONS
+            )
+            self.songs_sorted += files_num
             self.albums_processed += 1
-            self.artist_song_count[artist_name] = self.artist_song_count.get(artist_name, 0) + files_num
+            self.artist_song_count[final_artist_name] = (
+                self.artist_song_count.get(final_artist_name, 0) + files_num
+            )
 
         except Exception as e:
             self.logger.error(f"Error in handle_album_transfer for {album_path}: {e}")
@@ -704,6 +743,8 @@ class MusicSorter:
             if resolved_path.is_file():
                 singer_list.extend(self.load_csv(resolved_path))
 
+        singer_list = self._normalize_singer_list(singer_list)
+
         if not singer_list:
             raise FileNotFoundError("No singer lists found.")
 
@@ -727,11 +768,9 @@ class MusicSorter:
                 found_artists.append(artist_name)
 
         # שלב ראשון: בדיקת שם הקובץ באמצעות רשימת הזמרים
-        for source_name, target_name in self.singer_list:
-            if source_name in split_file:
-                exact = check_exact_name(split_file, source_name)
-                if exact:
-                    add_artist(target_name)
+        filename_artists = self._find_artists_in_text(split_file, first_match_only=not self.duet_mode)
+        for artist in filename_artists:
+            add_artist(artist)
 
         try:
             metadata_file = load_file(my_file)
@@ -756,11 +795,11 @@ class MusicSorter:
             if artist:
                 artist = fix_jibrish(artist, "heb")
                 # בדיקת אם האמן נמצא ברשימת הזמרים
-                for source_name, target_name in self.singer_list:
-                    if source_name in artist:
-                        exact = check_exact_name(artist, source_name)
-                        if exact:
-                            add_artist(target_name)
+                metadata_artists = self._find_artists_in_text(
+                    artist, first_match_only=not self.duet_mode
+                )
+                for matched_artist in metadata_artists:
+                    add_artist(matched_artist)
 
                 if not found_artists and self.check_artist(artist):
                     # אם האמן לא נמצא ברשימה, וב-AIModels זמין
@@ -779,11 +818,11 @@ class MusicSorter:
                 # שימוש בכותרת המסוננת
                 title = sanitized_title
                 title = fix_jibrish(title, "heb")
-                for source_name, target_name in self.singer_list:
-                    if source_name in title:
-                        exact = check_exact_name(title, source_name)
-                        if exact:
-                            add_artist(target_name)
+                title_artists = self._find_artists_in_text(
+                    title, first_match_only=not self.duet_mode
+                )
+                for matched_artist in title_artists:
+                    add_artist(matched_artist)
 
         if not found_artists:
             # שלב רביעי: שימוש ב-NER על שם הקובץ

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "singlesorter"
-version = "14.0.0"
+version = "14.0.1"
 description = "Singles Sorter CLI for organizing music by artist"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -28,8 +28,8 @@ dependencies = [
 
 [project.optional-dependencies]
 ai = [
-  "scikit-learn>=1.3",
-  "spacy>=3.7",
+  "scikit-learn>=1.5.1,<1.6",
+  "spacy>=3.7.5,<3.8",
 ]
 dev = [
   "build>=1.2.2",
