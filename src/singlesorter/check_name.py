@@ -2,6 +2,7 @@
 import os
 import re
 import csv
+import difflib
 
 def artist_from_song(my_file):
     """
@@ -51,30 +52,64 @@ def artist_from_song(my_file):
 
 
 
+def advanced_normalization(text):
+    """מנקה את הטקסט ומנרמל אותו פונטית כדי להתגבר על כתיב חסר/מלא ושמות באידיש."""
+    if not text:
+        return ""
+    # 1. הסרת תווים מיוחדים ומפרידים (גרש, מרכאות, מקפים)
+    text = re.sub(r'[\'\"״׳\-_`\.]', '', text)
+    # 2. החלפת 'ע' סופית ב-'ה' (אהרלע -> אהרלה)
+    text = re.sub(r'ע\b', 'ה', text)
+    # 3. הסרת א' ו-ע' שמשמשות כתנועות באמצע מילה (סאמעט -> סמט)
+    def remove_yiddish_vowels(word):
+        if len(word) <= 1: return word
+        # משאיר את האות הראשונה כפי שהיא, ומוחק א/ע משאר המילה
+        return word[0] + re.sub(r'[אע]', '', word[1:])
+    words = [remove_yiddish_vowels(w) for w in text.split()]
+    text = " ".join(words)
+    # 4. צמצום כפילויות של ו' ו-י'
+    text = re.sub(r'ו+', 'ו', text)
+    text = re.sub(r'י+', 'י', text)
+    return re.sub(r'\s+', ' ', text).strip()
+
+
 def check_exact_name(filename, artist_to_search):
-    """
-    Check if the artist's name appears exactly in the filename, even if preceded by "ו".
+    """גרסה משופרת הכוללת נורמליזציה פונטית והתאמה חכמה (Fuzzy Matching)
+    לזיהוי שגיאות כתיב וגרסאות איות שונות (כמו 'אהרל'ע סאמעט' ו-'מוטי שטיימץ')."""
 
-    Parameters:
-    filename (str): The filename or metadata.
-    artist_to_search (str): The artist's name to search for.
-
-    Returns:
-    bool: True if the artist's name is found exactly in the filename (even if preceded by "ו"), False otherwise.
-    """
-    
-    # Remove leading spaces in the filename
-    filename = filename.lstrip()
-    
-    # Escape special characters in the artist's name
+    # --- שלב א': בדיקה קלאסית עם ו' החיבור ---
+    # מונע פגיעה בשמות שתמיד עבדו כראוי
+    filename_clean = filename.lstrip()
     escaped_artist = re.escape(artist_to_search)
-    
-    # Define a pattern to match the exact artist name, even if preceded by "ו"
     exact_match_pattern = fr'(^|[^א-ת])ו?{escaped_artist}\b'
-
-    # Search for the exact artist name in the filename
-    if re.search(exact_match_pattern, filename):
+    if re.search(exact_match_pattern, filename_clean):
         return True
+
+    # --- שלב ב': נורמליזציה פונטית ---
+    # מטפל במקרים כמו: אהרל'ע סאמעט -> אהרלה סמט
+    norm_file = advanced_normalization(filename)
+    norm_artist = advanced_normalization(artist_to_search)
+
+    # בדיקת הכלה אחרי נורמליזציה (כולל טיפול ב-ו' החיבור)
+    if re.search(fr'(^|[^א-ת])ו?{re.escape(norm_artist)}\b', norm_file):
+        return True
+
+    # --- שלב ג': Fuzzy Matching (התאמה חכמה ממוקדת שגיאות כתיב) ---
+    # מטפל במקרים כמו: שטיימץ -> שטיינמץ (אות שנשמטה/התחלפה)
+    # אנחנו מחלקים את שם השיר ל"חלונות" של מילים כדי לא להשוות אמן קצר לשם שיר ארוך מדי
+    artist_words = norm_artist.split()
+    file_words = norm_file.split()
+    num_words = len(artist_words)
+    if num_words > 0 and len(file_words) >= num_words:
+        for i in range(len(file_words) - num_words + 1):
+            chunk = " ".join(file_words[i:i+num_words])
+            # אם המילה הראשונה ב"חלון" מתחילה ב-ו' (אולי ו' החיבור), נבדוק גם בלעדיה
+            chunk_no_vav = chunk[1:] if chunk.startswith('ו') else chunk
+            # בדיקת דמיון. יחס של 88% ומעלה תופס שגיאת כתיב של אות אחת בשם מלא,
+            # אבל מונע זיהוי שגוי בין אמנים שונים.
+            if difflib.SequenceMatcher(None, norm_artist, chunk).ratio() >= 0.88 or \
+               difflib.SequenceMatcher(None, norm_artist, chunk_no_vav).ratio() >= 0.88:
+                return True
 
     return False
 
