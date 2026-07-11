@@ -6,3 +6,4 @@ _site
 vendor
 repomix-output.xml
 *.pyc
+repomix-output.md
