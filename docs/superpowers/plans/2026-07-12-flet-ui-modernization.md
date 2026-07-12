@@ -195,7 +195,7 @@ Expected: APK builds succeed for the configured Android ABIs.
 
 Completed on 2026-07-12 on branch `codex/flet-ui-modernization`.
 
-- `python -m pytest -q`: 33 passed.
+- `python -m pytest -q`: 47 passed after the legacy-feature parity restoration.
 - `python -m ruff check src tests`: passed.
 - `python -m compileall -q src`: passed.
 - `python -m build`: wheel and source archive built successfully.
@@ -203,3 +203,4 @@ Completed on 2026-07-12 on branch `codex/flet-ui-modernization`.
 - `flet build apk --split-per-abi --no-rich-output`: ARM64, ARMv7, and x86_64 APKs built successfully.
 - `flet build aab --no-rich-output`: Android App Bundle built successfully.
 - Android SDK smoke test: installed and launched on a connected Android 12 device; full-screen scrolling settings and fixed save/cancel actions verified.
+- Restored Help, What's New, About, personal singer list, fix-names, update checks and tips are tracked in `2026-07-12-legacy-feature-restoration.md`.

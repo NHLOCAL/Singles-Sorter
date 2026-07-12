@@ -47,9 +47,9 @@ def result_dialog(result: SortResult, on_close) -> ft.AlertDialog:
         title = "לא הצלחנו להשלים את המיון"
         icon = ft.Icons.ERROR_OUTLINE_ROUNDED
     else:
-        title = "המוזיקה מסודרת"
+        title = "הפעולה הושלמה" if result.message else "המוזיקה מסודרת"
         icon = ft.Icons.CHECK_CIRCLE_OUTLINE_ROUNDED
-    content = result.error or (
+    content = result.error or result.message or (
         f"הועתקו {result.songs_sorted} שירים, נוצרו "
         f"{result.artist_folders_created} תיקיות אמנים וטופלו {result.albums_processed} אלבומים."
     )

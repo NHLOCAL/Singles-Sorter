@@ -70,3 +70,39 @@ class SortService:
             top_artists=tuple(summary.get("top_artists", ())),
             cancelled=bool(cancellation and cancellation.cancelled),
         )
+
+    def fix_names(
+        self,
+        source: object,
+        on_progress: Callable[[SortProgress], None] | None = None,
+        cancellation: CancellationToken | None = None,
+        *,
+        main_folder_only: bool = False,
+    ) -> SortResult:
+        last_fraction = -1.0
+
+        def report(percent: float) -> None:
+            nonlocal last_fraction
+            fraction = min(1.0, max(0.0, float(percent) / 100.0))
+            if fraction == last_fraction:
+                return
+            last_fraction = fraction
+            if on_progress:
+                on_progress(SortProgress(fraction=fraction, message="מתקנים שמות ותגיות…"))
+
+        sorter_kwargs = {
+            "source_dir": source,
+            "target_dir": None,
+            "main_folder_only": main_folder_only,
+            "progress_callback": report,
+        }
+        if cancellation is not None:
+            sorter_kwargs["cancel_check"] = lambda: cancellation.cancelled
+        sorter = self._sorter_factory(**sorter_kwargs)
+        if cancellation and cancellation.cancelled:
+            return SortResult(cancelled=True)
+        sorter.fix_names()
+        return SortResult(
+            cancelled=bool(cancellation and cancellation.cancelled),
+            message="תיקון שמות הקבצים הסתיים בהצלחה.",
+        )

@@ -3,19 +3,27 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from pathlib import Path
 
 import flet as ft
 import flet_permission_handler as fph
 
+from singlesorter import __VERSION__
+
+from .content import load_content
 from .services.permissions import required_android_permissions
+from .services.singer_list import SingerListStore
 from .services.sorting import CancellationToken, SortService
+from .services.updates import ReleaseInfo, check_latest_release, should_show_whats_new
 from .state import SortJob, SortProgress, SortResult, SortSettings
 from .theme import BrandColors, build_dark_theme, build_theme
 from .validation import validate_job
 from .views.dialogs import result_dialog, review_dialog
 from .views.home import HomeView
+from .views.information import information_sheet
 from .views.settings import SettingsView, settings_sheet
+from .views.singer_list import SingerListEditor, singer_list_sheet
 
 
 class SinglesSorterApp:
@@ -31,12 +39,17 @@ class SinglesSorterApp:
         self.file_picker = ft.FilePicker()
         self.preferences = ft.SharedPreferences()
         self.permission_handler = fph.PermissionHandler()
+        self.singer_store = SingerListStore()
+        os.environ["SINGLESORTER_PERSONAL_LIST"] = str(self.singer_store.path)
+        self.singer_editor: SingerListEditor | None = None
         self.home = HomeView(
             on_pick_source=self.pick_source,
             on_pick_target=self.pick_target,
             on_start=self.show_review,
             on_settings=self.show_settings,
             on_theme=self.toggle_theme,
+            on_menu=self.handle_menu,
+            on_fix_names=self.show_fix_names_warning,
         )
         self.progress_bar = ft.ProgressBar(value=0, color=BrandColors.GOLD)
         self.progress_text = ft.Text("מתחילים…", text_align=ft.TextAlign.CENTER)
@@ -66,6 +79,11 @@ class SinglesSorterApp:
                 expand=True,
             )
         )
+        last_seen = await self.preferences.get("singlesorter.last_whats_new")
+        if should_show_whats_new(last_seen, __VERSION__):
+            self.show_information("whats-new")
+            await self.preferences.set("singlesorter.last_whats_new", __VERSION__)
+        self.page.run_task(self._check_updates, False)
 
     def _configure_page(self) -> None:
         self.page.title = "מסדר הסינגלים"
@@ -149,6 +167,122 @@ class SinglesSorterApp:
         )
         self.page.show_dialog(sheet)
 
+    def handle_menu(self, key: str) -> None:
+        if key in {"help", "whats-new", "about"}:
+            self.show_information(key)
+        elif key == "singers":
+            self.show_singer_list()
+        elif key == "update":
+            self.page.run_task(self._check_updates, True)
+
+    def show_information(self, key: str) -> None:
+        pages = {
+            "help": ("עזרה", ft.Icons.HELP_OUTLINE),
+            "whats-new": ("מה חדש", ft.Icons.NEW_RELEASES_OUTLINED),
+            "about": ("אודות התוכנה", ft.Icons.INFO_OUTLINE),
+        }
+        title, icon = pages[key]
+        self.page.show_dialog(
+            information_sheet(
+                title=title,
+                markdown=load_content(key),
+                icon=icon,
+                on_close=lambda _: self.page.pop_dialog(),
+            )
+        )
+
+    def show_singer_list(self) -> None:
+        self.singer_editor = SingerListEditor(
+            self.singer_store.load(),
+            on_change=lambda: self.page.update(self.singer_editor.control),
+        )
+        self.page.show_dialog(
+            singer_list_sheet(
+                self.singer_editor,
+                on_close=lambda _: self.page.pop_dialog(),
+                on_save=lambda _: self._save_singer_list(),
+                on_import=lambda _: self.page.run_task(self._import_singer_list),
+                on_export=lambda _: self.page.run_task(self._export_singer_list),
+            )
+        )
+
+    def _save_singer_list(self) -> None:
+        if self.singer_editor is None:
+            return
+        self.singer_store.save(self.singer_editor.to_entries())
+        self.page.pop_dialog()
+
+    async def _import_singer_list(self) -> None:
+        selected = await self.file_picker.pick_files(
+            dialog_title="ייבוא רשימת זמרים אישית",
+            file_type=ft.FilePickerFileType.CUSTOM,
+            allowed_extensions=["csv"],
+            allow_multiple=False,
+            with_data=True,
+        )
+        if not selected:
+            return
+        file = selected[0]
+        if file.path:
+            added = self.singer_store.import_csv(file.path)
+        elif file.bytes:
+            added = self.singer_store.import_bytes(file.bytes)
+        else:
+            return
+        if self.singer_editor:
+            self.singer_editor.replace_entries(self.singer_store.load())
+        self._show_notice(f"נוספו {added} רשומות חדשות.")
+
+    async def _export_singer_list(self) -> None:
+        destination = await self.file_picker.save_file(
+            dialog_title="ייצוא רשימת זמרים אישית",
+            file_name="personal-singer-list.csv",
+            file_type=ft.FilePickerFileType.CUSTOM,
+            allowed_extensions=["csv"],
+            src_bytes=self.singer_store.to_csv_bytes(),
+        )
+        if destination:
+            self.singer_store.export_csv(destination)
+        self._show_notice("רשימת הזמרים יוצאה בהצלחה.")
+
+    def _show_notice(self, message: str) -> None:
+        self.page.show_dialog(
+            ft.SnackBar(
+                content=ft.Text(message),
+                show_close_icon=True,
+            )
+        )
+
+    async def _check_updates(self, show_result: bool) -> None:
+        release = await asyncio.to_thread(check_latest_release, __VERSION__)
+        if release:
+            self.home.more_menu.badge = ft.Badge(small_size=9, bgcolor=ft.Colors.RED)
+            self.page.update(self.home.more_menu)
+            if show_result:
+                self._show_update_dialog(release)
+        elif show_result:
+            self._show_notice("מותקנת הגרסה העדכנית ביותר.")
+
+    def _show_update_dialog(self, release: ReleaseInfo) -> None:
+        self.page.show_dialog(
+            ft.AlertDialog(
+                title=f"גרסה {release.version} זמינה",
+                icon=ft.Icon(ft.Icons.SYSTEM_UPDATE_OUTLINED),
+                content=ft.Column(
+                    [ft.Text("מה חדש", weight=ft.FontWeight.BOLD), ft.Markdown(release.notes)],
+                    tight=True,
+                    scroll=ft.ScrollMode.AUTO,
+                ),
+                actions=[
+                    ft.TextButton("סגירה", on_click=lambda _: self.page.pop_dialog()),
+                    ft.FilledButton(
+                        "פתיחת דף ההורדה",
+                        on_click=lambda _: self.page.launch_url(release.url),
+                    ),
+                ],
+            )
+        )
+
     async def _save_settings_and_close(self, view: SettingsView) -> None:
         self.settings = view.to_settings()
         for key, value in self.settings.to_mapping().items():
@@ -183,9 +317,58 @@ class SinglesSorterApp:
         )
         self.page.show_dialog(dialog)
 
+    def show_fix_names_warning(self, _=None) -> None:
+        if not self.source or not self.source.exists():
+            self.page.show_dialog(
+                ft.AlertDialog(
+                    title="יש לבחור תיקיית מוזיקה",
+                    content=ft.Text("בחרו תחילה את התיקייה שבה נמצאים הקבצים לתיקון."),
+                    actions=[ft.FilledButton("הבנתי", on_click=lambda _: self.page.pop_dialog())],
+                )
+            )
+            return
+        self.page.show_dialog(
+            ft.AlertDialog(
+                modal=True,
+                title="תיקון שמות ותגיות",
+                icon=ft.Icon(ft.Icons.DRIVE_FILE_RENAME_OUTLINE),
+                content=ft.Text(
+                    "הפעולה עשויה לשנות שמות קבצים ותגיות מוזיקה. מומלץ לגבות את התיקייה לפני ההמשך."
+                ),
+                actions=[
+                    ft.TextButton("ביטול", on_click=lambda _: self.page.pop_dialog()),
+                    ft.FilledButton(
+                        "המשך",
+                        on_click=lambda _: self.page.run_task(self.start_fix_names),
+                    ),
+                ],
+            )
+        )
+
+    async def start_fix_names(self) -> None:
+        self.page.pop_dialog()
+        self.cancellation = CancellationToken()
+        self.progress_dialog.title = "מתקנים שמות ותגיות"
+        self.progress_bar.value = 0
+        self.progress_text.value = "סורקים את קובצי המוזיקה…"
+        self.page.show_dialog(self.progress_dialog)
+        try:
+            result = await asyncio.to_thread(
+                self.service.fix_names,
+                self.source,
+                self._on_progress,
+                self.cancellation,
+                main_folder_only=self.settings.main_folder_only,
+            )
+        except Exception as error:
+            result = SortResult(error=self._friendly_error(error))
+        self.page.pop_dialog()
+        self.page.show_dialog(result_dialog(result, lambda _: self.page.pop_dialog()))
+
     async def start_sort(self, job: SortJob) -> None:
         self.page.pop_dialog()
         self.cancellation = CancellationToken()
+        self.progress_dialog.title = "מסדרים את המוזיקה"
         self.progress_bar.value = 0
         self.progress_text.value = "סורקים ומזהים את השירים…"
         self.page.show_dialog(self.progress_dialog)

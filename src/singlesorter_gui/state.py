@@ -75,3 +75,4 @@ class SortResult:
     top_artists: tuple[tuple[str, int], ...] = ()
     error: str | None = None
     cancelled: bool = False
+    message: str | None = None

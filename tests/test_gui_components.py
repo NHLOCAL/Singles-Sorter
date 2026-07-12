@@ -1,9 +1,11 @@
 import flet as ft
 
+from singlesorter_gui.services.singer_list import SingerEntry
 from singlesorter_gui.state import SortSettings
 from singlesorter_gui.theme import BrandColors, build_dark_theme, build_theme
 from singlesorter_gui.views.home import HomeView
 from singlesorter_gui.views.settings import SettingsView, settings_sheet
+from singlesorter_gui.views.singer_list import SingerListEditor, singer_list_sheet
 
 
 def test_theme_uses_icon_inspired_blue_and_gold_palette():
@@ -31,6 +33,17 @@ def test_home_view_enables_action_when_both_paths_are_selected():
 
     assert view.start_button.disabled is False
     assert view.source_path.value == "C:/music"
+
+
+def test_fix_names_action_requires_only_a_source_folder():
+    view = HomeView(on_pick_source=lambda _: None, on_pick_target=lambda _: None)
+
+    assert view.fix_names_button.disabled is True
+    view.set_paths("C:/music", None)
+
+    assert view.fix_names_button.content == "תיקון שמות ותגיות"
+    assert view.fix_names_button.disabled is False
+    assert view.start_button.disabled is True
 
 
 def test_settings_view_starts_with_move_and_no_singles_folder():
@@ -65,3 +78,22 @@ def test_settings_sheet_keeps_actions_visible_outside_scroll_area():
     assert isinstance(divider, ft.Divider)
     assert isinstance(actions, ft.Row)
     assert [button.content for button in actions.controls] == ["ביטול", "שמירה"]
+
+
+def test_personal_singer_editor_is_fullscreen_and_editable():
+    editor = SingerListEditor([SingerEntry("שם בקובץ", "שם תיקייה")])
+    sheet = singer_list_sheet(
+        editor,
+        on_close=lambda _: None,
+        on_save=lambda _: None,
+        on_import=lambda _: None,
+        on_export=lambda _: None,
+    )
+
+    assert sheet.fullscreen is True
+    assert len(editor.rows) == 1
+    editor.add_entry()
+    assert len(editor.rows) == 2
+    editor.rows[1].source.value = "זמר חדש"
+    editor.rows[1].target.value = "תיקייה חדשה"
+    assert editor.to_entries()[-1] == SingerEntry("זמר חדש", "תיקייה חדשה")

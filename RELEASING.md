@@ -24,9 +24,13 @@ pip install -e ".[gui,dev]"
 singlesorter --help
 singlesorter-gui
 flet doctor
+flet build windows --no-rich-output
 flet build apk
 flet build aab
 ```
+
+יש להפעיל את `build/windows/singlesorter.exe` ולוודא שהיישום נשאר פעיל,
+וכן לבדוק את עזרה, מה חדש, אודות, רשימת הזמרים ותיקון השמות לפני פרסום.
 
 The base wheel metadata must not include Flet. Flet 0.85.3 belongs only to
 the `gui` extra and to Flet application builds.

@@ -6,7 +6,10 @@ from collections.abc import Callable
 
 import flet as ft
 
+from singlesorter import __VERSION__
+
 from ..theme import CARD_RADIUS, TOUCH_HEIGHT, BrandColors
+from ..tips import daily_tip
 
 
 class HomeView:
@@ -17,6 +20,8 @@ class HomeView:
         on_start: Callable[[object], None] | None = None,
         on_settings: Callable[[object], None] | None = None,
         on_theme: Callable[[object], None] | None = None,
+        on_menu: Callable[[str], None] | None = None,
+        on_fix_names: Callable[[object], None] | None = None,
     ) -> None:
         self.source_path = ft.Text("לא נבחרה תיקייה", color=BrandColors.MUTED, size=13)
         self.target_path = ft.Text("לא נבחרה תיקייה", color=BrandColors.MUTED, size=13)
@@ -33,10 +38,17 @@ class HomeView:
             ),
             on_click=on_start,
         )
+        self.fix_names_button = ft.OutlinedButton(
+            "תיקון שמות ותגיות",
+            icon=ft.Icons.DRIVE_FILE_RENAME_OUTLINE,
+            disabled=True,
+            height=50,
+            on_click=on_fix_names,
+        )
         self.control = ft.Container(
             content=ft.Column(
                 controls=[
-                    self._header(on_settings, on_theme),
+                    self._header(on_settings, on_theme, on_menu),
                     ft.Container(height=6),
                     ft.Text(
                         "מסדרים את המוזיקה. בפשטות.",
@@ -85,7 +97,18 @@ class HomeView:
                         ),
                         padding=ft.Padding.symmetric(horizontal=4, vertical=6),
                     ),
+                    ft.Container(
+                        content=ft.Row(
+                            [
+                                ft.Icon(ft.Icons.LIGHTBULB_OUTLINE, color=BrandColors.GOLD, size=20),
+                                ft.Text(daily_tip(), size=12, color=BrandColors.MUTED, expand=True),
+                            ],
+                            rtl=True,
+                        ),
+                        padding=ft.Padding.symmetric(horizontal=4, vertical=2),
+                    ),
                     self.start_button,
+                    self.fix_names_button,
                 ],
                 spacing=10,
                 horizontal_alignment=ft.CrossAxisAlignment.STRETCH,
@@ -96,7 +119,28 @@ class HomeView:
             alignment=ft.Alignment.TOP_CENTER,
         )
 
-    def _header(self, on_settings, on_theme) -> ft.Row:
+    def _header(self, on_settings, on_theme, on_menu) -> ft.Row:
+        self.version_text = ft.Text(f"גרסה {__VERSION__}", size=11, color=BrandColors.MUTED)
+        menu_entries = [
+            ("help", "עזרה", ft.Icons.HELP_OUTLINE),
+            ("whats-new", "מה חדש", ft.Icons.NEW_RELEASES_OUTLINED),
+            ("about", "אודות התוכנה", ft.Icons.INFO_OUTLINE),
+            ("singers", "רשימת זמרים אישית", ft.Icons.GROUP_OUTLINED),
+            ("update", "בדיקת עדכונים", ft.Icons.SYSTEM_UPDATE_OUTLINED),
+        ]
+        self.more_menu = ft.PopupMenuButton(
+            icon=ft.Icons.MORE_VERT_ROUNDED,
+            tooltip="אפשרויות נוספות",
+            items=[
+                ft.PopupMenuItem(
+                    content=label,
+                    icon=icon,
+                    data=key,
+                    on_click=(lambda _, key=key: on_menu(key)) if on_menu else None,
+                )
+                for key, label, icon in menu_entries
+            ],
+        )
         mark = ft.Container(
             content=ft.Image(src="icon.png", fit=ft.BoxFit.COVER),
             width=44,
@@ -111,7 +155,11 @@ class HomeView:
                 ft.Column(
                     [
                         ft.Text("מסדר הסינגלים", size=19, weight=ft.FontWeight.BOLD),
-                        ft.Text("Singles Sorter", size=12, color=BrandColors.MUTED),
+                        ft.Row(
+                            [ft.Text("Singles Sorter", size=12, color=BrandColors.MUTED), self.version_text],
+                            spacing=8,
+                            rtl=True,
+                        ),
                     ],
                     spacing=0,
                     expand=True,
@@ -126,6 +174,7 @@ class HomeView:
                     tooltip="הגדרות מתקדמות",
                     on_click=on_settings,
                 ),
+                self.more_menu,
             ],
             rtl=True,
             spacing=8,
@@ -196,3 +245,4 @@ class HomeView:
         self.source_path.value = source or "לא נבחרה תיקייה"
         self.target_path.value = target or "לא נבחרה תיקייה"
         self.start_button.disabled = not bool(source and target)
+        self.fix_names_button.disabled = not bool(source)
