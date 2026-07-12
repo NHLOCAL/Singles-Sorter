@@ -46,7 +46,7 @@ class HomeView:
                         text_align=ft.TextAlign.RIGHT,
                     ),
                     ft.Text(
-                        "בחרו מאיפה לקחת את השירים ולאן להעתיק אותם — אנחנו נטפל בשאר.",
+                    "בחרו מאיפה לקחת את השירים ולאן להעביר אותם — אנחנו נטפל בשאר.",
                         size=15,
                         color=BrandColors.MUTED,
                         text_align=ft.TextAlign.RIGHT,
@@ -62,7 +62,7 @@ class HomeView:
                     ),
                     self._folder_card(
                         number="2",
-                        title="לאן להעתיק אותה?",
+            title="לאן להעביר אותה?",
                         subtitle="כאן ייווצרו תיקיות האמנים המסודרות",
                         path=self.target_path,
                         button_text="בחירת יעד",
@@ -73,7 +73,7 @@ class HomeView:
                             controls=[
                                 ft.Icon(ft.Icons.SHIELD_OUTLINED, color=BrandColors.STEEL, size=20),
                                 ft.Text(
-                                    "הקבצים המקוריים נשארים במקומם. ברירת המחדל היא העתקה בטוחה.",
+                                    "ברירת המחדל היא העברה לתיקיות המסודרות. מומלץ לגבות מראש.",
                                     color=BrandColors.MUTED,
                                     size=13,
                                     expand=True,

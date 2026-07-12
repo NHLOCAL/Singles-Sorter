@@ -67,7 +67,7 @@ Expected: PASS.
 
 - [ ] **Step 1: Write failing state and validation tests**
 
-Tests assert copy defaults to `True`, settings deserialize safely, missing paths are rejected, identical paths are rejected, and valid existing paths pass.
+Tests assert move mode and no internal singles folder are the defaults, settings deserialize safely, missing paths are rejected, identical paths are rejected, and valid existing paths pass.
 
 - [ ] **Step 2: Observe expected failures**
 

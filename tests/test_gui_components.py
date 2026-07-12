@@ -33,11 +33,13 @@ def test_home_view_enables_action_when_both_paths_are_selected():
     assert view.source_path.value == "C:/music"
 
 
-def test_settings_view_starts_with_copy_enabled():
+def test_settings_view_starts_with_move_and_no_singles_folder():
     view = SettingsView(SortSettings())
 
-    assert view.copy_mode.value is True
-    assert view.to_settings().copy_mode is True
+    assert view.copy_mode.value is False
+    assert view.singles_folder.value is False
+    assert view.to_settings().copy_mode is False
+    assert view.to_settings().singles_folder is False
 
 
 def test_settings_sheet_keeps_actions_visible_outside_scroll_area():

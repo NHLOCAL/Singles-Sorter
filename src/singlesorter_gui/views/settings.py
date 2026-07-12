@@ -10,7 +10,7 @@ from ..theme import BrandColors
 
 class SettingsView:
     def __init__(self, settings: SortSettings) -> None:
-        self.copy_mode = self._switch("העתקת הקבצים", settings.copy_mode)
+        self.copy_mode = self._switch("שמירת עותק של הקבצים", settings.copy_mode)
         self.main_folder_only = self._switch("סריקת התיקייה הראשית בלבד", settings.main_folder_only)
         self.singles_folder = self._switch(
             "יצירת תיקיית ״סינגלים״ לכל אמן", settings.singles_folder
@@ -29,7 +29,7 @@ class SettingsView:
                 ft.Divider(),
                 self.copy_mode,
                 ft.Text(
-                    "מומלץ להשאיר פעיל: הקבצים המקוריים לא יימחקו.",
+                    "כבוי כברירת מחדל: הקבצים יועברו לתיקיות המסודרות.",
                     size=12,
                     color=BrandColors.MUTED,
                 ),

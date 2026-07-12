@@ -4,14 +4,15 @@ from singlesorter_gui.state import SortJob, SortSettings
 from singlesorter_gui.validation import validate_job
 
 
-def test_settings_use_safe_copy_default():
-    assert SortSettings().copy_mode is True
+def test_settings_default_to_move_without_inner_singles_folder():
+    assert SortSettings().copy_mode is False
+    assert SortSettings().singles_folder is False
 
 
 def test_settings_migrate_missing_and_string_values():
     settings = SortSettings.from_mapping({"abc_sort": "true", "copy_mode": None})
 
-    assert settings.copy_mode is True
+    assert settings.copy_mode is False
     assert settings.abc_sort is True
 
 

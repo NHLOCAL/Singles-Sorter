@@ -45,10 +45,10 @@ Advanced settings are separated from the main flow and grouped by purpose:
 - Scan scope: source folder only or include subfolders.
 - Destination structure: singles subfolder, alphabetic folders, existing artist folders only.
 - Duets: first detected artist or every detected artist.
-- File operation: copy by default; move with confirmation.
+- File operation: move by default; optional copy mode preserves the source.
 - Personal singer list management.
 
-Settings use descriptive labels and supporting text. Existing stored values are migrated when possible. Missing values receive safe defaults, with copy mode set to `true`.
+Settings use descriptive labels and supporting text. Existing stored values are migrated when possible. Missing values default to move mode with no internal singles folder.
 
 ## Visual system
 

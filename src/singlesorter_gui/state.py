@@ -17,9 +17,9 @@ def _as_bool(value: Any, default: bool) -> bool:
 
 @dataclass(frozen=True, slots=True)
 class SortSettings:
-    copy_mode: bool = True
+    copy_mode: bool = False
     main_folder_only: bool = False
-    singles_folder: bool = True
+    singles_folder: bool = False
     exist_only: bool = False
     abc_sort: bool = False
     duet_mode: bool = False

@@ -68,7 +68,7 @@ class MusicSorter:
         copy_mode=False,
         abc_sort=False,
         exist_only=False,
-        singles_folder=True,
+        singles_folder=False,
         main_folder_only=False,
         duet_mode=False,
         progress_callback=None,
@@ -980,13 +980,20 @@ def main():
         help="Transfer to existing folders only (default: False)",
         action="store_true",
     )
-    parser.add_argument(
+    singles_group = parser.add_mutually_exclusive_group()
+    singles_group.add_argument(
+        "--singles-dir",
+        help="Create an internal 'singles' folder (default: False)",
+        action="store_true",
+        dest="singles_folder",
+        default=False,
+    )
+    singles_group.add_argument(
         "-n",
         "--no_singles_dir",
         help="Do not create an internal 'singles' folder",
         action="store_false",
         dest="singles_folder",
-        default=True,
     )
     parser.add_argument(
         "-m",
