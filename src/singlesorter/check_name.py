@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
+import csv
 import os
 import re
-import csv
+
 
 def artist_from_song(my_file):
     """
@@ -44,7 +45,8 @@ def artist_from_song(my_file):
             
             # בדיקת דיוק שם הקובץ
             exact = check_exact_name(split_file, source_name)
-            if exact: return artist
+            if exact:
+                return artist
 
     return
 

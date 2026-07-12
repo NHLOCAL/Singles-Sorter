@@ -1,21 +1,23 @@
 # -*- coding: utf-8 -*-
-__VERSION__ = '14.0.0'
+__VERSION__ = "14.0.1"
 
-import os
-import sys
-import re
 import argparse
 import csv
-import logging
 import datetime
-import traceback
-from pathlib import Path
-from music_tag import load_file
-from .jibrish_to_hebrew import fix_jibrish, check_jibrish
-from .check_name import check_exact_name
-from .ai_models import AIModels
+import logging
+import os
+import re
 import shutil
+import sys
+import traceback
 from collections import Counter
+from pathlib import Path
+
+from music_tag import load_file
+
+from .ai_models import AIModels
+from .check_name import check_exact_name
+from .jibrish_to_hebrew import check_jibrish, fix_jibrish
 
 # הגדרת רשימות כקבועים גלובליים
 UNUSUAL_LIST = [
@@ -25,7 +27,7 @@ UNUSUAL_LIST = [
     "אמן לא ידוע",
     "טוב",
     "לא ידוע",
-    "תודה לך ה"
+    "תודה לך ה",
 ]
 
 SUBSTRINGS_TO_REMOVE = [
@@ -39,13 +41,26 @@ SUBSTRINGS_TO_REMOVE = [
     "המחדש",
 ]
 
-SUPPORTED_EXTENSIONS = {'.m4a', '.wma', '.wav', '.aiff', '.flac', '.aac', '.alac', '.wv', '.ogg', '.dsf', '.opus', '.mp3'}
+SUPPORTED_EXTENSIONS = {
+    ".m4a",
+    ".wma",
+    ".wav",
+    ".aiff",
+    ".flac",
+    ".aac",
+    ".alac",
+    ".wv",
+    ".ogg",
+    ".dsf",
+    ".opus",
+    ".mp3",
+}
 
 # הוספת רשימת מילות המפתח לזיהוי סינגלים
 SINGLE_KEYWORDS = ["סינגל", "סינגלים", "single", "singles"]
 
-class MusicSorter:
 
+class MusicSorter:
     def __init__(
         self,
         source_dir,
@@ -58,7 +73,8 @@ class MusicSorter:
         duet_mode=False,
         progress_callback=None,
         log_level=logging.INFO,
-        logger=None
+        logger=None,
+        cancel_check=None,
     ):
         self.source_dir = Path(source_dir)
         self.target_dir = Path(target_dir) if target_dir else None
@@ -69,6 +85,7 @@ class MusicSorter:
         self.main_folder_only = main_folder_only
         self.duet_mode = duet_mode
         self.progress_callback = progress_callback
+        self.cancel_check = cancel_check or (lambda: False)
         self.operating_details = [
             source_dir,
             target_dir,
@@ -77,9 +94,9 @@ class MusicSorter:
             exist_only,
             singles_folder,
             main_folder_only,
-            duet_mode
+            duet_mode,
         ]
-        self.logger = logger or logging.getLogger('MusicSorter')
+        self.logger = logger or logging.getLogger("MusicSorter")
         self.logger.setLevel(log_level)
 
         self.singer_list = self.list_from_csv()
@@ -161,7 +178,6 @@ class MusicSorter:
         if not any(self.source_dir.iterdir()):
             raise ValueError("תיקיית המקור ריקה")
 
-
     def clean_filename(self, filename):
         # טיפול בקווים תחתונים
         if "_" in filename:
@@ -170,10 +186,10 @@ class MusicSorter:
                 filename = filename.replace("_", " ")
             else:
                 # הסר קווים תחתונים שמופיעים בין אותיות ללא רווחים
-                filename = re.sub(r'(?<=\w)_(?=\w)', '', filename)
+                filename = re.sub(r"(?<=\w)_(?=\w)", "", filename)
 
         # הסרת מקפים שמחוברים לאותיות ללא רווח
-        filename = re.sub(r'(?<=\w)-(?=\w)', ' ', filename)
+        filename = re.sub(r"(?<=\w)-(?=\w)", " ", filename)
 
         # הסרת תתי-מחרוזות מוגדרות מראש, מבלי להסיר רווחים
         for substring in SUBSTRINGS_TO_REMOVE:
@@ -181,12 +197,9 @@ class MusicSorter:
                 filename = filename.replace(substring, "")
 
         # החלפת רווחים מרובים ברווח בודד
-        filename = re.sub(r'\s+', ' ', filename).strip()
+        filename = re.sub(r"\s+", " ", filename).strip()
 
         return filename
-
-
-
 
     def fix_metadata_field(self, metadata, field_name, file_path):
         value = metadata[field_name].value
@@ -203,14 +216,21 @@ class MusicSorter:
 
         # Collect all audio files
         if self.main_folder_only:
-            files_to_process = [f for f in self.source_dir.glob('*') if f.suffix.lower() in SUPPORTED_EXTENSIONS]
+            files_to_process = [
+                f for f in self.source_dir.glob("*") if f.suffix.lower() in SUPPORTED_EXTENSIONS
+            ]
         else:
-            files_to_process = [f for f in self.source_dir.rglob('*') if f.suffix.lower() in SUPPORTED_EXTENSIONS]
+            files_to_process = [
+                f for f in self.source_dir.rglob("*") if f.suffix.lower() in SUPPORTED_EXTENSIONS
+            ]
 
         total_files = len(files_to_process)
         progress_fix_generator = self.progress_display(total_files)
 
         for file_path in files_to_process:
+            if self.cancel_check():
+                self.logger.info("Filename cleanup cancelled")
+                break
 
             try:
                 progress = next(progress_fix_generator)
@@ -221,7 +241,9 @@ class MusicSorter:
                 new_filename = self.clean_filename(file_path.name)
                 new_filename = self.sanitize_filename(new_filename)
                 if not new_filename:
-                    self.logger.warning(f"Filename is empty after sanitization for {file_path}, skipping")
+                    self.logger.warning(
+                        f"Filename is empty after sanitization for {file_path}, skipping"
+                    )
                     continue
 
                 new_file_path = file_path.with_name(new_filename)
@@ -233,13 +255,15 @@ class MusicSorter:
                         file_path.rename(new_file_path)
                         self.logger.info(f"Renamed file: {file_path} -> {new_file_path}")
                     except Exception as e:
-                        self.logger.error(f"Failed to rename {file_path} to {new_file_path}: {str(e)}")
+                        self.logger.error(
+                            f"Failed to rename {file_path} to {new_file_path}: {str(e)}"
+                        )
                         self.logger.debug(traceback.format_exc())
 
                 # Fix metadata
                 metadata = load_file(new_file_path)
 
-                for field in ['artist', 'albumartist', 'title', 'album', 'genre']:
+                for field in ["artist", "albumartist", "title", "album", "genre"]:
                     self.fix_metadata_field(metadata, field, new_file_path)
 
                 # Save the changes
@@ -253,10 +277,10 @@ class MusicSorter:
 
     def sanitize_filename(self, filename):
         # Remove invalid characters for Windows filenames
-        filename = re.sub(r'[<>:"/\\|?*]', '', filename)
+        filename = re.sub(r'[<>:"/\\|?*]', "", filename)
 
         # Replace multiple spaces with a single space
-        filename = re.sub(r'\s+', ' ', filename)
+        filename = re.sub(r"\s+", " ", filename)
 
         # Trim leading and trailing whitespace
         filename = filename.strip()
@@ -311,8 +335,10 @@ class MusicSorter:
             # 1. בדיקות בסיסיות על התיקיה
             if not folder_path.is_dir():
                 return False, False, None, None
-            
-            audio_files = [f for f in folder_path.glob('*') if f.suffix.lower() in SUPPORTED_EXTENSIONS]
+
+            audio_files = [
+                f for f in folder_path.glob("*") if f.suffix.lower() in SUPPORTED_EXTENSIONS
+            ]
             if len(audio_files) < 3:
                 # פחות מ-3 קבצים, כנראה סינגלים
                 return False, False, None, None
@@ -329,37 +355,41 @@ class MusicSorter:
             filename_numbers = []
 
             # לצורך מעקב אם *כל* הקבצים באמת ריקים לגמרי
-            empty_files_count = 0  
+            empty_files_count = 0
 
             for file_path in audio_files:
                 try:
                     metadata = load_file(file_path)
 
                     # album
-                    album_val = metadata.get('album').value if metadata.get('album') else ""
+                    album_val = metadata.get("album").value if metadata.get("album") else ""
                     if not album_val.strip():
                         album_val = "___EMPTY___"
                     album_names.append(album_val)
 
                     # artist (או albumartist)
-                    artist_val = metadata.get('artist').value if metadata.get('artist') else ""
-                    album_artist_val = metadata.get('albumartist').value if metadata.get('albumartist') else ""
-                    chosen_artist = album_artist_val.strip() if album_artist_val.strip() else artist_val.strip()
+                    artist_val = metadata.get("artist").value if metadata.get("artist") else ""
+                    album_artist_val = (
+                        metadata.get("albumartist").value if metadata.get("albumartist") else ""
+                    )
+                    chosen_artist = (
+                        album_artist_val.strip() if album_artist_val.strip() else artist_val.strip()
+                    )
                     chosen_artist = fix_jibrish(chosen_artist, "heb")
 
                     # tracknumber
-                    tn = metadata.get('tracknumber').value if metadata.get('tracknumber') else None
+                    tn = metadata.get("tracknumber").value if metadata.get("tracknumber") else None
                     has_track = False
                     if tn:
                         try:
-                            tn_int = int(str(tn).split('/')[0])  # אם "3/10" ⇒ רק 3
+                            tn_int = int(str(tn).split("/")[0])  # אם "3/10" ⇒ רק 3
                             track_numbers.append(tn_int)
                             has_track = True
-                        except:
+                        except (TypeError, ValueError):
                             pass
 
                     # מספרים בתחילת שם הקובץ
-                    match = re.search(r'^(\d+)', file_path.name)
+                    match = re.search(r"^(\d+)", file_path.name)
                     if match:
                         filename_numbers.append(int(match.group(1)))
 
@@ -368,7 +398,12 @@ class MusicSorter:
                         artists_dict[chosen_artist] = artists_dict.get(chosen_artist, 0) + 1
 
                     # בדיקה אם הקובץ ריק *לגמרי* (אמן ריק, אלבום ריק, בלי tracknumber)
-                    if chosen_artist.strip() == "" and album_val == "___EMPTY___" and not has_track and not match:
+                    if (
+                        chosen_artist.strip() == ""
+                        and album_val == "___EMPTY___"
+                        and not has_track
+                        and not match
+                    ):
                         empty_files_count += 1
 
                 except Exception as e:
@@ -380,7 +415,7 @@ class MusicSorter:
                 self.logger.debug(f"All files in {folder_path} are fully empty => singles.")
                 return False, False, None, None
 
-            # 4. בדיקת מילות מפתח "סינגל/סינגלים" 
+            # 4. בדיקת מילות מפתח "סינגל/סינגלים"
             #    אם שם האלבום או שם האמן מכיל אותן ⇒ סינגלים
             contains_single_keyword = False
             # נבדוק בכל ה-album_names וגם בשמות האמנים
@@ -395,7 +430,9 @@ class MusicSorter:
                     break
 
             if contains_single_keyword:
-                self.logger.debug(f"Folder {folder_path} has single-keyword in album/artist => singles.")
+                self.logger.debug(
+                    f"Folder {folder_path} has single-keyword in album/artist => singles."
+                )
                 return False, False, None, None
 
             # 5. חישוב "רוב" שם האלבום
@@ -406,7 +443,7 @@ class MusicSorter:
             # 6. בדיקת מספור רציף ב-tracknumber או בשם הקובץ
             #    נגדיר "רציף" = לפחות 70% מהקבצים ממוספרים 1..N
             def is_consistent_track(nums_list, total_count):
-                """ בודקת אם רשימת המספרים מהווה רצף קרוב ל-1..N ב-70% לפחות. """
+                """בודקת אם רשימת המספרים מהווה רצף קרוב ל-1..N ב-70% לפחות."""
                 if not nums_list:
                     return False
                 unique_nums = set(nums_list)
@@ -416,10 +453,9 @@ class MusicSorter:
                     return True
                 return False
 
-            has_consistent_tracks = (
-                is_consistent_track(track_numbers, len(audio_files)) or
-                is_consistent_track(filename_numbers, len(audio_files))
-            )
+            has_consistent_tracks = is_consistent_track(
+                track_numbers, len(audio_files)
+            ) or is_consistent_track(filename_numbers, len(audio_files))
 
             # 7. זיהוי "אמן ראשי" אם מופיע ב-70%+
             main_artist = None
@@ -436,7 +472,9 @@ class MusicSorter:
 
             # אם לרוב (>=70%) מהשירים יש שם אלבום זהה (שאינו ריק)
             # או שיש רציפות מספור => נניח שזה אלבום
-            if (most_common_album != "___EMPTY___" and majority_album_ratio >= ALBUM_THRESHOLD) or has_consistent_tracks:
+            if (
+                most_common_album != "___EMPTY___" and majority_album_ratio >= ALBUM_THRESHOLD
+            ) or has_consistent_tracks:
                 is_album = True
 
             # אם כבר זוהה שזה אלבום, נבדוק האם יש אמן ראשי. אם כן => נרצה לעבד
@@ -467,7 +505,6 @@ class MusicSorter:
             self.logger.debug(traceback.format_exc())
             # במקרה חריג, מחזירים ערכים שמדלגים על תיקיה זו
             return True, False, None, None
-        
 
     def handle_album_transfer(self, album_path, album_name, artist_name):
         try:
@@ -510,12 +547,16 @@ class MusicSorter:
 
             # Check if album already exists
             if album_target_path.exists():
-                self.logger.info(f"Album {album_name} already exists at {album_target_path}, skipping")
+                self.logger.info(
+                    f"Album {album_name} already exists at {album_target_path}, skipping"
+                )
                 return
 
             # Check if artist folder exists when exist_only is True
             if self.exist_only and not target_path.exists():
-                self.logger.info(f"Skipped album transfer: {album_path} (artist folder does not exist)")
+                self.logger.info(
+                    f"Skipped album transfer: {album_path} (artist folder does not exist)"
+                )
                 return
 
             # Create album directory if it doesn't exist
@@ -528,10 +569,15 @@ class MusicSorter:
 
             # Transfer the entire folder
             for item in album_path.iterdir():
+                if self.cancel_check():
+                    self.logger.info("Album transfer cancelled")
+                    break
                 source_item = item
                 safe_item_name = self.sanitize_filename(item.name)
                 if not safe_item_name:
-                    self.logger.warning(f"Item name is empty after sanitization for {item}, skipping")
+                    self.logger.warning(
+                        f"Item name is empty after sanitization for {item}, skipping"
+                    )
                     continue  # Skip this item
                 target_item = album_target_path / safe_item_name
 
@@ -569,7 +615,8 @@ class MusicSorter:
 
             # Update counters
             files_num = sum(
-                1 for f in album_target_path.iterdir()
+                1
+                for f in album_target_path.iterdir()
                 if f.is_file() and f.suffix.lower() in SUPPORTED_EXTENSIONS
             )
             self.songs_sorted += files_num
@@ -600,6 +647,9 @@ class MusicSorter:
             items_to_process = [item for item in self.source_dir.iterdir()]
 
         for item in items_to_process:
+            if self.cancel_check():
+                self.logger.info("Directory scan cancelled")
+                break
             try:
                 if item.is_dir():
                     is_album, should_process, album_name, artist_name = self.analyze_album(item)
@@ -608,7 +658,9 @@ class MusicSorter:
                             self.handle_album_transfer(item, album_name, artist_name)
                         continue  # Skip processing individual files for albums
 
-                audio_files = [item] if item.is_file() else [f for f in item.glob('*') if f.is_file()]
+                audio_files = (
+                    [item] if item.is_file() else [f for f in item.glob("*") if f.is_file()]
+                )
                 for my_file in audio_files:
                     if my_file.suffix.lower() in SUPPORTED_EXTENSIONS:
                         artists = self.artists_from_song(my_file)
@@ -622,6 +674,9 @@ class MusicSorter:
         progress_generator = self.progress_display(total_files)
 
         for file_path, artists in info_list:
+            if self.cancel_check():
+                self.logger.info("File sorting cancelled")
+                break
             try:
                 progress = next(progress_generator)
                 self.logger.debug(f"{progress:.2f}% completed")
@@ -647,12 +702,16 @@ class MusicSorter:
                             try:
                                 destination_file_name = self.sanitize_filename(file_path.name)
                                 if not destination_file_name:
-                                    self.logger.warning(f"Filename is empty after sanitization for {file_path}, skipping")
+                                    self.logger.warning(
+                                        f"Filename is empty after sanitization for {file_path}, skipping"
+                                    )
                                     continue
                                 destination_file = target_path / destination_file_name
 
                                 if destination_file.exists():
-                                    destination_file = self.generate_unique_filename(destination_file)
+                                    destination_file = self.generate_unique_filename(
+                                        destination_file
+                                    )
 
                                 if self.duet_mode and len(artists) > 1:
                                     shutil.copy2(file_path, destination_file)
@@ -665,10 +724,14 @@ class MusicSorter:
                                     if success:
                                         self.logger.info(f"Moved {file_path} to {destination_file}")
                                     else:
-                                        self.logger.error(f"Failed to move {file_path} to {destination_file}")
+                                        self.logger.error(
+                                            f"Failed to move {file_path} to {destination_file}"
+                                        )
 
                                 self.songs_sorted += 1
-                                self.artist_song_count[artist] = self.artist_song_count.get(artist, 0) + 1
+                                self.artist_song_count[artist] = (
+                                    self.artist_song_count.get(artist, 0) + 1
+                                )
                             except Exception as e:
                                 self.logger.error(f"Failed to process {file_path}: {str(e)}")
                                 self.logger.debug(traceback.format_exc())
@@ -690,7 +753,6 @@ class MusicSorter:
 
         return self.generate_summary()
 
-
     def get_target_path(self, artist):
         if self.singles_folder and self.abc_sort:
             return self.target_dir / artist[0] / artist / "סינגלים"
@@ -703,7 +765,7 @@ class MusicSorter:
 
     def load_csv(self, path):
         try:
-            with path.open('r', encoding='utf-8') as file:
+            with path.open("r", encoding="utf-8") as file:
                 return [tuple(row) for row in csv.reader(file)]
         except FileNotFoundError as e:
             self.logger.error(f"CSV file not found: {path}")
@@ -728,7 +790,13 @@ class MusicSorter:
         legacy_app_personal_csv_path = Path("app/personal-singer-list.csv").resolve()
         env_personal_csv = os.getenv("SINGLESORTER_PERSONAL_LIST")
 
-        csv_paths = [bundled_csv_path, cwd_csv_path, personal_csv_path, legacy_app_csv_path, legacy_app_personal_csv_path]
+        csv_paths = [
+            bundled_csv_path,
+            cwd_csv_path,
+            personal_csv_path,
+            legacy_app_csv_path,
+            legacy_app_personal_csv_path,
+        ]
         if env_personal_csv:
             csv_paths.insert(1, Path(env_personal_csv).expanduser().resolve())
 
@@ -754,7 +822,9 @@ class MusicSorter:
         # ניקוי ושינוי שם הקובץ לפני ניתוח
         original_filename = my_file.name
         cleaned_filename = self.clean_filename(original_filename)
-        sanitized_filename = self.sanitize_filename(cleaned_filename) if cleaned_filename else original_filename
+        sanitized_filename = (
+            self.sanitize_filename(cleaned_filename) if cleaned_filename else original_filename
+        )
 
         # שימוש בשם הקובץ הנקי להמשך העיבוד בלבד
         split_file = Path(sanitized_filename).stem  # קבלת שם הקובץ ללא הסיומת
@@ -768,7 +838,9 @@ class MusicSorter:
                 found_artists.append(artist_name)
 
         # שלב ראשון: בדיקת שם הקובץ באמצעות רשימת הזמרים
-        filename_artists = self._find_artists_in_text(split_file, first_match_only=not self.duet_mode)
+        filename_artists = self._find_artists_in_text(
+            split_file, first_match_only=not self.duet_mode
+        )
         for artist in filename_artists:
             add_artist(artist)
 
@@ -781,17 +853,19 @@ class MusicSorter:
 
         if metadata_file:
             # ניקוי ושינוי שם הכותרת במטאדאטה בלבד פנימית
-            original_title = metadata_file['title'].value
+            original_title = metadata_file["title"].value
             if original_title:
                 cleaned_title = self.clean_filename(original_title)
-                sanitized_title = self.sanitize_filename(cleaned_title) if cleaned_title else original_title
+                sanitized_title = (
+                    self.sanitize_filename(cleaned_title) if cleaned_title else original_title
+                )
                 # שימוש בכותרת המסוננת להמשך העיבוד בלבד
             else:
                 sanitized_title = original_title  # אם אין כותרת, נשאר עם הערך המקורי
 
         if metadata_file and (self.duet_mode or not found_artists):
             # שלב שני: בדיקת שם האמן במטאדאטה
-            artist = metadata_file['artist'].value
+            artist = metadata_file["artist"].value
             if artist:
                 artist = fix_jibrish(artist, "heb")
                 # בדיקת אם האמן נמצא ברשימת הזמרים
@@ -848,7 +922,6 @@ class MusicSorter:
 
         return found_artists if found_artists else None
 
-
     def check_artist(self, artist):
         if not artist or artist in UNUSUAL_LIST:
             return False
@@ -864,20 +937,20 @@ class MusicSorter:
             "songs_sorted": self.songs_sorted,
             "artist_folders_created": len(self.artist_folders_created),
             "albums_processed": self.albums_processed,
-            "top_artists": sorted(
-                self.artist_song_count.items(), key=lambda x: x[1], reverse=True
-            )[:5]
+            "top_artists": sorted(self.artist_song_count.items(), key=lambda x: x[1], reverse=True)[
+                :5
+            ],
         }
 
         summary_text = f"""
 Summary of Music Sorting:
 -------------------------
-Total songs sorted: {summary['songs_sorted']}
-New artist folders created: {summary['artist_folders_created']}
-Albums processed: {summary['albums_processed']}
+Total songs sorted: {summary["songs_sorted"]}
+New artist folders created: {summary["artist_folders_created"]}
+Albums processed: {summary["albums_processed"]}
 
 Top 5 Artists by Song Count:
-{self._format_top_artists(summary['top_artists'])}
+{self._format_top_artists(summary["top_artists"])}
 """
 
         self.logger.info(summary_text)
@@ -893,69 +966,69 @@ def main():
     parser = argparse.ArgumentParser(
         description=f"Singles Sorter {__VERSION__} - Scan and organize music files into folders by artist using advanced automation."
     )
-    parser.add_argument('source_dir', help="Path to the source directory")
-    parser.add_argument('target_dir', nargs="?", help="Path to the target directory")
+    parser.add_argument("source_dir", help="Path to the source directory")
+    parser.add_argument("target_dir", nargs="?", help="Path to the target directory")
     parser.add_argument(
-        '-c', '--copy_mode', help="Enable copy mode (default is move mode)", action='store_true'
+        "-c", "--copy_mode", help="Enable copy mode (default is move mode)", action="store_true"
     )
     parser.add_argument(
-        '-a', '--abc_sort', help="Sort folders alphabetically (default: False)", action='store_true'
+        "-a", "--abc_sort", help="Sort folders alphabetically (default: False)", action="store_true"
     )
     parser.add_argument(
-        '-e',
-        '--exist_only',
+        "-e",
+        "--exist_only",
         help="Transfer to existing folders only (default: False)",
-        action='store_true'
-    )
-    parser.add_argument(
-        '-n',
-        '--no_singles_dir',
-        help="Do not create an internal 'singles' folder",
-        action='store_false',
-        dest='singles_folder',
-        default=True
-    )
-    parser.add_argument(
-        '-m',
-        '--main_dir_only',
-        help="Sort only the main folder (default: False)",
-        action='store_true',
-        dest='main_folder_only'
-    )
-    parser.add_argument(
-        '-d',
-        '--duet_mode',
-        help="Copy to all singers' folders for duets (default: False)",
-        action='store_true'
-    )
-    parser.add_argument(
-        "-f",
-        "--fix_names",
         action="store_true",
-        help="Fix file names only without sorting files"
     )
     parser.add_argument(
-        '-l',
-        '--log_level',
+        "-n",
+        "--no_singles_dir",
+        help="Do not create an internal 'singles' folder",
+        action="store_false",
+        dest="singles_folder",
+        default=True,
+    )
+    parser.add_argument(
+        "-m",
+        "--main_dir_only",
+        help="Sort only the main folder (default: False)",
+        action="store_true",
+        dest="main_folder_only",
+    )
+    parser.add_argument(
+        "-d",
+        "--duet_mode",
+        help="Copy to all singers' folders for duets (default: False)",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-f", "--fix_names", action="store_true", help="Fix file names only without sorting files"
+    )
+    parser.add_argument(
+        "-l",
+        "--log_level",
         help="Set the logging level",
-        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
-        default='INFO'
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        default="INFO",
     )
 
     args = parser.parse_args()
 
     # Set up logging
-    logger = logging.getLogger('MusicSorter')
+    logger = logging.getLogger("MusicSorter")
     log_level = getattr(logging, args.log_level.upper())
     logger.setLevel(log_level)
 
     # Create logs directory if it doesn't exist
-    logs_dir = Path('logs')
+    logs_dir = Path("logs")
     logs_dir.mkdir(exist_ok=True)
 
     # File handler with unique identifier
-    log_filename = logs_dir / f'music_sorter_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}_{os.getpid()}.log'
-    file_handler = logging.FileHandler(log_filename, encoding='utf-8')
+    log_filename = (
+        logs_dir
+        / f"music_sorter_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{os.getpid()}.log"
+    )
+    file_handler = logging.FileHandler(log_filename, encoding="utf-8")
     file_handler.setLevel(log_level)
 
     # Console handler
@@ -964,7 +1037,7 @@ def main():
 
     # Create a formatter and add it to the handlers
     formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
     )
     file_handler.setFormatter(formatter)
     console_handler.setFormatter(formatter)
@@ -984,7 +1057,7 @@ def main():
             args.main_folder_only,
             args.duet_mode,
             log_level=log_level,
-            logger=logger
+            logger=logger,
         )
 
         if args.fix_names:
@@ -1009,5 +1082,5 @@ def main():
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

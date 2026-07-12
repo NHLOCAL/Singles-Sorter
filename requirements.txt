@@ -1,7 +1,1 @@
-flet==0.28.3
-music_tag
-jibrish_to_hebrew
-requests
-scikit-learn==1.5.1
-spacy==3.7.5
-chardet
+-e .[gui,ai]

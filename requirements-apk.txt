@@ -1,5 +1,1 @@
-flet==0.28.3
-music_tag
-requests
-chardet
-flet-permission-handler
+-e .[gui]

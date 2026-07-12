@@ -7,3 +7,11 @@ vendor
 repomix-output.xml
 repomix-output.md
 *.pyc
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+/.playwright-cli/
+/build/
+/dist/
+/output/
+/src/*.egg-info/

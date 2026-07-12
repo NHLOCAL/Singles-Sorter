@@ -17,6 +17,20 @@ python -m build
 twine check dist/*
 ```
 
+Validate the optional GUI separately so the base wheel remains lightweight:
+
+```bash
+pip install -e ".[gui,dev]"
+singlesorter --help
+singlesorter-gui
+flet doctor
+flet build apk
+flet build aab
+```
+
+The base wheel metadata must not include Flet. Flet 0.85.3 belongs only to
+the `gui` extra and to Flet application builds.
+
 ## 2) Initial setup validation with TestPyPI (recommended before first real publish)
 
 Create a TestPyPI token and export it as `TEST_PYPI_API_TOKEN`, then run:

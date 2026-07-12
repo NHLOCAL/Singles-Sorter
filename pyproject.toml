@@ -27,6 +27,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+gui = [
+  "flet[all]==0.85.3",
+  "flet-permission-handler==0.85.3",
+]
 ai = [
   "scikit-learn>=1.5.1,<1.6",
   "spacy>=3.7.5,<3.8",
@@ -45,6 +49,7 @@ Issues = "https://github.com/NHLOCAL/Singles-Sorter/issues"
 
 [project.scripts]
 singlesorter = "singlesorter.cli:main"
+singlesorter-gui = "singlesorter_gui.main:run"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -65,6 +70,7 @@ singlesorter = [
   "models/singer_ner_he/ner/*",
   "models/singer_ner_he/vocab/*",
 ]
+singlesorter_gui = ["assets/*.png"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -72,19 +78,43 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+exclude = [
+  "legacy",
+  "src/core",
+  "src/features",
+  "src/models",
+  "src/tests",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
+ignore = ["E501"]
 
 [tool.flet.app]
-path = "src/core"
+path = "src"
 module = "main"
+
+[tool.flet]
+org = "top.zekal"
+product = "מסדר הסינגלים"
+company = "NH.LOCAL"
+copyright = "Copyright © 2026 NH.LOCAL"
 
 [tool.flet.android]
 dependencies = [
-  "flet==0.28.3",
-  "flet-permission-handler",
-  "requests",
-  "chardet",
+  "flet==0.85.3",
+  "flet-permission-handler==0.85.3",
 ]
 source_packages = ["music-tag"]
+split_per_abi = true
+min_sdk_version = 24
+adaptive_icon_background = "#F5C518"
+
+[tool.flet.android.app]
+exclude = ["core", "features", "models", "singlesorter/models", "tests", "tasks"]
+
+[tool.flet.android.permission]
+"android.permission.READ_MEDIA_AUDIO" = true
+"android.permission.READ_EXTERNAL_STORAGE" = { maxSdkVersion = "32" }
+"android.permission.WRITE_EXTERNAL_STORAGE" = { maxSdkVersion = "32" }
+"android.permission.MANAGE_EXTERNAL_STORAGE" = true

@@ -15,6 +15,8 @@
 
 ## 📦 PyPI Installation
 
+להתקנת כלי שורת הפקודה הקל, ללא Flet וללא רכיבי ממשק גרפי:
+
 ```bash
 pip install singlesorter
 ```
@@ -31,6 +33,20 @@ After installation, run:
 singlesorter --help
 ```
 
+להתקנת הממשק הגרפי עבור Windows:
+
+```bash
+pip install "singlesorter[gui]"
+singlesorter-gui
+```
+
+Flet הוא תלות אופציונלית בלבד. התקנת `singlesorter` הרגילה אינה מתקינה או
+מייבאת אותו, ולכן ה־CLI נשאר קטן ומהיר. ניתן לשלב תוספות לפי הצורך:
+
+```bash
+pip install "singlesorter[gui,ai]"
+```
+
 Custom singer lists:
 - Place `personal-singer-list.csv` in the current working directory, or
 - Set `SINGLESORTER_PERSONAL_LIST` to an absolute/relative CSV path.
@@ -40,6 +56,18 @@ For local development and packaging checks:
 ```bash
 python -m build
 ```
+
+הרצת הממשק בפיתוח ובניית Android עם Flet 0.85.3:
+
+```bash
+pip install -e ".[gui,dev]"
+flet run
+flet build apk
+flet build aab
+```
+
+ברירת המחדל בממשק היא **העתקה**: קובצי המקור נשארים במקומם. אפשרות העברה
+זמינה בהגדרות המתקדמות ומוצגת עם אזהרה ברורה.
 
 ## 🚀 תכונות עיקריות
 
