@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - Windows and Android are equal first-class GUI targets.
-- Copy mode is the safe GUI default; the existing CLI flags remain backward compatible.
+- Move mode without an internal singles folder is the GUI and CLI default; copy mode remains available explicitly and existing CLI flags remain backward compatible.
 - `pip install singlesorter` must not install or import Flet.
 - Flet is pinned to stable `0.85.3`; pre-release builds are excluded.
 - All user-facing GUI copy is concise Hebrew with RTL layout.
@@ -30,26 +30,26 @@
 **Interfaces:**
 - Produces: optional extras `gui`, `ai`, and `dev`; scripts `singlesorter` and `singlesorter-gui`.
 
-- [ ] **Step 1: Write a failing metadata test**
+- [x] **Step 1: Write a failing metadata test**
 
 ```python
 def test_base_dependencies_do_not_include_flet():
     config = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
     dependencies = config["project"]["dependencies"]
     assert not any(item.lower().startswith("flet") for item in dependencies)
-    assert "flet==0.85.3" in config["project"]["optional-dependencies"]["gui"]
+    assert "flet[all]==0.85.3" in config["project"]["optional-dependencies"]["gui"]
 ```
 
-- [ ] **Step 2: Run the test and observe failure**
+- [x] **Step 2: Run the test and observe failure**
 
 Run: `python -m pytest tests/test_packaging.py -v`
 Expected: FAIL because the `gui` extra is absent.
 
-- [ ] **Step 3: Define extras and entry points**
+- [x] **Step 3: Define extras and entry points**
 
 Add `gui = ["flet[all]==0.85.3"]` as recommended by the current Flet installation guide, keep AI dependencies isolated, add `singlesorter-gui = "singlesorter_gui.main:run"`, include `singlesorter_gui*` in package discovery, and make requirements files point at extras rather than duplicate version lists.
 
-- [ ] **Step 4: Verify package tests**
+- [x] **Step 4: Verify package tests**
 
 Run: `python -m pytest tests/test_packaging.py -v`
 Expected: PASS.
@@ -65,20 +65,20 @@ Expected: PASS.
 **Interfaces:**
 - Produces: `SortSettings`, `SortJob`, `SortProgress`, `SortResult`, `validate_job(job) -> tuple[str, ...]`.
 
-- [ ] **Step 1: Write failing state and validation tests**
+- [x] **Step 1: Write failing state and validation tests**
 
 Tests assert move mode and no internal singles folder are the defaults, settings deserialize safely, missing paths are rejected, identical paths are rejected, and valid existing paths pass.
 
-- [ ] **Step 2: Observe expected failures**
+- [x] **Step 2: Observe expected failures**
 
 Run: `python -m pytest tests/test_gui_state.py -v`
 Expected: import failure because `singlesorter_gui` does not exist.
 
-- [ ] **Step 3: Implement immutable job state and pure validation**
+- [x] **Step 3: Implement immutable job state and pure validation**
 
 Use dataclasses and `Path.resolve()` without importing Flet. Return concise Hebrew errors rather than raising from validation.
 
-- [ ] **Step 4: Verify state tests**
+- [x] **Step 4: Verify state tests**
 
 Run: `python -m pytest tests/test_gui_state.py -v`
 Expected: PASS.
@@ -95,20 +95,20 @@ Expected: PASS.
 - Produces: `CancellationToken`, `SortService.run(job, on_progress) -> SortResult`.
 - Extends: `MusicSorter(..., cancel_check: Callable[[], bool] | None = None)`.
 
-- [ ] **Step 1: Write failing adapter tests**
+- [x] **Step 1: Write failing adapter tests**
 
 Test settings mapping, structured summaries, progress normalization, and cooperative cancellation using a fake sorter factory.
 
-- [ ] **Step 2: Observe expected failures**
+- [x] **Step 2: Observe expected failures**
 
 Run: `python -m pytest tests/test_sorting_service.py -v`
 Expected: import failure because the service is absent.
 
-- [ ] **Step 3: Implement the framework-independent adapter**
+- [x] **Step 3: Implement the framework-independent adapter**
 
 Map `SortJob` to `MusicSorter`, throttle duplicate progress values, capture recoverable failure text, and check cancellation between engine operations.
 
-- [ ] **Step 4: Verify service and engine regressions**
+- [x] **Step 4: Verify service and engine regressions**
 
 Run: `python -m pytest tests/test_sorting_service.py tests/test_regressions.py -v`
 Expected: PASS.
@@ -129,20 +129,20 @@ Expected: PASS.
 **Interfaces:**
 - Produces: `build_theme()`, `HomeView`, `SettingsView`, `SinglesSorterApp`, `main(page)`, `run()`.
 
-- [ ] **Step 1: Write failing component tests**
+- [x] **Step 1: Write failing component tests**
 
 Tests inspect theme tokens, safe defaults, primary action state, mobile/desktop layout decisions, and the absence of sorter logic in view modules.
 
-- [ ] **Step 2: Observe expected failures**
+- [x] **Step 2: Observe expected failures**
 
 Run: `python -m pytest tests/test_gui_components.py -v`
 Expected: import failure because GUI modules are absent.
 
-- [ ] **Step 3: Implement the blue-and-gold RTL experience**
+- [x] **Step 3: Implement the blue-and-gold RTL experience**
 
 Build a responsive main flow with two folder cards, one gold primary action, advanced settings in a bottom sheet, review confirmation, background progress, cancellation, and a structured completion dialog. Use current Flet 0.85.3 services and event APIs.
 
-- [ ] **Step 4: Verify GUI component tests**
+- [x] **Step 4: Verify GUI component tests**
 
 Run: `python -m pytest tests/test_gui_components.py -v`
 Expected: PASS.
@@ -158,20 +158,20 @@ Expected: PASS.
 **Interfaces:**
 - Produces: documented CLI/GUI installs and reproducible desktop/APK/AAB commands.
 
-- [ ] **Step 1: Route the legacy GUI entry point to the new package**
+- [x] **Step 1: Route the legacy GUI entry point to the new package**
 
 Replace legacy startup with a compatibility import so existing Flet project paths launch `singlesorter_gui.main` while the duplicate UI is no longer active.
 
-- [ ] **Step 2: Document installation and builds**
+- [x] **Step 2: Document installation and builds**
 
 Document `pip install singlesorter`, `pip install "singlesorter[gui]"`, `singlesorter-gui`, `flet run`, `flet build apk`, and `flet build aab`.
 
-- [ ] **Step 3: Install supported development dependencies**
+- [x] **Step 3: Install supported development dependencies**
 
 Run: `python -m pip install -e ".[gui,dev]"`
 Expected: Flet 0.85.3 and project editable install complete successfully.
 
-- [ ] **Step 4: Run complete verification**
+- [x] **Step 4: Run complete verification**
 
 Run: `python -m pytest -q`
 Expected: all tests pass.
@@ -188,5 +188,18 @@ Expected: wheel and source archive build successfully; base wheel metadata has n
 Run: `flet doctor`
 Expected: Flet and platform toolchain report without fatal errors.
 
-Run: `flet build apk --module-name singlesorter_gui.main`
-Expected: APK build succeeds when Android SDK and Android-compatible dependency wheels are available; otherwise record the exact environmental blocker.
+Run: `flet build apk --split-per-abi --no-rich-output`
+Expected: APK builds succeed for the configured Android ABIs.
+
+## Completion record
+
+Completed on 2026-07-12 on branch `codex/flet-ui-modernization`.
+
+- `python -m pytest -q`: 33 passed.
+- `python -m ruff check src tests`: passed.
+- `python -m compileall -q src`: passed.
+- `python -m build`: wheel and source archive built successfully.
+- `flet doctor`: Flet 0.85.3, Python 3.12.8, Windows 11 AMD64.
+- `flet build apk --split-per-abi --no-rich-output`: ARM64, ARMv7, and x86_64 APKs built successfully.
+- `flet build aab --no-rich-output`: Android App Bundle built successfully.
+- Android SDK smoke test: installed and launched on a connected Android 12 device; full-screen scrolling settings and fixed save/cancel actions verified.
