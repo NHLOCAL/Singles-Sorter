@@ -62,7 +62,7 @@ python -m build
 ```bash
 pip install -e ".[gui,dev]"
 flet run
-flet build windows
+pwsh -File ./build-windows.ps1
 flet build apk
 flet build aab
 ```

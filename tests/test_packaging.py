@@ -48,3 +48,23 @@ def test_gui_icon_is_declared_as_package_data():
 
     assert "assets/*.png" in config["tool"]["setuptools"]["package-data"]["singlesorter_gui"]
     assert Path("src/singlesorter_gui/assets/icon.png").is_file()
+
+
+def test_windows_build_packages_certifi_without_adding_it_to_base_cli():
+    config = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+    windows_dependencies = config["tool"]["flet"]["windows"]["dependencies"]
+
+    assert "flet==0.85.3" in windows_dependencies
+    assert "flet-permission-handler==0.85.3" in windows_dependencies
+    assert "certifi==2026.6.17" in windows_dependencies
+    assert config["tool"]["flet"]["windows"]["compile"]["app"] is True
+    assert not any(
+        dependency.lower().startswith("certifi")
+        for dependency in config["project"]["dependencies"]
+    )
+
+
+def test_windows_build_uses_ascii_product_name_for_embedded_python_paths():
+    script = Path("build-windows.ps1").read_text(encoding="utf-8")
+
+    assert 'flet build windows --product "Singles Sorter"' in script

@@ -110,6 +110,16 @@ split_per_abi = true
 min_sdk_version = 24
 adaptive_icon_background = "#F5C518"
 
+[tool.flet.windows]
+dependencies = [
+  "flet==0.85.3",
+  "flet-permission-handler==0.85.3",
+  "certifi==2026.6.17",
+]
+
+[tool.flet.windows.compile]
+app = true
+
 [tool.flet.android.app]
 exclude = ["core", "features", "models", "singlesorter/models", "tests", "tasks"]
 
