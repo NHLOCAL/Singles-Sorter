@@ -410,7 +410,7 @@ enum DirectoryEvent {
         schema: u16,
         job_id: String,
         binding_sha256: String,
-        binding: BindingData,
+        binding: Box<BindingData>,
         target_root: ObjectIdentity,
     },
     Prepared {
@@ -458,7 +458,7 @@ impl DirectoryJournal {
             schema: 1,
             job_id: job_id.into(),
             binding_sha256: binding.sha256()?,
-            binding: binding.data.clone(),
+            binding: Box::new(binding.data.clone()),
             target_root: binding.data.scope_evidence.target_root.clone(),
         })?;
         Ok(value)
