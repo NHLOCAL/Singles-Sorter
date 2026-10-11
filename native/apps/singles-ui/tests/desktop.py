@@ -159,7 +159,7 @@ try:
         # Task 2 uses a separate development profile. The runner has no user profile.
         assert script("return !!document.querySelector('#save-settings')"), "Task 2 preferences UI is missing; stale binary cannot pass"
         click('#copy_mode'); click('#save-settings')
-        wait(lambda: 'נשמרו' in text('#settings-notice'))
+        wait(lambda: text('#settings-notice') == 'נשמר')
         expected_copy = script("return document.querySelector('#copy_mode').checked")
         click('#advanced')
         expected_duet = not script("return document.querySelector('#duet-all').checked")
@@ -171,7 +171,7 @@ try:
         alias_id = script("return Array.from(document.querySelectorAll('[id^=list-alias-]')).at(-1).id")
         folder_id = alias_id.replace('alias','folder')
         fill('#'+alias_id,'אמן בדיקת ממשק'); fill('#'+folder_id,'תיקיית בדיקה')
-        click('#list-save'); wait(lambda:'הרשימה נשמרה' in text('#list-notice'))
+        click('#list-save'); wait(lambda: text('#list-notice') == 'נשמר')
         capture('05-native-personal-list')
         click('#list-cancel')
         imported_csv = scratch / 'אמנים.csv'
