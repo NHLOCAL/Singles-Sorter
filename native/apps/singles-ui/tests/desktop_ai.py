@@ -22,7 +22,7 @@ ARTIST = 'ישראל כהן'
 SETTINGS = dict(copy_mode=False, main_folder_only=False, singles_folder=True,
                 exist_only=False, abc_sort=False, duet_mode=False)
 REQUIRED_CHECKS = ('original-models-executed', 'disabled-no-inference',
-                   'cancel-no-stale-plan', 'back-no-stale-plan', 'repeat-preview',
+                   'cancel-no-stale-plan', 'back-no-stale-plan', 'reload-no-stale-plan', 'repeat-preview',
                    'missing-model-fail-closed', 'corrupt-model-fail-closed',
                    'protected-files-unchanged')
 

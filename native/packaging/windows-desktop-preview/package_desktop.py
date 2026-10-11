@@ -28,7 +28,7 @@ cli.SYSTEM_DLLS |= {'gdi32.dll', 'dwmapi.dll', 'comctl32.dll', 'uxtheme.dll',
                    'combase.dll', 'cfgmgr32.dll', 'setupapi.dll', 'dwrite.dll', 'd2d1.dll'}
 EXE = 'singles-sorter-preview.exe'
 REQUIRED_CHECKS = {'original-models-executed', 'disabled-no-inference', 'cancel-no-stale-plan',
-                   'back-no-stale-plan', 'repeat-preview', 'missing-model-fail-closed',
+                   'back-no-stale-plan', 'reload-no-stale-plan', 'repeat-preview', 'missing-model-fail-closed',
                    'corrupt-model-fail-closed', 'protected-files-unchanged'}
 require, digest = cli.require, cli.digest
 

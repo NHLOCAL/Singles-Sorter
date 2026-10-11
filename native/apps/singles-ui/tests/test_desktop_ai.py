@@ -195,8 +195,8 @@ class DesktopAIContracts(unittest.TestCase):
             ai.DesktopAI.assert_artist({'rows': rows}, True)
 
     def test_required_acceptance_ids_are_exact_and_unique(self):
-        self.assertEqual(len(ai.REQUIRED_CHECKS), 8)
-        self.assertEqual(len(set(ai.REQUIRED_CHECKS)), 8)
+        self.assertEqual(len(ai.REQUIRED_CHECKS), 9)
+        self.assertEqual(len(set(ai.REQUIRED_CHECKS)), 9)
         self.assertIn('protected-files-unchanged', ai.REQUIRED_CHECKS)
 
 
