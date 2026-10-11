@@ -44,6 +44,20 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo +1.99.0 --version
 
+      - name: Test all-scope formatter diagnostic orchestration
+        run: python tests/build/test_rust_format_diagnostics.py
+
+      - name: Check every Rust scope and collect formatter diagnostics
+        run: python tests/build/capture_rust_format.py --out ../native-formatting
+
+      - name: Upload formatter diagnostics from all Rust scopes
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: native-formatting-${{ matrix.os }}
+          path: native-formatting/
+          if-no-files-found: error
+
       - name: Preflight exact native owned-Copy fixture binding
         if: runner.os == 'Windows'
         run: |
@@ -68,24 +82,6 @@ jobs:
 
       - name: Check formatting
         run: cargo +1.99.0 fmt --all -- --check
-
-      - name: Capture formatter correction for diagnostics
-        if: failure()
-        run: |
-          cargo +1.99.0 fmt --all
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo +1.99.0 fmt --manifest-path apps/singles-ui/src-tauri/Cargo.toml --all
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          git diff --binary --output=../native-formatting.patch -- .
-          git restore --worktree -- .
-
-      - name: Upload formatter diagnostic patch
-        if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: native-formatting-${{ matrix.os }}
-          path: native-formatting.patch
-          if-no-files-found: ignore
 
       - name: Check all targets with Clippy
         run: cargo +1.99.0 clippy --locked --workspace --all-targets -- -D warnings
