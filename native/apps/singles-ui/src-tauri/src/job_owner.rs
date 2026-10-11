@@ -1085,9 +1085,10 @@ mod tests {
         for row in page_json["rows"].as_array().unwrap() {
             assert_eq!(
                 row.as_object().unwrap().keys().cloned().collect::<Vec<_>>(),
-                ["blockers", "destination", "id", "kind", "reason", "source"]
+                ["blockers", "destination", "id", "kind", "operation_ids", "reason", "source"]
             );
         }
+        assert!(page_json["rows"].as_array().unwrap().iter().all(|row| row["operation_ids"].is_array()));
         // Explicit fixture authoring only. Remove ephemeral absolute source paths;
         // destination, decision, reason and blockers are untouched engine projections.
         if let Some(output) = std::env::var_os("SINGLES_UPDATE_HOST_FIXTURE") {
