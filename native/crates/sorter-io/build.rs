@@ -14,6 +14,8 @@ fn main() {
     println!("cargo:rerun-if-env-changed=SORTER_DEPENDENCY_CACHE");
     println!("cargo:rerun-if-env-changed=SORTER_DEPENDENCIES_OFFLINE");
     println!("cargo:rerun-if-env-changed=CMAKE");
+    println!("cargo:rerun-if-env-changed=ANDROID_NDK_HOME");
+    println!("cargo:rerun-if-env-changed=SINGLES_SORTER_ANDROID_PRODUCT");
     println!("cargo:rerun-if-env-changed=CARGO_CFG_TARGET_FEATURE");
     println!("cargo:rustc-check-cfg=cfg(native_metadata_bridge)");
     let target = env::var("TARGET").unwrap();
@@ -22,7 +24,9 @@ fn main() {
     // Native MSVC has its own CMake recipe. Execution acceptance is a CI gate.
     let msvc = target == "x86_64-pc-windows-msvc";
     let linux = env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("linux");
-    if host != target || (!linux && !msvc) {
+    let android = env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("android")
+        && env::var("SINGLES_SORTER_ANDROID_PRODUCT").as_deref() == Ok("1");
+    if !android && (host != target || (!linux && !msvc)) {
         return;
     }
     let output = PathBuf::from(env::var_os("OUT_DIR").unwrap()).join("taglib");
@@ -34,6 +38,19 @@ fn main() {
         .arg("-B")
         .arg(&output)
         .arg("-DCMAKE_BUILD_TYPE=Release");
+    let ndk = if android {
+        let abi = match target.as_str() {
+            "x86_64-linux-android" => "x86_64",
+            "aarch64-linux-android" => "arm64-v8a",
+            _ => panic!("unsupported Android metadata target"),
+        };
+        let ndk = PathBuf::from(env::var_os("ANDROID_NDK_HOME").expect("official NDK required"));
+        assert!(ndk.is_absolute());
+        configure.arg(format!("-DCMAKE_TOOLCHAIN_FILE={}", ndk.join("build/cmake/android.toolchain.cmake").display()))
+            .arg(format!("-DANDROID_ABI={abi}"))
+            .args(["-DANDROID_PLATFORM=android-24", "-DANDROID_STL=c++_static", "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"]);
+        Some(ndk)
+    } else { None };
     if msvc {
         let features = env::var("CARGO_CFG_TARGET_FEATURE").unwrap_or_default();
         let runtime = if features.split(',').any(|f| f == "crt-static") {
@@ -74,7 +91,12 @@ fn main() {
     println!("cargo:rustc-link-lib=static=sorter_metadata");
     println!("cargo:rustc-link-lib=static=tag");
     println!("cargo:rustc-link-lib=static=sorter_zlib");
-    if !msvc {
+    if let Some(ndk) = ndk {
+        let triple = if target.starts_with("aarch64") { "aarch64-linux-android" } else { "x86_64-linux-android" };
+        println!("cargo:rustc-link-search=native={}", ndk.join("toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib").join(triple).display());
+        println!("cargo:rustc-link-lib=static=c++_static");
+        println!("cargo:rustc-link-lib=static=c++abi");
+    } else if !msvc {
         println!("cargo:rustc-link-lib=dylib=stdc++");
     }
 }

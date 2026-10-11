@@ -1,4 +1,6 @@
-//! Fixture-only, read-only Android recognition seam. No storage/sorting capability.
+//! Read-only Android recognition seam; product planner is explicitly feature-gated.
+#[cfg(feature = "product")]
+mod product;
 use jni::{
     JNIEnv,
     objects::{JByteArray, JClass},

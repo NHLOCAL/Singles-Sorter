@@ -1,0 +1,10 @@
+import {beforeEach,describe,expect,it,vi} from 'vitest';
+let windowMock: Record<string,unknown>, close:()=>void;
+beforeEach(()=>{vi.resetModules();windowMock={addEventListener:(_event:string,callback:()=>void)=>{close=callback;}};vi.stubGlobal('window',windowMock);});
+describe('owned Android transport',()=>{
+ it('rejects missing native host',async()=>{const transport=await import('../src/android-transport');expect(transport.hasAndroidHost()).toBe(false);await expect(transport.androidInvoke('get_settings')).rejects.toThrow('unavailable');});
+ it('matches response IDs and ignores replayed replies',async()=>{let sent:any;windowMock.SinglesAndroid={invoke:(request:string)=>{sent=JSON.parse(request);}};const t=await import('../src/android-transport');const result=t.androidInvoke('get_settings');expect(sent).toEqual({id:1,command:'get_settings',args:{}});const reply=windowMock.__singlesAndroidReply as Function;reply(999,true,'wrong');reply(1,true,{copy_mode:true});reply(1,false,'replay');expect(await result).toEqual({copy_mode:true});});
+ it('surfaces native errors without treating them as success',async()=>{windowMock.SinglesAndroid={invoke:()=>{}};const t=await import('../src/android-transport');const result=t.androidInvoke('get_settings');(windowMock.__singlesAndroidReply as Function)(1,false,{code:'BUSY'});await expect(result).rejects.toEqual({code:'BUSY'});});
+ it('bounds pending work and rejects all owned requests on view close',async()=>{windowMock.SinglesAndroid={invoke:()=>{}};const t=await import('../src/android-transport');const pending=Array.from({length:64},()=>t.androidInvoke('get_settings').catch(e=>e));await expect(t.androidInvoke('get_settings')).rejects.toThrow('Too many');close();expect((await Promise.all(pending)).every(e=>e instanceof Error&&e.message==='View closed')).toBe(true);});
+ it('releases pending slot when native invocation throws',async()=>{windowMock.SinglesAndroid={invoke:()=>{throw new Error('closed');}};const t=await import('../src/android-transport');for(let i=0;i<70;i++)await expect(t.androidInvoke('get_settings')).rejects.toThrow('closed');});
+});

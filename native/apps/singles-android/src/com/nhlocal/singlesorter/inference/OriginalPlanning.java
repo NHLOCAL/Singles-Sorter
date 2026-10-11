@@ -1,0 +1,18 @@
+package com.nhlocal.singlesorter.inference;
+
+import java.nio.charset.StandardCharsets;
+/** Native planning entry used only by the Android app's owned worker, never its UI thread. */
+public final class OriginalPlanning {
+    private OriginalPlanning() {}
+    public interface SnapshotProvider { byte[] snapshot(byte[] token) throws Exception; }
+    private static native byte[] plan0(long id,byte[] models,byte[] cache,byte[] input,SnapshotProvider provider);
+    public static long begin() {return OriginalInference.begin0();}
+    public static void cancel(long id) {OriginalInference.cancel0(id);}
+    public static void abandon(long id) {OriginalInference.abandon0(id);}
+    public static String run(long id,String models,String cache,String input,SnapshotProvider provider) {
+        if(input.length()>2*1024*1024||models.length()>4096||cache.length()>4096)throw new IllegalArgumentException("MANIFEST_LIMIT");
+        byte[] bytes=plan0(id,models.getBytes(StandardCharsets.UTF_8),cache.getBytes(StandardCharsets.UTF_8),input.getBytes(StandardCharsets.UTF_8),provider);
+        if(bytes==null)throw new IllegalStateException("JNI_RESULT_MISSING");
+        return new String(bytes,StandardCharsets.UTF_8);
+    }
+}

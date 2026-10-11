@@ -1,0 +1,123 @@
+name: Android shared UI product preview
+on:
+  workflow_dispatch:
+    inputs:
+      diagnostics_only:
+        description: 'Emit exact formatting/lock diff and compile diagnostics; never an acceptance build'
+        type: boolean
+        default: false
+  pull_request:
+    paths: ['native/**', '.github/workflows/android-product.yml']
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    if: inputs.diagnostics_only == true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false}
+      - name: Prepare pinned compiler and authenticated native source
+        run: |
+          rustup toolchain install 1.99.0 --profile minimal --component rustfmt,clippy
+          python3 native/probes/released-ner/acquire_pcre2.py --out "$RUNNER_TEMP/android-host-pcre" --build
+          echo "PCRE2_STATIC_DIR=$RUNNER_TEMP/android-host-pcre/install/lib" >> "$GITHUB_ENV"
+      - name: Emit candidate-only formatter and lock diff
+        run: |
+          mkdir -p "$RUNNER_TEMP/android-diagnostics"
+          git rev-parse HEAD > "$RUNNER_TEMP/android-diagnostics/source-commit.txt"
+          cargo +1.99.0 fmt --manifest-path native/plugins/original-inference/Cargo.toml
+          rustfmt +1.99.0 --edition 2024 native/crates/sorter-io/build.rs
+          cargo +1.99.0 metadata --format-version 1 --manifest-path native/plugins/original-inference/Cargo.toml > "$RUNNER_TEMP/android-diagnostics/resolved-metadata.json"
+          git diff --binary -- native/plugins/original-inference native/crates/sorter-io/build.rs > "$RUNNER_TEMP/android-diagnostics/proposed-format-lock.patch"
+      - name: Diagnose product Rust without relaxing final gates
+        run: |
+          set -o pipefail
+          cargo +1.99.0 check --locked --manifest-path native/plugins/original-inference/Cargo.toml --features product 2>&1 | tee "$RUNNER_TEMP/android-diagnostics/compile.log"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: android-product-diagnostics-${{ github.sha }}
+          path: ${{ runner.temp }}/android-diagnostics/
+          if-no-files-found: error
+          retention-days: 7
+  build:
+    if: inputs.diagnostics_only != true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: NHLOCAL/Singles-Sorter
+          ref: 78d001aee5ce49628bdffebd34540fa83ba32c12
+          path: original-baseline
+          persist-credentials: false
+          sparse-checkout: src/core
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with: {python-version: '3.12.10'}
+      - name: Export and verify byte-identical original assets (build machine only)
+        run: |
+          python -m pip install --only-binary=:all: --require-hashes --disable-pip-version-check -r native/probes/released-ner/oracle-requirements.txt -r native/crates/sorter-classifier/tools/oracle-requirements.txt
+          python native/probes/released-ner/check_oracle_runtime.py
+          python native/probes/released-ner/released-ner-export/export.py --model original-baseline/src/core/models/singer_ner_he --out "$RUNNER_TEMP/original-bundle" --suite platform
+          python native/probes/released-ner/released-ner-export/verify.py "$RUNNER_TEMP/original-bundle"
+          python native/probes/released-ner/check_oracle_golden.py "$RUNNER_TEMP/original-bundle"
+          python native/crates/sorter-classifier/tools/export_original.py --baseline original-baseline --output "$RUNNER_TEMP/original-bundle"
+      - name: Prepare official Android and Rust toolchains
+        run: |
+          rustup toolchain install 1.99.0 --profile minimal --component rustfmt,clippy
+          rustup target add --toolchain 1.99.0 x86_64-linux-android aarch64-linux-android
+          sdkmanager 'ndk;27.3.13750724' 'build-tools;35.0.0' 'platforms;android-35'
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.3.13750724" >> "$GITHUB_ENV"
+          echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
+          python3 native/probes/released-ner/acquire_pcre2.py --out "$RUNNER_TEMP/android-pcre" --build
+          echo "PCRE2_STATIC_DIR=$RUNNER_TEMP/android-pcre/install/lib" >> "$GITHUB_ENV"
+      - name: Strict source and ownership guards
+        run: |
+          cargo +1.99.0 fmt --manifest-path native/plugins/original-inference/Cargo.toml -- --check
+          cargo +1.99.0 test --locked --manifest-path native/plugins/original-inference/Cargo.toml --features product --lib
+          cargo +1.99.0 clippy --locked --manifest-path native/plugins/original-inference/Cargo.toml --features product --all-targets -- -D warnings
+          bash -n native/apps/singles-android/build-native.sh native/apps/singles-android/build-preview.sh
+          ANDROID_JAR="$ANDROID_HOME/platforms/android-35/android.jar" bash native/plugins/singles-platform/android/check-sdk.sh
+      - name: Build the existing shared frontend for Android
+        working-directory: native/apps/singles-ui
+        run: |
+          node -e 'const [a,b]=process.versions.node.split(".").map(Number);if(a<22||(a===22&&b<12))process.exit(1)'
+          npm ci
+          npm test
+          npm run typecheck
+          npx vite build --mode android --base /assets/
+      - name: Compile original JNI planner and TagLib for both ABIs
+        env:
+          PCRE2_SOURCE: ${{ runner.temp }}/android-pcre/pcre2-10.46
+          NATIVE_OUT: ${{ runner.temp }}/android-native
+        run: bash native/apps/singles-android/build-native.sh
+      - name: Package development preview without Python or runtime downloads
+        env:
+          MODEL_BUNDLE: ${{ runner.temp }}/original-bundle
+          NATIVE_LIB_X86_64: ${{ runner.temp }}/android-native/x86_64/libsingles_android_inference.so
+          NATIVE_LIB_ARM64: ${{ runner.temp }}/android-native/arm64-v8a/libsingles_android_inference.so
+          UI_DIST: ${{ github.workspace }}/native/apps/singles-ui/dist
+          OUT: ${{ runner.temp }}/android-preview
+        run: |
+          bash native/apps/singles-android/build-preview.sh
+          git rev-parse HEAD > "$OUT/source-commit.txt"
+          sha256sum "$OUT/singles-android-preview.apk" > "$OUT/apk.sha256"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: android-product-preview-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/android-preview/singles-android-preview.apk
+            ${{ runner.temp }}/android-preview/source-commit.txt
+            ${{ runner.temp }}/android-preview/apk.sha256
+            ${{ runner.temp }}/android-preview/inputs.json
+            ${{ runner.temp }}/android-native/*/elf-program-headers.txt
+          if-no-files-found: error
+          retention-days: 7
