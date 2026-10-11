@@ -9,7 +9,7 @@ $tokens = $null
 $parseErrors = $null
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($scriptFile, [ref]$tokens, [ref]$parseErrors)
 if (@($parseErrors).Count -ne 0) { throw ('Smoke script parse failure: ' + ($parseErrors | Out-String)) }
-$names = @('Snapshot-Differences', 'Assert-SnapshotEqual')
+$names = @('Require', 'Read-SnapshotRows', 'Write-RawSnapshotEvidence', 'Snapshot-Differences', 'Assert-SnapshotEqual')
 $functions = @($ast.FindAll({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $names -contains $node.Name }, $false))
 if ($functions.Count -ne $names.Count) { throw 'Expected snapshot helper definitions not found' }
 foreach ($function in $functions) { . ([scriptblock]::Create($function.Extent.Text)) }
@@ -41,12 +41,34 @@ function Expect-Failure([string]$Before, [string]$After, [string]$Field, [bool]$
     $script:count += 1
 }
 try {
+    $modes = @('native')
+    if ($PSVersionTable.PSVersion.Major -ge 7) { $modes += 'legacy-array-output-simulation' }
+    foreach ($mode in $modes) {
+        if ($mode -eq 'legacy-array-output-simulation') {
+            function ConvertFrom-Json {
+                param([string]$InputObject)
+                Microsoft.PowerShell.Utility\ConvertFrom-Json -InputObject $InputObject -NoEnumerate
+            }
+        }
+        if ([IO.File]::Exists($ReportPath)) { Remove-Item -LiteralPath $ReportPath }
     $before = Baseline
+    Require-Test (@(Read-SnapshotRows '[]').Count -eq 0) 'Empty snapshot became one null/nested row'
+    $count += 1
+    $parsedRows = @(Read-SnapshotRows $before)
+    Require-Test ($parsedRows.Count -eq 2 -and $parsedRows[0] -is [pscustomobject] -and $parsedRows[1] -is [pscustomobject] -and $parsedRows[1].path -eq 'owned.wav') 'Multiple snapshot rows were not enumerated'
+    $count += 1
+    $single = ConvertTo-Json -InputObject @($parsedRows[0]) -Depth 5 -Compress
+    Require-Test (@(Read-SnapshotRows $single).Count -eq 1) 'Single snapshot row lost array shape'
+    $count += 1
+    $nestedRejected = $false
+    try { [void]@(Read-SnapshotRows ('[' + $before + ']')) } catch { $nestedRejected = $true }
+    Require-Test $nestedRejected 'Nested snapshot arrays accepted'
+    $count += 1
     Assert-SnapshotEqual $before $before 'unchanged'
     Require-Test (-not [IO.File]::Exists($ReportPath)) 'Unchanged snapshot emitted failure evidence'
     $count += 1
     foreach ($field in @('path', 'directory', 'attributes', 'length', 'modified_utc_ticks', 'permissions_sddl', 'sha256')) {
-        $rows = @(ConvertFrom-Json -InputObject $before)
+        $rows = @(Read-SnapshotRows $before)
         switch ($field) {
             'path' { $rows[1].path = 'OWNED.wav' }
             'directory' { $rows[1].directory = $true }
@@ -58,12 +80,26 @@ try {
         }
         Expect-Failure $before (ConvertTo-Json -InputObject $rows -Depth 5 -Compress) $field $false
     }
-    $rows = @(ConvertFrom-Json -InputObject $before)
+    $rows = @(Read-SnapshotRows $before)
     Expect-Failure $before (ConvertTo-Json -InputObject @($rows[0]) -Depth 5 -Compress) 'entry' $false
     Expect-Failure (ConvertTo-Json -InputObject @($rows[0]) -Depth 5 -Compress) $before 'entry' $false
     Expect-Failure $before (ConvertTo-Json -InputObject @($rows[1], $rows[0]) -Depth 5 -Compress) '' $true
     Expect-Failure $before (ConvertTo-Json -InputObject $rows -Depth 5) '' $true
-    Write-Output ('PASS: ' + $count + ' exact snapshot diagnostic tests; no fields ignored or rebased')
+    $failed = $false
+    try { Assert-SnapshotEqual $before '[ invalid JSON ]' 'parse-failure-evidence' } catch { $failed = $true }
+    Require-Test $failed 'Malformed changed snapshot accepted'
+    $raw = ConvertFrom-Json -InputObject ([IO.File]::ReadAllText($ReportPath, $Utf8))
+    Require-Test ($raw.result -eq 'FAIL' -and $raw.before_snapshot -ceq $before -and $raw.after_snapshot -ceq '[ invalid JSON ]') 'Parser failure hid raw snapshots'
+    $count += 1
+    $failed = $false
+    try { Assert-SnapshotEqual @('a', 'b') 'a b' 'type-failure-evidence' } catch { $failed = $true }
+    Require-Test $failed 'Unexpected snapshot return type was coerced into acceptance'
+    $raw = ConvertFrom-Json -InputObject ([IO.File]::ReadAllText($ReportPath, $Utf8))
+    Require-Test ($raw.result -eq 'FAIL' -and @($raw.before_snapshot).Count -eq 2) 'Type failure hid original value'
+    $count += 1
+        if ($mode -eq 'legacy-array-output-simulation') { Remove-Item Function:\ConvertFrom-Json }
+    }
+    Write-Output ('PASS: ' + $count + ' exact snapshot diagnostic tests across ' + $modes.Count + ' JSON output modes; no fields ignored or rebased')
 } finally {
     Remove-Item -LiteralPath $temporary -Recurse -Force
 }

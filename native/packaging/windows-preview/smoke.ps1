@@ -39,9 +39,42 @@ function Snapshot([string]$Root) {
     }
     return (ConvertTo-Json -InputObject @($rows) -Depth 8 -Compress)
 }
+function Read-SnapshotRows([string]$Json) {
+    # PS5.1 returns a JSON array as one pipeline object; PS7 enumerates it.
+    # Request no enumeration when available, then assign and explicitly iterate.
+    # This preserves the top-level shape and rejects nested arrays in both hosts.
+    Require ($Json.TrimStart().StartsWith('[') -and $Json.TrimEnd().EndsWith(']')) 'Snapshot must be a JSON array'
+    $jsonCommand = Get-Command ConvertFrom-Json
+    if ($jsonCommand.Parameters.ContainsKey('NoEnumerate')) {
+        $parsed = ConvertFrom-Json -InputObject $Json -NoEnumerate
+    } else {
+        $parsed = ConvertFrom-Json -InputObject $Json
+    }
+    if ($null -eq $parsed) { return }
+    foreach ($row in @($parsed)) {
+        Require ($null -ne $row -and $row -is [pscustomobject]) 'Snapshot row must be an object, never a nested array'
+        Require ($null -ne $row.PSObject.Properties['path'] -and $row.path -is [string]) 'Snapshot row lacks a string path'
+        $row
+    }
+}
+function Write-RawSnapshotEvidence([string]$Label, $Value) {
+    $type = if ($null -eq $Value) { 'null' } else { $Value.GetType().FullName }
+    $text = if ($Value -is [string]) { $Value } else { [string]$Value }
+    $bytes = $Utf8.GetBytes($text)
+    $hash = [Security.Cryptography.SHA256]::Create()
+    try { $digest = ([BitConverter]::ToString($hash.ComputeHash($bytes))).Replace('-', '').ToLowerInvariant() }
+    finally { $hash.Dispose() }
+    $limit = 262144
+    $shown = [Math]::Min($bytes.Length, $limit)
+    $base64 = [Convert]::ToBase64String($bytes, 0, $shown)
+    Write-Host ('IMMUTABILITY_RAW ' + $Label + ' type=' + $type + ' bytes=' + $bytes.Length + ' sha256=' + $digest + ' truncated=' + ($shown -ne $bytes.Length))
+    for ($offset = 0; $offset -lt $base64.Length; $offset += 4096) {
+        Write-Host ('IMMUTABILITY_RAW_BASE64 ' + $Label + ' offset=' + $offset + ' ' + $base64.Substring($offset, [Math]::Min(4096, $base64.Length - $offset)))
+    }
+}
 function Snapshot-Differences([string]$Before, [string]$After) {
-    $oldRows = @(ConvertFrom-Json -InputObject $Before)
-    $newRows = @(ConvertFrom-Json -InputObject $After)
+    $oldRows = @(Read-SnapshotRows $Before)
+    $newRows = @(Read-SnapshotRows $After)
     $oldByPath = @{}
     $newByPath = @{}
     foreach ($row in $oldRows) { $oldByPath[$row.path] = $row }
@@ -66,8 +99,15 @@ function Snapshot-Differences([string]$Before, [string]$After) {
         }
     }
 }
-function Assert-SnapshotEqual([string]$Before, [string]$After, [string]$Context) {
-    if ($After -ceq $Before) { return }
+function Assert-SnapshotEqual($Before, $After, [string]$Context) {
+    if ($Before -is [string] -and $After -is [string] -and $After -ceq $Before) { return }
+    # Persist and log bounded raw evidence BEFORE JSON parsing. A helper shape
+    # failure must not hide the original snapshots or produce a PASS receipt.
+    Write-RawSnapshotEvidence 'before' $Before
+    Write-RawSnapshotEvidence 'after' $After
+    $rawFailure = [ordered]@{ result = 'FAIL'; check = 'exact-filesystem-immutability'; context = $Context; before_snapshot = $Before; after_snapshot = $After }
+    [IO.File]::WriteAllText($ReportPath, (ConvertTo-Json -InputObject $rawFailure -Depth 12) + "`n", $Utf8)
+    Require ($Before -is [string] -and $After -is [string]) 'Snapshot return type changed; raw evidence retained'
     $changes = @(Snapshot-Differences $Before $After)
     $diagnostic = [ordered]@{
         result = 'FAIL'
@@ -75,8 +115,8 @@ function Assert-SnapshotEqual([string]$Before, [string]$After, [string]$Context)
         context = $Context
         changes = $changes
         snapshot_order_or_serialization_changed = ($changes.Count -eq 0)
-        before_path_order = @((ConvertFrom-Json -InputObject $Before) | ForEach-Object { $_.path })
-        after_path_order = @((ConvertFrom-Json -InputObject $After) | ForEach-Object { $_.path })
+        before_path_order = @(Read-SnapshotRows $Before | ForEach-Object { $_.path })
+        after_path_order = @(Read-SnapshotRows $After | ForEach-Object { $_.path })
         completed_checks = @($checks.ToArray())
     }
     $failureJson = ConvertTo-Json -InputObject $diagnostic -Depth 12
@@ -86,7 +126,7 @@ function Assert-SnapshotEqual([string]$Before, [string]$After, [string]$Context)
     Write-Host ('IMMUTABILITY_DIAGNOSTIC ' + (ConvertTo-Json -InputObject $diagnostic -Depth 12 -Compress))
     throw ($Context + ': exact filesystem snapshot changed; failure details: ' + $ReportPath)
 }
-function Assert-Unchanged([string]$Root, [string]$Before, [string]$Context) {
+function Assert-Unchanged([string]$Root, $Before, [string]$Context) {
     Assert-SnapshotEqual $Before (Snapshot $Root) $Context
 }
 function Verify-Manifest([string]$Root) {
