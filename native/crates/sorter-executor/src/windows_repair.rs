@@ -95,12 +95,14 @@ enum Phase {Header,OperationPrepared,RenamePrepared,RenameObserved,TempPrepared,
 struct Record {sequence:u64,previous:String,job_id:String,operation:Option<usize>,phase:Phase,payload:serde_json::Value}
 #[derive(Serialize,Deserialize)]
 struct Envelope {body:Record,sha256:String}
-struct Journal {sink:WindowsJournalStore,job_id:String,sequence:u64,previous:String,poisoned:bool}
+struct Journal {sink:WindowsJournalStore,job_id:String,sequence:u64,previous:String,poisoned:bool,bytes_written:usize}
+fn journal_budget(used:usize,additional:usize,limit:usize)->Option<usize>{used.checked_add(additional).filter(|total|*total<=limit)}
 impl Journal{
-    fn new(sink:WindowsJournalStore,header:&Header)->Result<Self>{let mut value=Self{sink,job_id:header.job_id.clone(),sequence:0,previous:String::new(),poisoned:false};value.append(None,Phase::Header,header)?;Ok(value)}
+    fn new(sink:WindowsJournalStore,header:&Header)->Result<Self>{let mut value=Self{sink,job_id:header.job_id.clone(),sequence:0,previous:String::new(),poisoned:false,bytes_written:0};value.append(None,Phase::Header,header)?;Ok(value)}
     fn append(&mut self,operation:Option<usize>,phase:Phase,payload:&impl Serialize)->Result<()>{
         if self.poisoned{return Err(E::NeedsRecovery)}self.poisoned=true;
         let body=Record{sequence:self.sequence,previous:self.previous.clone(),job_id:self.job_id.clone(),operation,phase,payload:serde_json::to_value(payload).map_err(|_|E::Io)?};let sha256=crate::hash(&body)?;let mut bytes=serde_json::to_vec(&Envelope{body,sha256:sha256.clone()}).map_err(|_|E::Io)?;bytes.push(b'\n');
+        self.bytes_written=journal_budget(self.bytes_written,bytes.len(),MAX_JOURNAL).ok_or(E::NeedsRecovery)?;
         self.sink.append(&bytes).and_then(|()|self.sink.sync()).map_err(|_|E::NeedsRecovery)?;self.sequence+=1;self.previous=sha256;self.poisoned=false;Ok(())
     }
 }
@@ -118,6 +120,7 @@ impl SelectedWindowsRepairJob {
         for op in &plan.operations{let OperationKind::FixFile(fix)=&op.kind else{return Err(E::Unsupported)};let source=scope.sources.iter().find(|s|s.observation==fix.source).ok_or(E::Scope)?.clone();operations.push(RepairOperation{id:op.id,depends_on:op.depends_on.clone(),source,intended_name:fix.intended_name.clone().ok_or(E::Unsupported)?,rename:fix.rename_intended,save:fix.save_intended,repairs:fix.repairs.iter().map(RepairField::from).collect(),metadata_failure:fix.failure.as_ref().map(|f|format!("{f:?}"))});}
         static NEXT:AtomicU64=AtomicU64::new(0);let nanos=std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_err(|_|E::Io)?.as_nanos();let job_id=format!("repair-{}-{nanos}-{}",std::process::id(),NEXT.fetch_add(1,Ordering::Relaxed));
         let header=Header{schema:1,job_id,plan_sha256:plan.binding_sha256.clone(),source:plan.request.source.clone(),source_identity:scope.source_root.clone(),resources:resources.clone(),operations};
+        let header_record=Record{sequence:0,previous:String::new(),job_id:header.job_id.clone(),operation:None,phase:Phase::Header,payload:serde_json::to_value(&header).map_err(|_|E::Io)?};let header_bytes=serde_json::to_vec(&Envelope{body:header_record,sha256:"0".repeat(64)}).map_err(|_|E::Io)?.len();if journal_budget(0,header_bytes.saturating_add(1),MAX_JOURNAL).is_none(){return Err(E::Unsupported)}
         Ok(Self{storage:WindowsRepairStorage::new(roots).map_err(|_|E::Scope)?,header,attempted:false,locations:vec![],retained:vec![],temps:vec![]})
     }
     pub fn job_id(&self)->&str{&self.header.job_id}
@@ -148,35 +151,36 @@ impl SelectedWindowsRepairJob {
         if op.repairs.is_empty(){item.status=RepairStatus::Complete;item.unchanged=true;item.detail="No tag bytes needed changing".into();return journal.append(Some(op.id),Phase::Committed,item)}
         let repairs=op.repairs.iter().map(RepairField::native).collect::<Vec<_>>();
         if !op.intended_name.to_ascii_lowercase().ends_with(".mp3"){item.status=RepairStatus::UnsupportedTags;item.detail="Physical tag writing for this format is not yet supported; filename outcome is retained".into();return journal.append(Some(op.id),Phase::Stopped,item)}
-        if let Err(error)=self.storage.prepare_metadata_preservation(&mut source){item.status=RepairStatus::UnsupportedTags;item.detail=error.detail;return journal.append(Some(op.id),Phase::Stopped,item)}
+        if let Err(error)=self.storage.prepare_metadata_preservation(&mut source){if !may_continue_after_metadata_refusal(error.kind){return stop(journal,item,error,false)}item.status=RepairStatus::UnsupportedTags;item.detail=error.detail;return journal.append(Some(op.id),Phase::Stopped,item)}
         let staged_plan=match Id3StagedPlan::inspect(&mut source,expected.digest.length,&repairs,cancel){Ok(v)=>v,Err(TagWriteError::Unsupported(reason))=>{item.status=RepairStatus::UnsupportedTags;item.detail=reason.into();return journal.append(Some(op.id),Phase::Stopped,item)},Err(TagWriteError::Cancelled)=>return Err(E::Cancelled),Err(_)=>return Err(E::Stale)};
         journal.append(Some(op.id),Phase::TempPrepared,&op.source)?;
         let mut temp=match self.storage.create_staged(&source,&format!("{}-{}",self.job_id(),op.id),cancel){MutationOutcome::Applied(v)=>v,MutationOutcome::NoEffect(error)=>return stop(journal,item,error,false),MutationOutcome::PendingUnknown(error)=>return stop(journal,item,error,true)};
-        item.staged=Some(temp.observation().clone());journal.append(Some(op.id),Phase::TempObserved,&item.staged)?;
+        item.staged=Some(temp.observation().clone());if let Err(error)=journal.append(Some(op.id),Phase::TempObserved,&item.staged){self.temps.push(temp);return Err(error)}
         progress(RepairProgress{operation:op.id,total_files:self.header.operations.len(),phase:"staging_tags".into()});
         let staged=match staged_plan.write_staged(&mut source,&mut temp,&op.source.sha256,cancel){Ok(v)=>v,Err(error)=>{item.staged=self.storage.observe_staged(&temp).ok().or(item.staged.take());self.temps.push(temp);item.status=if error==TagWriteError::Cancelled{RepairStatus::Cancelled}else{RepairStatus::Failed};item.detail=format!("Tag staging failed; original retained: {error}");return journal.append(Some(op.id),Phase::Stopped,item)}};
         let staged_digest=digest_value(&staged.staged_sha256,staged.staged_length)?;
         let verified=(||{temp.sync_data()?;let observation=temp.verify_content(&staged_digest)?;self.storage.verify_staged_fields(&temp,&op.intended_name,&repairs)?;self.storage.finalize_staged(&source,&mut temp)?;Ok::<_,MutationError>(observation)})();
         match verified{Ok(observation)=>item.staged=Some(observation),Err(error)=>{self.temps.push(temp);return stop(journal,item,error,false)}}
-        journal.append(Some(op.id),Phase::StagedVerified,&serde_json::json!({"observation":item.staged,"sha256":staged.staged_sha256,"length":staged.staged_length,"media_sha256":staged.media_sha256}))?;
-        checked(cancel)?;let backup_name=format!(".sorter-{}-{}.backup",self.job_id(),op.id);journal.append(Some(op.id),Phase::BackupPrepared,&serde_json::json!({"name":backup_name,"source":item.current,"sha256":op.source.sha256}))?;
+        if let Err(error)=journal.append(Some(op.id),Phase::StagedVerified,&serde_json::json!({"observation":item.staged,"sha256":staged.staged_sha256,"length":staged.staged_length,"media_sha256":staged.media_sha256})){self.temps.push(temp);return Err(error)}
+        checked(cancel)?;let backup_name=format!(".sorter-{}-{}.backup",self.job_id(),op.id);if let Err(error)=journal.append(Some(op.id),Phase::BackupPrepared,&serde_json::json!({"name":backup_name,"source":item.current,"sha256":op.source.sha256})){self.temps.push(temp);return Err(error)}
         let backup=match self.storage.preserve_original(&mut source,&name(&backup_name),cancel){MutationOutcome::Applied(v)=>v,MutationOutcome::NoEffect(error)=>{self.temps.push(temp);return stop(journal,item,error,false)},MutationOutcome::PendingUnknown(error)=>{self.temps.push(temp);return stop(journal,item,error,true)}};
         item.backup=Some(backup.observation().clone());item.current=None;
-        journal.append(Some(op.id),Phase::BackupObserved,&item.backup)?;
+        if let Err(error)=journal.append(Some(op.id),Phase::BackupObserved,&item.backup){self.retained.push(backup);self.temps.push(temp);return Err(error)}
         progress(RepairProgress{operation:op.id,total_files:self.header.operations.len(),phase:"original_backed_up".into()});
         if cancel.load(Ordering::Acquire){self.retained.push(backup);self.temps.push(temp);item.status=RepairStatus::NeedsRecovery;item.detail="Cancelled after original was retained as backup; no automatic replay".into();return journal.append(Some(op.id),Phase::Stopped,item)}
-        journal.append(Some(op.id),Phase::PublishPrepared,&serde_json::json!({"name":op.intended_name,"staged":item.staged,"sha256":staged.staged_sha256}))?;
+        if let Err(error)=journal.append(Some(op.id),Phase::PublishPrepared,&serde_json::json!({"name":op.intended_name,"staged":item.staged,"sha256":staged.staged_sha256})){self.retained.push(backup);self.temps.push(temp);return Err(error)}
         let mut published=match self.storage.publish_staged(&mut temp,&backup,&parent,&name(&op.intended_name),cancel){MutationOutcome::Applied(v)=>v,MutationOutcome::NoEffect(error)|MutationOutcome::PendingUnknown(error)=>{self.retained.push(backup);self.temps.push(temp);return stop(journal,item,error,true)}};
         item.current=Some(published.observation().clone());item.staged=None;
         let verified=self.storage.sync_published(&mut published,&staged_digest,cancel).and_then(|_|self.storage.verify_published(&mut published,&staged_digest));
         match verified{Ok(observed)=>item.current=Some(observed),Err(error)=>{self.retained.push(backup);self.retained.push(published);return stop(journal,item,error,true)}}
-        journal.append(Some(op.id),Phase::PublishedVerified,&serde_json::json!({"observation":item.current,"sha256":staged.staged_sha256,"backup":item.backup,"original_sha256":op.source.sha256}))?;
+        if let Err(error)=journal.append(Some(op.id),Phase::PublishedVerified,&serde_json::json!({"observation":item.current,"sha256":staged.staged_sha256,"backup":item.backup,"original_sha256":op.source.sha256})){self.retained.push(backup);self.retained.push(published);return Err(error)}
         item.status=RepairStatus::Complete;item.repaired=true;item.detail="Tags repaired; original backup retained".into();
-        journal.append(Some(op.id),Phase::Committed,item)?;
+        if let Err(error)=journal.append(Some(op.id),Phase::Committed,item){self.retained.push(backup);self.retained.push(published);return Err(error)}
         self.retained.push(backup);self.retained.push(published);
         progress(RepairProgress{operation:op.id,total_files:self.header.operations.len(),phase:"committed".into()});Ok(())
     }
 }
+fn may_continue_after_metadata_refusal(kind:MutationErrorKind)->bool{kind==MutationErrorKind::Unsupported}
 fn stop(journal:&mut Journal,item:&mut RepairItem,error:MutationError,unknown:bool)->Result<()>{
     if let Some(observed)=error.observed{let leaf=match &observed.actual_name{MutationName::Windows(units)=>String::from_utf16_lossy(units),_=>String::new()};if leaf.ends_with(".backup"){item.backup=Some(*observed);item.current=None}else if leaf.ends_with(".tmp"){item.staged=Some(*observed)}else{item.current=Some(*observed)}}item.status=if unknown{RepairStatus::NeedsRecovery}else if error.kind==MutationErrorKind::Cancelled{RepairStatus::Cancelled}else{RepairStatus::Failed};item.detail=error.detail;journal.append(Some(item.operation),Phase::Stopped,item)
 }
@@ -191,7 +195,7 @@ pub struct RepairRecoveryItem {pub operation:usize,pub last_phase:String,pub rec
 #[derive(Clone,Debug,Serialize)]
 pub struct RepairRecoveryReport {pub job_id:String,pub recorded_finished:bool,pub incomplete_tail:bool,pub operations:Vec<RepairRecoveryItem>}
 #[derive(Default)]
-struct RecoveryState {phase:Option<Phase>,current:Option<MutationObservation>,backup:Option<MutationObservation>,staged:Option<MutationObservation>,staged_hash:Option<String>,replacement_identity:Option<ObjectIdentity>,recorded:Option<RepairItem>}
+struct RecoveryState {phase:Option<Phase>,last_effect_phase:Option<Phase>,current:Option<MutationObservation>,backup:Option<MutationObservation>,staged:Option<MutationObservation>,staged_hash:Option<String>,replacement_identity:Option<ObjectIdentity>,recorded:Option<RepairItem>}
 fn decode<T:serde::de::DeserializeOwned>(value:&serde_json::Value)->Result<T>{serde_json::from_value(value.clone()).map_err(|_|E::CorruptJournal)}
 fn observed(value:&serde_json::Value)->Result<MutationObservation>{decode::<Option<MutationObservation>>(value)?.ok_or(E::CorruptJournal)}
 fn allowed_transition(previous:Option<Phase>,next:Phase)->bool{
@@ -214,6 +218,24 @@ fn allowed_transition(previous:Option<Phase>,next:Phase)->bool{
 fn check_observation(header:&Header,op:&RepairOperation,observation:&MutationObservation,leaf:&str,identity:Option<&ObjectIdentity>)->Result<()>{
     let source=path(&op.source.observation.reference)?;let expected=source.parent().ok_or(E::CorruptJournal)?.join(leaf);
     if path(&observation.reference)?!=expected||!expected.starts_with(path(&header.source)?)||observation.actual_name!=name(leaf)||identity.is_some_and(|id|id!=&observation.identity)||Some(&observation.parent_identity)!=op.source.observation.parent_identity.as_ref(){return Err(E::CorruptJournal)}Ok(())
+}
+fn validate_terminal(header:&Header,op:&RepairOperation,state:&RecoveryState,item:&RepairItem)->Result<()>{
+    let source_id=op.source.observation.identity.as_ref().ok_or(E::CorruptJournal)?;
+    let after_backup=matches!(state.phase,Some(Phase::BackupPrepared|Phase::BackupObserved|Phase::PublishPrepared|Phase::PublishedVerified));
+    let after_publish=matches!(state.phase,Some(Phase::PublishPrepared|Phase::PublishedVerified));
+    if item.repaired&&state.phase!=Some(Phase::PublishedVerified)||item.unchanged&&(!op.save||!op.repairs.is_empty()||item.status!=RepairStatus::Complete){return Err(E::CorruptJournal)}
+    if let Some(current)=&item.current{
+        if &current.identity==source_id{let leaf=if op.rename&&state.phase!=Some(Phase::OperationPrepared)&&!(state.phase==Some(Phase::RenamePrepared)&&current.actual_name==name(&op.source.observation.name)){&op.intended_name}else{&op.source.observation.name};check_observation(header,op,current,leaf,Some(source_id))?;}
+        else if after_publish&&state.replacement_identity.as_ref()==Some(&current.identity){check_observation(header,op,current,&op.intended_name,state.replacement_identity.as_ref())?;}
+        else{return Err(E::CorruptJournal)}
+    }
+    if let Some(backup)=&item.backup{if !after_backup{return Err(E::CorruptJournal)}check_observation(header,op,backup,&format!(".sorter-{}-{}.backup",header.job_id,op.id),Some(source_id))?;}
+    if let Some(staged)=&item.staged{if !matches!(state.phase,Some(Phase::TempPrepared|Phase::TempObserved|Phase::StagedVerified|Phase::BackupPrepared|Phase::BackupObserved|Phase::PublishPrepared)){return Err(E::CorruptJournal)}check_observation(header,op,staged,&format!(".sorter-{}-{}.tmp",header.job_id,op.id),state.staged.as_ref().map(|s|&s.identity))?;if &staged.identity==source_id{return Err(E::CorruptJournal)}}
+    if state.backup.as_ref().is_some_and(|prior|item.backup.as_ref()!=Some(prior)){return Err(E::CorruptJournal)}
+    if state.current.is_some()&&item.current.is_none()&&item.backup.is_none(){return Err(E::CorruptJournal)}
+    if state.staged.is_some()&&item.staged.is_none()&&!item.current.as_ref().is_some_and(|current|state.replacement_identity.as_ref()==Some(&current.identity)){return Err(E::CorruptJournal)}
+    if item.status==RepairStatus::Complete&&item.current.is_none(){return Err(E::CorruptJournal)}
+    Ok(())
 }
 impl SelectedWindowsRepairJob {
     /// Close data guards after the one-shot attempt, then freshly inspect bytes.
@@ -255,7 +277,7 @@ pub fn recover_repair_journal(roots:&WindowsMutationStorage,bytes:&[u8],cancel:&
             Phase::BackupObserved=>{let observation=observed(&record.payload)?;check_observation(header,op,&observation,&format!(".sorter-{}-{}.backup",header.job_id,index),op.source.observation.identity.as_ref())?;state.backup=Some(observation);state.current=None}
             Phase::PublishPrepared=>{if record.payload["name"]!=op.intended_name||record.payload["sha256"].as_str()!=state.staged_hash.as_deref(){return Err(E::CorruptJournal)}}
             Phase::PublishedVerified=>{let observation=observed(&record.payload["observation"])?;check_observation(header,op,&observation,&op.intended_name,state.staged.as_ref().map(|o|&o.identity))?;if record.payload["sha256"].as_str()!=state.staged_hash.as_deref()||record.payload["original_sha256"]!=op.source.sha256{return Err(E::CorruptJournal)}state.current=Some(observation);state.staged=None}
-            Phase::Committed|Phase::Stopped=>{let item:RepairItem=decode(&record.payload)?;if item.operation!=index||item.original!=op.source.observation.reference||item.renamed&&!op.rename{return Err(E::CorruptJournal)}if record.phase==Phase::Committed&&(!op.save||item.renamed!=op.rename||item.status!=RepairStatus::Complete||!item.processed||item.repaired!=(state.phase==Some(Phase::PublishedVerified))||item.unchanged!=op.repairs.is_empty()){return Err(E::CorruptJournal)}if record.phase==Phase::Stopped&&item.status==RepairStatus::Complete{return Err(E::CorruptJournal)}for observation in [&item.current,&item.backup,&item.staged].into_iter().flatten(){if !path(&observation.reference)?.starts_with(path(&header.source)?){return Err(E::Scope)}}state.current=item.current.clone();state.backup=item.backup.clone();state.staged=item.staged.clone();stopped=matches!(item.status,RepairStatus::Failed|RepairStatus::Cancelled|RepairStatus::NeedsRecovery);state.recorded=Some(item);active+=1}
+            Phase::Committed|Phase::Stopped=>{let item:RepairItem=decode(&record.payload)?;if item.operation!=index||item.original!=op.source.observation.reference||item.renamed&&!op.rename{return Err(E::CorruptJournal)}if record.phase==Phase::Committed&&(!op.save||item.renamed!=op.rename||item.status!=RepairStatus::Complete||!item.processed||item.repaired!=(state.phase==Some(Phase::PublishedVerified))||item.unchanged!=op.repairs.is_empty()){return Err(E::CorruptJournal)}if record.phase==Phase::Stopped&&item.status==RepairStatus::Complete{return Err(E::CorruptJournal)}validate_terminal(header,op,state,&item)?;state.last_effect_phase=state.phase;state.current=item.current.clone();state.backup=item.backup.clone();state.staged=item.staged.clone();stopped=matches!(item.status,RepairStatus::Failed|RepairStatus::Cancelled|RepairStatus::NeedsRecovery);state.recorded=Some(item);active+=1}
             _=>return Err(E::CorruptJournal),
         }
         state.phase=Some(record.phase);
@@ -269,13 +291,14 @@ pub fn recover_repair_journal(roots:&WindowsMutationStorage,bytes:&[u8],cancel:&
         if state.current.is_none()&&state.backup.is_none(){let source=&op.source.observation;let original=MutationObservation{reference:source.reference.clone(),identity:source.identity.clone().ok_or(E::CorruptJournal)?,parent_identity:source.parent_identity.clone().ok_or(E::CorruptJournal)?,actual_name:name(&source.name),size:source.size};evidence.push(inspect_evidence(&mut reads,"original",&original,Some(&op.source.sha256),cancel)?)}
         // Journal intents name candidates even if dispatch response was lost.
         // These are expected identities to compare, never observed success facts.
-        if state.recorded.is_none(){
+        if state.recorded.as_ref().is_none_or(|item|item.status==RepairStatus::NeedsRecovery){
+            let effective_phase=state.last_effect_phase.or(state.phase);
             let original=&op.source.observation;
             let source_identity=original.identity.clone().ok_or(E::CorruptJournal)?;
             let mut candidates=Vec::new();
-            if op.rename&&state.phase.is_some_and(|p|p!=Phase::OperationPrepared){candidates.push(("planned_name",op.intended_name.clone(),source_identity.clone(),Some(op.source.sha256.as_str())));}
-            if matches!(state.phase,Some(Phase::BackupPrepared|Phase::BackupObserved|Phase::PublishPrepared|Phase::PublishedVerified)){candidates.push(("backup_candidate",format!(".sorter-{}-{}.backup",header.job_id,op.id),source_identity,Some(op.source.sha256.as_str())));}
-            if state.phase==Some(Phase::PublishPrepared){if let Some(staged)=&state.staged{candidates.push(("published_candidate",op.intended_name.clone(),staged.identity.clone(),state.staged_hash.as_deref()));}}
+            if op.rename&&effective_phase.is_some_and(|p|p!=Phase::OperationPrepared){candidates.push(("planned_name",op.intended_name.clone(),source_identity.clone(),Some(op.source.sha256.as_str())));}
+            if matches!(effective_phase,Some(Phase::BackupPrepared|Phase::BackupObserved|Phase::PublishPrepared|Phase::PublishedVerified)){candidates.push(("backup_candidate",format!(".sorter-{}-{}.backup",header.job_id,op.id),source_identity,Some(op.source.sha256.as_str())));}
+            if effective_phase==Some(Phase::PublishPrepared){if let Some(identity)=&state.replacement_identity{candidates.push(("published_candidate",op.intended_name.clone(),identity.clone(),state.staged_hash.as_deref()));}}
             for(role,leaf,identity,hash)in candidates{let candidate=path(&original.reference)?.parent().ok_or(E::CorruptJournal)?.join(&leaf);let expected=MutationObservation{reference:StorageRef::WindowsPath{utf16:candidate.as_os_str().encode_wide().collect()},identity,parent_identity:original.parent_identity.clone().ok_or(E::CorruptJournal)?,actual_name:name(&leaf),size:original.size};if !evidence.iter().any(|e|e.reference==expected.reference&&e.expected_identity==expected.identity){evidence.push(inspect_evidence(&mut reads,role,&expected,hash,cancel)?);}}
         }
         operations.push(RepairRecoveryItem{operation:op.id,last_phase:format!("{:?}",state.phase),recorded:state.recorded,evidence});
@@ -289,4 +312,12 @@ fn inspect_evidence(reads:&mut dyn ReadStorage,role:&str,expected:&MutationObser
     let Some(sha)=sha else{return Ok(value)};let mut input=match reads.open_read(&expected.reference){Ok(v)=>v,Err(_)=>return Ok(value)};if input.binding().is_none_or(|b|b.identity!=expected.identity){return Ok(value)}
     let mut hash=Sha256::new();let mut length=0u64;let mut buffer=[0;65536];loop{checked(cancel)?;let n=match input.read(&mut buffer){Ok(n)=>n,Err(_)=>return Ok(value)};if n==0{break}length=length.checked_add(n as u64).ok_or(E::Io)?;if Some(length)>observed.size{return Ok(value)}hash.update(&buffer[..n]);}
     value.status=if Some(length)==observed.size&&format!("{:x}",hash.finalize())==sha&&reads.stat(&expected.reference).is_ok_and(|again|again==observed){RepairEvidenceStatus::Verified}else{RepairEvidenceStatus::Changed};Ok(value)
+}
+
+#[cfg(test)]
+mod journal_budget_tests {
+    #[test]
+    fn metadata_staleness_and_io_failures_never_continue_as_format_limits(){use sorter_storage_contracts::MutationErrorKind as K;assert!(super::may_continue_after_metadata_refusal(K::Unsupported));for kind in [K::StalePlan,K::Io,K::PermissionDenied,K::VerificationFailed]{assert!(!super::may_continue_after_metadata_refusal(kind));}}
+    #[test]
+    fn bounded_append_keeps_previous_prefix_readable(){assert_eq!(super::journal_budget(7,3,10),Some(10));assert_eq!(super::journal_budget(7,4,10),None);assert_eq!(super::journal_budget(usize::MAX,1,usize::MAX),None);}
 }
