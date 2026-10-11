@@ -14,7 +14,13 @@ requires the concrete `WindowsMutationStorage` capability which consumes the
 owned tree. Before metadata/planning/content reads, it checks root identity and
 containment, rejects mixed reference domains, overlapping roots, non-Copy modes,
 recursive/duet settings and more than one operation. Replanning then uses the
-real `DesktopStorage` restricted to those checked roots. All destination parents
+owned-Copy read adapter restricted to those checked roots. It establishes directory
+listing by successful native enumeration, and file read/seek by checked actual
+read and seek calls, with identity/size/timestamp consistency checks. Unsupported
+operations on each entry kind are explicitly false. It never strips the planner's
+`UNKNOWN_CAPABILITY` blocker; the ordinary `DesktopStorage` preview continues to
+report unestablished capabilities honestly. Both initial fixture planning and
+fresh revalidation use these observed capabilities. All destination parents
 must already exist. Every ordinary plan/resource/adapter/hash/source check still
 applies; no blocker is rewritten to claim shipping apply support.
 

@@ -6,7 +6,7 @@ use sorter_io::desktop::{DesktopStorage, windows_mutation::*};
 use sorter_storage_contracts::*;
 use std::{
     ffi::OsString,
-    io::{self, Read, Write},
+    io::{self, Read, Seek, SeekFrom, Write},
     os::windows::ffi::{OsStrExt, OsStringExt},
     path::{Path, PathBuf},
 };
@@ -101,7 +101,7 @@ pub fn validate_owned_copy(
         components: transfer.destination.components.clone(),
     };
     destination_parent(owned, &destination, &scope.target_root).map_err(|_| E::Scope)?;
-    let mut reads = DesktopStorage::new(&[source_path, target_path]).map_err(|_| E::Scope)?;
+    let mut reads = OwnedCopyReadStorage::new(owned, &plan.request.source, target)?;
     let binding = validate_execution_domain(
         plan,
         &mut reads,
@@ -329,5 +329,116 @@ impl crate::recovery::RecoveryStorage for WindowsCopyRecovery {
             destination_path.push(component);
         }
         self.observe(&reference(&destination_path))
+    }
+}
+
+/// Read-only fixture planning adapter. Capabilities are observed by real I/O,
+/// never inferred from a path or promoted in the ordinary preview backend.
+pub struct OwnedCopyReadStorage {
+    reads: DesktopStorage,
+    _source: WindowsParent,
+    _target: WindowsParent,
+}
+impl OwnedCopyReadStorage {
+    pub fn new(
+        owned: &WindowsMutationStorage,
+        source: &StorageRef,
+        target: &StorageRef,
+    ) -> Result<Self> {
+        let source_path = path(source).map_err(|_| E::Scope)?;
+        let target_path = path(target).map_err(|_| E::Scope)?;
+        if source_path.starts_with(&target_path) || target_path.starts_with(&source_path) {
+            return Err(E::Scope);
+        }
+        let source = owned.parent_reference(source).map_err(|_| E::Scope)?;
+        let target = owned.parent_reference(target).map_err(|_| E::Scope)?;
+        let reads = DesktopStorage::new(&[source_path, target_path]).map_err(|_| E::Scope)?;
+        Ok(Self {
+            reads,
+            _source: source,
+            _target: target,
+        })
+    }
+    pub fn reference(&mut self, path: &Path) -> std::result::Result<StorageRef, StorageError> {
+        self.reads.reference(path)
+    }
+    fn establish(
+        &mut self,
+        mut observed: EntryObservation,
+    ) -> std::result::Result<EntryObservation, StorageError> {
+        let caps = match observed.kind {
+            EntryKind::Directory => {
+                self.reads.children(&observed.reference)?;
+                Capabilities {
+                    read: Some(false),
+                    list: Some(true),
+                    seek: Some(false),
+                }
+            }
+            EntryKind::File => {
+                let mut input = self.reads.open_read(&observed.reference)?;
+                let bound = input.binding().ok_or_else(|| {
+                    StorageError::new(StorageErrorKind::Changed, "missing read binding")
+                })?;
+                if Some(&bound.identity) != observed.identity.as_ref()
+                    || Some(bound.size) != observed.size
+                    || Some(&bound.modified) != observed.modified.as_ref()
+                {
+                    return Err(StorageError::new(
+                        StorageErrorKind::Changed,
+                        "capability probe identity differs",
+                    ));
+                }
+                let mut probe = [0; 1];
+                let expected = usize::from(observed.size.is_some_and(|size| size != 0));
+                if input.read(&mut probe)? != expected || input.seek(SeekFrom::Start(0))? != 0 {
+                    return Err(StorageError::new(
+                        StorageErrorKind::Changed,
+                        "read/seek capability probe failed",
+                    ));
+                }
+                Capabilities {
+                    read: Some(true),
+                    list: Some(false),
+                    seek: Some(true),
+                }
+            }
+            _ => {
+                return Err(StorageError::new(
+                    StorageErrorKind::UnsupportedCapability,
+                    "only regular owned fixture entries",
+                ));
+            }
+        };
+        if self.reads.stat(&observed.reference)? != observed {
+            return Err(StorageError::new(
+                StorageErrorKind::Changed,
+                "capability probe changed observation",
+            ));
+        }
+        observed.capabilities = caps;
+        Ok(observed)
+    }
+}
+impl ReadStorage for OwnedCopyReadStorage {
+    fn stat(
+        &mut self,
+        reference: &StorageRef,
+    ) -> std::result::Result<EntryObservation, StorageError> {
+        let observed = self.reads.stat(reference)?;
+        self.establish(observed)
+    }
+    fn children(
+        &mut self,
+        reference: &StorageRef,
+    ) -> std::result::Result<Vec<EntryObservation>, StorageError> {
+        let entries = self.reads.children(reference)?;
+        entries.into_iter().map(|e| self.establish(e)).collect()
+    }
+    fn open_read(
+        &mut self,
+        reference: &StorageRef,
+    ) -> std::result::Result<ReadInput, StorageError> {
+        self.reads.open_read(reference)
     }
 }

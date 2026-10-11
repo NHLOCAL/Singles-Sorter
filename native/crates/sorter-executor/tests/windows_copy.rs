@@ -67,7 +67,11 @@ impl Fixture {
             .map(|i| (i % 251) as u8)
             .collect::<Vec<_>>();
         std::fs::write(&source, &bytes).unwrap();
-        let mut reads = DesktopStorage::new(&[path.join("source"), path.join("target")]).unwrap();
+        let owned = WindowsMutationStorage::for_owned_synthetic_tree(tree).unwrap();
+        let mut raw = DesktopStorage::new(&[path.join("source"), path.join("target")]).unwrap();
+        let source_root = raw.reference(&path.join("source")).unwrap();
+        let target_root = raw.reference(&path.join("target")).unwrap();
+        let mut reads = OwnedCopyReadStorage::new(&owned, &source_root, &target_root).unwrap();
         let request = JobRequestV2 {
             mode: JobMode::Sort,
             source: reads.reference(&path.join("source")).unwrap(),
@@ -85,6 +89,7 @@ impl Fixture {
         };
         let plan = plan_job(&request, &mut reads, &mut Metadata, &mut Ai).unwrap();
         assert_eq!(plan.operations.len(), 1, "{plan:?}");
+        assert!(!plan.blockers.iter().any(|b| b == "UNKNOWN_CAPABILITY"));
         let resources = Resources {
             resource_ids: request.resource_ids,
             adapter_versions: request.adapter_versions,
@@ -110,7 +115,7 @@ impl Fixture {
             allowed_modes: vec![TransferMode::Copy],
         };
         drop(reads);
-        let owned = WindowsMutationStorage::for_owned_synthetic_tree(tree).unwrap();
+        drop(raw);
         let binding = validate_owned_copy(
             &owned,
             &plan,
@@ -709,6 +714,28 @@ fn mixed_domains_scope_forgery_and_disabled_modes_are_rejected() {
         ),
         Err(E::Unsupported)
     ));
+    let raw_plan = plan_job(&f.plan.request, &mut read, &mut Metadata, &mut Ai).unwrap();
+    assert!(raw_plan.blockers.iter().any(|b| b == "UNKNOWN_CAPABILITY"));
+    // A failed native probe cannot become a supported capability observation.
+    let mut probed = OwnedCopyReadStorage::new(
+        &f.owned,
+        &f.plan.request.source,
+        f.plan.request.target.as_ref().unwrap(),
+    )
+    .unwrap();
+    use std::os::windows::fs::OpenOptionsExt;
+    let lock = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .share_mode(0)
+        .open(&f.source)
+        .unwrap();
+    assert!(
+        probed
+            .stat(&f.scope.inspected_sources[0].observation.reference)
+            .is_err()
+    );
+    drop(lock);
     f.unchanged_source();
     assert!(!f.destination.exists());
 }
