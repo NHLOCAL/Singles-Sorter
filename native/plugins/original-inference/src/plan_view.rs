@@ -31,14 +31,19 @@ fn operation_source(kind: &OperationKind) -> &EntryObservation {
         OperationKind::FixFile(f) => &f.source,
     }
 }
+fn album_read_error(event: &AlbumTraceEvent) -> bool {
+    matches!(
+        event,
+        AlbumTraceEvent::ProtectedError { .. } | AlbumTraceEvent::FileError { .. }
+    )
+}
+
 fn routine_inspection(decision: &DecisionV2, operation_ids: &[usize]) -> bool {
     match decision {
         DecisionV2::Album { decision, .. } => {
             !decision.is_album
                 && operation_ids.is_empty()
-                && !decision.trace.iter().any(|event| {
-                    matches!(event, AlbumTraceEvent::ProtectedError { .. })
-                })
+                && !decision.trace.iter().any(album_read_error)
         }
         _ => false,
     }
@@ -130,11 +135,7 @@ pub fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
             let mut destinations = vec![];
             let mut blockers = vec![];
             if let DecisionV2::Album { decision, .. } = d {
-                if decision
-                    .trace
-                    .iter()
-                    .any(|event| matches!(event, AlbumTraceEvent::ProtectedError { .. }))
-                {
+                if decision.trace.iter().any(album_read_error) {
                     blockers.push("ALBUM_READ_ERROR".into());
                 }
             }
@@ -229,6 +230,18 @@ mod tests {
         album.trace.push(AlbumTraceEvent::ProtectedError {
             kind: "metadata".into(),
         });
+        assert!(!routine_inspection(
+            &DecisionV2::Album {
+                read: read.clone(),
+                decision: album.clone(),
+            },
+            &[],
+        ));
+        album.trace = vec![AlbumTraceEvent::FileError {
+            source: read.source.reference.clone(),
+            kind: "metadata".into(),
+        }];
+        assert!(album_read_error(&album.trace[0]));
         assert!(!routine_inspection(
             &DecisionV2::Album {
                 read: read.clone(),
