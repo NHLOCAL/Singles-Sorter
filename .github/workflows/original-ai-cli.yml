@@ -79,6 +79,12 @@ jobs:
         run: |
           python -O crates/sorter-classifier/tools/test_export_auth.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m unittest discover -s packaging/windows-preview -p 'test_*.py'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -O -m unittest discover -s packaging/windows-preview -p 'test_*.py'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m unittest discover -s packaging/licenses -p 'test_*.py'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m unittest discover -s tests/original_ai_cli -p 'test_*.py'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python probes/released-ner/released-ner-export/export.py --model "$env:GITHUB_WORKSPACE/original-baseline/src/core/models/singer_ner_he" --out target/original-ai/bundle --suite platform
@@ -145,6 +151,55 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Get-Content target/original-ai/pcre2/build-receipt.json
 
-      # No artifact upload or release publication. Original model bytes, source
-      # pickle, generated numeric arrays and synthetic reports stay job-local.
-      # No candidate model, model download at CLI runtime, or physical apply.
+      - name: Package only verified Windows original-AI runtime and complete notices
+        if: runner.os == 'Windows'
+        run: |
+          # These steps run only after all actual original-AI Windows gates above.
+          # Read the native compiler identity from this build, not an assumed PATH.
+          $compilerFiles = @(Get-ChildItem target/release/build/sorter-io-*/out/taglib/CMakeFiles/*/CMakeCXXCompiler.cmake)
+          if ($compilerFiles.Count -lt 1) { throw 'Missing actual native compiler identity' }
+          $identity = @('Native static TagLib/zlib; dynamic MSVC CRT', (cmake --version))
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($file in $compilerFiles) {
+            $identity += Get-Content $file | Where-Object { $_ -match '^set\(CMAKE_CXX_(COMPILER_ID |COMPILER_VERSION |COMPILER_ARCHITECTURE_ID |SIMULATE_ID |SIMULATE_VERSION |COMPILER_FRONTEND_VARIANT )' }
+          }
+          $identity | Set-Content -Encoding utf8 target/original-ai/native-build-info.txt
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $dumpbin = @(& $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find 'VC\Tools\MSVC\**\bin\Hostx64\x64\dumpbin.exe') | Select-Object -Last 1
+          if (-not $dumpbin) { throw 'Official MSVC dumpbin not found' }
+          & $dumpbin /dependents target/release/singles-sorter.exe | Set-Content -Encoding utf8 target/original-ai/dumpbin-dependents.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python packaging/windows-preview/package_preview.py build --binary target/release/singles-sorter.exe --bundle target/original-ai/bundle --cli-report target/original-ai/cli-report.json --pcre2-receipt target/original-ai/pcre2/build-receipt.json --build-info target/original-ai/native-build-info.txt --dumpbin-report target/original-ai/dumpbin-dependents.txt --ci-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" --output target/original-ai/windows-preview
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Smoke the staged and ZIP-extracted preview in Windows PowerShell 5.1
+        if: runner.os == 'Windows'
+        run: |
+          powershell.exe -NoProfile -NonInteractive -File packaging/windows-preview/smoke.ps1 -PackageRoot target/original-ai/windows-preview -ReportPath target/original-ai/windows-preview-stage-smoke.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python packaging/windows-preview/package_preview.py archive --package target/original-ai/windows-preview --smoke-report target/original-ai/windows-preview-stage-smoke.json --output target/original-ai/singles-sorter-original-ai-windows-x64-preview.zip
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Exercise the consumer ZIP extraction too; a staging-only smoke is insufficient.
+          Expand-Archive -LiteralPath target/original-ai/singles-sorter-original-ai-windows-x64-preview.zip -DestinationPath target/original-ai/windows-preview-extracted
+          powershell.exe -NoProfile -NonInteractive -File packaging/windows-preview/smoke.ps1 -PackageRoot target/original-ai/windows-preview-extracted -ReportPath target/original-ai/windows-preview-smoke.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Retain the smoke-tested Windows CLI preview for review, never a release
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: original-ai-windows-x64-cli-preview-${{ github.sha }}
+          path: |
+            native/target/original-ai/singles-sorter-original-ai-windows-x64-preview.zip
+            native/target/original-ai/singles-sorter-original-ai-windows-x64-preview.zip.sha256
+            native/target/original-ai/windows-preview-smoke.json
+          if-no-files-found: error
+          retention-days: 7
+          include-hidden-files: false
+          overwrite: false
+
+      # Only already-public original parameters, applicable source/notices and
+      # newly authored silent examples enter the allowlisted preview. Source
+      # pickle, oracle corpora, Python environments and candidate/private data
+      # remain job-local. No release publication, model network at app runtime,
+      # signing/installer claim, clean-machine guarantee or physical apply.
