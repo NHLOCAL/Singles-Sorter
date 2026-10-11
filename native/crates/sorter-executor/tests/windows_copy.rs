@@ -799,6 +799,46 @@ fn serialized_domain_flags_and_foreign_capabilities_cannot_mint_copy_authority()
         assert!(open_owned_copy_recovery(&f.owned, &scope, "copy", &bytes).is_err());
     }
     let mut other = Fixture::new();
+    use std::os::windows::ffi::OsStrExt;
+    let mut probes = OwnedCopyReadStorage::new(
+        &f.owned,
+        &f.plan.request.source,
+        f.plan.request.target.as_ref().unwrap(),
+    )
+    .unwrap();
+    let outside_path = other.path.join("not-present");
+    let outside = StorageRef::WindowsPath {
+        utf16: outside_path.as_os_str().encode_wide().collect(),
+    };
+    assert_eq!(
+        probes.reference(&outside_path).unwrap_err().kind,
+        StorageErrorKind::OutsideRoots
+    );
+    assert_eq!(
+        probes.stat(&outside).unwrap_err().kind,
+        StorageErrorKind::OutsideRoots
+    );
+    assert_eq!(
+        probes.children(&outside).unwrap_err().kind,
+        StorageErrorKind::OutsideRoots
+    );
+    assert_eq!(
+        probes.open_read(&outside).err().unwrap().kind,
+        StorageErrorKind::OutsideRoots
+    );
+    let dotted = StorageRef::WindowsPath {
+        utf16: f
+            .path
+            .join("source/./song-שלום-🎵.mp3")
+            .as_os_str()
+            .encode_wide()
+            .collect(),
+    };
+    assert_eq!(
+        probes.stat(&dotted).unwrap_err().kind,
+        StorageErrorKind::OutsideRoots
+    );
+
     assert!(
         other
             .owned
