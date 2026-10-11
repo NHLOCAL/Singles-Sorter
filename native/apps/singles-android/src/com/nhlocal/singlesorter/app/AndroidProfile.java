@@ -38,12 +38,26 @@ final class AndroidProfile {
     synchronized JSONObject savePersonal(String revision,JSONArray rows)throws Exception {
         if(!revision.equals(personal().getString("revision")))throw new IllegalStateException("PERSONAL_LIST_CHANGED");
         if(rows.length()>10000||rows.toString().getBytes(StandardCharsets.UTF_8).length>2*1024*1024)throw new IllegalArgumentException("PERSONAL_LIST_LIMIT");
-        for(int i=0;i<rows.length();i++){JSONArray row=rows.getJSONArray(i);for(int j=0;j<row.length();j++)if(!(row.get(j) instanceof String)||row.getString(j).length()>131072)throw new IllegalArgumentException("PERSONAL_FIELD_LIMIT");}
+        for(int i=0;i<rows.length();i++){JSONArray row=rows.getJSONArray(i);for(int j=0;j<row.length();j++)if(!(row.get(j) instanceof String)||row.getString(j).codePointCount(0,row.getString(j).length())>131072)throw new IllegalArgumentException("PERSONAL_FIELD_LIMIT");}
+        byte[] csv=encodeCsv(rows);
+        JSONObject checked=new JSONObject(com.nhlocal.singlesorter.inference.OriginalPlanning.decodeCsv(csv,"Utf8"));
+        if(!checked.getBoolean("ok"))throw new IllegalArgumentException(checked.optString("error","CSV_INVALID"));
         if(!prefs.edit().putString("personal",rows.toString()).commit())throw new IllegalStateException("PERSONAL_SAVE_FAILED");return personal();
     }
-    synchronized String personalCsv()throws Exception {
-        JSONArray rows=personal().getJSONArray("rows");StringBuilder result=new StringBuilder();
-        for(int i=0;i<rows.length();i++){JSONArray row=rows.getJSONArray(i);for(int j=0;j<row.length();j++){if(j>0)result.append(',');result.append('"').append(row.getString(j).replace("\"","\"\"")).append('"');}result.append('\n');}return result.toString();
+    synchronized String personalCsv()throws Exception {return new String(encodeCsv(personal().getJSONArray("rows")),StandardCharsets.UTF_8);}
+    static byte[] encodeCsv(JSONArray rows)throws Exception {
+        StringBuilder text=new StringBuilder();
+        for(int i=0;i<rows.length();i++){
+            JSONArray row=rows.getJSONArray(i);
+            for(int j=0;j<row.length();j++){
+                if(j>0)text.append(',');String value=row.getString(j);
+                StandardCharsets.UTF_8.newEncoder().onMalformedInput(java.nio.charset.CodingErrorAction.REPORT).encode(java.nio.CharBuffer.wrap(value));
+                boolean quoted=value.indexOf(',')>=0||value.indexOf('"')>=0||value.indexOf('\r')>=0||value.indexOf('\n')>=0||(row.length()==1&&value.isEmpty());
+                if(quoted)text.append('"').append(value.replace("\"","\"\"")).append('"');else text.append(value);
+            }
+            text.append("\r\n");if(text.length()>2*1024*1024)throw new IllegalArgumentException("CSV_TOO_LARGE");
+        }
+        byte[] bytes=text.toString().getBytes(StandardCharsets.UTF_8);if(bytes.length>2*1024*1024)throw new IllegalArgumentException("CSV_TOO_LARGE");return bytes;
     }
     synchronized JSONObject firstRun(boolean mark)throws Exception {
         if(mark&&!prefs.edit().putBoolean("seen-v1",true).commit())throw new IllegalStateException("PROFILE_SAVE_FAILED");

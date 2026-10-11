@@ -3,7 +3,15 @@ package com.nhlocal.singlesorter.inference;
 import java.nio.charset.StandardCharsets;
 /** Native planning entry used only by the Android app's owned worker, never its UI thread. */
 public final class OriginalPlanning {
+    static {System.loadLibrary("singles_android_inference");}
     private OriginalPlanning() {}
+    private static native byte[] decodeCsv0(byte[] input,byte[] encoding);
+    public static String decodeCsv(byte[] input,String encoding) {
+        if(input.length>2*1024*1024||encoding.length()>32)throw new IllegalArgumentException("CSV_LIMIT");
+        byte[] result=decodeCsv0(input,encoding.getBytes(StandardCharsets.UTF_8));
+        if(result==null)throw new IllegalStateException("JNI_RESULT_MISSING");
+        return new String(result,StandardCharsets.UTF_8);
+    }
     public interface SnapshotProvider { byte[] snapshot(byte[] token) throws Exception; }
     private static native byte[] plan0(long id,byte[] models,byte[] cache,byte[] input,SnapshotProvider provider);
     public static long begin() {return OriginalInference.begin0();}

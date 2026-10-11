@@ -47,7 +47,7 @@ final class SafSnapshot implements AutoCloseable, com.nhlocal.singlesorter.infer
         entries.put(data);
         if(entry.isDirectory()) {
             if(depth==0||recursive)for(SafReadStorage.Entry child:storage.children(token,cancel))walk(child.token,token,readFiles,recursive,depth+1);
-        } else if(readFiles) { files.put(token,new JSONObject()); }
+        } else if(readFiles) { files.put(token,new JSONObject().put("observed_name",entry.displayName)); }
     }
     @Override public byte[] snapshot(byte[] tokenBytes) throws Exception {
         if(tokenBytes==null||tokenBytes.length>4096)throw new IOException("TOKEN_LIMIT");
@@ -56,6 +56,7 @@ final class SafSnapshot implements AutoCloseable, com.nhlocal.singlesorter.infer
         cancel.throwIfCanceled();
         if(data.isNull("snapshot_file")) {
             SafReadStorage.Entry entry=storage.inspect(token,cancel);
+            if(entry.isDirectory()||!entry.displayName.equals(data.getString("observed_name")))throw new IOException("DOCUMENT_CHANGED");
             // ReadHandle retains its own descriptor; only the duplicate stream is closed here.
             File file=File.createTempFile("snapshot-",".bin",directory);owned.add(file);
             MessageDigest digest=MessageDigest.getInstance("SHA-256");long size=0;

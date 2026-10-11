@@ -176,3 +176,50 @@ mod tests {
   assert!(storage.open_read(&reference).is_err());
  }
 }
+
+
+/// Same explicit codecs and original CSV parser as the desktop import flow.
+fn decode_csv(bytes:&[u8],encoding:&str)->Result<Value,String> {
+ let (codec,data)=match encoding {
+  "Utf8"=>(encoding_rs::UTF_8,bytes),
+  "Utf8Bom"=>(encoding_rs::UTF_8,bytes.strip_prefix(&[0xef,0xbb,0xbf]).unwrap_or(bytes)),
+  "Windows1255"=>(encoding_rs::WINDOWS_1255,bytes),
+  "Windows1252"=>(encoding_rs::WINDOWS_1252,bytes),
+  "Utf16Le"=>(encoding_rs::UTF_16LE,bytes.strip_prefix(&[0xff,0xfe]).unwrap_or(bytes)),
+  "Utf16Be"=>(encoding_rs::UTF_16BE,bytes.strip_prefix(&[0xfe,0xff]).unwrap_or(bytes)),
+  _=>return Err("ENCODING_INVALID".into()),
+ };
+ let text=codec.decode_without_bom_handling_and_without_replacement(data).ok_or("ENCODING_INVALID")?;
+ if text.len()>MAX_MANIFEST{return Err("CSV_TOO_LARGE".into());}
+ let parsed=load_aliases(&[],Some(text.as_bytes())).map_err(|_|"CSV_INVALID")?;
+ if parsed.ordered_rows.len()>10000{return Err("CSV_TOO_MANY_ROWS".into());}
+ let rows:Vec<_>=parsed.ordered_rows.into_iter().map(|r|r.fields).collect();
+ let diagnostics:Vec<_>=rows.iter().enumerate().filter(|(_,r)|r.len()!=2).map(|(index,r)|json!({"index":index,"code":"MALFORMED_ROW","width":r.len()})).collect();
+ Ok(json!({"rows":rows,"diagnostics":diagnostics}))
+}
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_com_nhlocal_singlesorter_inference_OriginalPlanning_decodeCsv0(mut env:JNIEnv,_:JClass,input:JByteArray,encoding:JByteArray)->jbyteArray {
+ let result=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||->Result<Value,String>{
+  let input=bytes(&mut env,&input,MAX_MANIFEST)?;
+  let encoding=bytes(&mut env,&encoding,32)?;
+  decode_csv(&input,std::str::from_utf8(&encoding).map_err(|_|"ENCODING_INVALID")?)
+ }));
+ let result=match result{Ok(Ok(data))=>json!({"ok":true,"data":data}),Ok(Err(error))=>json!({"ok":false,"error":error}),Err(_)=>json!({"ok":false,"error":"native_panic"})};
+ output(&mut env,result)
+}
+#[cfg(test)]
+mod csv_tests {
+ use super::*;
+ #[test] fn original_csv_order_width_bom_and_explicit_codecs() {
+  let plain=decode_csv(b"a,b\r\na,b,c\r\n\r\n","Utf8").unwrap();
+  assert_eq!(plain["rows"],json!([["a","b"],["a","b","c"],[]]));
+  assert_eq!(plain["diagnostics"].as_array().unwrap().len(),2);
+  assert_eq!(decode_csv(&[0xef,0xbb,0xbf,b'a',b',',b'b'],"Utf8Bom").unwrap()["rows"],json!([["a","b"]]));
+  assert_eq!(decode_csv(&[0xff,0xfe,b'a',0,b',',0,b'b',0],"Utf16Le").unwrap()["rows"],json!([["a","b"]]));
+  assert_eq!(decode_csv(&[0xfe,0xff,0,b'a',0,b',',0,b'b'],"Utf16Be").unwrap()["rows"],json!([["a","b"]]));
+  assert_eq!(decode_csv(&[0xe0,b',',0xe1],"Windows1255").unwrap()["rows"],json!([["א","ב"]]));
+  assert_eq!(decode_csv(&[0xe9,b',',b'x'],"Windows1252").unwrap()["rows"],json!([["é","x"]]));
+  assert!(decode_csv(&[0xff],"Utf8").is_err());
+  assert!(decode_csv(b"a,b","Auto").is_err());
+ }
+}

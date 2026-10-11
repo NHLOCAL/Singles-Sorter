@@ -23,7 +23,9 @@ public final class OriginalAssets {
         "84b8c643b32d734c626e90890c389807000741a2863930585e931467f7e00745",
         "33841cad4949620c48fbb0570865a31a19cfbb463088b1fec3d9fb7e1a8c8574"
     };
-    public static File prepare(Context context) throws IOException {
+    public static File prepare(Context context) throws IOException {return prepare(context, () -> false);}
+    public static File prepare(Context context, java.util.function.BooleanSupplier cancelled) throws IOException {
+        if (cancelled.getAsBoolean()) throw new IOException("cancelled");
         if (Looper.myLooper() == Looper.getMainLooper()) throw new IllegalStateException("worker_required");
         File parent = context.getDir("original-inference", Context.MODE_PRIVATE);
         // A unique extraction directory is never rewritten while an inference may read it.
@@ -39,7 +41,7 @@ public final class OriginalAssets {
                     byte[] buffer = new byte[16384];
                     int size;
                     while ((size = input.read(buffer)) != -1) {
-                        if (Thread.currentThread().isInterrupted()) throw new IOException("cancelled");
+                        if (Thread.currentThread().isInterrupted() || cancelled.getAsBoolean()) throw new IOException("cancelled");
                         count += size;
                         if (count > SIZES[i]) throw new IOException("asset_size");
                         digest.update(buffer, 0, size); stream.write(buffer, 0, size);

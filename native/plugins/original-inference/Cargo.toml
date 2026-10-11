@@ -9,6 +9,7 @@ resolver = "3"
 [lib]
 crate-type = ["cdylib", "rlib"]
 [dependencies]
+encoding_rs = { version = "=0.8.42", optional = true }
 sorter-io = { path = "../../crates/sorter-io", optional = true }
 sha2 = { version = "0.10", optional = true }
 libc = { version = "0.2", optional = true }
@@ -19,4 +20,4 @@ sorter-recognition = { path = "../../crates/sorter-recognition" }
 sorter-core = { path = "../../crates/sorter-core" }
 
 [features]
-product = ["dep:sorter-io", "dep:sha2", "dep:libc"]
+product = ["dep:encoding_rs", "dep:sorter-io", "dep:sha2", "dep:libc"]

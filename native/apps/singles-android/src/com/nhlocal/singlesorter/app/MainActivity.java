@@ -44,7 +44,7 @@ public final class MainActivity extends Activity {
     }
     private static boolean local(Uri uri){return "https".equals(uri.getScheme())&&ORIGIN.equals(uri.getHost())&&uri.getPort()==-1&&uri.getUserInfo()==null;}
     private static WebResourceResponse denied(){return new WebResourceResponse("text/plain","UTF-8",403,"Forbidden",new HashMap<>(),new ByteArrayInputStream(new byte[0]));}
-    @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==100&&host!=null)host.pickerResult(result,data);}
+    @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(host!=null){if(request==100)host.pickerResult(result,data);else if(request==101)host.documentResult(result,data);}}
     @SuppressWarnings("deprecation")
     @Override public void onBackPressed(){if(view==null){super.onBackPressed();return;}
         view.evaluateJavascript("(()=>{const all=Array.from(document.querySelectorAll('dialog[open]'));const d=all[all.length-1];if(d){const event=new Event('cancel',{cancelable:true});if(d.dispatchEvent(event))d.close();return true;}if(history.state&&['results','detail'].includes(history.state.singlesView)){history.back();return true;}return false;})()",handled->{if("false".equals(handled)&&!isFinishing())finish();});}

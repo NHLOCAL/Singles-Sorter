@@ -12,7 +12,7 @@ There is no Python runtime or model download in the APK.
 | Source/target selection | Native SAF tree picker, opaque UI tokens | Device proof pending |
 | Six original settings | Shared UI, typed private preferences, original core Settings | Java/frontend compilation only |
 | Personal artist list editing | Ordered rows, revision conflict check, original CSV parser for planning | Device proof pending |
-| CSV import/export | Shared UI present | Native implementation pending |
+| CSV import/export | Explicit document picker, same Rust CSV parser/codecs, original-index edits, selected new-document export with readback | Java compilation; native/device proof pending |
 | Sort, artist folders, ABC, existing-only, duet, copy/move intent | Unchanged `plan_job_controlled` | Product native build pending |
 | Album detection and fallback | Original core traversal and metadata rules | Product native build/device oracle pending |
 | FixNames predictions | Original FixNames planner and metadata projection | Product native build/device oracle pending |
@@ -70,3 +70,5 @@ API levels. Official architecture references: [JNI](https://developer.android.co
 [local WebView content](https://developer.android.com/develop/ui/views/layout/webapps/load-local-content),
 [SAF trees](https://developer.android.com/training/data-storage/shared/documents-files),
 [NDK toolchains](https://developer.android.com/ndk/guides/other_build_systems).
+
+CSV import is bounded to 2 MiB/10,000 rows and preserves malformed-width rows, order, duplicates and explicit encoding selection. Export uses ACTION_CREATE_DOCUMENT and verifies readback; provider failures may leave the newly created document incomplete, and the app reports failure without deleting an unproven provider object. No broad storage or persistent write grant is requested.
