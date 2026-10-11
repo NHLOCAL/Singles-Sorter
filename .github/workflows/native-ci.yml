@@ -69,6 +69,22 @@ jobs:
       - name: Check formatting
         run: cargo +1.99.0 fmt --all -- --check
 
+      - name: Capture formatter correction for diagnostics
+        if: failure()
+        run: |
+          cargo +1.99.0 fmt --all
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git diff --binary --output=../native-formatting.patch -- .
+          git restore --worktree -- .
+
+      - name: Upload formatter diagnostic patch
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: native-formatting-${{ matrix.os }}
+          path: native-formatting.patch
+          if-no-files-found: ignore
+
       - name: Check all targets with Clippy
         run: cargo +1.99.0 clippy --locked --workspace --all-targets -- -D warnings
 
@@ -148,6 +164,24 @@ jobs:
           cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-rename --test windows_rename -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-rename
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise selected Windows roots and multi-file jobs
+        if: runner.os == 'Windows'
+        run: |
+          cargo +1.99.0 clippy --locked -p sorter-executor --features selected-windows-execution --all-targets -- -D warnings
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $roots = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --test windows_selected_roots -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($roots | Where-Object { $_ -match ': test$' }).Count -ne 12) { throw "Expected 12 selected-root cases" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --test windows_selected_roots -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib selected_directory_uncertainty_tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $jobs = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_selected_job -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($jobs | Where-Object { $_ -match ': test$' }).Count -ne 7) { throw "Expected 7 selected-job cases" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Test native metadata with static Windows CRT

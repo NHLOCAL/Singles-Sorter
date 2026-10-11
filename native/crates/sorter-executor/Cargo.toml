@@ -28,3 +28,6 @@ experimental-windows-copy = ["experimental-windows-journal"]
 
 # Same-volume rename only, on consumed fixture roots; no copy/delete fallback.
 experimental-windows-rename = ["experimental-windows-copy"]
+
+# Explicit host-selected local NTFS root execution.
+selected-windows-execution = ["experimental-windows-rename"]

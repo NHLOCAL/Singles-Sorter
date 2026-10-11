@@ -312,6 +312,8 @@ pub fn validate_album_copy(
                 synthetic_only: true,
                 owned_windows_copy: false,
                 owned_windows_rename: false,
+                selected_windows_copy: false,
+                selected_windows_rename: false,
             },
         },
     })

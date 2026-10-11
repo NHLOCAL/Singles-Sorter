@@ -266,7 +266,7 @@ impl PhysicalJournalV2 {
             .collect();
         let last = history.last().map(|e| e.phase);
         use Phase::*;
-        if self.binding.data.owned_windows_rename
+        if self.binding.data.windows_rename()
             && !matches!(
                 event.phase,
                 Prepared
@@ -380,7 +380,7 @@ impl PhysicalJournalV2 {
                 || matches!(
                     event.observed_identity,
                     Some(ObjectIdentity::Windows { .. })
-                ) && self.binding.data.owned_windows_copy)
+                ) && self.binding.data.windows_copy())
                 || event.observed_identity == self.binding.data.source_root.identity
                 || event.observed_identity == self.binding.data.target_root.identity
                 || self

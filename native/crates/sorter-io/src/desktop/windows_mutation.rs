@@ -1,4 +1,4 @@
-//! Experimental primitives restricted to an owned TempDir. No production constructor.
+//! Experimental primitives with explicit synthetic or selected-root authority.
 //! A source lease denies read/write/delete sharing; ancestors remain pinned.
 //! See docs/verification/windows-mutation-task2.md for API evidence and native gates.
 use super::{chain, identity, kind};
@@ -14,7 +14,7 @@ use std::{
         ffi::{OsStrExt, OsStringExt},
         io::{AsRawHandle, FromRawHandle},
     },
-    path::{Component, Path},
+    path::{Component, Path, PathBuf},
     sync::{
         Arc,
         atomic::{AtomicBool, Ordering},
@@ -122,10 +122,59 @@ fn units(name: &MutationName) -> Result<&[u16], MutationError> {
     }
     Ok(name)
 }
+/// Authority origin is separate from serialized planning evidence. Executors must
+/// bind this domain as well as the exact selected roots before dispatch.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WindowsMutationDomain {
+    OwnedSyntheticTree,
+    SelectedRoots,
+}
+
+/// A trusted native host's explicit grant for one selected directory.
+///
+/// This type intentionally implements neither Deserialize, Serialize nor Clone.
+/// The host must obtain the path and expected full Windows identity from its
+/// selection/consent flow, never turn a serialized plan into a grant. Constructing
+/// a grant does not open or mutate the path; consumption pins and revalidates it.
+pub struct WindowsSelectedRootGrant {
+    path: PathBuf,
+    expected_identity: ObjectIdentity,
+}
+impl WindowsSelectedRootGrant {
+    pub fn new(path: PathBuf, expected_identity: ObjectIdentity) -> Result<Self, MutationError> {
+        validate_root_path(&path)?;
+        if !matches!(expected_identity, ObjectIdentity::Windows { .. }) {
+            return Err(err(
+                MutationErrorKind::Unsupported,
+                "full Windows root identity required",
+            ));
+        }
+        Ok(Self {
+            path,
+            expected_identity,
+        })
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum RootRole {
+    Synthetic,
+    Source,
+    Target,
+    Journal,
+}
+// Only synthetic ownership can run TempDir cleanup. Selected roots hold no
+// deletion/cleanup object, including when construction fails partway through.
+enum RootOwnership {
+    Synthetic { _tree: tempfile::TempDir },
+    Selected,
+}
 struct Root {
+    path: PathBuf,
+    role: RootRole,
     _ancestors: Vec<File>,
     directory: File,
-    _tree: tempfile::TempDir,
+    _ownership: RootOwnership,
 }
 #[derive(Clone)]
 pub struct WindowsParent {
@@ -149,93 +198,246 @@ impl WindowsParent {
         &self.identity
     }
 }
+fn validate_root_path(path: &Path) -> Result<(), MutationError> {
+    use std::path::Prefix;
+    super::validate_path(path).map_err(read_error)?;
+    if !matches!(path.components().next(),Some(Component::Prefix(p)) if matches!(p.kind(),Prefix::Disk(_)|Prefix::VerbatimDisk(_))) {
+        return Err(err(MutationErrorKind::Unsupported, "only local drive-backed roots"));
+    }
+    for component in path.components() {
+        if let Component::Normal(name) = component {
+            units(&MutationName::Windows(name.encode_wide().collect()))?;
+        }
+    }
+    if path.file_name().is_none() {
+        return Err(err(
+            MutationErrorKind::Unsupported,
+            "drive anchors cannot be mutation roots",
+        ));
+    }
+    Ok(())
+}
+fn pin_root(
+    path: PathBuf,
+    expected: Option<&ObjectIdentity>,
+    role: RootRole,
+    ownership: RootOwnership,
+) -> Result<Arc<Root>, MutationError> {
+    validate_root_path(&path)?;
+    let mut ancestors = chain(&path).map_err(read_error)?;
+    let observed = ancestors
+        .pop()
+        .ok_or_else(|| err(MutationErrorKind::Io, "no root"))?;
+    for ancestor in &ancestors {
+        ensure_directory(ancestor)?;
+    }
+    let root_name = path
+        .file_name()
+        .ok_or_else(|| err(MutationErrorKind::InvalidName, "root leaf missing"))?
+        .encode_wide()
+        .collect::<Vec<_>>();
+    let directory = open_directory(
+        ancestors.last().ok_or_else(|| {
+            err(
+                MutationErrorKind::Unsupported,
+                "root anchor cannot be a mutation root",
+            )
+        })?,
+        &root_name,
+    )?;
+    let observed_identity = identity(&directory).map_err(read_error)?;
+    if observed_identity != identity(&observed).map_err(read_error)?
+        || expected.is_some_and(|expected| expected != &observed_identity)
+    {
+        return Err(err(MutationErrorKind::StalePlan, "selected root identity changed"));
+    }
+    ensure_directory(&directory)?;
+    // A handle-derived volume GUID path is unavailable for SMB; a mapped drive
+    // letter alone is never locality evidence.
+    let mut local = [0u16; 32768];
+    let n = unsafe {
+        GetFinalPathNameByHandleW(
+            HANDLE(directory.as_raw_handle()),
+            &mut local,
+            VOLUME_NAME_GUID,
+        )
+    } as usize;
+    let prefix = r"\\?\Volume{".encode_utf16().collect::<Vec<_>>();
+    if n == 0 || n >= local.len() || !local[..n].starts_with(&prefix) {
+        return Err(err(
+            MutationErrorKind::Unsupported,
+            "no local volume GUID from held root",
+        ));
+    }
+    let mut fs = [0u16; 32];
+    unsafe {
+        GetVolumeInformationByHandleW(
+            HANDLE(directory.as_raw_handle()),
+            None,
+            None,
+            None,
+            None,
+            Some(&mut fs),
+        )
+    }
+    .map_err(win_error)?;
+    if fs
+        .iter()
+        .copied()
+        .take_while(|x| *x != 0)
+        .collect::<Vec<_>>()
+        != "NTFS".encode_utf16().collect::<Vec<_>>()
+    {
+        return Err(err(
+            MutationErrorKind::Unsupported,
+            "only local NTFS primitives are implemented",
+        ));
+    }
+    Ok(Arc::new(Root {
+        path,
+        role,
+        _ancestors: ancestors,
+        directory,
+        _ownership: ownership,
+    }))
+}
+fn ensure_disjoint_roots(a: &Root, b: &Root) -> Result<(), MutationError> {
+    let a_id = identity(&a.directory).map_err(read_error)?;
+    let b_id = identity(&b.directory).map_err(read_error)?;
+    for (root, other_id) in [(a, &b_id), (b, &a_id)] {
+        // Compare each root against the other's full held ancestry. Shared
+        // ancestors are expected and never become an authorization scope.
+        for ancestor in root
+            ._ancestors
+            .iter()
+            .chain(std::iter::once(&root.directory))
+        {
+            if &identity(ancestor).map_err(read_error)? == other_id {
+                return Err(err(
+                    MutationErrorKind::StalePlan,
+                    "selected roots must be distinct and non-overlapping",
+                ));
+            }
+        }
+    }
+    Ok(())
+}
 pub struct WindowsMutationStorage {
-    root: Arc<Root>,
+    roots: Vec<Arc<Root>>,
+    domain: WindowsMutationDomain,
 }
 impl WindowsMutationStorage {
-    /// The only constructor consumes a fresh caller-owned synthetic TempDir.
-    /// It is deliberately unsuitable for authorizing a user-selected library.
+    /// Consume a fresh caller-owned synthetic TempDir, retaining fixture cleanup.
     pub fn for_owned_synthetic_tree(tree: tempfile::TempDir) -> Result<Self, MutationError> {
-        use std::path::Prefix;
-        if !matches!(tree.path().components().next(),Some(Component::Prefix(p)) if matches!(p.kind(),Prefix::Disk(_)|Prefix::VerbatimDisk(_)))
-        {
-            return Err(err(
-                MutationErrorKind::Unsupported,
-                "only local drive-backed synthetic trees",
-            ));
-        }
-        let mut ancestors = chain(tree.path()).map_err(read_error)?;
-        let observed = ancestors
-            .pop()
-            .ok_or_else(|| err(MutationErrorKind::Io, "no root"))?;
-        let root_name = tree
-            .path()
-            .file_name()
-            .ok_or_else(|| err(MutationErrorKind::InvalidName, "root leaf missing"))?
-            .encode_wide()
-            .collect::<Vec<_>>();
-        let directory = open_directory(
-            ancestors.last().ok_or_else(|| {
-                err(
-                    MutationErrorKind::Unsupported,
-                    "root anchor cannot be a synthetic tree",
-                )
-            })?,
-            &root_name,
+        let path = tree.path().to_owned();
+        let root = pin_root(
+            path,
+            None,
+            RootRole::Synthetic,
+            RootOwnership::Synthetic { _tree: tree },
         )?;
-        if identity(&directory).map_err(read_error)? != identity(&observed).map_err(read_error)? {
-            return Err(err(MutationErrorKind::StalePlan, "root changed"));
-        }
-        ensure_directory(&directory)?;
-        // A handle-derived volume GUID path is unavailable for SMB; do not infer locality from a drive letter.
-        let mut local = [0u16; 32768];
-        let n = unsafe {
-            GetFinalPathNameByHandleW(
-                HANDLE(directory.as_raw_handle()),
-                &mut local,
-                VOLUME_NAME_GUID,
-            )
-        } as usize;
-        let prefix = r"\\?\Volume{".encode_utf16().collect::<Vec<_>>();
-        if n == 0 || n >= local.len() || !local[..n].starts_with(&prefix) {
-            return Err(err(
-                MutationErrorKind::Unsupported,
-                "no local volume GUID from held root",
-            ));
-        }
-        let mut fs = [0u16; 32];
-        unsafe {
-            GetVolumeInformationByHandleW(
-                HANDLE(directory.as_raw_handle()),
-                None,
-                None,
-                None,
-                None,
-                Some(&mut fs),
-            )
-        }
-        .map_err(win_error)?;
-        if fs
-            .iter()
-            .copied()
-            .take_while(|x| *x != 0)
-            .collect::<Vec<_>>()
-            != "NTFS".encode_utf16().collect::<Vec<_>>()
-        {
-            return Err(err(
-                MutationErrorKind::Unsupported,
-                "only local NTFS research primitives are implemented",
-            ));
-        }
         Ok(Self {
-            root: Arc::new(Root {
-                _tree: tree,
-                _ancestors: ancestors,
-                directory,
-            }),
+            roots: vec![root],
+            domain: WindowsMutationDomain::OwnedSyntheticTree,
         })
     }
+    /// Independently pin exactly the source, target and application-journal
+    /// roots. No common ancestor is authorized. Dropping this capability never
+    /// deletes any selected directory or file. This is not restart/replay consent.
+    pub fn for_selected_roots(
+        source: WindowsSelectedRootGrant,
+        target: WindowsSelectedRootGrant,
+        journal: WindowsSelectedRootGrant,
+    ) -> Result<Self, MutationError> {
+        let mut roots: Vec<Arc<Root>> = Vec::new();
+        for (grant, role) in [
+            (source, RootRole::Source),
+            (target, RootRole::Target),
+            (journal, RootRole::Journal),
+        ] {
+            let root = pin_root(
+                grant.path,
+                Some(&grant.expected_identity),
+                role,
+                RootOwnership::Selected,
+            )?;
+            for previous in &roots {
+                ensure_disjoint_roots(previous, &root)?;
+            }
+            roots.push(root);
+        }
+        Ok(Self {
+            roots,
+            domain: WindowsMutationDomain::SelectedRoots,
+        })
+    }
+    pub fn domain(&self) -> WindowsMutationDomain {
+        self.domain
+    }
+    fn selected_root(&self, role: RootRole) -> Result<&Arc<Root>, MutationError> {
+        self.roots
+            .iter()
+            .find(|root| root.role == role)
+            .ok_or_else(|| {
+                err(
+                    MutationErrorKind::Unsupported,
+                    "selected-root capability required",
+                )
+            })
+    }
+    fn selected_reference(&self, role: RootRole) -> Result<StorageRef, MutationError> {
+        Ok(StorageRef::WindowsPath {
+            utf16: self
+                .selected_root(role)?
+                .path
+                .as_os_str()
+                .encode_wide()
+                .collect(),
+        })
+    }
+    pub fn selected_source_reference(&self) -> Result<StorageRef, MutationError> {
+        self.selected_reference(RootRole::Source)
+    }
+    pub fn selected_target_reference(&self) -> Result<StorageRef, MutationError> {
+        self.selected_reference(RootRole::Target)
+    }
+    pub fn selected_journal_reference(&self) -> Result<StorageRef, MutationError> {
+        self.selected_reference(RootRole::Journal)
+    }
+    pub fn selected_source_root(&self) -> Result<WindowsParent, MutationError> {
+        self.parent_under(self.selected_root(RootRole::Source)?, Path::new(""))
+    }
+    pub fn selected_target_root(&self) -> Result<WindowsParent, MutationError> {
+        self.parent_under(self.selected_root(RootRole::Target)?, Path::new(""))
+    }
+    pub fn selected_journal_root(&self) -> Result<WindowsParent, MutationError> {
+        self.parent_under(self.selected_root(RootRole::Journal)?, Path::new(""))
+    }
+    /// Fixture-only convenience. Selected scopes require a role or full reference.
     pub fn parent(&self, relative: &Path) -> Result<WindowsParent, MutationError> {
+        if self.domain != WindowsMutationDomain::OwnedSyntheticTree {
+            return Err(err(
+                MutationErrorKind::Unsupported,
+                "selected roots require an explicit root role or reference",
+            ));
+        }
+        self.parent_under(&self.roots[0], relative)
+    }
+    fn parent_under(
+        &self,
+        root: &Arc<Root>,
+        relative: &Path,
+    ) -> Result<WindowsParent, MutationError> {
+        let raw = relative.as_os_str().encode_wide().collect::<Vec<_>>();
+        if raw
+            .split(|u| matches!(*u, 47 | 92))
+            .any(|part| part == [46] || part == [46, 46])
+        {
+            return Err(err(
+                MutationErrorKind::InvalidName,
+                "dot components are not accepted",
+            ));
+        }
         let mut ancestors = Vec::new();
         for c in relative.components() {
             let Component::Normal(n) = c else {
@@ -246,62 +448,82 @@ impl WindowsMutationStorage {
             };
             let name = MutationName::Windows(n.encode_wide().collect());
             let name = units(&name)?;
-            let parent = ancestors.last().unwrap_or(&self.root.directory);
+            let parent = ancestors.last().unwrap_or(&root.directory);
             let child = open_directory(parent, name)?;
             ensure_directory(&child)?;
             ancestors.push(child);
         }
-        let id = identity(ancestors.last().unwrap_or(&self.root.directory)).map_err(read_error)?;
-        Ok(WindowsParent {
-            root: self.root.clone(),
+        let id = identity(ancestors.last().unwrap_or(&root.directory)).map_err(read_error)?;
+        let parent = WindowsParent {
+            root: root.clone(),
             ancestors: Arc::new(ancestors),
             identity: id,
-        })
+        };
+        self.check_parent(&parent)?;
+        Ok(parent)
     }
-    /// Resolve only a directory beneath the consumed TempDir, using held ancestry.
-    /// A serialized Windows path is evidence, never an ownership grant.
+    /// Resolve a directory beneath one explicitly authorized root, using held
+    /// ancestry. A serialized Windows path is evidence, never an ownership grant.
     pub fn parent_reference(&self, reference: &StorageRef) -> Result<WindowsParent, MutationError> {
         let StorageRef::WindowsPath { utf16 } = reference else {
-            return Err(err(
-                MutationErrorKind::Unsupported,
-                "Windows reference required",
-            ));
+            return Err(err(MutationErrorKind::Unsupported, "Windows reference required"));
         };
         if utf16.contains(&0) {
             return Err(err(MutationErrorKind::InvalidName, "NUL in reference"));
         }
-        let path = std::path::PathBuf::from(std::ffi::OsString::from_wide(utf16));
-        let relative = path
-            .strip_prefix(self.root._tree.path())
-            .map_err(|_| err(MutationErrorKind::StalePlan, "reference outside owned tree"))?;
-        self.parent(relative)
+        let path = PathBuf::from(std::ffi::OsString::from_wide(utf16));
+        super::validate_path(&path).map_err(read_error)?;
+        for root in &self.roots {
+            if let Ok(relative) = path.strip_prefix(&root.path) {
+                return self.parent_under(root, relative);
+            }
+        }
+        Err(err(MutationErrorKind::StalePlan, "reference outside authorized roots"))
     }
     fn check_parent(&self, parent: &WindowsParent) -> Result<(), MutationError> {
-        if !Arc::ptr_eq(&self.root, &parent.root) {
+        if !self
+            .roots
+            .iter()
+            .any(|root| Arc::ptr_eq(root, &parent.root))
+        {
             return Err(err(
                 MutationErrorKind::StalePlan,
                 "parent belongs to another scope",
             ));
         }
-        ensure_directory(&self.root.directory)?;
-        for f in self.root._ancestors.iter().chain(parent.ancestors.iter()) {
+        ensure_directory(&parent.root.directory)?;
+        for f in parent.root._ancestors.iter().chain(parent.ancestors.iter()) {
             ensure_directory(f)?;
         }
         if identity(parent.handle()).map_err(read_error)? != parent.identity {
+            return Err(err(MutationErrorKind::StalePlan, "parent identity mismatch"));
+        }
+        Ok(())
+    }
+    fn check_role(&self, parent: &WindowsParent, role: RootRole) -> Result<(), MutationError> {
+        self.check_parent(parent)?;
+        if parent.root.role != RootRole::Synthetic && parent.root.role != role {
             return Err(err(
                 MutationErrorKind::StalePlan,
-                "parent identity mismatch",
+                "parent has a different selected-root role",
             ));
         }
         Ok(())
     }
-    /// Read-only synthetic fixture observation. The returned evidence is not consent.
+    /// Read-only source/target evidence, never consent. Target observations are
+    /// permitted for reconciliation; leasing for mutation remains source-only.
     pub fn observe_source(
         &mut self,
         parent: &WindowsParent,
         name: &MutationName,
     ) -> Result<ExpectedSource, MutationError> {
         self.check_parent(parent)?;
+        if parent.root.role == RootRole::Journal {
+            return Err(err(
+                MutationErrorKind::StalePlan,
+                "journal root is not data authority",
+            ));
+        }
         let file = open_file(parent.handle(), units(name)?, false)?;
         ensure_regular(&file)?;
         let observation = observe(&file, parent)?;
@@ -316,6 +538,93 @@ impl WindowsMutationStorage {
         })
     }
 }
+impl WindowsMutationStorage {
+    /// Exclusively create one destination directory under an authorized target
+    /// parent. The executor must persist its intent before calling this primitive.
+    /// FILE_CREATE never adopts an existing directory. No directory-flush or
+    /// namespace durability claim is made. A post-dispatch error requires
+    /// reconciliation; neither retry nor automatic deletion is authorized.
+    pub fn create_destination_directory(
+        &self,
+        parent: &WindowsParent,
+        name: &MutationName,
+        cancel: &AtomicBool,
+    ) -> MutationOutcome<WindowsParent> {
+        self.create_destination_directory_with(parent, name, cancel, || Ok(()))
+    }
+    fn create_destination_directory_with(
+        &self,
+        parent: &WindowsParent,
+        name: &MutationName,
+        cancel: &AtomicBool,
+        after_create: impl FnOnce() -> Result<(), MutationError>,
+    ) -> MutationOutcome<WindowsParent> {
+        let preflight = (|| {
+            cancelled(cancel)?;
+            self.check_role(parent, RootRole::Target)?;
+            units(name)?;
+            // Retain the exact already-pinned ancestry. All potentially failing
+            // handle duplication happens before namespace dispatch.
+            let ancestors = parent
+                .ancestors
+                .iter()
+                .map(File::try_clone)
+                .collect::<io::Result<Vec<_>>>()
+                .map_err(io_error)?;
+            cancelled(cancel)?;
+            Ok(ancestors)
+        })();
+        let mut ancestors = match preflight {
+            Ok(ancestors) => ancestors,
+            Err(error) => return MutationOutcome::NoEffect(error),
+        };
+        let file = match open_directory_handle(
+            parent.handle(),
+            units(name).expect("validated child name"),
+            true,
+        ) {
+            Ok(file) => file,
+            Err(error) if error.kind == MutationErrorKind::UnknownOutcome => {
+                return MutationOutcome::PendingUnknown(error);
+            }
+            Err(error) => return MutationOutcome::NoEffect(error),
+        };
+        let mut observation = None;
+        let verified = (|| {
+            after_create()?;
+            ensure_directory(&file)?;
+            let observed = observe(&file, parent)?;
+            let matches = observed.actual_name == *name;
+            observation = Some(observed);
+            if !matches {
+                return Err(err(
+                    MutationErrorKind::VerificationFailed,
+                    "created directory name changed",
+                ));
+            }
+            self.check_role(parent, RootRole::Target)?;
+            cancelled(cancel)?;
+            Ok(())
+        })();
+        if let Err(error) = verified {
+            let mut unknown = err(
+                MutationErrorKind::UnknownOutcome,
+                &format!("directory creation dispatched; reconcile without replay: {error:?}"),
+            );
+            if let Some(observed) = observation.or_else(|| observe(&file, parent).ok()) {
+                unknown = unknown.with_observation(observed);
+            }
+            return MutationOutcome::PendingUnknown(unknown);
+        }
+        let id = observation.expect("verified directory observation").identity;
+        ancestors.push(file);
+        MutationOutcome::Applied(WindowsParent {
+            ancestors: Arc::new(ancestors),
+            identity: id,
+            root: parent.root.clone(),
+        })
+    }
+}
 /// A location capability produced only by successful exclusive journal creation.
 /// It holds the root and ancestry alive and identifies the exact file to read.
 #[derive(Clone)]
@@ -323,6 +632,15 @@ pub struct WindowsJournalLocation {
     parent: WindowsParent,
     name: MutationName,
     identity: ObjectIdentity,
+}
+
+impl WindowsJournalLocation {
+    pub fn identity(&self) -> &ObjectIdentity {
+        &self.identity
+    }
+    pub fn name(&self) -> &MutationName {
+        &self.name
+    }
 }
 
 /// Evidence only that the OS accepted a file-buffer flush request.
@@ -333,7 +651,7 @@ pub struct FileBufferFlushAcknowledgment {
     _private: (),
 }
 
-/// Private append-only journal bytes on an owned synthetic NTFS tree.
+/// Private append-only journal bytes on a separately authorized NTFS journal root.
 /// No writable reopen, truncate, raw handle, or arbitrary-path constructor exists.
 /// `flush_file_buffers` acknowledges the OS request, not verified power-loss durability.
 pub struct WindowsJournalFile {
@@ -347,7 +665,7 @@ impl WindowsMutationStorage {
         parent: &WindowsParent,
         name: &MutationName,
     ) -> Result<WindowsJournalFile, MutationError> {
-        self.check_parent(parent)?;
+        self.check_role(parent, RootRole::Journal)?;
         let file = open_relative_file(
             parent.handle(),
             units(name)?,
@@ -367,6 +685,29 @@ impl WindowsMutationStorage {
         })
     }
 
+    /// Read an existing journal after the host explicitly regrants all selected
+    /// roots. The recorded identity is evidence, not authority: only this
+    /// capability's application-journal root is used. No writable reopen or
+    /// automatic recovery/replay is exposed.
+    pub fn read_selected_journal(
+        &self,
+        name: &MutationName,
+        expected_identity: &ObjectIdentity,
+    ) -> Result<Vec<u8>, MutationError> {
+        if !matches!(expected_identity, ObjectIdentity::Windows { .. }) {
+            return Err(err(
+                MutationErrorKind::Unsupported,
+                "full Windows journal identity required",
+            ));
+        }
+        let parent = self.selected_journal_root()?;
+        self.read_journal(&WindowsJournalLocation {
+            parent,
+            name: name.clone(),
+            identity: expected_identity.clone(),
+        })
+    }
+
     /// Read-only close/reopen inspection, using previously captured identity and
     /// held ancestry. A supplied filename is never sufficient recovery authority.
     /// This is not a production restart-root authorization API.
@@ -374,7 +715,7 @@ impl WindowsMutationStorage {
         &self,
         location: &WindowsJournalLocation,
     ) -> Result<Vec<u8>, MutationError> {
-        self.check_parent(&location.parent)?;
+        self.check_role(&location.parent, RootRole::Journal)?;
         let mut file = open_relative_file(
             location.parent.handle(),
             units(&location.name)?,
@@ -495,6 +836,15 @@ fn ensure_case_insensitive(parent: &File) -> Result<(), MutationError> {
 }
 
 fn open_directory(parent: &File, name: &[u16]) -> Result<File, MutationError> {
+    let file = open_directory_handle(parent, name, false)?;
+    ensure_directory(&file)?;
+    Ok(file)
+}
+fn open_directory_handle(
+    parent: &File,
+    name: &[u16],
+    create: bool,
+) -> Result<File, MutationError> {
     ensure_directory(parent)?;
     let mut owned = name.to_vec();
     let length = (owned.len() * 2) as u16;
@@ -521,7 +871,7 @@ fn open_directory(parent: &File, name: &[u16]) -> Result<File, MutationError> {
             None,
             FILE_FLAGS_AND_ATTRIBUTES(0),
             FILE_SHARE_READ | FILE_SHARE_WRITE,
-            FILE_OPEN,
+            if create { FILE_CREATE } else { FILE_OPEN },
             FILE_DIRECTORY_FILE | FILE_OPEN_REPARSE_POINT | FILE_SYNCHRONOUS_IO_NONALERT,
             None,
             0,
@@ -540,13 +890,11 @@ fn open_directory(parent: &File, name: &[u16]) -> Result<File, MutationError> {
     }
     if handle.is_invalid() {
         return Err(err(
-            MutationErrorKind::Io,
+            MutationErrorKind::UnknownOutcome,
             "directory open returned no handle",
         ));
     }
-    let file = unsafe { File::from_raw_handle(handle.0) };
-    ensure_directory(&file)?;
-    Ok(file)
+    Ok(unsafe { File::from_raw_handle(handle.0) })
 }
 
 fn open_file(parent: &File, name: &[u16], create: bool) -> Result<File, MutationError> {
@@ -737,7 +1085,7 @@ impl WindowsMutationStorage {
         cancel: &AtomicBool,
         flush: impl FnOnce(&File) -> Result<(), MutationError>,
     ) -> Result<PublishedFileSyncAcknowledgment, MutationError> {
-        self.check_parent(&published.parent)?;
+        self.check_role(&published.parent, RootRole::Target)?;
         if published.sync_poisoned {
             return Err(err(
                 MutationErrorKind::UnknownOutcome,
@@ -918,7 +1266,7 @@ impl MutationStorage for WindowsMutationStorage {
     ) -> MutationOutcome<WindowsOwnedTemp> {
         let preflight = (|| {
             cancelled(cancel)?;
-            self.check_parent(parent)?;
+            self.check_role(parent, RootRole::Target)?;
             if job_id.is_empty()
                 || job_id.len() > 100
                 || !job_id
@@ -971,8 +1319,8 @@ impl MutationStorage for WindowsMutationStorage {
     ) -> MutationOutcome<WindowsPublished> {
         let preflight = (|| {
             cancelled(cancel)?;
-            self.check_parent(&temp.parent)?;
-            self.check_parent(parent)?;
+            self.check_role(&temp.parent, RootRole::Target)?;
+            self.check_role(parent, RootRole::Target)?;
             units(name)?;
             let file = temp
                 .file
@@ -1003,7 +1351,7 @@ impl MutationStorage for WindowsMutationStorage {
     ) -> MutationOutcome<WindowsPublished> {
         let preflight = (|| {
             cancelled(cancel)?;
-            self.check_parent(parent)?;
+            self.check_role(parent, RootRole::Target)?;
             self.validate_source(source)?;
             units(name)?;
             cancelled(cancel)?;
@@ -1071,7 +1419,7 @@ impl MutationStorage for WindowsMutationStorage {
         &mut self,
         published: &WindowsPublished,
     ) -> Result<MutationObservation, MutationError> {
-        self.check_parent(&published.parent)?;
+        self.check_role(&published.parent, RootRole::Target)?;
         ensure_regular(&published.file)?;
         let obs = observe(&published.file, &published.parent)?;
         if obs.identity != published.observation.identity
@@ -1091,7 +1439,7 @@ impl WindowsMutationStorage {
         expected: &ExpectedSource,
         mode: SourceLeaseMode,
     ) -> Result<WindowsSourceLease, MutationError> {
-        self.check_parent(parent)?;
+        self.check_role(parent, RootRole::Source)?;
         if expected.parent_identity != parent.identity {
             return Err(err(MutationErrorKind::StalePlan, "source parent mismatch"));
         }
@@ -1116,7 +1464,7 @@ impl WindowsMutationStorage {
         })
     }
     fn validate_source(&self, source: &WindowsSourceLease) -> Result<(), MutationError> {
-        self.check_parent(&source.parent)?;
+        self.check_role(&source.parent, RootRole::Source)?;
         let file = source
             .file
             .as_ref()
@@ -1187,13 +1535,13 @@ fn finish_publish(
     })
 }
 
-/// Rename-only guard for a consumed, owned synthetic NTFS tree.
+/// Rename-only guard for explicitly authorized NTFS mutation roots.
 ///
 /// Its narrower contract is a native write-through source open, checked preflush,
 /// same-volume no-replace rename, and checked flush/full verification on the very
 /// same held object. It does not assert generic namespace or power-loss durability.
 /// In particular, `durable_flush` remains Unknown and this type cannot publish
-/// copies, retire sources, or authorize a production/user-library mutation.
+/// copies, retire sources, or create host consent from serialized planning facts.
 pub struct WindowsRenameStorage {
     owned: WindowsMutationStorage,
 }
@@ -1230,8 +1578,8 @@ impl WindowsRenameStorage {
     ) -> MutationOutcome<WindowsPublished> {
         let before_dispatch = (|| {
             cancelled(cancel)?;
-            self.owned.check_parent(&source.parent)?;
-            self.owned.check_parent(parent)?;
+            self.owned.check_role(&source.parent, RootRole::Source)?;
+            self.owned.check_role(parent, RootRole::Target)?;
             if source.mode != SourceLeaseMode::WriteThroughRename {
                 return Err(err(
                     MutationErrorKind::Unsupported,
@@ -1282,7 +1630,7 @@ impl WindowsRenameStorage {
                     .sync_published_file(&mut published, &source.expected.digest, cancel)?;
             checkpoint(RenameCheckpoint::AfterPostflush)?;
             cancelled(cancel)?;
-            self.owned.check_parent(parent)?;
+            self.owned.check_role(parent, RootRole::Target)?;
             let renamed_expected = ExpectedSource {
                 parent_identity: parent.identity.clone(),
                 name: name.clone(),
@@ -2164,5 +2512,23 @@ mod rename_guard_tests {
         ));
         drop(source);
         assert_source_untouched(&f);
+    }
+}
+
+#[cfg(test)]
+mod selected_directory_uncertainty_tests {
+    use super::*;
+
+    #[test]
+    fn directory_post_dispatch_failure_is_unknown_and_never_retried_or_removed() {
+        let tree = tempfile::tempdir().unwrap();
+        let path = tree.path().to_owned();
+        let storage = WindowsMutationStorage::for_owned_synthetic_tree(tree).unwrap();
+        let parent = storage.parent(Path::new("")).unwrap();
+        let name = MutationName::Windows("created".encode_utf16().collect());
+        let result = storage.create_destination_directory_with(&parent, &name, &AtomicBool::new(false), || Err(err(MutationErrorKind::Cancelled, "injected cancellation after dispatch")));
+        assert!(matches!(result, MutationOutcome::PendingUnknown(error) if error.kind == MutationErrorKind::UnknownOutcome && error.observed.is_some()));
+        assert!(path.join("created").is_dir());
+        assert!(matches!(storage.create_destination_directory(&parent, &name, &AtomicBool::new(false)), MutationOutcome::NoEffect(error) if error.kind == MutationErrorKind::StalePlan));
     }
 }

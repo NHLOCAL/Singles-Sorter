@@ -16,6 +16,7 @@ pub enum ExecutionError {
     InvalidTransition,
     Io,
     NeedsRecovery,
+    Cancelled,
 }
 impl std::fmt::Display for ExecutionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -46,3 +47,6 @@ pub mod windows_copy;
 
 #[cfg(all(windows, feature = "experimental-windows-rename"))]
 pub mod windows_rename;
+
+#[cfg(all(windows, feature = "selected-windows-execution"))]
+pub mod windows_job;

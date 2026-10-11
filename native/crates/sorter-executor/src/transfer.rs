@@ -506,7 +506,7 @@ impl<S: TransferStorage> Runner<'_, S> {
     ) -> std::result::Result<(), Failure> {
         self.check_cancel()?;
         let caps = self.storage.capabilities();
-        let rename_only = self.binding.data.owned_windows_rename;
+        let rename_only = self.binding.data.windows_rename();
         #[cfg(all(windows, feature = "experimental-windows-rename"))]
         let scoped_rename = rename_only && self.storage.owned_windows_rename_contract();
         #[cfg(not(all(windows, feature = "experimental-windows-rename")))]
@@ -743,7 +743,7 @@ impl<S: TransferStorage> Runner<'_, S> {
             Some(observed.identity.clone()),
         )?;
         #[cfg(all(windows, feature = "experimental-windows-copy"))]
-        if self.binding.data.owned_windows_copy {
+        if self.binding.data.windows_copy() {
             let synced = self
                 .storage
                 .sync_owned_windows_publication(&mut published, &expected.digest, self.flag)
