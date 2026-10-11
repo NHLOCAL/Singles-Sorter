@@ -171,7 +171,8 @@ def tree_snapshot(root, permissions=security_descriptor, raw_observations=None):
             require((public['win32_volume_serial'], public['win32_file_id']) ==
                     (info.st_dev, info.st_ino), 'Independent Windows handle identifies another object')
             row.update(win32_path_attributes=public['win32_path_attributes'],
-                       win32_handle_attributes=public['win32_handle_attributes'])
+                       win32_handle_attributes=public['win32_handle_attributes'],
+                       win32_last_write_ticks=public['win32_last_write_ticks'])
             if raw_observations is not None:
                 raw_observations.append(dict(path=row['path'],
                     raw_lstat_attributes=getattr(info, 'st_file_attributes', 0), **public))
