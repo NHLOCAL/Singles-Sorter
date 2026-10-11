@@ -1,21 +1,26 @@
 {
   "scope": "Final package source hashes excluding this self-referential manifest",
   "files": {
-    ".github/workflows/released-ner-platform.yml": "2dc540daecc724e01e5eddc06600b12319a9d7edfb915dde91110c98729b2be5",
+    ".github/workflows/released-ner-platform.yml": "2f461b8c87a1e5ed63986fa16c612c3e523e95c93e7d600d751e7d5f706c7636",
     "native/probes/released-ner/.gitignore": "24d7ed2283c9cbdb7c9b3601ee3848e7d55aca8c101f26522fb198d65c9d904e",
     "native/probes/released-ner/LOCAL-CHECKS.md": "ed1b7a3d2f76e58501aba8edf65a8ee5f09848dc430fc26a3070bd1df949e96d",
+    "native/probes/released-ner/ORACLE-SETUP.md": "a4b0612b0d6ec40233c8b02687f26c31db9e1e8cd1891932f07bc2fe34caffbd",
     "native/probes/released-ner/ORIGINAL-LICENSE.md": "eac06ea7fe6853177b30a8982d836dc663bb9d2faac2e7217969bee23dcfda1b",
-    "native/probes/released-ner/README.md": "1c81fe74193ba4cb4a1a051fb7724e63f45364587f1546f83549759dd0dd6fdb",
+    "native/probes/released-ner/README.md": "17fe8d7aef847b046f68908b355857c6edfc55affb07e37557ac376b4c018ce4",
     "native/probes/released-ner/acquire_pcre2.py": "0a284ebbf17447b996244daf1e3cc791b998fcecc88ed994d8e075d33b5cd407",
     "native/probes/released-ner/baseline/math-lib.rs": "845bf1d4023f5ecdf26f0434805487efa4de1299b9571d0ecb7dd3663f274b10",
     "native/probes/released-ner/baseline/raw-ner.rs": "ed8ff4c7e7f26e335ba8063d544b004af4c3e58a8ab887a0cc451ed12eb8c785",
     "native/probes/released-ner/check_optimization.py": "4ce8089d283a1d1db2e91641d8a7cd49daa6fe6cfb8da15e67e4bdac7b88072d",
+    "native/probes/released-ner/check_oracle_golden.py": "d761df193e7ae0b123dcdb45f5b7fb7a0d962426f3c9a8565a00ede8dafdb90c",
+    "native/probes/released-ner/check_oracle_runtime.py": "ab0d9e740eaa51f295e5658fc7f647704cba89c778df39bf869bfd0d88cdc3c4",
     "native/probes/released-ner/check_platform.py": "98c670f4a768dfc11f7e2c7510a01948751283fc2c0ee7a28a01bbf7fcf6e486",
     "native/probes/released-ner/close-margin-provenance.json": "8a870f6835564c57e2b458d29caecf29c8aefaa9a8cd95cdf478d5a32f7b4f7a",
     "native/probes/released-ner/close-margin.json": "5957212595f83035b750ed97797cd5756e1e75b56a957ee2365eefcab1ea3a09",
     "native/probes/released-ner/linux-reference.json": "ab9550976789129c59d81e15abac4c78d0c6dbef7c3524947a0de3185b6296b6",
     "native/probes/released-ner/optimization-linux-review.json": "cd84efd493e370b849676a9bcb5f3ddc923e60ccca08086ece6bd9221788c2bc",
     "native/probes/released-ner/optimization-provenance.json": "cfe1462d6081f09f1b593e242936ffeba7d9f0c7e1d5026f5d6cc034c39aeae2",
+    "native/probes/released-ner/oracle-lock.json": "d5b97de8e1b227a1f60aa4a7ef5cf57335b94569b19f3fb96ff984dd36954d59",
+    "native/probes/released-ner/oracle-requirements.txt": "b10712a3d2e32deaa6475068ded153b8addecd2ebd5c4288811925c3a3c4ec19",
     "native/probes/released-ner/pcre2-lock.json": "b91e95707418737c7b1d17dd0fcc871c16fed5b56800adbaf01f1776eb6510b0",
     "native/probes/released-ner/prepare_baseline.py": "e5d5dcc486e547f0cf9ed9c8b9dac249bb672d56a4b46359194789e814d33a71",
     "native/probes/released-ner/released-ner-export/export.py": "6bdc0086bccdef3e5e492da5cbd5c13751e9dab6060c5d5ff3de0d2c70b368ed",
@@ -55,6 +60,7 @@
     "native/probes/released-ner/released-ner-text/tokenizer.json": "33841cad4949620c48fbb0570865a31a19cfbb463088b1fec3d9fb7e1a8c8574",
     "native/probes/released-ner/source-provenance.json": "6eb0b77e93cf95ed32e609b1a34f52cc120af3f11472d3f6caed3ecf7a1be490",
     "native/probes/released-ner/test_acquisition.py": "398a9f6d90a755774948114746e94465e1833ac3f7dab3e37f306f78656d557d",
-    "native/probes/released-ner/test_baseline.py": "61e0491f32abd7ca3337e66a57e621265b6ccac844eee81126e27877c59734a9"
+    "native/probes/released-ner/test_baseline.py": "61e0491f32abd7ca3337e66a57e621265b6ccac844eee81126e27877c59734a9",
+    "native/probes/released-ner/test_oracle_runtime.py": "c39d65676a4a6f8b80776b512af64cd10a834212176e28219d89d8e2ef5db5b9"
   }
 }

@@ -120,8 +120,11 @@ Python is offline export/oracle/test tooling only. The inference binaries have
 no Python runtime dependency. Generated model/oracle data remain job-local;
 there are no artifact uploads or production publication steps. Export failure
 on differing wheel source content is a real gate failure, not a reason to relax
-source hashes. PyPI top-level versions are pinned; full transitive wheel hashes
-are not yet locked, and `pip freeze` is recorded for diagnosis.
+source hashes. The full active Python oracle closure is version- and wheel-hash-pinned in
+`oracle-lock.json` / `oracle-requirements.txt`; `pip freeze` is recorded for
+diagnosis. CI uses shared official Python 3.12.10 artifacts, while the original
+golden retains its 3.12.14 provenance. See `ORACLE-SETUP.md` for the actual first
+CI setup failures, evidence, and strict pre-build compatibility gates.
 
 Run from this directory, supplying your own original baseline directory:
 
