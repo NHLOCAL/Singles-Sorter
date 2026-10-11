@@ -10,7 +10,8 @@ artifact as private.
 ## Distribution boundary
 
 The packager selects exactly the feature-enabled `singles-sorter.exe`, the five
-hash-pinned runtime assets, newly authored silent WAVs, the UTF-8 Hebrew guide,
+verified runtime assets (four invariant hash pins plus a semantically verified
+Windows exporter manifest whose actual digest is recorded), newly authored silent WAVs, the UTF-8 Hebrew guide,
 Python-free PowerShell smoke tool, complete applicable notices/source material,
 provenance and a SHA-256 manifest. It never copies an exporter directory wholesale.
 A pickle, oracle corpus, Python environment, private library and candidate model
@@ -41,7 +42,8 @@ No network isolation or absent-prerequisite clean-machine test is claimed.
    AMD64 PE32+ normal DLL and symbol/ordinal imports. DLL sets must agree exactly;
    delayed imports or unreviewed DLLs fail instead of being silently omitted.
 4. `package_preview.py build` runs only on actual Windows x64. It verifies every
-   source asset, produces a new staging directory, gathers complete reviewed
+   source asset (including the exact approved Windows runtime-source provenance
+   in manifest.json, whose bytes differ from Linux), produces a new staging directory, gathers complete reviewed
    licenses/source, and emits provenance plus `SHA256SUMS.txt`. The manifest
    covers every file except itself. The final ZIP has its own sidecar hash.
 5. Run `powershell.exe -NoProfile -NonInteractive -File smoke.ps1 -PackageRoot ...

@@ -108,6 +108,61 @@ class PackageTests(unittest.TestCase):
         except OSError: self.skipTest('symlink privilege unavailable')
         with self.assertRaisesRegex(ValueError, 'symlink'): p.verify_package(self.root)
 
+    def windows_manifest(self):
+        source = p.ROOT / 'native/probes/released-ner/released-ner-export'
+        lock = json.loads((source / 'release-lock.json').read_text())
+        windows = json.loads((source / 'windows-runtime-sources.json').read_text())
+        manifest = {'schema': 'released-ner-v1', 'release': p.BASELINE,
+                    'model_sha256': lock['source_files']['ner/model'], 'dtype': '<f4', 'order': 'C',
+                    'tensor_file': 'tensors.f32', 'graph': lock['graph'],
+                    'actions': ['U-', 'O'] + [f'{a}-{label}' for label in ['SINGER', 'SONG', 'MISC', 'ALBUM', 'GENRE'] for a in ['B', 'I', 'L', 'U']],
+                    'unseen_classes': [], 'features': ['NORM', 'PREFIX', 'SUFFIX', 'SHAPE'],
+                    'tensor_sha256': p.ASSETS['tensors.f32'], 'parameter_bytes': 3829976,
+                    'files': {'tensors.f32': p.ASSETS['tensors.f32'], 'tokenizer.json': p.ASSETS['tokenizer.json'],
+                              'fixtures.json': '0' * 64, 'forced_states.json': '1' * 64}, 'tensors': [],
+                    'runtime': {'python': '3.12.10', 'spacy': '3.7.5', 'thinc': '8.2.5', 'numpy': '1.26.4',
+                                'unicode': '15.0.0', 'source_platform': 'win32', 'source_byte_provenance': {}}}
+        offset = 0
+        for param in lock['parameters']:
+            tensor = {key: param[key] for key in ('node', 'name', 'param', 'shape', 'sha256')}
+            tensor.update(dtype='<f4', offset_bytes=offset, nbytes=param['bytes'])
+            manifest['tensors'].append(tensor); offset += param['bytes']
+        for name, item in windows['files'].items():
+            manifest['runtime']['source_byte_provenance'][name] = {
+                'raw_sha256': item['windows_sha256'], 'original_reference_sha256': item['original_sha256'],
+                'verification': 'exact-official-windows-wheel-raw-and-original-lf'}
+        return manifest
+
+    def test_windows_manifest_accepts_exact_semantics_not_linux_digest(self):
+        manifest = self.windows_manifest(); path = self.root / 'manifest.json'
+        path.write_text(json.dumps(manifest, indent=2)); first = p.digest(path)
+        p.check_windows_manifest(path)
+        path.write_text(json.dumps(manifest, separators=(',', ':')))
+        self.assertNotEqual(first, p.digest(path)); p.check_windows_manifest(path)
+
+    def test_manifest_rejects_duplicate_keys(self):
+        manifest = self.windows_manifest(); path = self.root / 'manifest.json'
+        text = json.dumps(manifest)
+        path.write_text('{"release":"unreviewed duplicate",' + text[1:])
+        with self.assertRaisesRegex(ValueError, 'duplicate'): p.check_windows_manifest(path)
+
+    def test_manifest_rejects_unapproved_model_runtime_or_layout(self):
+        for mutation in ('platform', 'runtime_version', 'source_hash', 'layout', 'graph', 'model', 'files', 'fields', 'bool_int', 'float_int'):
+            with self.subTest(mutation=mutation):
+                manifest = self.windows_manifest()
+                if mutation == 'bool_int': manifest['graph'][0]['layers'][0] = True
+                if mutation == 'float_int': manifest['tensors'][0]['offset_bytes'] = 0.0
+                if mutation == 'platform': manifest['runtime']['source_platform'] = 'linux'
+                if mutation == 'runtime_version': manifest['runtime']['python'] = '3.13.0'
+                if mutation == 'source_hash': next(iter(manifest['runtime']['source_byte_provenance'].values()))['raw_sha256'] = '0' * 64
+                if mutation == 'layout': manifest['tensors'][0]['offset_bytes'] = 4
+                if mutation == 'graph': manifest['graph'][0]['name'] = 'candidate'
+                if mutation == 'model': manifest['model_sha256'] = '0' * 64
+                if mutation == 'files': manifest['files']['tokenizer.json'] = '0' * 64
+                if mutation == 'fields': manifest['private_data'] = 'forbidden'
+                path = self.root / 'manifest.json'; path.write_text(json.dumps(manifest))
+                with self.assertRaises(ValueError): p.check_windows_manifest(path)
+
     def test_wrong_model_hash(self):
         with patch.object(p, 'ASSETS', {'model.bin': '0' * 64}):
             (self.root / 'model.bin').write_bytes(b'wrong')

@@ -23,7 +23,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 BASELINE = '78d001aee5ce49628bdffebd34540fa83ba32c12'
 ASSETS = {
- 'manifest.json': '87e35ce8cdcb145cb68da210e56bba301b59af278d9610479d24a6a80b838f0b',
+ 'manifest.json': None,  # Exporter platform/runtime provenance is validated semantically below.
  'tensors.f32': '84b8c643b32d734c626e90890c389807000741a2863930585e931467f7e00745',
  'tokenizer.json': '33841cad4949620c48fbb0570865a31a19cfbb463088b1fec3d9fb7e1a8c8574',
  'classifier-v14.weights.bin': 'aa0da9a15f1ddbd62054c26fd4331b355b3e659c952ab3d71dfc8a138e561a33',
@@ -118,9 +118,66 @@ def crosscheck_dumpbin(imports, report):
     require(names == {entry['dll'] for entry in imports}, 'PE DLL imports disagree with official MSVC dumpbin /dependents')
 
 
+def check_windows_manifest(path):
+    # Only exporter provenance varies by platform. Never loosen the frozen model,
+    # graph, tensor layout or exact reviewed Windows wheel source-byte contract.
+    digest(path)  # Reject absent, nonregular and symlink inputs first.
+    require(path.stat().st_size <= 262144, 'oversized original manifest')
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            require(key not in result, 'duplicate manifest JSON key')
+            result[key] = value
+        return result
+    manifest = json.loads(path.read_text(encoding='utf-8'), object_pairs_hook=unique_object)
+    source = ROOT / 'native/probes/released-ner/released-ner-export'
+    lock = json.loads((source / 'release-lock.json').read_text(encoding='utf-8'))
+    windows = json.loads((source / 'windows-runtime-sources.json').read_text(encoding='utf-8'))
+    actions = ['U-', 'O'] + [f'{action}-{label}' for label in ['SINGER', 'SONG', 'MISC', 'ALBUM', 'GENRE'] for action in ['B', 'I', 'L', 'U']]
+    fixed = {'schema': 'released-ner-v1', 'release': BASELINE,
+             'model_sha256': lock['source_files']['ner/model'], 'dtype': '<f4', 'order': 'C',
+             'tensor_file': 'tensors.f32', 'graph': lock['graph'], 'actions': actions,
+             'unseen_classes': [], 'features': ['NORM', 'PREFIX', 'SUFFIX', 'SHAPE'],
+             'tensor_sha256': ASSETS['tensors.f32'], 'parameter_bytes': 3829976}
+    require(set(manifest) == {*fixed, 'tensors', 'runtime', 'files'}, 'unreviewed manifest fields')
+    def exact(actual, expected):
+        return json.dumps(actual, sort_keys=True, separators=(',', ':'), allow_nan=False) == json.dumps(expected, sort_keys=True, separators=(',', ':'), allow_nan=False)
+    for key, expected in fixed.items():
+        require(exact(manifest[key], expected), f'original manifest mismatch: {key}')
+    require(len(manifest['tensors']) == len(lock['parameters']), 'wrong manifest tensor count')
+    offset = 0
+    for tensor, param in zip(manifest['tensors'], lock['parameters']):
+        expected = {key: param[key] for key in ('node', 'name', 'param', 'shape', 'sha256')}
+        expected.update(dtype='<f4', offset_bytes=offset, nbytes=param['bytes'])
+        require(exact(tensor, expected), 'original manifest tensor layout changed')
+        offset += param['bytes']
+    require(offset == 3829976, 'wrong manifest tensor extent')
+    runtime = {'python': '3.12.10', 'spacy': '3.7.5', 'thinc': '8.2.5',
+               'numpy': '1.26.4', 'unicode': '15.0.0', 'source_platform': 'win32',
+               'source_byte_provenance': {}}
+    require(set(windows['files']) == set(lock['runtime_sources']), 'Windows runtime source lock mismatch')
+    for name, reference in lock['runtime_sources'].items():
+        item = windows['files'][name]
+        require(item['original_sha256'] == reference, 'Windows source reference mismatch')
+        runtime['source_byte_provenance'][name] = {
+            'raw_sha256': item['windows_sha256'], 'original_reference_sha256': reference,
+            'verification': 'exact-official-windows-wheel-raw-and-original-lf'}
+    require(exact(manifest['runtime'], runtime), 'manifest lacks exact approved Windows exporter provenance')
+    require(set(manifest['files']) == {'tensors.f32', 'tokenizer.json', 'fixtures.json', 'forced_states.json'},
+            'unreviewed exporter file inventory')
+    for name, hash_ in manifest['files'].items():
+        require(isinstance(hash_, str) and re.fullmatch(r'[0-9a-f]{64}', hash_), 'invalid export file digest')
+        if name in ASSETS:
+            require(hash_ == ASSETS[name], f'manifest asset digest mismatch: {name}')
+
+
 def check_assets(bundle):
     for name, expected in ASSETS.items():
-        require(digest(bundle / name) == expected, f'original asset mismatch: {name}')
+        if expected is None:
+            check_windows_manifest(bundle / name)
+        else:
+            require(digest(bundle / name) == expected, f'original asset mismatch: {name}')
+    return {name: digest(bundle / name) for name in ASSETS}
 
 
 def safe_name(name):
@@ -170,7 +227,7 @@ def build(args):
             'actual Windows x64 runner required; no cross-platform placeholder package')
     binary, bundle, out = args.binary.resolve(), args.bundle.resolve(), args.output.resolve()
     require(not out.exists(), 'output must be new; refusing overwrite')
-    check_assets(bundle)
+    asset_hashes = check_assets(bundle)
     gate = gate_report(args.cli_report, binary)
     imports = pe_imports(binary)
     dumpbin = args.dumpbin_report.read_text(encoding='utf-8-sig')
@@ -223,7 +280,13 @@ def build(args):
             'offline_runtime': True, 'physical_apply': False,
             'baseline_commit': BASELINE, 'bundle_id': 'original-v14-ner-3.7.5',
             'ner_model': {'name': 'singer_ner_he', 'version': '2.0.0', 'spacy_compatibility': '>=3.7.5,<3.8.0'},
-            'assets_sha256': ASSETS, 'pcre2_build': receipt,
+            'assets_sha256': asset_hashes,
+            'assets_bytes': {name: (models / name).stat().st_size for name in ASSETS},
+            'size_summary': {
+                'executable_bytes': binary.stat().st_size,
+                'model_assets_bytes': sum((models / name).stat().st_size for name in ASSETS),
+                'notices_and_source_bytes': sum(p.stat().st_size for p in (stage / 'licenses').rglob('*') if p.is_file())},
+            'pcre2_build': receipt,
             'release_cli_proof': {'sha256': digest(args.cli_report), 'invocations': gate['cli_invocations']},
             'samples': 'Two authored silent WAVs; no copyrighted recording or external corpus.',
             'manifest': 'SHA256SUMS.txt covers every package file except itself.'}
@@ -258,7 +321,7 @@ def archive(args):
             require(hashlib.sha256(result.read(name)).hexdigest() == expected, 'ZIP content mismatch')
     args.output.with_suffix(args.output.suffix + '.sha256').write_text(
         f'{digest(args.output)}  {args.output.name}\n', encoding='ascii')
-    print(f'Verified smoke-tested Windows preview ZIP: {args.output}')
+    print(f'Verified smoke-tested Windows preview ZIP: {args.output} ({args.output.stat().st_size} bytes)')
 
 
 def main():
