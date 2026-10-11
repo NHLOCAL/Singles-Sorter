@@ -50,7 +50,9 @@ def capture_platform_fonts(command, output):
             for selector in ['h1','#copy_mode-label','#folders-heading']:
                 node = cdp('DOM.querySelector', {'nodeId':document['root']['nodeId'], 'selector':selector})
                 receipt['fonts'][selector] = cdp('CSS.getPlatformFontsForNode', {'nodeId':node['nodeId']})
-            receipt['status'] = 'actual_platform_fonts'
+            complete = all(any(font.get('glyphCount', 0) > 0 for font in result.get('fonts', [])) for result in receipt['fonts'].values())
+            receipt['status'] = 'actual_platform_fonts' if complete and len(receipt['fonts']) == 3 else 'incomplete_platform_fonts'
+            receipt['interpretation'] = 'Raw nonempty glyph evidence only; review actual family names before accepting Segoe UI Hebrew rendering.'
             receipt['endpoint'] = endpoint
             break
         except Exception as error:
