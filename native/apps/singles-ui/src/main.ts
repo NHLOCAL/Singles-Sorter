@@ -71,14 +71,15 @@ $('advanced').addEventListener('click',()=>openDialog('advanced-dialog'));
 for(const button of document.querySelectorAll<HTMLButtonElement>('.close-dialog'))button.addEventListener('click',()=>button.closest('dialog')?.close());
 installHelpBadges(app);
 // Respect enlarged text without hiding controls or trapping the page in a fixed height.
-const main=app.querySelector('main')!,workspace=app.querySelector<HTMLElement>('.workspace')!;
+const main=app.querySelector('main')!,workspace=app.querySelector<HTMLElement>('.workspace')!,connection=$('connection');
 function fitWorkspace(){
  const styles=getComputedStyle(main);
- const required=workspace.getBoundingClientRect().height+app.querySelector('header')!.getBoundingClientRect().height+app.querySelector('footer')!.getBoundingClientRect().height+parseFloat(styles.paddingTop)+parseFloat(styles.paddingBottom)+parseFloat(styles.rowGap==='normal'?'0':styles.rowGap)+160;
+ const noticeHeight=connection.hidden?0:connection.getBoundingClientRect().height+parseFloat(styles.rowGap==='normal'?'0':styles.rowGap);
+ const required=noticeHeight+workspace.getBoundingClientRect().height+app.querySelector('header')!.getBoundingClientRect().height+app.querySelector('footer')!.getBoundingClientRect().height+parseFloat(styles.paddingTop)+parseFloat(styles.paddingBottom)+parseFloat(styles.rowGap==='normal'?'0':styles.rowGap)+160;
  app.classList.toggle('reflow',required>window.innerHeight);
 }
 const layoutObserver=new ResizeObserver(fitWorkspace);
-for(const element of [workspace,app.querySelector('header')!,app.querySelector('footer')!])layoutObserver.observe(element);
+for(const element of [workspace,connection,app.querySelector('header')!,app.querySelector('footer')!])layoutObserver.observe(element);
 window.addEventListener('resize',fitWorkspace);fitWorkspace();
 const help={help:'בחר תיקית מקור, ובמיון גם תיקית יעד. התאם את האפשרויות ולחץ על תצוגה מקדימה. במצב תיקון אין צורך ביעד. עיין בהצעות ובסיבות לחסימה.',about:'מסדר הסינגלים · כללי המיון מבוססים על גרסה 14.0.'};
 for(const button of document.querySelectorAll<HTMLButtonElement>('[data-help]'))button.addEventListener('click',()=>{$('help-content').textContent=help[button.dataset.help as keyof typeof help];});
