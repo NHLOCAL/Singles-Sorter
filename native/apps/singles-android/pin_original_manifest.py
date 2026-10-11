@@ -3,6 +3,7 @@
 The released model bytes never change. The exporter records its actual approved
 Linux/Windows source provenance, so its manifest is not byte-identical across OSes.
 """
+import hashlib
 import importlib.util
 import json
 from pathlib import Path
@@ -19,14 +20,11 @@ OLD_HASH = '3fb1801718d84c335b31cdae18ca94daf6af821fb29c315bcf485de3810b5580'
 
 
 def manifest_pin(path):
-    # Bound and reject symlinks before parsing. The shared verifier rejects
-    # duplicate keys and compares every graph/tensor/runtime field exactly.
-    verifier.require(path.is_file() and not path.is_symlink(), 'not an ordinary manifest')
-    verifier.require(path.stat().st_size <= 262144, 'oversized original manifest')
-    hash_ = verifier.digest(path)
-    platform = json.loads(path.read_text(encoding='utf-8'))['runtime']['source_platform']
-    verifier.check_original_manifest(path, platform)
-    return path.stat().st_size, hash_
+    # One bounded immutable byte buffer supplies parsing, validation and hashing.
+    raw = verifier.read_original_manifest(path)
+    platform = json.loads(raw.decode('utf-8'))['runtime']['source_platform']
+    verifier.check_original_manifest_bytes(raw, platform)
+    return len(raw), hashlib.sha256(raw).hexdigest()
 
 
 def generate(path, template):

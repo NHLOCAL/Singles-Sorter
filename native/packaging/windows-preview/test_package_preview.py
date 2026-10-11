@@ -174,6 +174,14 @@ class PackageTests(unittest.TestCase):
                     f"1268235, 3192809, {path.stat().st_size}, 3829976, 73348").replace(android.OLD_HASH, p.digest(path)))
                 for name, hash_ in p.ASSETS.items():
                     if hash_: self.assertIn(hash_, generated)
+        approved = path.read_bytes()
+        # A concurrently replaced path cannot alter the validated/hash-bound snapshot.
+        with patch.object(android.verifier, 'read_original_manifest', return_value=approved) as reader:
+            path.write_bytes(b'changed after the one owned read')
+            generated = android.generate(path, template)
+            self.assertIn(android.hashlib.sha256(approved).hexdigest(), generated)
+            reader.assert_called_once_with(path)
+        path.write_bytes(approved)
         with self.assertRaises(ValueError): android.generate(path, template.replace(android.OLD_HASH, 'changed'))
         manifest['model_sha256'] = '0' * 64; path.write_text(json.dumps(manifest))
         with self.assertRaises(ValueError): android.generate(path, template)

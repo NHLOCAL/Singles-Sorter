@@ -122,19 +122,29 @@ def check_windows_manifest(path):
     return check_original_manifest(path, "win32")
 
 
+def read_original_manifest(path):
+    require(path.is_file() and not path.is_symlink(), f'not an ordinary file: {path}')
+    with path.open('rb') as stream:
+        raw = stream.read(262145)
+    require(len(raw) <= 262144, 'oversized original manifest')
+    return raw
+
+
 def check_original_manifest(path, source_platform):
+    return check_original_manifest_bytes(read_original_manifest(path), source_platform)
+
+
+def check_original_manifest_bytes(raw, source_platform):
     require(source_platform in ("win32", "linux"), "unsupported exporter platform")
-    # Only exporter provenance varies by platform. Never loosen the frozen model,
-    # graph, tensor layout or exact reviewed Windows wheel source-byte contract.
-    digest(path)  # Reject absent, nonregular and symlink inputs first.
-    require(path.stat().st_size <= 262144, 'oversized original manifest')
+    # Validate the same immutable bytes that a caller can hash for its runtime pin.
+    require(isinstance(raw, bytes) and len(raw) <= 262144, 'oversized original manifest')
     def unique_object(pairs):
         result = {}
         for key, value in pairs:
             require(key not in result, 'duplicate manifest JSON key')
             result[key] = value
         return result
-    manifest = json.loads(path.read_text(encoding='utf-8'), object_pairs_hook=unique_object)
+    manifest = json.loads(raw.decode('utf-8'), object_pairs_hook=unique_object)
     source = ROOT / 'native/probes/released-ner/released-ner-export'
     lock = json.loads((source / 'release-lock.json').read_text(encoding='utf-8'))
     windows = json.loads((source / 'windows-runtime-sources.json').read_text(encoding='utf-8'))
