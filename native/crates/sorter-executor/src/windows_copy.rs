@@ -420,7 +420,7 @@ impl crate::recovery::RecoveryStorage for WindowsCopyRecovery {
         &mut self,
         reference: &StorageRef,
     ) -> Result<Option<crate::recovery::ObservedObject>> {
-        if self.binding.operations()[0].source.observation.reference != *reference {
+        if !self.binding.operations().iter().any(|op| op.source.observation.reference == *reference) {
             return Err(E::Scope);
         }
         self.observe(reference)
@@ -429,7 +429,7 @@ impl crate::recovery::RecoveryStorage for WindowsCopyRecovery {
         &mut self,
         destination: &DestinationEvidence,
     ) -> Result<Option<crate::recovery::ObservedObject>> {
-        if self.binding.operations()[0].destination != *destination {
+        if !self.binding.operations().iter().any(|op| op.destination == *destination) {
             return Err(E::Scope);
         }
         let mut destination_path = path(&destination.root).map_err(|_| E::Scope)?;
