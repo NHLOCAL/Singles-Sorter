@@ -1123,6 +1123,104 @@ fn copy_crossover_mixed_domains_and_rehashed_forgery_cannot_mint_rename_authorit
         open_owned_rename_recovery(&copy.owned, &f.recovery_scope(), JOB, header.as_bytes())
             .is_err()
     );
+    // Hash-valid records are not permission to enter the Copy/retire protocol.
+    // Use the real serializer field order and a successful atomic control to
+    // distinguish semantic refusal from malformed JSON/checksum rejection.
+    #[derive(serde::Serialize)]
+    struct AuthoredRecord<'a> {
+        sequence: u64,
+        job_id: &'a str,
+        plan_sha256: &'a str,
+        previous: String,
+        event: Event,
+    }
+    let op = &f.binding.operations()[0];
+    let event = |phase| Event {
+        operation: op.id,
+        destination_id: op.destination.id.clone(),
+        expected_source: op.source.observation.identity.clone().unwrap(),
+        observed_identity: if phase == Phase::Prepared {
+            None
+        } else {
+            op.source.observation.identity.clone()
+        },
+        sha256: op.source.sha256.clone(),
+        phase,
+    };
+    let append_authored = |bytes: &mut Vec<u8>, phase| {
+        let lines: Vec<_> = bytes
+            .split(|b| *b == b'\n')
+            .filter(|line| !line.is_empty())
+            .collect();
+        let last: serde_json::Value = serde_json::from_slice(lines.last().unwrap()).unwrap();
+        let record = AuthoredRecord {
+            sequence: lines.len() as u64,
+            job_id: JOB,
+            plan_sha256: f.binding.plan_sha256(),
+            previous: last["sha256"].as_str().unwrap().to_owned(),
+            event: event(phase),
+        };
+        let body = serde_json::to_string(&record).unwrap();
+        bytes.extend_from_slice(
+            format!(
+                "{{\"body\":{body},\"sha256\":\"{}\"}}\n",
+                digest(body.as_bytes())
+            )
+            .as_bytes(),
+        );
+    };
+    let mut guarded_sink = MemorySink::default();
+    let mut guarded = PhysicalJournalV2::create(&f.binding, JOB, &mut guarded_sink).unwrap();
+    guarded
+        .append(&mut guarded_sink, event(Phase::Prepared))
+        .unwrap();
+    let prepared_bytes = guarded_sink.bytes.clone();
+    assert!(matches!(
+        guarded.append(&mut guarded_sink, event(Phase::TempAllocationPrepared)),
+        Err(E::InvalidTransition)
+    ));
+    assert_eq!(guarded_sink.bytes, prepared_bytes);
+    let mut atomic_control = prepared_bytes.clone();
+    for phase in ATOMIC_PHASES.into_iter().skip(1) {
+        append_authored(&mut atomic_control, phase);
+    }
+    let accepted =
+        open_owned_rename_recovery(&f.owned, &f.recovery_scope(), JOB, &atomic_control).unwrap();
+    assert_eq!(
+        accepted
+            .events()
+            .iter()
+            .map(|e| e.phase)
+            .collect::<Vec<_>>(),
+        ATOMIC_PHASES
+    );
+    for phase in [
+        Phase::TempAllocationPrepared,
+        Phase::TempAllocated,
+        Phase::BytesWritePrepared,
+        Phase::BytesSynced,
+        Phase::DestinationPublishPrepared,
+        Phase::DestinationPublished,
+        Phase::SourceRetirementPrepared,
+        Phase::SourceRetired,
+    ] {
+        let mut forbidden = if matches!(
+            phase,
+            Phase::SourceRetirementPrepared | Phase::SourceRetired
+        ) {
+            atomic_control.clone()
+        } else {
+            prepared_bytes.clone()
+        };
+        append_authored(&mut forbidden, phase);
+        assert!(
+            matches!(
+                open_owned_rename_recovery(&f.owned, &f.recovery_scope(), JOB, &forbidden),
+                Err(E::CorruptJournal)
+            ),
+            "hash-valid forbidden phase {phase:?}"
+        );
+    }
     assert_layout(&f.source, &f.destination, &f.bytes, false);
 }
 
