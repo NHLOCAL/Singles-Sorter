@@ -93,6 +93,17 @@ impl SelectedWindowsJob {
     pub fn binding_sha256(&self) -> Result<String> { self.binding.sha256() }
     pub fn directory_observations(&self) -> &[MutationObservation] { &self.directory_observations }
     pub fn journal_locations(&self) -> &[WindowsJournalLocation] { &self.journal_locations }
+    /// Reconcile this job's exact retained journal locations without granting
+    /// writable reopen or exposing the underlying mutation adapter to the host.
+    pub fn inspect_recovery(&self, scope: &RecoveryScope) -> Result<SelectedRecoveryReport> {
+        let directory = self.journal_locations.first().ok_or(E::Unsupported)?;
+        let roots = self.storage.roots();
+        let directories = roots.read_selected_journal(directory.name(), directory.identity()).map_err(|_|E::Io)?;
+        let transfers = self.journal_locations.get(1).map(|location| {
+            roots.read_selected_journal(location.name(), location.identity()).map_err(|_|E::Io)
+        }).transpose()?;
+        inspect_recovery(roots, scope, &self.job_id, &directories, transfers.as_deref())
+    }
     /// No automatic replay. A second call fails even when the first call lost an
     /// acknowledgment. Caller receives the journal names before effects begin.
     pub fn run(&mut self, cancel: &AtomicBool, progress: &mut dyn FnMut(TransferProgress)) -> Result<JobResult> {
