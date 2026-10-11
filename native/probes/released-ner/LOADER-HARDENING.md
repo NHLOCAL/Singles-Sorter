@@ -70,3 +70,20 @@ verified original export (`ORIGINAL_NER_EXPORT`, ignored locally by default).
 Remaining gates: independent final review, new-commit Linux/Windows static CI,
 Windows loader edge cases, physical Android support, full runtime input/resource
 and cancellation contracts, and eventual separately reviewed product wiring.
+
+## Windows generated-export newline correction
+
+The first new-bundle Windows CI test rejected `manifest.files`: the exporter used
+platform-default `Path.write_text`, which translates generated JSON newlines to
+CRLF on Windows. That changes the generated tokenizer hash despite identical
+JSON values. The original source verification and synthetic oracle golden gate
+had already passed; loader rejection was correct for its exact-byte contract.
+
+The exporter now writes explicit UTF-8 bytes with LF, matching the existing frozen
+export. It neither rewrites original model assets nor weakens loader hashes,
+bounds or allowlists. A regression executes the actual serializer helper against
+simulated Windows text I/O and requires all 73,348 frozen tokenizer bytes, plus
+ordinary UTF-8/LF output and retained nonfinite-value rejection. The Windows
+regression failed before the one-line serializer fix; all three tests pass after.
+Actual Windows/Linux static CI must rerun on this correction before a new platform
+pass is claimed.

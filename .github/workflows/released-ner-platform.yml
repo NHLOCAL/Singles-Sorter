@@ -63,6 +63,8 @@ jobs:
           python -m pip freeze
       - name: Verify exact source assets and export only owned synthetic fixtures
         run: |
+          python test_export_bytes.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python test_runtime_source_bytes.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python test_checkout_eol.py

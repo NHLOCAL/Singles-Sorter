@@ -1,10 +1,10 @@
 {
   "scope": "Final package source hashes excluding this self-referential manifest",
   "files": {
-    ".github/workflows/released-ner-platform.yml": "45f9e87ccb3f9cf990784c1d126b73f70804b334c6e9ca8aabb11e484b867813",
+    ".github/workflows/released-ner-platform.yml": "22fe680d97700c75294677a1eb1a046b64ae3867e9fff998ed5c9e17ae669f61",
     "native/probes/released-ner/.gitignore": "24d7ed2283c9cbdb7c9b3601ee3848e7d55aca8c101f26522fb198d65c9d904e",
     "native/probes/released-ner/CHECKOUT-BYTES.md": "b1673e07c64e20d4c3c4a95d032c89902a849d3dc6677b1ff625a1f91d51d6eb",
-    "native/probes/released-ner/LOADER-HARDENING.md": "ab0aa1d6417160fdcd1ea919d4901162e0d9e3878d5d722987dd5bc1dfc866b7",
+    "native/probes/released-ner/LOADER-HARDENING.md": "57dc8fb987d1caedbe48470c342562aa1f3c845b3e8cfe5681428256b27e5c04",
     "native/probes/released-ner/LOCAL-CHECKS.md": "ed1b7a3d2f76e58501aba8edf65a8ee5f09848dc430fc26a3070bd1df949e96d",
     "native/probes/released-ner/ORACLE-SETUP.md": "a4b0612b0d6ec40233c8b02687f26c31db9e1e8cd1891932f07bc2fe34caffbd",
     "native/probes/released-ner/ORIGINAL-LICENSE.md": "eac06ea7fe6853177b30a8982d836dc663bb9d2faac2e7217969bee23dcfda1b",
@@ -27,7 +27,7 @@
     "native/probes/released-ner/oracle-requirements.txt": "b10712a3d2e32deaa6475068ded153b8addecd2ebd5c4288811925c3a3c4ec19",
     "native/probes/released-ner/pcre2-lock.json": "b91e95707418737c7b1d17dd0fcc871c16fed5b56800adbaf01f1776eb6510b0",
     "native/probes/released-ner/prepare_baseline.py": "f80d63c706cf2f8710cb9585ae4890f4e1febfd2f2c8f658c9f446a287404078",
-    "native/probes/released-ner/released-ner-export/export.py": "b15a3e569e21591555dc97ee3bfa3d8fae250a41cec038ee37a446eef62ffa60",
+    "native/probes/released-ner/released-ner-export/export.py": "c5b05b2d9edc4dce89f40817101072ee9a8cbf7816e72ece17ef738c3729b802",
     "native/probes/released-ner/released-ner-export/release-lock.json": "0756424d9e12b40d541c4d311f7b810b5b31c10de3bfe8406fd41825428269a7",
     "native/probes/released-ner/released-ner-export/runtime_sources.py": "ad659b34e30c51edf427557f014137e2bc3c2a8f1b6384deb46bd83df895cf73",
     "native/probes/released-ner/released-ner-export/synthetic.py": "b6a30ac408a63fd9b2405d607f5b6fbcfddf94e8ce19ea122c75195b1912bb89",
@@ -72,6 +72,7 @@
     "native/probes/released-ner/test_acquisition.py": "b31fd41ee92945243133a6241496d8f0ea236fa13aec5b68c867902a97caf104",
     "native/probes/released-ner/test_baseline.py": "29cc04b7f30062df679b2d0e5a790335d3b00d5782a9df8bd546290e7cae2727",
     "native/probes/released-ner/test_checkout_eol.py": "9c45ab0a475c67ff524d4bf318e624da9ef800e51a9abdea0c63a34782701c89",
+    "native/probes/released-ner/test_export_bytes.py": "e48a64fb96002ee58b499fe5873aace8e1a50ec876e306e79fc15cc259f6c415",
     "native/probes/released-ner/test_oracle_runtime.py": "c39d65676a4a6f8b80776b512af64cd10a834212176e28219d89d8e2ef5db5b9",
     "native/probes/released-ner/test_runtime_source_bytes.py": "6af5fe7c10d9ec4b6e4ddfcf9c5e60e2fe7d381c24b9175500aa1daac2f1b498"
   }

@@ -16,7 +16,9 @@ RELEASE = '78d001aee5ce49628bdffebd34540fa83ba32c12'
 ACTIONS = ['U-', 'O'] + [f'{a}-{label}' for label in ['SINGER','SONG','MISC','ALBUM','GENRE'] for a in ['B','I','L','U']]
 TEXTS = SMOKE
 def sha(b): return hashlib.sha256(b).hexdigest()
-def dump(path,obj): path.write_text(json.dumps(obj,ensure_ascii=False,indent=2,allow_nan=False)+'\n',encoding='utf-8')
+# Generated exports must have identical UTF-8/LF bytes on Windows and Linux.
+# This does not rewrite or normalize any original released model assets.
+def dump(path,obj): path.write_bytes((json.dumps(obj,ensure_ascii=False,indent=2,allow_nan=False)+'\n').encode('utf-8'))
 def require(ok, msg):
     if not ok: raise ValueError(msg)
 def graph(nodes):
