@@ -20,6 +20,9 @@ class LicenseCollectorTests(unittest.TestCase):
         self.assertEqual(collector.PROFILES['desktop']['features'], ['desktop', 'original-ai', 'selected-windows-execution', 'tauri/custom-protocol'])
         self.assertEqual(policy['features'], collector.PROFILES['desktop']['features'])
         graph = {row['package']: row for row in policy['graph']}
+        self.assertIn('selected-windows-execution', graph['singles-ui-host@0.1.0']['features'])
+        self.assertIn('selected-windows-execution', graph['sorter-executor@0.1.0']['features'])
+        self.assertIn('experimental-windows-mutation', graph['sorter-io@0.1.0']['features'])
         for package in ('tauri@2.12.3', 'tauri-macros@2.7.2'):
             self.assertIn('custom-protocol', graph[package]['features'])
 

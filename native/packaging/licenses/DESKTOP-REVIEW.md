@@ -1,15 +1,15 @@
 # Desktop original-AI notice/source review
 
 Reviewed 2026-10-11 for `singles-ui-host`, Windows x64 MSVC, with `desktop` and
-`original-ai` plus the production `tauri/custom-protocol` feature added by
+`original-ai,selected-windows-execution` plus the production `tauri/custom-protocol` feature added by
 the Tauri CLI (also enabled in tauri-macros). This is a bounded engineering inventory, not a legal opinion or
 blanket clearance. Complete upstream texts control. The CLI policy is separate.
 
 ## Exact Rust dependency closure
 
 The desktop lock and full target-filtered normal/build identity + feature graph
-are pinned in `reviewed-desktop-cargo-notices.json`: 266 packages, comprising
-258 crates.io archives and 8 local crates. Dev-only edges are excluded. Build
+are pinned in `reviewed-desktop-cargo-notices.json`: 267 packages, comprising
+258 crates.io archives and 9 local crates. Dev-only edges are excluded. Build
 helpers/procedural macros are conservatively retained; this is not a claim that
 each package occurs in executable machine code. Every registry archive must
 match its reviewed SHA256 and Cargo.lock. All selected archive license,
@@ -118,3 +118,25 @@ gate must verify actual executable imports, prohibit accidentally bundled
 runtime files, hash the complete notice/source tree and perform clean-folder
 Windows tests. Retaining notices is not proof of those checks or entitlement
 to redistribute other Microsoft components.
+
+
+## Selected-execution closure review, 2026-10-11
+
+The default-enabled Windows target metadata from CI run `38176429750`, source
+`43a584470c478131ed85bb82af458c0c3ea508c8`, was compared before updating this policy.
+The old-profile graph was identical to its earlier reviewed graph. The selected
+profile adds only the local MIT `sorter-executor` crate, the corresponding host
+edge/feature, and `sorter-io`'s existing native mutation feature. Every one of the
+258 registry package identities, checksums, licenses, resolved features and
+normal/build dependency edges remains unchanged. The complete 465 registry
+entries in the nested lockfile also match the pre-integration lock; its change
+adds the local executor and host dependency edge, with no registry version drift.
+
+Selected metadata SHA256:
+`e2c25b36bf845ad0d2b035d6ddd31d9841c170cbf9001e1cb56965b14645e8c4`.
+The reviewed LF-normalized Cargo.lock SHA256 is
+`260506768409370a5231628f84eac403a7f2d8d4c619cf90f9c216f48d7d0bbc`.
+The policy now pins the actual default-enabled combined feature graph used by
+Tauri's production build and the collector. Runtime archive/checksum/full-notice
+checks are unchanged. This resolution review does not establish Windows runtime
+acceptance; real original-AI and selected-execution package gates remain required.
