@@ -17,14 +17,14 @@ describe('minimal notices preserve diagnostic information',()=>{
   for(const message of routine)expect(warningPresentation(message)).toEqual({technical:true,label:message});
  });
  it('keeps unknown, similar-prefix and actionable messages visible',()=>{
-  for(const message of ['Disk full',...routine.map(value=>value+'; file read failed'),'RECOGNITION_UNAVAILABLE'])expect(warningPresentation(message).technical).toBe(false);
-  expect(warningPresentation('Disk full').label).toBe('Disk full');
+  for(const message of ['Disk full','constructor','toString','__proto__',...routine.map(value=>value+'; file read failed'),'RECOGNITION_UNAVAILABLE'])expect(warningPresentation(message).technical).toBe(false);
+  for(const message of ['Disk full','constructor','toString','__proto__'])expect(warningPresentation(message).label).toBe(message);
   expect(warningPresentation('RECOGNITION_UNAVAILABLE').label).toBe('מודל הזיהוי הדרוש אינו זמין');
  });
  it('shortens exact save feedback only, preserving unknown and failed outcomes',()=>{
   expect(noticeLabel('הרשימה נשמרה. סדר השורות והכפילויות נשמרו.')).toBe('נשמר');
   expect(noticeLabel('הגדרות המיון נשמרו להפעלות הבאות.')).toBe('נשמר');
   expect(noticeLabel(null)).toBe('');
-  expect(noticeLabel('השמירה נכשלה')).toBe('השמירה נכשלה');
+  for(const message of ['השמירה נכשלה','constructor','toString','__proto__'])expect(noticeLabel(message)).toBe(message);
  });
 });

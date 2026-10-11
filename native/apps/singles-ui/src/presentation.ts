@@ -27,7 +27,7 @@ const routineNotices=new Set([
  'AI intentionally disabled; no native inference bundle is used',
 ]);
 export function warningPresentation(message:string):{technical:boolean;label:string}{
- return {technical:routineNotices.has(message),label:blockers[message]??message};
+ return {technical:routineNotices.has(message),label:Object.hasOwn(blockers,message)?blockers[message]:message};
 }
 const conciseNotices:Record<string,string>={
  'הגדרות המיון נשמרו להפעלות הבאות.':'נשמר',
@@ -35,4 +35,4 @@ const conciseNotices:Record<string,string>={
  'הרשימה נשמרה. סדר השורות והכפילויות נשמרו.':'נשמר',
  'השורות נוספו בסוף הרשימה, ללא מיון או הסרת כפילויות.':'נוסף לרשימה',
 };
-export function noticeLabel(message:string|null):string{return message===null?'':conciseNotices[message]??message;}
+export function noticeLabel(message:string|null):string{return message===null?'':Object.hasOwn(conciseNotices,message)?conciseNotices[message]:message;}
