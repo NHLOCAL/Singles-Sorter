@@ -38,10 +38,11 @@ staged/extracted original-AI Copy/Move gates. Its ZIP SHA-256 is
 `bf90d51cc5e98bcd16102f898c497cc9083297bfbbf88d742dba543b4d0b02f5`;
 that evidence does not cover later UI polish or repair changes.
 
-The current repair candidate adds 11 backend product cases, 20 native preservation
-cases, 10 staged tag transformer cases, real source-only CLI subprocess cases,
+The current repair candidate adds 12 backend product cases, 3 journal boundary
+cases, 20 native preservation cases, 10 staged tag transformer cases, real
+source-only CLI subprocess cases,
 and actual staged/extracted UI cases. These are required checks, not claimed
 passes until the final-head Windows runs finish. Local frontend checks currently
-pass 106 tests/typecheck/build; independent Python ID3 fixture/parser and package
+pass 107 tests/typecheck/build; independent Python ID3 fixture/parser and package
 gate tests also pass. Local Rust installation and Chromium rendering remain
 blocked; neither limitation is counted as a passing native or visual test.
