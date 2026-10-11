@@ -12,6 +12,7 @@ const personal=new PersonalListController(nativeHost,()=>controller.resourcesCha
 let listOffset=0,importOffset=0;
 const navigation=new WorkspaceNavigation();
 let detailTrigger:HTMLButtonElement|null=null;
+let resultsScroll=0;
 
 const app=document.querySelector<HTMLDivElement>('#app')!;
 // Static trusted markup only. Every host/file value is rendered with textContent.
@@ -63,35 +64,41 @@ target.addEventListener('input',()=>controller.editRoot('Target',target.value));
 $('source-picker').addEventListener('click',()=>void controller.selectRoot('Source'));
 $('target-picker').addEventListener('click',()=>void controller.selectRoot('Target'));
 function hasResults(){return controller.state.snapshot?.status==='completed'&&!!controller.state.page;}
-function showSetup(){navigation.setup();render();source.focus();}
-function showResults(push=true){navigation.results(hasResults());if(push)history.pushState({singlesView:'results'},'');render();$('results-heading').focus();}
+function showSetup(){if(navigation.screen==='results')resultsScroll=$('results-body').scrollTop;navigation.setup();render();source.focus();}
+function showResults(push=true){navigation.results(hasResults());if(push)history.pushState({singlesView:'results',jobId:controller.state.snapshot?.job_id},'');render();$('results-heading').focus();requestAnimationFrame(()=>{$('results-body').scrollTop=resultsScroll;});}
 function backToSetup(){if(history.state?.singlesView==='results')history.back();else showSetup();}
 history.replaceState({singlesView:'setup'},'');
 window.addEventListener('popstate',()=>{
+ const valid=hasResults()&&history.state?.jobId===controller.state.snapshot?.job_id;
  if($<HTMLDialogElement>('row-dialog').open){
   $<HTMLDialogElement>('row-dialog').close();detailTrigger?.focus();
-  if(history.state?.singlesView==='results'&&hasResults())return;
+  if(history.state?.singlesView==='results'&&valid)return;
  }
- if(['results','detail'].includes(history.state?.singlesView)&&hasResults())showResults(false);else showSetup();
+ if(history.state?.singlesView==='detail'&&valid){
+  const row=controller.state.page?.rows.find(row=>row.id===history.state.rowId);
+  if(row){showResults(false);const trigger=[...document.querySelectorAll<HTMLButtonElement>('.detail-button')].find(button=>button.dataset.rowId===row.id);if(trigger){openRow(row,trigger,false);return;}}
+ }
+ if(history.state?.singlesView==='results'&&valid)showResults(false);
+ else{history.replaceState({singlesView:'setup'},'');showSetup();}
 });
 $('back-setup').addEventListener('click',backToSetup);
 $('reopen-results').addEventListener('click',()=>showResults());
 async function runPreview(mode:Mode){
  if(controller.state.busy||!navigation.start(mode))return;
- render();$('processing-title').focus();
+ resultsScroll=0;render();$('processing-title').focus();
  await controller.preview(mode);navigation.finish(hasResults());
  if(hasResults())showResults();else{render();$('error').focus();}
 }
 function closeRow(){if(history.state?.singlesView==='detail')history.back();else{$<HTMLDialogElement>('row-dialog').close();detailTrigger?.focus();}}
 $('row-close').addEventListener('click',closeRow);
 $('row-dialog').addEventListener('cancel',event=>{event.preventDefault();closeRow();});
-function openRow(row:PlanRow,trigger:HTMLButtonElement){
+function openRow(row:PlanRow,trigger:HTMLButtonElement,push=true){
  detailTrigger=trigger;$('row-title').textContent=sourceLabel(row.source,controller.state.model?.platform);$('row-content').replaceChildren();
  for(const [label,value]of [['מקור',row.source],['יעד מוצע',row.destination]]as const){if(value===null)continue;const wrapper=text('label',label,'detail-path-label');const input=document.createElement('input');input.className='source-path';input.readOnly=true;input.dir='ltr';input.value=value;input.setAttribute('aria-label',label);input.addEventListener('focus',()=>input.select());wrapper.append(input);$('row-content').append(wrapper);}
  const description=text('p',reasonLabel(row),'detail-reason');$('row-content').append(description);
  if(row.blockers.length)$('row-content').append(text('p',row.blockers.map(blockerLabel).join(' · '),'warning'));
  const technical=document.createElement('details');technical.append(text('summary','מידע טכני'),text('p',row.reason),text('p',row.blockers.join(' · ')));$('row-content').append(technical);
- history.pushState({singlesView:'detail'},'');openDialog('row-dialog');
+ if(push)history.pushState({singlesView:'detail',jobId:controller.state.snapshot?.job_id,rowId:row.id},'');openDialog('row-dialog');
 }
 $('sort').addEventListener('click',()=>void runPreview('Sort'));
 $('fix').addEventListener('click',()=>void runPreview('FixNames'));
@@ -166,7 +173,7 @@ function render(){
   const origin=document.createElement('td');origin.className='file-name';const name=text('bdi',sourceLabel(row.source,s.model?.platform),'source-name');name.dir='auto';name.title=row.source;origin.append(name);tr.append(origin);
   const action=text('td',kindLabel(row.kind),'row-action');tr.append(action);
   const reason=document.createElement('td');reason.className='row-reason';reason.append(text('span',`${kindLabel(row.kind)} · `,'mobile-action'),text('span',row.blockers.length?row.blockers.map(blockerLabel).join(' · '):reasonLabel(row)));tr.append(reason);
-  const detail=document.createElement('td');detail.className='row-detail';const button=document.createElement('button');button.className='icon-button detail-button';button.setAttribute('aria-label',`פרטים: ${sourceLabel(row.source,s.model?.platform)}`);button.append(iconElement('info'));button.addEventListener('click',()=>openRow(row,button));detail.append(button);tr.append(detail);$('rows').append(tr);
+  const detail=document.createElement('td');detail.className='row-detail';const button=document.createElement('button');button.className='icon-button detail-button';button.dataset.rowId=row.id;button.setAttribute('aria-label',`פרטים: ${sourceLabel(row.source,s.model?.platform)}`);button.append(iconElement('info'));button.addEventListener('click',()=>openRow(row,button));detail.append(button);tr.append(detail);$('rows').append(tr);
  }
  $('warnings').replaceChildren();$('technical-notices').replaceChildren();
  if(ready)for(const warning of s.snapshot!.warnings){
