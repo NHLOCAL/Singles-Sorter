@@ -583,6 +583,10 @@ fn published_sync_faults_stop_before_verified_commit_and_recover_read_only() {
             .collect();
         assert_eq!(
             lines.last().unwrap()["body"]["event"]["phase"],
+            serde_json::to_value(Phase::NeedsRecovery).unwrap()
+        );
+        assert_eq!(
+            lines[lines.len() - 2]["body"]["event"]["phase"],
             serde_json::to_value(Phase::DestinationPublished).unwrap()
         );
         assert!(!lines.iter().any(|line| {
