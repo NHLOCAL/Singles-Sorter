@@ -44,6 +44,16 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo +1.99.0 --version
 
+      - name: Preflight exact native owned-Copy fixture binding
+        if: runner.os == 'Windows'
+        run: |
+          $listing = cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-copy --test windows_copy exact_unicode_copy_preserves_source_and_reopens_read_only -- --exact --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $cases = @($listing | Where-Object { $_ -match ': test$' })
+          if ($cases.Count -ne 1) { throw "Expected the exact native owned-Copy preflight; found $($cases.Count)" }
+          cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-copy --test windows_copy exact_unicode_copy_preserves_source_and_reopens_read_only -- --exact --test-threads=1 --nocapture
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Test pinned dependency acquisition and offline cache
         run: |
           python tests/build/test_dependency_acquisition.py

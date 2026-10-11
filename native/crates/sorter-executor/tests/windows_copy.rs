@@ -98,7 +98,21 @@ impl Fixture {
             adapter_hashes: vec![digest(b"metadata")],
             model_hash: None,
         };
-        let source_reference = reads.reference(&source).unwrap();
+        let OperationKind::SingleTransfer {
+            source: planned_source,
+            ..
+        } = &plan.operations[0].kind
+        else {
+            panic!("fixture requires one single transfer: {plan:?}");
+        };
+        // Preserve the exact native-enumeration reference inspected in the plan.
+        // A separately spelled path can name the same file without being the same
+        // immutable StorageRef (e.g. Windows slash versus backslash separators).
+        let inspected_source = reads.stat(&planned_source.reference).unwrap();
+        assert_eq!(
+            &inspected_source, planned_source,
+            "native source observation changed before fixture binding"
+        );
         let scope = ExecutionScope {
             inspected_plan: plan.binding_sha256.clone(),
             source_root: reads.stat(&request.source).unwrap().identity.unwrap(),
@@ -108,7 +122,7 @@ impl Fixture {
                 .identity
                 .unwrap(),
             inspected_sources: vec![SourceEvidence {
-                observation: reads.stat(&source_reference).unwrap(),
+                observation: inspected_source,
                 sha256: digest(&bytes),
             }],
             resources,
@@ -123,8 +137,13 @@ impl Fixture {
             &mut Ai,
             &scope.resources,
             &scope,
-        )
-        .unwrap();
+        ).unwrap_or_else(|error| panic!(
+            "owned fixture binding failed: {error:?}; request={:?}; operations={:?}; inspected_sources={:?}; source_root={:?}; target_root={:?}; observations={:?}",
+            plan.request, plan.operations, scope.inspected_sources,
+            owned.parent_reference(&plan.request.source).map(|p| p.identity().clone()),
+            owned.parent_reference(plan.request.target.as_ref().unwrap()).map(|p| p.identity().clone()),
+            plan.observations,
+        ));
         let log_parent = owned.parent(Path::new("journal")).unwrap();
         let sink = WindowsJournalStore::new(
             owned
@@ -723,6 +742,34 @@ fn mixed_domains_scope_forgery_and_disabled_modes_are_rejected() {
         f.plan.request.target.as_ref().unwrap(),
     )
     .unwrap();
+    // Same native object, alternate path spelling: opaque reference equality must
+    // still reject it as scope evidence. This reproduces the original CI failure.
+    let alternate_reference = probed.reference(&f.source).unwrap();
+    let alternate = probed.stat(&alternate_reference).unwrap();
+    let expected = &f.scope.inspected_sources[0].observation;
+    assert_ne!(
+        alternate.reference, expected.reference,
+        "fixture must exercise alternate Windows separator spelling"
+    );
+    let mut same_object = alternate.clone();
+    same_object.reference = expected.reference.clone();
+    assert_eq!(
+        &same_object, expected,
+        "alternate spelling must identify exactly the same inspected file"
+    );
+    let mut alternate_scope = f.scope.clone();
+    alternate_scope.inspected_sources[0].observation = alternate;
+    assert!(matches!(
+        validate_owned_copy(
+            &f.owned,
+            &f.plan,
+            &mut Metadata,
+            &mut Ai,
+            &f.scope.resources,
+            &alternate_scope
+        ),
+        Err(E::Scope)
+    ));
     use std::os::windows::fs::OpenOptionsExt;
     let lock = std::fs::OpenOptions::new()
         .read(true)
