@@ -172,3 +172,8 @@ full development corpus is neither packaged nor rerun by this synthetic CI.
 This package's local update reused reviewed Linux binaries and small synthetic
 probes only. The original secondary-classifier Rust proof is separate future
 integration work; no classifier/candidate/private weights are included here.
+
+## Bounded loader preparation
+
+See [LOADER-HARDENING.md](LOADER-HARDENING.md) for the isolated typed, bounded
+original-asset loading API, unchanged-math checks, and remaining production gates.

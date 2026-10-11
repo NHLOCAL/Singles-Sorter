@@ -33,6 +33,17 @@ fn sub(s: &str, a: usize, b: usize) -> String {
     s.chars().skip(a).take(b - a).collect()
 }
 impl Tokenizer {
+    /// Load the exact original export from bounded, same-opened bytes. Parsing
+    /// below remains the existing frozen tokenizer implementation.
+    pub fn load(dir: &std::path::Path) -> Result<Self, released_ner_probe::LoadError> {
+        use released_ner_probe::{LoadError, assets::{read_bounded, verify_hash, TOKENIZER_LIMIT, TOKENIZER_SHA256}};
+        let bytes = read_bounded(&dir.join("tokenizer.json"), "tokenizer.json", TOKENIZER_LIMIT)?;
+        verify_hash(&bytes, TOKENIZER_SHA256, "tokenizer.json")?;
+        let value = serde_json::from_slice(&bytes)
+            .map_err(|source| LoadError::Json { asset: "tokenizer.json", source })?;
+        Self::from_json(&value).map_err(|reason| LoadError::Tokenizer { reason })
+    }
+
     pub fn from_json(v: &Value) -> Result<Self, String> {
         let frozen: Value = serde_json::from_str(include_str!("../tokenizer.json"))
             .map_err(|e| format!("invalid embedded frozen tokenizer: {e}"))?;

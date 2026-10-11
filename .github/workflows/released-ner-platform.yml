@@ -99,6 +99,9 @@ jobs:
         run: |
           cargo +1.99.0 test --locked --manifest-path released-ner-text/Cargo.toml
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:ORIGINAL_NER_EXPORT = (Resolve-Path .oracle).Path
+          cargo +1.99.0 test --locked --manifest-path released-ner-text/Cargo.toml --test loading -- --ignored
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo +1.99.0 test --locked --manifest-path released-ner-math/Cargo.toml
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo +1.99.0 build --locked --release --manifest-path released-ner-text/Cargo.toml --bins

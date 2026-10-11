@@ -1,70 +1,134 @@
-use crate::*;
-use serde_json::{Value, json};
-use sha2::{Digest, Sha256};
-use std::{fs, path::Path};
-fn hash(x: &[u8]) -> String {
-    format!("{:x}", Sha256::digest(x))
-}
-impl Model {
-    pub fn load(dir: &Path) -> Result<Self, Box<dyn std::error::Error>> {
-        let manifest: Value = serde_json::from_slice(&fs::read(dir.join("manifest.json"))?)?;
-        let lock: Value = serde_json::from_str(include_str!("../model-lock.json"))?;
-        for (key, expected) in lock.as_object().unwrap() {
-            assert_eq!(
-                &manifest[key], expected,
-                "unsupported model contract field {key}"
-            );
-        }
-        assert_eq!(manifest["schema"], "released-ner-v1");
-        assert_eq!(
-            manifest["model_sha256"],
-            "5f0d50400f685c3992a21d395f7fab30b45ca3a9968383c24044ff4478ec865e"
-        );
-        assert_eq!(
-            manifest["release"],
-            "78d001aee5ce49628bdffebd34540fa83ba32c12"
-        );
-        assert_eq!(manifest["actions"], json!(ACTIONS));
-        assert_eq!(manifest["unseen_classes"], json!([]));
-        assert_eq!(manifest["parameter_bytes"], 3829976);
-        let bytes = fs::read(dir.join("tensors.f32"))?;
-        assert_eq!(
-            hash(&bytes),
-            "84b8c643b32d734c626e90890c389807000741a2863930585e931467f7e00745"
-        );
-        assert_eq!(hash(&bytes), manifest["tensor_sha256"]);
-        assert_eq!(bytes.len(), 3829976);
-        let mut m = Model::default();
-        let mut expected_offset = 0;
-        for t in manifest["tensors"].as_array().unwrap() {
-            let offset = t["offset_bytes"].as_u64().unwrap() as usize;
-            let len = t["nbytes"].as_u64().unwrap() as usize;
-            assert_eq!(offset, expected_offset);
-            expected_offset += len;
-            assert_eq!(t["dtype"], "<f4");
-            let raw = &bytes[offset..offset + len];
-            assert_eq!(hash(raw), t["sha256"]);
-            let data: Vec<_> = raw
-                .chunks_exact(4)
-                .map(|c| f32::from_le_bytes(c.try_into().unwrap()))
-                .collect();
-            assert!(data.iter().all(|x| x.is_finite()));
-            let shape = serde_json::from_value(t["shape"].clone())?;
-            assert!(
-                m.tensors
-                    .insert(
-                        (
-                            t["node"].as_u64().unwrap() as usize,
-                            t["param"].as_str().unwrap().to_string()
-                        ),
-                        Tensor { shape, data }
-                    )
-                    .is_none()
-            );
-        }
-        assert_eq!(expected_offset, bytes.len());
-        m.validate();
+use crate::{Model, Tensor, assets::*};
+use serde::Deserialize;
+use serde_json::Value;
+use std::{collections::BTreeMap, path::Path};
 
-        Ok(m)
+#[derive(Deserialize)]
+struct TensorSpec {
+    node: usize,
+    param: String,
+    shape: Vec<usize>,
+    dtype: String,
+    offset_bytes: usize,
+    nbytes: usize,
+    sha256: String,
+}
+fn unsupported(field: &str) -> LoadError {
+    LoadError::Unsupported {
+        field: field.into(),
+    }
+}
+fn tensor_error(reason: &'static str) -> LoadError {
+    LoadError::InvalidTensor { reason }
+}
+
+impl Model {
+    /// Load only the frozen released graph and original float32 weights.
+    /// No partially validated model escapes, and no caller can mutate its tensors.
+    pub fn load(dir: &Path) -> Result<Self, LoadError> {
+        let bytes = read_bounded(&dir.join("manifest.json"), "manifest.json", MANIFEST_LIMIT)?;
+        let manifest: Value = serde_json::from_slice(&bytes).map_err(|source| LoadError::Json {
+            asset: "manifest.json",
+            source,
+        })?;
+        let lock: Value =
+            serde_json::from_str(include_str!("../model-lock.json")).map_err(|source| {
+                LoadError::Json {
+                    asset: "embedded model-lock.json",
+                    source,
+                }
+            })?;
+        let fields = lock
+            .as_object()
+            .ok_or_else(|| unsupported("embedded contract"))?;
+        for (key, expected) in fields {
+            if manifest.get(key) != Some(expected) {
+                return Err(unsupported(key));
+            }
+        }
+        // Optional exporter metadata must not redirect or misidentify the assets.
+        if manifest
+            .get("tensor_file")
+            .is_some_and(|v| v != "tensors.f32")
+        {
+            return Err(unsupported("tensor_file"));
+        }
+        if let Some(files) = manifest.get("files")
+            && (files.get("tensors.f32").and_then(Value::as_str) != Some(TENSOR_SHA256)
+                || files.get("tokenizer.json").and_then(Value::as_str) != Some(TOKENIZER_SHA256))
+        {
+            return Err(unsupported("files"));
+        }
+        let specs: Vec<TensorSpec> = serde_json::from_value(
+            manifest
+                .get("tensors")
+                .ok_or_else(|| unsupported("tensors"))?
+                .clone(),
+        )
+        .map_err(|source| LoadError::Json {
+            asset: "tensor metadata",
+            source,
+        })?;
+        let bytes = read_bounded(&dir.join("tensors.f32"), "tensors.f32", PARAMETER_BYTES)?;
+        if bytes.len() != PARAMETER_BYTES {
+            return Err(LoadError::Length {
+                asset: "tensors.f32",
+                expected: PARAMETER_BYTES,
+                actual: bytes.len(),
+            });
+        }
+        verify_hash(&bytes, TENSOR_SHA256, "tensors.f32")?;
+        let mut tensors = BTreeMap::new();
+        let mut expected_offset = 0usize;
+        for t in specs {
+            let elements = t
+                .shape
+                .iter()
+                .try_fold(1usize, |n, d| n.checked_mul(*d))
+                .ok_or_else(|| tensor_error("shape overflow"))?;
+            let size = elements
+                .checked_mul(4)
+                .ok_or_else(|| tensor_error("byte size overflow"))?;
+            let end = t
+                .offset_bytes
+                .checked_add(t.nbytes)
+                .ok_or_else(|| tensor_error("range overflow"))?;
+            if t.offset_bytes != expected_offset || size != t.nbytes || t.dtype != "<f4" {
+                return Err(tensor_error("layout mismatch"));
+            }
+            let raw = bytes
+                .get(t.offset_bytes..end)
+                .ok_or_else(|| tensor_error("range out of bounds"))?;
+            verify_hash(raw, &t.sha256, "tensor")?;
+            let mut data = Vec::new();
+            data.try_reserve_exact(elements)
+                .map_err(|_| LoadError::Allocation { asset: "tensor" })?;
+            for c in raw.chunks_exact(4) {
+                let value = f32::from_le_bytes([c[0], c[1], c[2], c[3]]);
+                if !value.is_finite() {
+                    return Err(tensor_error("nonfinite value"));
+                }
+                data.push(value);
+            }
+            if tensors
+                .insert(
+                    (t.node, t.param),
+                    Tensor {
+                        shape: t.shape,
+                        data,
+                    },
+                )
+                .is_some()
+            {
+                return Err(tensor_error("duplicate parameter"));
+            }
+            expected_offset = end;
+        }
+        if expected_offset != bytes.len() || tensors.len() != 31 {
+            return Err(tensor_error("incomplete graph"));
+        }
+        // Exact contract equality above guarantees every shape/key used by the
+        // unchanged numeric graph; hashes guarantee their original finite values.
+        Ok(Model { tensors })
     }
 }

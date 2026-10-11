@@ -2,6 +2,9 @@
 import hashlib,json,shutil,tempfile,os
 from pathlib import Path
 HERE=Path(__file__).resolve().parent
+# Only the loader boundary is new. Preserve all frozen scalar source bytes as
+# an exact prefix; this suffix declares the shared bounded-loader API.
+LOADER_API_ADAPTER=b'\npub mod assets;\npub use assets::LoadError;\n'
 
 def prepare():
     destination=HERE/'.baseline'
@@ -18,7 +21,7 @@ def prepare():
                 if (source/directory).exists():shutil.copytree(source/directory,target/directory)
             for name in ('Cargo.toml','Cargo.lock','build.rs','model-lock.json','tokenizer.json'):
                 if (source/name).exists():shutil.copyfile(source/name,target/name)
-        shutil.copyfile(HERE/'baseline/math-lib.rs',stage/'released-ner-math/src/lib.rs')
+        (stage/'released-ner-math/src/lib.rs').write_bytes((HERE/'baseline/math-lib.rs').read_bytes()+LOADER_API_ADAPTER)
         shutil.copyfile(HERE/'baseline/raw-ner.rs',stage/'released-ner-text/src/bin/raw-ner.rs')
         os.rename(stage,destination)
     print('Prepared isolated original baseline for this CI job')

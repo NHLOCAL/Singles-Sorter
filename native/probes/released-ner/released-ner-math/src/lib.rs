@@ -1,6 +1,8 @@
 //! Narrow, non-production proof for the frozen spaCy 3.7.5 NER graph.
 //! Scalar float32 only; no fast-math, fused multiply-add or quantization.
 mod loader;
+pub mod assets;
+pub use assets::LoadError;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -15,9 +17,8 @@ pub struct Tensor {
     pub shape: Vec<usize>,
     pub data: Vec<f32>,
 }
-#[derive(Default)]
 pub struct Model {
-    pub tensors: BTreeMap<(usize, String), Tensor>,
+    tensors: BTreeMap<(usize, String), Tensor>,
 }
 impl Model {
     pub fn tensor(&self, n: usize, p: &str, shape: &[usize]) -> &[f32] {

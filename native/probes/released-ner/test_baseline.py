@@ -20,7 +20,8 @@ class Baseline(unittest.TestCase):
         root=self.fixture()
         with patch.object(p,'HERE',root):p.prepare()
         out=root/'.baseline'
-        self.assertEqual((out/'released-ner-math/src/lib.rs').read_text(),'original math')
+        self.assertEqual((out/'released-ner-math/src/lib.rs').read_bytes(),b'original math'+p.LOADER_API_ADAPTER)
+        self.assertEqual((root/'baseline/math-lib.rs').read_bytes(),b'original math')
         self.assertEqual((out/'released-ner-text/src/bin/raw-ner.rs').read_text(),'original raw')
         self.assertFalse((out/'.oracle').exists());self.assertFalse((out/'released-ner-text/target').exists())
         self.assertFalse((out/'.pcre2').exists())
