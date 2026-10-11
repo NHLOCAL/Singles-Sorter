@@ -120,6 +120,18 @@ TMPDIR=/data/local/tmp/original-ai-proof/tmp \
 ./TEST_EXECUTABLE --include-ignored --test-threads=1 --nocapture
 ```
 
+### Known Android shell fixture limit
+
+On the initial Android 11 x86_64 AOSP emulator, the shell denied `mkfifo` in the
+owned test directory before `fifo_is_rejected_without_waiting_for_a_writer`
+could exercise the loader. Preserve that failing setup log and classify this
+case as **environment-blocked**, not passed. Do not change Android security
+settings or route around the denial. The other five loader cases can be rerun
+with `--skip fifo_is_rejected_without_waiting_for_a_writer` appended to the
+command above. Keep its one filtered test explicit in the final accounting.
+The preserved regular-file checks and NDK-verified `O_NONBLOCK` constant are
+source evidence; they are not Android FIFO/path-swap runtime validation.
+
 Compare the `parity` example's output on the same owned synthetic classifier
 inputs against the verified desktop baseline: exact classes, accept/reject,
 feature strings and sparse indices; report maximum numerical deltas separately.
