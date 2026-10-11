@@ -217,7 +217,7 @@ fn allowed_transition(previous:Option<Phase>,next:Phase)->bool{
 }
 fn check_observation(header:&Header,op:&RepairOperation,observation:&MutationObservation,leaf:&str,identity:Option<&ObjectIdentity>)->Result<()>{
     let source=path(&op.source.observation.reference)?;let expected=source.parent().ok_or(E::CorruptJournal)?.join(leaf);
-    if path(&observation.reference)?!=expected||!expected.starts_with(path(&header.source)?)||observation.actual_name!=name(leaf)||identity.is_some_and(|id|id!=&observation.identity)||Some(&observation.parent_identity)!=op.source.observation.parent_identity.as_ref(){return Err(E::CorruptJournal)}Ok(())
+    if path(&observation.reference)?!=expected||!expected.starts_with(path(&header.source)?)||observation.actual_name!=name(leaf)||identity.is_some_and(|id|id!=&observation.identity)||Some(&observation.parent_identity)!=op.source.observation.parent_identity.as_ref()||((identity==op.source.observation.identity.as_ref()||leaf==op.intended_name)&&observation.size!=op.source.observation.size){return Err(E::CorruptJournal)}Ok(())
 }
 fn validate_terminal(header:&Header,op:&RepairOperation,state:&RecoveryState,item:&RepairItem)->Result<()>{
     let source_id=op.source.observation.identity.as_ref().ok_or(E::CorruptJournal)?;

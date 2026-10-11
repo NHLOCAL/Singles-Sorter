@@ -220,6 +220,11 @@ jobs:
         if: ${{ !cancelled() && runner.os == 'Windows' }}
         shell: pwsh
         run: |
+          $repairBounds = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib journal_budget_tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($repairBounds | Where-Object { $_ -match ': test$' }).Count -ne 2) { throw "Expected 2 repair journal/classification boundary cases" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib journal_budget_tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $repairJobs = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if (@($repairJobs | Where-Object { $_ -match ': test$' }).Count -ne 11) { throw "Expected 11 product FixNames cases" }
