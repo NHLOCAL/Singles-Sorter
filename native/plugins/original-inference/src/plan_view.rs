@@ -1,5 +1,6 @@
 use serde::Serialize;
 use sorter_core::{
+    album::AlbumTraceEvent,
     discovery::{EntryObservation, StorageRef},
     job_plan::{DecisionV2, JobMode, JobPlanV2, OperationKind},
 };
@@ -30,6 +31,19 @@ fn operation_source(kind: &OperationKind) -> &EntryObservation {
         OperationKind::FixFile(f) => &f.source,
     }
 }
+fn routine_inspection(decision: &DecisionV2, operation_ids: &[usize]) -> bool {
+    match decision {
+        DecisionV2::Album { decision, .. } => {
+            !decision.is_album
+                && operation_ids.is_empty()
+                && !decision.trace.iter().any(|event| {
+                    matches!(event, AlbumTraceEvent::ProtectedError { .. })
+                })
+        }
+        _ => false,
+    }
+}
+
 pub fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
     if plan.request.mode == JobMode::FixNames {
         return plan
@@ -112,10 +126,7 @@ pub fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
                 .flatten()
                 .map(|op| op.id)
                 .collect();
-            let developer_only = match d {
-                DecisionV2::Album { decision, .. } => !decision.is_album && operation_ids.is_empty(),
-                _ => false,
-            };
+            let developer_only = routine_inspection(d, &operation_ids);
             let mut destinations = vec![];
             let mut blockers = vec![];
             for op in operations_by_source
@@ -154,4 +165,85 @@ pub fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
             }
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sorter_core::{
+        album::AlbumDecision,
+        discovery::{Capabilities, EntryKind},
+        job_plan::ReadPoint,
+    };
+
+    #[test]
+    fn only_routine_negative_album_inspections_are_developer_only() {
+        let read = ReadPoint {
+            source: EntryObservation {
+                reference: StorageRef::TestOpaque {
+                    id: "owned".into(),
+                },
+                identity: None,
+                parent_identity: None,
+                name: "owned".into(),
+                kind: EntryKind::Directory,
+                size: None,
+                modified: None,
+                capabilities: Capabilities::default(),
+            },
+            after_operations: 0,
+            depends_on: vec![],
+            virtually_present: true,
+        };
+        let mut album = AlbumDecision {
+            is_album: false,
+            should_process: false,
+            album_name: None,
+            artist_name: None,
+            trace: vec![],
+        };
+        let decision = DecisionV2::Album {
+            read: read.clone(),
+            decision: album.clone(),
+        };
+        assert!(routine_inspection(&decision, &[]));
+        assert!(!routine_inspection(&decision, &[7]));
+        album.is_album = true;
+        assert!(!routine_inspection(
+            &DecisionV2::Album {
+                read: read.clone(),
+                decision: album.clone(),
+            },
+            &[],
+        ));
+        album.is_album = false;
+        album.trace.push(AlbumTraceEvent::ProtectedError {
+            kind: "metadata".into(),
+        });
+        assert!(!routine_inspection(
+            &DecisionV2::Album {
+                read: read.clone(),
+                decision: album,
+            },
+            &[],
+        ));
+        assert!(!routine_inspection(
+            &DecisionV2::ItemError {
+                read: read.clone(),
+                error: "owned error".into(),
+            },
+            &[],
+        ));
+        assert!(!routine_inspection(
+            &DecisionV2::Vanished { read: read.clone() },
+            &[],
+        ));
+        assert!(!routine_inspection(
+            &DecisionV2::Single {
+                read,
+                artists: vec![],
+            },
+            &[],
+        ));
+    }
 }
