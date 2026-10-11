@@ -1,6 +1,7 @@
 import './styles.css';
 import {nativeHost,openFooterLink,openProjectLink} from './host';
 import {installAbout} from './about';
+import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError} from './result-presentation';
 import {kindLabel,reasonLabel,blockerLabel,warningPresentation,noticeLabel,sourceLabel} from './presentation';
 import {PAGE_SIZE,PreviewController} from './state';
 import type {Settings,ImportEncoding,Mode,PlanRow,ExecutionItem} from './contracts';
@@ -9,6 +10,7 @@ import {installHelpBadges} from './help';
 import {WorkspaceNavigation} from './navigation';
 import {installIcons,iconElement,setButtonLabel} from './icons';
 const controller=new PreviewController(nativeHost,nativeHost);
+try{controller.state.developerMode=readDeveloperMode(localStorage);}catch{/* Fresh or unavailable storage keeps the simple view. */}
 const personal=new PersonalListController(nativeHost,()=>controller.resourcesChanged());
 let listOffset=0,importOffset=0;
 const navigation=new WorkspaceNavigation();
@@ -42,7 +44,7 @@ app.innerHTML=`
 <div id="empty" class="empty">התוצאה תופיע כאן לאחר בחירת תיקיות והפעלת בדיקה.</div>
 
 <div id="warnings"></div>
-<div id="table-wrap" hidden><table><thead><tr><th scope="col">מקור</th><th scope="col">פעולה</th><th scope="col">סיבה / חסימה</th><th scope="col"><span class="visually-hidden">פרטים</span></th></tr></thead><tbody id="rows"></tbody></table></div>
+<div id="table-wrap" hidden><table><thead><tr><th scope="col">שם הקובץ</th><th scope="col" id="result-second-heading">אמן</th><th scope="col" id="result-third-heading">מצב</th><th scope="col"><span class="visually-hidden">פרטים</span></th></tr></thead><tbody id="rows"></tbody></table></div>
 
 <details id="details" hidden><summary>פרטי התכנית והבדיקה</summary><dl><dt>מזהה תכנית</dt><dd id="plan-id" dir="ltr"></dd><dt>חסימות ביצוע</dt><dd id="blockers"></dd></dl><div id="technical-notices"></div></details>
 </div><nav id="pagination" aria-label="עמודי תוצאות" hidden><button id="previous" class="secondary">הקודם</button><span id="page-label"></span><button id="next" class="secondary">הבא</button></nav>
@@ -54,7 +56,7 @@ app.innerHTML=`
 <dialog id="menu-dialog" aria-labelledby="menu-title"><div class="dialog-heading"><h2 id="menu-title">עזרה ומידע</h2><button class="close-dialog icon-button" aria-label="סגור">×</button></div><div class="menu-items" role="group" aria-label="נושאי מידע"><button data-help="help" aria-pressed="true" aria-controls="usage-content">איך משתמשים?</button><button data-help="about" aria-pressed="false" aria-controls="about-content">אודות התוכנה</button></div>
 <div id="help-content" class="help-content">
 <section id="usage-content" data-info-page="help" aria-labelledby="usage-title"><h3 id="usage-title">מהתיקייה לתוכנית המיון</h3><ol class="usage-steps"><li>בחר תיקית מקור, ובמיון גם תיקית יעד.</li><li>התאם את האפשרויות ולחץ על <strong>מיין שירים</strong> או <strong>תקן שמות</strong>. במצב תיקון אין צורך ביעד.</li><li>עיין בהצעות ובסיבות לחסימה. כשאפשר לבצע את התוכנית, יופיע כפתור ביצוע ואישור נוסף לפני שינוי הקבצים.</li></ol><p class="hint">רשימת האמנים האישית ומיון דואטים נמצאים בהגדרות מתקדמות. ההסבר ליד כל אפשרות זמין גם במקלדת ובמגע.</p></section>
-<section id="about-content" data-info-page="about" aria-labelledby="about-name" hidden><div class="about-brand"><img src="/icon.png" width="44" height="44" alt=""><div><h3 id="about-name">מסדר הסינגלים</h3><p class="hint">סידור המוזיקה שלך בתיקיות לפי אמנים</p></div></div><dl class="about-facts"><div><dt>גרסת התוכנה</dt><dd id="about-version" dir="ltr"></dd></div><div><dt>כללי המיון</dt><dd>מבוססים על גרסה 14.0</dd></div><div><dt>פרויקט המקור</dt><dd><bdi>NHLOCAL / Singles-Sorter</bdi></dd></div></dl><p>מיון לפי רשימת אמנים, אפשרויות המיון והרשימה האישית שלך. זיהוי בעזרת המודלים המקוריים פועל מקומית כאשר הם זמינים.</p><p class="hint about-capability">הזמינות לביצוע מוצגת בכל תוכנית לפי המכשיר והפעולות הנדרשות. פעולות שאינן נתמכות נשארות לתצוגה בלבד.</p><div class="about-links"><button class="secondary" data-project-link="Source">קוד המקור ב־GitHub</button><button class="secondary" data-project-link="License">רישיון MIT</button></div><p class="hint about-browser-note">הקישורים נפתחים בדפדפן שלך.</p><p id="about-link-error" class="error" role="alert" hidden></p><details class="about-credits"><summary>רכיבים ותודות</summary><p>הפרויקט מבוסס על מסדר הסינגלים המקורי של NHLOCAL, רשימת האמנים והמודלים המקוריים לזיהוי שמות אמנים.</p><p><bdi>Rust</bdi> למנוע המיון, <bdi>Tauri</bdi> למארח שולחן העבודה, <bdi>TagLib</bdi> לקריאת מאפייני קבצים, וסמלים מתוך <bdi>Microsoft Fluent UI System Icons</bdi>.</p><p class="hint">קוד הפרויקט מופץ ברישיון MIT. לרכיבי צד שלישי ולמודלים יש תנאי רישוי נפרדים; הודעות הרישוי הנלוות לחבילה הן המקור המלא.</p></details></section></div></dialog>
+<section id="about-content" data-info-page="about" aria-labelledby="about-name" hidden><div class="about-brand"><img src="/icon.png" width="44" height="44" alt=""><div><h3 id="about-name">מסדר הסינגלים</h3><p class="hint">סידור המוזיקה שלך בתיקיות לפי אמנים</p></div></div><dl class="about-facts"><div><dt>גרסת התוכנה</dt><dd id="about-version" dir="ltr"></dd></div><div><dt>כללי המיון</dt><dd>מבוססים על גרסה 14.0</dd></div><div><dt>פרויקט המקור</dt><dd><bdi>NHLOCAL / Singles-Sorter</bdi></dd></div></dl><p>מיון לפי רשימת אמנים, אפשרויות המיון והרשימה האישית שלך. זיהוי בעזרת המודלים המקוריים פועל מקומית כאשר הם זמינים.</p><p class="hint about-capability">הזמינות לביצוע מוצגת בכל תוכנית לפי המכשיר והפעולות הנדרשות. פעולות שאינן נתמכות נשארות לתצוגה בלבד.</p><div class="about-links"><button class="secondary" data-project-link="Source">קוד המקור ב־GitHub</button><button class="secondary" data-project-link="License">רישיון MIT</button></div><p class="hint about-browser-note">הקישורים נפתחים בדפדפן שלך.</p><p id="about-link-error" class="error" role="alert" hidden></p><details class="about-credits"><summary>רכיבים ותודות</summary><p>הפרויקט מבוסס על מסדר הסינגלים המקורי של NHLOCAL, רשימת האמנים והמודלים המקוריים לזיהוי שמות אמנים.</p><p><bdi>Rust</bdi> למנוע המיון, <bdi>Tauri</bdi> למארח שולחן העבודה, <bdi>TagLib</bdi> לקריאת מאפייני קבצים, וסמלים מתוך <bdi>Microsoft Fluent UI System Icons</bdi>.</p><p class="hint">קוד הפרויקט מופץ ברישיון MIT. לרכיבי צד שלישי ולמודלים יש תנאי רישוי נפרדים; הודעות הרישוי הנלוות לחבילה הן המקור המלא.</p></details></section></div><details class="developer-options"><summary>אפשרויות תצוגה</summary><label class="option"><input id="developer-mode" type="checkbox" role="switch"><span>מצב מפתחים</span></label><p class="hint">מציג את כל פרטי הבדיקה והיומנים. אינו משנה את המיון או את הקבצים.</p></details></dialog>
 <dialog id="advanced-dialog" aria-labelledby="advanced-title"><div class="dialog-heading"><h2 id="advanced-title">הגדרות מתקדמות</h2><button class="close-dialog icon-button" aria-label="סגור">×</button></div>
 <fieldset><legend>מיון דואטים <button class="help-badge" aria-label="עזרה: דואטים" data-help-text="בחר להיכן יועתקו שירי דואט. הבחירה נשמרת מיד, בלי לשמור שינויים באפשרויות האחרות.">?</button></legend><label class="option"><input type="radio" name="duet" id="duet-first" value="first" checked><span>לזמר הראשון בשם השיר</span></label><label class="option"><input type="radio" name="duet" id="duet-all" value="all"><span>לכל הזמרים המופיעים בשיר</span></label></fieldset>
 <fieldset><legend class="ai-heading"><span>זיהוי בעזרת AI</span><span id="model-status" class="quiet-label"></span><button id="model-help" class="help-badge" aria-label="עזרה: זמינות AI" data-help-text="">?</button></legend><div class="field-label"><label for="ai-profile">פרופיל הבדיקה</label><button class="help-badge" aria-label="עזרה: פרופיל הבדיקה" data-help-text="אם נדרש מודל ואינו זמין, הבדיקה תיחסם. אין מעבר אוטומטי לפרופיל אחר.">?</button></div><select id="ai-profile"><option value="Disabled">ללא AI</option><option value="Configured">דרוש מודל AI זמין</option></select></fieldset>
@@ -94,7 +96,7 @@ $('back-setup').addEventListener('click',backToSetup);
 $('review-apply').addEventListener('click',()=>{
  if(!controller.canApply)return;
  const readiness=controller.state.snapshot!.apply!;
- $('apply-description').textContent=`${readiness.copy_mode?'העתקת':'העברת'} ${readiness.operation_count.toLocaleString('he-IL')} פעולות לפי התוכנית שהוצגה.`;
+ $('apply-description').textContent=controller.state.developerMode?`${readiness.copy_mode?'העתקת':'העברת'} ${readiness.operation_count.toLocaleString('he-IL')} פעולות לפי התוכנית שהוצגה.`:readiness.copy_mode?'העתקת הקבצים שברשימה. קובצי המקור יישארו במקומם.':'העברת הקבצים שברשימה אל תיקיית היעד.';
  $<HTMLInputElement>('apply-source').value=readiness.source;$<HTMLInputElement>('apply-target').value=readiness.target;
  openDialog('apply-dialog');$('apply-back').focus();
 });
@@ -115,6 +117,15 @@ $('row-close').addEventListener('click',closeRow);
 $('row-dialog').addEventListener('cancel',event=>{event.preventDefault();closeRow();});
 function openRow(row:PlanRow,trigger:HTMLButtonElement,push=true){
  detailTrigger=trigger;$('row-title').textContent=sourceLabel(row.source,controller.state.model?.platform);$('row-content').replaceChildren();
+ if(!controller.state.developerMode){
+  const status=simpleStatus(row,executionItems(row),controller.state.snapshot?.apply?.copy_mode??controller.state.settings.copy_mode);
+  if(row.artist)$('row-content').append(text('p',row.artist,'detail-artist'));
+  $('row-content').append(text('p',status,'detail-status'));
+  const reason=simpleReason(row);if(reason&&!executionItems(row).length)$('row-content').append(text('p',reason,'hint'));
+  if(executionItems(row).some(item=>['failed','needs_recovery','source_retained'].includes(item.status)))$('row-content').append(text('p','בדוק את הקובץ בתיקיית המקור ובתיקיית היעד לפני ניסיון נוסף.','hint'));
+  if(push)history.pushState({singlesView:'detail',jobId:controller.state.snapshot?.job_id,rowId:row.id},'');openDialog('row-dialog');return;
+ }
+
  for(const [label,value]of [['מקור',row.source],['יעד מוצע',row.destination]]as const){if(value===null)continue;const wrapper=text('label',label,'detail-path-label');const input=document.createElement('input');input.className='source-path';input.readOnly=true;input.dir='ltr';input.value=value;input.setAttribute('aria-label',label);input.addEventListener('focus',()=>input.select());wrapper.append(input);$('row-content').append(wrapper);}
  const description=text('p',reasonLabel(row),'detail-reason');$('row-content').append(description);
  for(const item of executionItems(row))$('row-content').append(text('p',`${itemLabel(item)} · ${item.detail}`,'execution-item'));
@@ -157,6 +168,11 @@ const layoutObserver=new ResizeObserver(fitWorkspace);
 for(const element of [workspace,connection,errorBox,app.querySelector('header')!,app.querySelector('footer')!])layoutObserver.observe(element);
 window.addEventListener('resize',fitWorkspace);fitWorkspace();
 installAbout(app,openProjectLink);
+$('developer-mode').addEventListener('change',async()=>{
+ const enabled=$<HTMLInputElement>('developer-mode').checked;
+ await controller.setDeveloperMode(enabled);
+ if(controller.state.developerMode===enabled)try{saveDeveloperMode(localStorage,enabled);}catch{/* Session preference remains usable. */}
+});
 $('previous').addEventListener('click',()=>void controller.changePage(Math.max(0,controller.state.offset-PAGE_SIZE)));
 $('next').addEventListener('click',()=>void controller.changePage(controller.state.offset+PAGE_SIZE));
 function text(tag:string,value:string,className?:string){const node=document.createElement(tag);node.textContent=value;if(className)node.className=className;return node;}
@@ -171,16 +187,21 @@ function renderExecution(){
  $<HTMLButtonElement>('back-setup').disabled=running;
  $('execution-title').textContent=e?executionTitles[e.status]:running?'מאמת את הקבצים לפני ביצוע…':readiness?.supported?'התוכנית מוכנה לביצוע':'התוכנית זמינה לתצוגה בלבד';
  const r=e?.result;
- $('execution-summary').textContent=r?`${r.committed_destinations.toLocaleString('he-IL')} יעדים נכתבו · ${r.moved_sources.toLocaleString('he-IL')} קבצי מקור הועברו · ${r.failed_operations.toLocaleString('he-IL')} נכשלו · ${r.blocked_operations.toLocaleString('he-IL')} לא בוצעו`:s.cancelRequested&&running?'ממתין לעצירה בטוחה…':e?.status==='running'&&e.operation!==null?`פעולה ${e.operation+1} מתוך ${e.operation_count} · ${e.bytes_written.toLocaleString('he-IL')} מתוך ${e.source_length.toLocaleString('he-IL')} בתים`:e&&!['preparing','running'].includes(e.status)?(e.error??'לא התקבלו מוני ביצוע מאומתים. יש לבדוק את היומן.'):readiness?.supported?`${readiness.operation_count.toLocaleString('he-IL')} פעולות ${readiness.copy_mode?'העתקה':'העברה'} ממתינות לאישור`:readiness?.reason??'';
+ const developer=s.developerMode;
+ $('execution-summary').textContent=developer?(r?`${r.committed_destinations.toLocaleString('he-IL')} יעדים נכתבו · ${r.moved_sources.toLocaleString('he-IL')} קבצי מקור הועברו · ${r.failed_operations.toLocaleString('he-IL')} נכשלו · ${r.blocked_operations.toLocaleString('he-IL')} לא בוצעו`:s.cancelRequested&&running?'ממתין לעצירה בטוחה…':e?.status==='running'&&e.operation!==null?`פעולה ${e.operation+1} מתוך ${e.operation_count} · ${e.bytes_written.toLocaleString('he-IL')} מתוך ${e.source_length.toLocaleString('he-IL')} בתים`:e&&!['preparing','running'].includes(e.status)?(e.error??'לא התקבלו מוני ביצוע מאומתים. יש לבדוק את היומן.'):readiness?.supported?`${readiness.operation_count.toLocaleString('he-IL')} פעולות ${readiness.copy_mode?'העתקה':'העברה'} ממתינות לאישור`:readiness?.reason??''):(e?simpleExecutionSummary(e,readiness?.copy_mode??s.settings.copy_mode):readiness?.supported?'הקבצים מוכנים. אפשר לבדוק ולאשר את הביצוע.':'לא בוצעו שינויים בקבצים.');
+ if(!developer&&running)$('execution-summary').textContent=s.cancelRequested?'ממתין לעצירה בטוחה…':e?.operation!==null&&e?.operation!==undefined?`התקדמות: ${e.operation+1} מתוך ${e.operation_count}`:'בודק שהקבצים מוכנים…';
  const progress=$<HTMLProgressElement>('execution-progress');progress.hidden=!running;
  if(e?.status==='running'&&e.source_length>0){progress.max=e.source_length;progress.value=Math.min(e.bytes_written,e.source_length);}else progress.removeAttribute('value');
  $('execution-recovery').hidden=!e||!['needs_recovery','partial','cancelled','failed'].includes(e.status);
- $('execution-recovery').textContent=e?.status==='needs_recovery'?'היומן נשמר. אין להפעיל שוב את התוכנית או למחוק את היומן לפני בדיקת הקבצים. התאוששות אוטומטית אינה מופעלת.':'פעולות שהושלמו נשארות בתוקף. עיין בפרטי הקבצים וביומן לפני בדיקה חדשה.';
- $('recovery-inspection').hidden=!e?.recovery;$('recovery-inspection').textContent=e?.recovery?`נבדק היומן מול הקבצים: ${e.recovery.transfers.length} פעולות · ${e.recovery.pending_directories} יצירות תיקייה ממתינות לבירור${e.recovery.incomplete_tail?' · רשומה אחרונה לא שלמה':''}`:'';
- $('journal-label').hidden=!e?.journal_path;$<HTMLInputElement>('journal-path').value=e?.journal_path??'';
+ $('execution-recovery').textContent=developer?(e?.status==='needs_recovery'?'היומן נשמר. אין להפעיל שוב את התוכנית או למחוק את היומן לפני בדיקת הקבצים. התאוששות אוטומטית אינה מופעלת.':'פעולות שהושלמו נשארות בתוקף. עיין בפרטי הקבצים וביומן לפני בדיקה חדשה.'):'קבצים שכבר טופלו נשארים במקומם. בדוק את המקור והיעד לפני ניסיון נוסף.';
+ $('recovery-inspection').hidden=!developer||!e?.recovery;$('recovery-inspection').textContent=e?.recovery?`נבדק היומן מול הקבצים: ${e.recovery.transfers.length} פעולות · ${e.recovery.pending_directories} יצירות תיקייה ממתינות לבירור${e.recovery.incomplete_tail?' · רשומה אחרונה לא שלמה':''}`:'';
+ $('journal-label').hidden=!developer||!e?.journal_path;$<HTMLInputElement>('journal-path').value=e?.journal_path??'';
 }
 function render(){
  const s=controller.state;const blocked=s.busy||!s.hostAvailable;
+ const developer=s.developerMode;app.dataset.developerMode=String(developer);
+ $<HTMLInputElement>('developer-mode').checked=developer;$<HTMLInputElement>('developer-mode').disabled=s.busy;
+ $('result-second-heading').textContent=developer?'פעולה':'אמן';$('result-third-heading').textContent=developer?'סיבה / חסימה':'מצב';
  app.dataset.view=navigation.screen;
  $('setup-screen').hidden=navigation.screen!=='setup';$('processing-screen').hidden=navigation.screen!=='processing';$('results').hidden=navigation.screen!=='results';$('reopen-results').hidden=!hasResults();
  $('results-heading').textContent=navigation.mode==='Sort'?'תוכנית מיון':'תוכנית תיקון שמות';
@@ -196,33 +217,35 @@ function render(){
  $<HTMLSelectElement>('ai-profile').value=s.ai;
  $('model-status').textContent=s.model?.available?'זמין':'לא זמין';
  $('model-help').dataset.helpText=s.model?.message??'לא התקבל מצב המודל מהמארח.';
- $('connection').hidden=s.hostAvailable;
- $('connection').textContent=!s.initialized?(s.startupWaiting?'ממתין לסיום הבדיקה הקודמת…':'טוען את המארח המקומי…'):'המארח המקומי אינו מחובר. יש לפתוח את התוכנה כדי לבדוק תיקיות.';
- $('settings-label').textContent=controller.settingsDirty?'שינויים שלא נשמרו':'ההגדרות שלך';$('settings-notice').textContent=noticeLabel(controller.savedNotice);$<HTMLButtonElement>('save-settings').disabled=blocked;$('settings-error').hidden=!s.error;$('settings-error').textContent=s.error??'';
+ const previewCancelled=s.snapshot?.status==='cancelled'&&!s.busy&&!s.execution;
+ $('connection').hidden=s.hostAvailable&&!previewCancelled;
+ $('connection').textContent=previewCancelled?'הבדיקה בוטלה. לא בוצעו שינויים בקבצים.':!s.initialized?(s.startupWaiting?'ממתין לסיום הבדיקה הקודמת…':'טוען את המארח המקומי…'):'המארח המקומי אינו מחובר. יש לפתוח את התוכנה כדי לבדוק תיקיות.';
+ $('settings-label').textContent=controller.settingsDirty?'שינויים שלא נשמרו':'ההגדרות שלך';$('settings-notice').textContent=noticeLabel(controller.savedNotice);$<HTMLButtonElement>('save-settings').disabled=blocked;$('settings-error').hidden=!s.error;$('settings-error').textContent=s.error?(developer?s.error:simpleError(s.error)):'';
  $<HTMLButtonElement>('cancel-preview').disabled=!s.busy||s.cancelRequested;
  $('busy').textContent=s.cancelRequested&&s.activity==='preview'?'מבטל את הבדיקה…':s.activity==='settings'?'שומר הגדרות…':s.activity==='page'?'טוען עמוד תוצאות…':'קורא ומנתח את הקבצים…';
  $('busy').hidden=!s.busy;$('results').setAttribute('aria-busy',String(s.busy));
- $('error').hidden=!s.error;$('error').textContent=s.error??'';$('error').tabIndex=-1;
+ $('error').hidden=!s.error;$('error').textContent=s.error?(developer?s.error:simpleError(s.error)):'';$('error').tabIndex=-1;
  const ready=s.snapshot?.status==='completed'&&!!s.page;
  $('empty').hidden=s.busy||!!s.error||ready&&s.page!.total>0;
- $('empty').textContent=ready?'לא נמצאו החלטות או פעולות להצגה בתכנית זו.':'התוצאה תופיע כאן לאחר בחירת תיקיות והפעלת בדיקה.';
+ $('empty').textContent=ready?'לא נמצאו קבצים למיון.':'התוצאה תופיע כאן לאחר בחירת תיקיות והפעלת בדיקה.';
  $('table-wrap').hidden=!ready||!s.page!.rows.length;
- $('count').textContent=ready?`${s.page!.total.toLocaleString('he-IL')} רשומות בתכנית`:'';
+ $('count').textContent=ready?`${s.page!.total.toLocaleString('he-IL')} ${developer?'רשומות':s.page!.total===1?'פריט':'פריטים'}${s.page!.skipped?` · ${s.page!.skipped.toLocaleString('he-IL')} דולגו`:''}`:'';
  $('rows').replaceChildren();
  if(ready)for(const row of s.page!.rows){
   const tr=document.createElement('tr');
-  const origin=document.createElement('td');origin.className='file-name';const name=text('bdi',sourceLabel(row.source,s.model?.platform),'source-name');name.dir='auto';name.title=row.source;origin.append(name);tr.append(origin);
-  const items=executionItems(row);const action=text('td',items.length?items.map(itemLabel).join(' · '):kindLabel(row.kind),'row-action');tr.append(action);
-  const reason=document.createElement('td');reason.className='row-reason';reason.append(text('span',`${kindLabel(row.kind)} · `,'mobile-action'),text('span',row.blockers.length?row.blockers.map(blockerLabel).join(' · '):reasonLabel(row)));tr.append(reason);
+  const origin=document.createElement('td');origin.className='file-name';const name=text('bdi',sourceLabel(row.source,s.model?.platform),'source-name');name.dir='auto';if(developer)name.title=row.source;origin.append(name);tr.append(origin);
+  const items=executionItems(row);const action=text('td',developer?(items.length?items.map(itemLabel).join(' · '):kindLabel(row.kind)):(row.artist??'—'),'row-action');action.dir='auto';tr.append(action);
+  const reason=document.createElement('td');reason.className='row-reason';reason.append(text('span',developer?`${kindLabel(row.kind)} · `:row.artist?`${row.artist} · `:'','mobile-action'),text('span',developer?(row.blockers.length?row.blockers.map(blockerLabel).join(' · '):reasonLabel(row)):simpleStatus(row,items,s.snapshot?.apply?.copy_mode??s.settings.copy_mode)));tr.append(reason);
   const detail=document.createElement('td');detail.className='row-detail';const button=document.createElement('button');button.className='icon-button detail-button';button.dataset.rowId=row.id;button.setAttribute('aria-label',`פרטים: ${sourceLabel(row.source,s.model?.platform)}`);button.append(iconElement('info'));button.addEventListener('click',()=>openRow(row,button));detail.append(button);tr.append(detail);$('rows').append(tr);
  }
  $('warnings').replaceChildren();$('technical-notices').replaceChildren();
  if(ready)for(const warning of s.snapshot!.warnings){
   const display=warningPresentation(warning);
   if(display.technical)$('technical-notices').append(text('p',warning));
-  else $('warnings').append(text('p',display.label,'warning'));
+  else if(developer)$('warnings').append(text('p',display.label,'warning'));
+  else if(!$('warnings').childElementCount)$('warnings').append(text('p','יש פריטים שדורשים בדיקה. עיין במצב של כל קובץ.','warning'));
  }
- $('details').hidden=!ready;$('plan-id').textContent=s.snapshot?.plan_id??'';$('blockers').textContent=s.snapshot?.blockers.join(' · ')||'ללא חסימות נוספות שדווחו.';
+ $('details').hidden=!ready||!developer;$('plan-id').textContent=s.snapshot?.plan_id??'';$('blockers').textContent=s.snapshot?.blockers.join(' · ')||'ללא חסימות נוספות שדווחו.';
  $('pagination').hidden=!ready||s.page!.total<=PAGE_SIZE;
  $('page-label').textContent=ready?`${s.offset+1}–${Math.min(s.offset+PAGE_SIZE,s.page!.total)} מתוך ${s.page!.total}`:'';
  renderExecution();

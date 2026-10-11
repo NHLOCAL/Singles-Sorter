@@ -6,7 +6,10 @@
       "id": "decision-0",
       "kind": "Album",
       "reason": "התיקייה אינה אלבום לפי כללי המיון",
-      "source": "מקור"
+      "source": "מקור",
+      "developer_only": true,
+      "artist": null,
+      "operation_ids": []
     },
     {
       "blockers": [],
@@ -14,8 +17,14 @@
       "id": "decision-1",
       "kind": "Single",
       "reason": "אברהם פריד",
-      "source": "אברהם פריד - בדיקה.mp3"
+      "source": "אברהם פריד - בדיקה.mp3",
+      "developer_only": false,
+      "artist": "אברהם פריד",
+      "operation_ids": [
+        0
+      ]
     }
   ],
-  "total": 2
+  "total": 2,
+  "skipped": 0
 }

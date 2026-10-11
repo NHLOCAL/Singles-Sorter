@@ -77,8 +77,9 @@ pub fn get_plan_page(
     job_id: String,
     offset: usize,
     limit: usize,
+    developer_mode: Option<bool>,
 ) -> Result<PlanPage, HostError> {
-    state.page(&job_id, offset, limit)
+    state.page_view(&job_id, offset, limit, developer_mode.unwrap_or(false))
 }
 #[tauri::command]
 pub async fn get_settings(

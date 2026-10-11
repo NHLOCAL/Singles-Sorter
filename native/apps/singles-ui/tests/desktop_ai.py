@@ -352,7 +352,7 @@ const invoke = (name, args) => window.__TAURI_INTERNALS__.invoke(name, args);
         return self.wait(poll, timeout=120)
 
     def page(self, job_id, error=None):
-        return self.ipc('get_plan_page', {'jobId': job_id, 'offset': 0, 'limit': 200}, error)
+        return self.ipc('get_plan_page', {'jobId': job_id, 'offset': 0, 'limit': 200, 'developerMode': True}, error)
 
     def preview(self, source, target, profile, expected='completed'):
         request = self.request(source, target, profile)

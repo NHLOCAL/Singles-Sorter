@@ -49,3 +49,13 @@ def exercise_information(command, script, click, wait, capture, root, output):
     return ['Actual pointer leave closes help immediately after hover and repeated clicks',
             'Actual keyboard help focus, Escape, Enter and Tab dismissal',
             'About shows packaged version, source lineage and expandable credits without horizontal overflow']
+
+
+def set_developer_mode(script, click, wait, enabled):
+    click('#menu')
+    if not script("return document.querySelector('.developer-options').open"):
+        click('.developer-options summary')
+    if script("return document.querySelector('#developer-mode').checked") != enabled:
+        click('#developer-mode')
+    wait(lambda: script("return document.querySelector('#app').dataset.developerMode") == str(enabled).lower())
+    click('#menu-dialog .close-dialog')

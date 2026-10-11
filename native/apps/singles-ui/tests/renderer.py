@@ -45,10 +45,21 @@ window.__TAURI_INTERNALS__={invoke:async(command,args={})=>{
  }
  if(command==='cancel_preview')return null;
  if(command==='job_snapshot')return {host_schema:1,job_id:'renderer-fixture',status:window.__jobStatus??'completed',plan_id:'renderer-fixture-not-native',total_rows:2,blockers:['PHYSICAL_APPLY_UNAVAILABLE'],warnings:['Effects and counters are predicted; no files or tags were changed','AI intentionally disabled; no native inference bundle is used','Unknown actionable fixture warning']};
- if(command==='get_plan_page')return window.__realHostFixture;
+ if(command==='get_plan_page'){const rows=window.__realHostFixture.rows.filter(row=>args.developerMode||!row.developer_only);return {rows:rows.slice(args.offset,args.offset+args.limit),total:rows.length,skipped:rows.filter(row=>row.kind==='Single'&&!row.operation_ids?.length).length};}
  throw new Error('Unexpected mock command '+command);
 }};
 """
+def developer_mode(page, enabled):
+    page.locator('#menu').click()
+    if not page.locator('.developer-options').evaluate('el=>el.open'):
+        page.locator('.developer-options summary').click()
+    if enabled:
+        page.locator('#developer-mode').check()
+    else:
+        page.locator('#developer-mode').uncheck()
+    expect(page.locator('#app')).to_have_attribute('data-developer-mode',str(enabled).lower())
+    page.locator('#menu-dialog .close-dialog').click()
+
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *_):
         pass
@@ -150,17 +161,33 @@ try:
         page.locator('#target').fill('D:\\מוזיקה')
         page.locator('#singles_folder').uncheck()
         page.locator('#sort').click()
-        expect(page.locator('#rows tr')).to_have_count(2)
+        expect(page.locator('#rows tr')).to_have_count(1)
         expect(page.locator('#rows img')).to_have_count(0)
         expect(page.locator('#rows')).to_contain_text('אברהם פריד - בדיקה.mp3')
-        expect(page.locator('#rows')).to_contain_text('בדיקת אלבום')
-        expect(page.locator('#rows')).to_contain_text('בדיקת שיר')
+        expect(page.locator('#rows')).to_contain_text('להעברה')
+        expect(page.locator('#rows')).not_to_contain_text('בדיקת אלבום')
+        expect(page.locator('#rows')).not_to_contain_text('לפי כללי')
+        expect(page.locator('#details')).to_be_hidden()
         assert page.evaluate("window.__calls.find(c=>c.command==='start_preview').args.request.settings.singles_folder") is False
         expect(page.locator('#warnings .warning')).to_have_count(1)
+        expect(page.locator('#warnings')).to_contain_text('דורשים בדיקה')
+        expect(page.locator('#warnings')).not_to_contain_text('Unknown actionable')
+        page.screenshot(path=str(OUTPUT/'renderer-results-simple.png'),full_page=True)
+        page.locator('#rows .detail-button').click()
+        expect(page.locator('#row-content')).not_to_contain_text('מידע טכני')
+        expect(page.locator('#row-content .source-path')).to_have_count(0)
+        page.keyboard.press('Escape')
+        developer_mode(page,True)
+        expect(page.locator('#rows tr')).to_have_count(2)
+        expect(page.locator('#rows')).to_contain_text('בדיקת אלבום')
         expect(page.locator('#warnings')).to_have_text('Unknown actionable fixture warning')
         expect(page.locator('#technical-notices')).to_contain_text('Effects and counters are predicted')
         expect(page.locator('#technical-notices')).to_contain_text('AI intentionally disabled')
-        checks.append('Sort sends explicit false and preserves routine notices only in technical details while unknown warnings remain visible')
+        expect(page.locator('#details')).to_be_visible()
+        page.screenshot(path=str(OUTPUT/'renderer-results-developer.png'),full_page=True)
+        developer_mode(page,False)
+        expect(page.locator('#rows tr')).to_have_count(1)
+        checks.append('Ordinary results hide routine folder diagnostics and technical text; developer mode restores complete evidence with correct pagination')
         page.locator('#back-setup').click()
         expect(page.locator('#setup-screen')).to_be_visible()
         page.evaluate("window.__realHostFixture.rows[1].source='<img src=x onerror=alert(1)>.mp3'")
@@ -168,6 +195,7 @@ try:
         expect(page.locator('#rows')).to_contain_text('<img src=x onerror=alert(1)>.mp3')
         expect(page.locator('#rows img')).to_have_count(0)
         checks.append('Additional hostile filename remains literal text without HTML execution')
+        developer_mode(page,True)
         page.evaluate("document.querySelector('#warnings').textContent='אזהרה ארוכה '.repeat(500); document.querySelector('#details').open=true")
         page.wait_for_timeout(100)
         assert_layout(page.evaluate('() => {'+METRICS+'}'))
@@ -183,6 +211,9 @@ try:
         windows_page.locator('#source').fill('C:\\Music')
         windows_page.locator('#target').fill('D:\\Music')
         windows_page.locator('#sort').click()
+        expect(windows_page.locator('#rows tr')).to_have_count(1)
+        expect(windows_page.locator('#rows .source-name')).not_to_have_attribute('title',long_source)
+        developer_mode(windows_page,True)
         source_summary=windows_page.locator('#rows tr').nth(1).locator('.source-name')
         expect(source_summary).to_have_text('אברהם פריד - בדיקה.mp3')
         expect(source_summary).to_have_attribute('title',long_source)
@@ -404,6 +435,7 @@ try:
         touch_page.add_init_script('window.__realHostFixture='+json.dumps(REAL_PAGE,ensure_ascii=False)+';'+MOCK)
         touch_page.goto(f'http://127.0.0.1:{server.server_port}/')
         expect(touch_page.locator('#sort')).to_be_enabled()
+        expect(touch_page.locator('#app')).to_have_attribute('data-developer-mode','false')
         touch_badge=touch_page.locator('[aria-label="עזרה: תיקית מקור"]')
         touch_badge.tap()
         expect(touch_page.locator('#context-help')).to_be_visible()

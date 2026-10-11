@@ -13,6 +13,7 @@ const blockers:Record<string,string>={
  PhysicalApplyUnavailable:'ביצוע שינויים אינו זמין בגרסה זו',
  'Observation(PhysicalApplyUnavailable)':'ביצוע שינויים אינו זמין בגרסה זו',
  RECOGNITION_UNAVAILABLE:'מודל הזיהוי הדרוש אינו זמין',
+ ALBUM_READ_ERROR:'לא ניתן היה להשלים את בדיקת התיקייה',
  UNRECOGNIZED_ARTIST:'לא זוהה אמן',
  UnsafeIntendedName:'שם היעד המוצע אינו בטוח',EmptyIntendedName:'שם היעד המוצע ריק',
  RenameMustSucceedAndRebindOriginal:'כתיבת תגיות תלויה בהצלחת שינוי השם ובאימות אותו קובץ',

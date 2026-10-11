@@ -30,7 +30,7 @@ describe('read-only preview controller',()=>{
 
  it('keeps native failure distinct from empty success',async()=>{const h=host();h.snapshot=async()=>({...snapshot,status:'failed',error:'SOURCE_CHANGED'});const c=await ready(h);c.editRoot('Source','C:\\source');await c.preview('FixNames');expect(c.state.error).toBe('SOURCE_CHANGED');expect(c.state.page).toBeNull();});
  it('renders a truly empty plan without invented rows',async()=>{const h=host();h.snapshot=async()=>({...snapshot,total_rows:0});h.page=async()=>({total:0,rows:[]});const c=await ready(h);c.editRoot('Source','C:\\source');await c.preview('FixNames');expect(c.state.page).toEqual({total:0,rows:[]});expect(c.state.error).toBeNull();});
- it('bounds paging and preserves order from the host',async()=>{const h=host();h.snapshot=async()=>({...snapshot,total_rows:101});h.page=vi.fn(async()=>({total:101,rows:[]}));const c=await ready(h);c.editRoot('Source','C:\\source');await c.preview('FixNames');await c.changePage(-1);await c.changePage(1.5);await c.changePage(101);expect(h.page).toHaveBeenCalledTimes(1);await c.changePage(50);expect(h.page).toHaveBeenLastCalledWith('j1',50,50);expect(c.state.offset).toBe(50);});
+ it('bounds paging and preserves order from the host',async()=>{const h=host();h.snapshot=async()=>({...snapshot,total_rows:101});h.page=vi.fn(async()=>({total:101,rows:[]}));const c=await ready(h);c.editRoot('Source','C:\\source');await c.preview('FixNames');await c.changePage(-1);await c.changePage(1.5);await c.changePage(101);expect(h.page).toHaveBeenCalledTimes(1);await c.changePage(50);expect(h.page).toHaveBeenLastCalledWith('j1',50,50,false);expect(c.state.offset).toBe(50);});
 });
 
 describe('asynchronous preview ownership',()=>{
@@ -144,5 +144,34 @@ describe('authoritative lost job response',()=>{
    const c=await ready(h);await c.selectRoot('Source');const pending=c.preview('FixNames');await vi.advanceTimersByTimeAsync(250);await pending;
    expect(h.snapshot).toHaveBeenCalledTimes(2);expect(c.state.busy).toBe(false);expect(c.state.snapshot).toBeNull();expect(c.state.page).toBeNull();expect(c.state.error).toContain('אינה זמינה');expect(h.page).not.toHaveBeenCalled();
   }finally{vi.useRealTimers();}
+ });
+});
+
+describe('ordinary and developer result views',()=>{
+ it('starts simple and refetches from offset zero without changing the plan or settings',async()=>{
+  const h=host(),c=await ready(h);c.editRoot('Source','C:\\Music');await c.preview('FixNames');
+  const plan=c.state.snapshot,settings={...c.state.settings};
+  expect(c.state.developerMode).toBe(false);
+  expect(h.page).toHaveBeenLastCalledWith('j1',0,50,false);
+  c.state.offset=50;await c.setDeveloperMode(true);
+  expect(h.page).toHaveBeenLastCalledWith('j1',0,50,true);
+  expect(c.state.offset).toBe(0);expect(c.state.developerMode).toBe(true);
+  expect(c.state.snapshot).toBe(plan);expect(c.state.settings).toEqual(settings);
+  await c.setDeveloperMode(false);expect(h.page).toHaveBeenLastCalledWith('j1',0,50,false);
+  expect(h.startPreview).toHaveBeenCalledTimes(1);
+ });
+ it('bounds ordinary pagination against filtered total rather than technical snapshot rows',async()=>{
+  const h=host();h.snapshot=async()=>({...snapshot,total_rows:120});h.page=vi.fn(async()=>({total:1,rows:[]}));
+  const c=await ready(h);c.editRoot('Source','C:\\Music');await c.preview('FixNames');await c.changePage(50);
+  expect(h.page).toHaveBeenCalledTimes(1);expect(c.state.offset).toBe(0);
+ });
+ it('preserves the current view if fetching the other view fails',async()=>{
+  const h=host(),c=await ready(h);c.editRoot('Source','C:\\Music');await c.preview('FixNames');const page=c.state.page;
+  h.page=async()=>{throw new Error('offline');};await c.setDeveloperMode(true);
+  expect(c.state.developerMode).toBe(false);expect(c.state.page).toBe(page);expect(c.state.error).toBe('offline');
+ });
+ it('cannot switch projections while another operation owns the host',async()=>{
+  const h=host(),c=await ready(h);c.state.busy=true;await c.setDeveloperMode(true);
+  expect(c.state.developerMode).toBe(false);expect(h.page).not.toHaveBeenCalled();
  });
 });

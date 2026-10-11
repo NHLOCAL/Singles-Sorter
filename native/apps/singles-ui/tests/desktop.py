@@ -23,7 +23,7 @@ from native_fixtures import write_import_csv
 from desktop_layout import check_native_layout, capture_platform_fonts, check_phone_layout, assert_editor_actions, METRICS
 from desktop_ai import DesktopAI, ProtectedTrees, ai_mode, verify_package, REQUIRED_CHECKS
 from desktop_apply import exercise_apply
-from desktop_polish import exercise_information
+from desktop_polish import exercise_information, set_developer_mode
 
 ROOT = Path(__file__).resolve().parents[1]
 if os.name != 'nt' or os.environ.get('GITHUB_ACTIONS') != 'true':
@@ -185,10 +185,19 @@ try:
         check_phone_layout(command,script,capture,OUTPUT,'02-native-results')
         click('#rows tr:last-child .detail-button')
         wait(lambda:script("return document.querySelector('#row-dialog').open"))
+        assert script("return document.querySelectorAll('#row-dialog .source-path').length") == 0
+        assert 'אברהם פריד' in text('#row-content')
+        capture('02-native-simple-result-details')
+        click('#row-close')
+        set_developer_mode(script, click, wait, True)
+        capture('02-native-developer-results')
+        click('#rows tr:last-child .detail-button')
         assert script("return document.querySelector('#row-dialog .source-path').value") == str(media)
         capture('02-native-result-details')
         click('#row-close')
         wait(lambda:not script("return document.querySelector('#row-dialog').open"))
+        set_developer_mode(script, click, wait, False)
+        assert script("return document.querySelector('#details').hidden")
         assert media.is_file() and hashlib.sha256(media.read_bytes()).hexdigest() == before
         assert list(target.iterdir()) == []
         fixture_guard.verify('after-sort-preview')

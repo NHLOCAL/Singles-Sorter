@@ -47,3 +47,30 @@ captures About/help screenshots alongside existing staged/extracted package
 checks. These runtime checks must pass on the final candidate before describing
 this polish as visually or natively verified. No local browser/runtime success
 is inferred from unit tests or a successful build.
+
+## Ordinary results and developer mode
+
+The ordinary view shows the file/item name, structured artist and a short
+planned/actual status. Its detail dialog gives a concise skip/error reason only
+when requested. It does not expose raw classification reasons, plan hashes,
+journals, recovery counters or full technical paths. Unknown warnings still
+produce a concise visible caution; errors, partial completion, cancellation and
+retained source files remain visible. Missing final counters never become a
+claim that no effects occurred. Copy totals say copies, not distinct source
+files, so duet destinations cannot inflate a completed-file count.
+
+An explicit `מצב מפתחים` switch lives under `אפשרויות תצוגה` in the information
+menu. Fresh storage defaults off. Only this display preference is saved locally;
+it does not change the six sorting settings, any plan or execution authority.
+Switching views refetches page zero from the same retained plan. A failed fetch
+keeps the existing mode/page. Switching is disabled while work owns the host.
+
+The native page endpoint filters structured `developer_only` rows **before**
+pagination. Only non-album inspections with no associated operations and no
+`FileError`/`ProtectedError` trace qualify as routine. Recognized album actions,
+read errors and vanished sources remain visible. Album inspection errors gain
+an `ALBUM_READ_ERROR` display marker; the underlying plan/engine is untouched.
+Structured artist data is projected directly from the decision, not parsed from
+human explanation text. The full developer rows remain available, as do the
+unchanged CLI protocol and raw evidence. Native AI acceptance explicitly asks
+for the developer projection when comparing full-plan evidence.

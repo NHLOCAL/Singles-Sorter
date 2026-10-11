@@ -160,11 +160,14 @@ pub struct DisplayRow {
     pub reason: String,
     pub blockers: Vec<String>,
     pub operation_ids: Vec<usize>,
+    pub artist: Option<String>,
+    pub developer_only: bool,
 }
 #[derive(Serialize)]
 pub struct PlanPage {
     pub rows: Vec<DisplayRow>,
     pub total: usize,
+    pub skipped: usize,
 }
 struct Planned {
     plan: JobPlanV2,
@@ -550,7 +553,17 @@ impl Host {
             .snapshot
             .clone())
     }
+    #[cfg(test)]
     pub fn page(&self, id: &str, offset: usize, limit: usize) -> Result<PlanPage> {
+        self.page_view(id, offset, limit, true)
+    }
+    pub fn page_view(
+        &self,
+        id: &str,
+        offset: usize,
+        limit: usize,
+        developer_mode: bool,
+    ) -> Result<PlanPage> {
         if limit == 0 || limit > MAX_PAGE {
             return Err(HostError::new(
                 "INVALID_PAGE",
@@ -569,15 +582,26 @@ impl Host {
                 "Only completed jobs have result pages",
             ));
         }
-        if offset > job.rows.len() {
+        let visible: Vec<_> = job
+            .rows
+            .iter()
+            .filter(|row| developer_mode || !row.developer_only)
+            .collect();
+        if offset > visible.len() {
             return Err(HostError::new(
                 "INVALID_PAGE",
                 "Offset exceeds the available rows",
             ));
         }
+        let total = visible.len();
+        let skipped = visible
+            .iter()
+            .filter(|row| row.kind == "Single" && row.operation_ids.is_empty())
+            .count();
         Ok(PlanPage {
-            rows: job.rows.iter().skip(offset).take(limit).cloned().collect(),
-            total: job.rows.len(),
+            rows: visible.into_iter().skip(offset).take(limit).cloned().collect(),
+            total,
+            skipped,
         })
     }
 }
@@ -872,6 +896,8 @@ fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
                     ),
                     blockers: f.blockers.iter().map(|b| format!("{b:?}")).collect(),
                     operation_ids: vec![op.id],
+                    artist: None,
+                    developer_only: false,
                 },
                 _ => unreachable!("fix planner only emits fix operations"),
             })
@@ -920,7 +946,20 @@ fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
                 }
             };
             let mut destinations = vec![];
+            let inspection_error = match d {
+                DecisionV2::Album { decision, .. } => decision.trace.iter().any(|event| {
+                    matches!(
+                        event,
+                        sorter_core::album::AlbumTraceEvent::ProtectedError { .. }
+                            | sorter_core::album::AlbumTraceEvent::FileError { .. }
+                    )
+                }),
+                _ => false,
+            };
             let mut blockers = vec![];
+            if inspection_error {
+                blockers.push("ALBUM_READ_ERROR".into());
+            }
             for op in operations_by_source
                 .get(&read.source.reference)
                 .into_iter()
@@ -946,6 +985,16 @@ fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
             }
             DisplayRow {
                 id: format!("decision-{i}"),
+                artist: match d {
+                    DecisionV2::Single { artists, .. } => {
+                        (!artists.is_empty()).then(|| artists.join("; "))
+                    }
+                    DecisionV2::Album { decision, .. } => decision.artist_name.clone(),
+                    _ => None,
+                },
+                developer_only: matches!(d, DecisionV2::Album { decision, .. } if !decision.is_album)
+                    && operations_by_source.get(&read.source.reference).is_none()
+                    && !inspection_error,
                 source: entry_display(&read.source),
                 kind: kind.into(),
                 destination: (!destinations.is_empty()).then(|| destinations.join("; ")),
@@ -1057,6 +1106,68 @@ mod tests {
     }
     #[cfg(any(windows, target_os = "linux"))]
     #[test]
+    fn ordinary_pages_filter_before_offset_and_preserve_errors_and_skips() {
+        let directory = tempfile::tempdir().unwrap();
+        let host = Host::default();
+        let source = host
+            .select_path(Role::Source, directory.path().into())
+            .unwrap();
+        let job = host
+            .preview(request(source.token, None, JobMode::FixNames))
+            .unwrap();
+        {
+            let mut inner = host.lock().unwrap();
+            inner.job.as_mut().unwrap().rows = (0..120)
+                .map(|index| DisplayRow {
+                    id: format!("row-{index}"),
+                    source: format!("file-{index}"),
+                    kind: match index {
+                        30 => "Single",
+                        60 => "ItemError",
+                        90 => "Vanished",
+                        _ => "Album",
+                    }
+                    .into(),
+                    destination: None,
+                    reason: "technical-only evidence".into(),
+                    blockers: vec![],
+                    operation_ids: vec![],
+                    artist: None,
+                    developer_only: !matches!(index, 30 | 60 | 90),
+                })
+                .collect();
+        }
+        let first = host.page_view(&job.job_id, 0, 1, false).unwrap();
+        assert_eq!(first.total, 3);
+        assert_eq!(first.skipped, 1);
+        assert_eq!(first.rows[0].id, "row-30");
+        assert_eq!(
+            host.page_view(&job.job_id, 1, 1, false).unwrap().rows[0].id,
+            "row-60"
+        );
+        assert_eq!(
+            host.page_view(&job.job_id, 2, 1, false).unwrap().rows[0].kind,
+            "Vanished"
+        );
+        assert!(
+            host.page_view(&job.job_id, 3, 1, false)
+                .unwrap()
+                .rows
+                .is_empty()
+        );
+        assert!(host.page_view(&job.job_id, usize::MAX, 1, false).is_err());
+        let technical = host.page_view(&job.job_id, 0, 200, true).unwrap();
+        assert_eq!(technical.total, 120);
+        assert_eq!(technical.skipped, 1);
+        assert!(
+            technical
+                .rows
+                .iter()
+                .all(|row| row.reason == "technical-only evidence")
+        );
+    }
+    #[cfg(any(windows, target_os = "linux"))]
+    #[test]
     fn real_metadata_fixture_preview_never_writes() {
         let d = tempfile::tempdir().unwrap();
         let src = d.path().join("מקור");
@@ -1084,6 +1195,68 @@ mod tests {
         assert!(snap.total_rows > 0);
         let page = h.page(&job.job_id, 0, 200).unwrap();
         assert_eq!(page.total, snap.total_rows);
+        let simple = h.page_view(&job.job_id, 0, 200, false).unwrap();
+        assert_eq!(simple.total, 1);
+        assert_eq!(simple.skipped, 0);
+        assert_eq!(simple.rows[0].kind, "Single");
+        assert_eq!(simple.rows[0].artist.as_deref(), Some("אברהם פריד"));
+        assert!(page.rows.iter().any(|row| row.developer_only));
+        {
+            let inner = h.lock().unwrap();
+            let mut plan = inner.job.as_ref().unwrap()._plan.as_ref().unwrap().clone();
+            let (read, mut decision) = plan
+                .decisions
+                .iter()
+                .find_map(|item| match item {
+                    DecisionV2::Album { read, decision } => Some((read.clone(), decision.clone())),
+                    _ => None,
+                })
+                .unwrap();
+            let mut actionable = plan.clone();
+            if let OperationKind::SingleTransfer { source, .. } = &mut actionable.operations[0].kind {
+                *source = read.source.clone();
+            }
+            assert!(!project_rows(&actionable)[0].developer_only);
+            // A recognized album, error or vanished source is never routine noise.
+            decision.is_album = true;
+            plan.decisions = vec![
+                DecisionV2::Album {
+                    read: read.clone(),
+                    decision,
+                },
+                DecisionV2::ItemError {
+                    read: read.clone(),
+                    error: "owned read error".into(),
+                },
+                DecisionV2::Vanished { read },
+            ];
+            assert!(project_rows(&plan).iter().all(|row| !row.developer_only));
+            let mut album = plan.decisions[0].clone();
+            if let DecisionV2::Album { read, decision } = &mut album {
+                decision.is_album = false;
+                for error in [
+                    sorter_core::album::AlbumTraceEvent::ProtectedError {
+                        kind: "owned error".into(),
+                    },
+                    sorter_core::album::AlbumTraceEvent::FileError {
+                        source: read.source.reference.clone(),
+                        kind: "owned file error".into(),
+                    },
+                ] {
+                    decision.trace = vec![error];
+                    let test_plan = JobPlanV2 {
+                        decisions: vec![DecisionV2::Album {
+                            read: read.clone(),
+                            decision: decision.clone(),
+                        }],
+                        ..plan.clone()
+                    };
+                    let projected = project_rows(&test_plan);
+                    assert!(!projected[0].developer_only);
+                    assert!(projected[0].blockers.contains(&"ALBUM_READ_ERROR".into()));
+                }
+            }
+        }
         let root_json = serde_json::to_value(&s).unwrap();
         assert_eq!(
             root_json
@@ -1120,14 +1293,16 @@ mod tests {
                 .keys()
                 .cloned()
                 .collect::<Vec<_>>(),
-            ["rows", "total"]
+            ["rows", "skipped", "total"]
         );
         for row in page_json["rows"].as_array().unwrap() {
             assert_eq!(
                 row.as_object().unwrap().keys().cloned().collect::<Vec<_>>(),
                 [
+                    "artist",
                     "blockers",
                     "destination",
+                    "developer_only",
                     "id",
                     "kind",
                     "operation_ids",
