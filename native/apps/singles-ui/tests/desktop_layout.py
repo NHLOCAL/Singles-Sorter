@@ -80,6 +80,17 @@ def check_phone_layout(command, script, capture, output, label):
             metrics=script(METRICS)
             assert abs(metrics['innerWidth']-width)<=1,metrics
             assert_layout(metrics,require_bounded=False)
+            for dialog in metrics['dialogs']:
+                bounds=dialog['rect']
+                assert dialog['scrollWidth'] <= dialog['clientWidth']+1,dialog
+                assert bounds['x'] >= 0 and bounds['right'] <= metrics['innerWidth']+1,dialog
+                assert bounds['y'] >= 0 and bounds['bottom'] <= metrics['innerHeight']+1,dialog
+                for control in dialog['controls']:
+                    box=control['rect']
+                    assert box['x'] >= bounds['x']-1 and box['right'] <= bounds['right']+1,control
+                    assert box['bottom']-bounds['y']+dialog['scrollTop'] <= dialog['scrollHeight']+2,control
+                    if control['tag'] in ['BUTTON','SELECT'] or control['tag']=='INPUT' and control['type'] not in ['checkbox','radio']:
+                        assert box['height'] >= 48,control
             receipts.append(metrics);capture(f'{label}-{width}px')
     finally:
         command('POST','/window/rect',original)

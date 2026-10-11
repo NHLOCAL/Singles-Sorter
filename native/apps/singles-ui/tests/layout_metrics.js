@@ -10,6 +10,7 @@ return (() => {
   results:rect(document.getElementById('results')),resultsBody:rect(body),resultsScrollHeight:body.scrollHeight,
   rowHeights:Array.from(document.querySelectorAll('#rows tr')).map(el=>el.getBoundingClientRect().height),
   resultsOverflow:getComputedStyle(body).overflowY,controls,
+  dialogs:Array.from(document.querySelectorAll('dialog[open]')).map(dialog=>({rect:rect(dialog),scrollWidth:dialog.scrollWidth,clientWidth:dialog.clientWidth,scrollHeight:dialog.scrollHeight,scrollTop:dialog.scrollTop,controls:Array.from(dialog.querySelectorAll('button,input,select,summary,a')).filter(el=>el.getClientRects().length).map(el=>({id:el.id,tag:el.tagName,type:el.getAttribute('type'),rect:rect(el)}))})),
   fonts:Object.fromEntries(['body','h1','h2','.option'].map(selector=>{const el=document.querySelector(selector),style=getComputedStyle(el);return [selector,{family:style.fontFamily,size:style.fontSize,lineHeight:style.lineHeight,weight:style.fontWeight,rect:rect(el)}];})),
   segoeFontCheckNotActualGlyphProof:document.fonts.check('14px "Segoe UI"'),openDialogs:document.querySelectorAll('dialog[open]').length};
 })();
