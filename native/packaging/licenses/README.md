@@ -87,7 +87,7 @@ not proof that a Windows executable was built or executed.
 
 ## Separate desktop profile
 
-`--profile desktop` selects `singles-ui-host` with `desktop,original-ai` from
+`--profile desktop` selects `singles-ui-host` with `desktop,original-ai,tauri/custom-protocol` from
 `native/apps/singles-ui/src-tauri/Cargo.toml`; omitted `--profile` remains CLI.
 It requires the reviewed desktop Cargo lock and exact feature/normal-build
 graph (266 packages), the reviewed frontend lock and assets, the installed
@@ -105,7 +105,7 @@ python native/packaging/licenses/collect_licenses.py --profile desktop \
 Reusable desktop metadata must come from:
 
 ```
-cargo metadata --format-version 1 --manifest-path native/apps/singles-ui/src-tauri/Cargo.toml --locked --features desktop,original-ai --filter-platform x86_64-pc-windows-msvc
+cargo metadata --format-version 1 --manifest-path native/apps/singles-ui/src-tauri/Cargo.toml --locked --features desktop,original-ai,tauri/custom-protocol --filter-platform x86_64-pc-windows-msvc
 ```
 
 Desktop output adds full MPL-2.0 source archives, frontend API/helper and icon
