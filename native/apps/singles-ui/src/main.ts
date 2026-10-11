@@ -160,8 +160,8 @@ function render(){
  $<HTMLSelectElement>('ai-profile').value=s.ai;
  $('model-status').textContent=s.model?.available?'זמין':'לא זמין';
  $('model-help').dataset.helpText=s.model?.message??'לא התקבל מצב המודל מהמארח.';
- $('connection').hidden=s.hostAvailable||!s.initialized;
- $('connection').textContent='המארח המקומי אינו מחובר. יש לפתוח את התוכנה כדי לבדוק תיקיות.';
+ $('connection').hidden=s.hostAvailable;
+ $('connection').textContent=!s.initialized?(s.startupWaiting?'ממתין לסיום הבדיקה הקודמת…':'טוען את המארח המקומי…'):'המארח המקומי אינו מחובר. יש לפתוח את התוכנה כדי לבדוק תיקיות.';
  $('settings-label').textContent=controller.settingsDirty?'שינויים שלא נשמרו':'ההגדרות שלך';$('settings-notice').textContent=noticeLabel(controller.savedNotice);$<HTMLButtonElement>('save-settings').disabled=blocked;$('settings-error').hidden=!s.error;$('settings-error').textContent=s.error??'';
  $<HTMLButtonElement>('cancel-preview').disabled=!s.busy||s.cancelRequested;
  $('busy').textContent=s.cancelRequested&&s.activity==='preview'?'מבטל את הבדיקה…':s.activity==='settings'?'שומר הגדרות…':s.activity==='page'?'טוען עמוד תוצאות…':'קורא ומנתח את הקבצים…';

@@ -120,3 +120,19 @@ describe('asynchronous preview ownership',()=>{
   expect(c.state.page).toBeNull();expect(h.cancelPreview).not.toHaveBeenCalled();expect(c.state.busy).toBe(false);
  });
 });
+
+describe('reload startup recovery',()=>{
+ it('waits through BUSY until the old cancelled worker releases the host',async()=>{
+  vi.useFakeTimers();try{
+   const h=host();h.getModelStatus=vi.fn().mockRejectedValueOnce({code:'BUSY',message:'old worker'}).mockRejectedValueOnce({code:'BUSY',message:'draining'}).mockResolvedValue({available:true,message:'verified',platform:'windows'});
+   const c=new PreviewController(h),pending=c.initialize();await vi.advanceTimersByTimeAsync(0);
+   expect(c.state.initialized).toBe(false);expect(c.state.startupWaiting).toBe(true);expect(c.state.hostAvailable).toBe(false);expect(c.state.error).toBeNull();
+   await vi.advanceTimersByTimeAsync(500);await pending;
+   expect(h.getModelStatus).toHaveBeenCalledTimes(3);expect(c.state.initialized).toBe(true);expect(c.state.startupWaiting).toBe(false);expect(c.state.hostAvailable).toBe(true);expect(c.state.ai).toBe('Disabled');
+  }finally{vi.useRealTimers();}
+ });
+ it('does not retry a model status transport failure as BUSY',async()=>{
+  const h=host();h.getModelStatus=vi.fn().mockRejectedValue({code:'WORKER_FAILED',message:'probe failed'});const c=await ready(h);
+  expect(h.getModelStatus).toHaveBeenCalledTimes(1);expect(c.state.initialized).toBe(true);expect(c.state.hostAvailable).toBe(false);expect(c.state.error).toBe('probe failed');
+ });
+});

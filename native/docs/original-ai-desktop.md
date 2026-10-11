@@ -46,6 +46,9 @@ terminal state. A shared monotonic signal reaches planning and both original
 inference components. Cancelling before the start reply is remembered by the
 renderer and sent once the ID arrives. Back navigation requests cancellation;
 new work and setting edits remain blocked until terminal acknowledgement.
+After reload, initialization retries only transient host `BUSY` replies while
+the previous cancelled worker drains; it does not permanently mark the host
+disconnected. Other startup failures remain explicit errors.
 
 Result acceptance and cancellation share the host state lock. A cancelled job
 cannot publish a success or expose partial pages, and an obsolete worker cannot
@@ -55,7 +58,9 @@ failed, running and cancelled jobs use null, because their discarded inference
 may have begun. Plan binding and physical-apply blockers remain unchanged.
 
 Page reload, window close and window destruction request cancellation of both
-planning and the startup model probe. There are no detached child processes.
+planning and the startup model probe. A lifecycle generation check also rejects
+a queued start or queued model probe from a closed/reloaded view before either
+can launch. There are no detached child processes.
 Cancellation is cooperative; it does not forcibly interrupt an operating-system
 filesystem read. Model loading is authenticated and bounded and checks the token
 between loading phases. The application makes no hard real-time shutdown claim.

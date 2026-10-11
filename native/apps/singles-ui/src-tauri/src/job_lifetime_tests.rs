@@ -90,7 +90,7 @@ fn obsolete_worker_cannot_replace_newer_job_and_reload_cancels_owner() {
 fn feature_off_or_missing_models_never_advertise_availability() {
     let directory = tempfile::tempdir().unwrap();
     let host = Host::with_model_directory(directory.path().join("missing"));
-    assert!(!host.model_status().available);
+    assert!(!host.model_status(&host.claim().unwrap()).unwrap().available);
 }
 #[test]
 fn async_job_releases_busy_for_repeat_after_completion() {
@@ -141,7 +141,7 @@ fn original_models_real_plan_cancel_corruption_and_read_only() {
     let song = source.join("שירת הלב.mp3");
     std::fs::write(&song, &bytes).unwrap();
     let host = Host::with_model_directory(models.clone());
-    assert!(host.model_status().available);
+    assert!(host.model_status(&host.claim().unwrap()).unwrap().available);
     let s = host.select_path(Role::Source, source.clone()).unwrap();
     let t = host.select_path(Role::Target, target.clone()).unwrap();
     let make = || {
@@ -203,7 +203,10 @@ fn original_models_real_plan_cancel_corruption_and_read_only() {
             } else {
                 std::fs::remove_file(&path).unwrap();
             }
-            assert!(!host.model_status().available, "{name} corrupt={corrupt}");
+            assert!(
+                !host.model_status(&host.claim().unwrap()).unwrap().available,
+                "{name} corrupt={corrupt}"
+            );
             let job = host.start(make(), vec![], host.claim().unwrap()).unwrap();
             let snapshot = terminal(&host, &job.job_id);
             assert_eq!(snapshot.status, "failed");
@@ -248,4 +251,16 @@ fn lifecycle_cancel_also_signals_startup_model_probe() {
     host.lock().unwrap().model_probe = Some(cancellation.clone());
     host.cancel_active();
     assert!(cancellation.is_cancelled());
+}
+
+#[test]
+fn queued_model_probe_does_not_start_after_view_reload() {
+    let host = Host::default();
+    let guard = host.claim().unwrap();
+    host.cancel_active();
+    assert_eq!(
+        host.model_status(&guard).err().unwrap().code,
+        "PLANNING_CANCELLED"
+    );
+    assert!(host.lock().unwrap().model_probe.is_none());
 }

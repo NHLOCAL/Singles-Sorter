@@ -721,9 +721,16 @@ pub struct ModelStatus {
     pub platform: &'static str,
 }
 impl Host {
-    pub fn model_status(&self) -> ModelStatus {
+    pub fn model_status(&self, guard: &BusyGuard) -> Result<ModelStatus> {
         let cancellation = Cancellation::default();
-        if let Ok(mut inner) = self.lock() {
+        {
+            let mut inner = self.lock()?;
+            if guard.lifecycle != self.shared.lifecycle.load(Ordering::Acquire) {
+                return Err(HostError::new(
+                    "PLANNING_CANCELLED",
+                    "The owning view was closed or reloaded",
+                ));
+            }
             inner.model_probe = Some(cancellation.clone());
         }
         let result = recognition(
@@ -734,7 +741,7 @@ impl Host {
         if let Ok(mut inner) = self.lock() {
             inner.model_probe = None;
         }
-        ModelStatus {
+        Ok(ModelStatus {
             available: result.is_ok(),
             platform: platform(),
             message: match result {
@@ -749,7 +756,7 @@ impl Host {
                     }
                 }
             },
-        }
+        })
     }
 }
 fn entry_display(entry: &EntryObservation) -> String {

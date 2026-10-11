@@ -5,7 +5,7 @@ const rootKeys = {Source:'source',Target:'target'} as const;
 export interface RootInput {text:string;selection:RootSelection|null;pending:boolean;revision:number}
 export interface State {
   source:RootInput;target:RootInput;settings:Settings;model:ModelStatus|null;
-  initialized:boolean;hostAvailable:boolean;busy:boolean;cancelRequested:boolean;activity:'preview'|'settings'|'page'|null;error:string|null;
+  initialized:boolean;startupWaiting:boolean;hostAvailable:boolean;busy:boolean;cancelRequested:boolean;activity:'preview'|'settings'|'page'|null;error:string|null;
   snapshot:Snapshot|null;page:PlanPage|null;offset:number;ai:'Disabled'|'Configured';
 }
 const newRoot = ():RootInput => ({text:'',selection:null,pending:false,revision:0});
@@ -31,7 +31,7 @@ export function errorText(error:unknown):string {
   return 'הפעולה לא הושלמה. נסה שוב לאחר בדיקת החיבור לתוכנה.';
 }
 export class PreviewController {
-  readonly state:State={source:newRoot(),target:newRoot(),settings:{...defaults},model:null,initialized:false,hostAvailable:false,busy:false,cancelRequested:false,activity:null,error:null,snapshot:null,page:null,offset:0,ai:'Disabled'};
+  readonly state:State={source:newRoot(),target:newRoot(),settings:{...defaults},model:null,initialized:false,startupWaiting:false,hostAvailable:false,busy:false,cancelRequested:false,activity:null,error:null,snapshot:null,page:null,offset:0,ai:'Disabled'};
   private activePreview:{jobId:string|null;cancelSent:boolean;terminal:boolean}|null=null;
   private listeners=new Set<()=>void>();
   savedNotice:string|null=null;
@@ -42,11 +42,21 @@ export class PreviewController {
   private invalidate(){this.state.snapshot=null;this.state.page=null;this.state.offset=0;this.state.error=null;}
   async initialize(){
     try{
-      const [settings,model]=await Promise.all([this.host.getSettings(),this.host.getModelStatus()]);
+      const settings=await this.host.getSettings();
       for(const key of Object.keys(defaults) as (keyof Settings)[]){if(typeof settings[key]!=='boolean')throw new Error('הגדרות התוכנה אינן תקינות.');}
+      let model:ModelStatus;
+      for(;;){
+        try{model=await this.host.getModelStatus();break;}
+        catch(error){
+          if(!error||typeof error!=='object'||!('code' in error)||error.code!=='BUSY')throw error;
+          // Reload cancels the previous worker; wait for its actual guard release.
+          this.state.startupWaiting=true;this.emit();
+          await new Promise(resolve=>setTimeout(resolve,250));
+        }
+      }
       this.state.settings={...settings};this.state.model=model;this.state.hostAvailable=true;
     }catch(error){this.state.error=errorText(error);this.state.hostAvailable=false;}
-    this.state.initialized=true;this.emit();
+    this.state.startupWaiting=false;this.state.initialized=true;this.emit();
   }
   editRoot(role:Role,text:string){
     if(this.state.busy)return;

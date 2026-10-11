@@ -91,11 +91,7 @@ pub async fn get_settings(
 pub async fn get_model_status(state: State<'_, Host>) -> Result<ModelStatus, HostError> {
     let host = state.inner().clone();
     let guard = host.claim()?;
-    blocking(move || {
-        let _guard = guard;
-        Ok(host.model_status())
-    })
-    .await
+    blocking(move || host.model_status(&guard)).await
 }
 #[tauri::command]
 pub fn cancel_preview(state: State<'_, Host>, job_id: String) -> Result<(), HostError> {
