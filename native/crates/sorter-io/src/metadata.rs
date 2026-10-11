@@ -142,7 +142,7 @@ pub fn project(
     })
 }
 
-fn id3_text(payload: &[u8]) -> Result<Vec<RawValue>, FieldError> {
+pub(crate) fn id3_text(payload: &[u8]) -> Result<Vec<RawValue>, FieldError> {
     let invalid = || FieldError::get("UnsupportedClass", "invalid or unproven ID3 text encoding");
     let (&encoding, data) = payload.split_first().ok_or_else(invalid)?;
     if encoding > 3 {

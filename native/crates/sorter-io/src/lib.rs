@@ -11,3 +11,6 @@ pub mod metadata;
 
 /// Separate execution contract; read-only adapters never acquire these rights.
 pub mod mutation;
+
+/// Bounded staged metadata transforms; no live source writes or path authority.
+pub mod staged_tags;
