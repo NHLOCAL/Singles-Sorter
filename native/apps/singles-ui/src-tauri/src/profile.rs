@@ -5,6 +5,7 @@ use sha2::{Digest, Sha256};
 use sorter_core::Settings;
 use sorter_io::resources::load_aliases;
 use std::{
+    collections::BTreeMap,
     fs::{File, OpenOptions},
     io::{Read, Write},
     path::{Path, PathBuf},
@@ -113,6 +114,19 @@ pub enum ImportEncoding {
     Windows1252,
     Utf16Le,
     Utf16Be,
+}
+/// Explicit draft operations against original preview indices, never profile rows.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(tag = "kind", rename_all = "lowercase", deny_unknown_fields)]
+pub enum ImportEdit {
+    Set {
+        index: usize,
+        column: usize,
+        value: String,
+    },
+    Delete {
+        index: usize,
+    },
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct ImportPreview {
@@ -337,6 +351,7 @@ impl ProfileStore {
         token: &str,
         encoding: ImportEncoding,
         revision: &str,
+        edits: &[ImportEdit],
     ) -> Result<PersonalList> {
         let mut state = self
             .shared
@@ -354,6 +369,7 @@ impl ProfileStore {
                     "Confirm the currently displayed encoding preview",
                 )
             })?;
+        let rows = edited_import_rows(&preview.rows, edits)?;
         let result = self.access(true, |p| {
             if list(&p.personal_rows)?.revision != revision {
                 return Err(error(
@@ -361,7 +377,7 @@ impl ProfileStore {
                     "Personal list changed; reload before importing",
                 ));
             }
-            p.personal_rows.extend(preview.rows.clone());
+            p.personal_rows.extend(rows);
             let bytes = encode_csv(&p.personal_rows)?;
             parse_rows(&bytes)?;
             list(&p.personal_rows)
@@ -369,6 +385,73 @@ impl ProfileStore {
         *state = None;
         Ok(result)
     }
+}
+/// Validate all operations before touching a clone. No trimming, deduplication,
+/// repair, or shifting indices: deletions are applied after original-index edits.
+fn edited_import_rows(rows: &[Vec<String>], edits: &[ImportEdit]) -> Result<Vec<Vec<String>>> {
+    if edits.len() > rows.len().saturating_mul(2) {
+        return Err(error("IMPORT_EDIT_INVALID", "Too many draft operations"));
+    }
+    let mut touched = BTreeMap::<usize, u8>::new();
+    let mut value_bytes = 0usize;
+    for edit in edits {
+        let (index, mask) = match edit {
+            ImportEdit::Set {
+                index,
+                column,
+                value,
+            } => {
+                if *column > 1 {
+                    return Err(error(
+                        "IMPORT_EDIT_INVALID",
+                        "Only the first two columns are editable",
+                    ));
+                }
+                value_bytes = value_bytes
+                    .checked_add(value.len())
+                    .filter(|n| *n <= MAX_CSV_BYTES)
+                    .ok_or_else(|| error("CSV_TOO_LARGE", "Draft values exceed 16 MiB"))?;
+                (*index, 1 << column)
+            }
+            ImportEdit::Delete { index } => (*index, 4),
+        };
+        if index >= rows.len() {
+            return Err(error(
+                "IMPORT_EDIT_INVALID",
+                "Draft row index is outside the preview",
+            ));
+        }
+        let previous = touched.entry(index).or_default();
+        if (*previous & mask) != 0 || (*previous != 0 && (mask == 4 || *previous == 4)) {
+            return Err(error(
+                "IMPORT_EDIT_INVALID",
+                "Duplicate or conflicting draft operations",
+            ));
+        }
+        *previous |= mask;
+    }
+    let mut result = rows.to_vec();
+    for edit in edits {
+        if let ImportEdit::Set {
+            index,
+            column,
+            value,
+        } = edit
+        {
+            let row = &mut result[*index];
+            if row.len() <= *column {
+                row.resize(column + 1, String::new());
+            }
+            row[*column] = value.clone();
+        }
+    }
+    let mut index = 0;
+    result.retain(|_| {
+        let keep = touched.get(&index) != Some(&4);
+        index += 1;
+        keep
+    });
+    Ok(result)
 }
 // Guard only our dedicated profile directory, not legitimate OS AppData ancestors.
 // This is not a general hostile-ancestor filesystem sandbox.
@@ -819,7 +902,7 @@ mod tests {
         let preview = selected.preview.unwrap();
         assert_eq!(store.list().unwrap().rows, before.rows);
         let imported = store
-            .confirm_import(&preview.token, preview.encoding, &before.revision)
+            .confirm_import(&preview.token, preview.encoding, &before.revision, &[])
             .unwrap();
         assert_eq!(imported.rows.len(), 4);
         assert!(imported.rows[1].is_empty());
@@ -827,9 +910,266 @@ mod tests {
         assert_eq!(imported.rows[0], imported.rows[3]);
         assert!(
             store
-                .confirm_import(&preview.token, preview.encoding, &imported.revision)
+                .confirm_import(&preview.token, preview.encoding, &imported.revision, &[])
                 .is_err()
         );
+    }
+    fn set(index: usize, column: usize, value: &str) -> ImportEdit {
+        ImportEdit::Set {
+            index,
+            column,
+            value: value.into(),
+        }
+    }
+    #[test]
+    fn import_draft_preserves_original_indices_extras_and_duplicates() {
+        let (directory, store) = store();
+        let source = directory.path().join("source.csv");
+        let bytes = b"drop,me\noriginal,target,extra\n\nsingle\ndup,same\ndup,same\n";
+        std::fs::write(&source, bytes).unwrap();
+        let before = store.list().unwrap();
+        let preview = store
+            .stage_import("source.csv".into(), std::fs::read(&source).unwrap())
+            .unwrap()
+            .preview
+            .unwrap();
+        let edits = [
+            ImportEdit::Delete { index: 0 },
+            set(1, 0, "edited"),
+            set(1, 1, "quoted,\"target\"\n"),
+            set(2, 1, "from blank"),
+            set(3, 1, "new"),
+        ];
+        let saved = store
+            .confirm_import(&preview.token, preview.encoding, &before.revision, &edits)
+            .unwrap();
+        assert_eq!(
+            saved.rows,
+            vec![
+                vec!["edited", "quoted,\"target\"\n", "extra"],
+                vec!["", "from blank"],
+                vec!["single", "new"],
+                vec!["dup", "same"],
+                vec!["dup", "same"]
+            ]
+        );
+        assert_eq!(std::fs::read(&source).unwrap(), bytes);
+        assert_eq!(store.list().unwrap().rows, saved.rows);
+        assert_eq!(
+            store
+                .confirm_import(&preview.token, preview.encoding, &saved.revision, &[])
+                .unwrap_err()
+                .code,
+            "IMPORT_NOT_PREVIEWED"
+        );
+    }
+    #[test]
+    fn invalid_import_edits_leave_preview_and_profile_unchanged() {
+        let (_directory, store) = store();
+        let before = store.list().unwrap();
+        let preview = store
+            .stage_import("test.csv".into(), b"a,b\nc,d\n".to_vec())
+            .unwrap()
+            .preview
+            .unwrap();
+        let cases = vec![
+            vec![set(2, 0, "bad")],
+            vec![set(0, 2, "bad")],
+            vec![set(0, 0, "one"), set(0, 0, "two")],
+            vec![
+                ImportEdit::Delete { index: 0 },
+                ImportEdit::Delete { index: 0 },
+            ],
+            vec![set(0, 1, "changed"), ImportEdit::Delete { index: 0 }],
+            vec![ImportEdit::Delete { index: 0 }, set(0, 0, "changed")],
+            vec![set(0, 0, "too many"); 5],
+        ];
+        for edits in cases {
+            assert_eq!(
+                store
+                    .confirm_import(&preview.token, preview.encoding, &before.revision, &edits)
+                    .unwrap_err()
+                    .code,
+                "IMPORT_EDIT_INVALID"
+            );
+            assert_eq!(store.list().unwrap().rows, before.rows);
+            assert_eq!(
+                store
+                    .preview_import(&preview.token, preview.encoding)
+                    .unwrap()
+                    .rows,
+                preview.rows
+            );
+        }
+        let saved = store
+            .confirm_import(
+                &preview.token,
+                preview.encoding,
+                &before.revision,
+                &[
+                    ImportEdit::Delete { index: 0 },
+                    ImportEdit::Delete { index: 1 },
+                ],
+            )
+            .unwrap();
+        assert!(saved.rows.is_empty());
+    }
+    #[test]
+    fn import_draft_failures_are_retryable_and_do_not_mutate_preview() {
+        let (_directory, store) = store();
+        let before = store.list().unwrap();
+        let preview = store
+            .stage_import("test.csv".into(), b"a,b\n".to_vec())
+            .unwrap()
+            .preview
+            .unwrap();
+        let edits = [set(0, 1, "changed")];
+        assert_eq!(
+            store
+                .confirm_import(
+                    &preview.token,
+                    ImportEncoding::Windows1252,
+                    &before.revision,
+                    &edits
+                )
+                .unwrap_err()
+                .code,
+            "IMPORT_NOT_PREVIEWED"
+        );
+        let current = store
+            .save_list(
+                &before.revision,
+                vec![vec!["existing".into(), "row".into()]],
+            )
+            .unwrap();
+        assert_eq!(
+            store
+                .confirm_import(&preview.token, preview.encoding, &before.revision, &edits)
+                .unwrap_err()
+                .code,
+            "LIST_CHANGED"
+        );
+        assert_eq!(store.list().unwrap().rows, current.rows);
+        for value in [
+            "x".repeat(MAX_CSV_BYTES + 1),
+            "\"".repeat(MAX_CSV_BYTES / 2),
+        ] {
+            assert_eq!(
+                store
+                    .confirm_import(
+                        &preview.token,
+                        preview.encoding,
+                        &current.revision,
+                        &[set(0, 0, &value)]
+                    )
+                    .unwrap_err()
+                    .code,
+                "CSV_TOO_LARGE"
+            );
+            assert_eq!(store.list().unwrap().rows, current.rows);
+        }
+        assert_eq!(
+            store
+                .preview_import(&preview.token, preview.encoding)
+                .unwrap()
+                .rows,
+            preview.rows
+        );
+        let saved = store
+            .confirm_import(&preview.token, preview.encoding, &current.revision, &edits)
+            .unwrap();
+        assert_eq!(
+            saved.rows,
+            vec![vec!["existing", "row"], vec!["a", "changed"]]
+        );
+    }
+    #[test]
+    fn mixed_draft_keeps_untouched_malformed_rows_and_only_extends_explicit_column() {
+        let rows = vec![
+            vec!["remove".into()],
+            vec![],
+            vec!["one".into()],
+            vec!["a".into(), "b".into(), "extra".into()],
+            vec![],
+        ];
+        let edited = edited_import_rows(
+            &rows,
+            &[ImportEdit::Delete { index: 0 }, set(4, 0, "first")],
+        )
+        .unwrap();
+        assert_eq!(
+            edited,
+            vec![vec![], vec!["one"], vec!["a", "b", "extra"], vec!["first"]]
+        );
+    }
+    #[test]
+    fn edited_import_persistence_failure_retains_token_and_success_backs_up_previous() {
+        let (directory, store) = store();
+        store.set_duet(true).unwrap();
+        let before = store.list().unwrap();
+        let profile_path = directory.path().join("preview-profile");
+        let previous = std::fs::read(profile_path.join("profile.json")).unwrap();
+        let preview = store
+            .stage_import("test.csv".into(), b"a,b\n".to_vec())
+            .unwrap()
+            .preview
+            .unwrap();
+        let edits = [set(0, 1, "changed")];
+        let backup = profile_path.join("profile.previous.json");
+        std::fs::create_dir(&backup).unwrap();
+        assert!(
+            store
+                .confirm_import(&preview.token, preview.encoding, &before.revision, &edits)
+                .is_err()
+        );
+        assert_eq!(
+            std::fs::read(profile_path.join("profile.json")).unwrap(),
+            previous
+        );
+        assert_eq!(
+            store
+                .preview_import(&preview.token, preview.encoding)
+                .unwrap()
+                .rows,
+            preview.rows
+        );
+        std::fs::remove_dir(&backup).unwrap();
+        let saved = store
+            .confirm_import(&preview.token, preview.encoding, &before.revision, &edits)
+            .unwrap();
+        assert_eq!(saved.rows, vec![vec!["a", "changed"]]);
+        assert_eq!(std::fs::read(backup).unwrap(), previous);
+    }
+    #[test]
+    fn import_edit_wire_rejects_malformed_operations() {
+        for payload in [
+            r#"{"kind":"set","index":0,"column":0}"#,
+            r#"{"kind":"set","index":-1,"column":0,"value":"x"}"#,
+            r#"{"kind":"set","index":0,"column":0.5,"value":"x"}"#,
+            r#"{"kind":"delete","index":0,"value":"x"}"#,
+            r#"{"kind":"replace","index":0}"#,
+            r#"{"kind":"set","index":0,"column":0,"value":null}"#,
+        ] {
+            assert!(
+                serde_json::from_str::<ImportEdit>(payload).is_err(),
+                "{payload}"
+            );
+        }
+        assert!(matches!(
+            serde_json::from_str::<ImportEdit>(
+                r#"{"kind":"set","index":1,"column":0,"value":"x"}"#
+            )
+            .unwrap(),
+            ImportEdit::Set {
+                index: 1,
+                column: 0,
+                ..
+            }
+        ));
+        assert!(matches!(
+            serde_json::from_str::<ImportEdit>(r#"{"kind":"delete","index":1}"#).unwrap(),
+            ImportEdit::Delete { index: 1 }
+        ));
     }
     #[test]
     fn explicit_encoding_and_stale_import_token() {
@@ -944,7 +1284,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             store
-                .confirm_import(&selected.token, ImportEncoding::Utf8, &old.revision)
+                .confirm_import(&selected.token, ImportEncoding::Utf8, &old.revision, &[])
                 .err()
                 .unwrap()
                 .code,
@@ -952,7 +1292,12 @@ mod tests {
         );
         assert_eq!(store.list().unwrap().rows, current.rows);
         let done = store
-            .confirm_import(&selected.token, ImportEncoding::Utf8, &current.revision)
+            .confirm_import(
+                &selected.token,
+                ImportEncoding::Utf8,
+                &current.revision,
+                &[],
+            )
             .unwrap();
         assert_eq!(done.rows.len(), 2);
         assert_eq!(store.personal_bytes().unwrap(), b"c,d\r\na,b\r\n");

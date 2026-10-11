@@ -233,12 +233,18 @@ pub async fn confirm_personal_import(
     token: String,
     encoding: ImportEncoding,
     revision: String,
+    edits: Option<Vec<ImportEdit>>,
 ) -> Result<PersonalList, HostError> {
     let guard = state.claim()?;
     let profile = profile.inner().clone();
     blocking(move || {
         let _guard = guard;
-        profile.confirm_import(&token, encoding, &revision)
+        profile.confirm_import(
+            &token,
+            encoding,
+            &revision,
+            edits.as_deref().unwrap_or_default(),
+        )
     })
     .await
 }
