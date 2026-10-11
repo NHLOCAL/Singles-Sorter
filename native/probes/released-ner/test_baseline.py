@@ -15,7 +15,7 @@ class Baseline(unittest.TestCase):
                '.oracle/tensors.f32':'must not copy','.pcre2/source.c':'must not copy',
                'released-ner-text/target/old-binary':'must not copy'}
         for name,text in files.items():
-            f=root/name;f.parent.mkdir(parents=True,exist_ok=True);f.write_text(text)
+            f=root/name;f.parent.mkdir(parents=True,exist_ok=True);f.write_bytes(text.encode("utf-8"))
         hashes={name:hashlib.sha256((root/name).read_bytes()).hexdigest() for name in files if name.startswith('baseline/')}
         (root/'optimization-provenance.json').write_text(json.dumps({'baseline_files':hashes}))
         return root
@@ -31,6 +31,18 @@ class Baseline(unittest.TestCase):
         self.assertEqual((out/'released-ner-text/src/lib.rs').read_text(),'pub mod tokenizer;\n')
         self.assertFalse((out/'released-ner-text/tests/bounded.rs').exists())
         self.assertEqual((out/'released-ner-text/tests/loading.rs').read_text(),'model.forward(&hashes)')
+    def test_fixture_source_bytes_under_windows_text_io(self):
+        # Simulate Windows newline translation on any host. The fixture must
+        # represent the LF checkout required by CI, not host-native text output.
+        def windows_write_text(path,data,encoding=None,errors=None,newline=None):
+            with path.open('w',encoding=encoding or 'utf-8',errors=errors,newline='\r\n') as out:
+                return out.write(data)
+        with patch.object(Path,'write_text',windows_write_text):root=self.fixture()
+        self.assertEqual((root/'released-ner-text/src/lib.rs').read_bytes(),
+                         b'pub mod inference;\npub mod tokenizer;\n')
+        with patch.object(p,'HERE',root):p.prepare()
+        self.assertEqual((root/'.baseline/released-ner-text/src/lib.rs').read_bytes(),
+                         b'pub mod tokenizer;\n')
     def test_changed_baseline_fails_before_copy(self):
         root=self.fixture();(root/'baseline/math-lib.rs').write_text('changed')
         with patch.object(p,'HERE',root):
