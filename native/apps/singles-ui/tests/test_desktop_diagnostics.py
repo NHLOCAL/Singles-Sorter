@@ -12,9 +12,33 @@ import desktop_diagnostics as diagnostics
 from owned_window_capture import png_from_bgra
 from windows_integrity import require_medium
 import run_desktop_medium as launcher
+from native_picker import unique_folder_edit, interact_with_owned_picker
 
 
 class DiagnosticContracts(unittest.TestCase):
+    def test_native_picker_com_interaction_has_process_timeout(self):
+        with patch('native_picker.subprocess.run', return_value=Mock(returncode=0)) as run:
+            interact_with_owned_picker(Path('owned.exe'), Path('fixture'), Path('evidence'), 'source')
+            self.assertEqual(run.call_args.kwargs['timeout'], 75)
+            self.assertEqual(run.call_args.args[0][-4:], ['owned.exe', 'fixture', 'evidence', 'source'])
+        with patch('native_picker.subprocess.run', return_value=Mock(returncode=1, stderr='actual UIA failure')), \
+             patch.object(Path, 'write_text'):
+            with self.assertRaisesRegex(RuntimeError, 'actual UIA failure'):
+                interact_with_owned_picker(Path('owned.exe'), Path('fixture'), Path('evidence'), 'source')
+
+    def test_folder_picker_uses_observed_direct_edit_without_combo_parent(self):
+        edit = {'pid': 42, 'control_type': 'Edit', 'automation_id': '1152',
+                'visible': True, 'enabled': True, 'name': 'Folder:'}
+        search = dict(edit, automation_id='SearchEditBox', name='Search')
+        self.assertEqual(unique_folder_edit([search, edit], 42), 1)
+        # Labels are observed for diagnostics, never assumed to be English.
+        self.assertEqual(unique_folder_edit([dict(edit, name='תיקייה:')], 42), 0)
+        for records in [[], [search], [edit, dict(edit)], [dict(edit, pid=99)],
+                        [dict(edit, visible=False)], [dict(edit, enabled=False)],
+                        [dict(edit, control_type='ComboBox')]]:
+            with self.assertRaises(RuntimeError):
+                unique_folder_edit(records, 42)
+
     def test_medium_requires_effectively_restricted_rights_not_historical_flag(self):
         normal = {'integrity_rid': 8192, 'elevated': False, 'has_restrictions': False,
                   'power_groups': [], 'privileges': [{'name': 'SeChangeNotifyPrivilege', 'attributes': 3}]}

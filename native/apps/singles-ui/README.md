@@ -197,3 +197,22 @@ Additional primary sources:
 - https://learn.microsoft.com/en-us/windows/win32/secauthz/sid-attributes-in-an-access-token
 - https://learn.microsoft.com/en-us/windows/win32/secauthz/privileges
 - https://learn.microsoft.com/en-us/windows/win32/api/winsafer/nf-winsafer-safercreatelevel
+
+### Native folder-picker acceptance
+
+Run 38111848892 established the real WebDriver session, verified effective
+Medium rights, and rendered the app. It then failed on the harness assumption
+that the folder picker nests its path Edit inside the file-picker ComboBox.
+The host actually calls rfd 0.16.0 IFileOpenDialog with FOS_PICKFOLDERS.
+The harness now records the owned dialog's live UIA controls and exact-HWND
+PrintWindow image before input. Folder selection requires one visible, enabled,
+PID-matching native Edit advertising SDK edt1 (1152), without guessing its parent
+or relying on an English label. Missing/ambiguous controls fail with evidence.
+The native ValuePattern must retain the exact fixture path before native Confirm;
+the existing application path and preview assertions still establish success.
+This selector correction still requires the next actual Windows run to validate.
+
+Sources:
+- https://docs.rs/crate/rfd/0.16.0/source/src/backend/win_cid/file_dialog/dialog_ffi.rs
+- https://github.com/microsoft/win32metadata/blob/main/generation/WinSDK/RecompiledIdlHeaders/um/dlgs.h
+- https://pywinauto.readthedocs.io/en/latest/code/pywinauto.controls.uia_controls.html

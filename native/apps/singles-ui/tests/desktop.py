@@ -18,6 +18,7 @@ import urllib.request
 
 from desktop_diagnostics import snapshot, startup_probe, owned_processes, write_json
 from windows_integrity import process_security, require_medium
+from native_picker import interact_with_owned_picker
 from desktop_layout import check_native_layout, capture_platform_fonts
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -103,17 +104,8 @@ def capture(name):
 def pick_owned_path(selector, path):
     # Native dialog controls belong to this exact owned preview executable.
     # Never interact with a generic desktop window or another user's app.
-    from pywinauto import Application
     click(selector)
-    app = Application(backend='uia').connect(path=str(BINARY), timeout=10)
-    dialog = app.window(class_name='#32770')
-    dialog.wait('visible enabled', timeout=15)
-    # The common IFileDialog filename Edit is inside control 1148 (ComboBox).
-    filename = dialog.child_window(auto_id='1148', control_type='ComboBox').child_window(control_type='Edit')
-    filename.wait('visible enabled', timeout=10)
-    filename.set_edit_text(str(path))
-    dialog.child_window(auto_id='1', control_type='Button').click()
-    dialog.wait_not('visible', timeout=15)
+    interact_with_owned_picker(BINARY, path, OUTPUT, selector.removeprefix('#'))
 
 startup_probe(BINARY, OUTPUT)
 log = (OUTPUT / 'tauri-driver.log').open('wb')
