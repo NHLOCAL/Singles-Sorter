@@ -38,6 +38,10 @@ describe('ordinary result presentation',()=>{
  });
  it('reports actual Fix outcomes without copy or move claims',()=>{
   const fix={...row,kind:'FixNames'};
+  expect(simpleStatus({...fix,blockers:['Observation(PhysicalApplyUnavailable)']},[],false,{repairEligible:true})).toBe('לתיקון');
+  expect(simpleStatus({...fix,blockers:['FIX_METADATA_READ_ERROR']},[],false,{repairEligible:true})).toBe('תיקון חלקי');
+  expect(simpleStatus(fix,[],false,{terminalResult:true})).toBe('לא בוצע');
+  expect(simpleStatus(fix,[],false,{uncertain:true})).toBe('לא אומת');
   const renamed={...item('complete'),repair:{renamed:true,repaired:false,unchanged:true}};
   expect(simpleStatus(fix,[renamed],false)).toBe('תוקן');
   expect(simpleStatus(fix,[{...renamed,repair:{renamed:false,repaired:false,unchanged:true}}],false)).toBe('ללא שינוי');

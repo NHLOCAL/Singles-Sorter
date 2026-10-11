@@ -18,7 +18,7 @@ below require final-head CI results; the presence of a test is not a passing run
 | Original NER + secondary classifier | Both exact original assets validated; no fallback | CLI and Windows UI original-AI real-file preview baseline exists; new apply + AI composition requires final Windows gate |
 | Disabled AI | Explicit choice; no inference | Never silently substituted for configured unavailable models |
 | Albums | Original album recognition, metadata-error ordering and virtual transfer timeline | Whole album physical execution unavailable in first selected-root candidate |
-| Fix names / gibberish tags | Original planned rename/tag intentions retained | Actual rename + tag rewrite remains unavailable; no “completed” label for preview |
+| Fix names / gibberish tags | Original planned rename/tag intentions retained | New source-only repair candidate: original filename policy across 12 extensions; bounded MP3 ID3v2.3/v2.4 five-field writes, retained original backup, explicit partial unsupported tag outcomes. Final Windows host/CLI gates pending |
 | Name collisions | Original reservation policy; exact plan revalidated | Identity-bound no-replace publication; changed destination stops execution |
 | Preview cancellation / Back / reload | Host owner remains busy until native terminal state | Existing lifecycle tests; no stale plan resurrection |
 | Apply review / repeat click | Host-selected paths and retained digest only | New UI/CLI candidate; cannot repeat consumed plan |
@@ -29,15 +29,19 @@ below require final-head CI results; the presence of a test is not a passing run
 | CLI real-file v2 JSON | Same request fields and original planning policy | Read-only; optional selected planning adapter strengthens capability observations |
 | CLI NDJSON execution | New one-process inspected-digest handshake | Opt-in Windows candidate; legacy positional compatibility still unavailable |
 | Android | Shared UI remains fail-closed without native apply eligibility | Separate Android workstream; Windows proof is not Android/provider/ARM64 proof |
-| Portable Windows artifact | Explicit original-AI + selected-execution feature profile | EXE-bound real Copy/Move/artist-folder checks required on staged and extracted ZIP; package README and provenance identify supported mutations |
+| Portable Windows artifact | Explicit original-AI + selected-execution feature profile | EXE-bound real Copy/Move/artist-folder plus source-only MP3 repair checks required on staged and extracted ZIP; package README and provenance identify supported mutations |
 
 ## Current verification record
 
-The baseline includes native original-AI CLI and Windows desktop preview work,
-plus owned native Windows identity/reparse/journal/Copy/rename tests. The new
-selected-root/UI/CLI integration is source implementation with explicit tests;
-it is not yet a verified release until its combined final-head build and actual
-Windows subprocess/WebView runs pass. Local frontend typecheck, production build
-and 76 state/presentation tests passed during implementation. Local Chromium
-rendering was blocked by OS socket restrictions, and local Rust installation was
-blocked; neither limitation was converted into a passing verification claim.
+The delivered d917 baseline passed its exact Windows native safety, CLI, and
+staged/extracted original-AI Copy/Move gates. Its ZIP SHA-256 is
+`bf90d51cc5e98bcd16102f898c497cc9083297bfbbf88d742dba543b4d0b02f5`;
+that evidence does not cover later UI polish or repair changes.
+
+The current repair candidate adds 11 backend product cases, 20 native preservation
+cases, 10 staged tag transformer cases, real source-only CLI subprocess cases,
+and actual staged/extracted UI cases. These are required checks, not claimed
+passes until the final-head Windows runs finish. Local frontend checks currently
+pass 106 tests/typecheck/build; independent Python ID3 fixture/parser and package
+gate tests also pass. Local Rust installation and Chromium rendering remain
+blocked; neither limitation is counted as a passing native or visual test.

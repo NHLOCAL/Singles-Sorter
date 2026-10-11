@@ -16,9 +16,13 @@ typed metadata, album/fix virtual timelines and optional verified original AI.
 - Owned Windows tests exercise real identities, Unicode/reparse rejection,
   durable journal records, verified Copy and same-volume rename. These owned
   fixture results do not alone establish authorization over user-selected roots.
-- The new opt-in selected-root backend, desktop apply flow and CLI NDJSON
-  inspect/apply handshake have separate tests and final-head gates. Their source
-  presence is not evidence of a completed Windows acceptance run.
+- The delivered d917 selected-root backend, desktop apply flow and CLI NDJSON
+  inspect/apply handshake passed their exact native and staged/extracted Windows
+  Copy/Move gates. Later changes require fresh final-head evidence.
+- Source-only FixNames now has a separate retained repair scope, original-policy
+  filename repair and a bounded MP3 five-field tag writer with original backup.
+  Backend, CLI and actual desktop repair tests are present; this new candidate's
+  native/runtime acceptance remains pending.
 - Existing v1 classify/plan transport remains non-executable and model-free.
 
 ## Remaining product gates
@@ -26,7 +30,7 @@ typed metadata, album/fix virtual timelines and optional verified original AI.
 See [the feature-by-feature matrix](product-acceptance-matrix.md) and
 [desktop/CLI execution contract](desktop-cli-execution.md). First-candidate
 selected execution covers supported single transfers only. Full album physical
-execution, FixNames/tag saving, cross-volume Move, Move duet retirement,
+execution, non-MP3/unsupported tag saving, cross-volume Move, Move duet retirement,
 process-restart recovery UI, complete legacy CLI compatibility and arbitrary
 music-library acceptance remain separate unfinished gates. Android provider and
 physical ARM64 acceptance cannot be inferred from Windows or Linux tests.

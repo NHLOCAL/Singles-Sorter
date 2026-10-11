@@ -904,7 +904,9 @@ fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
                         f.repairs.len(),
                         f.failure
                     ),
-                    blockers: f.blockers.iter().map(|b| format!("{b:?}")).collect(),
+                    blockers: f.blockers.iter().map(|b| format!("{b:?}"))
+                        .chain(f.failure.as_ref().map(|_| "FIX_METADATA_READ_ERROR".to_owned()))
+                        .collect(),
                     operation_ids: vec![op.id],
                     artist: None,
                     developer_only: false,

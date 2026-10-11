@@ -130,4 +130,77 @@ mod selected {
         run_case(true, "cancel");
         run_case(true, "stale");
     }
+    fn run_repair_case(action: &str) {
+        let root = tempfile::tempdir().unwrap();
+        let source = root.path().join("תיקון");
+        let journal = root.path().join("יומן תיקון");
+        fs::create_dir(&source).unwrap();
+        fs::create_dir(&journal).unwrap();
+        let audio = include_bytes!("../../../tests/fixtures/media/blank.mp3");
+        let payload = [b"\x03".as_slice(), "àáâ".as_bytes()].concat();
+        let mut body = b"TPE1".to_vec();
+        body.extend([0, 0, 0, payload.len() as u8]);
+        body.extend([0, 0]);
+        body.extend(payload);
+        body.resize(127, 0);
+        let mut original = b"ID3\x04\0\0\0\0\0\x7f".to_vec();
+        original.extend(body);
+        original.extend(audio);
+        let path = source.join("owned_repair.mp3");
+        fs::write(&path, &original).unwrap();
+        let mut child = Command::new(env!("CARGO_BIN_EXE_singles-sorter"))
+            .args(["run-files", "--ndjson"])
+            .stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped())
+            .spawn().unwrap();
+        let mut stdin = child.stdin.take().unwrap();
+        let mut output = BufReader::new(child.stdout.take().unwrap());
+        let request = json!({"schema_version":1,"journal_directory":journal,"preview":{"schema_version":2,"mode":"FixNames","source":source,"target":null,"settings":{"copy_mode":false,"main_folder_only":false,"singles_folder":true,"exist_only":false,"abc_sort":false,"duet_mode":false},"ai_profile":"Disabled","personal_aliases":null}});
+        writeln!(stdin, "{request}").unwrap();stdin.flush().unwrap();
+        let mut line = String::new();output.read_line(&mut line).unwrap();
+        let planned: Value = serde_json::from_str(&line).unwrap();
+        assert_eq!(planned["event"], "planned", "{planned}");
+        assert!(planned["data"]["target"].is_null());
+        assert_eq!(fs::read(&path).unwrap(), original);
+        assert_eq!(fs::read_dir(&source).unwrap().count(), 1);
+        if action == "stale" { original.push(7);fs::write(&path, &original).unwrap(); }
+        let decision = if action == "cancel" { json!({"action":"cancel"}) } else {
+            json!({"action":"apply","plan_id":planned["data"]["plan"]["binding_sha256"]})
+        };
+        writeln!(stdin, "{decision}").unwrap();stdin.flush().unwrap();
+        let events = output.lines().map(|line| serde_json::from_str::<Value>(&line.unwrap()).unwrap()).collect::<Vec<_>>();
+        let status = child.wait().unwrap();
+        if action != "apply" {
+            assert_eq!(fs::read(&path).unwrap(), original);
+            assert_eq!(fs::read_dir(&source).unwrap().count(), 1);
+            assert_eq!(fs::read_dir(&journal).unwrap().count(), 0);
+            return;
+        }
+        assert!(status.success(), "{events:?}");
+        let result = &events.iter().find(|event| event["event"] == "result").unwrap()["data"];
+        assert_eq!(result["status"], "complete");
+        assert_eq!(result["mode"], "FixNames");
+        assert_eq!(result["repair"]["renamed_files"], 1);
+        assert_eq!(result["repair"]["repaired_files"], 1);
+        assert_eq!(result["repair"]["retained_backup_bytes"], original.len());
+        assert!(!path.exists());
+        let repaired = fs::read(source.join("owned repair.mp3")).unwrap();
+        assert_ne!(repaired, original);
+        assert_eq!(&repaired[137..], audio);
+        assert!(repaired.windows("אבג".len()).any(|bytes| bytes == "אבג".as_bytes()));
+        let backups = fs::read_dir(&source).unwrap().map(|entry| entry.unwrap().path())
+            .filter(|path| path.extension().is_some_and(|ext| ext == "backup")).collect::<Vec<_>>();
+        assert_eq!(backups.len(), 1);
+        assert_eq!(fs::read(&backups[0]).unwrap(), original);
+        assert!(result["recovery"]["recorded_finished"].as_bool().unwrap());
+    }
+    #[test]
+    fn actual_source_only_repair_preserves_original_and_audio() {
+        run_repair_case("apply");
+    }
+    #[test]
+    fn source_only_repair_cancel_and_stale_preview_have_no_effects() {
+        run_repair_case("cancel");
+        run_repair_case("stale");
+    }
+
 }

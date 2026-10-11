@@ -140,3 +140,47 @@ fn project(result: RepairResult) -> ExecutionResult {
         }).collect(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sorter_executor::windows_repair::RepairItem;
+
+    #[test]
+    fn projection_keeps_partial_filename_and_tag_outcomes_separate() {
+        let projected = project(RepairResult {
+            status: RepairJobStatus::Partial,
+            total_files: 3,
+            processed_files: 1,
+            renamed_files: 1,
+            repaired_files: 0,
+            unchanged_files: 0,
+            unsupported_files: 1,
+            failed_files: 0,
+            retained_backup_bytes: 0,
+            items: vec![RepairItem {
+                operation: 0,
+                original: StorageRef::WindowsPath { utf16: vec![67, 58, 92, 120] },
+                status: RepairStatus::UnsupportedTags,
+                detail: "unsupported representation".into(),
+                renamed: true,
+                repaired: false,
+                unchanged: false,
+                processed: true,
+                current: None,
+                backup: None,
+                staged: None,
+            }],
+        });
+        assert_eq!(projected.committed_destinations, 0);
+        assert_eq!(projected.moved_sources, 0);
+        assert_eq!(projected.blocked_operations, 2);
+        assert_eq!(projected.items[0].status, "unsupported_tags");
+        assert!(projected.items[0].repair.as_ref().unwrap().renamed);
+        assert!(!projected.items[0].repair.as_ref().unwrap().repaired);
+        let summary = projected.repair.unwrap();
+        assert_eq!(summary.renamed_files, 1);
+        assert_eq!(summary.repaired_files, 0);
+        assert_eq!(summary.unsupported_files, 1);
+    }
+}

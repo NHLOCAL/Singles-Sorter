@@ -121,11 +121,11 @@ $('row-dialog').addEventListener('cancel',event=>{event.preventDefault();closeRo
 function openRow(row:PlanRow,trigger:HTMLButtonElement,push=true){
  detailTrigger=trigger;$('row-title').textContent=sourceLabel(row.source,controller.state.model?.platform);$('row-content').replaceChildren();
  if(!controller.state.developerMode){
-  const status=simpleStatus(row,executionItems(row),controller.state.snapshot?.apply?.copy_mode??controller.state.settings.copy_mode);
+  const status=rowStatus(row);
   if(row.artist)$('row-content').append(text('p',row.artist,'detail-artist'));
   $('row-content').append(text('p',status,'detail-status'));
   for(const item of executionItems(row)){const repairReason=simpleRepairReason(item);if(repairReason)$('row-content').append(text('p',repairReason,'hint'));}
-  const reason=simpleReason(row);if(reason&&!executionItems(row).length)$('row-content').append(text('p',reason,'hint'));
+  const reason=simpleReason(row,controller.state.snapshot?.apply?.supported);if(reason&&!executionItems(row).length)$('row-content').append(text('p',reason,'hint'));
   if(executionItems(row).some(item=>['failed','needs_recovery','source_retained'].includes(item.status)))$('row-content').append(text('p',row.kind==='FixNames'?'בדוק את הקובץ ואת הגיבוי בתיקיית המקור לפני ניסיון נוסף.':'בדוק את הקובץ בתיקיית המקור ובתיקיית היעד לפני ניסיון נוסף.','hint'));
   if(push)history.pushState({singlesView:'detail',jobId:controller.state.snapshot?.job_id,rowId:row.id},'');openDialog('row-dialog');return;
  }
@@ -183,6 +183,10 @@ function text(tag:string,value:string,className?:string){const node=document.cre
 const executionTitles:Record<string,string>={preparing:'מאמת את הקבצים לפני ביצוע…',running:'מבצע את התוכנית…',complete:'הביצוע הושלם',partial:'הביצוע הושלם חלקית',cancelled:'הביצוע נעצר',failed:'הביצוע לא הושלם',needs_recovery:'נדרשת בדיקת התאוששות'};
 function itemLabel(item:ExecutionItem){return ({complete:'בוצע',source_retained:'היעד נכתב; המקור נשמר',failed:'נכשל',cancelled:'בוטל',blocked:'לא בוצע',needs_recovery:'נדרשת בדיקה',unsupported_tags:'תגיות לא נתמכות',metadata_failure:'קריאת התגיות נכשלה'})[item.status];}
 function executionItems(row:PlanRow):ExecutionItem[]{return controller.state.execution?.result?.items.filter(item=>row.operation_ids?.includes(item.operation))??[];}
+function rowStatus(row:PlanRow){
+ const s=controller.state;
+ return simpleStatus(row,executionItems(row),s.snapshot?.apply?.copy_mode??s.settings.copy_mode,{repairEligible:s.snapshot?.apply?.supported,terminalResult:!!s.execution?.result&&!['preparing','running'].includes(s.execution.status),uncertain:!!s.execution&&!s.execution.result&&!['preparing','running'].includes(s.execution.status)});
+}
 function renderExecution(){
  const s=controller.state,e=s.execution,readiness=s.snapshot?.apply;
  $('execution-panel').hidden=!readiness&&!e;
@@ -208,7 +212,7 @@ function render(){
  $('result-second-heading').textContent=developer?'פעולה':'אמן';$('result-third-heading').textContent=developer?'סיבה / חסימה':'מצב';
  app.dataset.view=navigation.screen;
  $('setup-screen').hidden=navigation.screen!=='setup';$('processing-screen').hidden=navigation.screen!=='processing';$('results').hidden=navigation.screen!=='results';$('reopen-results').hidden=!hasResults();
- $('results-heading').textContent=navigation.mode==='Sort'?'תוכנית מיון':'תוכנית תיקון שמות';
+ $('results-heading').textContent=(s.snapshot?.apply?.mode??navigation.mode)==='Sort'?'תוכנית מיון':'תוכנית תיקון שמות';
  if(source.value!==s.source.text)source.value=s.source.text;if(target.value!==s.target.text)target.value=s.target.text;
  source.disabled=blocked;target.disabled=blocked;source.readOnly=s.model?.platform==='android';target.readOnly=s.model?.platform==='android';
  for(const [id,pending]of [['source-picker',s.source.pending],['target-picker',s.target.pending]]as const){$<HTMLButtonElement>(id).disabled=blocked||pending;setButtonLabel($(id),pending?'ממתין לבחירה…':'בחר תיקיה',id==='source-picker'?'source':'folder');}
@@ -231,7 +235,7 @@ function render(){
  $('error').hidden=!s.error;$('error').textContent=s.error?(developer?s.error:simpleError(s.error)):'';$('error').tabIndex=-1;
  const ready=s.snapshot?.status==='completed'&&!!s.page;
  $('empty').hidden=s.busy||!!s.error||ready&&s.page!.total>0;
- $('empty').textContent=ready?navigation.mode==='FixNames'?'לא נמצאו קבצים לתיקון.':'לא נמצאו קבצים למיון.':'התוצאה תופיע כאן לאחר בחירת תיקיות והפעלת בדיקה.';
+ $('empty').textContent=ready?(s.snapshot?.apply?.mode??navigation.mode)==='FixNames'?'לא נמצאו קבצים לתיקון.':'לא נמצאו קבצים למיון.':'התוצאה תופיע כאן לאחר בחירת תיקיות והפעלת בדיקה.';
  $('table-wrap').hidden=!ready||!s.page!.rows.length;
  $('count').textContent=ready?`${s.page!.total.toLocaleString('he-IL')} ${developer?'רשומות':s.page!.total===1?'פריט':'פריטים'}${s.page!.skipped?` · ${s.page!.skipped.toLocaleString('he-IL')} דולגו`:''}`:'';
  $('rows').replaceChildren();
@@ -239,7 +243,7 @@ function render(){
   const tr=document.createElement('tr');
   const origin=document.createElement('td');origin.className='file-name';const name=text('bdi',sourceLabel(row.source,s.model?.platform),'source-name');name.dir='auto';if(developer)name.title=row.source;origin.append(name);tr.append(origin);
   const items=executionItems(row);const action=text('td',developer?(items.length?items.map(itemLabel).join(' · '):kindLabel(row.kind)):(row.artist??'—'),'row-action');action.dir='auto';tr.append(action);
-  const reason=document.createElement('td');reason.className='row-reason';reason.append(text('span',developer?`${kindLabel(row.kind)} · `:row.artist?`${row.artist} · `:'','mobile-action'),text('span',developer?(row.blockers.length?row.blockers.map(blockerLabel).join(' · '):reasonLabel(row)):simpleStatus(row,items,s.snapshot?.apply?.copy_mode??s.settings.copy_mode)));tr.append(reason);
+  const reason=document.createElement('td');reason.className='row-reason';reason.append(text('span',developer?`${kindLabel(row.kind)} · `:row.artist?`${row.artist} · `:'','mobile-action'),text('span',developer?(row.blockers.length?row.blockers.map(blockerLabel).join(' · '):reasonLabel(row)):rowStatus(row)));tr.append(reason);
   const detail=document.createElement('td');detail.className='row-detail';const button=document.createElement('button');button.className='icon-button detail-button';button.dataset.rowId=row.id;button.setAttribute('aria-label',`פרטים: ${sourceLabel(row.source,s.model?.platform)}`);button.append(iconElement('info'));button.addEventListener('click',()=>openRow(row,button));detail.append(button);tr.append(detail);$('rows').append(tr);
  }
  $('warnings').replaceChildren();$('technical-notices').replaceChildren();

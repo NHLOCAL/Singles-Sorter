@@ -3,7 +3,7 @@ import type {PlanRow,ExecutionItem,ExecutionSnapshot} from './contracts';
 export const DEVELOPER_PREFERENCE='singles-sorter.developer-mode.v1';
 export function readDeveloperMode(storage:Pick<Storage,'getItem'>):boolean{try{return storage.getItem(DEVELOPER_PREFERENCE)==='true';}catch{return false;}}
 export function saveDeveloperMode(storage:Pick<Storage,'setItem'>,enabled:boolean){try{storage.setItem(DEVELOPER_PREFERENCE,String(enabled));}catch{/* The current view still works when local storage is unavailable. */}}
-export function simpleStatus(row:PlanRow,items:ExecutionItem[],copy:boolean):string{
+export function simpleStatus(row:PlanRow,items:ExecutionItem[],copy:boolean,context:{repairEligible?:boolean;terminalResult?:boolean;uncertain?:boolean}={}):string{
  if(items.length){
   const completed=items.some(item=>item.status==='complete'||item.status==='source_retained'||item.repair?.renamed||item.repair?.repaired);
   if(items.some(item=>item.status==='needs_recovery'))return 'נדרשת בדיקה';
@@ -19,6 +19,10 @@ export function simpleStatus(row:PlanRow,items:ExecutionItem[],copy:boolean):str
   }
   return copy?'הועתק':'הועבר';
  }
+ if(context.uncertain&&row.operation_ids?.length)return 'לא אומת';
+ if(context.terminalResult&&row.operation_ids?.length)return 'לא בוצע';
+ if(row.blockers.includes('FIX_METADATA_READ_ERROR'))return context.repairEligible?'תיקון חלקי':'לא ניתן לבדוק';
+ if(row.kind==='FixNames'&&context.repairEligible)return 'לתיקון';
  if(row.kind==='ItemError'||row.blockers.includes('ALBUM_READ_ERROR'))return 'לא ניתן לבדוק';
  if(row.kind==='Vanished')return 'הקובץ לא נמצא';
  if(row.blockers.length)return 'לא ניתן לבצע';
@@ -31,7 +35,9 @@ export function simpleRepairReason(item:ExecutionItem):string{
  if(item.status==='metadata_failure')return item.repair?.renamed?'שם הקובץ תוקן, אך לא ניתן היה לקרוא את התגיות.':'לא ניתן היה לקרוא את התגיות לתיקון.';
  return '';
 }
-export function simpleReason(row:PlanRow):string{
+export function simpleReason(row:PlanRow,repairEligible=false):string{
+ if(row.blockers.includes('FIX_METADATA_READ_ERROR'))return 'לא ניתן לקרוא את התגיות. ייתכן שרק שם הקובץ יתוקן.';
+ if(row.kind==='FixNames'&&repairEligible)return '';
  if(row.kind==='ItemError'||row.blockers.includes('ALBUM_READ_ERROR'))return 'לא ניתן לקרוא את הפריט. בדוק שהוא זמין ושהתוכנה מורשית לקרוא אותו.';
  if(row.kind==='Vanished')return 'הקובץ הועבר או אינו זמין כעת.';
  if(row.blockers.length)return 'הפעולה אינה זמינה לקובץ הזה בתוכנית הנוכחית.';

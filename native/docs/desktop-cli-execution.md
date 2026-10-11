@@ -92,3 +92,26 @@ cooperative CLI handler; inspect the journal after forced termination.
 Official Tauri command/background-worker references used for this integration:
 https://v2.tauri.app/develop/calling-rust/
 https://v2.tauri.app/develop/calling-frontend/
+
+
+## Source-only repair candidate
+
+`run-files --ndjson` also accepts a `FixNames` preview with `target: null`.
+The same one-process, exact inspected-plan confirmation is mandatory. The host
+retains a non-deserializable `RepairScope`; it independently pins only source and
+an already-existing journal root. No fictitious target or mkdir is used.
+Desktop confirmation identifies repair and explains retained originals. Result
+counters distinguish renamed filenames, repaired tags, unchanged tags, unsupported
+formats, failed work, and retained backup bytes; these are never copy/move counts.
+`unchanged_files` means no tag changes, so it may overlap filename renaming.
+The CLI retains full serialized per-file observations and read-only reconciliation;
+the ordinary UI shows only short human outcomes, with diagnostics in developer mode.
+
+The initial writer supports bounded unflagged ID3v2.3/v2.4 MP3 representations.
+It preserves audio offsets/payload and untouched frames and retains the original
+same-object backup before no-replace publication. Unsupported tag representation
+can still leave a successfully repaired filename; that is explicitly partial.
+No automatic backup deletion, rollback or replay is exposed. Both staged and
+consumer-extracted EXEs must pass real five-field repair, backup/media checks,
+unsupported-partial and stale-plan cases before packaging acceptance. Test source
+presence alone is not a native pass.
