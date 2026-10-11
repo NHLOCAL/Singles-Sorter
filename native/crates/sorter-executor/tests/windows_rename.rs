@@ -1139,7 +1139,7 @@ fn copy_crossover_mixed_domains_and_rehashed_forgery_cannot_mint_rename_authorit
         operation: op.id,
         destination_id: op.destination.id.clone(),
         expected_source: op.source.observation.identity.clone().unwrap(),
-        observed_identity: if phase == Phase::Prepared {
+        observed_identity: if matches!(phase, Phase::Prepared | Phase::TempAllocationPrepared) {
             None
         } else {
             op.source.observation.identity.clone()
