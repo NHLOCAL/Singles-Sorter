@@ -68,6 +68,7 @@ final class AndroidHost implements AutoCloseable {
                 start(id,args.getJSONObject("request"));return;
             }
             busy=true;
+            final OwnedCompletion completion=new OwnedCompletion(this,()->busy=false);
             worker.execute(()->{
                 try{Object value;
                     switch(command){
@@ -77,18 +78,18 @@ final class AndroidHost implements AutoCloseable {
                         case "get_personal_list":value=profile.personal();break;
                         case "save_personal_list":value=profile.savePersonal(args.getString("revision"),args.getJSONArray("rows"));break;
                         case "preview_personal_import":value=csv.decode(args.getString("token"),args.getString("encoding"));break;
-                        case "confirm_personal_import":value=csv.confirm(profile,args.getString("token"),args.getString("encoding"),args.getString("revision"),args.optJSONArray("edits")==null?new JSONArray():args.getJSONArray("edits"));break;
+                        case "confirm_personal_import":value=csv.confirm(profile,args.getString("token"),args.getString("encoding"),args.getString("revision"),args.has("edits")?args.getJSONArray("edits"):new JSONArray());break;
                         case "get_first_run_status":value=profile.firstRun(false);break;
                         case "mark_first_run_seen":value=profile.firstRun(true);break;
                         case "get_model_status":
                             if(models==null)models=OriginalAssets.prepare(activity.getApplicationContext(),()->{synchronized(AndroidHost.this){return closed;}});
                             value=new JSONObject().put("available",true).put("platform","android").put("message","שני מודלי הזיהוי המקוריים אומתו. הקבצים נבדקים מחדש לפני כל בדיקה.");break;
                         case "open_footer_link":
-                            activity.runOnUiThread(()->{synchronized(AndroidHost.this){if(closed)return;try{activity.startActivity(new Intent(Intent.ACTION_VIEW,android.net.Uri.parse("https://nhlocal.github.io/shir-bot?utm_source=singles_sorter_program&utm_medium=android")));reply(requestId,true,JSONObject.NULL);}catch(RuntimeException failure){error(requestId,"LINK_UNAVAILABLE",failure);}}});return;
+                            activity.runOnUiThread(()->{synchronized(AndroidHost.this){if(closed)return;try{activity.startActivity(new Intent(Intent.ACTION_VIEW,android.net.Uri.parse("https://nhlocal.github.io/shir-bot?utm_source=singles_sorter_program&utm_medium=android")));completion.finish(()->reply(requestId,true,JSONObject.NULL));}catch(RuntimeException failure){completion.finish(()->error(requestId,"LINK_UNAVAILABLE",failure));}}});return;
                         default:throw new IllegalArgumentException("הפעולה עדיין אינה זמינה במהדורת Android זו: "+command);
                     }
-                    synchronized(AndroidHost.this){busy=false;}reply(requestId,true,value);
-                }catch(Throwable e){synchronized(AndroidHost.this){busy=false;}error(requestId,"HOST_ERROR",e);}finally{synchronized(AndroidHost.this){busy=false;}}
+                    final Object result=value;completion.finish(()->reply(requestId,true,result));
+                }catch(Throwable e){completion.finish(()->error(requestId,"HOST_ERROR",e));}
             });
         }catch(Throwable e){if(id>0)error(id,"HOST_ERROR",e);}
     }
@@ -106,6 +107,7 @@ final class AndroidHost implements AutoCloseable {
         snapshot=new JSONObject().put("host_schema",1).put("job_id",jobId).put("status","running").put("plan_id",JSONObject.NULL).put("total_rows",0).put("blockers",new JSONArray()).put("warnings",new JSONArray());
         reply(message,true,new JSONObject().put("job_id",jobId));
         worker.execute(()->{
+            JSONObject completed=null;Throwable failure=null;
             try(SafSnapshot captured=new SafSnapshot(activity.getApplicationContext(),storage,signal)){
                 signal.throwIfCanceled();
                 if(models==null&&ai.equals("Configured"))models=OriginalAssets.prepare(activity.getApplicationContext(),signal::isCanceled);
@@ -116,33 +118,49 @@ final class AndroidHost implements AutoCloseable {
                 JSONObject input=new JSONObject().put("schema",1).put("mode",mode).put("source",sourceRoot).put("target",targetRoot==null?JSONObject.NULL:targetRoot).put("settings",settings).put("ai_profile",ai).put("personal_csv",personalCsv).put("entries",captured.entries);
                 JSONObject result=new JSONObject(OriginalPlanning.run(nativeId,models==null?"/unconfigured":models.getAbsolutePath(),captured.directory.getAbsolutePath(),input.toString(),captured));
                 signal.throwIfCanceled();if(!result.getBoolean("ok"))throw new IllegalStateException(result.optString("error","PLANNING_FAILED"));
-                JSONObject data=result.getJSONObject("data");
-                synchronized(AndroidHost.this){if(closed||!ownJob.equals(jobId)||signal.isCanceled())return;rows=data.getJSONArray("rows");snapshot.put("status","completed").put("plan_id",data.getString("plan_id")).put("total_rows",rows.length()).put("blockers",data.getJSONArray("blockers")).put("warnings",data.getJSONArray("warnings"));}
-            }catch(Throwable e){synchronized(AndroidHost.this){try{if(ownJob.equals(jobId)&&snapshot!=null)snapshot.put("status",signal.isCanceled()?"cancelled":"failed").put("error",e.toString());}catch(Exception ignored){}}}
-            finally{OriginalPlanning.abandon(nativeId);synchronized(AndroidHost.this){if(ownJob.equals(jobId)){nativeJob=0;busy=false;cancellation=null;}}}
+                completed=result.getJSONObject("data");
+            }catch(Throwable e){failure=e;}
+            finally{OriginalPlanning.abandon(nativeId);}
+            // Resource cleanup has finished before terminal state is visible.
+            synchronized(AndroidHost.this){
+                if(!ownJob.equals(jobId))return;
+                nativeJob=0;cancellation=null;
+                try{
+                    if(signal.isCanceled())snapshot.put("status","cancelled");
+                    else if(failure!=null)snapshot.put("status","failed").put("error",failure.toString());
+                    else if(!closed&&completed!=null){rows=completed.getJSONArray("rows");snapshot.put("status","completed").put("plan_id",completed.getString("plan_id")).put("total_rows",rows.length()).put("blockers",completed.getJSONArray("blockers")).put("warnings",completed.getJSONArray("warnings"));}
+                }catch(Exception invalid){try{snapshot.put("status","failed").put("error","RESULT_INVALID");}catch(Exception ignored){}}
+                finally{busy=false;}
+            }
         });
     }
     void pickerResult(int resultCode,Intent data){
-        final long ticket,message;final String role;
-        synchronized(this){if(closed||pendingPicker==0)return;ticket=pendingPicker;message=pickerMessage;role=pickerRole;pendingPicker=0;busy=true;}
+        final long ticket,message;final String role;final OwnedCompletion completion;
+        synchronized(this){if(closed||pendingPicker==0)return;ticket=pendingPicker;message=pickerMessage;role=pickerRole;pendingPicker=0;busy=true;completion=new OwnedCompletion(this,()->busy=false);}
         worker.execute(()->{
             try{SafReadStorage.Entry selected=storage.finishPicker(ticket,resultCode,data,new CancellationSignal());
-                synchronized(AndroidHost.this){if(closed)return;if(selected==null){reply(message,true,JSONObject.NULL);return;}if(role.equals("Source"))source=selected.token;else target=selected.token;}
-                reply(message,true,new JSONObject().put("token",selected.token).put("display_name",selected.displayName).put("platform","android").put("capabilities",new JSONObject().put("read",true).put("list",true)));
-            }catch(Throwable e){error(message,"SAF_ERROR",e);}finally{synchronized(AndroidHost.this){busy=false;}}
+                Object value=JSONObject.NULL;
+                if(selected!=null){
+                    synchronized(AndroidHost.this){if(closed)return;if(role.equals("Source"))source=selected.token;else target=selected.token;}
+                    value=new JSONObject().put("token",selected.token).put("display_name",selected.displayName).put("platform","android").put("capabilities",new JSONObject().put("read",true).put("list",true));
+                }
+                final Object result=value;completion.finish(()->reply(message,true,result));
+            }catch(Throwable e){completion.finish(()->error(message,"SAF_ERROR",e));}
         });
     }
     void documentResult(int resultCode,Intent data){
-        final String action;final long message;final CancellationSignal signal;final byte[] bytes;final int count;
-        synchronized(this){if(closed||documentAction==null)return;action=documentAction;message=documentMessage;signal=documentCancel;bytes=exportBytes;count=exportRows;documentAction=null;exportBytes=null;busy=true;}
+        final String action;final long message;final CancellationSignal signal;final byte[] bytes;final int count;final OwnedCompletion completion;
+        synchronized(this){
+            if(closed||documentAction==null)return;action=documentAction;message=documentMessage;signal=documentCancel;bytes=exportBytes;count=exportRows;documentAction=null;exportBytes=null;busy=true;
+            completion=new OwnedCompletion(this,()->{if(bytes!=null)java.util.Arrays.fill(bytes,(byte)0);if(documentCancel==signal)documentCancel=null;busy=false;});
+        }
         worker.execute(()->{
             try{Object value;
                 if(resultCode!=Activity.RESULT_OK||data==null)value=JSONObject.NULL;
                 else if(action.equals("select_personal_import"))value=csv.select(data,signal);
                 else value=csv.export(data,bytes,count,signal);
-                synchronized(AndroidHost.this){busy=false;}reply(message,true,value);
-            }catch(Throwable failure){synchronized(AndroidHost.this){busy=false;}error(message,"CSV_DOCUMENT_ERROR",failure);}
-            finally{synchronized(AndroidHost.this){busy=false;documentCancel=null;}if(bytes!=null)java.util.Arrays.fill(bytes,(byte)0);}
+                final Object result=value;completion.finish(()->reply(message,true,result));
+            }catch(Throwable failure){completion.finish(()->error(message,"CSV_DOCUMENT_ERROR",failure));}
         });
     }
     @Override public synchronized void close(){
