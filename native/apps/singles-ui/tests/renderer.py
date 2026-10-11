@@ -155,6 +155,13 @@ try:
         expect(windows_page.locator('#row-dialog')).not_to_be_visible()
         windows_page.wait_for_timeout(100)
         assert_layout(windows_page.evaluate('() => {'+METRICS+'}'))
+        # Regression: large-text reflow must not keep stretched grid chrome after reset.
+        windows_page.evaluate("document.documentElement.style.fontSize='200%';window.dispatchEvent(new Event('resize'))")
+        windows_page.wait_for_timeout(150)
+        assert windows_page.evaluate("document.getElementById('app').classList.contains('reflow')")
+        windows_page.evaluate("document.documentElement.style.fontSize='';window.dispatchEvent(new Event('resize'))")
+        windows_page.wait_for_timeout(150)
+        assert_layout(windows_page.evaluate('() => {'+METRICS+'}'))
         windows_page.close()
         checks.append('Windows source filename first; unmodified full path available by hover, keyboard disclosure and copy selection')
         page.screenshot(path=str(OUTPUT / 'renderer-mock-results.png'), full_page=True)

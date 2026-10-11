@@ -8,6 +8,8 @@ METRICS = (Path(__file__).with_name('layout_metrics.js')).read_text(encoding='ut
 def assert_layout(metrics, require_bounded=True):
     if require_bounded:
         assert not metrics['reflow'], metrics
+        assert metrics['chrome']['header']['height'] <= 56, metrics
+        assert metrics['chrome']['footer']['height'] <= 40, metrics
     assert metrics['pageWidth'] <= metrics['innerWidth'] + 1, metrics
     if not metrics['reflow']:
         assert metrics['pageHeight'] <= metrics['innerHeight'] + 1, metrics

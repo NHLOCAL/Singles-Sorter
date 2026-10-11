@@ -7,6 +7,7 @@ return (() => {
  return {view:app.dataset.view,setupVisible:!document.getElementById('setup-screen').hidden,resultsVisible:!document.getElementById('results').hidden,innerWidth,innerHeight,dpr:devicePixelRatio,screenWidth:screen.width,screenHeight:screen.height,
   reflow:app.classList.contains('reflow')||innerWidth<=740||innerHeight<=560,
   pageWidth:document.documentElement.scrollWidth,pageHeight:document.documentElement.scrollHeight,
+  chrome:{header:rect(app.querySelector('header')),footer:rect(app.querySelector('footer'))},
   results:rect(document.getElementById('results')),resultsBody:rect(body),resultsScrollHeight:body.scrollHeight,
   rowHeights:Array.from(document.querySelectorAll('#rows tr')).map(el=>el.getBoundingClientRect().height),
   resultsOverflow:getComputedStyle(body).overflowY,controls,
