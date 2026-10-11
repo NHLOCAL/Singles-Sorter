@@ -37,6 +37,9 @@ jobs:
           fetch-depth: 1
           sparse-checkout: native
 
+      - name: Test bounded startup diagnostic contracts
+        run: python -m unittest discover -s tests -p 'test_desktop_diagnostics.py' -v
+
       - name: Probe strict profile guard and same-directory Windows rename
         run: python tests/windows-profile-rename-probe.py
 

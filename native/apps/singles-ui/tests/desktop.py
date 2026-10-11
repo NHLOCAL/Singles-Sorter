@@ -16,6 +16,8 @@ import time
 import urllib.error
 import urllib.request
 
+from desktop_diagnostics import snapshot, startup_probe
+
 ROOT = Path(__file__).resolve().parents[1]
 if os.name != 'nt' or os.environ.get('GITHUB_ACTIONS') != 'true':
     raise SystemExit('Native desktop acceptance must run in an owned Windows GitHub Actions runner.')
@@ -93,6 +95,7 @@ def pick_owned_path(selector, path):
     dialog.child_window(auto_id='1', control_type='Button').click()
     dialog.wait_not('visible', timeout=15)
 
+startup_probe(BINARY, OUTPUT)
 log = (OUTPUT / 'tauri-driver.log').open('wb')
 process = subprocess.Popen([DRIVER], stdout=log, stderr=subprocess.STDOUT)
 try:
@@ -180,6 +183,7 @@ try:
     assert not script("return !!document.querySelector('vite-error-overlay')")
     (OUTPUT / 'acceptance.json').write_text(json.dumps({'status':'passed','platform':'windows-native-tauri','binary_sha256':hashlib.sha256(BINARY.read_bytes()).hexdigest(),'ipc_mocked':False,'checks':checks,'remaining':['Narrator','200 percent DPI','Android SAF and physical ARM64','apply and recovery']},ensure_ascii=False,indent=2),encoding='utf-8')
 except Exception as error:
+    snapshot(BINARY, OUTPUT, 'webdriver-failure')
     if session:
         try:
             capture('failure')

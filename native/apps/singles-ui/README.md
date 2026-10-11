@@ -115,3 +115,28 @@ Primary references checked 2026-10-11:
 - https://learn.microsoft.com/en-us/microsoft-edge/webdriver/
 - https://github.com/actions/runner-images/blob/main/images/windows/Windows2025-Readme.md
 - https://pywinauto.readthedocs.io/en/latest/HowTo.html
+
+### Windows startup diagnostics
+
+The CI desktop harness performs a bounded direct launch of the exact Cargo binary
+before creating the real WebDriver session. It records stdout/stderr, early exit,
+owned process and WebView2 runtime versions, and up to four owned-window images.
+Window images use PID-verified PrintWindow in a five-second subprocess, with no
+desktop screenshot fallback. A black or unavailable image is diagnostic only.
+The preflight process tree is terminated before the unchanged acceptance flow;
+residual preflight processes stop the test rather than contaminate it. A failed
+WebDriver session also records owned-process/window diagnostics. None of these
+observations counts as a passed IPC, rendering, picker, or persistence check.
+
+The Tauri CLI's printed output path is not sufficient proof of a renamed binary.
+Pinned CLI 2.12.2 filters required-features during binary discovery and can fall
+back to the Cargo package name when desktop is enabled only through defaults.
+The configured Cargo binary remains singles-sorter-preview.exe; there is no
+mainBinaryName override. Build adds tauri/custom-protocol and embeds frontendDist.
+The launch timeout's root cause still requires the Windows diagnostic evidence.
+
+References inspected 11 October 2026:
+- https://docs.rs/crate/tauri-cli/2.12.2/source/src/interface/rust.rs
+- https://github.com/tauri-apps/tauri/blob/tauri-driver-v2.1.0/crates/tauri-driver/src/server.rs
+- https://learn.microsoft.com/en-us/microsoft-edge/webview2/how-to/webdriver
+- https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-printwindow
