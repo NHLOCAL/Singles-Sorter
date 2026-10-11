@@ -130,6 +130,17 @@ mod selected {
         run_case(true, "cancel");
         run_case(true, "stale");
     }
+    #[test]
+    fn capability_report_identifies_repair_scope_without_cleanup_authority() {
+        let output = Command::new(env!("CARGO_BIN_EXE_singles-sorter"))
+            .args(["capabilities", "--json"]).output().unwrap();
+        assert!(output.status.success());
+        let report: Value = serde_json::from_slice(&output.stdout).unwrap();
+        let selected = &report["result"]["selected_execution"];
+        assert!(selected["modes"].as_array().unwrap().contains(&json!("FixNames")));
+        assert_eq!(selected["automatic_backup_cleanup"], false);
+        assert_eq!(selected["automatic_replay"], false);
+    }
     fn run_repair_case(action: &str) {
         let root = tempfile::tempdir().unwrap();
         let source = root.path().join("תיקון");

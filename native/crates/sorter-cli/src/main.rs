@@ -150,7 +150,7 @@ impl Capabilities {
             physical_apply: false,
             upcoming: ["ndjson_streaming", "legacy_positional_flags"],
             real_file_planning: plan_files::capabilities(),
-            selected_execution: cfg!(all(windows,feature="selected-windows-execution")).then(||serde_json::json!({"command":"run-files --ndjson","scope":"single-process inspected-plan confirmation","modes":["Copy","same-volume Move"],"automatic_replay":false,"process_restart_recovery_ui":false})),
+            selected_execution: cfg!(all(windows,feature="selected-windows-execution")).then(||serde_json::json!({"command":"run-files --ndjson","scope":"single-process inspected-plan confirmation","modes":["Copy","same-volume Move","FixNames"],"tag_write_scope":"bounded unflagged MP3 ID3v2.3/v2.4; five released fields; retained original backup","automatic_backup_cleanup":false,"automatic_replay":false,"process_restart_recovery_ui":false})),
         }
     }
 }

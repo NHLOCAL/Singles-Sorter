@@ -68,11 +68,11 @@ cooperative CLI handler; inspect the journal after forced termination.
   JSON-encoded and hashed for the model aggregate; this is not a fifth model file.
 - Adapter hashes hash pinned UTF-8 build/coverage descriptors. They are not
   claimed to be executable binary hashes.
-- Copy and same-volume Move with supported single-file operations are the current
-  selected-root execution scope. Artist/ABC/singles directories are journaled.
-  Full albums, FixNames/tag writes, cross-volume Move and Move duets requiring
-  copy-plus-retirement remain unavailable unless a later verified backend adds
-  them. Whole unsupported plans are not silently reduced to a successful subset.
+- The delivered selected-root milestone covers Copy and same-volume Move with
+  supported single-file operations. Artist/ABC/singles directories are journaled.
+  The separate source-only repair candidate is described below. Full albums,
+  cross-volume Move and Move duets requiring copy-plus-retirement remain
+  unavailable unless a later verified backend adds them. Whole unsupported plans are not silently reduced to a successful subset.
 - Linux remains a read-only testing adapter; no Linux mutation path is enabled.
 - Sources, results and journal paths are rendered with textContent/value, never
   injected as HTML. The local main view has only named scoped IPC commands.
