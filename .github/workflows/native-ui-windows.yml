@@ -1,0 +1,96 @@
+name: Windows native UI acceptance
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'native/apps/singles-ui/**'
+      - 'native/crates/**'
+      - 'native/tests/fixtures/**'
+      - '.github/workflows/native-ui-windows.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-ui-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  windows-ui:
+    runs-on: windows-2025
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: native/apps/singles-ui
+    env:
+      RUSTUP_TOOLCHAIN: '1.99.0'
+      CARGO_BUILD_JOBS: '2'
+      MSEDGEDRIVER_TELEMETRY_OPTOUT: '1'
+      PYTHONUTF8: '1'
+    steps:
+      - name: Check out reviewed sources
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout: native
+
+      - name: Install pinned official Rust toolchain
+        run: rustup toolchain install 1.99.0 --profile minimal --component rustfmt --component clippy
+
+      - name: Verify runner tools and matching Edge driver
+        run: |
+          node -e "const [major,minor]=process.versions.node.split('.').map(Number); if(major<22 || (major===22&&minor<12)) process.exit(1)"
+          if ($LASTEXITCODE -ne 0) { throw 'Runner Node must be 22.12 or newer' }
+          if (-not $env:EDGEWEBDRIVER) { throw 'Official runner Edge driver directory missing' }
+          $driver = Join-Path $env:EDGEWEBDRIVER 'msedgedriver.exe'
+          if (-not (Test-Path $driver)) { throw 'Official runner Edge driver missing' }
+          $edge = Join-Path ${env:ProgramFiles(x86)} 'Microsoft/Edge/Application/msedge.exe'
+          $edgeVersion = (Get-Item $edge).VersionInfo.ProductVersion
+          $driverVersion = (& $driver --version).Split(' ')[1]
+          if (($edgeVersion.Split('.')[0..2] -join '.') -ne ($driverVersion.Split('.')[0..2] -join '.')) {
+            throw "Edge/driver version mismatch: $edgeVersion / $driverVersion"
+          }
+          $env:EDGEWEBDRIVER >> $env:GITHUB_PATH
+          Write-Output "Edge $edgeVersion; driver $driverVersion"
+          cmake --version
+          if ($LASTEXITCODE -ne 0) { throw 'Official runner CMake missing' }
+
+      - name: Install locked frontend and official test tools
+        run: |
+          npm ci
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install pywinauto==0.6.9
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo install tauri-driver --version 2.1.0 --locked
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test renderer and native profile contracts
+        run: |
+          npm test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run typecheck
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build actual desktop application through pinned Tauri CLI
+        run: npm run build:desktop -- --ci -- --locked
+
+      - name: Exercise owned native Windows UI and capture screenshots
+        run: npm run test:desktop
+
+      - name: Upload actual runtime evidence, including failures
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: singles-native-ui-evidence-${{ github.run_attempt }}
+          path: native/apps/singles-ui/test-results/native-windows/
+          if-no-files-found: warn
+          retention-days: 7
+          include-hidden-files: false
+          overwrite: false

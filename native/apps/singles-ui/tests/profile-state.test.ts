@@ -1,0 +1,33 @@
+import {describe,it,expect,vi} from 'vitest';
+import {PersonalListController} from '../src/lists';
+import {PreviewController} from '../src/state';
+import {defaults} from '../src/contracts';
+import type {Host,ProfileHost,PersonalList} from '../src/contracts';
+const original:PersonalList={revision:'r1',rows:[['אמן','תיקייה'],['אמן','תיקייה אחרת']],diagnostics:[]};
+function profile():ProfileHost{return{
+ saveMainSettings:vi.fn(async settings=>({...settings,duet_mode:false})),setDuet:vi.fn(async enabled=>({...defaults,duet_mode:enabled})),
+ getPersonalList:vi.fn(async()=>structuredClone(original)),savePersonalList:vi.fn(async(_,rows)=>({revision:'r2',rows,diagnostics:[]})),
+ selectPersonalImport:vi.fn(async()=>({token:'i1',filename:'list.csv',encoding_required:true,preview:null})),
+ previewPersonalImport:vi.fn(async(token,encoding)=>({token,encoding,rows:[['נוסף','יעד']],diagnostics:[]})),
+ confirmPersonalImport:vi.fn(async()=>({revision:'r2',rows:[...original.rows,['נוסף','יעד']],diagnostics:[]})),exportPersonalList:vi.fn(async()=>null),
+ getFirstRunStatus:vi.fn(async()=>({version:'0.1.0',seen:false})),markFirstRunSeen:vi.fn(async()=>({version:'0.1.0',seen:true})),
+};}
+function engine():Host{return{getSettings:async()=>({...defaults}),getModelStatus:async()=>({available:false,message:'none',platform:'windows'}),selectRoot:async()=>null,resolveRoot:async()=>{throw 'unused';},startPreview:async()=>{throw 'unused';},snapshot:async()=>{throw 'unused';},page:async()=>{throw 'unused';}};}
+describe('release save timing',()=>{
+ it('does not persist basic changes until explicit Save',async()=>{const h=profile(),c=new PreviewController(engine(),h);await c.initialize();c.changeSetting('copy_mode',true);c.changeSetting('singles_folder',false);expect(h.saveMainSettings).not.toHaveBeenCalled();await c.saveMainSettings();expect(h.saveMainSettings).toHaveBeenCalledWith({copy_mode:true,main_folder_only:false,singles_folder:false,exist_only:false,abc_sort:false});expect(c.settingsDirty).toBe(false);});
+ it('duet is persisted immediately without saving or overwriting the other draft',async()=>{const h=profile(),c=new PreviewController(engine(),h);await c.initialize();c.changeSetting('copy_mode',true);await c.setDuet(true);expect(h.setDuet).toHaveBeenCalledWith(true);expect(c.state.settings.copy_mode).toBe(true);expect(c.state.settings.duet_mode).toBe(true);expect(c.settingsDirty).toBe(true);expect(h.saveMainSettings).not.toHaveBeenCalled();});
+ it('failed Save does not report success or clear dirty status',async()=>{const h=profile();h.saveMainSettings=async()=>{throw new Error('disk full');};const c=new PreviewController(engine(),h);await c.initialize();c.changeSetting('exist_only',true);await c.saveMainSettings();expect(c.savedNotice).toBeNull();expect(c.settingsDirty).toBe(true);expect(c.state.error).toBe('disk full');});
+ it('does not claim Save when returned settings differ',async()=>{const h=profile();h.saveMainSettings=async()=>({...defaults});const c=new PreviewController(engine(),h);await c.initialize();c.changeSetting('copy_mode',true);await c.saveMainSettings();expect(c.savedNotice).toBeNull();expect(c.settingsDirty).toBe(true);expect(c.state.error).toContain('לא אומתה');});
+ it('failed immediate duet write retains prior value',async()=>{const h=profile();h.setDuet=async()=>{throw 'write failure';};const c=new PreviewController(engine(),h);await c.initialize();await c.setDuet(true);expect(c.state.settings.duet_mode).toBe(false);expect(c.savedNotice).toBeNull();});
+});
+describe('ordered personal list workflow',()=>{
+ it('keeps aliases, duplicate order and folder text unchanged',async()=>{const h=profile(),c=new PersonalListController(h,vi.fn());await c.open();c.edit(0,0,' אמן ');await c.save();expect(h.savePersonalList).toHaveBeenCalledWith('r1',[[' אמן ','תיקייה'],['אמן','תיקייה אחרת']]);});
+ it('cancel never writes and discards draft',async()=>{const h=profile(),c=new PersonalListController(h,vi.fn());await c.open();c.edit(0,1,'טיוטה');c.cancel();expect(c.draft).toEqual(original.rows);expect(h.savePersonalList).not.toHaveBeenCalled();});
+ it('does not silently filter incomplete rows',async()=>{const h=profile(),c=new PersonalListController(h,vi.fn());await c.open();c.add();await c.save();expect(h.savePersonalList).not.toHaveBeenCalled();expect(c.draft).toHaveLength(3);expect(c.error).toContain('שורה 3');});
+ it('retains malformed imported records until explicit correction/removal',async()=>{const h=profile();h.getPersonalList=async()=>({revision:'r1',rows:[[],['a','b','c']],diagnostics:[{index:1,code:'ALIAS_ROW_WIDTH',width:3}]});const c=new PersonalListController(h,vi.fn());await c.open();expect(c.draft).toEqual([[],['a','b','c']]);c.edit(1,0,'new');expect(c.draft[1]).toEqual(['new','b','c']);await c.save();expect(h.savePersonalList).not.toHaveBeenCalled();});
+ it('encoding preview and Cancel do not append',async()=>{const h=profile(),c=new PersonalListController(h,vi.fn());await c.selectImport();expect(c.preview).toBeNull();await c.decode('Windows1255');expect(h.previewPersonalImport).toHaveBeenCalledWith('i1','Windows1255');expect(h.confirmPersonalImport).not.toHaveBeenCalled();c.cancel();expect(c.selection).toBeNull();});
+ it('changing the visible encoding invalidates the old preview and blocks confirmation',async()=>{const h=profile(),c=new PersonalListController(h,vi.fn());await c.selectImport();await c.decode('Windows1255');expect(c.preview).not.toBeNull();c.chooseEncoding('Utf8');expect(c.preview).toBeNull();await c.confirmImport();expect(h.confirmPersonalImport).not.toHaveBeenCalled();await c.decode('Utf8');await c.confirmImport();expect(h.confirmPersonalImport).toHaveBeenCalledWith('i1','Utf8','r1');});
+ it('only confirmation appends, with frozen preview token/encoding/list revision',async()=>{const h=profile(),changed=vi.fn(),c=new PersonalListController(h,changed);await c.selectImport();await c.decode('Utf16Le');await c.confirmImport();expect(h.confirmPersonalImport).toHaveBeenCalledWith('i1','Utf16Le','r1');expect(c.snapshot?.rows).toEqual([...original.rows,['נוסף','יעד']]);expect(changed).toHaveBeenCalledTimes(1);});
+ it('stale revisions keep unsaved draft for recovery',async()=>{const h=profile();h.savePersonalList=async()=>{throw 'STALE_LIST';};const c=new PersonalListController(h,vi.fn());await c.open();c.edit(0,1,'new');await c.save();expect(c.error).toBe('STALE_LIST');expect(c.draft[0][1]).toBe('new');expect(c.snapshot?.revision).toBe('r1');});
+ it('cancelled export does not claim a file exists',async()=>{const c=new PersonalListController(profile(),vi.fn());await c.export();expect(c.notice).toBeNull();expect(c.error).toBeNull();});
+});

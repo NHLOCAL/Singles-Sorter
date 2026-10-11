@@ -1,0 +1,202 @@
+"""Owned Windows CI acceptance via external tauri-driver, with REAL IPC.
+
+No embedded automation plugin/server is added to the application. This script
+is intentionally CI-only and refuses other platforms. Build the app with the
+pinned Tauri CLI first; put tauri-driver and matching msedgedriver on PATH.
+"""
+import base64
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import tempfile
+import time
+import urllib.error
+import urllib.request
+
+ROOT = Path(__file__).resolve().parents[1]
+if os.name != 'nt' or os.environ.get('GITHUB_ACTIONS') != 'true':
+    raise SystemExit('Native desktop acceptance must run in an owned Windows GitHub Actions runner.')
+BINARY = Path(os.environ.get('SINGLES_DESKTOP_BIN', str(ROOT / 'src-tauri/target/release/singles-sorter-preview.exe'))).resolve(strict=True)
+OUTPUT = Path(os.environ.get('SINGLES_UI_EVIDENCE', str(ROOT / 'test-results/native-windows')))
+OUTPUT.mkdir(parents=True, exist_ok=True)
+DRIVER = shutil.which('tauri-driver')
+if not DRIVER:
+    raise SystemExit('tauri-driver is not installed; native runtime was not tested.')
+BASE = 'http://127.0.0.1:4444'
+ELEMENT = 'element-6066-11e4-a52e-4f735466cecf'
+session = None
+checks = []
+
+def call(method, path, body=None):
+    data = None if body is None else json.dumps(body).encode('utf-8')
+    req = urllib.request.Request(BASE + path, data=data, method=method, headers={'Content-Type':'application/json; charset=utf-8'})
+    # Local native test driver only; do not inherit an external proxy.
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    with opener.open(req, timeout=30) as response:
+        result = json.loads(response.read())
+    value = result.get('value')
+    if isinstance(value, dict) and value.get('error'):
+        raise RuntimeError(f"{value['error']}: {value.get('message')}")
+    return value
+
+def command(method, path, body=None):
+    return call(method, f'/session/{session}{path}', body)
+
+def wait(predicate, timeout=45):
+    deadline = time.monotonic() + timeout
+    last = None
+    while time.monotonic() < deadline:
+        try:
+            value = predicate()
+            if value:
+                return value
+        except (urllib.error.URLError, RuntimeError, KeyError) as error:
+            last = error
+        time.sleep(.2)
+    raise TimeoutError(f'Native UI condition was not reached: {last}')
+
+def find(selector):
+    return command('POST','/element',{'using':'css selector','value':selector})[ELEMENT]
+
+def click(selector):
+    command('POST',f'/element/{find(selector)}/click',{})
+
+def fill(selector, value):
+    element = find(selector)
+    command('POST',f'/element/{element}/clear',{})
+    command('POST',f'/element/{element}/value',{'text':value})
+
+def text(selector):
+    return command('GET',f'/element/{find(selector)}/text')
+
+def script(source):
+    return command('POST','/execute/sync',{'script':source,'args':[]})
+
+def capture(name):
+    (OUTPUT / f'{name}.png').write_bytes(base64.b64decode(command('GET','/screenshot')))
+
+def pick_owned_path(selector, path):
+    # Native dialog controls belong to this exact owned preview executable.
+    # Never interact with a generic desktop window or another user's app.
+    from pywinauto import Application
+    click(selector)
+    app = Application(backend='uia').connect(path=str(BINARY), timeout=10)
+    dialog = app.window(class_name='#32770')
+    dialog.wait('visible enabled', timeout=15)
+    # The common IFileDialog filename Edit is inside control 1148 (ComboBox).
+    filename = dialog.child_window(auto_id='1148', control_type='ComboBox').child_window(control_type='Edit')
+    filename.wait('visible enabled', timeout=10)
+    filename.set_edit_text(str(path))
+    dialog.child_window(auto_id='1', control_type='Button').click()
+    dialog.wait_not('visible', timeout=15)
+
+log = (OUTPUT / 'tauri-driver.log').open('wb')
+process = subprocess.Popen([DRIVER], stdout=log, stderr=subprocess.STDOUT)
+try:
+    wait(lambda: call('GET','/status'))
+    result = call('POST','/session',{'capabilities':{'alwaysMatch':{'browserName':'wry','tauri:options':{'application':str(BINARY)}}}})
+    session = result['sessionId']
+    wait(lambda: 'מסדר הסינגלים' in text('h1'))
+    wait(lambda: script("return document.documentElement.dataset.startupState === 'ready'"))
+    wait(lambda: script("return !document.querySelector('#sort').disabled"))
+    if script("return document.querySelector('#menu-dialog').open"):
+        click('#menu-dialog .close-dialog')
+        wait(lambda: script("return !document.querySelector('#menu-dialog').open"))
+    capture('01-native-home')
+    checks.append('Actual Windows Tauri/WebView2 rendered local assets and initialized real IPC')
+    with tempfile.TemporaryDirectory(prefix='singles-ui-owned-') as temporary:
+        scratch = Path(temporary)
+        source, target = scratch / 'מקור', scratch / 'יעד'
+        source.mkdir(); target.mkdir()
+        media = source / 'אברהם פריד - בדיקה.mp3'
+        shutil.copyfile(ROOT.parents[1] / 'tests/fixtures/media/tagged.mp3', media)
+        before = hashlib.sha256(media.read_bytes()).hexdigest()
+        pick_owned_path('#source-picker', source)
+        wait(lambda: script("return document.querySelector('#source').value") == str(source))
+        pick_owned_path('#target-picker', target)
+        wait(lambda: script("return document.querySelector('#target').value") == str(target))
+        checks.append('Native folder dialogs selected only the owned source and target fixtures')
+        click('#sort')
+        wait(lambda: script("return document.querySelectorAll('#rows tr').length > 0 && !document.querySelector('#sort').disabled"))
+        assert 'אברהם פריד' in text('#rows')
+        assert script("return document.querySelector('#error').hidden"), text('#error')
+        capture('02-native-real-sort-preview')
+        assert media.is_file() and hashlib.sha256(media.read_bytes()).hexdigest() == before
+        assert list(target.iterdir()) == []
+        checks.append('Real owned MP3 sort preview produced Hebrew singer/destination; source hash and empty target unchanged')
+        fill('#target','')
+        click('#fix')
+        wait(lambda: script("return document.querySelectorAll('#rows tr').length > 0 && !document.querySelector('#fix').disabled"))
+        assert script("return document.querySelector('#error').hidden"), text('#error')
+        capture('03-native-real-fix-preview')
+        assert hashlib.sha256(media.read_bytes()).hexdigest() == before
+        checks.append('Target-free real FixNames preview; owned source bytes unchanged')
+        # Task 2 uses a separate development profile. The runner has no user profile.
+        assert script("return !!document.querySelector('#save-settings')"), "Task 2 preferences UI is missing; stale binary cannot pass"
+        click('#copy_mode'); click('#save-settings')
+        wait(lambda: 'נשמרו' in text('#settings-notice'))
+        expected_copy = script("return document.querySelector('#copy_mode').checked")
+        click('#advanced')
+        expected_duet = not script("return document.querySelector('#duet-all').checked")
+        click('#duet-all' if expected_duet else '#duet-first')
+        wait(lambda: script("return !document.querySelector('#duet-all').disabled"))
+        assert script("return document.querySelector('#duet-all').checked") == expected_duet
+        capture('04-native-settings')
+        click('#edit-list'); click('#list-add')
+        alias_id = script("return Array.from(document.querySelectorAll('[id^=list-alias-]')).at(-1).id")
+        folder_id = alias_id.replace('alias','folder')
+        fill('#'+alias_id,'אמן בדיקת ממשק'); fill('#'+folder_id,'תיקיית בדיקה')
+        click('#list-save'); wait(lambda:'הרשימה נשמרה' in text('#list-notice'))
+        capture('05-native-personal-list')
+        click('#list-cancel')
+        imported_csv = scratch / 'אמנים.csv'
+        imported_csv.write_text('אמן מיובא,תיקייה מיובאת\r\nאמן מיובא,תיקייה שנייה\r\n', encoding='utf-8')
+        pick_owned_path('#import-list', imported_csv)
+        wait(lambda: script("return document.querySelector('#import-dialog').open"))
+        assert '2 שורות לייבוא' in text('#import-summary')
+        assert 'תיקייה מיובאת' in text('#import-rows')
+        capture('06-native-import-preview')
+        click('#confirm-import')
+        wait(lambda: script("return !document.querySelector('#import-dialog').open"))
+        click('#edit-list')
+        wait(lambda: script("return Array.from(document.querySelectorAll('[id^=list-alias-]')).filter(x=>x.value==='אמן מיובא').length") == 2)
+        checks.append('Actual native CSV file dialog, UTF-8 Hebrew preview and explicit append preserved duplicate aliases')
+        click('#list-cancel'); click('#advanced-dialog .close-dialog')
+        command('DELETE',''); session = None
+        restarted = call('POST','/session',{'capabilities':{'alwaysMatch':{'browserName':'wry','tauri:options':{'application':str(BINARY)}}}})
+        session = restarted['sessionId']
+        wait(lambda: script("return document.documentElement.dataset.startupState === 'ready' && !document.querySelector('#sort').disabled"))
+        assert script("return document.querySelector('#copy_mode').checked") == expected_copy
+        assert script("return document.querySelector('#source').value") == ''
+        click('#advanced')
+        assert script("return document.querySelector('#duet-all').checked") == expected_duet
+        click('#edit-list')
+        wait(lambda: 'אמן בדיקת ממשק' in script("return Array.from(document.querySelectorAll('[id^=list-alias-]')).map(x=>x.value).join('|')"))
+        capture('07-native-profile-after-reopen')
+        checks.append('Native explicit preference Save, immediate duet and personal list persisted after app restart; source authority not persisted')
+    assert not script("return !!document.querySelector('vite-error-overlay')")
+    (OUTPUT / 'acceptance.json').write_text(json.dumps({'status':'passed','platform':'windows-native-tauri','binary_sha256':hashlib.sha256(BINARY.read_bytes()).hexdigest(),'ipc_mocked':False,'checks':checks,'remaining':['Narrator','200 percent DPI','Android SAF and physical ARM64','apply and recovery']},ensure_ascii=False,indent=2),encoding='utf-8')
+except Exception as error:
+    if session:
+        try:
+            capture('failure')
+        except Exception:
+            pass
+    (OUTPUT / 'failure.json').write_text(json.dumps({'status':'failed','error':str(error),'completed_checks':checks},ensure_ascii=False,indent=2),encoding='utf-8')
+    raise
+finally:
+    if session:
+        try:
+            command('DELETE','')
+        except Exception:
+            pass
+    process.terminate()
+    try:
+        process.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        process.kill(); process.wait()
+    log.close()
+print(f'{len(checks)} actual Windows desktop acceptance checks passed.')

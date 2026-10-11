@@ -1,0 +1,26 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "מסדר הסינגלים — תצוגה מקדימה",
+  "version": "0.1.0",
+  "identifier": "com.nhlocal.singlesorter.preview",
+  "build": {
+    "beforeBuildCommand": "npm run build",
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [],
+    "security": {
+      "capabilities": [
+        "main-read-only"
+      ],
+      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'",
+      "freezePrototype": true
+    }
+  },
+  "bundle": {
+    "active": false
+  }
+}
