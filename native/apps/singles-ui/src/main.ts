@@ -33,7 +33,7 @@ app.innerHTML=`
 <fieldset><legend class="visually-hidden">מתקדם</legend><div class="option-row"><label class="option"><input id="singles_folder" type="checkbox"><span id="singles_folder-label">צור תיקיות סינגלים</span></label><button class="help-badge" aria-label="עזרה: צור תיקיות סינגלים" data-help-text="יצירת תיקייה ייעודית בשם ״סינגלים״ בתוך כל תיקיית אמן">?</button></div><div class="option-row"><label class="option"><input id="abc_sort" type="checkbox"><span id="abc_sort-label">מיון אלפביתי</span></label><button class="help-badge" aria-label="עזרה: מיון אלפביתי" data-help-text="יצירת תיקיות ראשיות לפי אותיות הא׳-ב׳ וארגון תיקיות האמנים בתוכן">?</button></div><div class="option-row"><label class="option"><input id="exist_only" type="checkbox"><span id="exist_only-label">שימוש בתיקיות קיימות</span></label><button class="help-badge" aria-label="עזרה: שימוש בתיקיות קיימות" data-help-text="העברת קבצים רק לתיקיות אמנים הקיימות כבר בתיקית היעד">?</button></div></fieldset>
 <div class="options-bottom"><button id="advanced" class="text-button">הגדרות מתקדמות</button><button id="save-settings" class="text-button">שמור הגדרות</button></div><p id="settings-notice" role="status" class="hint"></p>
 </aside></div>
-<section id="processing-screen" hidden aria-labelledby="processing-title"><progress aria-label="מתבצעת בדיקה"></progress><h2 id="processing-title" tabindex="-1">קורא ומנתח את הקבצים…</h2><p id="busy" role="status" aria-live="polite"></p></section>
+<section id="processing-screen" hidden aria-labelledby="processing-title"><progress aria-label="מתבצעת בדיקה"></progress><h2 id="processing-title" tabindex="-1">קורא ומנתח את הקבצים…</h2><p id="busy" role="status" aria-live="polite"></p><button id="cancel-preview" class="text-button">ביטול</button></section>
 <section id="results" class="results card" aria-labelledby="results-heading"><div class="results-toolbar"><button id="back-setup" class="text-button">חזרה להגדרות</button><div class="section-title"><h2 id="results-heading" tabindex="-1">תוכנית מיון</h2><span id="count" class="quiet-label" role="status"></span></div></div>
 <div class="results-body" id="results-body" tabindex="0" aria-label="תוכן התוצאות">
 
@@ -64,11 +64,12 @@ target.addEventListener('input',()=>controller.editRoot('Target',target.value));
 $('source-picker').addEventListener('click',()=>void controller.selectRoot('Source'));
 $('target-picker').addEventListener('click',()=>void controller.selectRoot('Target'));
 function hasResults(){return controller.state.snapshot?.status==='completed'&&!!controller.state.page;}
-function showSetup(){if(navigation.screen==='results')resultsScroll=$('results-body').scrollTop;navigation.setup();render();source.focus();}
+function showSetup(){if(controller.state.activity==='preview'){controller.cancelPreview();return;}if(navigation.screen==='results')resultsScroll=$('results-body').scrollTop;navigation.setup();render();source.focus();}
 function showResults(push=true){navigation.results(hasResults());if(push)history.pushState({singlesView:'results',jobId:controller.state.snapshot?.job_id},'');render();$('results-heading').focus();requestAnimationFrame(()=>{$('results-body').scrollTop=resultsScroll;});}
 function backToSetup(){if(history.state?.singlesView==='results')history.back();else showSetup();}
 history.replaceState({singlesView:'setup'},'');
 window.addEventListener('popstate',()=>{
+ if(controller.state.activity==='preview'){controller.cancelPreview();history.replaceState({singlesView:'setup'},'');return;}
  const valid=hasResults()&&history.state?.jobId===controller.state.snapshot?.job_id;
  if($<HTMLDialogElement>('row-dialog').open){
   $<HTMLDialogElement>('row-dialog').close();detailTrigger?.focus();
@@ -81,13 +82,16 @@ window.addEventListener('popstate',()=>{
  if(history.state?.singlesView==='results'&&valid)showResults(false);
  else{history.replaceState({singlesView:'setup'},'');showSetup();}
 });
+$('cancel-preview').addEventListener('click',()=>controller.cancelPreview());
 $('back-setup').addEventListener('click',backToSetup);
 $('reopen-results').addEventListener('click',()=>showResults());
 async function runPreview(mode:Mode){
- if(controller.state.busy||!navigation.start(mode))return;
+ if(controller.state.busy||personal.busy||!navigation.start(mode))return;
+ history.pushState({singlesView:'processing'},'');
  resultsScroll=0;render();$('processing-title').focus();
  await controller.preview(mode);navigation.finish(hasResults());
- if(hasResults())showResults();else{render();$('error').focus();}
+ history.replaceState({singlesView:'setup'},'');
+ if(hasResults())showResults();else{render();if(controller.state.error)$('error').focus();else source.focus();}
 }
 function closeRow(){if(history.state?.singlesView==='detail')history.back();else{$<HTMLDialogElement>('row-dialog').close();detailTrigger?.focus();}}
 $('row-close').addEventListener('click',closeRow);
@@ -159,7 +163,8 @@ function render(){
  $('connection').hidden=s.hostAvailable||!s.initialized;
  $('connection').textContent='המארח המקומי אינו מחובר. יש לפתוח את התוכנה כדי לבדוק תיקיות.';
  $('settings-label').textContent=controller.settingsDirty?'שינויים שלא נשמרו':'ההגדרות שלך';$('settings-notice').textContent=noticeLabel(controller.savedNotice);$<HTMLButtonElement>('save-settings').disabled=blocked;$('settings-error').hidden=!s.error;$('settings-error').textContent=s.error??'';
- $('busy').textContent=s.activity==='settings'?'שומר הגדרות…':s.activity==='page'?'טוען עמוד תוצאות…':'קורא ומנתח את הקבצים…';
+ $<HTMLButtonElement>('cancel-preview').disabled=!s.busy||s.cancelRequested;
+ $('busy').textContent=s.cancelRequested&&s.activity==='preview'?'מבטל את הבדיקה…':s.activity==='settings'?'שומר הגדרות…':s.activity==='page'?'טוען עמוד תוצאות…':'קורא ומנתח את הקבצים…';
  $('busy').hidden=!s.busy;$('results').setAttribute('aria-busy',String(s.busy));
  $('error').hidden=!s.error;$('error').textContent=s.error??'';$('error').tabIndex=-1;
  const ready=s.snapshot?.status==='completed'&&!!s.page;
@@ -223,8 +228,8 @@ function renderPersonal(){
  for(let index=listOffset;index<Math.min(listOffset+50,personal.draft.length);index++){
   const row=personal.draft[index],entry=document.createElement('div');entry.className='list-row';
   entry.append(text('span',String(index+1),'list-index'));
-  for(const [column,label] of [[1,'שם תיקיה'],[0,'שם זמר']] as const){const wrapper=document.createElement('label');wrapper.append(text('span',label,'editor-cell-label'));const input=document.createElement('input');input.id=`list-${column===0?'alias':'folder'}-${index}`;input.value=row[column]??'';input.dir='auto';input.disabled=personal.busy;input.setAttribute('aria-label',`${label}, שורה ${index+1}`);input.addEventListener('input',()=>personal.edit(index,column,input.value));wrapper.append(input);entry.append(wrapper);}
-  const remove=document.createElement('button');setButtonLabel(remove,'מחק','delete');remove.className='text-button';remove.disabled=personal.busy;remove.setAttribute('aria-label',`מחק שורה ${index+1}`);remove.addEventListener('click',()=>{personal.remove(index);const next=Math.min(index,personal.draft.length-1);if(next>=0)$(`list-alias-${next}`).focus();else $('list-add').focus();});entry.append(remove);
+  for(const [column,label] of [[1,'שם תיקיה'],[0,'שם זמר']] as const){const wrapper=document.createElement('label');wrapper.append(text('span',label,'editor-cell-label'));const input=document.createElement('input');input.id=`list-${column===0?'alias':'folder'}-${index}`;input.value=row[column]??'';input.dir='auto';input.disabled=personal.busy||controller.state.busy;input.setAttribute('aria-label',`${label}, שורה ${index+1}`);input.addEventListener('input',()=>personal.edit(index,column,input.value));wrapper.append(input);entry.append(wrapper);}
+  const remove=document.createElement('button');setButtonLabel(remove,'מחק','delete');remove.className='text-button';remove.disabled=personal.busy||controller.state.busy;remove.setAttribute('aria-label',`מחק שורה ${index+1}`);remove.addEventListener('click',()=>{personal.remove(index);const next=Math.min(index,personal.draft.length-1);if(next>=0)$(`list-alias-${next}`).focus();else $('list-add').focus();});entry.append(remove);
   if(row.length!==2){entry.append(text('p',`מבנה לא תקין (${row.length} שדות): ${JSON.stringify(row)}. יש לתקן או למחוק במפורש.`,'list-row-warning'));}
   $('list-rows').append(entry);
  }
@@ -237,8 +242,8 @@ function renderPersonal(){
  const imports=personal.importRows;importOffset=Math.min(importOffset,Math.floor(Math.max(0,imports.length-1)/50)*50);
  for(const {row,index}of imports.slice(importOffset,importOffset+50)){
   const entry=document.createElement('div');entry.className='list-row';entry.append(text('span',String(index+1),'list-index'));
-  for(const [column,label]of [[1,'שם תיקיה'],[0,'שם זמר']]as const){const wrapper=document.createElement('label');wrapper.append(text('span',label,'editor-cell-label'));const input=document.createElement('input');input.id=`import-${column===0?'alias':'folder'}-${index}`;input.value=row[column]??'';input.dir='auto';input.disabled=personal.busy;input.setAttribute('aria-label',`${label}, שורה ${index+1}`);input.addEventListener('input',()=>personal.editImport(index,column,input.value));wrapper.append(input);entry.append(wrapper);}
-  const remove=document.createElement('button');setButtonLabel(remove,'מחק','delete');remove.className='text-button';remove.disabled=personal.busy;remove.dataset.importDelete=String(index);remove.setAttribute('aria-label',`מחק שורה ${index+1} מהייבוא`);remove.addEventListener('click',()=>{const position=personal.importRows.findIndex(item=>item.index===index);personal.deleteImport(index);const remaining=personal.importRows;const next=remaining[Math.min(position,remaining.length-1)];if(next)$(`import-alias-${next.index}`).focus();else $('cancel-import').focus();});entry.append(remove);
+  for(const [column,label]of [[1,'שם תיקיה'],[0,'שם זמר']]as const){const wrapper=document.createElement('label');wrapper.append(text('span',label,'editor-cell-label'));const input=document.createElement('input');input.id=`import-${column===0?'alias':'folder'}-${index}`;input.value=row[column]??'';input.dir='auto';input.disabled=personal.busy||controller.state.busy;input.setAttribute('aria-label',`${label}, שורה ${index+1}`);input.addEventListener('input',()=>personal.editImport(index,column,input.value));wrapper.append(input);entry.append(wrapper);}
+  const remove=document.createElement('button');setButtonLabel(remove,'מחק','delete');remove.className='text-button';remove.disabled=personal.busy||controller.state.busy;remove.dataset.importDelete=String(index);remove.setAttribute('aria-label',`מחק שורה ${index+1} מהייבוא`);remove.addEventListener('click',()=>{const position=personal.importRows.findIndex(item=>item.index===index);personal.deleteImport(index);const remaining=personal.importRows;const next=remaining[Math.min(position,remaining.length-1)];if(next)$(`import-alias-${next.index}`).focus();else $('cancel-import').focus();});entry.append(remove);
   const original=personal.preview!.rows[index];if(original.length!==2||original.some(field=>!field))entry.append(text('p',`מבנה מקורי: ${JSON.stringify(original)}`,'list-row-warning'));
   $('import-rows').append(entry);
  }

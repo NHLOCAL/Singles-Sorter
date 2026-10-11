@@ -5,7 +5,7 @@ const rootKeys = {Source:'source',Target:'target'} as const;
 export interface RootInput {text:string;selection:RootSelection|null;pending:boolean;revision:number}
 export interface State {
   source:RootInput;target:RootInput;settings:Settings;model:ModelStatus|null;
-  initialized:boolean;hostAvailable:boolean;busy:boolean;activity:'preview'|'settings'|'page'|null;error:string|null;
+  initialized:boolean;hostAvailable:boolean;busy:boolean;cancelRequested:boolean;activity:'preview'|'settings'|'page'|null;error:string|null;
   snapshot:Snapshot|null;page:PlanPage|null;offset:number;ai:'Disabled'|'Configured';
 }
 const newRoot = ():RootInput => ({text:'',selection:null,pending:false,revision:0});
@@ -31,7 +31,8 @@ export function errorText(error:unknown):string {
   return 'הפעולה לא הושלמה. נסה שוב לאחר בדיקת החיבור לתוכנה.';
 }
 export class PreviewController {
-  readonly state:State={source:newRoot(),target:newRoot(),settings:{...defaults},model:null,initialized:false,hostAvailable:false,busy:false,activity:null,error:null,snapshot:null,page:null,offset:0,ai:'Disabled'};
+  readonly state:State={source:newRoot(),target:newRoot(),settings:{...defaults},model:null,initialized:false,hostAvailable:false,busy:false,cancelRequested:false,activity:null,error:null,snapshot:null,page:null,offset:0,ai:'Disabled'};
+  private activePreview:{jobId:string|null;cancelSent:boolean;terminal:boolean}|null=null;
   private listeners=new Set<()=>void>();
   savedNotice:string|null=null;
   settingsDirty=false;
@@ -103,20 +104,64 @@ export class PreviewController {
     const selected=await this.host.resolveRoot(role,root.text);
     root.selection=selected;root.text=selected.display_name;return selected;
   }
+  cancelPreview(){
+    const run=this.activePreview;
+    if(!run)return;
+    this.state.cancelRequested=true;this.emit();
+    this.sendCancellation(run);
+  }
+  private sendCancellation(run:NonNullable<PreviewController['activePreview']>){
+    if(!run.jobId||run.cancelSent||run.terminal)return;
+    run.cancelSent=true;
+    // Cancellation is a request, not evidence that the native worker stopped.
+    void this.host.cancelPreview(run.jobId).catch(error=>{
+      if(this.activePreview!==run||run.terminal)return;
+      run.cancelSent=false;this.state.error=errorText(error);this.emit();
+    });
+  }
   async preview(mode:Mode){
     if(this.state.busy||this.state.source.pending||this.state.target.pending||!this.state.hostAvailable)return;
-    this.invalidate();this.state.busy=true;this.state.activity='preview';this.emit();
+    const run={jobId:null as string|null,cancelSent:false,terminal:false};
+    this.activePreview=run;
+    this.invalidate();this.state.busy=true;this.state.cancelRequested=false;this.state.activity='preview';this.emit();
     try{
       const source=await this.resolve('Source');
+      if(this.state.cancelRequested)return;
       const target=mode==='Sort'?await this.resolve('Target'):null;
+      if(this.state.cancelRequested)return;
       const started=await this.host.startPreview({mode,source_token:source.token,target_token:target?.token??null,settings:{...this.state.settings},ai_profile:this.state.ai});
-      const snapshot=await this.host.snapshot(started.job_id);
-      if(snapshot.host_schema!==1||snapshot.job_id!==started.job_id)throw new Error('התקבלה תשובה שאינה שייכת לבדיקה הנוכחית.');
-      this.state.snapshot=snapshot;
-      if(snapshot.status==='failed')throw new Error(snapshot.error||'התצוגה המקדימה נכשלה.');
-      this.state.page=await this.host.page(started.job_id,0,PAGE_SIZE);
+      run.jobId=started.job_id;
+      if(this.state.cancelRequested)this.sendCancellation(run);
+      for(;;){
+        if(this.state.cancelRequested)this.sendCancellation(run);
+        let snapshot:Snapshot;
+        try{
+          snapshot=await this.host.snapshot(started.job_id);
+          if(snapshot.host_schema!==1||snapshot.job_id!==started.job_id||!['running','completed','failed','cancelled'].includes(snapshot.status))throw new Error('התקבלה תשובה שאינה שייכת לבדיקה הנוכחית.');
+        }catch(error){
+          // A lost or stale reply cannot prove that the host released its worker.
+          this.state.error=errorText(error);this.emit();
+          await new Promise(resolve=>setTimeout(resolve,250));
+          continue;
+        }
+        this.state.snapshot=snapshot;this.state.error=null;
+        if(snapshot.status!=='running'){
+          run.terminal=true;
+          if(snapshot.status==='failed')throw new Error(snapshot.error||'התצוגה המקדימה נכשלה.');
+          if(snapshot.status==='completed'&&!this.state.cancelRequested){
+            const page=await this.host.page(started.job_id,0,PAGE_SIZE);
+            if(!this.state.cancelRequested)this.state.page=page;
+          }
+          break;
+        }
+        this.emit();
+        await new Promise(resolve=>setTimeout(resolve,250));
+      }
     }catch(error){this.state.error=errorText(error);}
-    finally{this.state.busy=false;this.state.activity=null;this.emit();}
+    finally{
+      run.terminal=true;this.activePreview=null;
+      this.state.busy=false;this.state.activity=null;this.emit();
+    }
   }
   async changePage(offset:number){
     const snapshot=this.state.snapshot;

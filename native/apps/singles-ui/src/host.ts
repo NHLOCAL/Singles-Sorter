@@ -17,6 +17,7 @@ export const nativeHost: Host & ProfileHost = {
   getSettings: () => invoke('get_settings'),
   getModelStatus: () => invoke('get_model_status'),
   startPreview: request => invoke('start_preview',{request}),
+  cancelPreview: jobId => invoke('cancel_preview',{jobId}),
   snapshot: jobId => invoke('job_snapshot',{jobId}),
   page: (jobId,offset,limit) => invoke('get_plan_page',{jobId,offset,limit}),
 };

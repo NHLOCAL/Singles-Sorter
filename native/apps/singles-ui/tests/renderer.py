@@ -39,9 +39,10 @@ window.__TAURI_INTERNALS__={invoke:async(command,args={})=>{
  if(command==='resolve_typed_root'){if(args.text==='bad')throw 'INVALID_ROOT';return {token:args.role,display_name:args.text,capabilities:{read:true,list:true},platform:'linux_test'};}
  if(command==='start_preview'){
   if(args.request.ai_profile==='Configured')throw 'RECOGNITION_UNAVAILABLE';
-  await new Promise(resolve=>setTimeout(resolve,80));return {job_id:'renderer-fixture'};
+  await new Promise(resolve=>setTimeout(resolve,window.__startDelay??80));return {job_id:'renderer-fixture'};
  }
- if(command==='job_snapshot')return {host_schema:1,job_id:'renderer-fixture',status:'completed',plan_id:'renderer-fixture-not-native',total_rows:2,blockers:['PHYSICAL_APPLY_UNAVAILABLE'],warnings:['Effects and counters are predicted; no files or tags were changed','AI intentionally disabled; no native inference bundle is used','Unknown actionable fixture warning']};
+ if(command==='cancel_preview')return null;
+ if(command==='job_snapshot')return {host_schema:1,job_id:'renderer-fixture',status:window.__jobStatus??'completed',plan_id:'renderer-fixture-not-native',total_rows:2,blockers:['PHYSICAL_APPLY_UNAVAILABLE'],warnings:['Effects and counters are predicted; no files or tags were changed','AI intentionally disabled; no native inference bundle is used','Unknown actionable fixture warning']};
  if(command==='get_plan_page')return window.__realHostFixture;
  throw new Error('Unexpected mock command '+command);
 }};
@@ -91,6 +92,43 @@ try:
         (OUTPUT / 'layout-metrics.json').write_text(json.dumps(measurements,ensure_ascii=False,indent=2),encoding='utf-8')
         page.screenshot(path=str(OUTPUT / 'renderer-mock-desktop.png'), full_page=True)
         checks.append('Desktop page identity and nonblank renderer')
+        cancel_page=browser.new_page(viewport={'width':1000,'height':650})
+        cancel_page.add_init_script('window.__realHostFixture='+json.dumps(REAL_PAGE,ensure_ascii=False)+';'+MOCK)
+        cancel_page.goto(f'http://127.0.0.1:{server.server_port}/')
+        expect(cancel_page.locator('#sort')).to_be_enabled()
+        cancel_page.locator('#source').fill('C:\\Music')
+        cancel_page.evaluate("window.__jobStatus='running';window.__startDelay=400")
+        cancel_page.locator('#fix').click()
+        expect(cancel_page.locator('#processing-screen')).to_be_visible()
+        cancel_page.locator('#cancel-preview').click()
+        expect(cancel_page.locator('#cancel-preview')).to_be_disabled()
+        expect(cancel_page.locator('#source')).to_be_disabled()
+        cancel_page.wait_for_function("window.__calls.some(c=>c.command==='cancel_preview')")
+        expect(cancel_page.locator('#processing-screen')).to_be_visible()
+        assert cancel_page.evaluate("window.__calls.filter(c=>c.command==='start_preview').length")==1
+        assert cancel_page.evaluate("window.__calls.filter(c=>c.command==='cancel_preview').length")==1
+        assert not cancel_page.evaluate("window.__calls.some(c=>c.command==='get_plan_page')")
+        cancel_page.screenshot(path=str(OUTPUT / 'renderer-cancellation-pending.png'),full_page=True)
+        cancel_page.evaluate("window.__jobStatus='cancelled'")
+        expect(cancel_page.locator('#setup-screen')).to_be_visible()
+        expect(cancel_page.locator('#source')).to_be_enabled()
+        expect(cancel_page.locator('#source')).to_be_focused()
+        # Browser Back requests cancellation, stays blocked until native terminal.
+        cancel_page.evaluate("window.__jobStatus='running';window.__startDelay=0")
+        cancel_page.locator('#fix').click()
+        expect(cancel_page.locator('#processing-screen')).to_be_visible()
+        cancel_page.go_back()
+        cancel_page.wait_for_function("window.__calls.filter(c=>c.command==='cancel_preview').length===2")
+        expect(cancel_page.locator('#processing-screen')).to_be_visible()
+        expect(cancel_page.locator('#source')).to_be_disabled()
+        cancel_page.evaluate("window.__jobStatus='cancelled'")
+        expect(cancel_page.locator('#setup-screen')).to_be_visible()
+        cancel_page.go_forward()
+        expect(cancel_page.locator('#setup-screen')).to_be_visible()
+        assert cancel_page.evaluate("window.__calls.filter(c=>c.command==='start_preview').length")==2
+        cancel_page.close()
+        checks.append('Cancellation before job ID and Browser Back both wait for terminal native state; Forward never restarts work')
+
         page.locator('#source-picker').click()
         expect(page.locator('#source')).to_have_value('C:\\Music\\שירים')
         page.evaluate('window.__pickerCancel=true')

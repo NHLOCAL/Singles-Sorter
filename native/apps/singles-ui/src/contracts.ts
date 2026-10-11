@@ -10,7 +10,7 @@ export const defaults: Readonly<Settings> = Object.freeze({copy_mode:false,main_
 export interface RootSelection {token:string;display_name:string;capabilities:{read:boolean;list:boolean};platform:Platform}
 export interface PreviewRequest {mode:Mode;source_token:string;target_token:string|null;settings:Settings;ai_profile:'Disabled'|'Configured'}
 export interface ModelStatus {available:boolean;message:string;platform:Platform}
-export interface Snapshot {host_schema:1;job_id:string;status:'completed'|'failed';plan_id:string|null;total_rows:number;blockers:string[];warnings:string[];error?:string|null}
+export interface Snapshot {host_schema:1;job_id:string;status:'running'|'completed'|'failed'|'cancelled';plan_id:string|null;total_rows:number;blockers:string[];warnings:string[];error?:string|null}
 export interface PlanRow {id:string;source:string;kind:string;destination:string|null;reason:string;blockers:string[]}
 export interface PlanPage {rows:PlanRow[];total:number}
 export interface Host {
@@ -19,6 +19,7 @@ export interface Host {
   getSettings():Promise<Settings>;
   getModelStatus():Promise<ModelStatus>;
   startPreview(request:PreviewRequest):Promise<{job_id:string}>;
+  cancelPreview(jobId:string):Promise<void>;
   snapshot(jobId:string):Promise<Snapshot>;
   page(jobId:string,offset:number,limit:number):Promise<PlanPage>;
 }
