@@ -175,6 +175,8 @@ jobs:
       - name: Smoke the staged and ZIP-extracted preview in Windows PowerShell 5.1
         if: runner.os == 'Windows'
         run: |
+          powershell.exe -NoProfile -NonInteractive -File packaging/windows-preview/test_smoke_snapshots.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           powershell.exe -NoProfile -NonInteractive -File packaging/windows-preview/smoke.ps1 -PackageRoot target/original-ai/windows-preview -ReportPath target/original-ai/windows-preview-stage-smoke.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python packaging/windows-preview/package_preview.py archive --package target/original-ai/windows-preview --smoke-report target/original-ai/windows-preview-stage-smoke.json --output target/original-ai/singles-sorter-original-ai-windows-x64-preview.zip

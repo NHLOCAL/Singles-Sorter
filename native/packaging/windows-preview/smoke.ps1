@@ -39,6 +39,56 @@ function Snapshot([string]$Root) {
     }
     return (ConvertTo-Json -InputObject @($rows) -Depth 8 -Compress)
 }
+function Snapshot-Differences([string]$Before, [string]$After) {
+    $oldRows = @(ConvertFrom-Json -InputObject $Before)
+    $newRows = @(ConvertFrom-Json -InputObject $After)
+    $oldByPath = @{}
+    $newByPath = @{}
+    foreach ($row in $oldRows) { $oldByPath[$row.path] = $row }
+    foreach ($row in $newRows) { $newByPath[$row.path] = $row }
+    $paths = @(@($oldByPath.Keys) + @($newByPath.Keys) | Sort-Object -Unique)
+    foreach ($path in $paths) {
+        if (-not $oldByPath.ContainsKey($path)) {
+            [pscustomobject]@{ path = $path; field = 'entry'; before = $null; after = $newByPath[$path] }
+        } elseif (-not $newByPath.ContainsKey($path)) {
+            [pscustomobject]@{ path = $path; field = 'entry'; before = $oldByPath[$path]; after = $null }
+        } else {
+            foreach ($field in @('path', 'directory', 'attributes', 'length', 'modified_utc_ticks', 'permissions_sddl', 'sha256')) {
+                $old = $oldByPath[$path].PSObject.Properties[$field].Value
+                $new = $newByPath[$path].PSObject.Properties[$field].Value
+                # JSON preserves null, boolean and string distinctions for diagnostics.
+                $oldJson = ConvertTo-Json -InputObject $old -Compress
+                $newJson = ConvertTo-Json -InputObject $new -Compress
+                if ($oldJson -cne $newJson) {
+                    [pscustomobject]@{ path = $path; field = $field; before = $old; after = $new }
+                }
+            }
+        }
+    }
+}
+function Assert-SnapshotEqual([string]$Before, [string]$After, [string]$Context) {
+    if ($After -ceq $Before) { return }
+    $changes = @(Snapshot-Differences $Before $After)
+    $diagnostic = [ordered]@{
+        result = 'FAIL'
+        check = 'exact-filesystem-immutability'
+        context = $Context
+        changes = $changes
+        snapshot_order_or_serialization_changed = ($changes.Count -eq 0)
+        before_path_order = @((ConvertFrom-Json -InputObject $Before) | ForEach-Object { $_.path })
+        after_path_order = @((ConvertFrom-Json -InputObject $After) | ForEach-Object { $_.path })
+        completed_checks = @($checks.ToArray())
+    }
+    $failureJson = ConvertTo-Json -InputObject $diagnostic -Depth 12
+    # The report is outside protected trees. Only owned fixture names and metadata
+    # are logged, never audio/model contents. Failure never produces PASS evidence.
+    [IO.File]::WriteAllText($ReportPath, $failureJson + "`n", $Utf8)
+    Write-Host ('IMMUTABILITY_DIAGNOSTIC ' + (ConvertTo-Json -InputObject $diagnostic -Depth 12 -Compress))
+    throw ($Context + ': exact filesystem snapshot changed; failure details: ' + $ReportPath)
+}
+function Assert-Unchanged([string]$Root, [string]$Before, [string]$Context) {
+    Assert-SnapshotEqual $Before (Snapshot $Root) $Context
+}
 function Verify-Manifest([string]$Root) {
     $manifest = Join-Path $Root 'SHA256SUMS.txt'
     Require (Test-Path -LiteralPath $manifest -PathType Leaf) 'Missing SHA256SUMS.txt'
@@ -65,6 +115,8 @@ function Verify-Manifest([string]$Root) {
     }
 }
 function Invoke-Cli([string]$Arguments, [AllowNull()][string]$Json) {
+    Assert-Unchanged $script:TestRoot $script:AllBefore ('before CLI ' + $Arguments)
+    $invocationBefore = Snapshot $script:TestRoot
     $info = New-Object System.Diagnostics.ProcessStartInfo
     $info.FileName = $script:Executable
     $info.Arguments = $Arguments
@@ -122,6 +174,7 @@ function Invoke-Cli([string]$Arguments, [AllowNull()][string]$Json) {
         }
         $out = $stdout.GetAwaiter().GetResult()
         $err = $stderr.GetAwaiter().GetResult()
+        Assert-Unchanged $script:TestRoot $invocationBefore ('CLI invocation ' + $Arguments)
         return [pscustomobject]@{ code = $process.ExitCode; stdout = $out; stderr = $err }
     } finally { $process.Dispose() }
 }
@@ -158,7 +211,7 @@ function Plan-Check([string]$Name, $Profile, [bool]$Success, [bool]$Inferred, [A
         Require ($null -eq $value.result.plan -and $value.error.code -eq $ErrorCode) ($Name + ': partial plan or wrong error')
         Require (@($value.result.blockers) -contains $ErrorCode) ($Name + ': missing fatal blocker')
     }
-    Require ((Snapshot $script:TestRoot) -ceq $before) ($Name + ': test tree was modified')
+    Assert-Unchanged $script:TestRoot $before ($Name + ': plan check')
     [void]$checks.Add($Name)
     return $value
 }
@@ -198,7 +251,7 @@ try {
     $bytes = [IO.File]::ReadAllBytes($bad)
     $bytes[0] = $bytes[0] -bxor 1
     [IO.File]::WriteAllBytes($bad, $bytes)
-    $allBefore = Snapshot $script:TestRoot
+    $script:AllBefore = Snapshot $script:TestRoot
 
     $help = Invoke-Cli '--help' $null
     Require ($help.code -eq 0 -and $help.stdout.Contains('plan-files') -and $help.stderr.Length -eq 0) 'Help failed without developer PATH'
@@ -249,8 +302,8 @@ try {
     Require ($apply.code -eq 3 -and $applyValue.error.code -eq 'UNSUPPORTED_CAPABILITY' -and $applyValue.result.executable -ceq $false) 'Unsupported apply was not blocked'
     [void]$checks.Add('physical-apply-blocked')
 
-    Require ((Snapshot $script:TestRoot) -ceq $allBefore) 'Owned package/source/target/preferences test tree changed'
-    Require ((Snapshot $PackageRoot) -ceq $inputBefore) 'Input package changed'
+    Assert-Unchanged $script:TestRoot $script:AllBefore 'Owned package/source/target/preferences final check'
+    Assert-Unchanged $PackageRoot $inputBefore 'Original input package final check'
     Verify-Manifest $copy
     Verify-Manifest $PackageRoot
     [void]$checks.Add('package-source-target-permissions-content-mtimes-unchanged')
