@@ -25,6 +25,8 @@ describe('ordinary result presentation',()=>{
   expect(simpleStatus(row,[item('complete'),item('cancelled')],true)).toBe('בוצע חלקית');
   expect(simpleStatus(row,[item('cancelled')],true)).toBe('נעצר');
   expect(simpleStatus(row,[item('source_retained')],false)).toBe('הועתק; המקור נשמר');
+  expect(simpleStatus(row,[item('source_retained'),item('cancelled')],false)).toBe('בוצע חלקית');
+  expect(simpleStatus(row,[item('source_retained'),item('blocked')],false)).toBe('בוצע חלקית');
   expect(simpleStatus(row,[item('needs_recovery')],false)).toBe('נדרשת בדיקה');
   expect(simpleStatus({...row,kind:'ItemError'},[],false)).toBe('לא ניתן לבדוק');
   expect(simpleStatus({...row,kind:'Vanished'},[],false)).toBe('הקובץ לא נמצא');
@@ -37,6 +39,8 @@ describe('ordinary result presentation',()=>{
  it('does not claim zero effects from missing final counters or expose raw errors',()=>{
   expect(simpleExecutionSummary({status:'failed',result:null},false)).toContain('לא התקבל אישור');
   expect(simpleError('Stale { expected_hash: "123" }')).not.toContain('123');
+  expect(simpleError('Stale { path: C:\\שירים, expected_hash: "123" }')).not.toContain('123');
+  expect(simpleError('שגיאה { expected_hash: "123" }')).not.toContain('123');
   expect(simpleError('בחר תיקיית מקור. (INVALID_ROOT)')).toBe('בחר תיקיית מקור.');
   expect(simpleError('RECOGNITION_UNAVAILABLE')).toContain('מודל הזיהוי');
  });

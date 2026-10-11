@@ -1,3 +1,4 @@
+import {userErrorLabels} from './state';
 import type {PlanRow,ExecutionItem,ExecutionSnapshot} from './contracts';
 export const DEVELOPER_PREFERENCE='singles-sorter.developer-mode.v1';
 export function readDeveloperMode(storage:Pick<Storage,'getItem'>):boolean{try{return storage.getItem(DEVELOPER_PREFERENCE)==='true';}catch{return false;}}
@@ -7,9 +8,9 @@ export function simpleStatus(row:PlanRow,items:ExecutionItem[],copy:boolean):str
   const completed=items.some(item=>item.status==='complete'||item.status==='source_retained');
   if(items.some(item=>item.status==='needs_recovery'))return 'נדרשת בדיקה';
   if(items.some(item=>item.status==='failed'))return completed?'בוצע חלקית':'לא הושלם';
-  if(items.some(item=>item.status==='source_retained'))return 'הועתק; המקור נשמר';
   if(items.some(item=>item.status==='cancelled'))return completed?'בוצע חלקית':'נעצר';
   if(items.some(item=>item.status==='blocked'))return completed?'בוצע חלקית':'לא בוצע';
+  if(items.some(item=>item.status==='source_retained'))return 'הועתק; המקור נשמר';
   return row.kind==='FixNames'?'תוקן':copy?'הועתק':'הועבר';
  }
  if(row.kind==='ItemError'||row.blockers.includes('ALBUM_READ_ERROR'))return 'לא ניתן לבדוק';
@@ -42,9 +43,25 @@ export function simpleExecutionSummary(execution:Pick<ExecutionSnapshot,'status'
  if(result.recovery_operations)parts.push('יש פריטים שדורשים בדיקה');
  return parts.join(' · ');
 }
+const userFacingMessages=new Set([
+ ...Object.values(userErrorLabels),
+ 'בחר תיקיית מקור.',
+ 'בחר תיקיית יעד למיון.',
+ 'הגדרות התוכנה אינן תקינות.',
+ 'תוצאת הביצוע הקודמת טרם אומתה.',
+ 'שמירת ההגדרות לא אומתה.',
+ 'שמירת מצב הדואטים לא אומתה.',
+ 'התקבלה תשובה שאינה שייכת לבדיקה הנוכחית.',
+ 'הבדיקה אינה זמינה עוד במארח. אפשר להפעיל בדיקה חדשה.',
+ 'התצוגה המקדימה נכשלה.',
+ 'התקבלה תשובה שאינה שייכת לפעולה הנוכחית.',
+ 'מצב הפעולה לא אומת. ממתין לתשובה מהמארח.',
+ 'הפעולה לא הושלמה. נסה שוב לאחר בדיקת החיבור לתוכנה.',
+]);
 export function simpleError(message:string):string{
  if(message==='מצב הביצוע אינו זמין. יש לבדוק את יומן הפעולה לפני בדיקה או ביצוע נוספים.')return 'לא התקבל מצב הביצוע. בדוק את הקבצים במקור וביעד לפני המשך העבודה.';
  if(message==='RECOGNITION_UNAVAILABLE')return 'מודל הזיהוי הדרוש אינו זמין. הבדיקה לא הופעלה.';
- if(/[\u0590-\u05ff]/.test(message)&&!/[\r\n]/.test(message))return message.replace(/\s*\([A-Z_]+\)$/,'');
+ const human=message.replace(/\s*\([A-Z_]+\)$/,'');
+ if(userFacingMessages.has(human))return human;
  return 'הפעולה לא הושלמה. בדוק שהתיקיות זמינות ושהקבצים לא השתנו.';
 }

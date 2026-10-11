@@ -9,24 +9,25 @@ export interface State {
   snapshot:Snapshot|null;execution:ExecutionSnapshot|null;page:PlanPage|null;offset:number;ai:'Disabled'|'Configured';developerMode:boolean;
 }
 const newRoot = ():RootInput => ({text:'',selection:null,pending:false,revision:0});
+export const userErrorLabels:Readonly<Record<string,string>>={
+  LIST_CHANGED:'הרשימה השתנתה מאז פתיחתה. בטל ופתח מחדש לפני שמירה או ייבוא.',
+  PROFILE_BUSY:'הפרופיל נמצא בשימוש. המתן לסיום הפעולה ונסה שוב.',
+  PROFILE_IO:'לא ניתן לקרוא או לשמור את הפרופיל. בדוק מקום פנוי והרשאות.',
+  PROFILE_INVALID:'קובץ הפרופיל אינו תקין. הוא לא אופס או הוחלף.',
+  PROFILE_SCHEMA:'גרסת הפרופיל אינה נתמכת. לא בוצע שינוי בקובץ.',
+  ENCODING_INVALID:'הקידוד שבחרת אינו מתאים לקובץ. בחר קידוד אחר ובדוק את התצוגה.',
+  CSV_TOO_LARGE:'קובץ הרשימה חורג ממגבלת 16 MiB.',
+  EXPORT_FAILED:'הייצוא לא הושלם. בחר שם CSV חדש ובדוק מקום פנוי והרשאות.',
+  RECOGNITION_UNAVAILABLE:'מודל הזיהוי הדרוש אינו זמין. הבדיקה לא הופעלה.',
+  IMPORT_NOT_PREVIEWED:'יש לבדוק את קידוד הייבוא והתצוגה המקדימה לפני אישור.',
+};
 export function errorText(error:unknown):string {
   if(typeof error==='string')return error;
   if(error instanceof Error)return error.message;
   if(error && typeof error==='object' && 'message' in error){
     const code='code' in error?String(error.code):'';
-    const labels:Record<string,string>={
-      LIST_CHANGED:'הרשימה השתנתה מאז פתיחתה. בטל ופתח מחדש לפני שמירה או ייבוא.',
-      PROFILE_BUSY:'הפרופיל נמצא בשימוש. המתן לסיום הפעולה ונסה שוב.',
-      PROFILE_IO:'לא ניתן לקרוא או לשמור את הפרופיל. בדוק מקום פנוי והרשאות.',
-      PROFILE_INVALID:'קובץ הפרופיל אינו תקין. הוא לא אופס או הוחלף.',
-      PROFILE_SCHEMA:'גרסת הפרופיל אינה נתמכת. לא בוצע שינוי בקובץ.',
-      ENCODING_INVALID:'הקידוד שבחרת אינו מתאים לקובץ. בחר קידוד אחר ובדוק את התצוגה.',
-      CSV_TOO_LARGE:'קובץ הרשימה חורג ממגבלת 16 MiB.',
-      EXPORT_FAILED:'הייצוא לא הושלם. בחר שם CSV חדש ובדוק מקום פנוי והרשאות.',
-      RECOGNITION_UNAVAILABLE:'מודל הזיהוי הדרוש אינו זמין. הבדיקה לא הופעלה.',
-      IMPORT_NOT_PREVIEWED:'יש לבדוק את קידוד הייבוא והתצוגה המקדימה לפני אישור.',
-    };
-    return labels[code]?`${labels[code]} (${code})`:String(error.message);
+
+    return userErrorLabels[code]?`${userErrorLabels[code]} (${code})`:String(error.message);
   }
   return 'הפעולה לא הושלמה. נסה שוב לאחר בדיקת החיבור לתוכנה.';
 }
