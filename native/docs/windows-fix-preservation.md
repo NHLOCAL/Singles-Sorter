@@ -63,7 +63,7 @@ The initial staging domain supports ordinary single-link local NTFS files with:
 - ordinary `ARCHIVE`, `HIDDEN`, `SYSTEM`, and `NOT_CONTENT_INDEXED` attributes;
 - positive creation and access timestamps that can be represented without Win32
   setter sentinel meanings; and
-- exactly the unnamed `::$DATA` stream.
+- exactly the unnamed `::$DATA` stream and no NTFS extended attributes.
 
 The DACL comparison deliberately favors false rejections over silently widening
 access. In particular, a restrictive/protected original is not staged under a
@@ -75,7 +75,9 @@ is checked too, because its parent can impose compression/encryption. Reparse
 and multi-link objects remain rejected by the common native adapter. Named
 streams, including `Zone.Identifier`, are explicitly unsupported for tag repair.
 Held-handle `FileStreamInfo` enumeration is bounded to 1 MiB and fails closed on
-query failure or malformed/ambiguous output. Filename-only same-object renames
+query failure or malformed/ambiguous output. A held-handle `FileEaInformation`
+query also requires zero `EaSize` on the source, temp and retained backup at every
+representation checkpoint; query failure fails closed. Filename-only same-object renames
 can still retain those streams because they do not create a replacement object.
 
 Creation time and the access time captured when preservation is prepared are
@@ -91,7 +93,8 @@ not merely auditing: their LABEL/ATTRIBUTE/SCOPE_SECURITY_INFORMATION portions
 are included in the exact held-handle comparison. A failure to query them fails
 closed. No privilege is enabled and no ACCESS_SYSTEM_SECURITY right is requested.
 The comparison does not claim to clone privileged audit ACEs, reserved security
-features, NTFS object IDs, extended attributes, or every metadata feature. These
+features, NTFS object IDs, or every metadata feature. Extended attributes are
+explicitly detected and rejected. These
 additional representations require separate native acceptance and support; this
 implementation must not be described as universal file-security cloning.
 
@@ -117,7 +120,8 @@ unchanged. Serialized journal/root data is evidence, never mutation consent.
 Owned-TempDir native tests cover inherited-security success; restrictive/protected
 ACL mismatch with an empty retained temp; mandatory-integrity NO_READ_UP policy
 mismatch; source, temp and backup ACL changes;
-ADS rejection and native late-stream change attempts; attribute policy including
+ADS rejection and native late-stream change attempts; actual native EA rejection
+before staging and after late addition; attribute policy including
 EFS/sparse/compression rejection; actual creation/access/mtime restoration and
 reopen checks; source/backup identity binding; cancellation; collision; retained
 original bytes; and selected-journal size/identity checks. Attribute-bit rejection
@@ -136,5 +140,6 @@ was retried or bypassed.
 - [Mandatory integrity control](https://learn.microsoft.com/en-us/windows/win32/secauthz/mandatory-integrity-control)
 - [Security descriptor control flags](https://learn.microsoft.com/en-us/windows/win32/secauthz/security-descriptor-control)
 - [FILE_STREAM_INFO](https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_stream_info)
+- [FILE_EA_INFORMATION](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_ea_information)
 - [SetFileTime](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-setfiletime)
 - [windows 0.62.2 GetSecurityInfo binding](https://microsoft.github.io/windows-docs-rs/doc/windows/Win32/Security/Authorization/fn.GetSecurityInfo.html)

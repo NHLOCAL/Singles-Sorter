@@ -24,10 +24,10 @@ use windows::{
     Wdk::{
         Foundation::OBJECT_ATTRIBUTES,
         Storage::FileSystem::{
-            FILE_CREATE, FILE_DIRECTORY_FILE, FILE_NON_DIRECTORY_FILE, FILE_OPEN,
+            FILE_CREATE, FILE_DIRECTORY_FILE, FILE_EA_INFORMATION, FILE_NON_DIRECTORY_FILE, FILE_OPEN,
             FILE_OPEN_REPARSE_POINT, FILE_RENAME_INFORMATION, FILE_SYNCHRONOUS_IO_NONALERT,
-            FILE_WRITE_THROUGH, FileRenameInformation, NTCREATEFILE_CREATE_OPTIONS, NtCreateFile,
-            NtSetInformationFile,
+            FILE_WRITE_THROUGH, FileEaInformation, FileRenameInformation, NTCREATEFILE_CREATE_OPTIONS, NtCreateFile,
+            NtQueryInformationFile, NtSetInformationFile,
         },
     },
     Win32::{
@@ -2775,11 +2775,27 @@ fn check_repair_streams(file: &File) -> Result<(), MutationError> {
     }
 }
 
+fn check_repair_extended_attributes(file: &File) -> Result<(), MutationError> {
+    let mut information = FILE_EA_INFORMATION::default();
+    let mut status_block = IO_STATUS_BLOCK::default();
+    let status = unsafe { NtQueryInformationFile(HANDLE(file.as_raw_handle()), &mut status_block,
+        (&mut information as *mut FILE_EA_INFORMATION).cast(), size_of::<FILE_EA_INFORMATION>() as u32,
+        FileEaInformation) };
+    if status.0 < 0 {
+        return Err(err(MutationErrorKind::Unsupported, &format!("cannot establish repair extended-attribute inventory: NTSTATUS {:#x}", status.0)));
+    }
+    if status_block.Information != size_of::<FILE_EA_INFORMATION>() || information.EaSize != 0 {
+        return Err(err(MutationErrorKind::Unsupported, "repair with extended attributes is unsupported"));
+    }
+    Ok(())
+}
+
 fn check_repair_representation(file: &File) -> Result<FILE_BASIC_INFO, MutationError> {
     ensure_regular(file)?;
     let basic = repair_basic(file)?;
     repair_attributes(basic.FileAttributes)?;
     check_repair_streams(file)?;
+    check_repair_extended_attributes(file)?;
     Ok(basic)
 }
 
@@ -3092,6 +3108,7 @@ impl WindowsRepairStorage {
 mod repair_backup_tests {
     use super::*;
     use std::os::windows::fs::OpenOptionsExt;
+    use windows::Wdk::Storage::FileSystem::{FILE_FULL_EA_INFORMATION, NtSetEaFile};
     use windows::Win32::Security::{
         GetSecurityDescriptorDacl, PROTECTED_DACL_SECURITY_INFORMATION,
         Authorization::{ConvertStringSecurityDescriptorToSecurityDescriptorW, SetSecurityInfo},
@@ -3259,6 +3276,48 @@ mod repair_backup_tests {
         assert_eq!(std::fs::metadata(path.join(".sorter-acl.tmp")).unwrap().len(), 0);
         drop(source);
         assert_eq!(std::fs::read(path.join("song.mp3")).unwrap(), b"original");
+    }
+
+    fn set_test_extended_attribute(file: &File) {
+        let name = b"SORTER_FIX_TEST";
+        let offset = std::mem::offset_of!(FILE_FULL_EA_INFORMATION, EaName);
+        let length = offset + name.len() + 1 + 1;
+        let mut allocation = vec![0u32; length.div_ceil(size_of::<u32>())];
+        let pointer = allocation.as_mut_ptr().cast::<FILE_FULL_EA_INFORMATION>();
+        unsafe {
+            (*pointer).NextEntryOffset = 0;
+            (*pointer).Flags = 0;
+            (*pointer).EaNameLength = name.len() as u8;
+            (*pointer).EaValueLength = 1;
+            std::ptr::copy_nonoverlapping(name.as_ptr(), pointer.cast::<u8>().add(offset), name.len());
+            *pointer.cast::<u8>().add(offset + name.len() + 1) = b'x';
+        }
+        let mut status_block = IO_STATUS_BLOCK::default();
+        let status = unsafe { NtSetEaFile(HANDLE(file.as_raw_handle()), &mut status_block,
+            pointer.cast(), length as u32) };
+        assert!(status.0 >= 0, "owned fixture EA creation failed: {status:?}");
+    }
+
+    #[test]
+    fn extended_attributes_are_rejected_before_staging_and_rechecked_before_backup() {
+        for added_after_prepare in [false, true] {
+            let (mut storage, parent, expected, path) = fixture();
+            let mut source = storage.acquire_source(&parent, &expected).unwrap();
+            if added_after_prepare {
+                storage.prepare_metadata_preservation(&mut source).unwrap();
+                let mut temp = staged(&mut storage, &source, "late-ea");
+                set_test_extended_attribute(source.file.as_ref().unwrap());
+                assert!(matches!(storage.preserve_original(&mut source, &name("original.sorter-backup"), &AtomicBool::new(false)),
+                    MutationOutcome::NoEffect(error) if error.kind == MutationErrorKind::Unsupported));
+                assert!(storage.finalize_staged(&source, &mut temp).is_err());
+                assert!(!path.join("original.sorter-backup").exists());
+            } else {
+                set_test_extended_attribute(source.file.as_ref().unwrap());
+                assert_eq!(storage.prepare_metadata_preservation(&mut source).unwrap_err().kind, MutationErrorKind::Unsupported);
+                assert!(matches!(storage.create_staged(&source, "early-ea", &AtomicBool::new(false)), MutationOutcome::NoEffect(_)));
+                assert!(!path.join(".sorter-early-ea.tmp").exists());
+            }
+        }
     }
 
     #[test]
