@@ -20,7 +20,10 @@ listing by successful native enumeration, and file read/seek by checked actual
 read and seek calls, with identity/size/timestamp consistency checks. Unsupported
 operations on each entry kind are explicitly false. It never strips the planner's
 `UNKNOWN_CAPABILITY` blocker; the ordinary `DesktopStorage` preview continues to
-report unestablished capabilities honestly. Both initial fixture planning and
+report unestablished capabilities honestly. Every public probe entry point first
+rejects external paths, non-Windows references, NUL and raw dot segments without
+opening even metadata handles, before the backend's additional identity-root
+check. Both initial fixture planning and
 fresh revalidation use these observed capabilities. All destination parents
 must already exist. Every ordinary plan/resource/adapter/hash/source check still
 applies; no blocker is rewritten to claim shipping apply support.

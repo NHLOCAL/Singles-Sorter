@@ -16,11 +16,31 @@ fn error(detail: &str) -> MutationError {
 }
 fn path(reference: &StorageRef) -> std::result::Result<PathBuf, MutationError> {
     match reference {
-        StorageRef::WindowsPath { utf16 } if !utf16.contains(&0) => {
+        StorageRef::WindowsPath { utf16 }
+            if !utf16.contains(&0)
+                && !utf16
+                    .split(|u| *u == 47 || *u == 92)
+                    .any(|part| part == [46] || part == [46, 46]) =>
+        {
             Ok(OsString::from_wide(utf16).into())
         }
         _ => Err(error("lossless Windows reference required")),
     }
+}
+fn within_roots(
+    reference: &StorageRef,
+    roots: &[PathBuf; 2],
+) -> std::result::Result<(), StorageError> {
+    let path = path(reference).map_err(|_| {
+        StorageError::new(StorageErrorKind::OutsideRoots, "invalid owned reference")
+    })?;
+    if !path.is_absolute() || !roots.iter().any(|root| path.starts_with(root)) {
+        return Err(StorageError::new(
+            StorageErrorKind::OutsideRoots,
+            "reference outside checked owned roots",
+        ));
+    }
+    Ok(())
 }
 fn reference(path: &Path) -> StorageRef {
     StorageRef::WindowsPath {
@@ -239,6 +259,7 @@ pub fn open_owned_copy_recovery(
 pub struct WindowsCopyRecovery {
     binding: ExecutionBinding,
     reads: DesktopStorage,
+    roots: [PathBuf; 2],
     _source: WindowsParent,
     _target: WindowsParent,
 }
@@ -270,14 +291,15 @@ impl WindowsCopyRecovery {
         {
             return Err(E::Scope);
         }
-        let reads = DesktopStorage::new(&[
+        let roots = [
             path(&binding.data.source_root.reference).map_err(|_| E::Scope)?,
             path(&binding.data.target_root.reference).map_err(|_| E::Scope)?,
-        ])
-        .map_err(|_| E::Scope)?;
+        ];
+        let reads = DesktopStorage::new(&roots).map_err(|_| E::Scope)?;
         Ok(Self {
             binding: binding.clone(),
             reads,
+            roots,
             _source: source,
             _target: target,
         })
@@ -286,6 +308,7 @@ impl WindowsCopyRecovery {
         &mut self,
         reference: &StorageRef,
     ) -> Result<Option<crate::recovery::ObservedObject>> {
+        within_roots(reference, &self.roots).map_err(|_| E::Scope)?;
         let before = match self.reads.stat(reference) {
             Ok(e) => e,
             Err(e) if e.kind == StorageErrorKind::NotFound => return Ok(None),
@@ -354,6 +377,7 @@ impl crate::recovery::RecoveryStorage for WindowsCopyRecovery {
 /// never inferred from a path or promoted in the ordinary preview backend.
 pub struct OwnedCopyReadStorage {
     reads: DesktopStorage,
+    roots: [PathBuf; 2],
     _source: WindowsParent,
     _target: WindowsParent,
 }
@@ -379,20 +403,24 @@ impl OwnedCopyReadStorage {
         {
             return Err(E::Scope);
         }
-        let reads = DesktopStorage::new(&[source_path, target_path]).map_err(|_| E::Scope)?;
+        let roots = [source_path, target_path];
+        let reads = DesktopStorage::new(&roots).map_err(|_| E::Scope)?;
         Ok(Self {
             reads,
+            roots,
             _source: source,
             _target: target,
         })
     }
     pub fn reference(&mut self, path: &Path) -> std::result::Result<StorageRef, StorageError> {
+        within_roots(&reference(path), &self.roots)?;
         self.reads.reference(path)
     }
     fn establish(
         &mut self,
         mut observed: EntryObservation,
     ) -> std::result::Result<EntryObservation, StorageError> {
+        within_roots(&observed.reference, &self.roots)?;
         let caps = match observed.kind {
             EntryKind::Directory => {
                 self.reads.children(&observed.reference)?;
@@ -452,6 +480,7 @@ impl ReadStorage for OwnedCopyReadStorage {
         &mut self,
         reference: &StorageRef,
     ) -> std::result::Result<EntryObservation, StorageError> {
+        within_roots(reference, &self.roots)?;
         let observed = self.reads.stat(reference)?;
         self.establish(observed)
     }
@@ -459,6 +488,7 @@ impl ReadStorage for OwnedCopyReadStorage {
         &mut self,
         reference: &StorageRef,
     ) -> std::result::Result<Vec<EntryObservation>, StorageError> {
+        within_roots(reference, &self.roots)?;
         let entries = self.reads.children(reference)?;
         entries.into_iter().map(|e| self.establish(e)).collect()
     }
@@ -466,6 +496,7 @@ impl ReadStorage for OwnedCopyReadStorage {
         &mut self,
         reference: &StorageRef,
     ) -> std::result::Result<ReadInput, StorageError> {
+        within_roots(reference, &self.roots)?;
         self.reads.open_read(reference)
     }
 }

@@ -808,7 +808,6 @@ fn serialized_domain_flags_and_foreign_capabilities_cannot_mint_copy_authority()
     assert!(other.owned.parent(Path::new("../source")).is_err());
     // Lexical case-sensitive prefix checks alone miss NTFS ancestor aliases.
     std::fs::create_dir_all(other.path.join("source/a/b/target")).unwrap();
-    use std::os::windows::ffi::OsStrExt;
     let nested = StorageRef::WindowsPath {
         utf16: other
             .path
