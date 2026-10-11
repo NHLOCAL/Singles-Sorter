@@ -201,8 +201,12 @@ impl WindowsParent {
 fn validate_root_path(path: &Path) -> Result<(), MutationError> {
     use std::path::Prefix;
     super::validate_path(path).map_err(read_error)?;
-    if !matches!(path.components().next(),Some(Component::Prefix(p)) if matches!(p.kind(),Prefix::Disk(_)|Prefix::VerbatimDisk(_))) {
-        return Err(err(MutationErrorKind::Unsupported, "only local drive-backed roots"));
+    if !matches!(path.components().next(),Some(Component::Prefix(p)) if matches!(p.kind(),Prefix::Disk(_)|Prefix::VerbatimDisk(_)))
+    {
+        return Err(err(
+            MutationErrorKind::Unsupported,
+            "only local drive-backed roots",
+        ));
     }
     for component in path.components() {
         if let Component::Normal(name) = component {
@@ -249,7 +253,10 @@ fn pin_root(
     if observed_identity != identity(&observed).map_err(read_error)?
         || expected.is_some_and(|expected| expected != &observed_identity)
     {
-        return Err(err(MutationErrorKind::StalePlan, "selected root identity changed"));
+        return Err(err(
+            MutationErrorKind::StalePlan,
+            "selected root identity changed",
+        ));
     }
     ensure_directory(&directory)?;
     // A handle-derived volume GUID path is unavailable for SMB; a mapped drive
@@ -466,7 +473,10 @@ impl WindowsMutationStorage {
     /// ancestry. A serialized Windows path is evidence, never an ownership grant.
     pub fn parent_reference(&self, reference: &StorageRef) -> Result<WindowsParent, MutationError> {
         let StorageRef::WindowsPath { utf16 } = reference else {
-            return Err(err(MutationErrorKind::Unsupported, "Windows reference required"));
+            return Err(err(
+                MutationErrorKind::Unsupported,
+                "Windows reference required",
+            ));
         };
         if utf16.contains(&0) {
             return Err(err(MutationErrorKind::InvalidName, "NUL in reference"));
@@ -478,7 +488,10 @@ impl WindowsMutationStorage {
                 return self.parent_under(root, relative);
             }
         }
-        Err(err(MutationErrorKind::StalePlan, "reference outside authorized roots"))
+        Err(err(
+            MutationErrorKind::StalePlan,
+            "reference outside authorized roots",
+        ))
     }
     fn check_parent(&self, parent: &WindowsParent) -> Result<(), MutationError> {
         if !self
@@ -496,7 +509,10 @@ impl WindowsMutationStorage {
             ensure_directory(f)?;
         }
         if identity(parent.handle()).map_err(read_error)? != parent.identity {
-            return Err(err(MutationErrorKind::StalePlan, "parent identity mismatch"));
+            return Err(err(
+                MutationErrorKind::StalePlan,
+                "parent identity mismatch",
+            ));
         }
         Ok(())
     }
@@ -616,7 +632,9 @@ impl WindowsMutationStorage {
             }
             return MutationOutcome::PendingUnknown(unknown);
         }
-        let id = observation.expect("verified directory observation").identity;
+        let id = observation
+            .expect("verified directory observation")
+            .identity;
         ancestors.push(file);
         MutationOutcome::Applied(WindowsParent {
             ancestors: Arc::new(ancestors),
@@ -840,11 +858,7 @@ fn open_directory(parent: &File, name: &[u16]) -> Result<File, MutationError> {
     ensure_directory(&file)?;
     Ok(file)
 }
-fn open_directory_handle(
-    parent: &File,
-    name: &[u16],
-    create: bool,
-) -> Result<File, MutationError> {
+fn open_directory_handle(parent: &File, name: &[u16], create: bool) -> Result<File, MutationError> {
     ensure_directory(parent)?;
     let mut owned = name.to_vec();
     let length = (owned.len() * 2) as u16;
@@ -2526,9 +2540,23 @@ mod selected_directory_uncertainty_tests {
         let storage = WindowsMutationStorage::for_owned_synthetic_tree(tree).unwrap();
         let parent = storage.parent(Path::new("")).unwrap();
         let name = MutationName::Windows("created".encode_utf16().collect());
-        let result = storage.create_destination_directory_with(&parent, &name, &AtomicBool::new(false), || Err(err(MutationErrorKind::Cancelled, "injected cancellation after dispatch")));
-        assert!(matches!(result, MutationOutcome::PendingUnknown(error) if error.kind == MutationErrorKind::UnknownOutcome && error.observed.is_some()));
+        let result = storage.create_destination_directory_with(
+            &parent,
+            &name,
+            &AtomicBool::new(false),
+            || {
+                Err(err(
+                    MutationErrorKind::Cancelled,
+                    "injected cancellation after dispatch",
+                ))
+            },
+        );
+        assert!(
+            matches!(result, MutationOutcome::PendingUnknown(error) if error.kind == MutationErrorKind::UnknownOutcome && error.observed.is_some())
+        );
         assert!(path.join("created").is_dir());
-        assert!(matches!(storage.create_destination_directory(&parent, &name, &AtomicBool::new(false)), MutationOutcome::NoEffect(error) if error.kind == MutationErrorKind::StalePlan));
+        assert!(
+            matches!(storage.create_destination_directory(&parent, &name, &AtomicBool::new(false)), MutationOutcome::NoEffect(error) if error.kind == MutationErrorKind::StalePlan)
+        );
     }
 }

@@ -1,50 +1,133 @@
 //! Actual CLI subprocesses. Every write is beneath an exclusively owned temp root.
 use std::process::{Command, Stdio};
-#[cfg(not(all(windows, feature="selected-windows-execution")))]
+#[cfg(not(all(windows, feature = "selected-windows-execution")))]
 #[test]
 fn unsupported_build_does_not_consume_paths_or_hang_on_stdin() {
-    let output=Command::new(env!("CARGO_BIN_EXE_singles-sorter")).args(["run-files","--ndjson"]).stdin(Stdio::null()).output().unwrap();
-    assert_eq!(output.status.code(),Some(3));
-    let response:serde_json::Value=serde_json::from_slice(&output.stdout).unwrap();
-    assert_eq!(response["event"],"error");
-    assert_eq!(response["data"]["code"],"UNSUPPORTED_CAPABILITY");
+    let output = Command::new(env!("CARGO_BIN_EXE_singles-sorter"))
+        .args(["run-files", "--ndjson"])
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(3));
+    let response: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(response["event"], "error");
+    assert_eq!(response["data"]["code"], "UNSUPPORTED_CAPABILITY");
 }
-#[cfg(all(windows, feature="selected-windows-execution"))]
+#[cfg(all(windows, feature = "selected-windows-execution"))]
 mod selected {
     use super::*;
-    use std::{io::{BufRead,BufReader,Write},fs};
-    use serde_json::{Value,json};
-    use sha2::{Digest,Sha256};
-    fn wave()->Vec<u8> {
-        let samples=1600u32;let mut bytes=vec![];
-        bytes.extend(b"RIFF");bytes.extend((36+samples).to_le_bytes());bytes.extend(b"WAVEfmt ");bytes.extend(16u32.to_le_bytes());bytes.extend(1u16.to_le_bytes());bytes.extend(1u16.to_le_bytes());bytes.extend(8000u32.to_le_bytes());bytes.extend(16000u32.to_le_bytes());bytes.extend(2u16.to_le_bytes());bytes.extend(16u16.to_le_bytes());bytes.extend(b"data");bytes.extend(samples.to_le_bytes());bytes.resize(44+samples as usize,0);bytes
+    use serde_json::{Value, json};
+    use sha2::{Digest, Sha256};
+    use std::{
+        fs,
+        io::{BufRead, BufReader, Write},
+    };
+    fn wave() -> Vec<u8> {
+        let samples = 1600u32;
+        let mut bytes = vec![];
+        bytes.extend(b"RIFF");
+        bytes.extend((36 + samples).to_le_bytes());
+        bytes.extend(b"WAVEfmt ");
+        bytes.extend(16u32.to_le_bytes());
+        bytes.extend(1u16.to_le_bytes());
+        bytes.extend(1u16.to_le_bytes());
+        bytes.extend(8000u32.to_le_bytes());
+        bytes.extend(16000u32.to_le_bytes());
+        bytes.extend(2u16.to_le_bytes());
+        bytes.extend(16u16.to_le_bytes());
+        bytes.extend(b"data");
+        bytes.extend(samples.to_le_bytes());
+        bytes.resize(44 + samples as usize, 0);
+        bytes
     }
-    fn run_case(copy:bool,action:&str) {
-        let root=tempfile::tempdir().unwrap();
-        let source=root.path().join("מקור");let target=root.path().join("יעד");let journal=match action {"journal_missing"=>target.join("must-not-be-created"),"journal_overlap"=>target.clone(),_=>root.path().join("יומן")};
-        for p in [&source,&target] {fs::create_dir(p).unwrap();}
-        if !action.starts_with("journal_") {fs::create_dir(&journal).unwrap();}
-        let names=["אברהם פריד - בדיקה אחת.wav","אברהם פריד - בדיקה שניה.wav"];
-        let bytes=wave();for name in names {fs::write(source.join(name),&bytes).unwrap();}
-        let expected=Sha256::digest(&bytes);
-        let mut child=Command::new(env!("CARGO_BIN_EXE_singles-sorter")).args(["run-files","--ndjson"]).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().unwrap();
-        let mut stdin=child.stdin.take().unwrap();let mut output=BufReader::new(child.stdout.take().unwrap());
-        let request=json!({"schema_version":1,"journal_directory":journal,"preview":{"schema_version":2,"mode":"Sort","source":source,"target":target,"settings":{"copy_mode":copy,"main_folder_only":false,"singles_folder":true,"exist_only":false,"abc_sort":false,"duet_mode":false},"ai_profile":"Disabled","personal_aliases":null}});
-        writeln!(stdin,"{request}").unwrap();stdin.flush().unwrap();
-        let mut line=String::new();output.read_line(&mut line).unwrap();let planned:Value=serde_json::from_str(&line).unwrap();
-        assert_eq!(planned["event"],"planned","{planned}");assert!(fs::read_dir(&target).unwrap().next().is_none());
-        if action=="stale" {fs::write(source.join(names[0]),b"changed after inspected preview").unwrap();}
-        let decision=if action=="cancel" {json!({"action":"cancel"})} else {json!({"action":"apply","plan_id":planned["data"]["plan"]["binding_sha256"]})};
-        writeln!(stdin,"{decision}").unwrap();stdin.flush().unwrap();
-        let events=output.lines().map(|line|serde_json::from_str::<Value>(&line.unwrap()).unwrap()).collect::<Vec<_>>();
-        let status=child.wait().unwrap();
-        if action!="apply" {if action=="journal_missing" {assert!(!journal.exists());}assert!(fs::read_dir(&target).unwrap().next().is_none());assert!(source.join(names[1]).exists());return;}
-        assert!(status.success(),"{events:?}");let result=events.iter().find(|event|event["event"]=="result").unwrap();
-        assert_eq!(result["data"]["status"],"complete");assert_eq!(result["data"]["committed_destinations"],2);
-        for name in names {let destination=target.join("אברהם פריד").join("סינגלים").join(name);assert_eq!(Sha256::digest(fs::read(destination).unwrap()),expected);assert_eq!(source.join(name).exists(),copy);}
-        assert!(fs::read_dir(journal).unwrap().count()>=2);
+    fn run_case(copy: bool, action: &str) {
+        let root = tempfile::tempdir().unwrap();
+        let source = root.path().join("מקור");
+        let target = root.path().join("יעד");
+        let journal = match action {
+            "journal_missing" => target.join("must-not-be-created"),
+            "journal_overlap" => target.clone(),
+            _ => root.path().join("יומן"),
+        };
+        for p in [&source, &target] {
+            fs::create_dir(p).unwrap();
+        }
+        if !action.starts_with("journal_") {
+            fs::create_dir(&journal).unwrap();
+        }
+        let names = ["אברהם פריד - בדיקה אחת.wav", "אברהם פריד - בדיקה שניה.wav"];
+        let bytes = wave();
+        for name in names {
+            fs::write(source.join(name), &bytes).unwrap();
+        }
+        let expected = Sha256::digest(&bytes);
+        let mut child = Command::new(env!("CARGO_BIN_EXE_singles-sorter"))
+            .args(["run-files", "--ndjson"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        let mut stdin = child.stdin.take().unwrap();
+        let mut output = BufReader::new(child.stdout.take().unwrap());
+        let request = json!({"schema_version":1,"journal_directory":journal,"preview":{"schema_version":2,"mode":"Sort","source":source,"target":target,"settings":{"copy_mode":copy,"main_folder_only":false,"singles_folder":true,"exist_only":false,"abc_sort":false,"duet_mode":false},"ai_profile":"Disabled","personal_aliases":null}});
+        writeln!(stdin, "{request}").unwrap();
+        stdin.flush().unwrap();
+        let mut line = String::new();
+        output.read_line(&mut line).unwrap();
+        let planned: Value = serde_json::from_str(&line).unwrap();
+        assert_eq!(planned["event"], "planned", "{planned}");
+        assert!(fs::read_dir(&target).unwrap().next().is_none());
+        if action == "stale" {
+            fs::write(source.join(names[0]), b"changed after inspected preview").unwrap();
+        }
+        let decision = if action == "cancel" {
+            json!({"action":"cancel"})
+        } else {
+            json!({"action":"apply","plan_id":planned["data"]["plan"]["binding_sha256"]})
+        };
+        writeln!(stdin, "{decision}").unwrap();
+        stdin.flush().unwrap();
+        let events = output
+            .lines()
+            .map(|line| serde_json::from_str::<Value>(&line.unwrap()).unwrap())
+            .collect::<Vec<_>>();
+        let status = child.wait().unwrap();
+        if action != "apply" {
+            if action == "journal_missing" {
+                assert!(!journal.exists());
+            }
+            assert!(fs::read_dir(&target).unwrap().next().is_none());
+            assert!(source.join(names[1]).exists());
+            return;
+        }
+        assert!(status.success(), "{events:?}");
+        let result = events
+            .iter()
+            .find(|event| event["event"] == "result")
+            .unwrap();
+        assert_eq!(result["data"]["status"], "complete");
+        assert_eq!(result["data"]["committed_destinations"], 2);
+        for name in names {
+            let destination = target.join("אברהם פריד").join("סינגלים").join(name);
+            assert_eq!(Sha256::digest(fs::read(destination).unwrap()), expected);
+            assert_eq!(source.join(name).exists(), copy);
+        }
+        assert!(fs::read_dir(journal).unwrap().count() >= 2);
     }
-    #[test] fn actual_copy_and_move_require_exact_inspected_confirmation() {run_case(true,"apply");run_case(false,"apply");}
-    #[test] fn missing_or_overlapping_journal_does_not_create_music_directories() {run_case(true,"journal_missing");run_case(true,"journal_overlap");}
-    #[test] fn cancel_and_changed_source_never_apply_inspected_plan() {run_case(true,"cancel");run_case(true,"stale");}
+    #[test]
+    fn actual_copy_and_move_require_exact_inspected_confirmation() {
+        run_case(true, "apply");
+        run_case(false, "apply");
+    }
+    #[test]
+    fn missing_or_overlapping_journal_does_not_create_music_directories() {
+        run_case(true, "journal_missing");
+        run_case(true, "journal_overlap");
+    }
+    #[test]
+    fn cancel_and_changed_source_never_apply_inspected_plan() {
+        run_case(true, "cancel");
+        run_case(true, "stale");
+    }
 }

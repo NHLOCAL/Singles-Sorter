@@ -306,7 +306,9 @@ impl Host {
                 probe.cancel();
             }
             if let Some(job) = &inner.job {
-                if job.snapshot.status == "running" || job.execution.as_ref().is_some_and(|e| e.is_running()) {
+                if job.snapshot.status == "running"
+                    || job.execution.as_ref().is_some_and(|e| e.is_running())
+                {
                     job.cancellation.cancel();
                 }
             }
@@ -675,8 +677,16 @@ fn real_plan(
     request.adapter_versions.extend(model_adapters);
     #[cfg(all(windows, feature = "selected-windows-execution"))]
     let desktop: Box<dyn ReadStorage> = if let Some(target) = target {
-        Box::new(sorter_executor::windows_copy::WindowsPlanningStorage::for_preview(&source.path, &target.path).map_err(storage_error)?)
-    } else { Box::new(desktop) };
+        Box::new(
+            sorter_executor::windows_copy::WindowsPlanningStorage::for_preview(
+                &source.path,
+                &target.path,
+            )
+            .map_err(storage_error)?,
+        )
+    } else {
+        Box::new(desktop)
+    };
     #[cfg(not(all(windows, feature = "selected-windows-execution")))]
     let desktop: Box<dyn ReadStorage> = Box::new(desktop);
     let mut storage = SharedReadStorage::new(execution::ReadAdapter(desktop));
@@ -694,9 +704,20 @@ fn real_plan(
     )
     .map_err(|e| HostError::new(&e.code, e.detail))?;
     #[cfg(all(windows, feature = "selected-windows-execution"))]
-    let (apply, selected) = execution::inspect_selection(&plan, source, target, personal, requested_ai, &mut storage, cancellation)?;
+    let (apply, selected) = execution::inspect_selection(
+        &plan,
+        source,
+        target,
+        personal,
+        requested_ai,
+        &mut storage,
+        cancellation,
+    )?;
     #[cfg(not(all(windows, feature = "selected-windows-execution")))]
-    let apply = { let _ = requested_ai; None };
+    let apply = {
+        let _ = requested_ai;
+        None
+    };
     Ok(Planned {
         plan,
         inference_executed: recognition.inference_executed(),
@@ -916,7 +937,12 @@ fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
                 destination: (!destinations.is_empty()).then(|| destinations.join("; ")),
                 reason,
                 blockers,
-                operation_ids: operations_by_source.get(&read.source.reference).into_iter().flatten().map(|op| op.id).collect(),
+                operation_ids: operations_by_source
+                    .get(&read.source.reference)
+                    .into_iter()
+                    .flatten()
+                    .map(|op| op.id)
+                    .collect(),
             }
         })
         .collect()
@@ -1085,10 +1111,24 @@ mod tests {
         for row in page_json["rows"].as_array().unwrap() {
             assert_eq!(
                 row.as_object().unwrap().keys().cloned().collect::<Vec<_>>(),
-                ["blockers", "destination", "id", "kind", "operation_ids", "reason", "source"]
+                [
+                    "blockers",
+                    "destination",
+                    "id",
+                    "kind",
+                    "operation_ids",
+                    "reason",
+                    "source"
+                ]
             );
         }
-        assert!(page_json["rows"].as_array().unwrap().iter().all(|row| row["operation_ids"].is_array()));
+        assert!(
+            page_json["rows"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|row| row["operation_ids"].is_array())
+        );
         // Explicit fixture authoring only. Remove ephemeral absolute source paths;
         // destination, decision, reason and blockers are untouched engine projections.
         if let Some(output) = std::env::var_os("SINGLES_UPDATE_HOST_FIXTURE") {

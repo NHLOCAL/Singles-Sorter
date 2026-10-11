@@ -481,14 +481,23 @@ fn validate_plan_scope_domain(
                 TransferMode::Move,
             ),
             ExecutionDomain::SelectedWindowsCopy => (
-                cfg!(all(windows, feature = "selected-windows-execution")), true, TransferMode::Copy),
+                cfg!(all(windows, feature = "selected-windows-execution")),
+                true,
+                TransferMode::Copy,
+            ),
             ExecutionDomain::SelectedWindowsRename => (
-                cfg!(all(windows, feature = "selected-windows-execution")), false, TransferMode::Move),
+                cfg!(all(windows, feature = "selected-windows-execution")),
+                false,
+                TransferMode::Move,
+            ),
             ExecutionDomain::Synthetic => unreachable!(),
         };
         if !enabled
             || plan.request.settings.copy_mode != copy_mode
-            || (!matches!(domain, ExecutionDomain::SelectedWindowsCopy | ExecutionDomain::SelectedWindowsRename) && plan.operations.len() != 1)
+            || (!matches!(
+                domain,
+                ExecutionDomain::SelectedWindowsCopy | ExecutionDomain::SelectedWindowsRename
+            ) && plan.operations.len() != 1)
             || scope.allowed_modes != [mode]
             || plan.observations.iter().any(|e| !windows(e))
         {
@@ -525,11 +534,20 @@ fn windows(e: &EntryObservation) -> bool {
         && matches!(e.identity, Some(ObjectIdentity::Windows { .. }))
 }
 impl BindingData {
-    pub(crate) fn windows_copy(&self) -> bool { self.owned_windows_copy || self.selected_windows_copy }
-    pub(crate) fn windows_rename(&self) -> bool { self.owned_windows_rename || self.selected_windows_rename }
+    pub(crate) fn windows_copy(&self) -> bool {
+        self.owned_windows_copy || self.selected_windows_copy
+    }
+    pub(crate) fn windows_rename(&self) -> bool {
+        self.owned_windows_rename || self.selected_windows_rename
+    }
     /// Domain evidence is necessary but never sufficient authority to execute.
     pub(crate) fn valid_domain(&self) -> bool {
-        if self.synthetic_only && !self.owned_windows_copy && !self.owned_windows_rename && !self.selected_windows_copy && !self.selected_windows_rename {
+        if self.synthetic_only
+            && !self.owned_windows_copy
+            && !self.owned_windows_rename
+            && !self.selected_windows_copy
+            && !self.selected_windows_rename
+        {
             return synthetic(&self.source_root)
                 && synthetic(&self.target_root)
                 && self.operations.iter().all(|o| {
@@ -537,26 +555,40 @@ impl BindingData {
                         && matches!(o.destination.root, StorageRef::TestOpaque { .. })
                 });
         }
-        let (enabled, mode, copy_effect) =
-            match (self.owned_windows_copy, self.owned_windows_rename, self.selected_windows_copy, self.selected_windows_rename) {
-                (true, false, false, false) => (
-                    cfg!(all(windows, feature = "experimental-windows-copy")),
-                    TransferMode::Copy,
-                    true,
-                ),
-                (false, true, false, false) => (
-                    cfg!(all(windows, feature = "experimental-windows-rename")),
-                    TransferMode::Move,
-                    false,
-                ),
-                (false, false, true, false) => (cfg!(all(windows, feature = "selected-windows-execution")), TransferMode::Copy, true),
-                (false, false, false, true) => (cfg!(all(windows, feature = "selected-windows-execution")), TransferMode::Move, false),
-                _ => return false,
-            };
+        let (enabled, mode, copy_effect) = match (
+            self.owned_windows_copy,
+            self.owned_windows_rename,
+            self.selected_windows_copy,
+            self.selected_windows_rename,
+        ) {
+            (true, false, false, false) => (
+                cfg!(all(windows, feature = "experimental-windows-copy")),
+                TransferMode::Copy,
+                true,
+            ),
+            (false, true, false, false) => (
+                cfg!(all(windows, feature = "experimental-windows-rename")),
+                TransferMode::Move,
+                false,
+            ),
+            (false, false, true, false) => (
+                cfg!(all(windows, feature = "selected-windows-execution")),
+                TransferMode::Copy,
+                true,
+            ),
+            (false, false, false, true) => (
+                cfg!(all(windows, feature = "selected-windows-execution")),
+                TransferMode::Move,
+                false,
+            ),
+            _ => return false,
+        };
         !self.synthetic_only
             && enabled
             && self.album_context.is_none()
-            && (self.operations.len() == 1 || ((self.selected_windows_copy || self.selected_windows_rename) && !self.operations.is_empty()))
+            && (self.operations.len() == 1
+                || ((self.selected_windows_copy || self.selected_windows_rename)
+                    && !self.operations.is_empty()))
             && windows(&self.source_root)
             && windows(&self.target_root)
             && self.scope_evidence.allowed_modes == [mode]
@@ -595,31 +627,57 @@ pub fn prepare_scope(
     use sha2::{Digest, Sha256};
     use std::sync::atomic::Ordering;
     let source_root = storage.stat(&plan.request.source).map_err(|_| E::Stale)?;
-    let target_root = storage.stat(plan.request.target.as_ref().ok_or(E::Scope)?).map_err(|_| E::Stale)?;
+    let target_root = storage
+        .stat(plan.request.target.as_ref().ok_or(E::Scope)?)
+        .map_err(|_| E::Stale)?;
     let mut inspected_sources = Vec::new();
     let mut seen = HashSet::new();
     for operation in &plan.operations {
-        if cancel.load(Ordering::Acquire) { return Err(E::Cancelled); }
-        let OperationKind::SingleTransfer { source, .. } = &operation.kind else { return Err(E::Unsupported); };
-        if !seen.insert(source.reference.clone()) { continue; }
-        if storage.stat(&source.reference).map_err(|_| E::Stale)? != *source { return Err(E::Stale); }
+        if cancel.load(Ordering::Acquire) {
+            return Err(E::Cancelled);
+        }
+        let OperationKind::SingleTransfer { source, .. } = &operation.kind else {
+            return Err(E::Unsupported);
+        };
+        if !seen.insert(source.reference.clone()) {
+            continue;
+        }
+        if storage.stat(&source.reference).map_err(|_| E::Stale)? != *source {
+            return Err(E::Stale);
+        }
         let mut input = storage.open_read(&source.reference).map_err(|_| E::Stale)?;
         let observed = input.binding().ok_or(E::Stale)?;
-        if Some(&observed.identity) != source.identity.as_ref() || Some(observed.size) != source.size || Some(&observed.modified) != source.modified.as_ref() { return Err(E::Stale); }
+        if Some(&observed.identity) != source.identity.as_ref()
+            || Some(observed.size) != source.size
+            || Some(&observed.modified) != source.modified.as_ref()
+        {
+            return Err(E::Stale);
+        }
         let length = source.size.ok_or(E::Stale)?;
         let mut read = 0u64;
         let mut hash = Sha256::new();
         let mut buffer = [0u8; 64 * 1024];
         loop {
-            if cancel.load(Ordering::Acquire) { return Err(E::Cancelled); }
+            if cancel.load(Ordering::Acquire) {
+                return Err(E::Cancelled);
+            }
             let n = input.read(&mut buffer).map_err(|_| E::Stale)?;
-            if n == 0 { break; }
+            if n == 0 {
+                break;
+            }
             read = read.checked_add(n as u64).ok_or(E::Stale)?;
-            if read > length { return Err(E::Stale); }
+            if read > length {
+                return Err(E::Stale);
+            }
             hash.update(&buffer[..n]);
         }
-        if read != length || storage.stat(&source.reference).map_err(|_| E::Stale)? != *source { return Err(E::Stale); }
-        inspected_sources.push(SourceEvidence { observation: source.clone(), sha256: format!("{:x}", hash.finalize()) });
+        if read != length || storage.stat(&source.reference).map_err(|_| E::Stale)? != *source {
+            return Err(E::Stale);
+        }
+        inspected_sources.push(SourceEvidence {
+            observation: source.clone(),
+            sha256: format!("{:x}", hash.finalize()),
+        });
     }
     Ok(ExecutionScope {
         inspected_plan: plan.binding_sha256.clone(),
@@ -627,6 +685,10 @@ pub fn prepare_scope(
         target_root: target_root.identity.ok_or(E::Scope)?,
         inspected_sources,
         resources: resources.clone(),
-        allowed_modes: vec![if plan.request.settings.copy_mode { TransferMode::Copy } else { TransferMode::Move }],
+        allowed_modes: vec![if plan.request.settings.copy_mode {
+            TransferMode::Copy
+        } else {
+            TransferMode::Move
+        }],
     })
 }

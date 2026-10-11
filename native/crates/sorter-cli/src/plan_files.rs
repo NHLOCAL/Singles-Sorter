@@ -313,8 +313,16 @@ pub(super) fn execute_request(request: &Request) -> Result<ResultPayload, Failur
             .map_err(storage_failure)?;
         #[cfg(all(windows, feature = "selected-windows-execution"))]
         let desktop: Box<dyn ReadStorage> = if let Some(target) = &request.target {
-            Box::new(sorter_executor::windows_copy::WindowsPlanningStorage::for_preview(&request.source, target).map_err(|e| Failure::new(1,"STORAGE_ERROR",e.to_string()))?)
-        } else { Box::new(desktop) };
+            Box::new(
+                sorter_executor::windows_copy::WindowsPlanningStorage::for_preview(
+                    &request.source,
+                    target,
+                )
+                .map_err(|e| Failure::new(1, "STORAGE_ERROR", e.to_string()))?,
+            )
+        } else {
+            Box::new(desktop)
+        };
         #[cfg(not(all(windows, feature = "selected-windows-execution")))]
         let desktop: Box<dyn ReadStorage> = Box::new(desktop);
         let mut storage = SharedReadStorage::new(ReadAdapter(desktop));
@@ -458,7 +466,22 @@ pub(super) fn emit(response: Result<ResultPayload, Failure>) -> ExitCode {
 
 struct ReadAdapter(Box<dyn ReadStorage>);
 impl ReadStorage for ReadAdapter {
-    fn stat(&mut self, reference: &sorter_core::discovery::StorageRef) -> Result<sorter_core::discovery::EntryObservation, StorageError> { self.0.stat(reference) }
-    fn children(&mut self, reference: &sorter_core::discovery::StorageRef) -> Result<Vec<sorter_core::discovery::EntryObservation>, StorageError> { self.0.children(reference) }
-    fn open_read(&mut self, reference: &sorter_core::discovery::StorageRef) -> Result<sorter_core::discovery::ReadInput, StorageError> { self.0.open_read(reference) }
+    fn stat(
+        &mut self,
+        reference: &sorter_core::discovery::StorageRef,
+    ) -> Result<sorter_core::discovery::EntryObservation, StorageError> {
+        self.0.stat(reference)
+    }
+    fn children(
+        &mut self,
+        reference: &sorter_core::discovery::StorageRef,
+    ) -> Result<Vec<sorter_core::discovery::EntryObservation>, StorageError> {
+        self.0.children(reference)
+    }
+    fn open_read(
+        &mut self,
+        reference: &sorter_core::discovery::StorageRef,
+    ) -> Result<sorter_core::discovery::ReadInput, StorageError> {
+        self.0.open_read(reference)
+    }
 }

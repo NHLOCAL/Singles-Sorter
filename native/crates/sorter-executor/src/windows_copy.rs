@@ -77,7 +77,9 @@ pub(crate) fn validate_owned_domain(
     scope: &ExecutionScope,
     domain: ExecutionDomain,
 ) -> Result<ExecutionBinding> {
-    if owned.domain() != WindowsMutationDomain::OwnedSyntheticTree { return Err(E::Scope); }
+    if owned.domain() != WindowsMutationDomain::OwnedSyntheticTree {
+        return Err(E::Scope);
+    }
     let copy = domain == ExecutionDomain::OwnedWindowsCopy;
     if plan.request.settings.copy_mode != copy
         || !plan.request.settings.main_folder_only
@@ -297,8 +299,13 @@ pub(crate) fn open_owned_recovery_domain(
     bytes: &[u8],
     domain: ExecutionDomain,
 ) -> Result<crate::physical_journal::PhysicalJournalV2> {
-    let selected = matches!(domain, ExecutionDomain::SelectedWindowsCopy | ExecutionDomain::SelectedWindowsRename);
-    if selected != (owned.domain() == WindowsMutationDomain::SelectedRoots) { return Err(E::Scope); }
+    let selected = matches!(
+        domain,
+        ExecutionDomain::SelectedWindowsCopy | ExecutionDomain::SelectedWindowsRename
+    );
+    if selected != (owned.domain() == WindowsMutationDomain::SelectedRoots) {
+        return Err(E::Scope);
+    }
     let journal = crate::physical_journal::PhysicalJournalV2::open_for_recovery_domain(
         scope, job_id, bytes, domain,
     )?;
@@ -332,8 +339,13 @@ impl WindowsCopyRecovery {
         binding: &ExecutionBinding,
         domain: ExecutionDomain,
     ) -> Result<Self> {
-        let selected = matches!(domain, ExecutionDomain::SelectedWindowsCopy | ExecutionDomain::SelectedWindowsRename);
-        if selected != (owned.domain() == WindowsMutationDomain::SelectedRoots) { return Err(E::Scope); }
+        let selected = matches!(
+            domain,
+            ExecutionDomain::SelectedWindowsCopy | ExecutionDomain::SelectedWindowsRename
+        );
+        if selected != (owned.domain() == WindowsMutationDomain::SelectedRoots) {
+            return Err(E::Scope);
+        }
         if !binding.recovery_only || binding.data.domain() != domain || !binding.data.valid_domain()
         {
             return Err(E::Scope);
@@ -420,7 +432,12 @@ impl crate::recovery::RecoveryStorage for WindowsCopyRecovery {
         &mut self,
         reference: &StorageRef,
     ) -> Result<Option<crate::recovery::ObservedObject>> {
-        if !self.binding.operations().iter().any(|op| op.source.observation.reference == *reference) {
+        if !self
+            .binding
+            .operations()
+            .iter()
+            .any(|op| op.source.observation.reference == *reference)
+        {
             return Err(E::Scope);
         }
         self.observe(reference)
@@ -429,7 +446,12 @@ impl crate::recovery::RecoveryStorage for WindowsCopyRecovery {
         &mut self,
         destination: &DestinationEvidence,
     ) -> Result<Option<crate::recovery::ObservedObject>> {
-        if !self.binding.operations().iter().any(|op| op.destination == *destination) {
+        if !self
+            .binding
+            .operations()
+            .iter()
+            .any(|op| op.destination == *destination)
+        {
             return Err(E::Scope);
         }
         let mut destination_path = path(&destination.root).map_err(|_| E::Scope)?;
@@ -453,10 +475,21 @@ pub type WindowsPlanningStorage = OwnedCopyReadStorage;
 impl OwnedCopyReadStorage {
     /// Probes read/list/seek availability; grants no mutation authority.
     pub fn for_preview(source: &Path, target: &Path) -> Result<Self> {
-        if !source.is_absolute() || !target.is_absolute() || source.starts_with(target) || target.starts_with(source) { return Err(E::Scope); }
+        if !source.is_absolute()
+            || !target.is_absolute()
+            || source.starts_with(target)
+            || target.starts_with(source)
+        {
+            return Err(E::Scope);
+        }
         let roots = [source.to_path_buf(), target.to_path_buf()];
         let reads = DesktopStorage::new(&roots).map_err(|_| E::Scope)?;
-        Ok(Self { reads, roots, _source: None, _target: None })
+        Ok(Self {
+            reads,
+            roots,
+            _source: None,
+            _target: None,
+        })
     }
     pub fn new(
         owned: &WindowsMutationStorage,

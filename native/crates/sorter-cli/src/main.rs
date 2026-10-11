@@ -169,9 +169,17 @@ fn dispatch(args: &[String]) -> Result<Invocation, Failure> {
         return Ok(Invocation::Help);
     }
     if command == "run-files" {
-        return if args.len() == 2 && args[1] == "--ndjson" { Ok(Invocation::RunFiles) }
-        else if args.len() == 2 && matches!(args[1].as_str(),"--help"|"-h") { Ok(Invocation::Help) }
-        else { Err(Failure::new(2,"INVALID_INPUT","Expected run-files --ndjson; inspect the returned plan before sending its exact apply confirmation")) };
+        return if args.len() == 2 && args[1] == "--ndjson" {
+            Ok(Invocation::RunFiles)
+        } else if args.len() == 2 && matches!(args[1].as_str(), "--help" | "-h") {
+            Ok(Invocation::Help)
+        } else {
+            Err(Failure::new(
+                2,
+                "INVALID_INPUT",
+                "Expected run-files --ndjson; inspect the returned plan before sending its exact apply confirmation",
+            ))
+        };
     }
     let command = match command.as_str() {
         "classify" => "classify",

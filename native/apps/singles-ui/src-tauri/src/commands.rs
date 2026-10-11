@@ -351,14 +351,22 @@ fn read_import_file(path: &std::path::Path) -> Result<Vec<u8>, HostError> {
 }
 
 #[tauri::command]
-pub async fn start_apply(state: State<'_, Host>, profile: State<'_, ProfileStore>, job_id: String, plan_id: String) -> Result<JobId, HostError> {
+pub async fn start_apply(
+    state: State<'_, Host>,
+    profile: State<'_, ProfileStore>,
+    job_id: String,
+    plan_id: String,
+) -> Result<JobId, HostError> {
     let host = state.inner().clone();
     let guard = host.claim()?;
     let profile = profile.inner().clone();
     blocking(move || host.start_apply(&job_id, &plan_id, profile.personal_bytes()?, guard)).await
 }
 #[tauri::command]
-pub fn execution_snapshot(state: State<'_, Host>, job_id: String) -> Result<ExecutionSnapshot, HostError> {
+pub fn execution_snapshot(
+    state: State<'_, Host>,
+    job_id: String,
+) -> Result<ExecutionSnapshot, HostError> {
     state.execution_snapshot(&job_id)
 }
 #[tauri::command]
@@ -367,4 +375,6 @@ pub fn cancel_apply(state: State<'_, Host>, job_id: String) -> Result<(), HostEr
 }
 
 #[tauri::command]
-pub fn latest_execution(state: State<'_, Host>) -> Result<Option<RetainedExecution>, HostError> { state.latest_execution() }
+pub fn latest_execution(state: State<'_, Host>) -> Result<Option<RetainedExecution>, HostError> {
+    state.latest_execution()
+}

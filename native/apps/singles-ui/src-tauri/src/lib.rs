@@ -22,7 +22,9 @@ pub fn run() {
     builder
         .setup(|app| {
             use tauri::Manager;
-            app.state::<job_owner::Host>().set_journal_directory(app.path().app_local_data_dir()?).map_err(|e| std::io::Error::other(e.message))?;
+            app.state::<job_owner::Host>()
+                .set_journal_directory(app.path().app_local_data_dir()?)
+                .map_err(|e| std::io::Error::other(e.message))?;
             app.manage(profile::ProfileStore::new(
                 app.path().app_local_data_dir()?.join("profile-v1"),
             ));
