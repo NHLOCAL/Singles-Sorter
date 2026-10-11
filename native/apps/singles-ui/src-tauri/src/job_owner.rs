@@ -993,7 +993,7 @@ fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
                     _ => None,
                 },
                 developer_only: matches!(d, DecisionV2::Album { decision, .. } if !decision.is_album)
-                    && operations_by_source.get(&read.source.reference).is_none()
+                    && !operations_by_source.contains_key(&read.source.reference)
                     && !inspection_error,
                 source: entry_display(&read.source),
                 kind: kind.into(),
