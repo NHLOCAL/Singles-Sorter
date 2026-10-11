@@ -8,6 +8,7 @@ import numpy as np
 import spacy, srsly, thinc
 from spacy.attrs import NORM
 from synthetic import SMOKE,BOUNDARY,FORCED
+from runtime_sources import validate as validate_runtime_source
 
 HERE = Path(__file__).resolve().parent
 MODEL_SHA = '5f0d50400f685c3992a21d395f7fab30b45ca3a9968383c24044ff4478ec865e'
@@ -37,9 +38,10 @@ def export(root,out,suite="smoke"):
     lock=json.loads((HERE/'release-lock.json').read_text(encoding="utf-8"))
     for f,h in lock['source_files'].items(): require(sha((root/f).read_bytes())==h,'release file changed: '+f)
     require(sha((root/'ner/model').read_bytes())==MODEL_SHA,'wrong model')
+    runtime_source_provenance={}
     for relative,h in lock['runtime_sources'].items():
         package,rest=relative.split('/',1); source=Path(__import__(package).__file__).parent/rest
-        require(sha(source.read_bytes())==h,'oracle source changed: '+relative)
+        runtime_source_provenance[relative]=validate_runtime_source(relative,source.read_bytes(),h,sys.platform)
     nlp=spacy.load(root); ner=nlp.get_pipe('ner'); nodes=list(ner.model.walk())
     require(graph(nodes)==lock['graph'],'unsupported graph')
     actions=[ner.moves.get_class_name(i) for i in range(ner.moves.n_moves)]
@@ -47,7 +49,7 @@ def export(root,out,suite="smoke"):
     require(not ner.model.attrs['unseen_classes'],'unsupported unseen classes')
     require(ner.cfg['beam_width']==1,'beam search unsupported')
     out.mkdir(parents=True,exist_ok=True)
-    manifest={'schema':'released-ner-v1','release':RELEASE,'model_sha256':MODEL_SHA,'dtype':'<f4','order':'C','tensor_file':'tensors.f32','graph':graph(nodes),'actions':actions,'unseen_classes':[], 'features':['NORM','PREFIX','SUFFIX','SHAPE'],'tensors':[], 'runtime':{'python':platform.python_version(),'spacy':spacy.__version__,'thinc':thinc.__version__,'numpy':np.__version__,'unicode':unicodedata.unidata_version}}
+    manifest={'schema':'released-ner-v1','release':RELEASE,'model_sha256':MODEL_SHA,'dtype':'<f4','order':'C','tensor_file':'tensors.f32','graph':graph(nodes),'actions':actions,'unseen_classes':[], 'features':['NORM','PREFIX','SUFFIX','SHAPE'],'tensors':[], 'runtime':{'python':platform.python_version(),'spacy':spacy.__version__,'thinc':thinc.__version__,'numpy':np.__version__,'unicode':unicodedata.unidata_version,'source_platform':sys.platform,'source_byte_provenance':runtime_source_provenance}}
     data=bytearray()
     for expected in lock['parameters']:
         i,k=expected['node'],expected['param']; a=nodes[i].get_param(k)

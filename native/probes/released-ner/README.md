@@ -118,9 +118,11 @@ input code points. Use the JSON, not a rendered document transcription.
 
 Python is offline export/oracle/test tooling only. The inference binaries have
 no Python runtime dependency. Generated model/oracle data remain job-local;
-there are no artifact uploads or production publication steps. Export failure
-on differing wheel source content is a real gate failure, not a reason to relax
-source hashes. The full active Python oracle closure is version- and wheel-hash-pinned in
+there are no artifact uploads or production publication steps. Unknown wheel source bytes remain a hard failure. The two exact official
+Windows wheel distributions have separately pinned raw source hashes plus
+unchanged original/upstream LF hashes; both checks are required. This validates
+source-byte provenance without rewriting runtime or model data. See
+`WINDOWS-SOURCE-BYTES.md` for all 18 source comparisons and remaining guards. The full active Python oracle closure is version- and wheel-hash-pinned in
 `oracle-lock.json` / `oracle-requirements.txt`; `pip freeze` is recorded for
 diagnosis. CI uses shared official Python 3.12.10 artifacts, while the original
 golden retains its 3.12.14 provenance. See `ORACLE-SETUP.md` for the actual first

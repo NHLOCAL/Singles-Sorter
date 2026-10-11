@@ -1,13 +1,14 @@
 {
   "scope": "Final package source hashes excluding this self-referential manifest",
   "files": {
-    ".github/workflows/released-ner-platform.yml": "5d691bc565beb94ea3e0821df32446e8430f56fe4a28faf9a7b2b000780a9199",
+    ".github/workflows/released-ner-platform.yml": "b15c4e6a58f820000e1425757f1a756e2c9c448e9e83b8514b171b3c0e3ab000",
     "native/probes/released-ner/.gitignore": "24d7ed2283c9cbdb7c9b3601ee3848e7d55aca8c101f26522fb198d65c9d904e",
     "native/probes/released-ner/CHECKOUT-BYTES.md": "b1673e07c64e20d4c3c4a95d032c89902a849d3dc6677b1ff625a1f91d51d6eb",
     "native/probes/released-ner/LOCAL-CHECKS.md": "ed1b7a3d2f76e58501aba8edf65a8ee5f09848dc430fc26a3070bd1df949e96d",
     "native/probes/released-ner/ORACLE-SETUP.md": "a4b0612b0d6ec40233c8b02687f26c31db9e1e8cd1891932f07bc2fe34caffbd",
     "native/probes/released-ner/ORIGINAL-LICENSE.md": "eac06ea7fe6853177b30a8982d836dc663bb9d2faac2e7217969bee23dcfda1b",
-    "native/probes/released-ner/README.md": "17fe8d7aef847b046f68908b355857c6edfc55affb07e37557ac376b4c018ce4",
+    "native/probes/released-ner/README.md": "ca3495fcb33953ab53f464d0578e435f1c10f58f8875134b4be3db737597950c",
+    "native/probes/released-ner/WINDOWS-SOURCE-BYTES.md": "3196c5f6b87f2106d00a1b070bc23966c7eb30d3b68e0a98af59e70af6c10aef",
     "native/probes/released-ner/acquire_pcre2.py": "0a284ebbf17447b996244daf1e3cc791b998fcecc88ed994d8e075d33b5cd407",
     "native/probes/released-ner/baseline/math-lib.rs": "845bf1d4023f5ecdf26f0434805487efa4de1299b9571d0ecb7dd3663f274b10",
     "native/probes/released-ner/baseline/raw-ner.rs": "ed8ff4c7e7f26e335ba8063d544b004af4c3e58a8ab887a0cc451ed12eb8c785",
@@ -24,10 +25,12 @@
     "native/probes/released-ner/oracle-requirements.txt": "b10712a3d2e32deaa6475068ded153b8addecd2ebd5c4288811925c3a3c4ec19",
     "native/probes/released-ner/pcre2-lock.json": "b91e95707418737c7b1d17dd0fcc871c16fed5b56800adbaf01f1776eb6510b0",
     "native/probes/released-ner/prepare_baseline.py": "e5d5dcc486e547f0cf9ed9c8b9dac249bb672d56a4b46359194789e814d33a71",
-    "native/probes/released-ner/released-ner-export/export.py": "6bdc0086bccdef3e5e492da5cbd5c13751e9dab6060c5d5ff3de0d2c70b368ed",
+    "native/probes/released-ner/released-ner-export/export.py": "b15a3e569e21591555dc97ee3bfa3d8fae250a41cec038ee37a446eef62ffa60",
     "native/probes/released-ner/released-ner-export/release-lock.json": "0756424d9e12b40d541c4d311f7b810b5b31c10de3bfe8406fd41825428269a7",
+    "native/probes/released-ner/released-ner-export/runtime_sources.py": "ad659b34e30c51edf427557f014137e2bc3c2a8f1b6384deb46bd83df895cf73",
     "native/probes/released-ner/released-ner-export/synthetic.py": "b6a30ac408a63fd9b2405d607f5b6fbcfddf94e8ce19ea122c75195b1912bb89",
     "native/probes/released-ner/released-ner-export/verify.py": "914a27fc9dbc287f1d7deaa41b40c79f8ae12fa9e6eacffaddaecbb1b543d90d",
+    "native/probes/released-ner/released-ner-export/windows-runtime-sources.json": "babb64cc8865ede67ac3acf8720c2efb7f2cc6a662578b49696a6c65ac25f1ba",
     "native/probes/released-ner/released-ner-math/Cargo.lock": "6240ffe33b7bd59cecc44ec3e27712e5e84cb9ae2d86943472b32629066e1eab",
     "native/probes/released-ner/released-ner-math/Cargo.toml": "5cbfcc09f47d2b3c243ec55de4c55aee5913fb47423c95407621f617848a089e",
     "native/probes/released-ner/released-ner-math/licenses/numpy-BSD.txt": "1107b0c831e918d4f1dbc28a33190c77215ef278d4a4c4009572088770d4334a",
@@ -63,6 +66,7 @@
     "native/probes/released-ner/test_acquisition.py": "398a9f6d90a755774948114746e94465e1833ac3f7dab3e37f306f78656d557d",
     "native/probes/released-ner/test_baseline.py": "61e0491f32abd7ca3337e66a57e621265b6ccac844eee81126e27877c59734a9",
     "native/probes/released-ner/test_checkout_eol.py": "9c45ab0a475c67ff524d4bf318e624da9ef800e51a9abdea0c63a34782701c89",
-    "native/probes/released-ner/test_oracle_runtime.py": "c39d65676a4a6f8b80776b512af64cd10a834212176e28219d89d8e2ef5db5b9"
+    "native/probes/released-ner/test_oracle_runtime.py": "c39d65676a4a6f8b80776b512af64cd10a834212176e28219d89d8e2ef5db5b9",
+    "native/probes/released-ner/test_runtime_source_bytes.py": "6af5fe7c10d9ec4b6e4ddfcf9c5e60e2fe7d381c24b9175500aa1daac2f1b498"
   }
 }
