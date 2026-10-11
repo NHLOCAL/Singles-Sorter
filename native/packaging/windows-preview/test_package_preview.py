@@ -140,6 +140,44 @@ class PackageTests(unittest.TestCase):
         path.write_text(json.dumps(manifest, separators=(',', ':')))
         self.assertNotEqual(first, p.digest(path)); p.check_windows_manifest(path)
 
+    def test_linux_manifest_requires_exact_linux_source_provenance(self):
+        manifest = self.windows_manifest()
+        manifest['runtime']['source_platform'] = 'linux'
+        path = self.root / 'manifest.json'; path.write_text(json.dumps(manifest))
+        with self.assertRaises(ValueError): p.check_original_manifest(path, 'linux')
+        for item in manifest['runtime']['source_byte_provenance'].values():
+            item['raw_sha256'] = item['original_reference_sha256']
+            item['verification'] = 'exact-original-source-raw'
+        path.write_text(json.dumps(manifest)); p.check_original_manifest(path, 'linux')
+        with self.assertRaises(ValueError): p.check_windows_manifest(path)
+        with self.assertRaises(ValueError): p.check_original_manifest(path, 'darwin')
+        next(iter(manifest['runtime']['source_byte_provenance'].values()))['raw_sha256'] = '0' * 64
+        path.write_text(json.dumps(manifest))
+        with self.assertRaises(ValueError): p.check_original_manifest(path, 'linux')
+
+    def test_android_generated_pin_binds_exact_approved_manifest_bytes(self):
+        spec = importlib.util.spec_from_file_location('android_manifest_pin',
+            p.ROOT / 'native/apps/singles-android/pin_original_manifest.py')
+        android = importlib.util.module_from_spec(spec); spec.loader.exec_module(android)
+        manifest = self.windows_manifest(); path = self.root / 'manifest.json'
+        template = android.TEMPLATE.read_text(encoding='utf-8')
+        for platform in ('win32', 'linux'):
+            manifest['runtime']['source_platform'] = platform
+            if platform == 'linux':
+                for item in manifest['runtime']['source_byte_provenance'].values():
+                    item['raw_sha256'] = item['original_reference_sha256']
+                    item['verification'] = 'exact-original-source-raw'
+            for indent in (None, 2):
+                path.write_text(json.dumps(manifest, indent=indent))
+                generated = android.generate(path, template)
+                self.assertEqual(generated, template.replace(android.OLD_SIZE,
+                    f"1268235, 3192809, {path.stat().st_size}, 3829976, 73348").replace(android.OLD_HASH, p.digest(path)))
+                for name, hash_ in p.ASSETS.items():
+                    if hash_: self.assertIn(hash_, generated)
+        with self.assertRaises(ValueError): android.generate(path, template.replace(android.OLD_HASH, 'changed'))
+        manifest['model_sha256'] = '0' * 64; path.write_text(json.dumps(manifest))
+        with self.assertRaises(ValueError): android.generate(path, template)
+
     def test_manifest_rejects_duplicate_keys(self):
         manifest = self.windows_manifest(); path = self.root / 'manifest.json'
         text = json.dumps(manifest)

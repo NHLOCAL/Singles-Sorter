@@ -43,6 +43,7 @@ if not platforms:
 print(max(platforms)[1])
 PY
 )
+python3 "$SCRIPT_DIR/pin_original_manifest.py" "$MODEL_BUNDLE/manifest.json"
 OUT=$(python3 - "$OUT" "$REPO_ROOT" "$MODEL_BUNDLE" "$NATIVE_LIB_X86_64" "$NATIVE_LIB_ARM64" <<'PY'
 from pathlib import Path
 import hashlib, sys
@@ -55,11 +56,11 @@ if out == root or root in out.parents:
     raise SystemExit("OUT must be outside the repository")
 if out.exists() or Path(raw_out).is_symlink():
     raise SystemExit("OUT must be a fresh directory; existing output is never removed")
-# These pins match OriginalAssets.java; only the original released bytes qualify.
+# Immutable payload pins match OriginalAssets.java. The provenance-bearing
+# manifest was authenticated above and receives its exact per-APK runtime pin.
 pins = [
     ("classifier-v14.vocab.txt", 1268235, "35b743c5bb3c532222939fa3a421ef25b94c832032926b6d50707902bcd666e3"),
     ("classifier-v14.weights.bin", 3192809, "aa0da9a15f1ddbd62054c26fd4331b355b3e659c952ab3d71dfc8a138e561a33"),
-    ("manifest.json", 32600, "3fb1801718d84c335b31cdae18ca94daf6af821fb29c315bcf485de3810b5580"),
     ("tensors.f32", 3829976, "84b8c643b32d734c626e90890c389807000741a2863930585e931467f7e00745"),
     ("tokenizer.json", 73348, "33841cad4949620c48fbb0570865a31a19cfbb463088b1fec3d9fb7e1a8c8574"),
 ]
@@ -86,13 +87,14 @@ PY
 )
 
 mapfile -d '' JAVA_SOURCES < <(find "$SCRIPT_DIR/src" "$REPO_ROOT/native/plugins/singles-platform/android/src/main/java" -type f -name '*.java' -print0 | sort -z)
-JAVA_SOURCES+=("$REPO_ROOT/native/plugins/original-inference/android/src/com/nhlocal/singlesorter/inference/OriginalAssets.java" "$REPO_ROOT/native/plugins/original-inference/android/src/com/nhlocal/singlesorter/inference/OriginalInference.java")
+JAVA_SOURCES+=("$OUT/build/OriginalAssets.java" "$REPO_ROOT/native/plugins/original-inference/android/src/com/nhlocal/singlesorter/inference/OriginalInference.java")
 [[ -f "$UI_DIST/index.html" ]] || fail "shared Android UI build missing"
 [[ ${#JAVA_SOURCES[@]} -gt 0 ]] || fail 'No Java sources found'
 mkdir -p -- "$(dirname -- "$OUT")"
 mkdir -- "$OUT"
 trap 'printf "Build failed; partial output preserved at %s\n" "$OUT" >&2' ERR
 mkdir -- "$OUT/build" "$OUT/build/classes" "$OUT/build/dex"
+python3 "$SCRIPT_DIR/pin_original_manifest.py" "$MODEL_BUNDLE/manifest.json" "$OUT/build/OriginalAssets.java"
 printf 'Android platform: %s\nOutput: %s\n' "$ANDROID_JAR" "$OUT"
 
 # --release 8 supplies the Java lambda compiler bootstrap API. Using android.jar
@@ -121,7 +123,7 @@ if arm:
 for p in sorted(Path(ui).rglob('*')):
     if p.is_symlink(): raise SystemExit('UI symlinks are not packaged')
     if p.is_file(): entries.append((p, 'assets/ui/' + p.relative_to(ui).as_posix()))
-receipt = {"preview_only": True, "saf_mutation_enabled": False, "build_tools": "35.0.0", "android_jar": platform, "entries": []}
+receipt = {"preview_only": True, "saf_mutation_enabled": False, "build_tools": "35.0.0", "android_jar": platform, "generated_asset_verifier_sha256": hashlib.sha256((out / "build/OriginalAssets.java").read_bytes()).hexdigest(), "entries": []}
 with ZipFile(out / "build/unsigned.apk", "a") as apk:
     for source, name in entries:
         data = source.read_bytes()

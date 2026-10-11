@@ -119,6 +119,11 @@ def crosscheck_dumpbin(imports, report):
 
 
 def check_windows_manifest(path):
+    return check_original_manifest(path, "win32")
+
+
+def check_original_manifest(path, source_platform):
+    require(source_platform in ("win32", "linux"), "unsupported exporter platform")
     # Only exporter provenance varies by platform. Never loosen the frozen model,
     # graph, tensor layout or exact reviewed Windows wheel source-byte contract.
     digest(path)  # Reject absent, nonregular and symlink inputs first.
@@ -153,16 +158,18 @@ def check_windows_manifest(path):
         offset += param['bytes']
     require(offset == 3829976, 'wrong manifest tensor extent')
     runtime = {'python': '3.12.10', 'spacy': '3.7.5', 'thinc': '8.2.5',
-               'numpy': '1.26.4', 'unicode': '15.0.0', 'source_platform': 'win32',
+               'numpy': '1.26.4', 'unicode': '15.0.0', 'source_platform': source_platform,
                'source_byte_provenance': {}}
     require(set(windows['files']) == set(lock['runtime_sources']), 'Windows runtime source lock mismatch')
     for name, reference in lock['runtime_sources'].items():
         item = windows['files'][name]
         require(item['original_sha256'] == reference, 'Windows source reference mismatch')
         runtime['source_byte_provenance'][name] = {
-            'raw_sha256': item['windows_sha256'], 'original_reference_sha256': reference,
-            'verification': 'exact-official-windows-wheel-raw-and-original-lf'}
-    require(exact(manifest['runtime'], runtime), 'manifest lacks exact approved Windows exporter provenance')
+            'raw_sha256': item['windows_sha256'] if source_platform == 'win32' else reference,
+            'original_reference_sha256': reference,
+            'verification': ('exact-official-windows-wheel-raw-and-original-lf'
+                             if source_platform == 'win32' else 'exact-original-source-raw')}
+    require(exact(manifest['runtime'], runtime), 'manifest lacks exact approved exporter provenance')
     require(set(manifest['files']) == {'tensors.f32', 'tokenizer.json', 'fixtures.json', 'forced_states.json'},
             'unreviewed exporter file inventory')
     for name, hash_ in manifest['files'].items():

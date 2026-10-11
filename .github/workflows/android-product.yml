@@ -87,6 +87,7 @@ jobs:
           cargo +1.99.0 fmt --manifest-path native/plugins/original-inference/Cargo.toml -- --check
           cargo +1.99.0 test --locked --manifest-path native/plugins/original-inference/Cargo.toml --features product --lib
           cargo +1.99.0 clippy --locked --manifest-path native/plugins/original-inference/Cargo.toml --features product --all-targets -- -D warnings
+          python3 -m unittest discover -s native/packaging/windows-preview -p 'test_package_preview.py'
           bash -n native/apps/singles-android/build-native.sh native/apps/singles-android/build-preview.sh
           ANDROID_JAR="$ANDROID_HOME/platforms/android-35/android.jar" bash native/plugins/singles-platform/android/check-sdk.sh
           ANDROID_JAR="$ANDROID_HOME/platforms/android-35/android.jar" bash native/apps/singles-android/check-java.sh
