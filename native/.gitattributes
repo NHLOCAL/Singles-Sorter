@@ -1,0 +1,6 @@
+# Preserve the byte identities recorded by immutable fixture/Unicode provenance.
+tests/fixtures/** text eol=lf
+tests/reference/*.py text eol=lf
+tests/reference/requirements.lock text eol=lf
+unicode/** text eol=lf
+crates/sorter-core/src/unicode15.rs text eol=lf

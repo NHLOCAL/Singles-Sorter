@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "mode": "Sort",
+  "source": "/absolute/owned-fixture/source",
+  "target": "/absolute/owned-fixture/target",
+  "settings": {
+    "copy_mode": false,
+    "main_folder_only": false,
+    "singles_folder": true,
+    "exist_only": false,
+    "abc_sort": false,
+    "duet_mode": false
+  },
+  "ai_profile": "Disabled",
+  "personal_aliases": null
+}

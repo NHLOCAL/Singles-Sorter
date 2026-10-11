@@ -1,0 +1,3533 @@
+{
+  "taglib": {
+    "version": "2.3.2",
+    "url": "https://taglib.org/releases/taglib-2.3.2.tar.gz",
+    "archive_sha256": "3ca2d8afaa7f1cf7f6ed10e511ebc368bfacd6dcaa3dbfa690b89e502e8963dc",
+    "source_tree": "Official release archive, downloaded and verified by CMake FetchContent; original validated source file inventory retained.",
+    "licenses": [
+      "LGPL-2.1 OR MPL-1.1",
+      "bundled utf8cpp 4.2.0: BSL-1.0"
+    ],
+    "stock_c_bindings": "excluded from build; their LGPL-only notices are retained in source inventory"
+  },
+  "zlib": {
+    "version": "1.3.1",
+    "url": "https://zlib.net/fossils/zlib-1.3.1.tar.gz",
+    "archive_sha256": "9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23",
+    "source_tree": "Official release archive, downloaded and verified by CMake FetchContent.",
+    "license": "Zlib, complete notice in zlib-1.3.1/zlib.h and README",
+    "build": "static upstream CMake, disposable source copy to avoid upstream zconf.h rename mutating pinned source"
+  },
+  "files": [
+    {
+      "path": "taglib-2.3.2/.astylerc",
+      "sha256": "239be70556ec15dc0d2facd82fd3890c47c5694dc6dd4ff91ef2685bbb645af1",
+      "bytes": 350
+    },
+    {
+      "path": "taglib-2.3.2/.editorconfig",
+      "sha256": "4e1dac668bff73102b29ae74b6d2a95d6e1b5308b18bbafeebcce65193d3b6c7",
+      "bytes": 398
+    },
+    {
+      "path": "taglib-2.3.2/.github/dependabot.yml",
+      "sha256": "883b95e3be554fbadd92b315e4a8c6ea6ca688b64924e22dd61222b07f683507",
+      "bytes": 118
+    },
+    {
+      "path": "taglib-2.3.2/.github/workflows/build.yml",
+      "sha256": "230e37ef1aaeb78af328ae042520339081b9edd4ff64acc1d19fac6203ef9cd1",
+      "bytes": 3636
+    },
+    {
+      "path": "taglib-2.3.2/.gitignore",
+      "sha256": "5e3e4e7b84e74c1201cdca8ed01efee1aad9e93a78818156fbe9d4092ac7f17d",
+      "bytes": 875
+    },
+    {
+      "path": "taglib-2.3.2/.gitmodules",
+      "sha256": "c77877755eb351390eaf32c9636b90bb7969a99cfa002601318b71de1cff05a8",
+      "bytes": 99
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/.github/workflows/ci-linux-clang.yml",
+      "sha256": "95e12c17df28535a192e019e7eef9d4bd993034fb7d6257dafba5e9998711832",
+      "bytes": 709
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/.github/workflows/ci-linux-gcc.yml",
+      "sha256": "451fc2c0bffd5ccc4f17f26e46d60f51f79532690a976a227d10b11d565f5fa2",
+      "bytes": 709
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/.github/workflows/ci-windows-msvc.yml",
+      "sha256": "439a4e6130fbc571b39b2a5b68cad75d17ed9f2d0e58be7d6f976f2124dec56b",
+      "bytes": 503
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/.gitignore",
+      "sha256": "ffbbac994f4d3291e3c65cd7a456dd90d7faa24179f89193128154356d740d10",
+      "bytes": 49
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/API_REFERENCE.md",
+      "sha256": "1ae87bc5c3c8d01a83f0fcc8f29a3dba239605fa9bd1eec6d2330c58a7b67ac7",
+      "bytes": 66233
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/CMakeLists.txt",
+      "sha256": "389e5dc56e65c1a1129c21bc30df1f301ce081d058d9c2dd031b7e3e7367e300",
+      "bytes": 2010
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/LICENSE",
+      "sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566",
+      "bytes": 1338
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/README.md",
+      "sha256": "313c7190a3471fa018dce833cd2f9353456c9009655ad1339c4896e0dbdd3719",
+      "bytes": 10225
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/bench/CMakeLists.txt",
+      "sha256": "aead4b4372e424b0dbcb0a6621f6e6b49f1c3bd71566ed2362bb41c7c47537cd",
+      "bytes": 545
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/bench/benchmark.cpp",
+      "sha256": "f3c8500f9a3d5a6a2d33e79bd07a5b4102388479e196fac62140ad5b4a4f077a",
+      "bytes": 4386
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/bench/compare_commits.py",
+      "sha256": "6305ca08333c43808bab60ef0ba09722aa33824205e6f2e51950015959718739",
+      "bytes": 6330
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/source/utf8/checked.h",
+      "sha256": "77aaa4a118d50b0a04b1c2002173c7151981576ba5c6bf604616021ea60f678f",
+      "bytes": 13067
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/source/utf8/core.h",
+      "sha256": "6f8a83b6bc77f23f424151ced73ddc4b791149450c4ef3df54ec003a5d07f059",
+      "bytes": 21457
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/source/utf8/cpp11.h",
+      "sha256": "91e4e2afcb41720ab02e23273ee88d202a4781640ae5efbc5d92df67b2dc8ae0",
+      "bytes": 2398
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/source/utf8/cpp17.h",
+      "sha256": "3751ec383aadf92750393856055dd78e3e2f2b07fc71570d0642035f849b8504",
+      "bytes": 3182
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/source/utf8/cpp20.h",
+      "sha256": "39c568de98b36717052731fe1de2a7b10d19fef56e9a3afc1b882860527aa25c",
+      "bytes": 4015
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/source/utf8/unchecked.h",
+      "sha256": "fbcd523c9e73ab5a80b59b2de0510748f84be964e6624606ee365b08e6016e89",
+      "bytes": 11061
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/source/utf8.h",
+      "sha256": "e92f4cff6d49c4a5935b1302bba283fde734ab951e6f8c4ca4008e9c9e6cf5e9",
+      "bytes": 1988
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/tests/CMakeLists.txt",
+      "sha256": "9d6341714268635926d9ebfc76e3385d6c7b0c30e07c8ecaabaa716138b39789",
+      "bytes": 1706
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/tests/apitests.cpp",
+      "sha256": "9e27718dffaeb292ec922d8c0334eecd5aac3f1935b2e3368dc88d161c438194",
+      "bytes": 174
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/tests/docker/Dockerfile",
+      "sha256": "0905ee655e420d3c828116a0dce588eacba744759b1b7efca174843073a6bd2a",
+      "bytes": 115
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/tests/ftest.h",
+      "sha256": "310e686fa995e845c40aec2ad43d9efe6f42326cc80855ada2b3508f751b6c0e",
+      "bytes": 9553
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/tests/negative.cpp",
+      "sha256": "91f24a26cd7a3dbb3e1f5a5b117fc49feab135843503ffdc5c9d8d02d3105a71",
+      "bytes": 16052
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/tests/noexceptionstests.cpp",
+      "sha256": "1cb5162427e2c551e2a8a3a9099471e591eaae1d222bba53d8c5f3f4b7a46617",
+      "bytes": 89
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/tests/test_checked_api.h",
+      "sha256": "e0cfda346e41016b5e8c655dad6975c3e7fc4c47805c9b31748e401f307c6020",
+      "bytes": 8284
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/tests/test_checked_iterator.h",
+      "sha256": "2c288945787b925151e40e58bb693329aa75e9a89ed0b0f5fb23230b8b3b1083",
+      "bytes": 1147
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/tests/test_cpp11.cpp",
+      "sha256": "fcf74ea78220728b7b42345d1ec7fd3695dcb1f6e8085c90f08f6602eed79b85",
+      "bytes": 3321
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/tests/test_cpp17.cpp",
+      "sha256": "03d12bac1049efad5b6a0e8b407f86ae9724e8d4219e1725888da93a3e3f8116",
+      "bytes": 2601
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/tests/test_cpp20.cpp",
+      "sha256": "a7187254c60c3aab67485e3a8172bda5291310ee94448bddac5e00893f6cb3a5",
+      "bytes": 2627
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/tests/test_data/utf8_invalid.txt",
+      "sha256": "8801a72c12264db5dce15b0120c082176b745be08681b60017ea7bb9c09fc316",
+      "bytes": 20010
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/tests/test_unchecked_api.h",
+      "sha256": "c46bfd527e0f3c393788ab6aa25247bc81847d29592a314d193aa828d896d518",
+      "bytes": 6729
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/tests/test_unchecked_iterator.h",
+      "sha256": "0a06b414cdf5edec16edefd63f5b270af500e4c3da199942200df641e1786a28",
+      "bytes": 1120
+    },
+    {
+      "path": "taglib-2.3.2/3rdparty/utfcpp/utf8cppConfig.cmake.in",
+      "sha256": "7f00661d464166f21772ba3eb92b3b94dc5ef7e85014c810cc925a824d2735f6",
+      "bytes": 209
+    },
+    {
+      "path": "taglib-2.3.2/AUTHORS",
+      "sha256": "047780f6bded3712fc24edc77b9187bfa49ea3826ed090933cb6342458eace85",
+      "bytes": 889
+    },
+    {
+      "path": "taglib-2.3.2/CHANGELOG.md",
+      "sha256": "21f5887ef64cc6c4ae4774a284f780da0cd93ca758eaeb1127b96a8ac6a6d357",
+      "bytes": 28937
+    },
+    {
+      "path": "taglib-2.3.2/CMakeLists.txt",
+      "sha256": "04bb378eef97ad026f2b3dac42fd74fe107a1198363a97aaa334d03415c36918",
+      "bytes": 8558
+    },
+    {
+      "path": "taglib-2.3.2/COPYING.LGPL",
+      "sha256": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551",
+      "bytes": 26530
+    },
+    {
+      "path": "taglib-2.3.2/COPYING.MPL",
+      "sha256": "53692a2ed6c6a2c6ec9b32dd0b820dfae91e0a1fcdf625ca9ed0bdf8705fcc4f",
+      "bytes": 25755
+    },
+    {
+      "path": "taglib-2.3.2/ConfigureChecks.cmake",
+      "sha256": "121c19d8b20dc5e0d93e73518193858bfe9666345fe018a88b35e7f356e44582",
+      "bytes": 2587
+    },
+    {
+      "path": "taglib-2.3.2/Doxyfile.cmake",
+      "sha256": "e1448c934af16f8832535d316d0c718674f9a49f5a41035458c7970c4d461d7b",
+      "bytes": 12025
+    },
+    {
+      "path": "taglib-2.3.2/INSTALL.md",
+      "sha256": "7369b125a9b2bfc85cf7e68ce90531b65fc138c3f603a73de1eb42387dde9865",
+      "bytes": 20870
+    },
+    {
+      "path": "taglib-2.3.2/README.md",
+      "sha256": "ec37b4f7aecb12fcc19fc53d58caf155b9021919caca3fe0757e91bc0303a16e",
+      "bytes": 1676
+    },
+    {
+      "path": "taglib-2.3.2/bindings/CMakeLists.txt",
+      "sha256": "bc263ebff13e6670dfdf2613a05aa544bbe1a715c6e2ea5e7ff2dd6fabe7144e",
+      "bytes": 20
+    },
+    {
+      "path": "taglib-2.3.2/bindings/README",
+      "sha256": "97f8609f45e2fd246ef48983e7ea9289a6d65ae2f11d73422d37ab106d26e73b",
+      "bytes": 267
+    },
+    {
+      "path": "taglib-2.3.2/bindings/c/CMakeLists.txt",
+      "sha256": "5c09826968b15a0a3e9ac1a345553e04138fc1a87f52c37f8e28c8f5dfb064be",
+      "bytes": 5437
+    },
+    {
+      "path": "taglib-2.3.2/bindings/c/tag_c.cpp",
+      "sha256": "7e6ecda0213b1fb21c1cce8fb32f8450bd928325955e152d6302fe857c350a00",
+      "bytes": 23843
+    },
+    {
+      "path": "taglib-2.3.2/bindings/c/tag_c.h",
+      "sha256": "3c86ddb006ac9ab9a6e4a3a78b2363fb8e38d20f2a2001d9a7f13d1d952410c2",
+      "bytes": 21317
+    },
+    {
+      "path": "taglib-2.3.2/bindings/c/taglib_c.pc.cmake",
+      "sha256": "87a577887bcd84a55e4f296cf4892419de4d7ebe3ce5d4eaea222c6ab96f002d",
+      "bytes": 342
+    },
+    {
+      "path": "taglib-2.3.2/cmake/modules/FindCppUnit.cmake",
+      "sha256": "e1290ece92644654065ae629e42ec855bdb51961e1c98dad65462231d78f0e54",
+      "bytes": 2708
+    },
+    {
+      "path": "taglib-2.3.2/cmake/modules/MacroEnsureVersion.cmake",
+      "sha256": "a0afd0136a9a50329fbeb0367e2151a555f6892521e8c8c45b9dc3dcd5fca05a",
+      "bytes": 3502
+    },
+    {
+      "path": "taglib-2.3.2/cmake_uninstall.cmake.in",
+      "sha256": "1daa169fba65a678caea09df258ee3fa6d991bb87396296599753e8e8c2e8caa",
+      "bytes": 791
+    },
+    {
+      "path": "taglib-2.3.2/config.h.cmake",
+      "sha256": "4c804440ac8f5df22ff22b0be5d2b87005d476a2f82328699da03785744f5a55",
+      "bytes": 694
+    },
+    {
+      "path": "taglib-2.3.2/doc/README",
+      "sha256": "3fc8233ba91090ce16b37a66ce7a67360460f542079b571396b7ef5c02cf64ca",
+      "bytes": 82
+    },
+    {
+      "path": "taglib-2.3.2/doc/api-footer.html",
+      "sha256": "54bbe1aeb30189a95ce443406ef57387be82b4d8b312b1da421a17d82899572e",
+      "bytes": 18
+    },
+    {
+      "path": "taglib-2.3.2/doc/api-header.html",
+      "sha256": "ab693cfdca1ada279563b87653b0e9c18e8e8fac973dbe6062c375da14ca7534",
+      "bytes": 1620
+    },
+    {
+      "path": "taglib-2.3.2/doc/taglib.svg",
+      "sha256": "530eca206eb1620fe681163963842dd7c11c22d7362e3e203b2e55ec93a7ec77",
+      "bytes": 10995
+    },
+    {
+      "path": "taglib-2.3.2/examples/CMakeLists.txt",
+      "sha256": "7dcd63898b4ccf7c548e903ac90f4edc9a97ef98a307ccbaa07a6ff0096d65e3",
+      "bytes": 1648
+    },
+    {
+      "path": "taglib-2.3.2/examples/framelist.cpp",
+      "sha256": "6350a566c862b6ffef4ee43823e6d3b05d1127911917222192518e0647c576e1",
+      "bytes": 4091
+    },
+    {
+      "path": "taglib-2.3.2/examples/matroskareader.cpp",
+      "sha256": "2240220569e5924dd23421480c746136ea2d5172019e31c905c40f1b552e8e03",
+      "bytes": 5571
+    },
+    {
+      "path": "taglib-2.3.2/examples/matroskawriter.cpp",
+      "sha256": "b55b29f2fb8a18526979d0808b853e488fa9e2bd8c3f6d6d38e73088e70215cb",
+      "bytes": 1204
+    },
+    {
+      "path": "taglib-2.3.2/examples/strip-id3v1.cpp",
+      "sha256": "177fe259d2c781eed50aad269caf0fea212204d857b576ac90e34475f4ef62ce",
+      "bytes": 1660
+    },
+    {
+      "path": "taglib-2.3.2/examples/tagreader.cpp",
+      "sha256": "e2077f818923f51ea1fa58d2a019e4b2fea28049a052654f7559684be810bcef",
+      "bytes": 4908
+    },
+    {
+      "path": "taglib-2.3.2/examples/tagreader_c.c",
+      "sha256": "09f9efb45fad8d38ac3bad7249e798abce30df6c792b7fd3d4254e60768ca758",
+      "bytes": 6226
+    },
+    {
+      "path": "taglib-2.3.2/examples/tagwriter.cpp",
+      "sha256": "976d5cd6f1ebf4ca1a6642e4c1d316d273362d89ddb7f1f47de50e6a48bd907f",
+      "bytes": 10544
+    },
+    {
+      "path": "taglib-2.3.2/taglib/CMakeLists.txt",
+      "sha256": "661e280642b1425dbdbd461fcf59f7800d3ed6319ffccad79841dc85b56201ee",
+      "bytes": 14788
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ape/ape-tag-format.txt",
+      "sha256": "d33faffc4eedb5bb398a04a202afe87e1d8540bcd6e994158c9b814ed18d7e72",
+      "bytes": 8267
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ape/apefile.cpp",
+      "sha256": "14ba8646ab3e6a6a18d1574064449fa561c2f39a349daae3e3e374c8b55372ff",
+      "bytes": 7682
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ape/apefile.h",
+      "sha256": "d99caf43ce3fd93bbf59e1eff174f08074815f6318f87cf863f4e30bfcbf214d",
+      "bytes": 8582
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ape/apefooter.cpp",
+      "sha256": "567c4a5c89ee278e21e61820b7beac45e1977da7bd5214295bd6eca0b498c72a",
+      "bytes": 5416
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ape/apefooter.h",
+      "sha256": "3317824592e007385b3b331f952a5c4583213d95e14f4d115b41bfbf1a3f6f9c",
+      "bytes": 5347
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ape/apeitem.cpp",
+      "sha256": "934e20a333d8225576bdd422942ea22c7f3815160b7043e2ff19762245749202",
+      "bytes": 6349
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ape/apeitem.h",
+      "sha256": "3137a3c7a1605b635a6b9d1c4e454c1bc88c98852c34bc9a5dfda76e7fe0db72",
+      "bytes": 5998
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ape/apeproperties.cpp",
+      "sha256": "770b17ad43f74ff57a6082d659c6bbebcbbd613081dfcf22768d4284a988f0d9",
+      "bytes": 7305
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ape/apeproperties.h",
+      "sha256": "832c57ebf7dd875410c9f0f10305a1ea689e9ff3292e480037dc2772aa84cffa",
+      "bytes": 3874
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ape/apetag.cpp",
+      "sha256": "ad3e781709ff913cdc2545641662965b0d29e008f138eab26e2838033733da20",
+      "bytes": 14270
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ape/apetag.h",
+      "sha256": "d0b86ba8c9b5891a78b6aa42e6cbc11278c774f3f3b92ce10e412b23728f3e4c",
+      "bytes": 7669
+    },
+    {
+      "path": "taglib-2.3.2/taglib/asf/asfattribute.cpp",
+      "sha256": "1776d1f396953ffe060c2a9f1a055778ce37c2c658ba9783537d7292dd5be635",
+      "bytes": 8760
+    },
+    {
+      "path": "taglib-2.3.2/taglib/asf/asfattribute.h",
+      "sha256": "7db1b698abbb59cf776cb65b2771eb01648096fa45ac1a5b97863652e2ebad8b",
+      "bytes": 6278
+    },
+    {
+      "path": "taglib-2.3.2/taglib/asf/asffile.cpp",
+      "sha256": "651fae7a7ee9152729e4f13f44665f547e3260a9e718b06ff02023ca60ea152c",
+      "bytes": 24356
+    },
+    {
+      "path": "taglib-2.3.2/taglib/asf/asffile.h",
+      "sha256": "602244a7a71a7cdeb6cfd535119752544a55354830ccc2fb11d7c91609518abe",
+      "bytes": 5155
+    },
+    {
+      "path": "taglib-2.3.2/taglib/asf/asfpicture.cpp",
+      "sha256": "a28e16854b05924fe531662b2577477093bd746ac00b4cc51f2570620085e691",
+      "bytes": 4379
+    },
+    {
+      "path": "taglib-2.3.2/taglib/asf/asfpicture.h",
+      "sha256": "d9cbf4e47d19e38cab17df7f4de5d96f8f553d7bdf6ff08dbfdec69f2c75aaed",
+      "bytes": 5507
+    },
+    {
+      "path": "taglib-2.3.2/taglib/asf/asfproperties.cpp",
+      "sha256": "01ab34c855ba8103c21c2e67d3c369db7c0991aeaac89e06d26d9ac51f585e14",
+      "bytes": 4227
+    },
+    {
+      "path": "taglib-2.3.2/taglib/asf/asfproperties.h",
+      "sha256": "9c031facda29cea26d6acd3d48437e8f1b8edd3340a1d231e0365da4f31013eb",
+      "bytes": 4902
+    },
+    {
+      "path": "taglib-2.3.2/taglib/asf/asftag.cpp",
+      "sha256": "e28dd524ee569a8121ccf28927e25a93035154c03b4c45f0e750781f7aad859b",
+      "bytes": 19377
+    },
+    {
+      "path": "taglib-2.3.2/taglib/asf/asftag.h",
+      "sha256": "d8609e38697b0739dca4e2de619df82f5d60666aedda256a1b0490ed301fcc17",
+      "bytes": 7043
+    },
+    {
+      "path": "taglib-2.3.2/taglib/asf/asfutils.h",
+      "sha256": "87985a80aa0272650ac643979434274e1710b5ffac5ede7ac80a2ec5c469d862",
+      "bytes": 3652
+    },
+    {
+      "path": "taglib-2.3.2/taglib/audioproperties.cpp",
+      "sha256": "641e8de0d2e3d91ed6c6d1eb94e9b05cda81890852778e95ac20cb414848b19d",
+      "bytes": 2629
+    },
+    {
+      "path": "taglib-2.3.2/taglib/audioproperties.h",
+      "sha256": "471a9d21325db9070d10e0131b65aa82cc1875a393ea6f6f79a87b053749e345",
+      "bytes": 4792
+    },
+    {
+      "path": "taglib-2.3.2/taglib/dsdiff/dsdiffdiintag.cpp",
+      "sha256": "8bb24119ec71124a8bd6764394de22ce172f9cb9e29d60cf876ac3f00183189e",
+      "bytes": 4299
+    },
+    {
+      "path": "taglib-2.3.2/taglib/dsdiff/dsdiffdiintag.h",
+      "sha256": "7e1a3a8dc53fd2a51ee7c48206b8d79d7e11064af7dc72028e98b0941a7da372",
+      "bytes": 5035
+    },
+    {
+      "path": "taglib-2.3.2/taglib/dsdiff/dsdifffile.cpp",
+      "sha256": "e9414891bc5b77af992207a42f1d75d9021eea7ff7f62dcb91c9f6edf97cddee",
+      "bytes": 29804
+    },
+    {
+      "path": "taglib-2.3.2/taglib/dsdiff/dsdifffile.h",
+      "sha256": "72683cfe278341ef1e18b1ba4fc671f33fd5b3b209066a42fb489bd918be5557",
+      "bytes": 11059
+    },
+    {
+      "path": "taglib-2.3.2/taglib/dsdiff/dsdiffproperties.cpp",
+      "sha256": "851d65b674f3d1edf50ea1a2ec1fa6cccd1c9d72aab0cdfa1d92f0f0c57979b9",
+      "bytes": 3878
+    },
+    {
+      "path": "taglib-2.3.2/taglib/dsdiff/dsdiffproperties.h",
+      "sha256": "4008cf3be3219308167a4aa6b88fd42d40eaa23cbf10c2942896774f535a9c65",
+      "bytes": 3057
+    },
+    {
+      "path": "taglib-2.3.2/taglib/dsf/dsffile.cpp",
+      "sha256": "2b4efc57b5bf8d535a16ca4c8e4199da4396d1bcd38919bd5aba6e6a6852cafd",
+      "bytes": 7164
+    },
+    {
+      "path": "taglib-2.3.2/taglib/dsf/dsffile.h",
+      "sha256": "5a490e11ae886b98793687df61f59a517db5506d9bd343392ccfd4a22869341d",
+      "bytes": 5736
+    },
+    {
+      "path": "taglib-2.3.2/taglib/dsf/dsfproperties.cpp",
+      "sha256": "3009e56e7df34803c5035fcfec9fbf97a6a8ea2d3b494784dcc7d7de067082e4",
+      "bytes": 4742
+    },
+    {
+      "path": "taglib-2.3.2/taglib/dsf/dsfproperties.h",
+      "sha256": "357713a61b8952e9e0c95c6ea20c180338bd4fcd3e7c6d656f1f68affa369836",
+      "bytes": 3017
+    },
+    {
+      "path": "taglib-2.3.2/taglib/fileref.cpp",
+      "sha256": "7a044019096e58eeb238649c5f202b337e209e764d01ba3542843b697ecc5a3e",
+      "bytes": 18463
+    },
+    {
+      "path": "taglib-2.3.2/taglib/fileref.h",
+      "sha256": "d4b7fa5682554dafbcb0e213f4ac7236829350668e8fbbeb9915606addb4e44a",
+      "bytes": 16289
+    },
+    {
+      "path": "taglib-2.3.2/taglib/flac/flacfile.cpp",
+      "sha256": "90825ff73344dab4e457aff43d520072d2ddcff44eafac6e2e63955dfa6cb8cc",
+      "bytes": 21960
+    },
+    {
+      "path": "taglib-2.3.2/taglib/flac/flacfile.h",
+      "sha256": "6a0f3bc4a889fcef337b6ec9e4fffbf34d41663950416471be205c2a278d9eb8",
+      "bytes": 15228
+    },
+    {
+      "path": "taglib-2.3.2/taglib/flac/flacmetadatablock.cpp",
+      "sha256": "be44058edcb349af3209784a7099cb1eec65e48b929acd130c566835933c4f26",
+      "bytes": 1931
+    },
+    {
+      "path": "taglib-2.3.2/taglib/flac/flacmetadatablock.h",
+      "sha256": "f68baaccf116285c9c224f2028a9e5fd6c49a79d93c588dafe506b93d9b944a2",
+      "bytes": 2750
+    },
+    {
+      "path": "taglib-2.3.2/taglib/flac/flacpicture.cpp",
+      "sha256": "8321c84981b17cb9fc7ead7c5e162be6c53980a5e4581602aa520e22238d6b85",
+      "bytes": 5390
+    },
+    {
+      "path": "taglib-2.3.2/taglib/flac/flacpicture.h",
+      "sha256": "af8199096abc64fad7c674d9c2a910734805e5d2f508628fae972c880a9a106c",
+      "bytes": 4771
+    },
+    {
+      "path": "taglib-2.3.2/taglib/flac/flacproperties.cpp",
+      "sha256": "0e643919424ebae1bcaeaf645c58a1ba5a02a1abd1e19eb9e71381263023d9af",
+      "bytes": 4996
+    },
+    {
+      "path": "taglib-2.3.2/taglib/flac/flacproperties.h",
+      "sha256": "1bc1307e2dc51435a0817dd895b68426e84c83f79600d6a436c5d1f4f060d5a9",
+      "bytes": 3794
+    },
+    {
+      "path": "taglib-2.3.2/taglib/flac/flacunknownmetadatablock.cpp",
+      "sha256": "565632771bb2818afa185791bcdd6ef116da5be0251339ada82695d1d4c219cf",
+      "bytes": 2523
+    },
+    {
+      "path": "taglib-2.3.2/taglib/flac/flacunknownmetadatablock.h",
+      "sha256": "6bc2671ce1f00b5c7ed37c090691ef4701330fddc28a2ca6185c8fb62fbe6a6b",
+      "bytes": 3067
+    },
+    {
+      "path": "taglib-2.3.2/taglib/it/itfile.cpp",
+      "sha256": "34c7faed4bb3b59b7f4eb97b24578813c9d57680235f0519ae3266900456284a",
+      "bytes": 9965
+    },
+    {
+      "path": "taglib-2.3.2/taglib/it/itfile.h",
+      "sha256": "f4552b4b0bb2a8f1732950b45dad2d49bc0bfd0255997a77619c2946f4898b07",
+      "bytes": 4097
+    },
+    {
+      "path": "taglib-2.3.2/taglib/it/itproperties.cpp",
+      "sha256": "a58175b96ba7f0317e78ee0e7f117c9f63634763c4f6cc072e288114d20e158c",
+      "bytes": 5339
+    },
+    {
+      "path": "taglib-2.3.2/taglib/it/itproperties.h",
+      "sha256": "176e6336b215c2dbf4474d8e8794651d97976293c0f3c8a181b9117ab5909e43",
+      "bytes": 4328
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlbinaryelement.cpp",
+      "sha256": "40ae0a1c4a251e2ae09d5078be126f43e48372e8a757ba7f23f47766cdeb8826",
+      "bytes": 2442
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlbinaryelement.h",
+      "sha256": "d6a65b3d57958b58ccd9947b4f36070a6be890a2d9cc75d89cca95cd6c04d938",
+      "bytes": 2123
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmldeferredbinaryelement.cpp",
+      "sha256": "8f48d6f8dd1b2610d2df91b0a1dbae6b8fc9439503b960142e974bef06bde0eb",
+      "bytes": 2355
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmldeferredbinaryelement.h",
+      "sha256": "51b605b4ea404586d1578899230cb81d42e0c7ffe96ec776ab36c89c889de18f",
+      "bytes": 3089
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlelement.cpp",
+      "sha256": "b000bb7865e9b71b0f53c07ed3e25cae1c446e9e28f5cb5af35b3a752760d3ce",
+      "bytes": 8124
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlelement.h",
+      "sha256": "d8df2489db30e79620d8d8e8edd36c663fa51fcb42e6b3ad014a7b5f78225c9a",
+      "bytes": 14239
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlfloatelement.cpp",
+      "sha256": "e45cf1bc9d08351df75b5c5c9b34f0efab66f1986e4ccede334323607c82a9a8",
+      "bytes": 3827
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlfloatelement.h",
+      "sha256": "9920137d9ca9726c4d5aa6ad1803a1b31ecfcc49f41573a07751aa4ddd14356a",
+      "bytes": 2521
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlmasterelement.cpp",
+      "sha256": "5c72c46305ce9cf631b781e9310f2d6bba90c91475cc1af5ea9e5c9e2a02ef0e",
+      "bytes": 5009
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlmasterelement.h",
+      "sha256": "4ee9ee48f2e2b3f9631a0c3ea2a6c703bdf59219b4ceaf75f81ada6184a0bf9f",
+      "bytes": 2932
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlmkattachments.cpp",
+      "sha256": "45add83cd9c7aa7e5b12375312d60c5de2853ff0eed7d592566d112cf1d5deab",
+      "bytes": 4214
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlmkattachments.h",
+      "sha256": "bd6ffd4edf6800a893d210321812e445070135ba72965f420230a3ad79d8bfea",
+      "bytes": 2028
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlmkchapters.cpp",
+      "sha256": "bffaa69dab8cc0226e6a979d535a834a3c726f5b90f80ea805aac92d34fc9262",
+      "bytes": 7812
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlmkchapters.h",
+      "sha256": "ccbde1cdbf774b44502817e10dad5edfb6d3c5c4e06ec7edef1a39506db1c614",
+      "bytes": 2269
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlmkcues.cpp",
+      "sha256": "4ca7f75c7873d8826927baccebf736ce8d349e123d26f82372e632db92f2f2b4",
+      "bytes": 4406
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlmkcues.h",
+      "sha256": "51d572303cd5c479e64e209f608030b861e7892a34a0d06499e3cc8db11e8770",
+      "bytes": 1998
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlmkinfo.cpp",
+      "sha256": "05223ba6a43cd9d8cf5e379fe5bd7ab7353f2db38e0c935c8191bf8ca07ae466",
+      "bytes": 3254
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlmkinfo.h",
+      "sha256": "704fefc65d2d07de53b7a6898ae4f30cce9a315553b31c2ed0ec5829253312d8",
+      "bytes": 2511
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlmkseekhead.cpp",
+      "sha256": "fb3054226f4e1dd61cbd460df2e5ba07f63cc03ffa5e4e7b96cb9730e3aaa009",
+      "bytes": 3149
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlmkseekhead.h",
+      "sha256": "a5842824421e77c8d49b8b5e40c09fb06969ddd4266c0f99df593ee6dc947cfb",
+      "bytes": 2030
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlmksegment.cpp",
+      "sha256": "ff1b13433139fc2fea0f116de8eb5222fc110709586157a11c5c1afbcb359677",
+      "bytes": 10666
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlmksegment.h",
+      "sha256": "7d95510af73f5cdfb9ed16c9c65d87bc3661dc3a85169dc9cc0bdcc5b17171ca",
+      "bytes": 3191
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlmktags.cpp",
+      "sha256": "4259fa8c54cfc154d62fecd0971090d8ec3effaddad334abbc2d114bb96f4b99",
+      "bytes": 5897
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlmktags.h",
+      "sha256": "963f4f7c2e837820849952945f1b14cb4cae490cd486784114c1dbb16096e573",
+      "bytes": 1970
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlmktracks.cpp",
+      "sha256": "ef0bf6c3ab04512d4ed83b1ca526316599bbbd385371a786ded869ade400877d",
+      "bytes": 4122
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlmktracks.h",
+      "sha256": "075d693dbaf4c5f64f8cb3fe88ff9a9252dd0ccaebf150aa54702e9400e82826",
+      "bytes": 2260
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlstringelement.cpp",
+      "sha256": "ac4d390d9d55aafef7156883a04969ca696b3a71ba36b0d68c2769e2b9303258",
+      "bytes": 3523
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlstringelement.h",
+      "sha256": "efaa05cb2cd5d02e2438d7881331b06fd597faa6b16e4561492702062f7fc28f",
+      "bytes": 2599
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmluintelement.cpp",
+      "sha256": "119d6b74167506a4b718b8f6da7df7f735b514d0e7d73ca49bc86e52083ba2ac",
+      "bytes": 3170
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmluintelement.h",
+      "sha256": "9b339199e3db208efedbcbbfb1b98d06429ffeff3a7b380e2493ba12e03707c5",
+      "bytes": 2100
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlutils.cpp",
+      "sha256": "bd7873b24eac1403311604ef39b75dd0a63bee43609060852853ad1f1fa6676a",
+      "bytes": 4616
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlutils.h",
+      "sha256": "d03f34183df7fe1f460f652ae49adac77002bfdc7efc9f1f9a3df771879fea16",
+      "bytes": 3708
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlvoidelement.cpp",
+      "sha256": "0eb2de818a72003115f79eac51dfc9c5a1a397ec1c6d97a53a4f097bf5189fc0",
+      "bytes": 2705
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/ebml/ebmlvoidelement.h",
+      "sha256": "b339e8233026fb5d81b2bc4c0f05f0724170b9cf6bea278f6fde2ec9f18f33ec",
+      "bytes": 2158
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskaattachedfile.cpp",
+      "sha256": "c499cb563e59eb2eef156284ea98d8894eb39242c8210b08b88b0d3de6272af8",
+      "bytes": 4810
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskaattachedfile.h",
+      "sha256": "473d1d16d4e7fb586455113fa7a0819cc766e27af9d06fde5de6eba007aa19ed",
+      "bytes": 4896
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskaattachments.cpp",
+      "sha256": "20dfaa678d11d0d8720dd7ece248ce26802bd90feb51dc4c6889fef3aa376332",
+      "bytes": 5721
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskaattachments.h",
+      "sha256": "6cdffcc92b555d47eac9f0f3cf773f23562544297d21eb0061ff84a4cb0454ab",
+      "bytes": 2832
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskachapter.cpp",
+      "sha256": "f6eeebdb90225bca3397f97396c9a96d095bda1d7261374e0fc4a07689e53b92",
+      "bytes": 4558
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskachapter.h",
+      "sha256": "fe97403d653828b15786b5a80ddf60b131c3c54c1d754204085159518f2b72e3",
+      "bytes": 5199
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskachapteredition.cpp",
+      "sha256": "7f7835200f3b0084c9eda533ff80f4b57077445a8ecee9d4c6004b4066c02f22",
+      "bytes": 3587
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskachapteredition.h",
+      "sha256": "7d53aafd712b5f07cb2744f96a0d1857d4722ec7dc220bf2de9ab7be4b56feb2",
+      "bytes": 3657
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskachapters.cpp",
+      "sha256": "238d6446873436a86b4b4ba927d0d3eea1c5ccaef4323d83762f2771a4d493ec",
+      "bytes": 6874
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskachapters.h",
+      "sha256": "0713d01c8a62ae89730573f76aade117ca11d562a59a3040b81f40fdb584afa3",
+      "bytes": 3052
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskacues.cpp",
+      "sha256": "2b8bd3466c3d7589d4b52ce3b60882deb339976e7fd85fc196779b2c5186c468",
+      "bytes": 9904
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskacues.h",
+      "sha256": "38772c647472452058213bced3a5c685836a554ff3e7d8f74f8c94ba6c45ee5a",
+      "bytes": 4373
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskaelement.cpp",
+      "sha256": "9431e7ab85b69feb14394e229e2003f913ce8fc6ab4142892aaa202189156bb0",
+      "bytes": 6954
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskaelement.h",
+      "sha256": "cdd1e4e8fcce73af1e12a51aac8ec7f3ac9846ebebca68622d450d6c6ca6616b",
+      "bytes": 3407
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskafile.cpp",
+      "sha256": "a8450060b034be9493a62a49820d67da980fce15ecdae6c37d1c2c8f88e3853e",
+      "bytes": 25332
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskafile.h",
+      "sha256": "ce81bfd447732897993e7384c26ae0d653bfa569ea35fd12c8a1d7b5a9d92ccf",
+      "bytes": 7890
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskaproperties.cpp",
+      "sha256": "ca10accd968607aac2591d4d0ac75a0338b9b8ddd42e7eef46c7d19acb0a6b90",
+      "bytes": 4391
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskaproperties.h",
+      "sha256": "57df58a570dafb546d8bee46856fd4db2ca709b58457e91427670399df3d836d",
+      "bytes": 4191
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskaseekhead.cpp",
+      "sha256": "1929898ca8be62db137bb262b15678acca0dc55b657a6aa4fbf43b7aecab22ec",
+      "bytes": 5003
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskaseekhead.h",
+      "sha256": "f91ba1358f9d3afd098a641d2226763e46c75bff1821ea2138bf46dfb0557acd",
+      "bytes": 2389
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskasegment.cpp",
+      "sha256": "87938abe46af8fa5c002dd50d39209868bfe7cbbe45533c8ff4872a431468bc6",
+      "bytes": 2689
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskasegment.h",
+      "sha256": "5be2ecb0620401b384d72e454ff2871fb8fe9a15dfef28cbf7abcad0762f6298",
+      "bytes": 2045
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskasimpletag.cpp",
+      "sha256": "9a906ae1691cf857638e41f779767131033da01253eeed1738428deaa8b50fa5",
+      "bytes": 7114
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskasimpletag.h",
+      "sha256": "aee335b1e2420d5e4dde32ec4016b0d4a64bb0cf4a9fad2faa8f20943491018e",
+      "bytes": 6382
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskatag.cpp",
+      "sha256": "a8c6f002cf10f6029e2bf5870f67ab484eff642202558bd978c7f99a6be59000",
+      "bytes": 24006
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskatag.h",
+      "sha256": "3ad311ae11466e977d92831081edcbc64064cea32967d6e6c1e8b91152c71cf8",
+      "bytes": 5521
+    },
+    {
+      "path": "taglib-2.3.2/taglib/matroska/matroskawritestyle.h",
+      "sha256": "bb876143d91b5d44f5baa90c82d7a0feccdc37def4ccb41aebeef11dbfac9df0",
+      "bytes": 2636
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mod/modfile.cpp",
+      "sha256": "a85fd6438ca1d00962544bdef126f46fff690cdfb4e6b423cb436ea9025e86e3",
+      "bytes": 5902
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mod/modfile.h",
+      "sha256": "f955b7185bbbeddb0069bd3aebb7b2494a9a362c7522bc7bcae53f20f4d19589",
+      "bytes": 4689
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mod/modfilebase.cpp",
+      "sha256": "cdd539d14f7b3f68a7b2441baf2c6dfd1cc8fc72e1dcbc99994ce90276552330",
+      "bytes": 3966
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mod/modfilebase.h",
+      "sha256": "e04f5b172b25589e4ea89f426fa0c188a1593788957ce0cf3a1d352e0d00da00",
+      "bytes": 3014
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mod/modfileprivate.h",
+      "sha256": "46ca1c2eefa98fe3c43e580cb172bc4e212b4dd8751424b6e9409fa629959b48",
+      "bytes": 3848
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mod/modproperties.cpp",
+      "sha256": "25ccbc8dd265de267177d9b48d48ac540d216ebc5127810be71d5eddcd904e97",
+      "bytes": 2835
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mod/modproperties.h",
+      "sha256": "eb7ee6eb1ea2c3de652639ff9ea99c0d9b0ead955068102b0b140976a7835ae3",
+      "bytes": 2781
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mod/modtag.cpp",
+      "sha256": "8e20bb191deec0e589a2c051f212679ab42d1376c42f58d693cbdbfa8b31b331",
+      "bytes": 4175
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mod/modtag.h",
+      "sha256": "4a0568808196774be3d06c3d50f7ef3bae1b4dbe9240a9bc13b1615622e43469",
+      "bytes": 7304
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mp4/mp4atom.cpp",
+      "sha256": "3579522a3ed56df9a61560403b6c35a88a5dde5bed6a1af2bd9d937da278280b",
+      "bytes": 9466
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mp4/mp4atom.h",
+      "sha256": "f4271e3183ddacaba376587b7226280197df10caf49c67be17691da84646b81d",
+      "bytes": 5747
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mp4/mp4chapter.cpp",
+      "sha256": "484639b34760ab22002e78a4e7a69edffe84ddd20b86691a8c52177726b6f0db",
+      "bytes": 2898
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mp4/mp4chapter.h",
+      "sha256": "baf1af7e42bb1feee3bf42385a622a3dd4fd55294404eabd290c9cfe8e7aaae7",
+      "bytes": 3530
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mp4/mp4chapterholder.h",
+      "sha256": "66b277c733f28aa1887b5bb5c4609b14b5b77e4cc7bfbc971890c137b5b0a4b4",
+      "bytes": 4628
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mp4/mp4coverart.cpp",
+      "sha256": "1f2984ad814bbbd7733889368b0884c79742dd50ad8ee5a513ac0e1cedbebb97",
+      "bytes": 2831
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mp4/mp4coverart.h",
+      "sha256": "19d0a31cb9cd1873d5e09b6d27ff2e35fdee032a09ce950c66df4875d18c5e20",
+      "bytes": 3301
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mp4/mp4file.cpp",
+      "sha256": "3dbbe80f761c930e44f04f1b2c46280590253b747ddc40159033961e7c717d25",
+      "bytes": 5729
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mp4/mp4file.h",
+      "sha256": "1f18a99e945fc8561431bf674ae9caf26f0f25eeda1a07e4104587f03ff6b5f3",
+      "bytes": 6848
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mp4/mp4item.cpp",
+      "sha256": "18ac0bdf99a30fae83572df63a9c0cffb756344a2937268d6a0ca508ce046f21",
+      "bytes": 5979
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mp4/mp4item.h",
+      "sha256": "eace248d835191dd977c3af7a1010259b2cbc07d70b1f7b41bd4af82e1fce337",
+      "bytes": 4027
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mp4/mp4itemfactory.cpp",
+      "sha256": "1a56754faf1a63ae5e5aad2e4b8918d0b7c663a28a9eb8b59a108568a597f177",
+      "bytes": 27517
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mp4/mp4itemfactory.h",
+      "sha256": "e9c02c7995a24330cbff9ed7a36c4acd60968b31a259088e5490e316eeb8d57b",
+      "bytes": 10749
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mp4/mp4nerochapterlist.cpp",
+      "sha256": "cade41a5793d3a3e6bbc52c40d3da79855fd3ed1b64beec5166337ca0f1dd2ad",
+      "bytes": 11082
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mp4/mp4nerochapterlist.h",
+      "sha256": "75b281cd9cdfc89c0866c593fa17429243a39808a1a5b3db0287a395294cc6f7",
+      "bytes": 2817
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mp4/mp4properties.cpp",
+      "sha256": "10d465b8ecccd9cac3074b217d631cb192a64637b8a7ca8731054923d7879f34",
+      "bytes": 10222
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mp4/mp4properties.h",
+      "sha256": "573a4b9711312205f788a4a0068c1fe458a9abae68569f8b46524a355b2267fa",
+      "bytes": 3773
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mp4/mp4qtchapterlist.cpp",
+      "sha256": "ea87fcd288a74f982c427868fb5862e02777a9d7485ea9a5d11833a638be37c2",
+      "bytes": 54284
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mp4/mp4qtchapterlist.h",
+      "sha256": "725261853b41ff692e35ef12e8f714ac05b94b4bde99f28331c5d6efb9c2ac2a",
+      "bytes": 3404
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mp4/mp4stem.cpp",
+      "sha256": "73837170f6aa27b4809fd221c17df673c5e2272cbed5eefe3d07480eb90c73ea",
+      "bytes": 2347
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mp4/mp4stem.h",
+      "sha256": "3ebc13aa2cd9ae26e86687e764cf672c8a6bc91c48a0df0dd94d79ea0b8f48a3",
+      "bytes": 2759
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mp4/mp4tag.cpp",
+      "sha256": "29c099a2bda2310c41178c46b6ee28f3ff1d5fd4fc4d896585e3f0a9377fff67",
+      "bytes": 16257
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mp4/mp4tag.h",
+      "sha256": "d2309cd6c7fe72126b0084c280292c3de0ba5642133807c8115135377762d5d7",
+      "bytes": 5225
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpc/mpcfile.cpp",
+      "sha256": "632a07d781231bed9f2f35f4c0168001ad04e401c5782da293acc25b93da68c0",
+      "bytes": 7797
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpc/mpcfile.h",
+      "sha256": "1b00f125a499c0c966e2948325b240ef717ffbffcb728d46afb5d22eee650883",
+      "bytes": 8385
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpc/mpcproperties.cpp",
+      "sha256": "0c9630f94f40a5cea6fd871497d2e15f051a2da90bdaa7531e59f8459a3da65f",
+      "bytes": 10868
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpc/mpcproperties.h",
+      "sha256": "9514450baa6c98cf20b2a239c463ade1e3294bffc77a21c8abb1043ec089249c",
+      "bytes": 4518
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v1/id3v1genres.cpp",
+      "sha256": "0e1e5644579b1338d1efdb467012daaa16c75853571c1882bc8234dab4138771",
+      "bytes": 6262
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v1/id3v1genres.h",
+      "sha256": "4803a8ef21b88789d7b4083b2abc6b3de818b9f9c9c5f1b3c042bbbc4b39591e",
+      "bytes": 2855
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v1/id3v1tag.cpp",
+      "sha256": "48b431108aa3d1422991d9a04294743ecc637b32c5129b129a2239513d3ca53a",
+      "bytes": 6816
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v1/id3v1tag.h",
+      "sha256": "8b1dca7ab97238fe893c2a1313fc7fbcd405f91b78ce50f52eb04a1f456a2969",
+      "bytes": 7493
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/attachedpictureframe.cpp",
+      "sha256": "02688560facb1391d179597fdb0ceb92a5c63d432919ef35d9d031b41a599540",
+      "bytes": 6609
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/attachedpictureframe.h",
+      "sha256": "cf488334367b51caac8c4073bbab3a319e7996dd5eac10e10375f33927fb7634",
+      "bytes": 6066
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/chapterframe.cpp",
+      "sha256": "b8b550a8b4bfca170a7c0ffd6b19c7a26fa10ed4091d5109955896b09bb4558b",
+      "bytes": 8391
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/chapterframe.h",
+      "sha256": "ee53adf932992ad91d778097eae3e54744f6d7ac7c272f27c7cd46d18541bea1",
+      "bytes": 9081
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/commentsframe.cpp",
+      "sha256": "26e594c21ecafab22f0c6e6d5a0d16e112d2098bd3fe881a2ad0cda39835e988",
+      "bytes": 5666
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/commentsframe.h",
+      "sha256": "98a8fb6dc9517bdac0c504f3542bc2b64d2f909b872c4d97de386b100f7eebd4",
+      "bytes": 6048
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/eventtimingcodesframe.cpp",
+      "sha256": "32b9d43f5ea4780145a20090a57b60911416fa3c740092511a6dfee77cd8da73",
+      "bytes": 5161
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/eventtimingcodesframe.h",
+      "sha256": "46a51246cb44fe6421b07788649fa8fd71ebc792da8830496347ca8f6022e384",
+      "bytes": 6488
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/generalencapsulatedobjectframe.cpp",
+      "sha256": "2c213e6b82e55fd00480fac045f4fe85bdd6177e9d8b4acaf3579e2521ef3dcc",
+      "bytes": 5751
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/generalencapsulatedobjectframe.h",
+      "sha256": "61ba238edd282632cc5d90dc69e5d0929273b4c66d8b1c3a44e2c93ee578d0bb",
+      "bytes": 6227
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/ownershipframe.cpp",
+      "sha256": "f857ad141c323223119036e9bb2bb4ba4b5f9a4b7b26d5da217814745dcdf618",
+      "bytes": 5170
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/ownershipframe.h",
+      "sha256": "ff28bc8b7b219945c53599449a0340cdff13e1cf32ed68b03f381de9d88607da",
+      "bytes": 4800
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/podcastframe.cpp",
+      "sha256": "4ff7bb92f04d70d45bbe3efe07c59c6bebde55224c658a7f6743c67e408b804f",
+      "bytes": 3135
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/podcastframe.h",
+      "sha256": "17253ac19be28d74778b243f77bdcbf2798fb3d2bad4b987d72a7e93d5b0d6ec",
+      "bytes": 3041
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/popularimeterframe.cpp",
+      "sha256": "38e06ad424585b2031c169ed8381f25218a8668030a84a3cf16020cb31bb49df",
+      "bytes": 4368
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/popularimeterframe.h",
+      "sha256": "c610726350ba1e28960af4b905dffd2bef3e10ec007fc779d0afb76b7f7031ab",
+      "bytes": 4148
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/privateframe.cpp",
+      "sha256": "cd5c6389ad313922095b9be8697d547e1c5c6dd3cd8b85bee6c31e23e3ee97bb",
+      "bytes": 3913
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/privateframe.h",
+      "sha256": "0408f41cf80b05f7e0317ad32ad3d3202503886409284c2941a0e2403685297e",
+      "bytes": 3805
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/relativevolumeframe.cpp",
+      "sha256": "ce435838ab2256d1edc0a186c538e16388b149ebeba5570c32cf07739d90b7f4",
+      "bytes": 6395
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/relativevolumeframe.h",
+      "sha256": "8a56ef86cff992e22811523396db1a29fa61796cad3626da58c3b8f26772fdcb",
+      "bytes": 8283
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/synchronizedlyricsframe.cpp",
+      "sha256": "481dce7e3ee2ac09d4f3348c9dc1639032d655b4360e1e14679cb2aa133d854b",
+      "bytes": 8312
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/synchronizedlyricsframe.h",
+      "sha256": "720dd343d4c29a9e070efd258f7d3f5f21f088451f9cfa2fef8f834bb6885e11",
+      "bytes": 7502
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/tableofcontentsframe.cpp",
+      "sha256": "ae492093a4233435093509d54fe1551a6256f98297c4aef950df13ba5a687ccc",
+      "bytes": 9152
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/tableofcontentsframe.h",
+      "sha256": "7c3f8a2aeb547741d59691f0ffdd644ad46d67a45c69dd5e31cda0f65350194f",
+      "bytes": 9199
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/textidentificationframe.cpp",
+      "sha256": "7f24a0b5b08d5df9d87da9e0df266d4ccdb40d68a6faa840f508a54a8a3da390",
+      "bytes": 15024
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/textidentificationframe.h",
+      "sha256": "f73b5ed843d75ea59a3e13a6018d4929630aa6e3a8791fbc4545416d7a955afb",
+      "bytes": 12648
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/uniquefileidentifierframe.cpp",
+      "sha256": "9555eecaa1c3cb9fdf1f040c336a00607b29c374376b9df31e7bb62df5744899",
+      "bytes": 4427
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/uniquefileidentifierframe.h",
+      "sha256": "055d37ce0f5a68da48a202be445dcc60b1348517f592170eab30975e444f93fb",
+      "bytes": 4566
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/unknownframe.cpp",
+      "sha256": "e476658368dd222a9d00466bb33add274cfa89ebb53af4426aabad2f16f31f58",
+      "bytes": 3043
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/unknownframe.h",
+      "sha256": "a851a1b045641f7b0cfc5db4bf7fa8434f342cf2a6235529398de777103334b7",
+      "bytes": 3305
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/unsynchronizedlyricsframe.cpp",
+      "sha256": "c1a53782829af5d5346f891e0d5c9f60d3268087537a524cdc4543b1c453c732",
+      "bytes": 6106
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/unsynchronizedlyricsframe.h",
+      "sha256": "7cbd543138f98ba4549ebd60ddb8e258bee18af8bef9d22c5579ca03aa540d2b",
+      "bytes": 6451
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/urllinkframe.cpp",
+      "sha256": "ee77ea5df0faaa43d6314c85ed59e49ed70961b2ab3ed66ed087320f524aec89",
+      "bytes": 6687
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/frames/urllinkframe.h",
+      "sha256": "5654040bf34d6ee60530be61d78bf834f3522c7915fdf93181fe8c9fab71dfb3",
+      "bytes": 6547
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/id3v2.2.0.txt",
+      "sha256": "69c5a83b824f9bf4789ebc8a5f98f06bd6b6c52b189ea05997d15d0d7a787c84",
+      "bytes": 62297
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/id3v2.3.0.txt",
+      "sha256": "3b9099f6758f14b24fe60051ee88322a71620765b81cd5cd79c12f6a6aa8c957",
+      "bytes": 77260
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/id3v2.4.0-frames.txt",
+      "sha256": "75050a392bfdff5137a14171956d68c92472c0a9c19f94c9d42d17f08abd18e0",
+      "bytes": 65591
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/id3v2.4.0-structure.txt",
+      "sha256": "9ea15ec73b06097b44ef74a64793be3a655e368225a69cbb6a85c8d422e7e76e",
+      "bytes": 28453
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/id3v2.h",
+      "sha256": "e0629d5bbf754068fdb10a4b23f06a606427096e111f68be28793d7147ae1eec",
+      "bytes": 1053
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/id3v2extendedheader.cpp",
+      "sha256": "3cd53433f1f3ddea8ba315bad04e6320ed3a8f1996a8f4421ef2f7a3db57257e",
+      "bytes": 2700
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/id3v2extendedheader.h",
+      "sha256": "e168d9933ac06a766c9ce9883862d0cd9b3d2441e2606845110a9b98e856a0bc",
+      "bytes": 3832
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/id3v2footer.cpp",
+      "sha256": "26b6205e7eead7ac717985c38a9be7d90e49fa234f9295b1376e2ca7664de988",
+      "bytes": 2155
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/id3v2footer.h",
+      "sha256": "accdb58179af95c6365478ab37d7704c0881c3df2c9a1d572c8485e11c628ed2",
+      "bytes": 3161
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/id3v2frame.cpp",
+      "sha256": "4a3cd25d927cc9bfce231566aed165103fb3a551d6a733c5e36739a7e3a66043",
+      "bytes": 18819
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/id3v2frame.h",
+      "sha256": "f469412a237fa83721831c69db276c99eab34e8505261254f2ea4487dee058c5",
+      "bytes": 16623
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/id3v2framefactory.cpp",
+      "sha256": "369dfa7cea0ba11196b7301a995b5d5e2c652a0c69a78135c0084e1a8171fc3b",
+      "bytes": 20699
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/id3v2framefactory.h",
+      "sha256": "f84b831cbc30373158227fb0fca2d1428b4c099ae2ac4c59b4f754dcefde8bb8",
+      "bytes": 8269
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/id3v2header.cpp",
+      "sha256": "bdf5bbef09f83b7a66570d1d5a414c4d231dacd42128c7416b476721457eca6a",
+      "bytes": 6769
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/id3v2header.h",
+      "sha256": "f228336e749162dbd3607da05db788036db1da65736ea8b3226c6d3f65393077",
+      "bytes": 6079
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/id3v2synchdata.cpp",
+      "sha256": "996ee671a49492136144100f90ad1c3634309d8d99dc2dec136300982310775b",
+      "bytes": 3297
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/id3v2synchdata.h",
+      "sha256": "e6e67faf447e4d608950095709814568263c7cf8d20e2ea4beac9323a7d3ef3a",
+      "bytes": 3174
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/id3v2tag.cpp",
+      "sha256": "b65ca4260f5185fd495d921dc85374b1dfc90bae2bbbc7ce29b4885961cc1074",
+      "bytes": 28096
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/id3v2/id3v2tag.h",
+      "sha256": "433bd21dc1f865557c7d0d82f7f364938b22c3fd10f3dde21930134053316dc7",
+      "bytes": 16395
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/mpegfile.cpp",
+      "sha256": "8bc29610c4a31db0e3c4cf2f658068d14fbc90aa35a91755a89a5fa67a2fe981",
+      "bytes": 14654
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/mpegfile.h",
+      "sha256": "b2cd69f425f8384a4546f2a1fa70161e8e2960bb1fcdd9bdc82e1ee2147c00be",
+      "bytes": 13907
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/mpegheader.cpp",
+      "sha256": "fbf3088ad88a61538cc101c6f2805b707be76ae24d56a62b4c4bb00eceb949f1",
+      "bytes": 10983
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/mpegheader.h",
+      "sha256": "7e12b0cf8b820bdc214cdde91291dabb2be7d6f9e7a1b86f800f8b1ff9a8c7b4",
+      "bytes": 6596
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/mpegproperties.cpp",
+      "sha256": "19a7724455bedbe4c3c73766e396d03cb1395d145d260ed0e4bf2f58b0b98d0f",
+      "bytes": 10400
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/mpegproperties.h",
+      "sha256": "b0112aacb26fd3ce08f2b6c6d71f5c6c960c31cda179902e63a2ee89ce341150",
+      "bytes": 4477
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/mpegutils.h",
+      "sha256": "6fb3fbe24356d74ee99b20f1bbdace033c73e3ae1e4b66c238f6f95bed1d4de0",
+      "bytes": 2767
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/xingheader.cpp",
+      "sha256": "df5afecee5853849625e953a24d08dfc07377e3ceaafddac33f763ce11f0a38b",
+      "bytes": 4009
+    },
+    {
+      "path": "taglib-2.3.2/taglib/mpeg/xingheader.h",
+      "sha256": "4122fc45d9a32c90285dab9b2ecf09f9089052ad282b7bcaead29cab5ad1b5b1",
+      "bytes": 3973
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ogg/flac/oggflacfile.cpp",
+      "sha256": "414eec31e63eeaba075e1450f8cc3141cf4d932fac3124a34a68b297948b5999",
+      "bytes": 10309
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ogg/flac/oggflacfile.h",
+      "sha256": "34b7753318f91465d21c020a8ce1915824e8aeb29526afba1128daac861dfba9",
+      "bytes": 6201
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ogg/oggfile.cpp",
+      "sha256": "6819bf85e61f4b45ac0ed6f488d69e1642d4626f3c16cfe5827919a03aaa0a79",
+      "bytes": 12833
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ogg/oggfile.h",
+      "sha256": "15d69b0ad848ce095e493c0c53a562641e3da501b52b4fd82be61f190f67c260",
+      "bytes": 5704
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ogg/oggpage.cpp",
+      "sha256": "dbfb694680feba06a80ab10ff10be49e5fb6048df99a7bf721d191afd4a5bd3e",
+      "bytes": 13121
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ogg/oggpage.h",
+      "sha256": "85c56214ac820de271862c91211495f34b17fd58ba3641a2bfd6d57dd152004f",
+      "bytes": 8096
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ogg/oggpageheader.cpp",
+      "sha256": "c8799d7762ff1f532b5c21da78d13eed241566904028b90f7b658c6d68070c89",
+      "bytes": 8163
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ogg/oggpageheader.h",
+      "sha256": "afbe6bf39f931f4cffafaf27c54d94e6bc9008d5655b9e13f0be1e265ef748bb",
+      "bytes": 7801
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ogg/opus/opusfile.cpp",
+      "sha256": "a60113ba608e1f6ff1d537fb734c7bb610711c407fb972dd42dd720c7ef5f4ca",
+      "bytes": 4531
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ogg/opus/opusfile.h",
+      "sha256": "419024b10b5eb324837fa21357bb207f70c1affe4fbf842b4396d33572fdad87",
+      "bytes": 5375
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ogg/opus/opusproperties.cpp",
+      "sha256": "9a6ee29390147208c531af5d126ece503310c16f054f62cb7616ac09d6c30051",
+      "bytes": 6182
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ogg/opus/opusproperties.h",
+      "sha256": "18965ef4029b2aa28f239d96c2460f7d9a518486b35e653b4c1f8c973f387dab",
+      "bytes": 4269
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ogg/speex/speexfile.cpp",
+      "sha256": "becb2ef4cc1079d204c1895b8cf199d3c61712afe7185b148ef8e79f1f71b712",
+      "bytes": 4359
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ogg/speex/speexfile.h",
+      "sha256": "a272353b95846ec67cc85dfddc5afc0dad1a15c5b47bed5e059f08fb13b1744a",
+      "bytes": 5385
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ogg/speex/speexproperties.cpp",
+      "sha256": "df6956982383ea83fefe3faa48fde5a09bc952913449f49d876716d5b021d618",
+      "bytes": 6798
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ogg/speex/speexproperties.h",
+      "sha256": "6443df2b447d712004fbdebc2139309d5ebe2745821dbe175792beac7fd66874",
+      "bytes": 3834
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ogg/vorbis/vorbisfile.cpp",
+      "sha256": "cffa99fe1c8a4e36743c9ba89fd0358d0e58cb53428fbcc3781cc056b2ecb3a1",
+      "bytes": 4863
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ogg/vorbis/vorbisfile.h",
+      "sha256": "f5ada9fb8601a55077406ec8a78e5a06f4ddb2173fb9bfafdc9c6c3a2fef1983",
+      "bytes": 5942
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ogg/vorbis/vorbisproperties.cpp",
+      "sha256": "a264d5638041affa0640c1b8884078d3c61d279eee2ff675f7b5b8ebf2912c1a",
+      "bytes": 6512
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ogg/vorbis/vorbisproperties.h",
+      "sha256": "736f6e1b701cff3233c83d6b3aeff7c7c33ba3ba55a90df826e04598b79a214e",
+      "bytes": 4777
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ogg/xiphcomment.cpp",
+      "sha256": "502ae26e56304ed1645c7dc51b0490862b43dc247c4dc54319c8e2e33980a65e",
+      "bytes": 15015
+    },
+    {
+      "path": "taglib-2.3.2/taglib/ogg/xiphcomment.h",
+      "sha256": "58c71234f895d990cecc43d13417ae46cea5415badc6f3808ded7282fe5f1801",
+      "bytes": 9654
+    },
+    {
+      "path": "taglib-2.3.2/taglib/riff/aiff/aifffile.cpp",
+      "sha256": "491167dbd387d44118b6ba65632f01d552c78dbeb822fedbdadc8a11fbf67dbb",
+      "bytes": 5493
+    },
+    {
+      "path": "taglib-2.3.2/taglib/riff/aiff/aifffile.h",
+      "sha256": "c1d4a735ae58ccaba2cf131d42ea7228ffc1781549fda359d9f155a91fbf7dc7",
+      "bytes": 6182
+    },
+    {
+      "path": "taglib-2.3.2/taglib/riff/aiff/aiffproperties.cpp",
+      "sha256": "f5400b3298b5779d00da1e99d4a3a13177b2034a5536275ea88440176fb88481",
+      "bytes": 5590
+    },
+    {
+      "path": "taglib-2.3.2/taglib/riff/aiff/aiffproperties.h",
+      "sha256": "89772dfa8db372852f0d858ab911682dff8368bc9160f038da5da3fd15ac1d64",
+      "bytes": 4333
+    },
+    {
+      "path": "taglib-2.3.2/taglib/riff/rifffile.cpp",
+      "sha256": "24e497ff37659168521c8fd2fe711c4c4f7c8424ae85b0710ef53c79effd2b0f",
+      "bytes": 13643
+    },
+    {
+      "path": "taglib-2.3.2/taglib/riff/rifffile.h",
+      "sha256": "cc88a9fa3b55f346500f594463798cd1dae6e5203f7b6bdaced10cde33fb5a1d",
+      "bytes": 5972
+    },
+    {
+      "path": "taglib-2.3.2/taglib/riff/riffutils.h",
+      "sha256": "78b49698ea941ccb6f02273ecefc412e03c4852599d8927e5397d0d989e3965c",
+      "bytes": 2299
+    },
+    {
+      "path": "taglib-2.3.2/taglib/riff/wav/infotag.cpp",
+      "sha256": "61f185f33c3634290a11a8be818ca3637f9d363ad82d4a09c01a194fb8e199dc",
+      "bytes": 8232
+    },
+    {
+      "path": "taglib-2.3.2/taglib/riff/wav/infotag.h",
+      "sha256": "48caabdee86d4aeabe3119b71c8a9c3649e2abc95105fe6323fd2bbe62d721ff",
+      "bytes": 7232
+    },
+    {
+      "path": "taglib-2.3.2/taglib/riff/wav/wavfile.cpp",
+      "sha256": "748485af358902dc6bf75bb104ea4e08d0f1370a63034a7695d624d861962621",
+      "bytes": 8554
+    },
+    {
+      "path": "taglib-2.3.2/taglib/riff/wav/wavfile.h",
+      "sha256": "187228068cc453abdeb566341f9bc2afc96c68234c0ceb834aa714dbae0d5927",
+      "bytes": 9284
+    },
+    {
+      "path": "taglib-2.3.2/taglib/riff/wav/wavproperties.cpp",
+      "sha256": "7f0e58518d3503952cfc40151f8aba3815607d7a95727c35f345c4fddafcdd53",
+      "bytes": 6518
+    },
+    {
+      "path": "taglib-2.3.2/taglib/riff/wav/wavproperties.h",
+      "sha256": "a1939e8dda0806e12d4cf88918a8faaed3ab68586af026793ffa84815f65a260",
+      "bytes": 3922
+    },
+    {
+      "path": "taglib-2.3.2/taglib/s3m/s3mfile.cpp",
+      "sha256": "33794ba5ef0674379d554d2586b11a7b16e6a9807f0478308cb2418718a65e51",
+      "bytes": 6971
+    },
+    {
+      "path": "taglib-2.3.2/taglib/s3m/s3mfile.h",
+      "sha256": "185987944a3fb86e41c33a327a1836b08ef73dd657f65c756d1969a8909fc7e3",
+      "bytes": 4825
+    },
+    {
+      "path": "taglib-2.3.2/taglib/s3m/s3mproperties.cpp",
+      "sha256": "bbf25ef02cc9e1f82a9abf1b69184a820f4aa9615d18184dae56c1ba12bbb911",
+      "bytes": 4591
+    },
+    {
+      "path": "taglib-2.3.2/taglib/s3m/s3mproperties.h",
+      "sha256": "e6a6a32b650650908373357dcb3da9bd0e8c25c9a85626559937def908606a51",
+      "bytes": 3816
+    },
+    {
+      "path": "taglib-2.3.2/taglib/shorten/shortenfile.cpp",
+      "sha256": "03f49076268d48464ca13cb82ff7fde21cbb292da1e0f92c0ca99063b32ef086",
+      "bytes": 16483
+    },
+    {
+      "path": "taglib-2.3.2/taglib/shorten/shortenfile.h",
+      "sha256": "aa5532565ee5d08bdfd0a1fe9fd576f79f139b84e883b80ac3203487d5323510",
+      "bytes": 5132
+    },
+    {
+      "path": "taglib-2.3.2/taglib/shorten/shortenproperties.cpp",
+      "sha256": "697c2bdc4830ec55c11ccc91ecb4fcae398ffe65833e1d382952f4b22302dca8",
+      "bytes": 3869
+    },
+    {
+      "path": "taglib-2.3.2/taglib/shorten/shortenproperties.h",
+      "sha256": "5384986defd903f6fdcfcecd02eeaf74fa933d8e8711b0194c8071419417f584",
+      "bytes": 3412
+    },
+    {
+      "path": "taglib-2.3.2/taglib/shorten/shortentag.cpp",
+      "sha256": "7e2a02b36cf6e2d5317cf82b5c45f8cfec911a18aa179cfd8510e9928ea44ff1",
+      "bytes": 2857
+    },
+    {
+      "path": "taglib-2.3.2/taglib/shorten/shortentag.h",
+      "sha256": "d43ba27a53efcff25e0124f33ee831ee178aacb777f2e9edd7938a8e88be4a7b",
+      "bytes": 4595
+    },
+    {
+      "path": "taglib-2.3.2/taglib/shorten/shortenutils.h",
+      "sha256": "629fcbb5bf58d4219c71f97384603c969c3fabd5a0c8af0741575e1f994f1f2e",
+      "bytes": 2283
+    },
+    {
+      "path": "taglib-2.3.2/taglib/tag.cpp",
+      "sha256": "5c83443142f99c184d3186cb905781c4c5c90bac9051f6276efcada6aba5349a",
+      "bytes": 5737
+    },
+    {
+      "path": "taglib-2.3.2/taglib/tag.h",
+      "sha256": "81320a84fe14522988e4afe808153d8fc9a1415d3330d08183806fc708a0d1af",
+      "bytes": 9465
+    },
+    {
+      "path": "taglib-2.3.2/taglib/taglib_config.h.cmake",
+      "sha256": "6d49bb2997b5ddb68a3d7988c84521cadd412d151333fe08c40dbf9f45b4982f",
+      "bytes": 470
+    },
+    {
+      "path": "taglib-2.3.2/taglib/taglib_export.h",
+      "sha256": "aaeea8326de5e5550c4f397f8d8c1d2e554cbb0d18300a02e87cd7275a90893e",
+      "bytes": 2847
+    },
+    {
+      "path": "taglib-2.3.2/taglib/tagunion.cpp",
+      "sha256": "26ad73967e69eab6587de71f4741d1981b86fdbf2ae08c7f61b800acf50031c3",
+      "bytes": 6874
+    },
+    {
+      "path": "taglib-2.3.2/taglib/tagunion.h",
+      "sha256": "edf50038c0159421d1fa270b64b566e2149673c1fe35cbd1e8026c6f86754d5a",
+      "bytes": 4071
+    },
+    {
+      "path": "taglib-2.3.2/taglib/tagutils.cpp",
+      "sha256": "026b10015842fc96a0adc72edf8e8fd9f1f832dc7f23cd8325b42a9fa6e7dc57",
+      "bytes": 3970
+    },
+    {
+      "path": "taglib-2.3.2/taglib/tagutils.h",
+      "sha256": "0098f3d30e671d588afdd953e6f75372dc029f05d730c38e59d1ae071b96f926",
+      "bytes": 2350
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/propertymapping.dox",
+      "sha256": "7442a2825b19dbdf89640c193c906a60b676eb9ad5df9865be0c8ba714b67d76",
+      "bytes": 21445
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/taglib.h",
+      "sha256": "33bc8386eff2ce0f73ec6b97aca9d6befee7f87cc7e45c5873b79d19f12286ad",
+      "bytes": 9216
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tbytevector.cpp",
+      "sha256": "ab5c32ab07bb00c6845946b8b72affde7bed0e1a3abc8c0a5f64c90151a693bf",
+      "bytes": 27284
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tbytevector.h",
+      "sha256": "1368d5322bb26b7537aadce2c7dd960bc6c11bd4c4d09ef2f60d1709516a8d4f",
+      "bytes": 23184
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tbytevectorlist.cpp",
+      "sha256": "6b56af33fdd4662d5447ae0ada05297f491dda8ff6533aa507646550884a4f2c",
+      "bytes": 4272
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tbytevectorlist.h",
+      "sha256": "b16db5c45dc76a88265ed5a1c252c7688e2a64f8a7437d1f5b17efb22c0c20b1",
+      "bytes": 3905
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tbytevectorstream.cpp",
+      "sha256": "80638c9aa0909da3535f3dc36d18d8786676da85ff0d0ff96332e42226aa0318",
+      "bytes": 4655
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tbytevectorstream.h",
+      "sha256": "a61a545ff8b342b2eb8240d19ae4360fa8c72db24453b2955e87259eff1e746d",
+      "bytes": 4620
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tdebug.cpp",
+      "sha256": "73c3b0f078783710525455c8755ec96eb2be53d70b42621dc91c257b3df4cc1e",
+      "bytes": 2524
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tdebug.h",
+      "sha256": "945f55833190fb37b4c0376ab01fcfbba3cf8992073d6d685487aa091a714f78",
+      "bytes": 2770
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tdebuglistener.cpp",
+      "sha256": "f2076899fde4a650f29572acd828073c60191dbb43615ae55bd6b61faa293fc5",
+      "bytes": 2852
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tdebuglistener.h",
+      "sha256": "e6b45948f0d121be5c5d36b05768da892cbcd5582aa85079379513fa8e470c0c",
+      "bytes": 3214
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tfile.cpp",
+      "sha256": "ef7307151a94aece1fc61df14238da2b4f2031b013d022075048ef6b67c1c021",
+      "bytes": 9275
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tfile.h",
+      "sha256": "c43bfb7c27c371ca660acc8ca81c0010470f2ff3aa9e1309ae915c5d6f590d39",
+      "bytes": 12001
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tfilestream.cpp",
+      "sha256": "0772d89900c5e1e0502462fa85b638984d9579fcb679c8585c2d410b05994806",
+      "bytes": 12663
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tfilestream.h",
+      "sha256": "d97f84023688999c8e3d35f9bf60d7d4828c274b823d013b52e002989cf7bfab",
+      "bytes": 5310
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tiostream.cpp",
+      "sha256": "3c2cf471fa910e29603c824de0c05fe0d604b61dc83713a0ee2b60235e3b69d2",
+      "bytes": 2905
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tiostream.h",
+      "sha256": "f20ed7f0b1f9dfe013b59ba2f6cebf0ef714bab563421fa0bd08e22a84029e7e",
+      "bytes": 5542
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tlist.h",
+      "sha256": "434cff7df02bb20ecf89a6e36124a000189e0c140d53afabb1c10d6c41ec3c21",
+      "bytes": 9695
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tlist.tcc",
+      "sha256": "bf5ec43497b8422d71257d2d9fc9b2ca423758c80bee7d31da379c04245a7588",
+      "bytes": 8323
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tmap.h",
+      "sha256": "33a02366db09702c5e8e219e216a332a95b5b0e9ee7dc7a6e859414eacefb24e",
+      "bytes": 7978
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tmap.tcc",
+      "sha256": "79f84753bd02dc6577f558dceef7e19fd67bfdbb25379194fac93d46f5ccbbb6",
+      "bytes": 6125
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tpicturetype.cpp",
+      "sha256": "03b314d5c0302ce14a4886f385bc5532cb132b0d1f92c022e0d2333553022e61",
+      "bytes": 2768
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tpicturetype.h",
+      "sha256": "d60a6f79ce0bb7e02b45cba077cff9cf30b3ac008a56d3e5edeb62a8f426f1a7",
+      "bytes": 6846
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tpropertymap.cpp",
+      "sha256": "437f6e616b6de871f73d4dade29c5c2128e4ea8d5c989be8a4234e1e61bf102f",
+      "bytes": 6372
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tpropertymap.h",
+      "sha256": "bc17b139abf86b4dc41909667e5f6bf1d76cbfbf89905d3dcb3be083840782f8",
+      "bytes": 8731
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tstring.cpp",
+      "sha256": "0cbf6be6703939f57e9ba14e6e05f14928ddbbc1462947bb892ca7338d850437",
+      "bytes": 16643
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tstring.h",
+      "sha256": "fc4ed91894574ebd186e98a4de1d8f809210a99a45ad406a36daf407d6d6156c",
+      "bytes": 17147
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tstringlist.cpp",
+      "sha256": "f034df9eed44ac809e3368a6194e324e01799c265bf7b4f93fd3f3f0983e6ee6",
+      "bytes": 4123
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tstringlist.h",
+      "sha256": "7b48d51a31b476f1e74f623b51612b15f0113f7cd3b6118491a0c0ed82d75351",
+      "bytes": 4334
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tutils.h",
+      "sha256": "88577e072ceafd216fc512bfbcfe0fa7550049ef0c85a413a4a44816d47aad75",
+      "bytes": 6652
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tvariant.cpp",
+      "sha256": "68877c78216ec9e0f441b99b641ffececdf992f7ddfab95527985d678e99c23d",
+      "bytes": 9990
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tvariant.h",
+      "sha256": "c3a00a76494f90cef3a46dc681d21fc99568a27f8e26bef647cb630ace9ff9cb",
+      "bytes": 7945
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tversionnumber.cpp",
+      "sha256": "6392ef84de018539517cd05a8208c3f241c25a39614a0479b920bbd93b9c1b81",
+      "bytes": 2607
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tversionnumber.h",
+      "sha256": "e5ba9fb672a142558e4a9b12b518e81f56a259847e4eade99a9481902d71f70c",
+      "bytes": 4742
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tzlib.cpp",
+      "sha256": "cead247368bc914bf90b641f8ef9b4491606c777d73fde80e03e35a7c652679c",
+      "bytes": 3561
+    },
+    {
+      "path": "taglib-2.3.2/taglib/toolkit/tzlib.h",
+      "sha256": "918a649c05e5a71dc8aa17cf0cf2bcabadceb8acf035eca9b2afb7863947a79c",
+      "bytes": 2405
+    },
+    {
+      "path": "taglib-2.3.2/taglib/trueaudio/trueaudiofile.cpp",
+      "sha256": "71ccc3f9d8f3a5337db871dae50da83ab12a20e1161dacfff9e195eaaeab1f25",
+      "bytes": 8233
+    },
+    {
+      "path": "taglib-2.3.2/taglib/trueaudio/trueaudiofile.h",
+      "sha256": "74a4001fbc17a048fa5bc941aba7b6660e3b4df1501bf1824e0004e77af71cee",
+      "bytes": 9918
+    },
+    {
+      "path": "taglib-2.3.2/taglib/trueaudio/trueaudioproperties.cpp",
+      "sha256": "495df029402ec96ecaea025b3f9b749ca11895801e639b0c79b7ae379abd1999",
+      "bytes": 4958
+    },
+    {
+      "path": "taglib-2.3.2/taglib/trueaudio/trueaudioproperties.h",
+      "sha256": "d5211b0659eb39a909413ad3979cb118f4b909e99d7ecb3ba743a58bedb77484",
+      "bytes": 4118
+    },
+    {
+      "path": "taglib-2.3.2/taglib/wavpack/wavpackfile.cpp",
+      "sha256": "b4deb65be63e55be795233289cbfe1774a6ca27a8564a51706f78c7ed52b92ba",
+      "bytes": 6969
+    },
+    {
+      "path": "taglib-2.3.2/taglib/wavpack/wavpackfile.h",
+      "sha256": "3a4c5cb170b32a9e7969d4dfafb2ba782bfdd2b85fee417fb92fcca27f9dcc54",
+      "bytes": 8227
+    },
+    {
+      "path": "taglib-2.3.2/taglib/wavpack/wavpackproperties.cpp",
+      "sha256": "f4e67cbfc8a32eeda4b9d19519690f0ac2fb64694bf6c2a1ae0ebf0032f7278a",
+      "bytes": 11529
+    },
+    {
+      "path": "taglib-2.3.2/taglib/wavpack/wavpackproperties.h",
+      "sha256": "a981cc0e5a63fa1251fb8a85d085b7958ab378e285be3d99555b3fcc1aca7934",
+      "bytes": 4119
+    },
+    {
+      "path": "taglib-2.3.2/taglib/xm/xmfile.cpp",
+      "sha256": "9950c66c81cd839b7220a0930767287b5e49fcb7877d7bf0122b79b5fb5f46fb",
+      "bytes": 17123
+    },
+    {
+      "path": "taglib-2.3.2/taglib/xm/xmfile.h",
+      "sha256": "e51ee1ae087060c4738af13015df2dc965ae51e1ccb3e7eca9b7d6af92adc7a5",
+      "bytes": 4812
+    },
+    {
+      "path": "taglib-2.3.2/taglib/xm/xmproperties.cpp",
+      "sha256": "fa16a58d11d84731e3e92bbac5efe3bc4e7219a071a8ba02cf6d7ec78530d5b9",
+      "bytes": 4144
+    },
+    {
+      "path": "taglib-2.3.2/taglib/xm/xmproperties.h",
+      "sha256": "674e5e8aeab8ceff7a41a3f35528006b9e1669cde67217be2d8e8641ef064690",
+      "bytes": 3474
+    },
+    {
+      "path": "taglib-2.3.2/taglib-config.cmake",
+      "sha256": "a5d1099f242634dbf92e2b21e2a2893f11eef404b93fb16edba4f423aaa32ede",
+      "bytes": 1052
+    },
+    {
+      "path": "taglib-2.3.2/taglib-config.cmake.in",
+      "sha256": "412ca22ce729899ce81eb01e4168e70b2ab7f231275b463bebd6bff53525c255",
+      "bytes": 271
+    },
+    {
+      "path": "taglib-2.3.2/taglib-config.cmd.cmake",
+      "sha256": "aa52150ab0be7ab54c5f2c828f5bceeb79f38c13bcf259fb6dc75ad421503e0c",
+      "bytes": 1190
+    },
+    {
+      "path": "taglib-2.3.2/taglib.pc.cmake",
+      "sha256": "8e8f003d6c01a75e0413637c94c6c5aa6b50d01de16e2fcdcfae41296bb2d373",
+      "bytes": 348
+    },
+    {
+      "path": "taglib-2.3.2/tests/CMakeLists.txt",
+      "sha256": "4ef104918fd865a50612ae1fd6d73af28578d693b7f7c040b8a070092b7e03c5",
+      "bytes": 4752
+    },
+    {
+      "path": "taglib-2.3.2/tests/fuzzing/README.md",
+      "sha256": "b824422a5ef84224481933d1de8b7f05c57c6162f2ff366795d0f3ea1e15dd21",
+      "bytes": 1613
+    },
+    {
+      "path": "taglib-2.3.2/tests/fuzzing/taglib.dict",
+      "sha256": "aa9f2a27d13454ba52f6172ece131a6b9141a6f46d1469bbcd4e867fda3c6852",
+      "bytes": 1362
+    },
+    {
+      "path": "taglib-2.3.2/tests/fuzzing/taglib_fileref_fuzzer.cpp",
+      "sha256": "9d7ecaffe68eb82b2cd5e158126b505cda291021db2aa97dfee78aa86ee0d746",
+      "bytes": 2267
+    },
+    {
+      "path": "taglib-2.3.2/tests/main.cpp",
+      "sha256": "be8db6167f6382423ef9a40121b86b5d95ed14378331e724e1db4a81e56618e0",
+      "bytes": 3496
+    },
+    {
+      "path": "taglib-2.3.2/tests/plainfile.h",
+      "sha256": "ab3fb6c9a7c1534d564cc9d918f5477465431e9e66fa70340929d5ada4b04bd8",
+      "bytes": 2325
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_aiff.cpp",
+      "sha256": "97b57015164d1ec775de9ea86031471fe20454fde95a56b217e73971c279d8a9",
+      "bytes": 5960
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_ape.cpp",
+      "sha256": "17b702892c34440c45be3953bb379c8abafbfb4df2fdcc1498ecf32b3065842a",
+      "bytes": 9515
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_apetag.cpp",
+      "sha256": "c257e168cafd9b49357c3c74dd7ea3a19f03869f91fd8488de1c63cd372abd98",
+      "bytes": 7083
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_asf.cpp",
+      "sha256": "30e66d2cdd1ae824255e83a67865a5302c645eff8777e09a48c86f9ec1e4e697",
+      "bytes": 25851
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_bytevector.cpp",
+      "sha256": "7b6c04d868f12b48a72727948dc4adf4698d7b5d53d70268d58ba931731e4517",
+      "bytes": 27774
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_bytevectorlist.cpp",
+      "sha256": "92b619c2e15611e839b7a28215333d96919464f43c7e1e99839e807bf9371b31",
+      "bytes": 2648
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_bytevectorstream.cpp",
+      "sha256": "4dba3a06d9037c1d2b34a56576cab8fdb29c1571b1bed9d269d77caa66079c4d",
+      "bytes": 4592
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_complexproperties.cpp",
+      "sha256": "e2d754f84bb901229901b21041e219905398c52621b26e9e3fd4c91052a8fc94",
+      "bytes": 17861
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_dsdiff.cpp",
+      "sha256": "a3435a3279dfbc0c5cabf016e73fa0cf54207a980981c1b9a4255da50ad7a835",
+      "bytes": 11309
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_dsf.cpp",
+      "sha256": "d1a76ecdafecc082d610ab913ae06665db9d23f924643696719e58aff7e54dbb",
+      "bytes": 2447
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_file.cpp",
+      "sha256": "b48b9afa61bde2e434f83fff6c106b5075f7a089d63d580520d373f821da8492",
+      "bytes": 5564
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_fileref.cpp",
+      "sha256": "b5a577db434c0508f49c316e68a7375460cdcb5f5397737b169f39b53a08b349",
+      "bytes": 14737
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_fileref_detect.cpp",
+      "sha256": "d7c3cab4ac4bcd5dc22106ee09d650a4c76809272c48e97b1d46912050d0d92e",
+      "bytes": 17486
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_flac.cpp",
+      "sha256": "99167f09da49256d95e7dc7e27a2af8ef61b8db38ba59299bd0158d5a21bbfd5",
+      "bytes": 31852
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_flacpicture.cpp",
+      "sha256": "85debfe5038e300cf58a0506251508640d08566951de24e19c3fe826b4f9a29b",
+      "bytes": 5439
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_flacunknownmetadatablock.cpp",
+      "sha256": "5af43865371676f82946f54fe645f1e3aa1b677914c260119f369796e3fa9133",
+      "bytes": 2674
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_id3v1.cpp",
+      "sha256": "d0d95a6264bf6bd7fbbe0c28072463ea19649fd3aea02cc19bbc713529efbb62",
+      "bytes": 3281
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_id3v2.cpp",
+      "sha256": "84de914fa70024480a8dca26bff958eb9f21855f14550f3c202d47beea3485b0",
+      "bytes": 71908
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_id3v2framefactory.cpp",
+      "sha256": "3092718db71aa8a570650f6bb0c906890276858787b366c5a895ffad7a43a40e",
+      "bytes": 13421
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_info.cpp",
+      "sha256": "785ba013f0ebbfa6a7743702c95793b61f35fea8e5d740a08c4e957b71f99585",
+      "bytes": 3070
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_it.cpp",
+      "sha256": "14a5913e37e005a001ff0c7b31cbf0ffb6d3bc9994ebfbeb1e9bef34ef53ffee",
+      "bytes": 5780
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_list.cpp",
+      "sha256": "cac3b86ced28c08ef6f69e24140d662a4b9c2e862b42cf1a9dde272449a2d7a3",
+      "bytes": 4719
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_map.cpp",
+      "sha256": "a74077723a8ad238f4842d6af5a0cf316febdde0245d0c54f16a0ca9944c0d7d",
+      "bytes": 3450
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_matroska.cpp",
+      "sha256": "10573f736f3c19b77e815a5e517ae5696d1b48a453f2dba5dd686d798df5a6ca",
+      "bytes": 91898
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_mod.cpp",
+      "sha256": "58372ecea63288d530ef8da49d97c32a28cfa56c5c379f34452606c7940a5d11",
+      "bytes": 5044
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_mp4.cpp",
+      "sha256": "a4109ad73296083b3a1f989441eba0a6976fdd5e5da2abbb42e82bc7295fc741",
+      "bytes": 70311
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_mp4coverart.cpp",
+      "sha256": "6ce2f595b928f7d0f2b308f29730f8df657283e3da26156d6236b544a79715ce",
+      "bytes": 3024
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_mp4item.cpp",
+      "sha256": "a31229db0881cf712da1b61e4ddf5af8fad22ddf4035e1985c26c46e4cde4295",
+      "bytes": 6554
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_mp4stem.cpp",
+      "sha256": "b6aa485b39a055e7a9416b00ced91921956c6ae3de432de59c2b6ad651ef17e4",
+      "bytes": 5409
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_mpc.cpp",
+      "sha256": "278d1db38ca951d65fdcfbb268de69384e77f0ae07ca8ad9d014e9814b315aca",
+      "bytes": 7122
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_mpeg.cpp",
+      "sha256": "81350de4b1d9945b6e1bcadd2f6a8965971014f119a55379a9e63d809e3b16d0",
+      "bytes": 25913
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_ogg.cpp",
+      "sha256": "863f75e7137efb3758d09072a02a75d7ccce194863f4e3f937a1891ad4b3a244",
+      "bytes": 10318
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_oggflac.cpp",
+      "sha256": "362ef7881af4538729b74d964388f52dcc20b078b0499ff24e8e06a52d5ade1f",
+      "bytes": 4407
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_opus.cpp",
+      "sha256": "bef5ddaef2471788536036975f4022f032d605303f2a277b8915937b8cc3dc7b",
+      "bytes": 5685
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_propertymap.cpp",
+      "sha256": "92520c932af075144f48965ff659a0332242fb660c5b2c3431a67fa502dece82",
+      "bytes": 7526
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_riff.cpp",
+      "sha256": "6a390e2d13016df4501c0a13e3f13eee74b2fa4d2ee975187f963ab83ec2664f",
+      "bytes": 14090
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_s3m.cpp",
+      "sha256": "ed83c29cd17bcdd01534a4a8ded90ad84f42af437b17599aca8252d0dd66cb86",
+      "bytes": 5183
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_shorten.cpp",
+      "sha256": "cd81a0be84d5214068915e73bc0114d9196b7b5a3db24a3d5796806ce6fb774d",
+      "bytes": 1284
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_sizes.cpp",
+      "sha256": "79f2dab5d278bd7b4e6d7d3aab100a54e8a9dfa847716b9cbb38b7e29c1db0d6",
+      "bytes": 16519
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_speex.cpp",
+      "sha256": "c7132aa7ae1bb70ab1e38c1dc5ad8196ec88c8848a99d9687bb7384aeab83e3a",
+      "bytes": 4240
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_string.cpp",
+      "sha256": "a54b74d2788c99de058eeaa32dc24000c1c6189c6a25e4a6f4dbeee6a5d8a245",
+      "bytes": 17660
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_synchdata.cpp",
+      "sha256": "37d9c628acb39e46bc3fa2ab1ea0f81ce0d37a4b9839098710981d437c476517",
+      "bytes": 4502
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_tag_c.cpp",
+      "sha256": "38ef56e721dcb6c1ea720c41a351acf4e5000fe8e6e419dc26ea643348f45566",
+      "bytes": 10172
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_threadsafety.cpp",
+      "sha256": "0fd23578a8557b64fc8876b4afefb01c0941a278a350a9d39fe7d6d64c3754ee",
+      "bytes": 6883
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_trueaudio.cpp",
+      "sha256": "700eab15ca1a43408563278ce2ab54af936a2a5d573f33a0ea293c34d6ae066d",
+      "bytes": 5272
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_variant.cpp",
+      "sha256": "9a5c6fa73c407ba82b8aa6d247e591eadc155730d91aaddfa8308c2777a00796",
+      "bytes": 8163
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_versionnumber.cpp",
+      "sha256": "f78847666b4e3181a009f1b777cc42c34693f20c6623d3972f20b3aa36856391",
+      "bytes": 3559
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_wav.cpp",
+      "sha256": "56fbbea6663a978fd3376f7bbea95a272ee27f78997c98e208645df83bf4ee72",
+      "bytes": 26779
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_wavpack.cpp",
+      "sha256": "54587fe8b6b14772c7e3d41ec818d990f4deff28474060cdccb3b38cff85bc32",
+      "bytes": 7565
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_xiphcomment.cpp",
+      "sha256": "fa19292c9a1c0a5c1f51aabed9d0365aaf33cdc7618cebe8303ba1cc57d39e78",
+      "bytes": 7773
+    },
+    {
+      "path": "taglib-2.3.2/tests/test_xm.cpp",
+      "sha256": "633d0234ed69324a237f18ec56848a33a32063440720a0f9d1dbaa17ac2b1cca",
+      "bytes": 8351
+    },
+    {
+      "path": "taglib-2.3.2/tests/utils.h",
+      "sha256": "8e62a89117708d566b186b98fdcce7ee24f671442b42ca6c6578580a926fd68a",
+      "bytes": 4605
+    },
+    {
+      "path": "zlib-1.3.1/CMakeLists.txt",
+      "sha256": "ab5f3afca6fe38983dc30a28da4877706e3a690a564eda3d4929fff39dab190e",
+      "bytes": 7649
+    },
+    {
+      "path": "zlib-1.3.1/ChangeLog",
+      "sha256": "f3bc368fd1722570d25411fece6b0e026ab95a9e20ccf39c4395aa41a956a4f0",
+      "bytes": 83837
+    },
+    {
+      "path": "zlib-1.3.1/FAQ",
+      "sha256": "e18aaaae6d7d8acd15c1f439306ef554372bc39db7e19258836708362a0b7cca",
+      "bytes": 16482
+    },
+    {
+      "path": "zlib-1.3.1/INDEX",
+      "sha256": "3b4e325d47ae66456d43fcf143ba21ab67a02a4f81be7ef2da480ba30d774266",
+      "bytes": 1988
+    },
+    {
+      "path": "zlib-1.3.1/LICENSE",
+      "sha256": "845efc77857d485d91fb3e0b884aaa929368c717ae8186b66fe1ed2495753243",
+      "bytes": 1002
+    },
+    {
+      "path": "zlib-1.3.1/Makefile",
+      "sha256": "ef23b08ce01239843f1ded3f373bfc432627a477d62f945cbf63b2ac03db118a",
+      "bytes": 100
+    },
+    {
+      "path": "zlib-1.3.1/Makefile.in",
+      "sha256": "a6d202a2ac158f8fbd1fa7361e1f2c7adfd1b7b80c1f6515a4203925c2c0f24a",
+      "bytes": 13811
+    },
+    {
+      "path": "zlib-1.3.1/README",
+      "sha256": "d106dcdb2a0b3087cb3a2380b9f00a0bbadc7eb835cd80408f94a2d78d69727d",
+      "bytes": 5317
+    },
+    {
+      "path": "zlib-1.3.1/adler32.c",
+      "sha256": "9cd1443a24ff2a3053961695bd432035c58347386a420d3388232376ebabe211",
+      "bytes": 4964
+    },
+    {
+      "path": "zlib-1.3.1/amiga/Makefile.pup",
+      "sha256": "a65cb3cd40b1b8ec77e288974dd9dc53d91ed78bbe495e94ccc84ddd423edf1f",
+      "bytes": 1981
+    },
+    {
+      "path": "zlib-1.3.1/amiga/Makefile.sas",
+      "sha256": "0e63cf88b505a1a04327bb666af3a985c5e11835c0c00aed4058c0dcc315d60e",
+      "bytes": 1847
+    },
+    {
+      "path": "zlib-1.3.1/compress.c",
+      "sha256": "86f802c16a965e7a28737e3730b4e576c5ba40981753967e3e30916f4dc1b4b1",
+      "bytes": 2613
+    },
+    {
+      "path": "zlib-1.3.1/configure",
+      "sha256": "f7c0050f218691ee1cae28311144a703bfa3515df903d537d6a5cb4bd3dcd8cd",
+      "bytes": 28199
+    },
+    {
+      "path": "zlib-1.3.1/contrib/README.contrib",
+      "sha256": "b925ae08d371b33c4b5ffd67c707150729a476caf47cfe2eafc002291f23f931",
+      "bytes": 2240
+    },
+    {
+      "path": "zlib-1.3.1/contrib/ada/buffer_demo.adb",
+      "sha256": "469cf566a6965767fee6b987a239ed8cedcc66614940d45a9b434331fbb435ce",
+      "bytes": 3717
+    },
+    {
+      "path": "zlib-1.3.1/contrib/ada/mtest.adb",
+      "sha256": "41b6f31684770334afdc4375871eb1408542f37a823a073556fdbfdb63753160",
+      "bytes": 4467
+    },
+    {
+      "path": "zlib-1.3.1/contrib/ada/read.adb",
+      "sha256": "fa5b989aef0c5715a3fcb15de93985f7f10aeb0a7f5716745c95ed820eb9af9c",
+      "bytes": 4248
+    },
+    {
+      "path": "zlib-1.3.1/contrib/ada/readme.txt",
+      "sha256": "2cb6c99547bf527648342723a2183f503ef64182bc19a506976815725a207438",
+      "bytes": 2177
+    },
+    {
+      "path": "zlib-1.3.1/contrib/ada/test.adb",
+      "sha256": "ad2b2f61e0603044065887849e2cca394cfe37d3ba08d3cd368f670462b9296e",
+      "bytes": 13178
+    },
+    {
+      "path": "zlib-1.3.1/contrib/ada/zlib-streams.adb",
+      "sha256": "f45988e2bac76eb25a0dc981f46576e7432c35dde1790bbc2b650f0090b7fa72",
+      "bytes": 5996
+    },
+    {
+      "path": "zlib-1.3.1/contrib/ada/zlib-streams.ads",
+      "sha256": "2dae2309e863a6ea44731773aabac5fd5f5436b6dcfcf53fd7e6389556ca8c3c",
+      "bytes": 4330
+    },
+    {
+      "path": "zlib-1.3.1/contrib/ada/zlib-thin.adb",
+      "sha256": "03d89244ee5ec9771d9b5050e586c609f851af551b2e64eb151f1d5be0b63ae9",
+      "bytes": 3329
+    },
+    {
+      "path": "zlib-1.3.1/contrib/ada/zlib-thin.ads",
+      "sha256": "631ef170bde16c3ca8d412b54a0e519815b80197d208f8f393e6fe017bb0968e",
+      "bytes": 15819
+    },
+    {
+      "path": "zlib-1.3.1/contrib/ada/zlib.adb",
+      "sha256": "8168ac962cd775e1f3dc35dc95a038eb370034c9b1f8cb1511d4bcd6b297a1f5",
+      "bytes": 20401
+    },
+    {
+      "path": "zlib-1.3.1/contrib/ada/zlib.ads",
+      "sha256": "9340f4cfaeafca0efce7a649ef5e9b42a8bcafc5dbdc4abff41f9a19ee08c3cc",
+      "bytes": 13595
+    },
+    {
+      "path": "zlib-1.3.1/contrib/ada/zlib.gpr",
+      "sha256": "859bb69dce38dbe9dca06753cf7ae7bd16d48f4fece8b87582dab8e30681d3de",
+      "bytes": 511
+    },
+    {
+      "path": "zlib-1.3.1/contrib/blast/Makefile",
+      "sha256": "17d5d26c24bf51cad51045a38ffb73cc3539d29e89885aa249fcfd45a8659d5c",
+      "bytes": 127
+    },
+    {
+      "path": "zlib-1.3.1/contrib/blast/README",
+      "sha256": "baa763ae03d88ef7ece6eb80d9a099b43d0b57639d6d281e1c7c6ca79d81daba",
+      "bytes": 74
+    },
+    {
+      "path": "zlib-1.3.1/contrib/blast/blast.c",
+      "sha256": "1ab3e479d342bfc144167b808fb00142264bc50f24a110ca88cc774e351c218e",
+      "bytes": 18162
+    },
+    {
+      "path": "zlib-1.3.1/contrib/blast/blast.h",
+      "sha256": "9c1c422b76311d4cb06863ffc056668b6240f3dd998bc02e89ee590d482bfdc2",
+      "bytes": 3864
+    },
+    {
+      "path": "zlib-1.3.1/contrib/blast/test.pk",
+      "sha256": "5f5c262c545574a5c221132d5ef832478d222d70b015341795b3860204140d7c",
+      "bytes": 8
+    },
+    {
+      "path": "zlib-1.3.1/contrib/blast/test.txt",
+      "sha256": "9679b2c98e1283222d0782b25a1c198dc64ba9ebd1addd6dc6f643a45947cda3",
+      "bytes": 13
+    },
+    {
+      "path": "zlib-1.3.1/contrib/delphi/ZLib.pas",
+      "sha256": "0a3ea9e7e6644df99dda9c275f5a7be7cbaa96f8333f0467bd007141496dff17",
+      "bytes": 16412
+    },
+    {
+      "path": "zlib-1.3.1/contrib/delphi/ZLibConst.pas",
+      "sha256": "84bcc580bdf397e570f86f3f5a5b8c7bf537828f30b4b72648b81911f6bf5095",
+      "bytes": 186
+    },
+    {
+      "path": "zlib-1.3.1/contrib/delphi/readme.txt",
+      "sha256": "f7420ed2de77d4b498eefbbe6402a1d17dc2d411735289c78a265c7f10fdaee5",
+      "bytes": 2500
+    },
+    {
+      "path": "zlib-1.3.1/contrib/delphi/zlibd32.mak",
+      "sha256": "850e91b6c9ea05de61a411cbda16fa0f10118cd88bb32c4b7226988776f8d511",
+      "bytes": 2360
+    },
+    {
+      "path": "zlib-1.3.1/contrib/dotzlib/DotZLib/AssemblyInfo.cs",
+      "sha256": "314afcfb339ea95f5431047b7ab24631b11c3532c7ce5dc2094ed0cf80a7c16d",
+      "bytes": 2500
+    },
+    {
+      "path": "zlib-1.3.1/contrib/dotzlib/DotZLib/ChecksumImpl.cs",
+      "sha256": "871fc7b34a095dde13cf4505800d4edc9f40b033d5e840c597ad8ada599d26ed",
+      "bytes": 8041
+    },
+    {
+      "path": "zlib-1.3.1/contrib/dotzlib/DotZLib/CircularBuffer.cs",
+      "sha256": "be84c9736fe7bdc2bfae70466d8fff582504e928d5b5e110fd758090090c8cb7",
+      "bytes": 2246
+    },
+    {
+      "path": "zlib-1.3.1/contrib/dotzlib/DotZLib/CodecBase.cs",
+      "sha256": "b373f1f0c08565bf362c41969881a2f25be449eb894a477659231d6d3b86c07a",
+      "bytes": 6334
+    },
+    {
+      "path": "zlib-1.3.1/contrib/dotzlib/DotZLib/Deflater.cs",
+      "sha256": "06ba6696a3c15c53ba5fd5a1c2bf50b51f217010228fc1e4c8495ee578f480de",
+      "bytes": 3992
+    },
+    {
+      "path": "zlib-1.3.1/contrib/dotzlib/DotZLib/DotZLib.cs",
+      "sha256": "9837fe993fd631233cc5e53ff084d86754b97f05ec77c54b0764c2706f186134",
+      "bytes": 9927
+    },
+    {
+      "path": "zlib-1.3.1/contrib/dotzlib/DotZLib/DotZLib.csproj",
+      "sha256": "21606db31dfef6410dd438b73f1db68856eacabcce6c0f0411fc4f17e17001f3",
+      "bytes": 5396
+    },
+    {
+      "path": "zlib-1.3.1/contrib/dotzlib/DotZLib/GZipStream.cs",
+      "sha256": "7c4e8bf7e0b51f04bd3f457bead842aee133388d18ec8e210295899ad2327cbf",
+      "bytes": 11159
+    },
+    {
+      "path": "zlib-1.3.1/contrib/dotzlib/DotZLib/Inflater.cs",
+      "sha256": "9016ca73818f5b6a28791abc3af6da7c4d2773b6a3804f593f6d5737a62b99ad",
+      "bytes": 3740
+    },
+    {
+      "path": "zlib-1.3.1/contrib/dotzlib/DotZLib/UnitTests.cs",
+      "sha256": "3f22cb690bd38fa151a944afa5a1844499fe30df5b410edfd769b7e2a41ddc94",
+      "bytes": 7684
+    },
+    {
+      "path": "zlib-1.3.1/contrib/dotzlib/DotZLib.build",
+      "sha256": "b96137097669644ecb9f42cdd3399d1fce9c512788374609303f7e50abf597f0",
+      "bytes": 1175
+    },
+    {
+      "path": "zlib-1.3.1/contrib/dotzlib/DotZLib.chm",
+      "sha256": "20d0e3edd57f849143255a7f0df1cd59d41db464a72c0d5ab42846438a729579",
+      "bytes": 72726
+    },
+    {
+      "path": "zlib-1.3.1/contrib/dotzlib/DotZLib.sln",
+      "sha256": "a979198c5b8d144c1ac8f993bfb6f4085d135aa58ca9dcf63ebabf52b5c695f7",
+      "bytes": 907
+    },
+    {
+      "path": "zlib-1.3.1/contrib/dotzlib/LICENSE_1_0.txt",
+      "sha256": "36266a8fd073568394cb81cdb2b124f7fdae2c64c1a7ed09db34b4d22efa2951",
+      "bytes": 1359
+    },
+    {
+      "path": "zlib-1.3.1/contrib/dotzlib/readme.txt",
+      "sha256": "bdb18e0114d3b5683749cf08cedbdf6b502e5abd344418b858e339839561e66c",
+      "bytes": 2358
+    },
+    {
+      "path": "zlib-1.3.1/contrib/gcc_gvmat64/gvmat64.S",
+      "sha256": "22ff411b8b1d1b04aeaa8418b68245400267dc43c6f44104f6ccd37f0daee89f",
+      "bytes": 16413
+    },
+    {
+      "path": "zlib-1.3.1/contrib/infback9/README",
+      "sha256": "890288f02bb3b1f9cc654b87a07fcea695f90f6b9bd672d25bf6be1da2ec1688",
+      "bytes": 51
+    },
+    {
+      "path": "zlib-1.3.1/contrib/infback9/infback9.c",
+      "sha256": "c236f4e5ef216f5ebc66f95ccbf9d399a19ad3838444065308b8d859cb42dc74",
+      "bytes": 21608
+    },
+    {
+      "path": "zlib-1.3.1/contrib/infback9/infback9.h",
+      "sha256": "c89d926607c1afa1830c17f807de368d2f1afe2d1e7df426763f6d4bf5950379",
+      "bytes": 1564
+    },
+    {
+      "path": "zlib-1.3.1/contrib/infback9/inffix9.h",
+      "sha256": "84a2ba4727767c18af6505f0e81d9c814489c8b9ed330a25dad433db72997e43",
+      "bytes": 6599
+    },
+    {
+      "path": "zlib-1.3.1/contrib/infback9/inflate9.h",
+      "sha256": "32a907676cc36e27d0fdc0d99adb83a0b23f20ab61896269216d40fecf08d349",
+      "bytes": 1991
+    },
+    {
+      "path": "zlib-1.3.1/contrib/infback9/inftree9.c",
+      "sha256": "9e739f5735d3cd77ca1b0d46d2a43371acf2afd64c9c0889e737da369ccd92d0",
+      "bytes": 13405
+    },
+    {
+      "path": "zlib-1.3.1/contrib/infback9/inftree9.h",
+      "sha256": "4ecd9db884bf43e33fbd34273c814029022477e1597676129f9c98e09d8cef56",
+      "bytes": 2881
+    },
+    {
+      "path": "zlib-1.3.1/contrib/iostream/test.cpp",
+      "sha256": "0f3c77e013949eb9c91e6b690ea894e19d97944d6b0885b82806fc3ad99680cf",
+      "bytes": 526
+    },
+    {
+      "path": "zlib-1.3.1/contrib/iostream/zfstream.cpp",
+      "sha256": "8ebb9b3d521cc3392953f27658cf1f6dcb763216079f69a1518ec5ca0e42a63b",
+      "bytes": 5112
+    },
+    {
+      "path": "zlib-1.3.1/contrib/iostream/zfstream.h",
+      "sha256": "4369c35e66f63f52ca4a5e1759bf720507ccabb8f3f132e2f18e68686c812401",
+      "bytes": 2467
+    },
+    {
+      "path": "zlib-1.3.1/contrib/iostream2/zstream.h",
+      "sha256": "d0343e0c57ff58008b6f29643d289c72713aa2d653fe3dcd2e939fc77e7e20b6",
+      "bytes": 9283
+    },
+    {
+      "path": "zlib-1.3.1/contrib/iostream2/zstream_test.cpp",
+      "sha256": "f789df183cc58b78751985466380c656308490a9036eb48a7ef79704c3d3f229",
+      "bytes": 711
+    },
+    {
+      "path": "zlib-1.3.1/contrib/iostream3/README",
+      "sha256": "43ec48ecbd95a8c45db20b107fac73b740bb11595a4737329188f06b713972cc",
+      "bytes": 1490
+    },
+    {
+      "path": "zlib-1.3.1/contrib/iostream3/TODO",
+      "sha256": "af5ebc83fb88f69706c8af896733784753dead147687e1c046f410c0997fd88b",
+      "bytes": 491
+    },
+    {
+      "path": "zlib-1.3.1/contrib/iostream3/test.cc",
+      "sha256": "8e17fc48dfdbc6e268838b8b427491b5843b6d18bc97caa6924de9fad7abe3da",
+      "bytes": 1490
+    },
+    {
+      "path": "zlib-1.3.1/contrib/iostream3/zfstream.cc",
+      "sha256": "8cdd67ed0b13c192c11e5ea90e9d5782d6627eb303fbc4aa5ebda2531ec00ff8",
+      "bytes": 13447
+    },
+    {
+      "path": "zlib-1.3.1/contrib/iostream3/zfstream.h",
+      "sha256": "d89587b446f928351565d099decd006a06b7a420cb1ff8ee9bb82e4d8c7235dd",
+      "bytes": 12240
+    },
+    {
+      "path": "zlib-1.3.1/contrib/minizip/Makefile",
+      "sha256": "b95eb8b05baef661a18ca90fa72f43e76f1bc987f9199197fe283e2860060e0a",
+      "bytes": 563
+    },
+    {
+      "path": "zlib-1.3.1/contrib/minizip/Makefile.am",
+      "sha256": "2313a3480a2c3745fa7ce216829cd0367058907d3a0902e5832c66c84a2fdfc6",
+      "bytes": 818
+    },
+    {
+      "path": "zlib-1.3.1/contrib/minizip/MiniZip64_Changes.txt",
+      "sha256": "c371d1672b1ec23c6fe0c600543e0c96374400b4d434447ff2596f21255079f1",
+      "bytes": 108
+    },
+    {
+      "path": "zlib-1.3.1/contrib/minizip/MiniZip64_info.txt",
+      "sha256": "122719c32ef1763a5f6ba9c8cdefc1d78a76f7156b09e7b6f69b73f968e0dac3",
+      "bytes": 3048
+    },
+    {
+      "path": "zlib-1.3.1/contrib/minizip/configure.ac",
+      "sha256": "99a48f7b786cf192a778aae2af30836b0d2aaaec6e84c3a89a2edcbe77b46e1a",
+      "bytes": 786
+    },
+    {
+      "path": "zlib-1.3.1/contrib/minizip/crypt.h",
+      "sha256": "5c978923cff1e80f76baf437eed699d5b4ad1bf515008d669475d3dd0d89ef70",
+      "bytes": 4801
+    },
+    {
+      "path": "zlib-1.3.1/contrib/minizip/ioapi.c",
+      "sha256": "6dff11ded396f5e3147c632a639423e80ced6705bf7bf75d21cda0c571fdf86b",
+      "bytes": 7740
+    },
+    {
+      "path": "zlib-1.3.1/contrib/minizip/ioapi.h",
+      "sha256": "6d2f2c3520dfc3061ea9128a1afb843f5cfe8d7317adcefe3a45884bc06e06a1",
+      "bytes": 7100
+    },
+    {
+      "path": "zlib-1.3.1/contrib/minizip/iowin32.c",
+      "sha256": "882383d1ee9df8c5f236411734b51e96f5e29c38496d4e531f2beb3d07f682ef",
+      "bytes": 13749
+    },
+    {
+      "path": "zlib-1.3.1/contrib/minizip/iowin32.h",
+      "sha256": "4feed64c3c5f5cff2d8a0431233766b61d4e06a9f232482cb41272ed1ca487df",
+      "bytes": 831
+    },
+    {
+      "path": "zlib-1.3.1/contrib/minizip/make_vms.com",
+      "sha256": "65736d9c4888f2373d3db0a13864d150c5040453f5bc2a5c8784379a7ea67590",
+      "bytes": 901
+    },
+    {
+      "path": "zlib-1.3.1/contrib/minizip/miniunz.c",
+      "sha256": "c60f2c68be981464ff02dfbe01da2a8e66692416bdda2144fc75df3420b4107f",
+      "bytes": 18126
+    },
+    {
+      "path": "zlib-1.3.1/contrib/minizip/miniunzip.1",
+      "sha256": "66d8684392167091ef0fe01598d6a0daa26e7e448e2df6c3cb257487735b83f7",
+      "bytes": 1861
+    },
+    {
+      "path": "zlib-1.3.1/contrib/minizip/minizip.1",
+      "sha256": "5404596e8e5587a52f563906119f32ceee30a6d97a966afa5c7afbe4d373e210",
+      "bytes": 1462
+    },
+    {
+      "path": "zlib-1.3.1/contrib/minizip/minizip.c",
+      "sha256": "6d7d7daffc713ba15a9768143471902c5bfd661a19287172f3870bc9ed2d5665",
+      "bytes": 15088
+    },
+    {
+      "path": "zlib-1.3.1/contrib/minizip/minizip.pc.in",
+      "sha256": "8b6670b42d8e5e519e1cc89db093efc07ba23cb1ddfedd3c93ff2df08c3ce8ac",
+      "bytes": 263
+    },
+    {
+      "path": "zlib-1.3.1/contrib/minizip/mztools.c",
+      "sha256": "3d6027270a2b6ed5ca19a339d7488f682c69798e3977d2278d379b7f14f17b63",
+      "bytes": 8091
+    },
+    {
+      "path": "zlib-1.3.1/contrib/minizip/mztools.h",
+      "sha256": "6f82c52279e8f79165f4446be652e5741a49992ac58632470335aa34c564072a",
+      "bytes": 708
+    },
+    {
+      "path": "zlib-1.3.1/contrib/minizip/unzip.c",
+      "sha256": "10881ab576f49fe0825a21f77e322ece6ee88d34ed66fb3a3ce7a22f4b6cd2d9",
+      "bytes": 67640
+    },
+    {
+      "path": "zlib-1.3.1/contrib/minizip/unzip.h",
+      "sha256": "2ff9df0b1da7499adc806bc0ec098ef1c7b9d361a8fd5b08a98299a1a4e88399",
+      "bytes": 16448
+    },
+    {
+      "path": "zlib-1.3.1/contrib/minizip/zip.c",
+      "sha256": "213f853d71266ebe8d8335740cfe94b0731009d8fb3f7e6ae01a627398732ec8",
+      "bytes": 65418
+    },
+    {
+      "path": "zlib-1.3.1/contrib/minizip/zip.h",
+      "sha256": "99ad45c0b546b5fd0ee3d0819ff057840a892a3d6dbacc85b757a35a43047398",
+      "bytes": 15517
+    },
+    {
+      "path": "zlib-1.3.1/contrib/nuget/nuget.csproj",
+      "sha256": "a6cf81c9a9b8be66fae032193ac6282a4ceae93c8a25a9245d7eaf477d532471",
+      "bytes": 3674
+    },
+    {
+      "path": "zlib-1.3.1/contrib/nuget/nuget.sln",
+      "sha256": "074a80c6c3898ea4f7935734d81fe81d3c15f5dae5b17806fa7a036b69ad5c33",
+      "bytes": 963
+    },
+    {
+      "path": "zlib-1.3.1/contrib/pascal/example.pas",
+      "sha256": "d842d456ecb6ff80e34cee2da31deb2072cc69ca837497bea8b8bee203403474",
+      "bytes": 15687
+    },
+    {
+      "path": "zlib-1.3.1/contrib/pascal/readme.txt",
+      "sha256": "02f997c37991ddae0cb986039f7b4f6fc816b3fd0ffd332cad371d04c12cf1b9",
+      "bytes": 3004
+    },
+    {
+      "path": "zlib-1.3.1/contrib/pascal/zlibd32.mak",
+      "sha256": "850e91b6c9ea05de61a411cbda16fa0f10118cd88bb32c4b7226988776f8d511",
+      "bytes": 2360
+    },
+    {
+      "path": "zlib-1.3.1/contrib/pascal/zlibpas.pas",
+      "sha256": "c5559b148a9dcdd32843e6920b4d2a2b030f7d32979dfd253aeaa9a4ed31770f",
+      "bytes": 10126
+    },
+    {
+      "path": "zlib-1.3.1/contrib/puff/Makefile",
+      "sha256": "d9d738030464aaae354196c14fd928adf591832fce7d71ac1977c1d8d4923a4b",
+      "bytes": 1899
+    },
+    {
+      "path": "zlib-1.3.1/contrib/puff/README",
+      "sha256": "c5b9852fb11e0d6b6e916e5134cf034524d901b95368972133e0381e480eb479",
+      "bytes": 3077
+    },
+    {
+      "path": "zlib-1.3.1/contrib/puff/puff.c",
+      "sha256": "5b9d75aeb5baf3575415bc6ade3f2a02e50b6b971b3f8b4fda2b03543bc6e52f",
+      "bytes": 37882
+    },
+    {
+      "path": "zlib-1.3.1/contrib/puff/puff.h",
+      "sha256": "969b7be2a930db0cdcb19b0e5b29ae6741f5a8f663b6dba6d647e12ec60cfa8e",
+      "bytes": 1415
+    },
+    {
+      "path": "zlib-1.3.1/contrib/puff/pufftest.c",
+      "sha256": "d24e31c1d277d07c268f34e9490050c6b53c68b128da3efbb1d05fc5b31004f7",
+      "bytes": 4918
+    },
+    {
+      "path": "zlib-1.3.1/contrib/puff/zeros.raw",
+      "sha256": "b7b0887089f7af1f6d1e0b4c0a1e8eddd10223b23554299455c6c9be71b653a3",
+      "bytes": 2517
+    },
+    {
+      "path": "zlib-1.3.1/contrib/testzlib/testzlib.c",
+      "sha256": "753dbb39c5d2f0fffac0406c1c94fd1da7b0251d679e4d137b0708901dfd61d8",
+      "bytes": 7644
+    },
+    {
+      "path": "zlib-1.3.1/contrib/testzlib/testzlib.txt",
+      "sha256": "2359bbdc84eb8a04e0f1cd16cd81a2896e957f2ad58dab3ca78ef55b7d0dc577",
+      "bytes": 205
+    },
+    {
+      "path": "zlib-1.3.1/contrib/untgz/Makefile",
+      "sha256": "8f5ab1564813e091cea8f1bb63da32fd80ac763d029277b0cabf50f60aceefe1",
+      "bytes": 234
+    },
+    {
+      "path": "zlib-1.3.1/contrib/untgz/Makefile.msc",
+      "sha256": "d0f537de11d9e0e36e2a98b3971c537265f4b533b4c48797094365ad9ae8388b",
+      "bytes": 281
+    },
+    {
+      "path": "zlib-1.3.1/contrib/untgz/untgz.c",
+      "sha256": "f96c1e8529eb10d723b4547aa965741d72a46f2b1d5c9a2c193bd3f5e2c2a45e",
+      "bytes": 16736
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/readme.txt",
+      "sha256": "ee95a52d9d2a16aceb070a54dd2c45a1f861178351baf8ea03c2f80328691974",
+      "bytes": 3136
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc10/miniunz.vcxproj",
+      "sha256": "dd607d43c64581172c20c22112821924dfe862f56b2e5eb8780bdd0714d9527b",
+      "bytes": 18969
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc10/miniunz.vcxproj.filters",
+      "sha256": "4b8466bf00c70b81c31cc903e756e04151fd90fdcbe102f3568a2c8b6190ea27",
+      "bytes": 917
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc10/minizip.vcxproj",
+      "sha256": "af73f2cf8ae51e65e85342faeb40849a2310c97bc77def42b38d7070460a6cf0",
+      "bytes": 18549
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc10/minizip.vcxproj.filters",
+      "sha256": "f2815f9e3386c393d0a351632823b221ef9689da1f422ecaa561dba2a612fb0a",
+      "bytes": 917
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc10/testzlib.vcxproj",
+      "sha256": "c21e64259bf9efe97e1103212e7a6e1b7372b50067b4ba14cfa678e1f491095f",
+      "bytes": 26288
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc10/testzlib.vcxproj.filters",
+      "sha256": "a7caddbac3ba90b5d482e6d926ef35cc40dc3553ed3776ef6b68a528fd5b0631",
+      "bytes": 2026
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc10/testzlibdll.vcxproj",
+      "sha256": "3f317d8964f17901c3e68bff5deaec10b6ccc50a572235999e8097292692984c",
+      "bytes": 19022
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc10/testzlibdll.vcxproj.filters",
+      "sha256": "29c9535775aa76320ee4efd001d41961faf6c58cedd8b29d3986e85f73d2f6fb",
+      "bytes": 919
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc10/zlib.rc",
+      "sha256": "7aa6cfd50ac67821504304eb4a28668b3aaf78f4c792c389d1fb8ea23a5d3ef6",
+      "bytes": 954
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc10/zlibstat.vcxproj",
+      "sha256": "50402ab8c63f746c034d6ce51d9612aff5b6af9aa27790cffa4b7deed4b30eb8",
+      "bytes": 26585
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc10/zlibstat.vcxproj.filters",
+      "sha256": "eeb1de64c252c46b822f73f272127f6f9f0570ef22d234e093070ba95a4dde24",
+      "bytes": 2405
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc10/zlibvc.def",
+      "sha256": "40c8e74194874b8c1a288edb9c6fbf32283df77afef7e520790def28a2e5b0d5",
+      "bytes": 7333
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc10/zlibvc.sln",
+      "sha256": "e659860f705f31b87ea9139a3cb4ebe1561e120bce495383a54614fc82b49990",
+      "bytes": 10153
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc10/zlibvc.vcxproj",
+      "sha256": "efad8cb150c0e5122f8c700d95c5de659dff92b171917c66bdbd082fff500b58",
+      "bytes": 38693
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc10/zlibvc.vcxproj.filters",
+      "sha256": "c801732b7c7017796add50d2b71a228f99f95a46650baad307ff7e8358a2bfb0",
+      "bytes": 3930
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc11/miniunz.vcxproj",
+      "sha256": "746e4c11fb8af4bcd6a9d68ba81ed1dc366a5de3bed56b291ee969ad733a7bb0",
+      "bytes": 19150
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc11/minizip.vcxproj",
+      "sha256": "340617cae9cf4fcb003308021d3782ec3639e60d62d79a3aafc0a50bb55b061e",
+      "bytes": 18730
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc11/testzlib.vcxproj",
+      "sha256": "99eadfdf2e41bc036141c174c4d0035d87572ce5795dcc28f39133f818a79d08",
+      "bytes": 26559
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc11/testzlibdll.vcxproj",
+      "sha256": "583bdef522b0176829f0d8139ea2a88b9cbc14379d1334f3a863989ed3df9b67",
+      "bytes": 19203
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc11/zlib.rc",
+      "sha256": "7aa6cfd50ac67821504304eb4a28668b3aaf78f4c792c389d1fb8ea23a5d3ef6",
+      "bytes": 954
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc11/zlibstat.vcxproj",
+      "sha256": "b07f792843d05ac883391075bc3b9625437490d8d40944ad359aa2134a09a3aa",
+      "bytes": 26909
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc11/zlibvc.def",
+      "sha256": "40c8e74194874b8c1a288edb9c6fbf32283df77afef7e520790def28a2e5b0d5",
+      "bytes": 7333
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc11/zlibvc.sln",
+      "sha256": "27389b515997defd080519f95aff87e89fcbe8b26d73c5ebb73c544cfef4d60e",
+      "bytes": 8539
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc11/zlibvc.vcxproj",
+      "sha256": "d02d014ef957119a6fd0ab243c892b74d1592b117750b95fed21097c8ed922d9",
+      "bytes": 40458
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc12/miniunz.vcxproj",
+      "sha256": "1494af54570f6e93852932956d49a8c25e57b5abc1ac979945605ca9143df9f8",
+      "bytes": 18926
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc12/minizip.vcxproj",
+      "sha256": "9bf128ed6760ca5f019006f178b1c65f4c7ff122dba8d297b64b0eb72feeb120",
+      "bytes": 18509
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc12/testzlib.vcxproj",
+      "sha256": "be88bc1220c0447c2379fdab3ac88055f58a8a788d3e9cec494342187e760eaf",
+      "bytes": 26350
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc12/testzlibdll.vcxproj",
+      "sha256": "93416510256935d79625dc9fd349cfce6968c062d42a138bec404a26b2f92f5e",
+      "bytes": 18979
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc12/zlib.rc",
+      "sha256": "c0e44b6f99079b298e0a11f013e7b1476402a49f19e4d892467abb4aa116f2c8",
+      "bytes": 922
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc12/zlibstat.vcxproj",
+      "sha256": "faa229a851c76b77d65bb4742d8369efe566652bb6a1447d1e3539f289b5313d",
+      "bytes": 26587
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc12/zlibvc.def",
+      "sha256": "40c8e74194874b8c1a288edb9c6fbf32283df77afef7e520790def28a2e5b0d5",
+      "bytes": 7333
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc12/zlibvc.sln",
+      "sha256": "162e0faa80a56d89eea71a0b89377708eec2faa0dc72091cc0abb07fbdea49a0",
+      "bytes": 8499
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc12/zlibvc.vcxproj",
+      "sha256": "8ac8cb2d29b880a738011d29d0511af9b14f321bed90f674109c446f4108d442",
+      "bytes": 40003
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc14/miniunz.vcxproj",
+      "sha256": "0312511d4a30cea979c4e36edf994a537ed8a9d924f6b5c536cbcd094773c11f",
+      "bytes": 18926
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc14/minizip.vcxproj",
+      "sha256": "9e7bb7a6ac723e4b2db900627c366f9bb93a351381995d9c69a50c0126f64233",
+      "bytes": 18509
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc14/testzlib.vcxproj",
+      "sha256": "88667873d9d61d65016b9501ca925532eb55f56230e5911d3e2a01cd8a9fb2a4",
+      "bytes": 26350
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc14/testzlibdll.vcxproj",
+      "sha256": "69f544898b4275cd3d8e19b8f1f8cb39c1cb98a30cdb033242e4b94c57bfa150",
+      "bytes": 18979
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc14/zlib.rc",
+      "sha256": "c0e44b6f99079b298e0a11f013e7b1476402a49f19e4d892467abb4aa116f2c8",
+      "bytes": 922
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc14/zlibstat.vcxproj",
+      "sha256": "5629eb0cc30674a39aa3636f1cdd190393b0dbd4c69a35e36ad85b6340055605",
+      "bytes": 26587
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc14/zlibvc.def",
+      "sha256": "40c8e74194874b8c1a288edb9c6fbf32283df77afef7e520790def28a2e5b0d5",
+      "bytes": 7333
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc14/zlibvc.sln",
+      "sha256": "47a50bbde8ca6336cecd8c0e4b65e515fc46ae84c7b61008ac9864162f777286",
+      "bytes": 8497
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc14/zlibvc.vcxproj",
+      "sha256": "09f496a2ad3afdd5e3f36b7285440369dcac4559656edc00ed7a74c7ec9fa10f",
+      "bytes": 40003
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc17/miniunz.vcxproj",
+      "sha256": "aa70a28fb573e98c0ef68ead2b875765de180e4c6f46c6135806244257fd918f",
+      "bytes": 24294
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc17/minizip.vcxproj",
+      "sha256": "43ab4593b3ea568dc9e6f78a46cbb011850349e9cf3337cfb91dfdc3e623b414",
+      "bytes": 23802
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc17/testzlib.vcxproj",
+      "sha256": "e596d1170c68c6c7912070293e74b794f6753afb1a6d42177dc3626fe1b0e0d4",
+      "bytes": 30120
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc17/testzlibdll.vcxproj",
+      "sha256": "c61f1f6e7e0625f283ac4f4e3ca76f25773ada0da43c7c72ce003637f9892c3b",
+      "bytes": 24364
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc17/zlib.rc",
+      "sha256": "c0e44b6f99079b298e0a11f013e7b1476402a49f19e4d892467abb4aa116f2c8",
+      "bytes": 922
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc17/zlibstat.vcxproj",
+      "sha256": "331effbbcf295912daff00fb3594c2ee300824733897efc5df7d31b2d379a222",
+      "bytes": 34454
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc17/zlibvc.def",
+      "sha256": "1fa9a4d1624675b0181554ddd841d368a9cf39fe931b80737bfa21402f27a7d8",
+      "bytes": 7175
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc17/zlibvc.sln",
+      "sha256": "36da58a5377e65f446c95c7e4c04a915caac9873b94d0dab231e9862391bba78",
+      "bytes": 13040
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc17/zlibvc.vcxproj",
+      "sha256": "f3222e055d4001f9ee04265a72b8f349f92bd27189ce51852c96dde58539c335",
+      "bytes": 52148
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc9/miniunz.vcproj",
+      "sha256": "7db9b2ef5ff05d3de4ba633feab10e85d45434c865d520ffa1974421904996f3",
+      "bytes": 12935
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc9/minizip.vcproj",
+      "sha256": "7797a9ad3c0056f3a3cf8fcde7618acd1d151c65d15f841fccd8d9d878ae7bb0",
+      "bytes": 12749
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc9/testzlib.vcproj",
+      "sha256": "8df405917800adccee6bad2116022c2c82d661b37ea40ea16405fe4dbcb4b69f",
+      "bytes": 17457
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc9/testzlibdll.vcproj",
+      "sha256": "cde6806f5c81d1fc311f9921c17ba56f8e386d097783a6a90875d385837c47e7",
+      "bytes": 12974
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc9/zlib.rc",
+      "sha256": "7aa6cfd50ac67821504304eb4a28668b3aaf78f4c792c389d1fb8ea23a5d3ef6",
+      "bytes": 954
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc9/zlibstat.vcproj",
+      "sha256": "d393d418d827ad9fb9c6516f1a7620371d15e3f5afef8ba60b51e50acc7199e9",
+      "bytes": 18106
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc9/zlibvc.def",
+      "sha256": "40c8e74194874b8c1a288edb9c6fbf32283df77afef7e520790def28a2e5b0d5",
+      "bytes": 7333
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc9/zlibvc.sln",
+      "sha256": "26e58d4b2cfcd941c367fb2a18537b3b9f002f2ac1278b700ea1129c50501452",
+      "bytes": 10612
+    },
+    {
+      "path": "zlib-1.3.1/contrib/vstudio/vc9/zlibvc.vcproj",
+      "sha256": "eaca98fcf166738b59fcdbd179dac9f98f985c6ba49212b186343a998816f081",
+      "bytes": 26409
+    },
+    {
+      "path": "zlib-1.3.1/crc32.c",
+      "sha256": "8fd16f0a7714d51c89c2eb37eb98ec15e8a4dc57ba343e7b7398b19144039fda",
+      "bytes": 31605
+    },
+    {
+      "path": "zlib-1.3.1/crc32.h",
+      "sha256": "9a2223575183ac2ee8a247f20bf3ac066e8bd0140369556bdbdffc777435749e",
+      "bytes": 591749
+    },
+    {
+      "path": "zlib-1.3.1/deflate.c",
+      "sha256": "3b956337350f94c34987750f785587ef33d9c89ceaebb7c2afb189c956360cbe",
+      "bytes": 81731
+    },
+    {
+      "path": "zlib-1.3.1/deflate.h",
+      "sha256": "48baf016326d8d5e3e32ac8153cc7e22f854b8e6834830b167b998a7fb1e7989",
+      "bytes": 14041
+    },
+    {
+      "path": "zlib-1.3.1/doc/algorithm.txt",
+      "sha256": "a2581ab546bf053e3e95d191a6accc3b06bbd4f08ad2fb888eacbfb9773c1d30",
+      "bytes": 9334
+    },
+    {
+      "path": "zlib-1.3.1/doc/crc-doc.1.0.pdf",
+      "sha256": "064f9252d6e2e15ea56c2bd18e160e5c9c84bcd137c11a7af497aaa511ace998",
+      "bytes": 776142
+    },
+    {
+      "path": "zlib-1.3.1/doc/rfc1950.txt",
+      "sha256": "8f0475a5c984657bf26277f73df9456c9b97f175084f0c1748f1eb1f0b9b10b9",
+      "bytes": 20502
+    },
+    {
+      "path": "zlib-1.3.1/doc/rfc1951.txt",
+      "sha256": "5ebf4b5b7fe1c3a0c0ab9aa3ac8c0f3853a7dc484905e76e03b0b0f301350009",
+      "bytes": 36944
+    },
+    {
+      "path": "zlib-1.3.1/doc/rfc1952.txt",
+      "sha256": "164ef0897b4cbec63abf1b57f069f3599bd0fb7c72c2a4dee21bd7e03ec9af67",
+      "bytes": 25037
+    },
+    {
+      "path": "zlib-1.3.1/doc/txtvsbin.txt",
+      "sha256": "d1549fb75137f03102798f70fd34ff76285e717ddd520dd82274c1c0510eacf0",
+      "bytes": 5193
+    },
+    {
+      "path": "zlib-1.3.1/examples/README.examples",
+      "sha256": "1bc1c677bbebe1aa5e85015bb62f0cf3fcdbf95652d30494159bee6166c1854a",
+      "bytes": 1970
+    },
+    {
+      "path": "zlib-1.3.1/examples/enough.c",
+      "sha256": "c14a257c60bbe0d65bb54746dd97774a1853ef9e3f78db118a27d8bc0d26d738",
+      "bytes": 24856
+    },
+    {
+      "path": "zlib-1.3.1/examples/fitblk.c",
+      "sha256": "bec64da6fc0c9a2a37a96722e8b88ca09059148e5be5ecbb486bdba5339e228a",
+      "bytes": 8596
+    },
+    {
+      "path": "zlib-1.3.1/examples/gun.c",
+      "sha256": "3bfd36b06284ba97d6105b8a6a5d18b2b34b75b3a1285f16d018680fb174915f",
+      "bytes": 25942
+    },
+    {
+      "path": "zlib-1.3.1/examples/gzappend.c",
+      "sha256": "6de91c8305e37560117bff44136abff72b16b028c0bda0bbac7ea07e4988b0ce",
+      "bytes": 16978
+    },
+    {
+      "path": "zlib-1.3.1/examples/gzjoin.c",
+      "sha256": "90b9d6c39a5fc91cf1cc9b96b025a508a8015dc502cd9374c754b44078593f57",
+      "bytes": 14132
+    },
+    {
+      "path": "zlib-1.3.1/examples/gzlog.c",
+      "sha256": "d9a2f9871e7f1724f9f9359fd4851dc0eac7af10d8234bab66327badb33d1a38",
+      "bytes": 41537
+    },
+    {
+      "path": "zlib-1.3.1/examples/gzlog.h",
+      "sha256": "681f280437f867820bf39880e2f4fc641d402879e399ba2e6a31d73feefe8edc",
+      "bytes": 4558
+    },
+    {
+      "path": "zlib-1.3.1/examples/gznorm.c",
+      "sha256": "e5a8f5c3b107f27212f7d5fbfcf072a337a1b4ea32929ae31c168997438a5cc0",
+      "bytes": 22182
+    },
+    {
+      "path": "zlib-1.3.1/examples/zlib_how.html",
+      "sha256": "bada2526c34e9da7c9682a7216c0b0d7ac26f49195f98d3ef56f14ae9b438177",
+      "bytes": 29827
+    },
+    {
+      "path": "zlib-1.3.1/examples/zpipe.c",
+      "sha256": "68140a82582ede938159630bca0fb13a93b4bf1cb2e85b08943c26242cf8f3a6",
+      "bytes": 6323
+    },
+    {
+      "path": "zlib-1.3.1/examples/zran.c",
+      "sha256": "f4bc94b710841b8412aee04c42ea522bd1687343d65f0c0d92b4dd5801d03956",
+      "bytes": 21412
+    },
+    {
+      "path": "zlib-1.3.1/examples/zran.h",
+      "sha256": "913158e13f6177224074cfa9b497438545054ac0d54ab13a6ad4182df8d2ee99",
+      "bytes": 2722
+    },
+    {
+      "path": "zlib-1.3.1/gzclose.c",
+      "sha256": "35ea6e991a63095f797d8c4cc25817fac7a7155c2ba7dcdbbf648f7871c7ea40",
+      "bytes": 668
+    },
+    {
+      "path": "zlib-1.3.1/gzguts.h",
+      "sha256": "716fa648aca1bb06c219d7b97ad4846d8479206143bc39557bfd8283f5783e04",
+      "bytes": 6676
+    },
+    {
+      "path": "zlib-1.3.1/gzlib.c",
+      "sha256": "042c2be8ec67ad525a2812e508de7381c6766dde903acf5ae6ac4fa6b541946d",
+      "bytes": 16270
+    },
+    {
+      "path": "zlib-1.3.1/gzread.c",
+      "sha256": "72e481aca07b0b85a9783237b85dc67ff3a4c1d19878d0cec69f58d38634867b",
+      "bytes": 19918
+    },
+    {
+      "path": "zlib-1.3.1/gzwrite.c",
+      "sha256": "469b1e58932ea11bdda2a153f6655f7b3c13254240fae157181b49ed1bc93b47",
+      "bytes": 19237
+    },
+    {
+      "path": "zlib-1.3.1/infback.c",
+      "sha256": "62df9a6dd3eef126f1d81d0ad7a534504610dec44482b0a472b61c93cbab6554",
+      "bytes": 22669
+    },
+    {
+      "path": "zlib-1.3.1/inffast.c",
+      "sha256": "e6ef64ce5dc0a4cd5c7ad08ceeb2b2a698b8447f6bd156057caeb2edab68c0cb",
+      "bytes": 12924
+    },
+    {
+      "path": "zlib-1.3.1/inffast.h",
+      "sha256": "05cc5dc9ff1da7b8b52a4bd8bda0d8a5c236a2f39efe84b941516ea13857e6c5",
+      "bytes": 422
+    },
+    {
+      "path": "zlib-1.3.1/inffixed.h",
+      "sha256": "237ba710f090e432b62ebf963bee8b302867e9691406b2d3f8ee89ee7bfef9b0",
+      "bytes": 6332
+    },
+    {
+      "path": "zlib-1.3.1/inflate.c",
+      "sha256": "34c998ce0037c0537c04b03b276f680b945f9b2c9d1e01b287605bd6879f7fd2",
+      "bytes": 55519
+    },
+    {
+      "path": "zlib-1.3.1/inflate.h",
+      "sha256": "e8d4a51b07694bf48cb91979c19974cf6a5ab0b8a09d26ec0d14df349230673e",
+      "bytes": 6683
+    },
+    {
+      "path": "zlib-1.3.1/inftrees.c",
+      "sha256": "5d4f335221d2dc76f17abd2577d92c2d7baf68fa6d7f23373b360830493d1563",
+      "bytes": 13024
+    },
+    {
+      "path": "zlib-1.3.1/inftrees.h",
+      "sha256": "0a0fcaf2ae2fae57426bdc06637270e9bba974f35202cadbdba479d946e6409d",
+      "bytes": 2920
+    },
+    {
+      "path": "zlib-1.3.1/make_vms.com",
+      "sha256": "14ed54bdd391c1648cedfb69d8a73a26dcc7f1187d59b0f18d944b7665cec85b",
+      "bytes": 26404
+    },
+    {
+      "path": "zlib-1.3.1/msdos/Makefile.bor",
+      "sha256": "292ab363f7ffbc4ae84d37cd9bdffd2dac1003bee52d223a8489844870f20702",
+      "bytes": 3098
+    },
+    {
+      "path": "zlib-1.3.1/msdos/Makefile.dj2",
+      "sha256": "9208450c2ae6dcbfcc25560b5b9ca763f461e7246e37b0552474edf8fa898906",
+      "bytes": 2620
+    },
+    {
+      "path": "zlib-1.3.1/msdos/Makefile.emx",
+      "sha256": "c749d6ec7f88e8e639d4f03bdbdcbbe9d1c304210be4c4be621ceb22961d3d64",
+      "bytes": 1447
+    },
+    {
+      "path": "zlib-1.3.1/msdos/Makefile.msc",
+      "sha256": "0e021a6f42212415b060e4ad468eb415d0a8c1f343137fb9dff2cb8f9ead3027",
+      "bytes": 2924
+    },
+    {
+      "path": "zlib-1.3.1/msdos/Makefile.tc",
+      "sha256": "2ae12ee2a3e62f7c5a0520d0fbe4adee772bc07fe816002b07ccb43db3daa76a",
+      "bytes": 2657
+    },
+    {
+      "path": "zlib-1.3.1/nintendods/Makefile",
+      "sha256": "ea5823efe6830132294eddf2f56dbd7db8712244c210bb4968c431b1a91bd066",
+      "bytes": 4741
+    },
+    {
+      "path": "zlib-1.3.1/nintendods/README",
+      "sha256": "e362426c47b39ff6a7d6c75c6660b20abf076cdfa5e1e421716dc629a71aef95",
+      "bytes": 209
+    },
+    {
+      "path": "zlib-1.3.1/old/Makefile.emx",
+      "sha256": "d811f032272aae50123a889297af3a02fbd60d1e42bbef11466462f627ff7b5b",
+      "bytes": 1456
+    },
+    {
+      "path": "zlib-1.3.1/old/Makefile.riscos",
+      "sha256": "d1a488b160fbfd53272b68a913283a4be08ba9d490796b196dddb2ba535b41e0",
+      "bytes": 3767
+    },
+    {
+      "path": "zlib-1.3.1/old/README",
+      "sha256": "551a0f4d91fe0f827a31cbdfbb4a71d1f3dc4d06564d80a3f526b749dd104d11",
+      "bytes": 133
+    },
+    {
+      "path": "zlib-1.3.1/old/descrip.mms",
+      "sha256": "8ff08c35c056df9c986f23c09cf8936db63ccf12c3c42f7d18a48b36f060cff7",
+      "bytes": 1545
+    },
+    {
+      "path": "zlib-1.3.1/old/os2/Makefile.os2",
+      "sha256": "6ad247c00f00ff42fd2d62555e86251cef06e4079378241b5f320c227507d51d",
+      "bytes": 4109
+    },
+    {
+      "path": "zlib-1.3.1/old/os2/zlib.def",
+      "sha256": "ea9c61876d2e20b67ef2d9495991a32798eb40d13ede95859a2f4f03b65b9b61",
+      "bytes": 778
+    },
+    {
+      "path": "zlib-1.3.1/old/visual-basic.txt",
+      "sha256": "04f39c86a8894561498430ca169e9d6ca2c5cc99b43ee923081884065a0b2b1f",
+      "bytes": 6056
+    },
+    {
+      "path": "zlib-1.3.1/os400/README400",
+      "sha256": "96580d63002088615c4b5ea865cdbec234fef0c8471667d2dc66273398123743",
+      "bytes": 1870
+    },
+    {
+      "path": "zlib-1.3.1/os400/bndsrc",
+      "sha256": "3c36a17975eed5a8d33bc5443b39fead1e68c01393496be9c1f4a61444bcb0f6",
+      "bytes": 4313
+    },
+    {
+      "path": "zlib-1.3.1/os400/make.sh",
+      "sha256": "143394d1e3876c61c29078c0e47310e726e1f5bd42739fe92df9ece65711655f",
+      "bytes": 10727
+    },
+    {
+      "path": "zlib-1.3.1/os400/zlib.inc",
+      "sha256": "c01ddd22689c281066f2bd2e3a020fad4cd50c1e543f17fae963da89a0d69a29",
+      "bytes": 32792
+    },
+    {
+      "path": "zlib-1.3.1/qnx/package.qpg",
+      "sha256": "6c499168c561fc08e2fc41b07fc7a43882a52ede30c1599ed9f6a4035e764225",
+      "bytes": 6427
+    },
+    {
+      "path": "zlib-1.3.1/test/example.c",
+      "sha256": "b7aeca68f7585e29ca6572542e0ecbd9c3c9370035ae15152008b3efbd4f84ac",
+      "bytes": 15547
+    },
+    {
+      "path": "zlib-1.3.1/test/infcover.c",
+      "sha256": "13a0d18d8bca440c4617d88c2236913f53eedebc50e469be472edd4280c697e5",
+      "bytes": 24724
+    },
+    {
+      "path": "zlib-1.3.1/test/minigzip.c",
+      "sha256": "57e4a1b9bb1bdb59ac9e5ac1dc9132183e8740cec2f6b5c5f2476aac08a2375f",
+      "bytes": 14874
+    },
+    {
+      "path": "zlib-1.3.1/treebuild.xml",
+      "sha256": "7d1cb70609017f6f22079af7569c8d8be2ae51e9524fc173719a487181d60860",
+      "bytes": 3140
+    },
+    {
+      "path": "zlib-1.3.1/trees.c",
+      "sha256": "f63c68c16c05fcd196050529d1a0e7657960e4136b9987d90a6ac3e58a964b0f",
+      "bytes": 40937
+    },
+    {
+      "path": "zlib-1.3.1/trees.h",
+      "sha256": "bb0a9d3ca88ee00c81adb7c636e73b97085f6ef1b52d6d58edbe2b6dc3adeb4d",
+      "bytes": 8472
+    },
+    {
+      "path": "zlib-1.3.1/uncompr.c",
+      "sha256": "04dca5e31b3b8a17d1806426f66f0c539f4184d657e149d40be07070c6227b52",
+      "bytes": 2911
+    },
+    {
+      "path": "zlib-1.3.1/watcom/watcom_f.mak",
+      "sha256": "7e039b912f9cffaa40835281430bb284fa9042b0a0d12f6b34700a06bca6576e",
+      "bytes": 1439
+    },
+    {
+      "path": "zlib-1.3.1/watcom/watcom_l.mak",
+      "sha256": "d11b4064604a034725860e63e3f6d347056372e4b1675b183e20a93533b20cc9",
+      "bytes": 1407
+    },
+    {
+      "path": "zlib-1.3.1/win32/DLL_FAQ.txt",
+      "sha256": "539adcdcea4dcab44d0e788febd217a6f192bc0758dc7813cd5f5d8474d9b428",
+      "bytes": 17313
+    },
+    {
+      "path": "zlib-1.3.1/win32/Makefile.bor",
+      "sha256": "7d73a0d2c3e38b7c610bbc9c22f683a4fe1ab9b8b65649a3a8ac4ff7fcc14ba6",
+      "bytes": 2507
+    },
+    {
+      "path": "zlib-1.3.1/win32/Makefile.gcc",
+      "sha256": "97140c30506a8f6b2edb6b3d8a1b6b539d7929d4b957deba9950301090f579bf",
+      "bytes": 4983
+    },
+    {
+      "path": "zlib-1.3.1/win32/Makefile.msc",
+      "sha256": "235529bd529d4690d5d4b7871fdd0a1f118f2fe18862cbdec5f5ac674c55a60d",
+      "bytes": 4657
+    },
+    {
+      "path": "zlib-1.3.1/win32/README-WIN32.txt",
+      "sha256": "508bee0ef1a34892281517919970eb337e017503671d0fa0f139523b44b4d0eb",
+      "bytes": 4864
+    },
+    {
+      "path": "zlib-1.3.1/win32/VisualC.txt",
+      "sha256": "9ec0babd46eaa012371dee2d3a8a55d9c7130f7895512c3371c737e4a7f6a997",
+      "bytes": 124
+    },
+    {
+      "path": "zlib-1.3.1/win32/zlib.def",
+      "sha256": "c00693a5c825f8bfbdb68124fd03cb2fa5269338071147bdaa14434aaf3962b9",
+      "bytes": 1688
+    },
+    {
+      "path": "zlib-1.3.1/win32/zlib1.rc",
+      "sha256": "54e161029b59e99a4f9cb2281b956f00ecfb1814318ddef9c741ff4f832c5c1d",
+      "bytes": 1138
+    },
+    {
+      "path": "zlib-1.3.1/zconf.h",
+      "sha256": "f5134250a67d57459234b63858f0d9d3ef8dcc48e9e1028d3f4fdcf6eae677ae",
+      "bytes": 16500
+    },
+    {
+      "path": "zlib-1.3.1/zconf.h.cmakein",
+      "sha256": "350fb02462487a3e8612c18ad279053996ce0c85ebfece25a959baea9db86562",
+      "bytes": 16551
+    },
+    {
+      "path": "zlib-1.3.1/zconf.h.in",
+      "sha256": "f5134250a67d57459234b63858f0d9d3ef8dcc48e9e1028d3f4fdcf6eae677ae",
+      "bytes": 16500
+    },
+    {
+      "path": "zlib-1.3.1/zlib.3",
+      "sha256": "5aadb3f129c4c7e29f28bb6c5954dea061df3046d0fe3e134aff2ef4a217b1d6",
+      "bytes": 4476
+    },
+    {
+      "path": "zlib-1.3.1/zlib.3.pdf",
+      "sha256": "434e8d80e43ed24ed58a7dad0867a1136035864ad3e5fd4cc2c69e0715628c66",
+      "bytes": 25523
+    },
+    {
+      "path": "zlib-1.3.1/zlib.h",
+      "sha256": "8a5579af72ea4f427ff00a4150f0ccb3fc5c1e4379f726e101133b1ab9fc600c",
+      "bytes": 96829
+    },
+    {
+      "path": "zlib-1.3.1/zlib.map",
+      "sha256": "e83d883a3f7bb93b3dcfab28f5300a569bc7586ded2e067c0639d0697d13fe1e",
+      "bytes": 1453
+    },
+    {
+      "path": "zlib-1.3.1/zlib.pc.cmakein",
+      "sha256": "2f1d0b18ce37c2af415a469857f02aee2c41a58877aff21d29e9c6db32b55cb7",
+      "bytes": 294
+    },
+    {
+      "path": "zlib-1.3.1/zlib.pc.in",
+      "sha256": "04c01cc2e1a0ed123518b5855f585c93a24526dd88982c414111ea1fc9f07997",
+      "bytes": 254
+    },
+    {
+      "path": "zlib-1.3.1/zutil.c",
+      "sha256": "8ced40d8c88588811edd2bdb35b7439983d5e1f8e9e32b8a3b244731f3c317b7",
+      "bytes": 7179
+    },
+    {
+      "path": "zlib-1.3.1/zutil.h",
+      "sha256": "dddb2dc7a1dc339ecf2c8e089b366f08bb731c0839c7110240d17ce731bb4fea",
+      "bytes": 6677
+    }
+  ]
+}
