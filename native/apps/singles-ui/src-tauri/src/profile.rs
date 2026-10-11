@@ -439,12 +439,94 @@ fn replace_file(path: &Path, bytes: &[u8]) -> Result<()> {
     let parent = path
         .parent()
         .ok_or_else(|| error("PROFILE_IO", "Missing profile directory"))?;
-    let mut tmp = tempfile::NamedTempFile::new_in(parent).map_err(|e| error("PROFILE_IO", e))?;
-    tmp.write_all(bytes)
-        .and_then(|()| tmp.as_file().sync_all())
-        .map_err(|e| error("PROFILE_IO", e))?;
-    tmp.persist(path)
-        .map_err(|e| error("PROFILE_IO", e.error))?;
+    #[cfg(windows)]
+    return replace_profile_windows(parent, path, bytes).map_err(|e| error("PROFILE_IO", e));
+    #[cfg(not(windows))]
+    {
+        let mut tmp =
+            tempfile::NamedTempFile::new_in(parent).map_err(|e| error("PROFILE_IO", e))?;
+        tmp.write_all(bytes)
+            .and_then(|()| tmp.as_file().sync_all())
+            .map_err(|e| error("PROFILE_IO", e))?;
+        tmp.persist(path)
+            .map_err(|e| error("PROFILE_IO", e.error))?;
+        Ok(())
+    }
+}
+#[cfg(windows)]
+fn replace_profile_windows(parent: &Path, path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    use std::{
+        mem::{offset_of, size_of},
+        os::windows::{ffi::OsStrExt, fs::OpenOptionsExt, io::AsRawHandle},
+    };
+    use windows::{
+        Wdk::Storage::FileSystem::{
+            FILE_RENAME_INFORMATION, FileRenameInformation, NtSetInformationFile,
+        },
+        Win32::{
+            Foundation::{HANDLE, RtlNtStatusToDosError},
+            System::IO::IO_STATUS_BLOCK,
+        },
+    };
+    // Only these fixed basenames can be replaced, in the temp file's own directory.
+    let name = path
+        .file_name()
+        .filter(|name| *name == "profile.json" || *name == "profile.previous.json")
+        .ok_or_else(|| std::io::Error::other("Invalid profile replacement name"))?;
+    let name: Vec<u16> = name.encode_wide().collect();
+    let mut tmp = tempfile::Builder::new().make_in(parent, |temporary| {
+        // Create once with DELETE access for the handle-based rename. Normal file
+        // attributes avoid tempfile's temporary attribute and any pathname reopen.
+        OpenOptions::new()
+            .create_new(true)
+            .read(true)
+            .write(true)
+            .access_mode(0xc0010000) // GENERIC_READ | GENERIC_WRITE | DELETE
+            .open(temporary)
+    })?;
+    tmp.write_all(bytes)?;
+    tmp.as_file().sync_all()?;
+
+    // MoveFileExW reopens the destination parent for FILE_ADD_FILE, conflicting
+    // with our strict no-write-sharing guard. Native NULL-root + basename rename
+    // stays in the source directory without that reopen; keep the guard intact.
+    let offset = offset_of!(FILE_RENAME_INFORMATION, FileName);
+    let length = (offset + name.len() * 2).max(size_of::<FILE_RENAME_INFORMATION>());
+    let mut allocation = vec![0usize; length.div_ceil(size_of::<usize>())];
+    let info = allocation.as_mut_ptr().cast::<FILE_RENAME_INFORMATION>();
+    // SAFETY: usize-aligned, zeroed storage covers the native header and bounded
+    // UTF-16 name. The file handle and buffer live through this synchronous call.
+    unsafe {
+        (*info).Anonymous.ReplaceIfExists = true;
+        (*info).RootDirectory = HANDLE::default();
+        (*info).FileNameLength = (name.len() * 2) as u32;
+        std::ptr::copy_nonoverlapping(
+            name.as_ptr(),
+            info.cast::<u8>().add(offset).cast::<u16>(),
+            name.len(),
+        );
+    }
+    let mut ios = IO_STATUS_BLOCK::default();
+    let status = unsafe {
+        NtSetInformationFile(
+            HANDLE(tmp.as_file().as_raw_handle()),
+            &mut ios,
+            info.cast(),
+            length as u32,
+            FileRenameInformation,
+        )
+    };
+    if status.0 < 0 {
+        return Err(std::io::Error::from_raw_os_error(
+            unsafe { RtlNtStatusToDosError(status) } as i32,
+        ));
+    }
+    if status.0 != 0 {
+        return Err(std::io::Error::other("Profile rename did not complete"));
+    }
+    // The original temp name no longer exists. Do not attempt pathname cleanup
+    // after success (another process could subsequently reuse that old name).
+    tmp.disable_cleanup(true);
     Ok(())
 }
 fn diagnostics(rows: &[Vec<String>]) -> Vec<Diagnostic> {
@@ -666,6 +748,25 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("profile-v1");
         let guard = prepare_directory(&path).unwrap();
+        let moved = temp.path().join("moved");
+        assert!(std::fs::rename(&path, &moved).is_err());
+        drop(guard);
+        std::fs::rename(&path, &moved).unwrap();
+    }
+    #[cfg(windows)]
+    #[test]
+    fn directory_guard_allows_atomic_profile_replacement() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("profile-v1");
+        let guard = prepare_directory(&path).unwrap();
+        let current = path.join("profile.json");
+        let backup = path.join("profile.previous.json");
+        replace_file(&current, b"first").unwrap();
+        replace_file(&backup, b"first").unwrap();
+        replace_file(&current, b"second").unwrap();
+        assert_eq!(std::fs::read(&current).unwrap(), b"second");
+        assert_eq!(std::fs::read(&backup).unwrap(), b"first");
+        assert_eq!(std::fs::read_dir(&path).unwrap().count(), 2);
         let moved = temp.path().join("moved");
         assert!(std::fs::rename(&path, &moved).is_err());
         drop(guard);

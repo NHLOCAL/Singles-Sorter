@@ -39,3 +39,6 @@ tauri-plugin-dialog = { version = "=2.8.2", optional = true }
 
 [build-dependencies]
 tauri-build = { version = "=2.7.2", features = [], optional = true }
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "=0.62.2", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_System_IO", "Wdk_Storage_FileSystem"] }
