@@ -4,11 +4,12 @@
   "root_package": "singles-ui-host",
   "features": [
     "desktop",
-    "original-ai"
+    "original-ai",
+    "tauri/custom-protocol"
   ],
   "lock_path": "native/apps/singles-ui/src-tauri/Cargo.lock",
   "lock_sha256_lf": "6907180a7f311036ffadbcbdaffc7b816bd85962a2dae20d45d80797ecae746e",
-  "scope": "singles-ui-host desktop+original-ai Windows normal and build dependency closure; no dev-only edges; full features and identity graph pinned",
+  "scope": "singles-ui-host desktop+original-ai+tauri/custom-protocol Windows normal and build dependency closure; no dev-only edges; full features and identity graph pinned",
   "packages": [
     {
       "name": "adler2",
@@ -7915,6 +7916,7 @@
       "features": [
         "common-controls-v6",
         "compression",
+        "custom-protocol",
         "dbus",
         "default",
         "dynamic-acl",
@@ -8495,7 +8497,8 @@
     {
       "package": "tauri-macros@2.7.2",
       "features": [
-        "compression"
+        "compression",
+        "custom-protocol"
       ],
       "dependencies": [
         {

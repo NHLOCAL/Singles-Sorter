@@ -1,7 +1,8 @@
 # Desktop original-AI notice/source review
 
 Reviewed 2026-10-11 for `singles-ui-host`, Windows x64 MSVC, with `desktop` and
-`original-ai`. This is a bounded engineering inventory, not a legal opinion or
+`original-ai` plus the production `tauri/custom-protocol` feature added by
+the Tauri CLI (also enabled in tauri-macros). This is a bounded engineering inventory, not a legal opinion or
 blanket clearance. Complete upstream texts control. The CLI policy is separate.
 
 ## Exact Rust dependency closure

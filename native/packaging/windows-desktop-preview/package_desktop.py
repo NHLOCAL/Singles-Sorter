@@ -55,7 +55,7 @@ def validate_shape(root):
     actual_assets = cli.check_assets(root / 'models/original')
     require((root / 'licenses/inventory.json').is_file() and (root / 'licenses/SOURCE-AVAILABILITY.md').is_file(), 'complete license inventory required')
     inventory = json.loads((root / 'licenses/inventory.json').read_text(encoding='utf-8'))
-    require(inventory.get('profile') == 'desktop' and inventory.get('features') == ['desktop', 'original-ai'], 'desktop-specific notice closure required')
+    require(inventory.get('profile') == 'desktop' and inventory.get('features') == ['desktop', 'original-ai', 'tauri/custom-protocol'], 'desktop-specific notice closure required')
     inventory_files = inventory.get('files', [])
     names = ['licenses/' + row['path'] for row in inventory_files]
     require(len(names) == len(set(names)) and set(names) == {n for n in files if n.startswith('licenses/') and n != 'licenses/inventory.json'}, 'notice inventory does not cover exact files')
@@ -103,7 +103,7 @@ def build(args):
         provenance = {
             'schema_version':1, 'kind':'original-ai-windows-x64-read-only-desktop-preview',
             'source_commit':cli.run_text(['git','rev-parse','HEAD']), 'source_tree':cli.run_text(['git','rev-parse','HEAD^{tree}']),
-            'ci_url':args.ci_url, 'target':'x86_64-pc-windows-msvc', 'features':['desktop','original-ai'],
+            'ci_url':args.ci_url, 'target':'x86_64-pc-windows-msvc', 'features':['desktop','original-ai','tauri/custom-protocol'],
             'executable_sha256':digest(stage / EXE), 'pe_imports':imports, 'msvc_dumpbin_dependents':dumpbin,
             'rustc':cli.run_text(['rustc','-vV']), 'cargo':cli.run_text(['cargo','-V']),
             'native_build':args.build_info.read_text(encoding='utf-8-sig'), 'pcre2_build':receipt,
