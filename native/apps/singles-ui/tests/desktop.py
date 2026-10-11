@@ -18,6 +18,7 @@ import urllib.request
 
 from desktop_diagnostics import snapshot, startup_probe, owned_processes, write_json
 from windows_integrity import process_security, require_medium
+from desktop_layout import check_native_layout, capture_platform_fonts
 
 ROOT = Path(__file__).resolve().parents[1]
 if os.name != 'nt' or os.environ.get('GITHUB_ACTIONS') != 'true':
@@ -128,9 +129,10 @@ try:
     wait(lambda: 'מסדר הסינגלים' in text('h1'))
     wait(lambda: script("return document.documentElement.dataset.startupState === 'ready'"))
     wait(lambda: script("return !document.querySelector('#sort').disabled"))
-    if script("return document.querySelector('#menu-dialog').open"):
-        click('#menu-dialog .close-dialog')
-        wait(lambda: script("return !document.querySelector('#menu-dialog').open"))
+    assert not script("return !!document.querySelector('dialog[open]')"), 'Startup must not open automatic help'
+    check_native_layout(command, script, capture, OUTPUT, '01-native-home')
+    capture_platform_fonts(command, OUTPUT)
+    checks.append('Actual measured desktop CSS viewports retain controls without document overflow')
     capture('01-native-home')
     checks.append('Actual Windows Tauri/WebView2 rendered local assets and initialized real IPC')
     with tempfile.TemporaryDirectory(prefix='singles-ui-owned-') as temporary:
@@ -150,6 +152,7 @@ try:
         assert 'אברהם פריד' in text('#rows')
         assert script("return document.querySelector('#error').hidden"), text('#error')
         capture('02-native-real-sort-preview')
+        check_native_layout(command, script, capture, OUTPUT, '02-native-results')
         assert media.is_file() and hashlib.sha256(media.read_bytes()).hexdigest() == before
         assert list(target.iterdir()) == []
         checks.append('Real owned MP3 sort preview produced Hebrew singer/destination; source hash and empty target unchanged')
