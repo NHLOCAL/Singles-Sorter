@@ -190,9 +190,7 @@ mod tests {
     fn only_routine_negative_album_inspections_are_developer_only() {
         let read = ReadPoint {
             source: EntryObservation {
-                reference: StorageRef::TestOpaque {
-                    id: "owned".into(),
-                },
+                reference: StorageRef::TestOpaque { id: "owned".into() },
                 identity: None,
                 parent_identity: None,
                 name: "owned".into(),
