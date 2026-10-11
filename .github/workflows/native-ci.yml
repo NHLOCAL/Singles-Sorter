@@ -74,6 +74,8 @@ jobs:
         run: |
           cargo +1.99.0 fmt --all
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 fmt --manifest-path apps/singles-ui/src-tauri/Cargo.toml --all
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           git diff --binary --output=../native-formatting.patch -- .
           git restore --worktree -- .
 
