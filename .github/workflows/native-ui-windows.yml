@@ -37,6 +37,9 @@ jobs:
           fetch-depth: 1
           sparse-checkout: native
 
+      - name: Probe strict profile guard and same-directory Windows rename
+        run: python tests/windows-profile-rename-probe.py
+
       - name: Install pinned official Rust toolchain
         run: rustup toolchain install 1.99.0 --profile minimal --component rustfmt --component clippy
 
