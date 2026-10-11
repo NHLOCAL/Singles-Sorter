@@ -207,6 +207,7 @@ try:
             page.mouse.wheel(0,600)
             page.wait_for_timeout(100)
             assert page.evaluate('window.scrollY')==background_y
+            page.locator('#import-alias-0').focus()
             page.locator('#import-alias-49').focus()
             assert_editor_actions(page.evaluate('() => {'+METRICS+'}'))
             assert page.locator('#import-alias-49').evaluate('(el)=>{const r=el.getBoundingClientRect();const footer=el.closest("dialog").querySelector(".editor-footer").getBoundingClientRect();return r.top>=0&&r.bottom<=footer.top}')
