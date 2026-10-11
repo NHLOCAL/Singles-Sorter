@@ -27,7 +27,7 @@ def command_for(security, launcher, python, script):
 def main(preflight=False):
     if not is_ci_windows():
         raise SystemExit('Medium-integrity launcher is restricted to owned Windows CI')
-    output = ROOT / 'test-results/native-windows'
+    output = Path(os.environ.get('SINGLES_UI_OUTPUT', str(ROOT / 'test-results/native-windows')))
     output.mkdir(parents=True, exist_ok=True)
     security = process_security()
     (output / 'launcher-security.json').write_text(json.dumps(security, indent=2), encoding='utf-8')
