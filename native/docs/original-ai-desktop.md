@@ -39,7 +39,10 @@ existing host-owned root capabilities and read-only plan projection.
 reserving the sole host worker. The busy guard stays owned by that worker until
 it finishes. Worker panic and thread creation failures become terminal failures.
 The renderer polls `job_snapshot`; only a matching terminal response releases
-its busy state. Temporary polling errors never imply the worker has stopped.
+its busy state. Temporary polling errors never imply the worker has stopped. An explicit host
+`UNKNOWN_JOB` response instead clears the lost job and exits processing with an
+error; it never fabricates a completed/cancelled result. The host busy guard
+still protects any attempted retry.
 
 `cancel_preview({jobId})` is scoped to the retained job and idempotent for its
 terminal state. A shared monotonic signal reaches planning and both original

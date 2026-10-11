@@ -136,3 +136,13 @@ describe('reload startup recovery',()=>{
   expect(h.getModelStatus).toHaveBeenCalledTimes(1);expect(c.state.initialized).toBe(true);expect(c.state.hostAvailable).toBe(false);expect(c.state.error).toBe('probe failed');
  });
 });
+
+describe('authoritative lost job response',()=>{
+ it('leaves processing without inventing a terminal result or retrying UNKNOWN_JOB',async()=>{
+  vi.useFakeTimers();try{
+   const h=host();h.snapshot=vi.fn().mockResolvedValueOnce({...snapshot,status:'running'}).mockRejectedValue({code:'UNKNOWN_JOB',message:'not retained'});
+   const c=await ready(h);await c.selectRoot('Source');const pending=c.preview('FixNames');await vi.advanceTimersByTimeAsync(250);await pending;
+   expect(h.snapshot).toHaveBeenCalledTimes(2);expect(c.state.busy).toBe(false);expect(c.state.snapshot).toBeNull();expect(c.state.page).toBeNull();expect(c.state.error).toContain('אינה זמינה');expect(h.page).not.toHaveBeenCalled();
+  }finally{vi.useRealTimers();}
+ });
+});

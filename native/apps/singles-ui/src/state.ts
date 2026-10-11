@@ -149,6 +149,12 @@ export class PreviewController {
           snapshot=await this.host.snapshot(started.job_id);
           if(snapshot.host_schema!==1||snapshot.job_id!==started.job_id||!['running','completed','failed','cancelled'].includes(snapshot.status))throw new Error('התקבלה תשובה שאינה שייכת לבדיקה הנוכחית.');
         }catch(error){
+          if(error&&typeof error==='object'&&'code' in error&&error.code==='UNKNOWN_JOB'){
+            // This explicit host response proves this job is no longer retained.
+            // Do not invent completion/cancellation or expose stale results.
+            run.terminal=true;this.state.snapshot=null;this.state.page=null;
+            throw new Error('הבדיקה אינה זמינה עוד במארח. אפשר להפעיל בדיקה חדשה.');
+          }
           // A lost or stale reply cannot prove that the host released its worker.
           this.state.error=errorText(error);this.emit();
           await new Promise(resolve=>setTimeout(resolve,250));
