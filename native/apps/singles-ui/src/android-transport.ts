@@ -37,6 +37,16 @@ window.addEventListener('pagehide',()=>{
 // predates Object.hasOwn; preserve the exact own-property semantics in the UI.
 if(hasAndroidHost()) {
   if(typeof Object.hasOwn!=='function')Object.defineProperty(Object,'hasOwn',{configurable:true,writable:true,value:(value:object,key:PropertyKey)=>Object.prototype.hasOwnProperty.call(value,key)});
+  // WebView 83 also predates Element.replaceChildren (Chrome 86). Build the
+  // replacement fragment first so moving existing children preserves identity.
+  if(typeof Element!=='undefined'&&typeof Element.prototype.replaceChildren!=='function') {
+    Object.defineProperty(Element.prototype,'replaceChildren',{configurable:true,writable:true,value:function(this:Element,...nodes:(Node|string)[]) {
+      const fragment=this.ownerDocument.createDocumentFragment();
+      fragment.append(...nodes);
+      this.textContent='';
+      this.appendChild(fragment);
+    }});
+  }
   if(typeof document!=='undefined') {
     document.documentElement.dataset.androidHost='true';
     queueMicrotask(()=>{for(const id of ['source','target']){const input=document.getElementById(id) as HTMLInputElement|null;if(input){input.readOnly=true;input.placeholder='בחר תיקיה';input.addEventListener('click',()=>document.getElementById(`${id}-picker`)?.click());}}});
