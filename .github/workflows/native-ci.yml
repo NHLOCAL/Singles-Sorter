@@ -222,7 +222,7 @@ jobs:
         run: |
           $repairJobs = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (@($repairJobs | Where-Object { $_ -match ': test$' }).Count -ne 10) { throw "Expected 10 product FixNames cases" }
+          if (@($repairJobs | Where-Object { $_ -match ': test$' }).Count -ne 11) { throw "Expected 11 product FixNames cases" }
           cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
