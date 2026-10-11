@@ -66,6 +66,21 @@ class DesktopAIContracts(unittest.TestCase):
             self.assertEqual([d['field'] for d in differences], [field])
         self.assertEqual(ai.snapshot_differences(before, {'target': []})[0]['field'], 'entry')
 
+    def test_observation_failure_retains_partial_raw_evidence(self):
+        guard = ai.ProtectedTrees.__new__(ai.ProtectedTrees)
+        guard.roots = {'target': self.root}
+        guard.output, guard.name = self.root, 'owned'
+        def fail(root, raw_observations):
+            raw_observations.append(dict(path='.', raw_lstat_attributes=16,
+                                         win32_path_attributes=16, win32_handle_attributes=17))
+            raise AssertionError('Public Windows attribute APIs disagree')
+        with patch.object(ai, 'tree_snapshot', side_effect=fail):
+            with self.assertRaisesRegex(AssertionError, 'APIs disagree'):
+                guard.snapshot('after-picker')
+        receipt = json.loads((self.root / 'owned-after-picker-observation-failure.json').read_text())
+        self.assertEqual(receipt['raw_observations']['target'][0]['win32_handle_attributes'], 17)
+        self.assertIn('APIs disagree', receipt['error'])
+
     def test_explicit_feature_mode_rejects_unrecognized_values(self):
         self.assertEqual(ai.ai_mode({}), 'off')
         self.assertEqual(ai.ai_mode({'SINGLES_DESKTOP_AI_EXPECTED': 'on'}), 'on')

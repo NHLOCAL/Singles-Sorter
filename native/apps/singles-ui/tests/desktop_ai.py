@@ -68,7 +68,7 @@ def windows_attribute_observation(path):
 
     Keep both a path query and FILE_BASIC_INFO through an opened metadata handle.
     Raw CPython lstat attributes remain in separate diagnostic observations.
-    https://learn.microsoft.com/windows/win32/api/fileapi/nf-fileapi-getfileinformationbyhandleex
+    https://learn.microsoft.com/windows/win32/api/winbase/nf-winbase-getfileinformationbyhandleex
     """
     if os.name != 'nt':
         raise RuntimeError('Windows attribute observation requires actual Windows')
@@ -105,7 +105,6 @@ def windows_attribute_observation(path):
         identity = FileIdInfo()
         if not kernel.GetFileInformationByHandleEx(handle, 18, ctypes.byref(identity), ctypes.sizeof(identity)):
             raise ctypes.WinError(ctypes.get_last_error())
-        require(not (attributes | basic.attributes) & 0x400, 'Win32 observed a reparse point')
         return {'win32_path_attributes': attributes, 'win32_handle_attributes': basic.attributes,
                 'win32_volume_serial': identity.volume,
                 'win32_file_id': int.from_bytes(bytes(identity.identity), 'little'),
@@ -166,16 +165,23 @@ def tree_snapshot(root, permissions=security_descriptor, raw_observations=None):
                    mode=info.st_mode, attributes=getattr(info, 'st_file_attributes', 0),
                    modified_ns=info.st_mtime_ns, permissions=permissions(path))
         if os.name == 'nt':
-            public = windows_attribute_observation(path)
-            row['attributes'] = observed_attributes(getattr(info, 'st_file_attributes', 0), public)
-            require((public['win32_volume_serial'], public['win32_file_id']) ==
-                    (info.st_dev, info.st_ino), 'Independent Windows handle identifies another object')
-            row.update(win32_path_attributes=public['win32_path_attributes'],
-                       win32_handle_attributes=public['win32_handle_attributes'],
-                       win32_last_write_ticks=public['win32_last_write_ticks'])
+            observation = dict(path=row['path'], raw_lstat_attributes=getattr(info, 'st_file_attributes', 0),
+                               lstat_device=info.st_dev, lstat_identity=info.st_ino,
+                               lstat_modified_ns=info.st_mtime_ns)
             if raw_observations is not None:
-                raw_observations.append(dict(path=row['path'],
-                    raw_lstat_attributes=getattr(info, 'st_file_attributes', 0), **public))
+                raw_observations.append(observation)
+            try:
+                public = windows_attribute_observation(path)
+                observation.update(public)  # Preserve evidence BEFORE validating agreement.
+                row['attributes'] = observed_attributes(getattr(info, 'st_file_attributes', 0), public)
+                require((public['win32_volume_serial'], public['win32_file_id']) ==
+                        (info.st_dev, info.st_ino), 'Independent Windows handle identifies another object')
+                row.update(win32_path_attributes=public['win32_path_attributes'],
+                           win32_handle_attributes=public['win32_handle_attributes'],
+                           win32_last_write_ticks=public['win32_last_write_ticks'])
+            except Exception as error:
+                observation['error'] = repr(error)
+                raise
         if not directory:
             row.update(size=info.st_size, sha256=digest(path))
         rows.append(row)
@@ -219,25 +225,30 @@ class ProtectedTrees:
         self.roots = roots
         self.output = Path(output)
         self.name = name
-        self.before = self.snapshot()
+        self.before = self.snapshot("before")
         self.write('before', self.before)
         self.write('before-observations', self.raw_observations)
 
-    def snapshot(self):
+    def snapshot(self, context):
         self.raw_observations = {}
         result = {}
-        for name, root in self.roots.items():
-            raw = []
-            result[name] = tree_snapshot(root, raw_observations=raw)
-            self.raw_observations[name] = raw
-        return result
+        try:
+            for name, root in self.roots.items():
+                raw = []
+                self.raw_observations[name] = raw
+                result[name] = tree_snapshot(root, raw_observations=raw)
+            return result
+        except Exception as error:
+            self.write(context + '-observation-failure', dict(error=repr(error),
+                completed_snapshots=result, raw_observations=self.raw_observations))
+            raise
 
     def write(self, suffix, value):
         (self.output / f'{self.name}-{suffix}.json').write_text(
             json.dumps(value, ensure_ascii=False, indent=2), encoding='utf-8')
 
     def verify(self, context='after'):
-        after = self.snapshot()
+        after = self.snapshot(context)
         self.write(context, after)
         self.write(context + '-observations', self.raw_observations)
         if self.before != after:
