@@ -21,12 +21,12 @@ Usage:
 
 JSON commands emit one versioned envelope to stdout; diagnostics go to stderr.
 The stdin request limit is 16 MiB (16,777,216 bytes), including whitespace.
-V1 executes no inference. All results are non-executable.
+V1 executes no inference. V1 decisions and plan-files plans are non-executable.
 V2 original inference requires the original-ai build and an explicit verified bundle.
 Physical apply requires the selected-windows-execution Windows build and an explicit
 run-files inspect/apply handshake. plan-files remains read-only.
 V2 previews use read-only traversal, CSV aliases and fixture-scoped metadata.
-Linux is a test backend; Windows runtime and Android acceptance remain pending.
+Linux is a read-only test backend. Windows candidate gates and Android acceptance are separate.
 run-files NDJSON is a separate single-job protocol. Legacy positional flags remain unsupported.
 Exit codes: 0 success; 1 processing/internal failure; 2 invalid request;
 3 unsupported capability. This slice is not the complete Windows/Android app.
@@ -129,6 +129,8 @@ struct Capabilities {
     physical_apply: bool,
     upcoming: [&'static str; 2],
     real_file_planning: serde_json::Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    selected_execution: Option<serde_json::Value>,
 }
 
 impl Capabilities {
@@ -148,6 +150,7 @@ impl Capabilities {
             physical_apply: false,
             upcoming: ["ndjson_streaming", "legacy_positional_flags"],
             real_file_planning: plan_files::capabilities(),
+            selected_execution: cfg!(all(windows,feature="selected-windows-execution")).then(||serde_json::json!({"command":"run-files --ndjson","scope":"single-process inspected-plan confirmation","modes":["Copy","same-volume Move"],"automatic_replay":false,"process_restart_recovery_ui":false})),
         }
     }
 }

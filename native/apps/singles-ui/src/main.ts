@@ -95,7 +95,7 @@ $('review-apply').addEventListener('click',()=>{
  openDialog('apply-dialog');$('apply-back').focus();
 });
 for(const id of ['apply-dismiss','apply-back'])$(id).addEventListener('click',()=>{$<HTMLDialogElement>('apply-dialog').close();$('review-apply').focus();});
-$('confirm-apply').addEventListener('click',()=>{$<HTMLDialogElement>('apply-dialog').close();void controller.apply();});
+$('confirm-apply').addEventListener('click',async()=>{$<HTMLDialogElement>('apply-dialog').close();await controller.apply();$('execution-title').tabIndex=-1;$('execution-title').focus();});
 $('cancel-apply').addEventListener('click',()=>controller.cancelApply());
 $('reopen-results').addEventListener('click',()=>showResults());
 async function runPreview(mode:Mode){
@@ -168,7 +168,7 @@ function renderExecution(){
  $<HTMLButtonElement>('back-setup').disabled=running;
  $('execution-title').textContent=e?executionTitles[e.status]:running?'מאמת את הקבצים לפני ביצוע…':readiness?.supported?'התוכנית מוכנה לביצוע':'התוכנית זמינה לתצוגה בלבד';
  const r=e?.result;
- $('execution-summary').textContent=r?`${r.committed_destinations.toLocaleString('he-IL')} יעדים נכתבו · ${r.moved_sources.toLocaleString('he-IL')} קבצי מקור הועברו · ${r.failed_operations.toLocaleString('he-IL')} נכשלו · ${r.blocked_operations.toLocaleString('he-IL')} לא בוצעו`:s.cancelRequested&&running?'ממתין לעצירה בטוחה…':e?.status==='running'&&e.operation!==null?`פעולה ${e.operation+1} מתוך ${e.operation_count} · ${e.bytes_written.toLocaleString('he-IL')} מתוך ${e.source_length.toLocaleString('he-IL')} בתים`:readiness?.supported?`${readiness.operation_count.toLocaleString('he-IL')} פעולות ${readiness.copy_mode?'העתקה':'העברה'} ממתינות לאישור`:readiness?.reason??'';
+ $('execution-summary').textContent=r?`${r.committed_destinations.toLocaleString('he-IL')} יעדים נכתבו · ${r.moved_sources.toLocaleString('he-IL')} קבצי מקור הועברו · ${r.failed_operations.toLocaleString('he-IL')} נכשלו · ${r.blocked_operations.toLocaleString('he-IL')} לא בוצעו`:s.cancelRequested&&running?'ממתין לעצירה בטוחה…':e?.status==='running'&&e.operation!==null?`פעולה ${e.operation+1} מתוך ${e.operation_count} · ${e.bytes_written.toLocaleString('he-IL')} מתוך ${e.source_length.toLocaleString('he-IL')} בתים`:e&&!['preparing','running'].includes(e.status)?(e.error??'לא התקבלו מוני ביצוע מאומתים. יש לבדוק את היומן.'):readiness?.supported?`${readiness.operation_count.toLocaleString('he-IL')} פעולות ${readiness.copy_mode?'העתקה':'העברה'} ממתינות לאישור`:readiness?.reason??'';
  const progress=$<HTMLProgressElement>('execution-progress');progress.hidden=!running;
  if(e?.status==='running'&&e.source_length>0){progress.max=e.source_length;progress.value=Math.min(e.bytes_written,e.source_length);}else progress.removeAttribute('value');
  $('execution-recovery').hidden=!e||!['needs_recovery','partial','cancelled','failed'].includes(e.status);
