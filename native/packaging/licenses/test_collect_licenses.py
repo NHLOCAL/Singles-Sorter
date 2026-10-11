@@ -218,6 +218,19 @@ class LicenseCollectorTests(unittest.TestCase):
         with self.assertRaisesRegex(collector.CollectionError, "Cargo.lock changed"):
             collector.collect_cargo(self.writer, self.repo, metadata, policy)
 
+    def test_desktop_lock_crlf_normalization_keeps_content_pin(self):
+        metadata, policy, _, _ = self.desktop_fixture()
+        lock = self.repo / "desktop/Cargo.lock"
+        lf = lock.read_bytes()
+        self.assertNotIn(b"\r", lf)
+        lock.write_bytes(lf.replace(b"\n", b"\r\n"))
+        # Windows checkout line endings are canonicalized by the existing
+        # production policy; substantive bytes must still match its exact pin.
+        collector.collect_cargo(self.writer, self.repo, metadata, policy)
+        lock.write_bytes(lock.read_bytes() + b"# changed content\r\n")
+        with self.assertRaisesRegex(collector.CollectionError, "Cargo.lock changed"):
+            collector.collect_cargo(self.writer, self.repo, metadata, policy)
+
     def test_desktop_mpl_source_is_exact_archive(self):
         metadata, policy, _, archive = self.desktop_fixture()
         policy["packages"][0].update(include_source=True, license="MPL-2.0")
@@ -229,7 +242,7 @@ class LicenseCollectorTests(unittest.TestCase):
         digest = collector.sha256(archive.read_bytes())
         policy["packages"][0]["checksum"] = digest
         lock = self.repo / "desktop/Cargo.lock"
-        lock.write_text(lock.read_text().replace(old, digest))
+        lock.write_bytes(lock.read_bytes().replace(old.encode("ascii"), digest.encode("ascii")))
         policy["lock_sha256_lf"] = collector.sha256(lock.read_bytes())
         rows = collector.collect_cargo(self.writer, self.repo, metadata, policy)
         self.assertEqual((self.output / rows[0]["included_source"]).read_bytes(), archive.read_bytes())
@@ -314,7 +327,7 @@ class LicenseCollectorTests(unittest.TestCase):
         digest = collector.sha256(archive.read_bytes())
         p = self.repo / "desktop/Cargo.lock"
         old = policy["packages"][0]["checksum"]
-        p.write_text(p.read_text().replace(old, digest))
+        p.write_bytes(p.read_bytes().replace(old.encode("ascii"), digest.encode("ascii")))
         policy["lock_sha256_lf"] = collector.sha256(p.read_bytes())
         policy["packages"][0].update(checksum=digest, upstream_notices=[{"vcs_revision": "different"}])
         with self.assertRaisesRegex(collector.CollectionError, "revision mismatch"):
