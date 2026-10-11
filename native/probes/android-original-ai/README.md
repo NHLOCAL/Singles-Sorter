@@ -57,6 +57,9 @@ OS version of the emulator. Download SDK components from Google's official
 repository and verify its published archive checksums before extraction.
 Do not use preview or Google Play/add-on images under an unrelated agreement.
 
+Install the matching Rust standard libraries with
+`rustup target add x86_64-linux-android aarch64-linux-android`.
+
 For each ABI, configure PCRE2 with the NDK CMake toolchain:
 
 ```sh
@@ -73,6 +76,10 @@ cmake --build "$PCRE2_BUILD" -j2
 
 For ARM64 change `ANDROID_ABI` to `arm64-v8a`. Inspect the CMake configuration
 and archive architecture. Never point Android at the host's PCRE2 library.
+The CMake flexible-page switch applies to the C build; it does not certify
+final Rust ELF or APK alignment. The initial Rust probes have 4 KiB PT_LOAD
+alignment and run on a 4 KiB-page emulator. Android 16 KiB-page compatibility
+requires a separate final-link configuration and runtime check.
 From `native/`, using absolute paths for the environment variables:
 
 ```sh
