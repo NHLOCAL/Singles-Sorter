@@ -11,6 +11,11 @@ use std::{collections::HashSet, ffi::OsString, io::Read, os::windows::ffi::{OsSt
 
 const MAX_JOURNAL: usize = 64 * 1024 * 1024;
 fn path(reference:&StorageRef)->Result<PathBuf>{let StorageRef::WindowsPath{utf16}=reference else{return Err(E::Scope)};if utf16.contains(&0)||utf16.split(|c|*c==47||*c==92).any(|p|p==[46]||p==[46,46]){return Err(E::Scope)}Ok(OsString::from_wide(utf16).into())}
+// GetFinalPathNameByHandleW emits the local DOS verbatim prefix while host
+// selections may use its ordinary spelling. Only this documented drive prefix
+// is aligned; no dot traversal, case folding, UNC or device alias is introduced.
+fn comparable_path(reference:&StorageRef)->Result<PathBuf>{let path=path(reference)?;let mut units=path.as_os_str().encode_wide().collect::<Vec<_>>();if units.len()>=7&&units[..4]==[92,92,63,92]&&((65..=90).contains(&units[4])||(97..=122).contains(&units[4]))&&units[5]==58&&units[6]==92{units.drain(..4);}if units.len()>=2&&units[1]==58&&units[0]>=97&&units[0]<=122{units[0]-=32;}Ok(OsString::from_wide(&units).into())}
+fn aligned_read_reference(root:&StorageRef,reference:&StorageRef)->Result<StorageRef>{let candidate=comparable_path(reference)?;let root_compare=comparable_path(root)?;let relative=candidate.strip_prefix(root_compare).map_err(|_|E::Scope)?;let aligned=path(root)?.join(relative);Ok(StorageRef::WindowsPath{utf16:aligned.as_os_str().encode_wide().collect()})}
 fn name(text:&str)->MutationName{MutationName::Windows(text.encode_utf16().collect())}
 fn checked(cancel:&AtomicBool)->Result<()>{if cancel.load(Ordering::Acquire){Err(E::Cancelled)}else{Ok(())}}
 fn digest_value(text:&str,length:u64)->Result<ContentDigest>{if !valid_hash(text){return Err(E::InvalidBinding)}let mut sha256=[0;32];for(i,b)in sha256.iter_mut().enumerate(){*b=u8::from_str_radix(&text[i*2..i*2+2],16).map_err(|_|E::InvalidBinding)?;}Ok(ContentDigest{sha256,length})}
@@ -216,8 +221,8 @@ fn allowed_transition(previous:Option<Phase>,next:Phase)->bool{
     }
 }
 fn check_observation(header:&Header,op:&RepairOperation,observation:&MutationObservation,leaf:&str,identity:Option<&ObjectIdentity>)->Result<()>{
-    let source=path(&op.source.observation.reference)?;let expected=source.parent().ok_or(E::CorruptJournal)?.join(leaf);
-    if path(&observation.reference)?!=expected||!expected.starts_with(path(&header.source)?)||observation.actual_name!=name(leaf)||identity.is_some_and(|id|id!=&observation.identity)||Some(&observation.parent_identity)!=op.source.observation.parent_identity.as_ref()||((identity==op.source.observation.identity.as_ref()||leaf==op.intended_name)&&observation.size!=op.source.observation.size){return Err(E::CorruptJournal)}Ok(())
+    let source=comparable_path(&op.source.observation.reference)?;let expected=source.parent().ok_or(E::CorruptJournal)?.join(leaf);
+    if comparable_path(&observation.reference)?!=expected||!expected.starts_with(comparable_path(&header.source)?)||observation.actual_name!=name(leaf)||identity.is_some_and(|id|id!=&observation.identity)||Some(&observation.parent_identity)!=op.source.observation.parent_identity.as_ref()||((identity==op.source.observation.identity.as_ref()||leaf==op.intended_name)&&observation.size!=op.source.observation.size){return Err(E::CorruptJournal)}Ok(())
 }
 fn validate_terminal(header:&Header,op:&RepairOperation,state:&RecoveryState,item:&RepairItem)->Result<()>{
     let source_id=op.source.observation.identity.as_ref().ok_or(E::CorruptJournal)?;
@@ -285,10 +290,10 @@ pub fn recover_repair_journal(roots:&WindowsMutationStorage,bytes:&[u8],cancel:&
     let header=header.ok_or(E::CorruptJournal)?;let mut reads=WindowsPlanningStorage::for_repair(roots)?;let mut operations=Vec::new();
     for(op,state)in header.operations.iter().zip(states){
         let mut evidence=Vec::new();
-        if let Some(current)=&state.current{let expected=if state.replacement_identity.as_ref()==Some(&current.identity){state.staged_hash.as_deref()}else{Some(op.source.sha256.as_str())};evidence.push(inspect_evidence(&mut reads,"current",current,expected,cancel)?)}
-        if let Some(backup)=&state.backup{evidence.push(inspect_evidence(&mut reads,"backup",backup,Some(&op.source.sha256),cancel)?)}
-        if let Some(staged)=&state.staged{evidence.push(inspect_evidence(&mut reads,"staged",staged,state.staged_hash.as_deref(),cancel)?)}
-        if state.current.is_none()&&state.backup.is_none(){let source=&op.source.observation;let original=MutationObservation{reference:source.reference.clone(),identity:source.identity.clone().ok_or(E::CorruptJournal)?,parent_identity:source.parent_identity.clone().ok_or(E::CorruptJournal)?,actual_name:name(&source.name),size:source.size};evidence.push(inspect_evidence(&mut reads,"original",&original,Some(&op.source.sha256),cancel)?)}
+        if let Some(current)=&state.current{let expected=if state.replacement_identity.as_ref()==Some(&current.identity){state.staged_hash.as_deref()}else{Some(op.source.sha256.as_str())};evidence.push(inspect_evidence(&mut reads,&header.source,"current",current,expected,cancel)?)}
+        if let Some(backup)=&state.backup{evidence.push(inspect_evidence(&mut reads,&header.source,"backup",backup,Some(&op.source.sha256),cancel)?)}
+        if let Some(staged)=&state.staged{evidence.push(inspect_evidence(&mut reads,&header.source,"staged",staged,state.staged_hash.as_deref(),cancel)?)}
+        if state.current.is_none()&&state.backup.is_none(){let source=&op.source.observation;let original=MutationObservation{reference:source.reference.clone(),identity:source.identity.clone().ok_or(E::CorruptJournal)?,parent_identity:source.parent_identity.clone().ok_or(E::CorruptJournal)?,actual_name:name(&source.name),size:source.size};evidence.push(inspect_evidence(&mut reads,&header.source,"original",&original,Some(&op.source.sha256),cancel)?)}
         // Journal intents name candidates even if dispatch response was lost.
         // These are expected identities to compare, never observed success facts.
         if state.recorded.as_ref().is_none_or(|item|item.status==RepairStatus::NeedsRecovery){
@@ -299,19 +304,20 @@ pub fn recover_repair_journal(roots:&WindowsMutationStorage,bytes:&[u8],cancel:&
             if op.rename&&effective_phase.is_some_and(|p|p!=Phase::OperationPrepared){candidates.push(("planned_name",op.intended_name.clone(),source_identity.clone(),Some(op.source.sha256.as_str())));}
             if matches!(effective_phase,Some(Phase::BackupPrepared|Phase::BackupObserved|Phase::PublishPrepared|Phase::PublishedVerified)){candidates.push(("backup_candidate",format!(".sorter-{}-{}.backup",header.job_id,op.id),source_identity,Some(op.source.sha256.as_str())));}
             if effective_phase==Some(Phase::PublishPrepared){if let Some(identity)=&state.replacement_identity{candidates.push(("published_candidate",op.intended_name.clone(),identity.clone(),state.staged_hash.as_deref()));}}
-            for(role,leaf,identity,hash)in candidates{let candidate=path(&original.reference)?.parent().ok_or(E::CorruptJournal)?.join(&leaf);let expected=MutationObservation{reference:StorageRef::WindowsPath{utf16:candidate.as_os_str().encode_wide().collect()},identity,parent_identity:original.parent_identity.clone().ok_or(E::CorruptJournal)?,actual_name:name(&leaf),size:original.size};if !evidence.iter().any(|e|e.reference==expected.reference&&e.expected_identity==expected.identity){evidence.push(inspect_evidence(&mut reads,role,&expected,hash,cancel)?);}}
+            for(role,leaf,identity,hash)in candidates{let candidate=path(&original.reference)?.parent().ok_or(E::CorruptJournal)?.join(&leaf);let expected=MutationObservation{reference:StorageRef::WindowsPath{utf16:candidate.as_os_str().encode_wide().collect()},identity,parent_identity:original.parent_identity.clone().ok_or(E::CorruptJournal)?,actual_name:name(&leaf),size:original.size};if !evidence.iter().any(|e|e.reference==expected.reference&&e.expected_identity==expected.identity){evidence.push(inspect_evidence(&mut reads,&header.source,role,&expected,hash,cancel)?);}}
         }
         operations.push(RepairRecoveryItem{operation:op.id,last_phase:format!("{:?}",state.phase),recorded:state.recorded,evidence});
     }
     Ok(RepairRecoveryReport{job_id:header.job_id,recorded_finished:finished,incomplete_tail,operations})
 }
-fn inspect_evidence(reads:&mut dyn ReadStorage,role:&str,expected:&MutationObservation,sha:Option<&str>,cancel:&AtomicBool)->Result<RepairRecoveryEvidence>{
+fn inspect_evidence(reads:&mut dyn ReadStorage,root:&StorageRef,role:&str,expected:&MutationObservation,sha:Option<&str>,cancel:&AtomicBool)->Result<RepairRecoveryEvidence>{
     checked(cancel)?;let mut value=RepairRecoveryEvidence{role:role.into(),reference:expected.reference.clone(),expected_identity:expected.identity.clone(),observed_identity:None,status:RepairEvidenceStatus::Unverified};
-    let observed=match reads.stat(&expected.reference){Ok(v)=>v,Err(error)if error.kind==StorageErrorKind::NotFound=>{value.status=RepairEvidenceStatus::Missing;return Ok(value)},Err(_)=>return Ok(value)};value.observed_identity=observed.identity.clone();
+    let read_reference=aligned_read_reference(root,&expected.reference)?;
+    let observed=match reads.stat(&read_reference){Ok(v)=>v,Err(error)if error.kind==StorageErrorKind::NotFound=>{value.status=RepairEvidenceStatus::Missing;return Ok(value)},Err(_)=>return Ok(value)};value.observed_identity=observed.identity.clone();
     if observed.identity.as_ref()!=Some(&expected.identity)||observed.kind!=EntryKind::File{value.status=RepairEvidenceStatus::Changed;return Ok(value)}
-    let Some(sha)=sha else{return Ok(value)};let mut input=match reads.open_read(&expected.reference){Ok(v)=>v,Err(_)=>return Ok(value)};if input.binding().is_none_or(|b|b.identity!=expected.identity){return Ok(value)}
+    let Some(sha)=sha else{return Ok(value)};let mut input=match reads.open_read(&read_reference){Ok(v)=>v,Err(_)=>return Ok(value)};if input.binding().is_none_or(|b|b.identity!=expected.identity){return Ok(value)}
     let mut hash=Sha256::new();let mut length=0u64;let mut buffer=[0;65536];loop{checked(cancel)?;let n=match input.read(&mut buffer){Ok(n)=>n,Err(_)=>return Ok(value)};if n==0{break}length=length.checked_add(n as u64).ok_or(E::Io)?;if Some(length)>observed.size{return Ok(value)}hash.update(&buffer[..n]);}
-    value.status=if Some(length)==observed.size&&format!("{:x}",hash.finalize())==sha&&reads.stat(&expected.reference).is_ok_and(|again|again==observed){RepairEvidenceStatus::Verified}else{RepairEvidenceStatus::Changed};Ok(value)
+    value.status=if Some(length)==observed.size&&format!("{:x}",hash.finalize())==sha&&reads.stat(&read_reference).is_ok_and(|again|again==observed){RepairEvidenceStatus::Verified}else{RepairEvidenceStatus::Changed};Ok(value)
 }
 
 #[cfg(test)]
