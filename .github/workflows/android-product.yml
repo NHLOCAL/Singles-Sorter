@@ -12,7 +12,7 @@ permissions:
   contents: read
 jobs:
   diagnose:
-    if: inputs.diagnostics_only == true
+    if: github.event_name == 'pull_request' || inputs.diagnostics_only == true
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
