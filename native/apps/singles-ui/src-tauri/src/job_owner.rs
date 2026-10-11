@@ -599,7 +599,12 @@ impl Host {
             .filter(|row| row.kind == "Single" && row.operation_ids.is_empty())
             .count();
         Ok(PlanPage {
-            rows: visible.into_iter().skip(offset).take(limit).cloned().collect(),
+            rows: visible
+                .into_iter()
+                .skip(offset)
+                .take(limit)
+                .cloned()
+                .collect(),
             total,
             skipped,
         })
@@ -1213,7 +1218,8 @@ mod tests {
                 })
                 .unwrap();
             let mut actionable = plan.clone();
-            if let OperationKind::SingleTransfer { source, .. } = &mut actionable.operations[0].kind {
+            if let OperationKind::SingleTransfer { source, .. } = &mut actionable.operations[0].kind
+            {
                 *source = read.source.clone();
             }
             assert!(!project_rows(&actionable)[0].developer_only);

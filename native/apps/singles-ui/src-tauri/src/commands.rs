@@ -112,7 +112,10 @@ pub async fn open_footer_link(app: tauri::AppHandle) -> Result<(), HostError> {
 }
 
 #[tauri::command]
-pub async fn open_project_link(app: tauri::AppHandle, target: ProjectLink) -> Result<(), HostError> {
+pub async fn open_project_link(
+    app: tauri::AppHandle,
+    target: ProjectLink,
+) -> Result<(), HostError> {
     use tauri_plugin_opener::OpenerExt;
     tauri::async_runtime::spawn_blocking(move || {
         app.opener()
