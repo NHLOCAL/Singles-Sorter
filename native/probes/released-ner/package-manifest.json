@@ -1,8 +1,9 @@
 {
   "scope": "Final package source hashes excluding this self-referential manifest",
   "files": {
-    ".github/workflows/released-ner-platform.yml": "2f461b8c87a1e5ed63986fa16c612c3e523e95c93e7d600d751e7d5f706c7636",
+    ".github/workflows/released-ner-platform.yml": "5d691bc565beb94ea3e0821df32446e8430f56fe4a28faf9a7b2b000780a9199",
     "native/probes/released-ner/.gitignore": "24d7ed2283c9cbdb7c9b3601ee3848e7d55aca8c101f26522fb198d65c9d904e",
+    "native/probes/released-ner/CHECKOUT-BYTES.md": "b1673e07c64e20d4c3c4a95d032c89902a849d3dc6677b1ff625a1f91d51d6eb",
     "native/probes/released-ner/LOCAL-CHECKS.md": "ed1b7a3d2f76e58501aba8edf65a8ee5f09848dc430fc26a3070bd1df949e96d",
     "native/probes/released-ner/ORACLE-SETUP.md": "a4b0612b0d6ec40233c8b02687f26c31db9e1e8cd1891932f07bc2fe34caffbd",
     "native/probes/released-ner/ORIGINAL-LICENSE.md": "eac06ea7fe6853177b30a8982d836dc663bb9d2faac2e7217969bee23dcfda1b",
@@ -61,6 +62,7 @@
     "native/probes/released-ner/source-provenance.json": "6eb0b77e93cf95ed32e609b1a34f52cc120af3f11472d3f6caed3ecf7a1be490",
     "native/probes/released-ner/test_acquisition.py": "398a9f6d90a755774948114746e94465e1833ac3f7dab3e37f306f78656d557d",
     "native/probes/released-ner/test_baseline.py": "61e0491f32abd7ca3337e66a57e621265b6ccac844eee81126e27877c59734a9",
+    "native/probes/released-ner/test_checkout_eol.py": "9c45ab0a475c67ff524d4bf318e624da9ef800e51a9abdea0c63a34782701c89",
     "native/probes/released-ner/test_oracle_runtime.py": "c39d65676a4a6f8b80776b512af64cd10a834212176e28219d89d8e2ef5db5b9"
   }
 }

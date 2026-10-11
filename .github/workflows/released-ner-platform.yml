@@ -33,6 +33,8 @@ jobs:
         run: |
           git config --global core.autocrlf false
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git config --global core.eol lf
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -61,6 +63,13 @@ jobs:
           python -m pip freeze
       - name: Verify exact source assets and export only owned synthetic fixtures
         run: |
+          python test_checkout_eol.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git -C "$env:GITHUB_WORKSPACE/original-baseline" ls-files --eol -- src/core/models/singer_ner_he
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $config = "$env:GITHUB_WORKSPACE/original-baseline/src/core/models/singer_ner_he/config.cfg"
+          Get-Item -LiteralPath $config -ErrorAction Stop | Select-Object Length
+          Get-FileHash -LiteralPath $config -Algorithm SHA256 -ErrorAction Stop | Format-List
           python released-ner-export/export.py --model "$env:GITHUB_WORKSPACE/original-baseline/src/core/models/singer_ner_he" --out .oracle --suite platform
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python released-ner-export/verify.py .oracle
