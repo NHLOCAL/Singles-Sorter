@@ -4,13 +4,24 @@ use std::{env, fs::File, io::Read, path::PathBuf};
 fn main() {
     println!("cargo:rerun-if-env-changed=PCRE2_STATIC_DIR");
     let target = env::var("TARGET").expect("Cargo target");
+    // Explicit experimental build seam; this does not enable Android app capabilities.
+    println!("cargo:rerun-if-env-changed=SINGLES_SORTER_ANDROID_PROBE");
+    if target.ends_with("-linux-android") {
+        assert_eq!(
+            env::var("SINGLES_SORTER_ANDROID_PROBE").as_deref(),
+            Ok("1"),
+            "Android inference is an opt-in probe, not a supported app runtime"
+        );
+    }
     let profile = env::var("PROFILE").expect("Cargo profile");
     let dir =
         PathBuf::from(env::var_os("PCRE2_STATIC_DIR").expect("pinned static PCRE2 is required"));
     assert!(dir.is_absolute());
     let filename = match target.as_str() {
         "x86_64-pc-windows-msvc" => "pcre2-32-static.lib",
-        "x86_64-unknown-linux-gnu" => "libpcre2-32.a",
+        "x86_64-unknown-linux-gnu" | "x86_64-linux-android" | "aarch64-linux-android" => {
+            "libpcre2-32.a"
+        }
         _ => panic!("Original recognition target unsupported"),
     };
     let path = dir.join(filename);
