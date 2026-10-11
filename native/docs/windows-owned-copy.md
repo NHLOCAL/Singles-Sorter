@@ -114,3 +114,7 @@ CI requires exactly nine nonzero Windows Copy fixtures and reruns existing execu
 regressions with the feature enabled. Linux contract tests and Windows-target
 Clippy are useful gates but do not establish native runtime acceptance. Report
 actual Windows results only for the exact tested commit.
+
+A separately gated [owned rename-only feature](windows-owned-rename.md) supports
+one same-volume Move fixture. It does not expand this Copy domain or enable
+copy-and-retire, production apply, or generic mutation durability.

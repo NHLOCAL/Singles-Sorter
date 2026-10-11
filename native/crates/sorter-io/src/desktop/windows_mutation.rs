@@ -26,7 +26,8 @@ use windows::{
         Storage::FileSystem::{
             FILE_CREATE, FILE_DIRECTORY_FILE, FILE_NON_DIRECTORY_FILE, FILE_OPEN,
             FILE_OPEN_REPARSE_POINT, FILE_RENAME_INFORMATION, FILE_SYNCHRONOUS_IO_NONALERT,
-            FileRenameInformation, NtCreateFile, NtSetInformationFile,
+            FILE_WRITE_THROUGH, FileRenameInformation, NTCREATEFILE_CREATE_OPTIONS, NtCreateFile,
+            NtSetInformationFile,
         },
     },
     Win32::{
@@ -568,6 +569,15 @@ fn open_relative_file(
     create: bool,
     access: FILE_ACCESS_RIGHTS,
 ) -> Result<File, MutationError> {
+    open_relative_file_with_options(parent, name, create, access, NTCREATEFILE_CREATE_OPTIONS(0))
+}
+fn open_relative_file_with_options(
+    parent: &File,
+    name: &[u16],
+    create: bool,
+    access: FILE_ACCESS_RIGHTS,
+    extra_options: NTCREATEFILE_CREATE_OPTIONS,
+) -> Result<File, MutationError> {
     let mut owned = name.to_vec();
     let length = (owned.len() * 2) as u16;
     let string = UNICODE_STRING {
@@ -595,7 +605,10 @@ fn open_relative_file(
             FILE_ATTRIBUTE_NORMAL,
             FILE_SHARE_MODE(0),
             if create { FILE_CREATE } else { FILE_OPEN },
-            FILE_NON_DIRECTORY_FILE | FILE_OPEN_REPARSE_POINT | FILE_SYNCHRONOUS_IO_NONALERT,
+            FILE_NON_DIRECTORY_FILE
+                | FILE_OPEN_REPARSE_POINT
+                | FILE_SYNCHRONOUS_IO_NONALERT
+                | extra_options,
             None,
             0,
         )
@@ -672,6 +685,12 @@ pub struct WindowsSourceLease {
     parent: WindowsParent,
     expected: ExpectedSource,
     observation: MutationObservation,
+    mode: SourceLeaseMode,
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum SourceLeaseMode {
+    Ordinary,
+    WriteThroughRename,
 }
 pub struct WindowsOwnedTemp {
     file: Option<File>,
@@ -818,13 +837,7 @@ impl WindowsOwnedTemp {
 fn rename(file: &File, parent: &WindowsParent, name: &MutationName) -> Result<(), MutationError> {
     let name = units(name)?;
     let from = identity(file).map_err(read_error)?;
-    let same = matches!((&from,&parent.identity),(ObjectIdentity::Windows{volume:a,..},ObjectIdentity::Windows{volume:b,..}) if a==b);
-    if !same {
-        return Err(err(
-            MutationErrorKind::Unsupported,
-            "cross-volume rename is unsupported; no copy/delete fallback",
-        ));
-    }
+    ensure_same_volume(&from, &parent.identity)?;
     let offset = std::mem::offset_of!(FILE_RENAME_INFORMATION, FileName);
     let bytes = (offset + name.len() * 2).max(size_of::<FILE_RENAME_INFORMATION>());
     // usize storage provides alignment for the native header; checked bounded names.
@@ -863,6 +876,16 @@ fn rename(file: &File, parent: &WindowsParent, name: &MutationName) -> Result<()
     }
     Ok(())
 }
+fn ensure_same_volume(from: &ObjectIdentity, to: &ObjectIdentity) -> Result<(), MutationError> {
+    if !matches!((from, to), (ObjectIdentity::Windows { volume: a, .. }, ObjectIdentity::Windows { volume: b, .. }) if a == b)
+    {
+        return Err(err(
+            MutationErrorKind::Unsupported,
+            "cross-volume rename is unsupported; no copy/delete fallback",
+        ));
+    }
+    Ok(())
+}
 impl MutationStorage for WindowsMutationStorage {
     type Parent = WindowsParent;
     type SourceLease = WindowsSourceLease;
@@ -885,37 +908,7 @@ impl MutationStorage for WindowsMutationStorage {
         parent: &WindowsParent,
         expected: &ExpectedSource,
     ) -> Result<WindowsSourceLease, MutationError> {
-        self.check_parent(parent)?;
-        if expected.parent_identity != parent.identity {
-            return Err(err(MutationErrorKind::StalePlan, "source parent mismatch"));
-        }
-        let file = open_file(parent.handle(), units(&expected.name)?, false)?;
-        ensure_regular(&file)?;
-        let obs = observe(&file, parent)?;
-        if obs.identity != expected.identity
-            || obs.actual_name != expected.name
-            || expected.size.is_some_and(|s| obs.size != Some(s))
-            || digest(&file)? != expected.digest
-            || expected.modified.as_ref().is_some_and(|expected| {
-                file.metadata()
-                    .and_then(|m| m.modified())
-                    .map(|t| format!("{t:?}"))
-                    .as_ref()
-                    .ok()
-                    != Some(expected)
-            })
-        {
-            return Err(err(
-                MutationErrorKind::StalePlan,
-                "source identity/name/content changed",
-            ));
-        }
-        Ok(WindowsSourceLease {
-            file: Some(file),
-            parent: parent.clone(),
-            expected: expected.clone(),
-            observation: obs,
-        })
+        self.acquire_source_with_mode(parent, expected, SourceLeaseMode::Ordinary)
     }
     fn create_temp(
         &mut self,
@@ -1092,6 +1085,36 @@ impl MutationStorage for WindowsMutationStorage {
     }
 }
 impl WindowsMutationStorage {
+    fn acquire_source_with_mode(
+        &self,
+        parent: &WindowsParent,
+        expected: &ExpectedSource,
+        mode: SourceLeaseMode,
+    ) -> Result<WindowsSourceLease, MutationError> {
+        self.check_parent(parent)?;
+        if expected.parent_identity != parent.identity {
+            return Err(err(MutationErrorKind::StalePlan, "source parent mismatch"));
+        }
+        let file = match mode {
+            SourceLeaseMode::Ordinary => open_file(parent.handle(), units(&expected.name)?, false)?,
+            SourceLeaseMode::WriteThroughRename => open_relative_file_with_options(
+                parent.handle(),
+                units(&expected.name)?,
+                false,
+                FILE_GENERIC_READ | FILE_GENERIC_WRITE | DELETE,
+                // Native CreateOptions, NOT Win32 FILE_FLAG_WRITE_THROUGH attributes.
+                FILE_WRITE_THROUGH,
+            )?,
+        };
+        let observation = verify_expected_source(&file, parent, expected)?;
+        Ok(WindowsSourceLease {
+            file: Some(file),
+            parent: parent.clone(),
+            expected: expected.clone(),
+            observation,
+            mode,
+        })
+    }
     fn validate_source(&self, source: &WindowsSourceLease) -> Result<(), MutationError> {
         self.check_parent(&source.parent)?;
         let file = source
@@ -1108,6 +1131,34 @@ impl WindowsMutationStorage {
         }
         Ok(())
     }
+}
+fn verify_expected_source(
+    file: &File,
+    parent: &WindowsParent,
+    expected: &ExpectedSource,
+) -> Result<MutationObservation, MutationError> {
+    ensure_regular(file)?;
+    let observed = observe(file, parent)?;
+    if observed.identity != expected.identity
+        || observed.actual_name != expected.name
+        || expected.size.is_some_and(|s| observed.size != Some(s))
+        || digest(file)? != expected.digest
+        || expected.modified.as_ref().is_some_and(|expected| {
+            file.metadata()
+                .and_then(|m| m.modified())
+                .map(|t| format!("{t:?}"))
+                .as_ref()
+                .ok()
+                != Some(expected)
+        })
+    {
+        return Err(err(
+            MutationErrorKind::StalePlan,
+            "source identity/name/content changed",
+        )
+        .with_observation(observed));
+    }
+    Ok(observed)
 }
 fn finish_publish(
     file: File,
@@ -1134,6 +1185,221 @@ fn finish_publish(
         observation,
         sync_poisoned: false,
     })
+}
+
+/// Rename-only guard for a consumed, owned synthetic NTFS tree.
+///
+/// Its narrower contract is a native write-through source open, checked preflush,
+/// same-volume no-replace rename, and checked flush/full verification on the very
+/// same held object. It does not assert generic namespace or power-loss durability.
+/// In particular, `durable_flush` remains Unknown and this type cannot publish
+/// copies, retire sources, or authorize a production/user-library mutation.
+pub struct WindowsRenameStorage {
+    owned: WindowsMutationStorage,
+}
+
+// Private deterministic failure/cancellation boundaries. The public API exposes
+// neither callbacks nor arbitrary handles/paths. Successful native calls are
+// always real, including when tests inject a lost response at the next boundary.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum RenameCheckpoint {
+    BeforePreflush,
+    AfterPreflush,
+    BeforeRename,
+    AfterRename,
+    BeforePostflush,
+    AfterPostflush,
+}
+
+impl WindowsRenameStorage {
+    pub fn new(owned: WindowsMutationStorage) -> Self {
+        Self { owned }
+    }
+
+    pub fn owned(&self) -> &WindowsMutationStorage {
+        &self.owned
+    }
+
+    fn rename_no_replace_with(
+        &mut self,
+        source: &mut WindowsSourceLease,
+        parent: &WindowsParent,
+        name: &MutationName,
+        cancel: &AtomicBool,
+        mut checkpoint: impl FnMut(RenameCheckpoint) -> Result<(), MutationError>,
+    ) -> MutationOutcome<WindowsPublished> {
+        let before_dispatch = (|| {
+            cancelled(cancel)?;
+            self.owned.check_parent(&source.parent)?;
+            self.owned.check_parent(parent)?;
+            if source.mode != SourceLeaseMode::WriteThroughRename {
+                return Err(err(
+                    MutationErrorKind::Unsupported,
+                    "rename guard requires its own write-through source lease",
+                ));
+            }
+            let file = source
+                .file
+                .as_ref()
+                .ok_or_else(|| err(MutationErrorKind::StalePlan, "source lease consumed"))?;
+            verify_expected_source(file, &source.parent, &source.expected)?;
+            units(name)?;
+            ensure_same_volume(&source.expected.identity, &parent.identity)?;
+            checkpoint(RenameCheckpoint::BeforePreflush)?;
+            cancelled(cancel)?;
+            unsafe { FlushFileBuffers(HANDLE(file.as_raw_handle())) }.map_err(win_error)?;
+            checkpoint(RenameCheckpoint::AfterPreflush)?;
+            cancelled(cancel)?;
+            // Recheck every supplied source precondition on the held handle.
+            verify_expected_source(file, &source.parent, &source.expected)?;
+            checkpoint(RenameCheckpoint::BeforeRename)?;
+            cancelled(cancel)?;
+            rename(file, parent, name)
+        })();
+        if let Err(error) = before_dispatch {
+            return MutationOutcome::NoEffect(error);
+        }
+
+        // Namespace dispatch succeeded. Consume the lease before any fallible
+        // observation, cancellation, callback or sync. There is no replay route.
+        let file = source.file.take().expect("validated rename lease");
+        let mut published = match finish_publish(file, parent, name, &source.expected.identity) {
+            MutationOutcome::Applied(published) => published,
+            MutationOutcome::PendingUnknown(error) => {
+                return MutationOutcome::PendingUnknown(error);
+            }
+            MutationOutcome::NoEffect(_) => unreachable!("rename was already dispatched"),
+        };
+        let after_dispatch: Result<(), MutationError> = (|| {
+            checkpoint(RenameCheckpoint::AfterRename)?;
+            cancelled(cancel)?;
+            checkpoint(RenameCheckpoint::BeforePostflush)?;
+            cancelled(cancel)?;
+            // This method checks the exact held publication before and after
+            // its real FlushFileBuffers call, without closing/reopening by name.
+            let _ack =
+                self.owned
+                    .sync_published_file(&mut published, &source.expected.digest, cancel)?;
+            checkpoint(RenameCheckpoint::AfterPostflush)?;
+            cancelled(cancel)?;
+            self.owned.check_parent(parent)?;
+            let renamed_expected = ExpectedSource {
+                parent_identity: parent.identity.clone(),
+                name: name.clone(),
+                ..source.expected.clone()
+            };
+            verify_expected_source(&published.file, parent, &renamed_expected)?;
+            cancelled(cancel)?;
+            Ok(())
+        })();
+        if let Err(error) = after_dispatch {
+            // Prefer a fresh native observation, then actual error evidence,
+            // then the observation already obtained after the rename. Never
+            // synthesize a returned reference from the requested leaf name.
+            let observed = observe(&published.file, &published.parent)
+                .ok()
+                .or_else(|| error.observed.as_deref().cloned())
+                .unwrap_or_else(|| published.observation.clone());
+            return MutationOutcome::PendingUnknown(
+                err(
+                    MutationErrorKind::UnknownOutcome,
+                    &format!("rename dispatched; reconcile without replay: {error:?}"),
+                )
+                .with_observation(observed),
+            );
+        }
+        MutationOutcome::Applied(published)
+    }
+}
+
+impl MutationStorage for WindowsRenameStorage {
+    type Parent = WindowsParent;
+    type SourceLease = WindowsSourceLease;
+    type OwnedTemp = WindowsOwnedTemp;
+    type Published = WindowsPublished;
+
+    fn capabilities(&self) -> MutationCapabilities {
+        MutationCapabilities {
+            seek: Capability::Supported,
+            exclusive_create: Capability::Unsupported,
+            no_replace_publish: Capability::Unsupported,
+            same_volume_no_replace_rename: Capability::Supported,
+            content_verification: Capability::Supported,
+            durable_flush: Capability::Unknown,
+            leased_source_retirement: Capability::Unsupported,
+            staged_replacement: Capability::Unsupported,
+        }
+    }
+
+    fn acquire_source(
+        &mut self,
+        parent: &WindowsParent,
+        expected: &ExpectedSource,
+    ) -> Result<WindowsSourceLease, MutationError> {
+        self.owned
+            .acquire_source_with_mode(parent, expected, SourceLeaseMode::WriteThroughRename)
+    }
+
+    fn create_temp(
+        &mut self,
+        _parent: &WindowsParent,
+        _job_id: &str,
+        _cancel: &AtomicBool,
+    ) -> MutationOutcome<WindowsOwnedTemp> {
+        MutationOutcome::NoEffect(err(
+            MutationErrorKind::Unsupported,
+            "rename guard cannot create temporary files",
+        ))
+    }
+
+    fn publish_no_replace(
+        &mut self,
+        _temp: &mut WindowsOwnedTemp,
+        _parent: &WindowsParent,
+        _name: &MutationName,
+        _cancel: &AtomicBool,
+    ) -> MutationOutcome<WindowsPublished> {
+        MutationOutcome::NoEffect(err(
+            MutationErrorKind::Unsupported,
+            "rename guard cannot publish copied files",
+        ))
+    }
+
+    fn rename_no_replace(
+        &mut self,
+        source: &mut WindowsSourceLease,
+        parent: &WindowsParent,
+        name: &MutationName,
+        cancel: &AtomicBool,
+    ) -> MutationOutcome<WindowsPublished> {
+        self.rename_no_replace_with(source, parent, name, cancel, |_| Ok(()))
+    }
+
+    fn verify(
+        &mut self,
+        published: &WindowsPublished,
+        expected: &ContentDigest,
+    ) -> Result<MutationObservation, MutationError> {
+        self.owned.verify(published, expected)
+    }
+
+    fn retire_source(
+        &mut self,
+        _source: &mut WindowsSourceLease,
+        _cancel: &AtomicBool,
+    ) -> MutationOutcome<RetirementOutcome> {
+        MutationOutcome::NoEffect(err(
+            MutationErrorKind::Unsupported,
+            "rename guard cannot retire a source separately",
+        ))
+    }
+
+    fn inspect(
+        &mut self,
+        published: &WindowsPublished,
+    ) -> Result<MutationObservation, MutationError> {
+        self.owned.inspect(published)
+    }
 }
 
 #[cfg(test)]
@@ -1367,5 +1633,536 @@ mod published_sync_tests {
         // This primitive handles raw UTF-16. The string-based Copy planner still
         // rejects this filename; the test does not change that separate boundary.
         assert_eq!(storage.capabilities().durable_flush, Capability::Unknown);
+    }
+}
+
+#[cfg(test)]
+mod rename_guard_tests {
+    use super::*;
+    use std::{ffi::OsString, path::PathBuf};
+
+    struct Fixture {
+        storage: WindowsRenameStorage,
+        source_parent: WindowsParent,
+        target: WindowsParent,
+        expected: ExpectedSource,
+        path: PathBuf,
+        bytes: Vec<u8>,
+    }
+    fn name(value: &str) -> MutationName {
+        MutationName::Windows(value.encode_utf16().collect())
+    }
+    fn fixture() -> Fixture {
+        let tree = tempfile::tempdir().unwrap();
+        let path = tree.path().to_owned();
+        std::fs::create_dir(path.join("מקור")).unwrap();
+        std::fs::create_dir(path.join("יעד")).unwrap();
+        let bytes: Vec<_> = (0..131_091).map(|index| (index % 251) as u8).collect();
+        let source_path = path.join("מקור/שיר-🎵.mp3");
+        std::fs::write(&source_path, &bytes).unwrap();
+        let modified = format!(
+            "{:?}",
+            std::fs::metadata(&source_path).unwrap().modified().unwrap()
+        );
+        let mut owned = WindowsMutationStorage::for_owned_synthetic_tree(tree).unwrap();
+        let source_parent = owned.parent(Path::new("מקור")).unwrap();
+        let target = owned.parent(Path::new("יעד")).unwrap();
+        let mut expected = owned
+            .observe_source(&source_parent, &name("שיר-🎵.mp3"))
+            .unwrap();
+        expected.modified = Some(modified);
+        Fixture {
+            storage: WindowsRenameStorage::new(owned),
+            source_parent,
+            target,
+            expected,
+            path,
+            bytes,
+        }
+    }
+    fn applied<T>(outcome: MutationOutcome<T>) -> T {
+        match outcome {
+            MutationOutcome::Applied(value) => value,
+            MutationOutcome::NoEffect(error) => panic!("unexpected NoEffect: {error:?}"),
+            MutationOutcome::PendingUnknown(error) => {
+                panic!("unexpected PendingUnknown: {error:?}")
+            }
+        }
+    }
+    fn no_effect<T>(outcome: MutationOutcome<T>, kind: MutationErrorKind) {
+        match outcome {
+            MutationOutcome::NoEffect(error) => assert_eq!(error.kind, kind, "{error:?}"),
+            _ => panic!("expected NoEffect"),
+        }
+    }
+    fn pending<T>(outcome: MutationOutcome<T>) -> MutationError {
+        match outcome {
+            MutationOutcome::PendingUnknown(error) => {
+                assert_eq!(error.kind, MutationErrorKind::UnknownOutcome);
+                error
+            }
+            _ => panic!("expected PendingUnknown after actual rename"),
+        }
+    }
+    fn assert_source_untouched(fixture: &Fixture) {
+        assert_eq!(
+            std::fs::read(fixture.path.join("מקור/שיר-🎵.mp3")).unwrap(),
+            fixture.bytes
+        );
+        assert!(!fixture.path.join("יעד/renamed.mp3").exists());
+    }
+    fn assert_renamed(fixture: &Fixture, error: &MutationError) {
+        let observed = error
+            .observed
+            .as_ref()
+            .expect("actual destination evidence");
+        assert_eq!(observed.identity, fixture.expected.identity);
+        assert_eq!(observed.parent_identity, fixture.target.identity);
+        assert_eq!(observed.actual_name, name("renamed.mp3"));
+        let reopened = open_file(
+            fixture.target.handle(),
+            units(&name("renamed.mp3")).unwrap(),
+            false,
+        )
+        .unwrap();
+        assert_eq!(observe(&reopened, &fixture.target).unwrap(), **observed);
+        assert_eq!(digest(&reopened).unwrap(), fixture.expected.digest);
+        drop(reopened);
+        assert!(!fixture.path.join("מקור/שיר-🎵.mp3").exists());
+        assert_eq!(
+            std::fs::read(fixture.path.join("יעד/renamed.mp3")).unwrap(),
+            fixture.bytes
+        );
+    }
+
+    #[test]
+    fn cross_directory_hebrew_rename_preserves_object_content_and_pinned_guards() {
+        let mut f = fixture();
+        let mut source = f
+            .storage
+            .acquire_source(&f.source_parent, &f.expected)
+            .unwrap();
+        let leaf = name("שלום-🎵.mp3");
+        let published = applied(f.storage.rename_no_replace(
+            &mut source,
+            &f.target,
+            &leaf,
+            &AtomicBool::new(false),
+        ));
+        assert!(source.file.is_none());
+        let observed = f.storage.verify(&published, &f.expected.digest).unwrap();
+        assert_eq!(observed.identity, f.expected.identity);
+        assert_eq!(observed.parent_identity, f.target.identity);
+        assert_eq!(observed.actual_name, leaf);
+        assert_eq!(observed.size, f.expected.size);
+        assert!(!f.path.join("מקור/שיר-🎵.mp3").exists());
+        assert!(std::fs::remove_file(f.path.join("יעד/שלום-🎵.mp3")).is_err());
+        assert!(std::fs::rename(f.path.join("יעד"), f.path.join("other-target")).is_err());
+        assert!(std::fs::rename(f.path.join("מקור"), f.path.join("other-source")).is_err());
+        drop(published);
+        let reopened = f.storage.owned.observe_source(&f.target, &leaf).unwrap();
+        assert_eq!(reopened.identity, f.expected.identity);
+        assert_eq!(reopened.digest, f.expected.digest);
+        assert_eq!(
+            std::fs::read(f.path.join("יעד/שלום-🎵.mp3")).unwrap(),
+            f.bytes
+        );
+    }
+
+    #[test]
+    fn write_through_is_a_real_native_open_mode_and_lease_denies_sharing() {
+        use windows::Wdk::Storage::FileSystem::{
+            FILE_MODE_INFORMATION, FileModeInformation, NtQueryInformationFile,
+        };
+        let mut f = fixture();
+        let source = f
+            .storage
+            .acquire_source(&f.source_parent, &f.expected)
+            .unwrap();
+        let file = source.file.as_ref().unwrap();
+        let mut mode = FILE_MODE_INFORMATION::default();
+        let mut ios = IO_STATUS_BLOCK::default();
+        let status = unsafe {
+            NtQueryInformationFile(
+                HANDLE(file.as_raw_handle()),
+                &mut ios,
+                (&mut mode as *mut FILE_MODE_INFORMATION).cast(),
+                size_of::<FILE_MODE_INFORMATION>() as u32,
+                FileModeInformation,
+            )
+        };
+        assert!(status.0 >= 0, "native mode query failed: {status:?}");
+        assert_ne!(mode.Mode & FILE_WRITE_THROUGH.0, 0);
+        assert_ne!(mode.Mode & FILE_SYNCHRONOUS_IO_NONALERT.0, 0);
+        // A real flush establishes that this held handle has write access.
+        unsafe { FlushFileBuffers(HANDLE(file.as_raw_handle())) }.unwrap();
+        let path = f.path.join("מקור/שיר-🎵.mp3");
+        assert!(File::open(&path).is_err());
+        assert!(std::fs::OpenOptions::new().write(true).open(&path).is_err());
+        assert!(std::fs::remove_file(&path).is_err());
+        drop(source);
+        assert_source_untouched(&f);
+    }
+
+    #[test]
+    fn raw_utf16_name_is_preserved_without_lossy_substitution() {
+        let mut f = fixture();
+        let mut source = f
+            .storage
+            .acquire_source(&f.source_parent, &f.expected)
+            .unwrap();
+        let leaf = MutationName::Windows(vec![0x5e9, 0xd800, 0x2e, 0x6d, 0x70, 0x33]);
+        let published = applied(f.storage.rename_no_replace(
+            &mut source,
+            &f.target,
+            &leaf,
+            &AtomicBool::new(false),
+        ));
+        assert_eq!(f.storage.inspect(&published).unwrap().actual_name, leaf);
+        drop(published);
+        let reopened = f.storage.owned.observe_source(&f.target, &leaf).unwrap();
+        assert_eq!(reopened.identity, f.expected.identity);
+        assert_eq!(reopened.digest, f.expected.digest);
+        assert_eq!(
+            std::fs::read(
+                f.path
+                    .join("יעד")
+                    .join(OsString::from_wide(units(&leaf).unwrap()))
+            )
+            .unwrap(),
+            f.bytes
+        );
+    }
+
+    #[test]
+    fn exact_and_case_collision_never_replace_or_consume_source() {
+        for requested in ["Collision.mp3", "collision.mp3"] {
+            let mut f = fixture();
+            std::fs::write(f.path.join("יעד/Collision.mp3"), b"must remain").unwrap();
+            let mut source = f
+                .storage
+                .acquire_source(&f.source_parent, &f.expected)
+                .unwrap();
+            no_effect(
+                f.storage.rename_no_replace(
+                    &mut source,
+                    &f.target,
+                    &name(requested),
+                    &AtomicBool::new(false),
+                ),
+                MutationErrorKind::StalePlan,
+            );
+            assert!(source.file.is_some());
+            drop(source);
+            assert_source_untouched(&f);
+            assert_eq!(
+                std::fs::read(f.path.join("יעד/Collision.mp3")).unwrap(),
+                b"must remain"
+            );
+        }
+    }
+
+    #[test]
+    fn foreign_parent_foreign_lease_and_ordinary_lease_fail_before_flush() {
+        let mut f = fixture();
+        let foreign = fixture();
+        let cancel = AtomicBool::new(false);
+        let mut ordinary = f
+            .storage
+            .owned
+            .acquire_source(&f.source_parent, &f.expected)
+            .unwrap();
+        no_effect(
+            f.storage.rename_no_replace_with(
+                &mut ordinary,
+                &f.target,
+                &name("renamed.mp3"),
+                &cancel,
+                |_| panic!("ordinary lease must not reach a flush"),
+            ),
+            MutationErrorKind::Unsupported,
+        );
+        drop(ordinary);
+        let mut source = f
+            .storage
+            .acquire_source(&f.source_parent, &f.expected)
+            .unwrap();
+        no_effect(
+            f.storage.rename_no_replace_with(
+                &mut source,
+                &foreign.target,
+                &name("renamed.mp3"),
+                &cancel,
+                |_| panic!("foreign parent must not reach a flush"),
+            ),
+            MutationErrorKind::StalePlan,
+        );
+        let mut other_storage = foreign.storage;
+        no_effect(
+            other_storage.rename_no_replace_with(
+                &mut source,
+                &foreign.target,
+                &name("renamed.mp3"),
+                &cancel,
+                |_| panic!("foreign lease must not reach a flush"),
+            ),
+            MutationErrorKind::StalePlan,
+        );
+        drop(source);
+        assert_source_untouched(&f);
+    }
+
+    #[test]
+    fn every_supplied_precondition_is_checked_on_write_through_acquisition() {
+        let mut f = fixture();
+        for field in 0..6 {
+            let mut wrong = f.expected.clone();
+            match field {
+                0 => wrong.identity = f.target.identity.clone(),
+                1 => wrong.parent_identity = f.target.identity.clone(),
+                2 => wrong.name = name("שיר-🎵.MP3"),
+                3 => wrong.size = Some(f.expected.size.unwrap() + 1),
+                4 => wrong.digest.sha256[0] ^= 1,
+                _ => wrong.modified = Some("not the actual modified time".into()),
+            }
+            assert!(matches!(
+                f.storage.acquire_source(&f.source_parent, &wrong),
+                Err(error) if error.kind == MutationErrorKind::StalePlan
+            ));
+        }
+        assert_source_untouched(&f);
+    }
+
+    #[test]
+    fn cancellation_before_rename_preserves_lease_and_namespace() {
+        for stage in [
+            None,
+            Some(RenameCheckpoint::BeforePreflush),
+            Some(RenameCheckpoint::AfterPreflush),
+            Some(RenameCheckpoint::BeforeRename),
+        ] {
+            let mut f = fixture();
+            let mut source = f
+                .storage
+                .acquire_source(&f.source_parent, &f.expected)
+                .unwrap();
+            let cancel = AtomicBool::new(stage.is_none());
+            no_effect(
+                f.storage.rename_no_replace_with(
+                    &mut source,
+                    &f.target,
+                    &name("renamed.mp3"),
+                    &cancel,
+                    |current| {
+                        if Some(current) == stage {
+                            cancel.store(true, Ordering::Release);
+                        }
+                        Ok(())
+                    },
+                ),
+                MutationErrorKind::Cancelled,
+            );
+            assert!(source.file.is_some());
+            drop(source);
+            assert_source_untouched(&f);
+        }
+    }
+
+    #[test]
+    fn cancellation_after_rename_or_sync_is_pending_with_actual_evidence_no_replay() {
+        for stage in [
+            RenameCheckpoint::AfterRename,
+            RenameCheckpoint::BeforePostflush,
+            RenameCheckpoint::AfterPostflush,
+        ] {
+            let mut f = fixture();
+            let mut source = f
+                .storage
+                .acquire_source(&f.source_parent, &f.expected)
+                .unwrap();
+            let cancel = AtomicBool::new(false);
+            let error = pending(f.storage.rename_no_replace_with(
+                &mut source,
+                &f.target,
+                &name("renamed.mp3"),
+                &cancel,
+                |current| {
+                    if current == stage {
+                        cancel.store(true, Ordering::Release);
+                    }
+                    Ok(())
+                },
+            ));
+            assert!(error.detail.contains("Cancelled"));
+            assert!(source.file.is_none());
+            assert_renamed(&f, &error);
+            cancel.store(false, Ordering::Release);
+            no_effect(
+                f.storage.rename_no_replace_with(
+                    &mut source,
+                    &f.target,
+                    &name("retry.mp3"),
+                    &cancel,
+                    |_| panic!("consumed lease cannot replay"),
+                ),
+                MutationErrorKind::StalePlan,
+            );
+            assert!(!f.path.join("יעד/retry.mp3").exists());
+        }
+    }
+
+    #[test]
+    fn failures_around_real_flush_and_rename_boundaries_preserve_effect_classification() {
+        for stage in [
+            RenameCheckpoint::BeforePreflush,
+            RenameCheckpoint::AfterPreflush,
+            RenameCheckpoint::BeforeRename,
+            RenameCheckpoint::AfterRename,
+            RenameCheckpoint::BeforePostflush,
+            RenameCheckpoint::AfterPostflush,
+        ] {
+            let mut f = fixture();
+            let mut source = f
+                .storage
+                .acquire_source(&f.source_parent, &f.expected)
+                .unwrap();
+            let outcome = f.storage.rename_no_replace_with(
+                &mut source,
+                &f.target,
+                &name("renamed.mp3"),
+                &AtomicBool::new(false),
+                |current| {
+                    if current == stage {
+                        Err(err(
+                            MutationErrorKind::Io,
+                            "injected boundary response loss",
+                        ))
+                    } else {
+                        Ok(())
+                    }
+                },
+            );
+            if matches!(
+                stage,
+                RenameCheckpoint::BeforePreflush
+                    | RenameCheckpoint::AfterPreflush
+                    | RenameCheckpoint::BeforeRename
+            ) {
+                no_effect(outcome, MutationErrorKind::Io);
+                assert!(source.file.is_some());
+                drop(source);
+                assert_source_untouched(&f);
+            } else {
+                let error = pending(outcome);
+                assert!(source.file.is_none());
+                assert_renamed(&f, &error);
+                no_effect(
+                    f.storage.rename_no_replace_with(
+                        &mut source,
+                        &f.target,
+                        &name("retry.mp3"),
+                        &AtomicBool::new(false),
+                        |_| panic!("must not replay a lost rename/sync response"),
+                    ),
+                    MutationErrorKind::StalePlan,
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn actual_native_preflush_rejection_is_no_effect_with_source_retained() {
+        let mut f = fixture();
+        let mut source = f
+            .storage
+            .owned
+            .acquire_source(&f.source_parent, &f.expected)
+            .unwrap();
+        // Test-only marker override preserves a real read-only native handle,
+        // provoking the OS failure. Public code cannot forge this lease mode.
+        source.mode = SourceLeaseMode::WriteThroughRename;
+        no_effect(
+            f.storage.rename_no_replace(
+                &mut source,
+                &f.target,
+                &name("renamed.mp3"),
+                &AtomicBool::new(false),
+            ),
+            MutationErrorKind::PermissionDenied,
+        );
+        assert!(source.file.is_some());
+        drop(source);
+        assert_source_untouched(&f);
+    }
+
+    #[test]
+    fn rename_only_capabilities_do_not_enable_copy_retirement_or_global_durability() {
+        let mut f = fixture();
+        let caps = f.storage.capabilities();
+        assert_eq!(caps.seek, Capability::Supported);
+        assert_eq!(caps.same_volume_no_replace_rename, Capability::Supported);
+        assert_eq!(caps.content_verification, Capability::Supported);
+        assert_eq!(caps.exclusive_create, Capability::Unsupported);
+        assert_eq!(caps.no_replace_publish, Capability::Unsupported);
+        assert_eq!(caps.leased_source_retirement, Capability::Unsupported);
+        assert_eq!(caps.staged_replacement, Capability::Unsupported);
+        assert_eq!(caps.durable_flush, Capability::Unknown);
+        assert_eq!(
+            f.storage.owned().capabilities().durable_flush,
+            Capability::Unknown
+        );
+        let cancel = AtomicBool::new(false);
+        no_effect(
+            f.storage.create_temp(&f.target, "blocked", &cancel),
+            MutationErrorKind::Unsupported,
+        );
+        let mut temp = applied(f.storage.owned.create_temp(&f.target, "fixture", &cancel));
+        temp.write_all(b"retained temp").unwrap();
+        no_effect(
+            f.storage
+                .publish_no_replace(&mut temp, &f.target, &name("final.mp3"), &cancel),
+            MutationErrorKind::Unsupported,
+        );
+        assert!(temp.file.is_some());
+        let mut source = f
+            .storage
+            .acquire_source(&f.source_parent, &f.expected)
+            .unwrap();
+        no_effect(
+            f.storage.retire_source(&mut source, &cancel),
+            MutationErrorKind::Unsupported,
+        );
+        assert!(source.file.is_some());
+        drop(source);
+        drop(temp);
+        assert_source_untouched(&f);
+        assert_eq!(
+            std::fs::read(f.path.join("יעד/.sorter-fixture.tmp")).unwrap(),
+            b"retained temp"
+        );
+        assert!(!f.path.join("יעד/final.mp3").exists());
+        assert!(!f.path.join("יעד/.sorter-blocked.tmp").exists());
+    }
+
+    #[test]
+    fn differing_volume_ids_are_positive_rejection_without_copy_fallback() {
+        let mut f = fixture();
+        let source = f
+            .storage
+            .acquire_source(&f.source_parent, &f.expected)
+            .unwrap();
+        let mut other_volume = f.target.clone();
+        let ObjectIdentity::Windows { volume, .. } = &mut other_volume.identity else {
+            panic!("fixture must expose Windows volume identity");
+        };
+        *volume ^= 1;
+        // Models a second volume ID, not a real cross-volume runtime test. The
+        // native helper must reject the positive mismatch before dispatch.
+        assert!(matches!(
+            rename(source.file.as_ref().unwrap(), &other_volume, &name("renamed.mp3")),
+            Err(error) if error.kind == MutationErrorKind::Unsupported
+        ));
+        drop(source);
+        assert_source_untouched(&f);
     }
 }

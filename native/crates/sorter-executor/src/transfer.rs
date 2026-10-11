@@ -52,6 +52,12 @@ pub trait TransferStorage: MutationStorage {
     ) -> std::result::Result<MutationObservation, MutationError>;
     /// Positive, lease-derived same-volume evidence. False uses the copy path.
     fn rename_eligible(&self, source: &Self::SourceLease, parent: &Self::Parent) -> bool;
+    /// Narrow contract: a write-through, pre/post-flushed same-volume rename.
+    /// Not global durable_flush or copy-and-retire support. Other adapters refuse.
+    #[cfg(all(windows, feature = "experimental-windows-rename"))]
+    fn owned_windows_rename_contract(&self) -> bool {
+        false
+    }
     /// Extra checked file-sync step for the private owned-Windows Copy domain.
     /// Other domains never call this hook. An adapter cannot silently substitute
     /// a no-op; the default refuses the operation after publication.
@@ -500,12 +506,22 @@ impl<S: TransferStorage> Runner<'_, S> {
     ) -> std::result::Result<(), Failure> {
         self.check_cancel()?;
         let caps = self.storage.capabilities();
-        if !caps.exclusive_create.is_supported()
-            || !caps.no_replace_publish.is_supported()
-            || !caps.content_verification.is_supported()
-            || (op.mode == TransferMode::Move
-                && (!caps.leased_source_retirement.is_supported()
-                    || !caps.durable_flush.is_supported()))
+        let rename_only = self.binding.data.owned_windows_rename;
+        #[cfg(all(windows, feature = "experimental-windows-rename"))]
+        let scoped_rename = rename_only && self.storage.owned_windows_rename_contract();
+        #[cfg(not(all(windows, feature = "experimental-windows-rename")))]
+        let scoped_rename = false;
+        if (rename_only
+            && (!scoped_rename
+                || !caps.same_volume_no_replace_rename.is_supported()
+                || !caps.content_verification.is_supported()))
+            || (!rename_only
+                && (!caps.exclusive_create.is_supported()
+                    || !caps.no_replace_publish.is_supported()
+                    || !caps.content_verification.is_supported()
+                    || (op.mode == TransferMode::Move
+                        && (!caps.leased_source_retirement.is_supported()
+                            || !caps.durable_flush.is_supported()))))
         {
             return Err(error(
                 MutationErrorKind::Unsupported,
@@ -559,6 +575,13 @@ impl<S: TransferStorage> Runner<'_, S> {
             && self
                 .storage
                 .rename_eligible(&self.sources[reference], &parent);
+        if rename_only && !atomic {
+            return Err(error(
+                MutationErrorKind::Unsupported,
+                "owned rename cannot fall back to copy/retire",
+            )
+            .into());
+        }
         if atomic {
             self.check_cancel()?;
             self.append(
@@ -566,6 +589,9 @@ impl<S: TransferStorage> Runner<'_, S> {
                 Phase::AtomicRenamePrepared,
                 Some(expected.identity.clone()),
             )?;
+            if rename_only {
+                self.check_cancel()?;
+            }
             let published = outcome(self.storage.rename_no_replace(
                 self.sources.get_mut(reference).unwrap(),
                 &parent,
@@ -574,6 +600,15 @@ impl<S: TransferStorage> Runner<'_, S> {
             ))?;
             let observed = self.storage.inspect(&published).map_err(Failure::pending)?;
             item.observations.push(observed.clone());
+            if rename_only && cancelled(self.flag) {
+                return Err(Failure::pending(
+                    error(
+                        MutationErrorKind::Cancelled,
+                        "cancelled after owned rename dispatch",
+                    )
+                    .with_observation(observed),
+                ));
+            }
             check_observation(
                 &observed,
                 &expected.identity,
@@ -587,6 +622,15 @@ impl<S: TransferStorage> Runner<'_, S> {
                 Phase::AtomicRenameObserved,
                 Some(observed.identity.clone()),
             )?;
+            if rename_only && cancelled(self.flag) {
+                return Err(Failure::pending(
+                    error(
+                        MutationErrorKind::Cancelled,
+                        "cancelled after owned rename journal acknowledgment",
+                    )
+                    .with_observation(observed),
+                ));
+            }
             let verified = self
                 .storage
                 .verify(&published, &expected.digest)
@@ -599,11 +643,29 @@ impl<S: TransferStorage> Runner<'_, S> {
                 Some(expected.digest.length),
             )
             .map_err(Failure::pending)?;
+            if rename_only && cancelled(self.flag) {
+                return Err(Failure::pending(
+                    error(
+                        MutationErrorKind::Cancelled,
+                        "cancelled after owned rename verification",
+                    )
+                    .with_observation(verified),
+                ));
+            }
             self.append(
                 op,
                 Phase::DestinationVerified,
                 Some(verified.identity.clone()),
             )?;
+            if rename_only && cancelled(self.flag) {
+                return Err(Failure::pending(
+                    error(
+                        MutationErrorKind::Cancelled,
+                        "cancelled before owned rename commit",
+                    )
+                    .with_observation(verified),
+                ));
+            }
             self.append(op, Phase::Committed, Some(verified.identity.clone()))?;
             self.published.insert(op.id, (published, verified));
             return Ok(());

@@ -130,6 +130,26 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-copy
 
+      - name: Exercise owned Windows write-through rename-only Move
+        if: runner.os == 'Windows'
+        run: |
+          cargo +1.99.0 clippy --locked -p sorter-executor --features experimental-windows-rename --all-targets -- -D warnings
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $primitiveListing = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib rename_guard_tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $primitiveCases = @($primitiveListing | Where-Object { $_ -match ': test$' })
+          if ($primitiveCases.Count -ne 12) { throw "Expected all 12 native rename-guard cases; found $($primitiveCases.Count)" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib rename_guard_tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $listing = cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-rename --test windows_rename -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $cases = @($listing | Where-Object { $_ -match ': test$' })
+          if ($cases.Count -ne 7) { throw "Expected all 7 owned Windows rename driver cases; found $($cases.Count)" }
+          cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-rename --test windows_rename -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-rename
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Test native metadata with static Windows CRT
         if: runner.os == 'Windows'
         env:

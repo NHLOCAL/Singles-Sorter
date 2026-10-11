@@ -167,13 +167,13 @@ impl PhysicalJournalV2 {
     /// independently identify the complete inspected binding and original scope.
     /// This does not require the pre-job source still to exist after a rename.
     pub fn open_for_recovery(scope: &RecoveryScope, job_id: &str, bytes: &[u8]) -> Result<Self> {
-        Self::open_for_recovery_domain(scope, job_id, bytes, false)
+        Self::open_for_recovery_domain(scope, job_id, bytes, ExecutionDomain::Synthetic)
     }
     pub(crate) fn open_for_recovery_domain(
         scope: &RecoveryScope,
         job_id: &str,
         bytes: &[u8],
-        owned_windows_copy: bool,
+        domain: ExecutionDomain,
     ) -> Result<Self> {
         let end = bytes
             .iter()
@@ -190,7 +190,7 @@ impl PhysicalJournalV2 {
             || head.body.binding.target_root.identity.as_ref()
                 != Some(&scope.original_scope.target_root)
             || !head.body.binding.valid_domain()
-            || head.body.binding.owned_windows_copy != owned_windows_copy
+            || head.body.binding.domain() != domain
         {
             return Err(E::Scope);
         }
@@ -266,6 +266,21 @@ impl PhysicalJournalV2 {
             .collect();
         let last = history.last().map(|e| e.phase);
         use Phase::*;
+        if self.binding.data.owned_windows_rename
+            && !matches!(
+                event.phase,
+                Prepared
+                    | AtomicRenamePrepared
+                    | AtomicRenameObserved
+                    | DestinationVerified
+                    | Committed
+                    | Failed
+                    | Cancelled
+                    | NeedsRecovery
+            )
+        {
+            return Err(E::InvalidTransition);
+        }
         let valid = match (last, event.phase) {
             (None, Prepared) => true,
             (Some(Prepared), TempAllocationPrepared | AtomicRenamePrepared)

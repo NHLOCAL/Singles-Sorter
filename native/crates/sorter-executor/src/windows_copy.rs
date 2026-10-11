@@ -57,11 +57,37 @@ pub fn validate_owned_copy(
     resources: &Resources,
     scope: &ExecutionScope,
 ) -> Result<ExecutionBinding> {
-    if !plan.request.settings.copy_mode
+    validate_owned_domain(
+        owned,
+        plan,
+        metadata,
+        recognition,
+        resources,
+        scope,
+        ExecutionDomain::OwnedWindowsCopy,
+    )
+}
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn validate_owned_domain(
+    owned: &WindowsMutationStorage,
+    plan: &JobPlanV2,
+    metadata: &mut dyn MetadataProvider,
+    recognition: &mut dyn RecognitionProvider,
+    resources: &Resources,
+    scope: &ExecutionScope,
+    domain: ExecutionDomain,
+) -> Result<ExecutionBinding> {
+    let copy = domain == ExecutionDomain::OwnedWindowsCopy;
+    if plan.request.settings.copy_mode != copy
         || !plan.request.settings.main_folder_only
         || plan.request.settings.duet_mode
         || plan.operations.len() != 1
-        || scope.allowed_modes != [TransferMode::Copy]
+        || scope.allowed_modes
+            != [if copy {
+                TransferMode::Copy
+            } else {
+                TransferMode::Move
+            }]
     {
         return Err(E::Unsupported);
     }
@@ -118,7 +144,7 @@ pub fn validate_owned_copy(
     }
     if source_file_path.parent() != Some(source_path.as_path())
         || transfer.destination.root != *target
-        || !transfer.copy
+        || transfer.copy != copy
     {
         return Err(E::Scope);
     }
@@ -129,7 +155,14 @@ pub fn validate_owned_copy(
         root: target.clone(),
         components: transfer.destination.components.clone(),
     };
-    destination_parent(owned, &destination, &scope.target_root).map_err(|_| E::Scope)?;
+    let actual_destination =
+        destination_parent(owned, &destination, &scope.target_root).map_err(|_| E::Scope)?;
+    if !copy
+        && !matches!((&scope.source_root, actual_destination.identity()),
+        (ObjectIdentity::Windows { volume: a, .. }, ObjectIdentity::Windows { volume: b, .. }) if a == b)
+    {
+        return Err(E::Unsupported);
+    }
     let mut reads = OwnedCopyReadStorage::new(owned, &plan.request.source, target)?;
     let binding = validate_execution_domain(
         plan,
@@ -138,14 +171,14 @@ pub fn validate_owned_copy(
         recognition,
         resources,
         scope,
-        true,
+        domain,
     )?;
     if !binding.data.valid_domain() {
         return Err(E::InvalidBinding);
     }
     Ok(binding)
 }
-fn destination_parent(
+pub(crate) fn destination_parent(
     owned: &WindowsMutationStorage,
     destination: &DestinationEvidence,
     root: &ObjectIdentity,
@@ -248,8 +281,23 @@ pub fn open_owned_copy_recovery(
     job_id: &str,
     bytes: &[u8],
 ) -> Result<crate::physical_journal::PhysicalJournalV2> {
+    open_owned_recovery_domain(
+        owned,
+        scope,
+        job_id,
+        bytes,
+        ExecutionDomain::OwnedWindowsCopy,
+    )
+}
+pub(crate) fn open_owned_recovery_domain(
+    owned: &WindowsMutationStorage,
+    scope: &RecoveryScope,
+    job_id: &str,
+    bytes: &[u8],
+    domain: ExecutionDomain,
+) -> Result<crate::physical_journal::PhysicalJournalV2> {
     let journal = crate::physical_journal::PhysicalJournalV2::open_for_recovery_domain(
-        scope, job_id, bytes, true,
+        scope, job_id, bytes, domain,
     )?;
     let binding = journal.binding();
     for observed in [&binding.data.source_root, &binding.data.target_root] {
@@ -274,9 +322,14 @@ pub struct WindowsCopyRecovery {
 }
 impl WindowsCopyRecovery {
     pub fn new(owned: &WindowsMutationStorage, binding: &ExecutionBinding) -> Result<Self> {
-        if !binding.recovery_only
-            || !binding.data.owned_windows_copy
-            || !binding.data.valid_domain()
+        Self::new_domain(owned, binding, ExecutionDomain::OwnedWindowsCopy)
+    }
+    pub(crate) fn new_domain(
+        owned: &WindowsMutationStorage,
+        binding: &ExecutionBinding,
+        domain: ExecutionDomain,
+    ) -> Result<Self> {
+        if !binding.recovery_only || binding.data.domain() != domain || !binding.data.valid_domain()
         {
             return Err(E::Scope);
         }

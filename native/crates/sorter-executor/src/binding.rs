@@ -83,6 +83,15 @@ pub(crate) struct BindingData {
     pub synthetic_only: bool,
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub owned_windows_copy: bool,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub owned_windows_rename: bool,
+}
+/// Internal domain choice; serialized booleans do not grant a live binding.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ExecutionDomain {
+    Synthetic,
+    OwnedWindowsCopy,
+    OwnedWindowsRename,
 }
 /// Only validation constructs a usable binding. A serialized header is evidence,
 /// never an ExecutionBinding or authorization token.
@@ -154,7 +163,7 @@ pub fn validate_execution(
         recognition,
         resources,
         scope,
-        false,
+        ExecutionDomain::Synthetic,
     )
 }
 #[allow(clippy::too_many_arguments)]
@@ -165,7 +174,7 @@ pub(crate) fn validate_execution_domain(
     recognition: &mut dyn RecognitionProvider,
     resources: &Resources,
     scope: &ExecutionScope,
-    owned_windows_copy: bool,
+    domain: ExecutionDomain,
 ) -> Result<ExecutionBinding> {
     let (root, target) = validate_plan_scope_domain(
         plan,
@@ -174,7 +183,7 @@ pub(crate) fn validate_execution_domain(
         recognition,
         resources,
         scope,
-        owned_windows_copy,
+        domain,
     )?;
     let mut operations = vec![];
     let mut destinations = HashSet::new();
@@ -336,8 +345,9 @@ pub(crate) fn validate_execution_domain(
                 resources: scope.resources.clone(),
                 allowed_modes: scope.allowed_modes.clone(),
             },
-            synthetic_only: !owned_windows_copy,
-            owned_windows_copy,
+            synthetic_only: domain == ExecutionDomain::Synthetic,
+            owned_windows_copy: domain == ExecutionDomain::OwnedWindowsCopy,
+            owned_windows_rename: domain == ExecutionDomain::OwnedWindowsRename,
         },
     })
 }
@@ -403,7 +413,7 @@ pub(crate) fn validate_plan_scope(
         recognition,
         resources,
         scope,
-        false,
+        ExecutionDomain::Synthetic,
     )
 }
 #[allow(clippy::too_many_arguments)]
@@ -414,7 +424,7 @@ fn validate_plan_scope_domain(
     recognition: &mut dyn RecognitionProvider,
     resources: &Resources,
     scope: &ExecutionScope,
-    owned_windows_copy: bool,
+    domain: ExecutionDomain,
 ) -> Result<(EntryObservation, EntryObservation)> {
     verify_job_plan_binding(plan).map_err(|_| E::InvalidBinding)?;
     if plan.request.mode != JobMode::Sort || plan.operations.is_empty() {
@@ -450,11 +460,24 @@ fn validate_plan_scope_domain(
     if scope.inspected_plan != plan.binding_sha256 {
         return Err(E::Scope);
     }
-    if owned_windows_copy {
-        if !cfg!(all(windows, feature = "experimental-windows-copy"))
-            || !plan.request.settings.copy_mode
+    if domain != ExecutionDomain::Synthetic {
+        let (enabled, copy_mode, mode) = match domain {
+            ExecutionDomain::OwnedWindowsCopy => (
+                cfg!(all(windows, feature = "experimental-windows-copy")),
+                true,
+                TransferMode::Copy,
+            ),
+            ExecutionDomain::OwnedWindowsRename => (
+                cfg!(all(windows, feature = "experimental-windows-rename")),
+                false,
+                TransferMode::Move,
+            ),
+            ExecutionDomain::Synthetic => unreachable!(),
+        };
+        if !enabled
+            || plan.request.settings.copy_mode != copy_mode
             || plan.operations.len() != 1
-            || scope.allowed_modes != [TransferMode::Copy]
+            || scope.allowed_modes != [mode]
             || plan.observations.iter().any(|e| !windows(e))
         {
             return Err(E::Unsupported);
@@ -492,7 +515,7 @@ fn windows(e: &EntryObservation) -> bool {
 impl BindingData {
     /// Domain evidence is necessary but never sufficient authority to execute.
     pub(crate) fn valid_domain(&self) -> bool {
-        if self.synthetic_only && !self.owned_windows_copy {
+        if self.synthetic_only && !self.owned_windows_copy && !self.owned_windows_rename {
             return synthetic(&self.source_root)
                 && synthetic(&self.target_root)
                 && self.operations.iter().all(|o| {
@@ -500,20 +523,42 @@ impl BindingData {
                         && matches!(o.destination.root, StorageRef::TestOpaque { .. })
                 });
         }
+        let (enabled, mode, copy_effect) =
+            match (self.owned_windows_copy, self.owned_windows_rename) {
+                (true, false) => (
+                    cfg!(all(windows, feature = "experimental-windows-copy")),
+                    TransferMode::Copy,
+                    true,
+                ),
+                (false, true) => (
+                    cfg!(all(windows, feature = "experimental-windows-rename")),
+                    TransferMode::Move,
+                    false,
+                ),
+                _ => return false,
+            };
         !self.synthetic_only
-            && self.owned_windows_copy
-            && cfg!(all(windows, feature = "experimental-windows-copy"))
+            && enabled
             && self.album_context.is_none()
             && self.operations.len() == 1
             && windows(&self.source_root)
             && windows(&self.target_root)
-            && self.scope_evidence.allowed_modes == [TransferMode::Copy]
+            && self.scope_evidence.allowed_modes == [mode]
             && self.operations.iter().all(|o| {
-                o.mode == TransferMode::Copy
-                    && o.copy_effect
+                o.mode == mode
+                    && o.copy_effect == copy_effect
                     && o.duet_cohort.is_none()
                     && windows(&o.source.observation)
                     && o.destination.root == self.target_root.reference
             })
+    }
+    pub(crate) fn domain(&self) -> ExecutionDomain {
+        if self.owned_windows_rename {
+            ExecutionDomain::OwnedWindowsRename
+        } else if self.owned_windows_copy {
+            ExecutionDomain::OwnedWindowsCopy
+        } else {
+            ExecutionDomain::Synthetic
+        }
     }
 }

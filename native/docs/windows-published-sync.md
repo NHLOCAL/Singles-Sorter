@@ -107,3 +107,8 @@ path does not authorize deletion of a replacement or certify durable retirement.
 That distinct missing completion/barrier contract must not be papered over by
 converting `DispositionRequested` into `Retired`. A same-volume rename-only Move
 slice need not pretend that copy-and-retire is already solved.
+
+The separately gated candidate has since been implemented as the
+[owned same-volume rename-only domain](windows-owned-rename.md), retaining these
+OS/storage assumptions and leaving copy-and-retire unsupported. Its native
+acceptance is an independent exact-tree CI gate.

@@ -1,5 +1,5 @@
 //! Identity-bound experimental journal/recovery and transfer contracts.
-//! Native Copy is restricted to owned Windows fixtures; no CLI/UI apply exists.
+//! Native Copy and same-volume rename are owned Windows fixtures only; no CLI/UI apply.
 pub mod binding;
 pub mod physical_journal;
 pub mod recovery;
@@ -43,3 +43,6 @@ pub mod windows_journal;
 
 #[cfg(all(windows, feature = "experimental-windows-copy"))]
 pub mod windows_copy;
+
+#[cfg(all(windows, feature = "experimental-windows-rename"))]
+pub mod windows_rename;
