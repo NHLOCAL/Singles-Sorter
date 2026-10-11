@@ -138,8 +138,10 @@ class DesktopPackageTests(unittest.TestCase):
         with patch.dict(p.os.environ, original, clear=True), \
              patch.object(p.subprocess, 'run', return_value=result) as run, \
              contextlib.redirect_stdout(io.StringIO()):
+            # Windows os.environ normalizes keys to uppercase at insertion.
+            before = dict(p.os.environ)
             p.read_windows_acl_evidence([self.pkg])
-            self.assertEqual(dict(p.os.environ), original)
+            self.assertEqual(dict(p.os.environ), before)
         child = run.call_args.kwargs['env']
         self.assertFalse(any(key.upper() == 'PSMODULEPATH' for key in child))
         self.assertEqual(child['KEEP_OWNED'], 'value')
