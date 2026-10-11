@@ -207,6 +207,18 @@ jobs:
           cargo metadata --locked --format-version 1 --manifest-path src-tauri/Cargo.toml --filter-platform x86_64-pc-windows-msvc --no-default-features --features desktop,original-ai,tauri/custom-protocol | Set-Content -Encoding utf8 test-results/native-windows/dependency-review/desktop-metadata.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Get-FileHash src-tauri/Cargo.lock -Algorithm SHA256 | ConvertTo-Json | Set-Content -Encoding utf8 test-results/native-windows/dependency-review/lock-hash.json
+          cargo metadata --locked --format-version 1 --manifest-path src-tauri/Cargo.toml --filter-platform x86_64-pc-windows-msvc --no-default-features --features desktop,original-ai,selected-windows-execution,tauri/custom-protocol | Set-Content -Encoding utf8 test-results/native-windows/dependency-review/selected-desktop-metadata.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Retain early dependency evidence for exact package policy review
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: desktop-dependency-review-${{ github.sha }}
+          path: native/apps/singles-ui/test-results/native-windows/dependency-review/
+          if-no-files-found: error
+          retention-days: 7
+          include-hidden-files: false
+          overwrite: false
 
       - name: Always discard every local crate's cached build outputs
         run: |
