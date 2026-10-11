@@ -29,7 +29,7 @@ below require final-head CI results; the presence of a test is not a passing run
 | CLI real-file v2 JSON | Same request fields and original planning policy | Read-only; optional selected planning adapter strengthens capability observations |
 | CLI NDJSON execution | New one-process inspected-digest handshake | Opt-in Windows candidate; legacy positional compatibility still unavailable |
 | Android | Shared UI remains fail-closed without native apply eligibility | Separate Android workstream; Windows proof is not Android/provider/ARM64 proof |
-| Portable Windows artifact | Existing original-AI read-only package remains separate | Selected execution candidate is not silently shipped under read-only package claims |
+| Portable Windows artifact | Explicit original-AI + selected-execution feature profile | EXE-bound real Copy/Move/artist-folder checks required on staged and extracted ZIP; package README and provenance identify supported mutations |
 
 ## Current verification record
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Allowlisted, build-time Windows desktop AI preview packaging; no installer."""
+"""Allowlisted, build-time Windows desktop AI selected-execution packaging; no installer."""
 from __future__ import annotations
 import argparse
 import hashlib
@@ -32,6 +32,9 @@ EXE = 'singles-sorter-preview.exe'
 REQUIRED_CHECKS = {'original-models-executed', 'disabled-no-inference', 'cancel-no-stale-plan',
                    'back-no-stale-plan', 'reload-no-stale-plan', 'repeat-preview', 'missing-model-fail-closed',
                    'corrupt-model-fail-closed', 'protected-files-unchanged'}
+APPLY_CHECKS = {'actual-multi-file-copy', 'actual-same-volume-move', 'artist-and-singles-folders',
+                'review-dismiss-no-effects', 'stale-plan-no-effects', 'one-shot-no-repeat', 'original-ai-selected-copy'}
+DESKTOP_FEATURES = ['desktop', 'original-ai', 'selected-windows-execution', 'tauri/custom-protocol']
 require, digest = cli.require, cli.digest
 
 
@@ -43,6 +46,7 @@ def report_gate(path, binary, mode, package=None):
     require(report.get('binary_sha256') == digest(binary), 'acceptance not bound to executable')
     if mode == 'on':
         require(REQUIRED_CHECKS <= set(report.get('original_ai_checks', [])), 'incomplete original-AI acceptance')
+        require(report.get('apply_mode') == 'on' and APPLY_CHECKS <= set(report.get('apply_checks', [])), 'incomplete actual selected Copy/Move acceptance')
         require(package is not None and report.get('package_sha256sums_sha256') == digest(package / 'SHA256SUMS.txt'), 'acceptance not bound to exact package')
     return report
 
@@ -57,7 +61,7 @@ def validate_shape(root):
     actual_assets = cli.check_assets(root / 'models/original')
     require((root / 'licenses/inventory.json').is_file() and (root / 'licenses/SOURCE-AVAILABILITY.md').is_file(), 'complete license inventory required')
     inventory = json.loads((root / 'licenses/inventory.json').read_text(encoding='utf-8'))
-    require(inventory.get('profile') == 'desktop' and inventory.get('features') == ['desktop', 'original-ai', 'tauri/custom-protocol'], 'desktop-specific notice closure required')
+    require(inventory.get('profile') == 'desktop' and inventory.get('features') == DESKTOP_FEATURES, 'desktop-specific notice closure required')
     inventory_files = inventory.get('files', [])
     names = ['licenses/' + row['path'] for row in inventory_files]
     require(len(names) == len(set(names)) and set(names) == {n for n in files if n.startswith('licenses/') and n != 'licenses/inventory.json'}, 'notice inventory does not cover exact files')
@@ -65,6 +69,8 @@ def validate_shape(root):
         name = 'licenses/' + row['path']
         require(cli.safe_name(name) and files[name] == row['sha256'] and (root / name).stat().st_size == row['bytes'], 'notice inventory hash/size mismatch')
     provenance = json.loads((root / 'provenance.json').read_text(encoding='utf-8'))
+    require(provenance.get('physical_apply') is True and provenance.get('features') == DESKTOP_FEATURES
+            and provenance.get('kind') == 'original-ai-windows-x64-selected-execution-desktop', 'selected-execution package provenance required')
     require(provenance['assets_sha256'] == actual_assets, 'provenance model mismatch')
     require(provenance['executable_sha256'] == digest(root / EXE), 'provenance executable mismatch')
     imports = cli.pe_imports(root / EXE)
@@ -152,16 +158,18 @@ def build(args):
         subprocess.run([sys.executable, str(HERE.parent / 'licenses/collect_licenses.py'), '--profile', 'desktop',
                         '--repo-root', str(ROOT), '--output-dir', str(stage / 'licenses')], check=True)
         provenance = {
-            'schema_version':1, 'kind':'original-ai-windows-x64-read-only-desktop-preview',
+            'schema_version':1, 'kind':'original-ai-windows-x64-selected-execution-desktop',
             'source_commit':cli.run_text(['git','rev-parse','HEAD']), 'source_tree':cli.run_text(['git','rev-parse','HEAD^{tree}']),
-            'ci_url':args.ci_url, 'target':'x86_64-pc-windows-msvc', 'features':['desktop','original-ai','tauri/custom-protocol'],
+            'ci_url':args.ci_url, 'target':'x86_64-pc-windows-msvc', 'features':DESKTOP_FEATURES,
             'executable_sha256':digest(stage / EXE), 'pe_imports':imports, 'msvc_dumpbin_dependents':dumpbin,
             'rustc':cli.run_text(['rustc','-vV']), 'cargo':cli.run_text(['cargo','-V']),
             'native_build':args.build_info.read_text(encoding='utf-8-sig'), 'pcre2_build':receipt,
             'prerequisites':['Microsoft Edge WebView2 Evergreen Runtime', 'Microsoft Visual C++ x64 Redistributable'],
             'crt_linkage':'dynamic MSVC; Microsoft runtime DLLs not bundled',
             'webview2_sdk_loader':'Microsoft SDK static loader; exact SDK license/notices included in licenses',
-            'clean_machine_without_prerequisites_tested':False, 'physical_apply':False,
+            'clean_machine_without_prerequisites_tested':False, 'physical_apply':True,
+            'supported_apply':['selected-root Copy', 'selected-root same-volume rename Move', 'required artist and singles directories'],
+            'unsupported_apply':['albums', 'FixNames/tag writes', 'cross-volume Move', 'Move duet retirement'],
             'model_execution':'local native; no Python or model network', 'webview_network_isolation_tested':False,
             'baseline_commit':cli.BASELINE, 'bundle_id':'original-v14-ner-3.7.5',
             'assets_sha256':assets, 'assets_bytes':{n:(models/n).stat().st_size for n in cli.ASSETS},

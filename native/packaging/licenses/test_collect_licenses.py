@@ -17,7 +17,7 @@ SPEC.loader.exec_module(collector)
 class LicenseCollectorTests(unittest.TestCase):
     def test_desktop_policy_includes_tauri_production_feature(self):
         policy = json.loads(Path(__file__).with_name('reviewed-desktop-cargo-notices.json').read_text())
-        self.assertEqual(collector.PROFILES['desktop']['features'], ['desktop', 'original-ai', 'tauri/custom-protocol'])
+        self.assertEqual(collector.PROFILES['desktop']['features'], ['desktop', 'original-ai', 'selected-windows-execution', 'tauri/custom-protocol'])
         self.assertEqual(policy['features'], collector.PROFILES['desktop']['features'])
         graph = {row['package']: row for row in policy['graph']}
         for package in ('tauri@2.12.3', 'tauri-macros@2.7.2'):

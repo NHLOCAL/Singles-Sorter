@@ -2,8 +2,9 @@
 
 This integration is opt-in (`selected-windows-execution`) and must pass the
 actual Windows gates at its final commit before it is described as validated.
-Default preview binaries and the separately packaged original-AI preview remain
-read-only. A plan document alone is never an executable authorization token.
+Default feature-off binaries remain read-only. The selected desktop package
+combines original AI and selected execution, and archive/upload requires actual
+Copy/Move acceptance on both staged and consumer-extracted bytes. A plan document alone is never an executable authorization token.
 
 ## Desktop flow
 

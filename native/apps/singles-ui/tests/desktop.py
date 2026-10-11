@@ -274,14 +274,14 @@ try:
                                        restart_app, OUTPUT).run(BINARY, AI_MODE, ai_scratch)
         checks.append('Real IPC AI mode ' + AI_MODE + ': ' + ', '.join(original_ai_checks))
         if os.environ.get('SINGLES_DESKTOP_APPLY_EXPECTED') == 'on':
-            apply_checks = exercise_apply(script, click, fill, wait, capture, scratch / 'apply-cases', OUTPUT)
+            apply_checks = exercise_apply(script, click, fill, wait, capture, scratch / 'apply-cases', OUTPUT, AI_MODE)
             checks.append('Real selected-root execution: ' + ', '.join(apply_checks))
     assert not script("return !!document.querySelector('vite-error-overlay')")
     if package_guard:
         package_guard.verify()
         assert verify_package(BINARY.parent) == PACKAGE_MANIFEST_SHA256
         assert set(REQUIRED_CHECKS).issubset(original_ai_checks)
-    (OUTPUT / 'acceptance.json').write_text(json.dumps({'status':'passed','platform':'windows-native-tauri','binary_sha256':hashlib.sha256(BINARY.read_bytes()).hexdigest(),'ipc_mocked':False,'medium_integrity_verified':True,'ai_mode':AI_MODE,'package_sha256sums_sha256':PACKAGE_MANIFEST_SHA256,'original_ai_checks':original_ai_checks,'apply_checks':apply_checks,'checks':checks,'remaining':['Narrator','200 percent DPI','Android SAF and physical ARM64','unsupported apply modes and process-restart recovery']},ensure_ascii=False,indent=2),encoding='utf-8')
+    (OUTPUT / 'acceptance.json').write_text(json.dumps({'status':'passed','platform':'windows-native-tauri','binary_sha256':hashlib.sha256(BINARY.read_bytes()).hexdigest(),'ipc_mocked':False,'medium_integrity_verified':True,'ai_mode':AI_MODE,'package_sha256sums_sha256':PACKAGE_MANIFEST_SHA256,'original_ai_checks':original_ai_checks,'apply_mode':os.environ.get('SINGLES_DESKTOP_APPLY_EXPECTED','off'),'apply_checks':apply_checks,'checks':checks,'remaining':['Narrator','200 percent DPI','Android SAF and physical ARM64','unsupported apply modes and process-restart recovery']},ensure_ascii=False,indent=2),encoding='utf-8')
 except Exception as error:
     snapshot(active_binary, OUTPUT, 'webdriver-failure')
     if session:

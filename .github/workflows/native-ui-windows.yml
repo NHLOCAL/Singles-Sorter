@@ -314,12 +314,14 @@ jobs:
           New-Item -ItemType Directory -Force ../../target/desktop-original/feature-off | Out-Null
           Copy-Item src-tauri/target/release/singles-sorter-preview.exe ../../target/desktop-original/feature-off/singles-sorter-preview.exe
 
-      - name: Build original-only desktop through pinned Tauri CLI
+      - name: Build original-AI and selected-execution desktop through pinned Tauri CLI
         run: |
-          npm run build:desktop -- --ci --features original-ai -- --locked
+          npm run build:desktop -- --ci --features original-ai,selected-windows-execution -- --locked
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai,selected-windows-execution
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:ORIGINAL_AI_BUNDLE = (Resolve-Path ../../target/desktop-original/bundle).Path
-          cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai --release --lib -- --ignored
+          cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai,selected-windows-execution --release --lib -- --ignored
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Stage only reviewed desktop runtime, exact models and full notices
@@ -341,24 +343,26 @@ jobs:
           python ../../packaging/windows-desktop-preview/package_desktop.py build --binary src-tauri/target/release/singles-sorter-preview.exe --bundle "$out/bundle" --featureoff-report test-results/native-windows/feature-off/acceptance.json --featureoff-binary "$out/feature-off/singles-sorter-preview.exe" --pcre2-receipt "$out/pcre2/build-receipt.json" --build-info "$out/native-build-info.txt" --dumpbin-report "$out/dumpbin-dependents.txt" --ci-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" --output "$out/windows-desktop-preview"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Exercise staged original-AI desktop with real Medium-integrity IPC
+      - name: Exercise staged original-AI desktop and actual selected Copy Move
         env:
           SINGLES_DESKTOP_AI_EXPECTED: 'on'
+          SINGLES_DESKTOP_APPLY_EXPECTED: 'on'
           SINGLES_DESKTOP_BIN: ${{ github.workspace }}/native/target/desktop-original/windows-desktop-preview/singles-sorter-preview.exe
           SINGLES_UI_OUTPUT: ${{ github.workspace }}/native/apps/singles-ui/test-results/native-windows/original-staged
         run: |
           python tests/run_desktop_medium.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Archive and extract only after original-AI acceptance
+      - name: Archive and extract only after original-AI and actual apply acceptance
         run: |
-          python ../../packaging/windows-desktop-preview/package_desktop.py archive --package ../../target/desktop-original/windows-desktop-preview --report test-results/native-windows/original-staged/acceptance.json --output ../../target/desktop-original/singles-sorter-original-ai-windows-x64-desktop-preview.zip
+          python ../../packaging/windows-desktop-preview/package_desktop.py archive --package ../../target/desktop-original/windows-desktop-preview --report test-results/native-windows/original-staged/acceptance.json --output ../../target/desktop-original/singles-sorter-original-ai-windows-x64-selected-desktop.zip
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Expand-Archive -LiteralPath ../../target/desktop-original/singles-sorter-original-ai-windows-x64-desktop-preview.zip -DestinationPath '../../target/desktop-original/תצוגה חדשה extracted'
+          Expand-Archive -LiteralPath ../../target/desktop-original/singles-sorter-original-ai-windows-x64-selected-desktop.zip -DestinationPath '../../target/desktop-original/תצוגה חדשה extracted'
 
-      - name: Exercise consumer-extracted original-AI desktop with real IPC
+      - name: Exercise extracted original-AI desktop and actual selected Copy Move
         env:
           SINGLES_DESKTOP_AI_EXPECTED: 'on'
+          SINGLES_DESKTOP_APPLY_EXPECTED: 'on'
           SINGLES_DESKTOP_BIN: ${{ github.workspace }}/native/target/desktop-original/תצוגה חדשה extracted/singles-sorter-preview.exe
           SINGLES_UI_OUTPUT: ${{ github.workspace }}/native/apps/singles-ui/test-results/native-windows/original-extracted
         run: |
@@ -367,34 +371,18 @@ jobs:
           python ../../packaging/windows-desktop-preview/package_desktop.py verify --package '../../target/desktop-original/תצוגה חדשה extracted' --report test-results/native-windows/original-extracted/acceptance.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Retain verified original-AI desktop folder preview, never a release
+      - name: Retain verified original-AI selected-execution desktop package
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: original-ai-windows-x64-desktop-preview-${{ github.sha }}
+          name: original-ai-windows-x64-selected-desktop-${{ github.sha }}
           path: |
-            native/target/desktop-original/singles-sorter-original-ai-windows-x64-desktop-preview.zip
-            native/target/desktop-original/singles-sorter-original-ai-windows-x64-desktop-preview.zip.sha256
+            native/target/desktop-original/singles-sorter-original-ai-windows-x64-selected-desktop.zip
+            native/target/desktop-original/singles-sorter-original-ai-windows-x64-selected-desktop.zip.sha256
             native/apps/singles-ui/test-results/native-windows/original-extracted/acceptance.json
           if-no-files-found: error
           retention-days: 7
           include-hidden-files: false
           overwrite: false
-
-      - name: Build selected-root execution desktop candidate
-        run: |
-          npm run build:desktop -- --ci --features selected-windows-execution -- --locked
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features selected-windows-execution
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise selected-root actual Copy Move review and stale-plan rejection
-        env:
-          SINGLES_DESKTOP_AI_EXPECTED: 'off'
-          SINGLES_DESKTOP_APPLY_EXPECTED: 'on'
-          SINGLES_UI_OUTPUT: ${{ github.workspace }}/native/apps/singles-ui/test-results/native-windows/selected-execution
-        run: |
-          python tests/run_desktop_medium.py
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Upload actual runtime evidence, including failures
         if: always()

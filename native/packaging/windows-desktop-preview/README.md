@@ -1,8 +1,8 @@
-# Original-AI Windows desktop preview package
+# Original-AI selected-execution Windows desktop package
 
 This extends the existing Windows native UI acceptance workflow, not any release
 or installer workflow. Default-off UI acceptance stays independent. The explicit
-`original-ai` build consumes the five authenticated runtime files in
+`original-ai,selected-windows-execution` build consumes the five authenticated runtime files in
 `<exe parent>/models/original`; no environment override or renderer-selected
 model path is introduced.
 
@@ -15,7 +15,11 @@ The CLI dependency allowlist and packaging behavior are unchanged.
 Real Medium-integrity `tauri-driver` acceptance then exercises the staged package.
 `archive` requires an acceptance receipt bound to both EXE and SHA256SUMS, all
 required original-model, cancellation/navigation/repeat, corrupt/missing model
-and immutability checks, and real IPC. Consumer ZIP extraction is tested again
+and immutability checks, and real IPC. It also requires multi-file Copy and
+same-volume Move, artist/singles directory creation, dismissed review with no
+effects, stale-source refusal and one-shot repeat refusal on that same EXE.
+A separate actual Copy case uses the configured original AI to choose a real
+destination, binding model-backed planning and execution in the same flow. Consumer ZIP extraction repeats both original-AI and physical apply checks
 in a Hebrew/space path. Upload happens only after final verification. Unit tests
 of packaging never count as actual Windows evidence.
 
@@ -24,7 +28,9 @@ WebView2's SDK loader may be statically linked by the already-used native bindin
 the desktop notice inventory must cover that exact component and applicable
 redistribution terms. Do not claim this executable contains no Microsoft code.
 No installer/signing, clean-machine, network-isolated WebView2, Narrator, 200% DPI,
-physical apply or Android acceptance claim is made here.
+Android acceptance claim is made here. Physical execution support is limited to
+the package-proven selected Copy/same-volume Move paths; albums, tag writes,
+cross-volume Move and duet source retirement stay explicitly unavailable.
 
 Source archives are generated into the artifact only, never Git. Original model
 pickle, Python/oracle environments/corpora, private data, node_modules, build

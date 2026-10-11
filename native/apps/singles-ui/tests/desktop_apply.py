@@ -6,19 +6,19 @@ user folder, or rollback assertion. Independent Python hashes verify each effect
 import hashlib
 import json
 from pathlib import Path
-from desktop_ai import write_wave
+from desktop_ai import write_wave, AI_NAME, ALIAS_NAME, ARTIST
 
 
 def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def exercise_apply(script, click, fill, wait, capture, root, output):
+def exercise_apply(script, click, fill, wait, capture, root, output, ai_mode="off"):
     root = Path(root)
     root.mkdir()  # Refuse reused trees.
     receipts = []
 
-    def setup(source, target, copy):
+    def setup(source, target, copy, configured=False):
         if script("return document.querySelector('#app').dataset.view==='results'"):
             click('#back-setup')
             wait(lambda: script("return document.querySelector('#app').dataset.view==='setup'"))
@@ -31,29 +31,33 @@ def exercise_apply(script, click, fill, wait, capture, root, output):
         click('#advanced')
         click('#duet-first')
         wait(lambda: script("return !document.querySelector('#duet-first').disabled"))
-        # The selected-root lane uses a feature-off binary. No model substitution.
-        script("document.querySelector('#ai-profile').value='Disabled';document.querySelector('#ai-profile').dispatchEvent(new Event('change',{bubbles:true}));")
+        # Explicit profiles exercise both original aliases and real original inference.
+        profile = 'Configured' if configured else 'Disabled'
+        script(f"document.querySelector('#ai-profile').value='{profile}';document.querySelector('#ai-profile').dispatchEvent(new Event('change',{{bubbles:true}}));")
         click('#advanced-dialog .close-dialog')
         click('#sort')
-        wait(lambda: script("return document.querySelector('#app').dataset.view==='results'"))
+        wait(lambda: script("return document.querySelector('#app').dataset.view==='results'"), timeout=120)
         assert script("return !document.querySelector('#review-apply').hidden && !document.querySelector('#review-apply').disabled"), 'Native backend did not authorize the real owned plan'
 
-    for copy in (True, False):
-        case = root / ('copy' if copy else 'move')
+    cases = [(True, False, 'copy'), (False, False, 'move')]
+    if ai_mode == 'on':
+        cases.append((True, True, 'original-ai-copy'))
+    for copy, configured, label in cases:
+        case = root / label
         source, target = case / 'מקור', case / 'יעד'
         source.mkdir(parents=True); target.mkdir()
-        paths = [source / f'אברהם פריד - בדיקת ביצוע {index}.wav' for index in range(2)]
+        paths = [source / name for name in (AI_NAME, ALIAS_NAME)] if configured else [source / f'אברהם פריד - בדיקת ביצוע {index}.wav' for index in range(2)]
         for path in paths:
             write_wave(path)
         before = {path.name: digest(path) for path in paths}
-        setup(source, target, copy)
+        setup(source, target, copy, configured)
         assert not list(target.iterdir()), 'Preview changed the selected target'
         assert {p.name: digest(p) for p in paths} == before
         click('#review-apply')
         wait(lambda: script("return document.querySelector('#apply-dialog').open"))
         assert script("return document.querySelector('#apply-source').value") == str(source)
         assert script("return document.querySelector('#apply-target').value") == str(target)
-        capture('apply-review-' + ('copy' if copy else 'move'))
+        capture('apply-review-' + label)
         click('#apply-back')
         assert not list(target.iterdir()), 'Dismissed review must have no effects'
         click('#review-apply'); click('#confirm-apply')
@@ -62,15 +66,15 @@ def exercise_apply(script, click, fill, wait, capture, root, output):
         destinations = list(target.rglob('*.wav'))
         assert len(destinations) == 2
         assert {p.name: digest(p) for p in destinations} == before
-        assert all(p.parent.name == 'סינגלים' and p.parent.parent.name == 'אברהם פריד' for p in destinations)
+        assert all(p.parent.name == 'סינגלים' and p.parent.parent.name == (ARTIST if configured and p.name == AI_NAME else 'אברהם פריד') for p in destinations)
         if copy:
             assert {p.name: digest(p) for p in paths} == before
         else:
             assert not list(source.rglob('*.wav'))
         journal_path = script("return document.querySelector('#journal-path').value")
         assert journal_path and Path(journal_path).exists()
-        capture('apply-complete-' + ('copy' if copy else 'move'))
-        receipts.append(dict(copy_mode=copy, source=str(source), target=str(target),
+        capture('apply-complete-' + label)
+        receipts.append(dict(copy_mode=copy, ai_profile='Configured' if configured else 'Disabled', source=str(source), target=str(target),
                              source_sha256=before, destination_sha256={p.name:digest(p) for p in destinations},
                              journal_path=journal_path, source_retained=copy, ipc_mocked=False))
     # A fresh plan must detect a content change after inspection, even if the
@@ -87,4 +91,4 @@ def exercise_apply(script, click, fill, wait, capture, root, output):
     capture('apply-stale-plan-rejected')
     receipts.append(dict(case='stale_source_rejected', target_unchanged=True, ipc_mocked=False))
     (Path(output) / 'selected-execution.json').write_text(json.dumps(dict(status='passed', cases=receipts), ensure_ascii=False, indent=2), encoding='utf-8')
-    return ['actual-multi-file-copy', 'actual-same-volume-move', 'artist-and-singles-folders', 'review-dismiss-no-effects', 'stale-plan-no-effects', 'one-shot-no-repeat']
+    return (['original-ai-selected-copy'] if ai_mode == 'on' else []) + ['actual-multi-file-copy', 'actual-same-volume-move', 'artist-and-singles-folders', 'review-dismiss-no-effects', 'stale-plan-no-effects', 'one-shot-no-repeat']
