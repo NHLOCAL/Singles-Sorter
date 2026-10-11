@@ -31,3 +31,4 @@ main{display:flex;flex-direction:column;gap:16px;align-items:stretch}.workspace{
 @media(pointer:coarse){button,.help-badge,.option,dialog .option,.detail-button{min-height:48px}.help-badge{min-width:48px}.action-command>.help-badge{flex-basis:48px}}
 /* Text enlargement may wrap instead of hiding meaningful labels. */
 #app.reflow #results .source-name,#app.reflow #results .row-action,#app.reflow #results .row-reason>span:not(.mobile-action){white-space:normal;overflow:visible}#app.reflow #results .row-reason{white-space:normal}#app.reflow main{display:flex}#app.reflow #results{margin:0}
+#row-title{min-width:0;overflow-wrap:anywhere}#import-filename{overflow-wrap:anywhere;unicode-bidi:isolate}
