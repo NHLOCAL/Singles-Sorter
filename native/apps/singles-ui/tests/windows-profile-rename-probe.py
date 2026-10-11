@@ -87,9 +87,11 @@ with tempfile.TemporaryDirectory(prefix="singles-profile-probe-") as owned:
                 print("CONFIRMED: absolute MoveFileExW conflicts with strict parent guard (32)", flush=True)
                 rename_same_directory(handle, destination)
                 assert not source.exists()
-                assert (directory / destination).read_bytes() == data
             finally:
                 k.CloseHandle(handle)
+            # Python pathname reads do not share DELETE with the rename handle.
+            # Match production: release the child handle, retain the parent guard.
+            assert (directory / destination).read_bytes() == data
         result = k.MoveFileExW(str(directory), str(Path(owned) / "moved"), 0)
         error = c.get_last_error()
         assert not result and error == 32, ("Directory guard must reject rename", result, error)
