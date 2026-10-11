@@ -141,9 +141,19 @@ pub fn analyze_album(
     folder: &FolderObservation,
     provider: &mut dyn MetadataProvider,
 ) -> AlbumDecision {
+    analyze_album_controlled(folder, provider, &crate::job_plan::UncontrolledPlanning)
+        .expect("uncontrolled album analysis cannot abort")
+}
+/// Same released policy and read order, with job-control checks between files.
+pub fn analyze_album_controlled(
+    folder: &FolderObservation,
+    provider: &mut dyn MetadataProvider,
+    control: &dyn crate::job_plan::PlanningControl,
+) -> Result<AlbumDecision, crate::job_plan::PlanningAbort> {
+    control.checkpoint(crate::job_plan::PlanningBoundary::Visit)?;
     let mut decision = AlbumDecision::singles();
     if folder.entry.kind != EntryKind::Directory {
-        return decision;
+        return Ok(decision);
     }
     // Intentionally suffix-only, including directories with audio suffixes.
     let audio: Vec<_> = folder
@@ -160,7 +170,7 @@ pub fn analyze_album(
             .count()
             > 1
     {
-        return decision;
+        return Ok(decision);
     }
     let mut albums = Vec::new();
     let mut artists = Vec::new();
@@ -168,6 +178,7 @@ pub fn analyze_album(
     let mut filenames = Vec::new();
     let mut empty = 0;
     for entry in audio {
+        control.checkpoint(crate::job_plan::PlanningBoundary::File)?;
         let result: Result<(), String> = (|| {
             let opened = provider.open(entry);
             decision.trace.push(AlbumTraceEvent::Open {
@@ -230,6 +241,7 @@ pub fn analyze_album(
             }
             Ok(())
         })();
+        control.checkpoint(crate::job_plan::PlanningBoundary::File)?;
         if let Err(kind) = result {
             decision.trace.push(AlbumTraceEvent::FileError {
                 source: entry.reference.clone(),
@@ -238,7 +250,7 @@ pub fn analyze_album(
         }
     }
     if empty == total {
-        return decision;
+        return Ok(decision);
     }
     if albums.iter().chain(artists.iter()).any(|(s, _)| {
         s != EMPTY
@@ -246,7 +258,7 @@ pub fn analyze_album(
                 .iter()
                 .any(|k| s.to_lowercase().contains(k))
     }) {
-        return decision;
+        return Ok(decision);
     }
     // Counter.most_common retains the first encountered name on a tie.
     let Some((album, count)) = albums
@@ -259,13 +271,13 @@ pub fn analyze_album(
         decision.trace.push(AlbumTraceEvent::ProtectedError {
             kind: "IndexError".into(),
         });
-        return decision;
+        return Ok(decision);
     };
     decision.is_album = (album != EMPTY && *count as f64 / total as f64 >= 0.7)
         || consistent(&tracks, total)
         || consistent(&filenames, total);
     if !decision.is_album {
-        return decision;
+        return Ok(decision);
     }
     let artist_total: usize = artists.iter().map(|(_, n)| n).sum();
     decision.artist_name = artists
@@ -281,7 +293,7 @@ pub fn analyze_album(
         },
         RepairMode::Hebrew,
     ));
-    decision
+    Ok(decision)
 }
 // Arbitrary-width signed numbers retained as canonical decimal strings. No machine-int
 // truncation; only range comparisons against 1 and list length are needed by policy.

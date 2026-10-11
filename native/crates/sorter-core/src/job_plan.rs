@@ -1,12 +1,14 @@
 //! V2 ordered, read-only planning. All effects are predictions, never execution.
-use crate::album::{AlbumDecision, FolderObservation, analyze_album};
+use crate::album::{AlbumDecision, FolderObservation, analyze_album_controlled};
 use crate::discovery::*;
 use crate::metadata::MetadataProvider;
 use crate::{ClassifierFact, Settings};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashSet};
+mod control;
+pub use control::*;
 mod singles;
-pub use singles::single_decision;
+pub use singles::{single_decision, single_decision_controlled};
 mod timeline;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -21,18 +23,27 @@ pub enum AiProfile {
 }
 pub trait RecognitionProvider {
     fn profile(&self) -> AiProfile;
-    fn classify(&mut self, text: &str) -> Result<ClassifierFact, String>;
-    fn ner(&mut self, text: &str) -> Result<Vec<String>, String>;
+    /// True only after an actual inference attempt in this job.
+    fn inference_executed(&self) -> bool {
+        false
+    }
+    /// Diagnostics for this job only; included in the integrity binding.
+    /// A reused provider must not retain diagnostics from a prior job.
+    fn diagnostics(&self) -> Vec<String> {
+        vec![]
+    }
+    fn classify(&mut self, text: &str) -> Result<ClassifierFact, RecognitionError>;
+    fn ner(&mut self, text: &str) -> Result<Vec<String>, RecognitionError>;
 }
 pub struct DisabledRecognition;
 impl RecognitionProvider for DisabledRecognition {
     fn profile(&self) -> AiProfile {
         AiProfile::Disabled
     }
-    fn classify(&mut self, _: &str) -> Result<ClassifierFact, String> {
+    fn classify(&mut self, _: &str) -> Result<ClassifierFact, RecognitionError> {
         Err("AI intentionally disabled".into())
     }
-    fn ner(&mut self, _: &str) -> Result<Vec<String>, String> {
+    fn ner(&mut self, _: &str) -> Result<Vec<String>, RecognitionError> {
         Err("AI intentionally disabled".into())
     }
 }
@@ -188,9 +199,10 @@ impl Tree {
         storage: &mut dyn ReadStorage,
         root: EntryObservation,
         recurse: bool,
+        control: &dyn PlanningControl,
     ) -> Result<Self, JobError> {
         let mut tree = Self::default();
-        tree.add(storage, root, vec![], recurse, &mut HashSet::new())?;
+        tree.add(storage, root, vec![], recurse, &mut HashSet::new(), control)?;
         Ok(tree)
     }
     fn add(
@@ -200,7 +212,9 @@ impl Tree {
         path: Vec<String>,
         recurse: bool,
         seen: &mut HashSet<StorageRef>,
+        control: &dyn PlanningControl,
     ) -> Result<usize, JobError> {
+        control.checkpoint(PlanningBoundary::Collection)?;
         if !seen.insert(entry.reference.clone()) {
             return Err(JobError {
                 code: "CYCLIC_ENUMERATION".into(),
@@ -218,7 +232,9 @@ impl Tree {
             self.visits.push(i);
             let children = storage.children(&entry.reference)?;
             // Preserve provider encounter order, including files amongst directories.
+            control.checkpoint(PlanningBoundary::Collection)?;
             for child in children {
+                control.checkpoint(PlanningBoundary::Collection)?;
                 let mut p = path.clone();
                 p.push(child.name.clone());
                 let c = self.nodes.len();
@@ -234,7 +250,7 @@ impl Tree {
                 let children = self.nodes[i].children.clone();
                 for c in children {
                     if self.nodes[c].entry.kind == EntryKind::Directory {
-                        self.expand(storage, c, seen)?;
+                        self.expand(storage, c, seen, control)?;
                     }
                 }
             }
@@ -246,7 +262,9 @@ impl Tree {
         storage: &mut dyn ReadStorage,
         i: usize,
         seen: &mut HashSet<StorageRef>,
+        control: &dyn PlanningControl,
     ) -> Result<(), JobError> {
+        control.checkpoint(PlanningBoundary::Collection)?;
         let node = self.nodes[i].clone();
         if !seen.insert(node.entry.reference.clone()) {
             return Err(JobError {
@@ -256,7 +274,10 @@ impl Tree {
         }
         self.visits.push(i);
         self.nodes[i].listed = true;
-        for child in storage.children(&node.entry.reference)? {
+        let children = storage.children(&node.entry.reference)?;
+        control.checkpoint(PlanningBoundary::Collection)?;
+        for child in children {
+            control.checkpoint(PlanningBoundary::Collection)?;
             let mut p = node.path.clone();
             p.push(child.name.clone());
             let c = self.nodes.len();
@@ -270,7 +291,7 @@ impl Tree {
         }
         for c in self.nodes[i].children.clone() {
             if self.nodes[c].entry.kind == EntryKind::Directory {
-                self.expand(storage, c, seen)?;
+                self.expand(storage, c, seen, control)?;
             }
         }
         Ok(())
@@ -346,8 +367,14 @@ impl State {
                 .is_none_or(|(kind, _)| *kind == EntryKind::Directory)
         })
     }
-    fn mkdir(&mut self, path: &[String], id: usize) {
+    fn mkdir(
+        &mut self,
+        path: &[String],
+        id: usize,
+        control: &dyn PlanningControl,
+    ) -> Result<(), PlanningAbort> {
         for len in 1..=path.len() {
+            control.checkpoint(PlanningBoundary::DeferredPlanning)?;
             let p = path[..len].to_vec();
             if !self.target.contains_key(&p) {
                 self.target
@@ -361,10 +388,17 @@ impl State {
                     });
             }
         }
+        Ok(())
     }
-    fn remove(&mut self, index: usize, id: usize) {
+    fn remove(
+        &mut self,
+        index: usize,
+        id: usize,
+        control: &dyn PlanningControl,
+    ) -> Result<(), PlanningAbort> {
+        control.checkpoint(PlanningBoundary::DeferredPlanning)?;
         if self.removed.contains_key(&index) {
-            return;
+            return Ok(());
         }
         self.removed.insert(index, id);
         self.plan
@@ -374,8 +408,9 @@ impl State {
                 source: self.source.nodes[index].entry.reference.clone(),
             });
         for c in self.source.nodes[index].children.clone() {
-            self.remove(c, id);
+            self.remove(c, id, control)?;
         }
+        Ok(())
     }
 }
 fn audio(name: &str) -> bool {
@@ -402,6 +437,24 @@ pub fn plan_job(
     metadata: &mut dyn MetadataProvider,
     recognition: &mut dyn RecognitionProvider,
 ) -> Result<JobPlanV2, JobError> {
+    plan_job_controlled(
+        request,
+        storage,
+        metadata,
+        recognition,
+        &UncontrolledPlanning,
+    )
+}
+/// An abort discards the entire local plan, including any predicted operations.
+/// The caller must create a fresh token for a retry; no partial plan is returned.
+pub fn plan_job_controlled(
+    request: &JobRequestV2,
+    storage: &mut dyn ReadStorage,
+    metadata: &mut dyn MetadataProvider,
+    recognition: &mut dyn RecognitionProvider,
+    control: &dyn PlanningControl,
+) -> Result<JobPlanV2, JobError> {
+    control.checkpoint(PlanningBoundary::Start)?;
     if recognition.profile() != request.ai_profile {
         return Err(JobError {
             code: "RECOGNITION_PROFILE_MISMATCH".into(),
@@ -421,6 +474,7 @@ pub fn plan_job(
         });
     }
     let root = storage.stat(&request.source)?;
+    control.checkpoint(PlanningBoundary::Collection)?;
     if root.kind != EntryKind::Directory {
         return Err(JobError {
             code: "SOURCE_NOT_DIRECTORY".into(),
@@ -433,6 +487,7 @@ pub fn plan_job(
             detail: "Sort requires a target".into(),
         })?;
         let target = storage.stat(r)?;
+        control.checkpoint(PlanningBoundary::Collection)?;
         if target.kind != EntryKind::Directory {
             return Err(JobError {
                 code: "TARGET_NOT_DIRECTORY".into(),
@@ -451,7 +506,7 @@ pub fn plan_job(
     } else {
         None
     };
-    let source = Tree::collect(storage, root, !request.settings.main_folder_only)?;
+    let source = Tree::collect(storage, root, !request.settings.main_folder_only, control)?;
     if source.nodes[0].children.is_empty() && request.mode == JobMode::Sort {
         return Err(JobError {
             code: "SOURCE_EMPTY".into(),
@@ -459,7 +514,7 @@ pub fn plan_job(
         });
     }
     let target_tree = target_root
-        .map(|r| Tree::collect(storage, r, true))
+        .map(|r| Tree::collect(storage, r, true, control))
         .transpose()?;
     let mut observations = source
         .nodes
@@ -469,6 +524,7 @@ pub fn plan_job(
     let mut target = BTreeMap::new();
     if let Some(t) = target_tree {
         for n in t.nodes {
+            control.checkpoint(PlanningBoundary::Collection)?;
             target.insert(n.path, (n.entry.kind, None));
             observations.push(n.entry);
         }
@@ -535,10 +591,18 @@ pub fn plan_job(
             .push("AI intentionally disabled; no native inference bundle is used".into());
     }
     if request.mode == JobMode::FixNames {
-        timeline::fix(&mut state, &mut metadata)?;
+        timeline::fix(&mut state, &mut metadata, control)?;
     } else {
-        timeline::sort(&mut state, visits, storage, &mut metadata, recognition)?;
+        timeline::sort(
+            &mut state,
+            visits,
+            storage,
+            &mut metadata,
+            recognition,
+            control,
+        )?;
     }
+    control.checkpoint(PlanningBoundary::Binding)?;
     state.artist_counts.sort_by_key(|a| std::cmp::Reverse(a.1));
     state.artist_counts.truncate(5);
     state.plan.predicted_legacy_counters.top_artists = state.artist_counts;
@@ -558,7 +622,11 @@ pub fn plan_job(
     if state.plan.metadata_observations.iter().any(|o|matches!(o,crate::metadata::MetadataObservation::Open{result:Err(e),..} if !matches!(e,crate::metadata::MetadataError::LegacyOpen{..}))){state.plan.blockers.push("METADATA_ADAPTER_LIMITATION".into());}
     state.plan.blockers.sort();
     state.plan.blockers.dedup();
+    control.checkpoint(PlanningBoundary::Binding)?;
+    state.plan.warnings.extend(recognition.diagnostics());
+    control.checkpoint(PlanningBoundary::Binding)?;
     state.plan.binding_sha256 = binding_digest(&state.plan)?;
+    control.checkpoint(PlanningBoundary::Result)?;
     Ok(state.plan)
 }
 

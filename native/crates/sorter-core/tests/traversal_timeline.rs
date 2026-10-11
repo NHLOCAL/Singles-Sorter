@@ -47,14 +47,14 @@ impl RecognitionProvider for Ai {
     fn profile(&self) -> AiProfile {
         self.profile.clone()
     }
-    fn classify(&mut self, _: &str) -> Result<ClassifierFact, String> {
+    fn classify(&mut self, _: &str) -> Result<ClassifierFact, RecognitionError> {
         Ok(if self.spec["accept"].as_bool().unwrap_or(false) {
             ClassifierFact::Accept
         } else {
             ClassifierFact::Reject
         })
     }
-    fn ner(&mut self, s: &str) -> Result<Vec<String>, String> {
+    fn ner(&mut self, s: &str) -> Result<Vec<String>, RecognitionError> {
         Ok(self.spec["ner"][s]
             .as_array()
             .map(|a| a.iter().map(|s| s.as_str().unwrap().into()).collect())

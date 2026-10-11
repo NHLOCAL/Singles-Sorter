@@ -37,11 +37,19 @@ fn ensure_children(
     }
     Ok(())
 }
-fn subtree(state: &mut State, index: usize, storage: &mut dyn ReadStorage) -> Result<(), JobError> {
+fn subtree(
+    state: &mut State,
+    index: usize,
+    storage: &mut dyn ReadStorage,
+    control: &dyn PlanningControl,
+) -> Result<(), RecognitionError> {
+    control.checkpoint(PlanningBoundary::Collection)?;
     if state.source.nodes[index].entry.kind == EntryKind::Directory {
-        ensure_children(state, index, storage)?;
+        let result = ensure_children(state, index, storage);
+        control.checkpoint(PlanningBoundary::Collection)?;
+        result.map_err(|e| RecognitionError::Legacy(e.detail))?;
         for c in state.source.nodes[index].children.clone() {
-            subtree(state, c, storage)?;
+            subtree(state, c, storage, control)?;
         }
     }
     Ok(())
@@ -52,10 +60,12 @@ pub(super) fn sort(
     storage: &mut dyn ReadStorage,
     metadata: &mut dyn MetadataProvider,
     recognition: &mut dyn RecognitionProvider,
+    control: &dyn PlanningControl,
 ) -> Result<(), JobError> {
     let enabled = !matches!(state.plan.request.ai_profile, AiProfile::Disabled);
     let mut singles = vec![];
     for i in visits {
+        control.checkpoint(PlanningBoundary::Visit)?;
         let read = state.read(i);
         if !read.virtually_present {
             state.plan.decisions.push(DecisionV2::Vanished { read });
@@ -63,28 +73,36 @@ pub(super) fn sort(
         }
         let entry = state.source.nodes[i].entry.clone();
         let children = if entry.kind == EntryKind::Directory {
-            ensure_children(state, i, storage)?;
+            let result = ensure_children(state, i, storage);
+            control.checkpoint(PlanningBoundary::Collection)?;
+            result?;
             let direct = state.source.nodes[i]
                 .children
                 .iter()
                 .filter(|c| !state.removed.contains_key(c))
                 .map(|&c| state.source.nodes[c].entry.clone())
                 .collect();
-            let decision = analyze_album(
+            let decision = analyze_album_controlled(
                 &FolderObservation {
                     entry: entry.clone(),
                     direct_children: direct,
                 },
                 metadata,
-            );
+                control,
+            )?;
+            control.checkpoint(PlanningBoundary::Visit)?;
             state.plan.decisions.push(DecisionV2::Album {
                 read: read.clone(),
                 decision: decision.clone(),
             });
             if decision.is_album {
                 if decision.should_process
-                    && let Err(error) = album(state, i, &decision, storage)
+                    && let Err(error) = album(state, i, &decision, storage, control)
                 {
+                    let error = match error {
+                        RecognitionError::Abort(abort) => return Err(abort.into()),
+                        RecognitionError::Model(error) | RecognitionError::Legacy(error) => error,
+                    };
                     state
                         .plan
                         .decisions
@@ -99,18 +117,20 @@ pub(super) fn sort(
             vec![]
         };
         for c in children {
+            control.checkpoint(PlanningBoundary::File)?;
             let file = state.source.nodes[c].entry.clone();
             if state.removed.contains_key(&c) || file.kind != EntryKind::File || !audio(&file.name)
             {
                 continue;
             }
             let read = state.read(c);
-            match single_decision(
+            match single_decision_controlled(
                 &file,
                 &state.plan.request.alias_rows,
                 metadata,
                 recognition,
                 enabled,
+                control,
             ) {
                 Ok(artists) => {
                     state.plan.decisions.push(DecisionV2::Single {
@@ -122,6 +142,10 @@ pub(super) fn sort(
                     }
                 }
                 Err(error) => {
+                    let error = match error {
+                        RecognitionError::Abort(abort) => return Err(abort.into()),
+                        RecognitionError::Model(error) | RecognitionError::Legacy(error) => error,
+                    };
                     state
                         .plan
                         .decisions
@@ -132,13 +156,16 @@ pub(super) fn sort(
         }
     }
     // Do not interleave these transfers with collection/album effects.
+    control.checkpoint(PlanningBoundary::DeferredPlanning)?;
     'single_files: for (i, mut artists) in singles {
+        control.checkpoint(PlanningBoundary::DeferredPlanning)?;
         if !state.plan.request.settings.duet_mode {
             artists.truncate(1);
         }
         let duet = state.plan.request.settings.duet_mode && artists.len() > 1;
         let mut operations = vec![];
         for artist in artists {
+            control.checkpoint(PlanningBoundary::DeferredPlanning)?;
             if artist.is_empty() && state.plan.request.settings.abc_sort {
                 state.plan.decisions.push(DecisionV2::ItemError {
                     read: state.read(i),
@@ -173,6 +200,7 @@ pub(super) fn sort(
             destination.push(filename.clone());
             let mut counter = 1;
             while state.target.contains_key(&destination) {
+                control.checkpoint(PlanningBoundary::DeferredPlanning)?;
                 destination.pop();
                 destination.push(unique_name(&filename, counter));
                 counter += 1;
@@ -197,7 +225,7 @@ pub(super) fn sort(
                 transfer: Box::new(intent),
             });
             operations.push(id);
-            state.mkdir(&directory, id);
+            state.mkdir(&directory, id, control)?;
             if new_directory {
                 state.created_artists.insert(artist.clone());
             }
@@ -213,7 +241,7 @@ pub(super) fn sort(
                     kind: EntryKind::File,
                 });
             if !copy {
-                state.remove(i, id);
+                state.remove(i, id, control)?;
             }
             state.plan.predicted_legacy_counters.songs_sorted += 1;
             state.count(&artist, 1);
@@ -260,7 +288,9 @@ fn album(
     index: usize,
     decision: &AlbumDecision,
     storage: &mut dyn ReadStorage,
-) -> Result<(), String> {
+    control: &dyn PlanningControl,
+) -> Result<(), RecognitionError> {
+    control.checkpoint(PlanningBoundary::Visit)?;
     let (Some(name), Some(artist)) = (&decision.album_name, &decision.artist_name) else {
         return Ok(());
     };
@@ -288,12 +318,13 @@ fn album(
     if !state.can_mkdir(&destination) {
         return Ok(());
     }
-    subtree(state, index, storage).map_err(|e| e.detail)?;
+    subtree(state, index, storage, control)?;
     let copy = state.plan.request.settings.copy_mode;
     let id = state.plan.operations.len();
-    state.mkdir(&destination, id);
+    state.mkdir(&destination, id, control)?;
     let mut children = vec![];
     for child in state.source.nodes[index].children.clone() {
+        control.checkpoint(PlanningBoundary::File)?;
         let entry = state.source.nodes[child].entry.clone();
         let Some(name) = crate::sanitize(&entry.name) else {
             continue;
@@ -324,9 +355,9 @@ fn album(
             blockers,
         });
         if success {
-            copy_subtree(state, child, &path, id);
+            copy_subtree(state, child, &path, id, control)?;
             if !copy {
-                state.remove(child, id);
+                state.remove(child, id, control)?;
             }
         }
     }
@@ -343,7 +374,7 @@ fn album(
         remove_empty_source,
     });
     if remove_empty_source {
-        state.remove(index, id);
+        state.remove(index, id, control)?;
     }
     let files = state
         .target
@@ -358,7 +389,14 @@ fn album(
     state.count(artist, files);
     Ok(())
 }
-fn copy_subtree(state: &mut State, index: usize, path: &[String], id: usize) {
+fn copy_subtree(
+    state: &mut State,
+    index: usize,
+    path: &[String],
+    id: usize,
+    control: &dyn PlanningControl,
+) -> Result<(), PlanningAbort> {
+    control.checkpoint(PlanningBoundary::DeferredPlanning)?;
     let kind = state.source.nodes[index].entry.kind;
     state.target.insert(path.to_vec(), (kind, Some(id)));
     state
@@ -372,10 +410,16 @@ fn copy_subtree(state: &mut State, index: usize, path: &[String], id: usize) {
     for c in state.source.nodes[index].children.clone() {
         let mut p = path.to_vec();
         p.push(state.source.nodes[c].entry.name.clone());
-        copy_subtree(state, c, &p, id);
+        copy_subtree(state, c, &p, id, control)?;
     }
+    Ok(())
 }
-pub(super) fn fix(state: &mut State, metadata: &mut dyn MetadataProvider) -> Result<(), JobError> {
+pub(super) fn fix(
+    state: &mut State,
+    metadata: &mut dyn MetadataProvider,
+    control: &dyn PlanningControl,
+) -> Result<(), JobError> {
+    control.checkpoint(PlanningBoundary::Visit)?;
     let parents = if state.plan.request.settings.main_folder_only {
         vec![0]
     } else {
@@ -397,6 +441,7 @@ pub(super) fn fix(state: &mut State, metadata: &mut dyn MetadataProvider) -> Res
         .map(|n| (n.path.clone(), n.entry.kind))
         .collect::<BTreeMap<_, _>>();
     for i in files {
+        control.checkpoint(PlanningBoundary::File)?;
         let node = state.source.nodes[i].clone();
         let mut parent = node.path.clone();
         parent.pop();
@@ -424,6 +469,7 @@ pub(super) fn fix(state: &mut State, metadata: &mut dyn MetadataProvider) -> Res
         } else {
             crate::fix_plan::fix_file(&node.entry, &names, metadata)
         };
+        control.checkpoint(PlanningBoundary::File)?;
         if result.intended_name.as_ref().is_some_and(|name| {
             names
                 .iter()
@@ -445,6 +491,7 @@ pub(super) fn fix(state: &mut State, metadata: &mut dyn MetadataProvider) -> Res
                 .map(|(p, k)| (p.clone(), *k))
                 .collect::<Vec<_>>();
             for (old, kind) in moved {
+                control.checkpoint(PlanningBoundary::DeferredPlanning)?;
                 occupied.remove(&old);
                 let mut new = p.clone();
                 new.extend_from_slice(&old[node.path.len()..]);
@@ -465,7 +512,7 @@ pub(super) fn fix(state: &mut State, metadata: &mut dyn MetadataProvider) -> Res
         }
         if renamed && node.entry.kind == EntryKind::Directory {
             for child in node.children {
-                state.remove(child, op);
+                state.remove(child, op, control)?;
             }
         }
     }

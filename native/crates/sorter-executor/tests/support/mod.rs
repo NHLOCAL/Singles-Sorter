@@ -88,14 +88,14 @@ impl RecognitionProvider for Ai {
             AiProfile::Disabled
         }
     }
-    fn classify(&mut self, _: &str) -> std::result::Result<ClassifierFact, String> {
+    fn classify(&mut self, _: &str) -> std::result::Result<ClassifierFact, RecognitionError> {
         if self.fail {
             Err("failed".into())
         } else {
             Ok(ClassifierFact::Accept)
         }
     }
-    fn ner(&mut self, _: &str) -> std::result::Result<Vec<String>, String> {
+    fn ner(&mut self, _: &str) -> std::result::Result<Vec<String>, RecognitionError> {
         if self.fail {
             Err("failed".into())
         } else {

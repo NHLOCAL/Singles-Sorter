@@ -46,7 +46,25 @@ pub fn single_decision(
     metadata: &mut dyn MetadataProvider,
     recognition: &mut dyn RecognitionProvider,
     enabled: bool,
-) -> Result<Vec<String>, String> {
+) -> Result<Vec<String>, RecognitionError> {
+    single_decision_controlled(
+        entry,
+        aliases,
+        metadata,
+        recognition,
+        enabled,
+        &UncontrolledPlanning,
+    )
+}
+pub fn single_decision_controlled(
+    entry: &EntryObservation,
+    aliases: &[Vec<String>],
+    metadata: &mut dyn MetadataProvider,
+    recognition: &mut dyn RecognitionProvider,
+    enabled: bool,
+    control: &dyn PlanningControl,
+) -> Result<Vec<String>, RecognitionError> {
+    control.checkpoint(PlanningBoundary::File)?;
     let filename = recognition_text(&entry.name)?;
     let filename = stem(&filename);
     let mut found = alias(filename, aliases)?.into_iter().collect::<Vec<_>>();
@@ -87,16 +105,19 @@ pub fn single_decision(
                 found.push(mapped);
             } else if enabled && crate::check_artist(&artist) {
                 // The released classifier is explicitly fail-open on inference errors.
-                if !matches!(
-                    recognition.classify(&artist),
-                    Ok(crate::ClassifierFact::Reject)
-                ) {
-                    found.push(artist);
+                control.checkpoint(PlanningBoundary::Recognition)?;
+                let result = recognition.classify(&artist);
+                control.checkpoint(PlanningBoundary::RecognitionAcceptance)?;
+                match result {
+                    Err(RecognitionError::Abort(abort)) => return Err(abort.into()),
+                    Ok(crate::ClassifierFact::Reject) => {}
+                    _ => found.push(artist),
                 }
             }
         }
     }
     if !found.is_empty() {
+        control.checkpoint(PlanningBoundary::RecognitionAcceptance)?;
         return Ok(found);
     }
     let title = title
@@ -112,12 +133,19 @@ pub fn single_decision(
         found.push(a);
     }
     if found.is_empty() && enabled {
-        found = recognition.ner(filename)?;
+        control.checkpoint(PlanningBoundary::Recognition)?;
+        let result = recognition.ner(filename);
+        control.checkpoint(PlanningBoundary::RecognitionAcceptance)?;
+        found = result?;
         if found.is_empty()
             && let Some(t) = title
         {
-            found = recognition.ner(&t)?;
+            control.checkpoint(PlanningBoundary::Recognition)?;
+            let result = recognition.ner(&t);
+            control.checkpoint(PlanningBoundary::RecognitionAcceptance)?;
+            found = result?;
         }
     }
+    control.checkpoint(PlanningBoundary::RecognitionAcceptance)?;
     Ok(found)
 }

@@ -89,14 +89,14 @@ impl RecognitionProvider for Ai {
             AiProfile::Disabled
         }
     }
-    fn classify(&mut self, _: &str) -> std::result::Result<ClassifierFact, String> {
+    fn classify(&mut self, _: &str) -> std::result::Result<ClassifierFact, RecognitionError> {
         if self.fail {
             Err("failed".into())
         } else {
             Ok(ClassifierFact::Accept)
         }
     }
-    fn ner(&mut self, _: &str) -> std::result::Result<Vec<String>, String> {
+    fn ner(&mut self, _: &str) -> std::result::Result<Vec<String>, RecognitionError> {
         if self.fail {
             Err("failed".into())
         } else {
@@ -1694,4 +1694,63 @@ fn recovery_distinguishes_remaining_duet_copy_from_later_source() {
         recover_job(&b, &j, &mut storage).unwrap().operations[2].status,
         RecoveryStatus::ReadyForExplicitResume
     );
+}
+
+#[test]
+fn typed_planning_abort_cannot_produce_an_execution_binding() {
+    struct AbortingAi(AbortKind);
+    impl RecognitionProvider for AbortingAi {
+        fn profile(&self) -> AiProfile {
+            Ai {
+                duet: true,
+                fail: false,
+            }
+            .profile()
+        }
+        fn classify(&mut self, _: &str) -> std::result::Result<ClassifierFact, RecognitionError> {
+            Err(RecognitionError::Abort(PlanningAbort {
+                kind: self.0,
+                detail: "fatal".into(),
+            }))
+        }
+        fn ner(&mut self, _: &str) -> std::result::Result<Vec<String>, RecognitionError> {
+            Err(RecognitionError::Abort(PlanningAbort {
+                kind: self.0,
+                detail: "fatal".into(),
+            }))
+        }
+    }
+    for kind in [
+        AbortKind::Cancelled,
+        AbortKind::ResourceLimit,
+        AbortKind::Allocation,
+    ] {
+        let (plan, mut storage, resources, scope) = fixture(true);
+        assert!(matches!(
+            validate_execution(
+                &plan,
+                &mut storage,
+                &mut Metadata,
+                &mut AbortingAi(kind),
+                &resources,
+                &scope
+            ),
+            Err(sorter_executor::ExecutionError::Stale)
+        ));
+        // A new attempt after an abort must be fully revalidated from scratch.
+        assert!(
+            validate_execution(
+                &plan,
+                &mut storage,
+                &mut Metadata,
+                &mut Ai {
+                    duet: true,
+                    fail: false
+                },
+                &resources,
+                &scope
+            )
+            .is_ok()
+        );
+    }
 }

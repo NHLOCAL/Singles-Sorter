@@ -375,12 +375,21 @@ impl RecognitionProvider for CheckedRecognition<'_> {
     fn profile(&self) -> AiProfile {
         self.inner.profile()
     }
-    fn classify(&mut self, text: &str) -> std::result::Result<sorter_core::ClassifierFact, String> {
+    fn inference_executed(&self) -> bool {
+        self.inner.inference_executed()
+    }
+    fn diagnostics(&self) -> Vec<String> {
+        self.inner.diagnostics()
+    }
+    fn classify(
+        &mut self,
+        text: &str,
+    ) -> std::result::Result<sorter_core::ClassifierFact, RecognitionError> {
         let result = self.inner.classify(text);
         self.failed |= result.is_err();
         result
     }
-    fn ner(&mut self, text: &str) -> std::result::Result<Vec<String>, String> {
+    fn ner(&mut self, text: &str) -> std::result::Result<Vec<String>, RecognitionError> {
         let result = self.inner.ner(text);
         self.failed |= result.is_err();
         result
