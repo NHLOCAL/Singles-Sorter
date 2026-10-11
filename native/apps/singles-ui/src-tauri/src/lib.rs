@@ -82,6 +82,7 @@ pub fn run() {
             commands::get_settings,
             commands::get_model_status,
             commands::open_footer_link,
+            commands::open_project_link,
             commands::save_main_settings,
             commands::set_duet,
             commands::get_personal_list,

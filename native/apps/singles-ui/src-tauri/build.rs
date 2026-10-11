@@ -12,6 +12,7 @@ fn main() {
             "get_settings",
             "get_model_status",
             "open_footer_link",
+            "open_project_link",
             "save_main_settings",
             "set_duet",
             "get_personal_list",

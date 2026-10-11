@@ -1,30 +1,51 @@
-/** One non-interactive explanation per badge, usable with pointer, keyboard or touch. */
+import {HelpState} from './help-state';
+/** Hover closes synchronously on badge leave; keyboard and touch retain their
+ * own dismissal rules. Explanations contain text only and never receive focus. */
 export function installHelpBadges(root:HTMLElement){
- let active:HTMLButtonElement|null=null,pinned=false,timer:ReturnType<typeof setTimeout>|undefined;
- const bubble=document.createElement('div');bubble.id='context-help';bubble.className='help-popover';bubble.role='tooltip';bubble.hidden=true;
- function cancelClose(){clearTimeout(timer);}
- function close(){cancelClose();active?.removeAttribute('aria-describedby');active?.setAttribute('aria-expanded','false');active=null;pinned=false;bubble.hidden=true;}
- function position(){if(!active)return;const box=active.getBoundingClientRect();const width=bubble.getBoundingClientRect().width;
+ const state=new HelpState<HTMLButtonElement>();
+ let described:HTMLButtonElement|null=null,pointerFocus:HTMLButtonElement|null=null,pointerType='';
+ const bubble=document.createElement('div');bubble.id='context-help';bubble.className='help-popover';bubble.setAttribute('role','tooltip');bubble.hidden=true;
+ const disposers:Array<()=>void>=[];
+ function listen(target:EventTarget,type:string,listener:EventListener,capture=false){target.addEventListener(type,listener,capture);disposers.push(()=>target.removeEventListener(type,listener,capture));}
+ function position(){const active=state.active;if(!active)return;const box=active.getBoundingClientRect();const width=bubble.getBoundingClientRect().width;
   bubble.style.left=`${Math.max(8,Math.min(window.innerWidth-width-8,box.right-width))}px`;
   const height=bubble.getBoundingClientRect().height;
   bubble.style.top=`${Math.max(8,box.bottom+6+height<window.innerHeight?box.bottom+6:box.top-height-6)}px`;
  }
- function show(button:HTMLButtonElement){cancelClose();if(active!==button){close();active=button;}bubble.textContent=button.dataset.helpText??'';
-  // A dialog is in the top layer, so its explanation must belong to that dialog.
-  (button.closest('dialog')??document.body).append(bubble);bubble.hidden=false;button.setAttribute('aria-describedby',bubble.id);button.setAttribute('aria-expanded','true');position();
+ function render(){
+  if(described&&described!==state.active){described.removeAttribute('aria-describedby');described.setAttribute('aria-expanded','false');}
+  described=state.active;
+  if(!described){bubble.hidden=true;return;}
+  bubble.textContent=described.dataset.helpText??'';
+  (described.closest('dialog')??document.body).append(bubble);
+  bubble.hidden=false;described.setAttribute('aria-describedby',bubble.id);described.setAttribute('aria-expanded','true');position();
  }
- function scheduleClose(){cancelClose();if(!pinned)timer=setTimeout(close,160);}
+ function close(){state.close();render();}
  for(const button of root.querySelectorAll<HTMLButtonElement>('.help-badge')){
   button.type='button';button.setAttribute('aria-expanded','false');
-  button.addEventListener('pointerenter',event=>{if(event.pointerType!=='touch')show(button);});
-  button.addEventListener('pointerleave',scheduleClose);
-  button.addEventListener('focus',()=>show(button));
-  button.addEventListener('blur',()=>{if(!pinned)scheduleClose();});
-  button.addEventListener('click',()=>{if(active===button&&pinned)close();else{show(button);pinned=true;}});
+  listen(button,'pointerenter',event=>{state.enter(button,(event as PointerEvent).pointerType);render();});
+  listen(button,'pointerleave',event=>{state.leave(button,(event as PointerEvent).pointerType);render();});
+  listen(button,'focus',()=>{state.focus(button,pointerFocus===button);render();});
+  listen(button,'blur',()=>{if(pointerFocus===button)pointerFocus=null;state.blur(button);render();});
+  listen(button,'click',event=>{
+   const origin=pointerFocus===button?(pointerType==='touch'?'touch':'hover'):(event as MouseEvent).detail===0?'keyboard':'hover';
+   pointerFocus=null;state.activate(button,origin);render();
+  });
  }
- bubble.addEventListener('pointerenter',cancelClose);bubble.addEventListener('pointerleave',scheduleClose);
- document.addEventListener('pointerdown',event=>{if(active&&!active.contains(event.target as Node)&&!bubble.contains(event.target as Node))close();});
- document.addEventListener('keydown',event=>{if(event.key==='Escape'&&active){event.preventDefault();event.stopPropagation();close();}},true);
- document.addEventListener('scroll',position,true);window.addEventListener('resize',position);
- root.querySelectorAll('dialog').forEach(dialog=>dialog.addEventListener('close',close));
+ listen(document,'pointerdown',event=>{
+  const target=event.target instanceof Element?event.target:null;
+  const badge=target?.closest<HTMLButtonElement>('.help-badge')??null;
+  pointerFocus=badge&&root.contains(badge)?badge:null;pointerType=(event as PointerEvent).pointerType;
+  if(state.active&&!state.active.contains(target))close();
+ },true);
+ listen(document,'keydown',event=>{
+  pointerFocus=null;
+  if((event as KeyboardEvent).key==='Escape'&&state.active){event.preventDefault();event.stopPropagation();close();}
+ },true);
+ listen(document,'scroll',()=>{if(state.origin==='hover')close();else position();},true);
+ listen(window,'resize',position);
+ listen(window,'blur',close);
+ listen(document,'visibilitychange',()=>{if(document.hidden)close();});
+ root.querySelectorAll('dialog').forEach(dialog=>listen(dialog,'close',close));
+ return()=>{close();for(const dispose of disposers)dispose();bubble.remove();};
 }

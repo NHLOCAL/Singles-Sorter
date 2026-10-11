@@ -39,6 +39,20 @@ const MAX_PAGE: usize = 200;
 pub const FOOTER_URL: &str =
     "https://nhlocal.github.io/shir-bot?utm_source=singles_sorter_program&utm_medium=desktop";
 
+#[derive(Clone, Copy, Debug, Deserialize)]
+pub enum ProjectLink {
+    Source,
+    License,
+}
+impl ProjectLink {
+    pub fn url(self) -> &'static str {
+        match self {
+            Self::Source => "https://github.com/NHLOCAL/Singles-Sorter",
+            Self::License => "https://github.com/NHLOCAL/Singles-Sorter/blob/main/LICENSE",
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize)]
 pub struct HostError {
     pub code: String,
@@ -1234,10 +1248,24 @@ mod tests {
         assert!(!permissions.contains("dialog:"));
         assert!(!permissions.contains("opener:"));
         assert!(permissions.contains("open_footer_link"));
+        assert!(permissions.contains("open_project_link"));
         assert_eq!(
             FOOTER_URL,
             "https://nhlocal.github.io/shir-bot?utm_source=singles_sorter_program&utm_medium=desktop"
         );
+    }
+    #[test]
+    fn project_links_accept_named_destinations_only() {
+        let source: ProjectLink = serde_json::from_str("\"Source\"").unwrap();
+        let license: ProjectLink = serde_json::from_str("\"License\"").unwrap();
+        assert_eq!(source.url(), "https://github.com/NHLOCAL/Singles-Sorter");
+        assert_eq!(
+            license.url(),
+            "https://github.com/NHLOCAL/Singles-Sorter/blob/main/LICENSE"
+        );
+        for value in ["\"https://example.com\"", "\"source\"", "null", "{}"] {
+            assert!(serde_json::from_str::<ProjectLink>(value).is_err());
+        }
     }
     #[cfg(any(windows, target_os = "linux"))]
     #[test]

@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { androidInvoke,hasAndroidHost } from './android-transport';
 const invokeHost = <T>(command:string,args:Record<string,unknown>={}):Promise<T> => hasAndroidHost()?androidInvoke<T>(command,args):invoke<T>(command,args);
+import type {ProjectLinkTarget} from './about';
 import type { Host,ProfileHost } from './contracts';
 /** No generic shell, filesystem or arbitrary URL command is exposed here.
  * Apply accepts only a retained job and its inspected plan digest. */
@@ -31,3 +32,6 @@ export const nativeHost: Host & ProfileHost = {
 
 /** The host owns the single allowlisted destination; no URL arrives from JS. */
 export const openFooterLink = ():Promise<void> => invokeHost('open_footer_link');
+
+/** Only these named project destinations are accepted by the native host. */
+export const openProjectLink = (target:ProjectLinkTarget):Promise<void> => invokeHost('open_project_link',{target});

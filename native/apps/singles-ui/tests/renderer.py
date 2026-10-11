@@ -35,6 +35,7 @@ window.__TAURI_INTERNALS__={invoke:async(command,args={})=>{
  if(command==='preview_personal_import')return {token:'i1',encoding:args.encoding,rows:structuredClone(window.__importRows??[['זמר נוסף','תיקייה']]),diagnostics:[]};
  if(command==='confirm_personal_import'){const rows=structuredClone(window.__importRows??[['זמר נוסף','תיקייה']]);const removed=new Set();for(const edit of args.edits??[]){if(edit.kind==='delete')removed.add(edit.index);else rows[edit.index][edit.column]=edit.value;}window.__personalList.rows.push(...rows.filter((_,index)=>!removed.has(index)));window.__personalList.revision='r3';return structuredClone(window.__personalList);}
  if(command==='open_footer_link')return null;
+ if(command==='open_project_link'){if(window.__linkFailure)throw 'OPEN_LINK_FAILED';return null;}
  if(command==='get_model_status')return {available:false,message:'בדיקת ממשק בלבד עם IPC מדומה. לא בוצעה הסקה.',platform:'linux_test'};
  if(command==='select_root')return window.__pickerCancel?null:{token:args.role,display_name:args.role==='Source'?'C:\\Music\\שירים':'D:\\מוזיקה',capabilities:{read:true,list:true},platform:'linux_test'};
  if(command==='resolve_typed_root'){if(args.text==='bad')throw 'INVALID_ROOT';return {token:args.role,display_name:args.text,capabilities:{read:true,list:true},platform:'linux_test'};}
@@ -80,16 +81,24 @@ try:
         badge=page.locator('[aria-label="עזרה: תיקית מקור"]')
         badge.hover()
         expect(page.locator('#context-help')).to_be_visible()
-        page.locator('#context-help').hover()
+        # Check within the same event turn: no timeout, transition or pinned click.
+        assert badge.evaluate("el=>{el.dispatchEvent(new PointerEvent('pointerleave',{pointerType:'mouse'}));return document.querySelector('#context-help').hidden}")
+        page.locator('h1').hover()
+        badge.hover()
+        badge.click(click_count=2)
+        page.locator('h1').hover()
+        expect(page.locator('#context-help')).to_be_hidden()
+        page.locator('#source').focus()
+        badge.focus()
         expect(page.locator('#context-help')).to_be_visible()
         page.keyboard.press('Escape')
         expect(page.locator('#context-help')).to_be_hidden()
-        badge.focus()
+        expect(badge).to_be_focused()
         page.keyboard.press('Enter')
         expect(page.locator('#context-help')).to_be_visible()
-        page.locator('h1').click()
+        page.keyboard.press('Tab')
         expect(page.locator('#context-help')).to_be_hidden()
-        checks.append('Help hover, hoverable content, keyboard pin, Escape and outside dismissal')
+        checks.append('Help synchronous pointer leave, repeated mouse clicks, keyboard focus/blur, Escape and reopen')
         (OUTPUT / 'layout-metrics.json').write_text(json.dumps(measurements,ensure_ascii=False,indent=2),encoding='utf-8')
         page.screenshot(path=str(OUTPUT / 'renderer-mock-desktop.png'), full_page=True)
         checks.append('Desktop page identity and nonblank renderer')
@@ -329,9 +338,31 @@ try:
         page.locator('#menu').click()
         page.get_by_role('button', name='איך משתמשים?').click()
         expect(page.locator('#help-content')).to_contain_text('בחר תיקית מקור')
+        page.locator('[data-help="about"]').click()
+        expect(page.locator('#usage-content')).to_be_hidden()
+        expect(page.locator('#about-content')).to_be_visible()
+        expect(page.locator('#about-version')).to_have_text(json.loads((ROOT/'package.json').read_text())['version'])
+        expect(page.locator('[data-help="about"]')).to_have_attribute('aria-pressed','true')
+        expect(page.locator('#about-content')).to_contain_text('מבוססים על גרסה 14.0')
+        page.screenshot(path=str(OUTPUT/'renderer-about.png'),full_page=True)
+        for target in ['Source','License']:
+            page.locator(f'[data-project-link="{target}"]').click()
+            assert page.evaluate("window.__calls.at(-1)")=={'command':'open_project_link','args':{'target':target}}
+        page.evaluate('window.__linkFailure=true')
+        page.locator('[data-project-link="Source"]').click()
+        expect(page.locator('#about-link-error')).to_contain_text('https://github.com/NHLOCAL/Singles-Sorter')
+        expect(page.locator('[data-project-link="Source"]')).to_be_enabled()
+        page.evaluate('window.__linkFailure=false')
+        page.locator('.about-credits summary').click()
+        expect(page.locator('.about-credits')).to_have_attribute('open','')
+        for width,height in [(360,800),(1000,650)]:
+            page.set_viewport_size({'width':width,'height':height})
+            page.locator('.about-credits').scroll_into_view_if_needed()
+            assert page.locator('#menu-dialog').evaluate('el=>el.scrollWidth<=el.clientWidth+1')
+            page.screenshot(path=str(OUTPUT/f'renderer-about-{width}.png'),full_page=True)
         page.keyboard.press('Escape')
         expect(page.locator('#menu')).to_be_focused()
-        checks.append('Help menu keyboard dismissal and focus return')
+        checks.append('About version, credits, narrow layout, named links/failure fallback, menu keyboard dismissal and focus return')
         page.set_viewport_size({'width':1000,'height':650})
         page.evaluate("document.documentElement.style.fontSize='200%'")
         page.wait_for_timeout(100)
@@ -378,6 +409,13 @@ try:
         expect(touch_page.locator('#context-help')).to_be_visible()
         touch_badge.tap()
         expect(touch_page.locator('#context-help')).to_be_hidden()
+        touch_badge.tap()
+        touch_page.locator('h1').tap()
+        expect(touch_page.locator('#context-help')).to_be_hidden()
+        touch_page.locator('#menu').tap()
+        touch_page.locator('[data-help="about"]').tap()
+        expect(touch_page.locator('#about-content')).to_be_visible()
+        touch_page.screenshot(path=str(OUTPUT/'renderer-about-touch.png'),full_page=True)
         assert touch_badge.bounding_box()['height'] >= 48
         touch.close()
         checks.append('Touch badge toggles and retains a 48px target')

@@ -110,6 +110,18 @@ pub async fn open_footer_link(app: tauri::AppHandle) -> Result<(), HostError> {
     .map_err(|e| HostError::new("WORKER_FAILED", e.to_string()))?
 }
 
+#[tauri::command]
+pub async fn open_project_link(app: tauri::AppHandle, target: ProjectLink) -> Result<(), HostError> {
+    use tauri_plugin_opener::OpenerExt;
+    tauri::async_runtime::spawn_blocking(move || {
+        app.opener()
+            .open_url(target.url(), None::<&str>)
+            .map_err(|e| HostError::new("OPEN_LINK_FAILED", e.to_string()))
+    })
+    .await
+    .map_err(|e| HostError::new("WORKER_FAILED", e.to_string()))?
+}
+
 async fn blocking<T: Send + 'static>(
     work: impl FnOnce() -> Result<T, HostError> + Send + 'static,
 ) -> Result<T, HostError> {

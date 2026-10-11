@@ -23,6 +23,7 @@ from native_fixtures import write_import_csv
 from desktop_layout import check_native_layout, capture_platform_fonts, check_phone_layout, assert_editor_actions, METRICS
 from desktop_ai import DesktopAI, ProtectedTrees, ai_mode, verify_package, REQUIRED_CHECKS
 from desktop_apply import exercise_apply
+from desktop_polish import exercise_information
 
 ROOT = Path(__file__).resolve().parents[1]
 if os.name != 'nt' or os.environ.get('GITHUB_ACTIONS') != 'true':
@@ -156,6 +157,7 @@ try:
     capture('01-native-home')
     check_phone_layout(command,script,capture,OUTPUT,'01-native-home')
     checks.append('Actual Windows Tauri/WebView2 rendered local assets and initialized real IPC')
+    checks.extend(exercise_information(command, script, click, wait, capture, ROOT, OUTPUT))
     with tempfile.TemporaryDirectory(prefix='singles-ui-owned-') as temporary:
         scratch = Path(temporary)
         source, target = scratch / 'מקור', scratch / 'יעד'
