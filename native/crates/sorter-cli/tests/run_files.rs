@@ -136,7 +136,7 @@ mod selected {
             .args(["capabilities", "--json"]).output().unwrap();
         assert!(output.status.success());
         let report: Value = serde_json::from_slice(&output.stdout).unwrap();
-        let selected = &report["result"]["selected_execution"];
+        let selected = &report["result"]["capabilities"]["selected_execution"];
         assert!(selected["modes"].as_array().unwrap().contains(&json!("FixNames")));
         assert_eq!(selected["automatic_backup_cleanup"], false);
         assert_eq!(selected["automatic_replay"], false);
