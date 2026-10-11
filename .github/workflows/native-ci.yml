@@ -59,6 +59,19 @@ jobs:
       - name: Test native contracts and JSON subprocess protocol
         run: cargo +1.99.0 test --locked --workspace
 
+      - name: Check experimental Windows mutation contracts
+        if: runner.os == 'Windows'
+        run: cargo +1.99.0 clippy --locked -p sorter-io --features experimental-windows-mutation --all-targets -- -D warnings
+
+      - name: Exercise handle-bound mutation on owned Windows NTFS fixtures
+        if: runner.os == 'Windows'
+        run: |
+          $listing = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --test windows_storage -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $cases = @($listing | Where-Object { $_ -match ': test$' })
+          if ($cases.Count -ne 12) { throw "Expected all 12 native Windows fixture cases; found $($cases.Count)" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --test windows_storage -- --test-threads=1
+
       - name: Test native metadata with static Windows CRT
         if: runner.os == 'Windows'
         env:

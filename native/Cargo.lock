@@ -232,6 +232,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "sorter-executor"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha2",
+ "sorter-core",
+ "sorter-storage-contracts",
+]
+
+[[package]]
 name = "sorter-io"
 version = "0.1.0"
 dependencies = [
@@ -239,8 +250,16 @@ dependencies = [
  "serde_json",
  "sha2",
  "sorter-core",
+ "sorter-storage-contracts",
  "tempfile",
  "windows",
+]
+
+[[package]]
+name = "sorter-storage-contracts"
+version = "0.1.0"
+dependencies = [
+ "sorter-core",
 ]
 
 [[package]]

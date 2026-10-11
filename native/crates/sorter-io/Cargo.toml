@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+sorter-storage-contracts.workspace = true
 sha2.workspace = true
 tempfile = "=3.27.0"
 sorter-core.workspace = true
@@ -14,7 +15,12 @@ sorter-core.workspace = true
 serde_json.workspace = true
 
 [target.'cfg(windows)'.dependencies]
-windows = { version = "=0.62.2", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_Security", "Win32_System_IO", "Wdk_Foundation", "Wdk_Storage_FileSystem"] }
+windows = { version = "=0.62.2", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_Security", "Win32_System_IO", "Win32_System_Memory", "Wdk_Foundation", "Wdk_Storage_FileSystem"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
+
+[features]
+default = []
+# Owned synthetic trees only. This does not enable CLI apply or platform acceptance.
+experimental-windows-mutation = []

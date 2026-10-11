@@ -601,3 +601,7 @@ mod records_tests;
 #[cfg(all(test, windows))]
 #[path = "desktop/windows_tests.rs"]
 mod windows_tests;
+
+#[cfg(all(windows, feature = "experimental-windows-mutation"))]
+#[path = "desktop/windows_mutation.rs"]
+pub mod windows_mutation;

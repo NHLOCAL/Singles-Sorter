@@ -1,4 +1,5 @@
-//! Read-only adapters for the native rebuild. Physical execution is not exposed.
+//! Read-only adapters and separate mutation contracts for the native rebuild.
+//! Experimental Windows primitives are opt-in and restricted to owned test trees.
 pub mod resources;
 
 pub mod storage;
@@ -7,3 +8,6 @@ pub mod storage;
 pub mod desktop;
 
 pub mod metadata;
+
+/// Separate execution contract; read-only adapters never acquire these rights.
+pub mod mutation;
