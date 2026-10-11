@@ -50,3 +50,6 @@ pub mod windows_rename;
 
 #[cfg(all(windows, feature = "selected-windows-execution"))]
 pub mod windows_job;
+
+#[cfg(all(windows, feature = "selected-windows-execution"))]
+pub mod windows_repair;

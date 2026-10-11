@@ -202,7 +202,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Test staged MP3 repair and retained-original adapter
-        if: runner.os == 'Windows'
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
         shell: pwsh
         run: |
           $tags = cargo +1.99.0 test --locked -p sorter-io --test staged_tags -- --list
@@ -212,8 +212,18 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $repair = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib repair_backup_tests -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (@($repair | Where-Object { $_ -match ': test$' }).Count -ne 7) { throw "Expected 7 retained-original adapter cases" }
+          if (@($repair | Where-Object { $_ -match ': test$' }).Count -ne 20) { throw "Expected 20 retained-original preservation cases" }
           cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib repair_backup_tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test selected Windows FixNames jobs
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $repairJobs = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($repairJobs | Where-Object { $_ -match ': test$' }).Count -ne 10) { throw "Expected 10 product FixNames cases" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Test native metadata with static Windows CRT
