@@ -3,8 +3,7 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - 'native/plugins/original-inference/**'
-      - 'native/crates/sorter-recognition/**'
+      - 'native/**'
       - '.github/workflows/android-inference-bridge.yml'
 permissions:
   contents: read

@@ -127,9 +127,13 @@ public final class FixtureActivity extends Activity {
                 report.put("checks", checks).put("abi", android.os.Build.SUPPORTED_ABIS[0]).put("sdk", android.os.Build.VERSION.SDK_INT);
                 if (assets != null) report.put("assetDirectory", assets.getAbsolutePath());
                 String text = report.toString(2);
-                try (FileOutputStream output = openFileOutput("proof.json", MODE_PRIVATE)) { output.write(utf8(text)); }
-                Log.i("OriginalInferenceProof", "COMPLETE " + text);
-                runOnUiThread(() -> status.setText("Fixture only. Sorting disabled.\n" + text));
+                synchronized (this) {
+                    if (!destroyed) {
+                        try (FileOutputStream output = openFileOutput("proof.json", MODE_PRIVATE)) { output.write(utf8(text)); }
+                        Log.i("OriginalInferenceProof", "COMPLETE " + text);
+                        runOnUiThread(() -> { synchronized (FixtureActivity.this) { if (!destroyed) status.setText("Fixture only. Sorting disabled.\n" + text); } });
+                    }
+                }
             } catch (Throwable error) { Log.e("OriginalInferenceProof", "report", error); }
         }
     }
