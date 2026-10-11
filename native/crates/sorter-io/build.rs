@@ -107,12 +107,18 @@ fn main() {
         } else {
             "x86_64-linux-android"
         };
-        println!(
-            "cargo:rustc-link-search=native={}",
-            ndk.join("toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib")
-                .join(triple)
-                .display()
-        );
+        // Never expose this NDK directory through -L: it also contains libc.a,
+        // which would replace dynamic Bionic and crash during JNI constructors.
+        let ndk_libraries = ndk
+            .join("toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib")
+            .join(triple);
+        let cxx_only = output.join("ndk-cxx-only");
+        std::fs::create_dir_all(&cxx_only).expect("create isolated C++ archive directory");
+        for archive in ["libc++_static.a", "libc++abi.a"] {
+            std::fs::copy(ndk_libraries.join(archive), cxx_only.join(archive))
+                .expect("copy pinned NDK C++ archive");
+        }
+        println!("cargo:rustc-link-search=native={}", cxx_only.display());
         println!("cargo:rustc-link-lib=static=c++_static");
         println!("cargo:rustc-link-lib=static=c++abi");
     } else if !msvc {

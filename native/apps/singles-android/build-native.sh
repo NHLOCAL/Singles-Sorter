@@ -30,4 +30,10 @@ for pair in x86_64:x86_64-linux-android arm64-v8a:aarch64-linux-android; do
     mkdir -p "$NATIVE_OUT/$ABI"
     cp "$CARGO_TARGET_DIR/$TARGET/release/libsingles_android_inference.so" "$NATIVE_OUT/$ABI/"
     "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf" -lW "$NATIVE_OUT/$ABI/libsingles_android_inference.so" > "$NATIVE_OUT/$ABI/elf-program-headers.txt"
+    python3 "$SCRIPT_DIR/check-android-elf.py" \
+        --readelf "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf" \
+        --library "$NATIVE_OUT/$ABI/libsingles_android_inference.so" --abi "$ABI" \
+        --out "$NATIVE_OUT/$ABI/elf-linkage.json"
+    "$LINKER" -Wall -Wextra -Werror -fPIE -pie -Wl,-z,max-page-size=16384 \
+        "$SCRIPT_DIR/native-load-probe.c" -ldl -o "$NATIVE_OUT/$ABI/native-load-probe"
 done
