@@ -49,7 +49,11 @@ jobs:
           if (-not (Test-Path $driver)) { throw 'Official runner Edge driver missing' }
           $edge = Join-Path ${env:ProgramFiles(x86)} 'Microsoft/Edge/Application/msedge.exe'
           $edgeVersion = (Get-Item $edge).VersionInfo.ProductVersion
-          $driverVersion = (& $driver --version).Split(' ')[1]
+          $driverOutput = (& $driver --version | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'Edge driver version command failed' }
+          $versionMatches = [regex]::Matches($driverOutput, '\b[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\b')
+          if ($versionMatches.Count -ne 1) { throw "Unrecognized Edge driver version banner: $driverOutput" }
+          $driverVersion = $versionMatches[0].Value
           if (($edgeVersion.Split('.')[0..2] -join '.') -ne ($driverVersion.Split('.')[0..2] -join '.')) {
             throw "Edge/driver version mismatch: $edgeVersion / $driverVersion"
           }
