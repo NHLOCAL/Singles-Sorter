@@ -1,0 +1,14 @@
+{
+  "implementation_commit": "acefa1a4396d0c14c4f45d6e3b12bd94992a285e",
+  "review_scope": "Independent scoped Linux optimization only; not Windows/Android approval",
+  "baseline_package_commit": "337e621eb93ff4458da94035db6cee1b119be487",
+  "optimized_files": {
+    "released-ner-math/src/lib.rs": "79d91924733124de371200160bbeefac6928eac76826d6e70e8b1e594ba21bd6",
+    "released-ner-text/src/bin/raw-ner.rs": "9d557e083e3df256e38746ac7fa935b83d37415b5afa1c0fdfc2b091a3bb4736"
+  },
+  "baseline_files": {
+    "baseline/math-lib.rs": "845bf1d4023f5ecdf26f0434805487efa4de1299b9571d0ecb7dd3663f274b10",
+    "baseline/raw-ner.rs": "ed8ff4c7e7f26e335ba8063d544b004af4c3e58a8ab887a0cc451ed12eb8c785"
+  },
+  "no_new_dependencies_or_weights": true
+}

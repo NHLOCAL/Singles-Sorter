@@ -1,0 +1,16 @@
+[package]
+name = "released-ner-probe"
+version = "0.1.0"
+edition = "2024"
+publish = false
+[dependencies]
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.152"
+sha2 = "=0.10.9"
+[profile.release]
+opt-level = 2
+lto = false
+codegen-units = 1
+
+# Deliberately isolated from the production workspace.
+[workspace]
