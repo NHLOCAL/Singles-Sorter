@@ -24,6 +24,12 @@ function Snapshot([string]$Root) {
     $rootItem = Get-Item -LiteralPath $Root -Force
     $items = @($rootItem) + @(Get-ChildItem -LiteralPath $Root -Recurse -Force)
     $rows = foreach ($item in ($items | Sort-Object FullName)) {
+        # Directory enumeration pre-caches FileSystemInfo metadata. Refresh each
+        # entry before ALL observations, including initial baseline and reparse
+        # checks; never tolerate differences or rebase after the CLI starts.
+        # https://learn.microsoft.com/dotnet/api/system.io.filesysteminfo.lastwritetimeutc
+        $item.Refresh()
+        Require ($item.Exists) 'Snapshot entry disappeared during fresh retrieval'
         Require (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) 'Reparse points are not allowed in a preview package or test tree'
         $relative = $item.FullName.Substring($rootItem.FullName.Length).TrimStart([char[]]@('\', '/'))
         $file = -not $item.PSIsContainer

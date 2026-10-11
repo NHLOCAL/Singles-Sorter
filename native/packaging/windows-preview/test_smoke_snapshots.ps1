@@ -9,7 +9,7 @@ $tokens = $null
 $parseErrors = $null
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($scriptFile, [ref]$tokens, [ref]$parseErrors)
 if (@($parseErrors).Count -ne 0) { throw ('Smoke script parse failure: ' + ($parseErrors | Out-String)) }
-$names = @('Require', 'Read-SnapshotRows', 'Write-RawSnapshotEvidence', 'Snapshot-Differences', 'Assert-SnapshotEqual')
+$names = @('Require', 'Hash-File', 'Snapshot', 'Read-SnapshotRows', 'Write-RawSnapshotEvidence', 'Snapshot-Differences', 'Assert-SnapshotEqual')
 $functions = @($ast.FindAll({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $names -contains $node.Name }, $false))
 if ($functions.Count -ne $names.Count) { throw 'Expected snapshot helper definitions not found' }
 foreach ($function in $functions) { . ([scriptblock]::Create($function.Extent.Text)) }
@@ -19,6 +19,56 @@ $ReportPath = Join-Path $temporary 'failure.json'
 $count = 0
 function Require-Test([bool]$Condition, [string]$Message) {
     if (-not $Condition) { throw $Message }
+}
+function Test-CachedMetadataRefresh {
+    $root = Join-Path $temporary 'cached metadata fixture'
+    [void][IO.Directory]::CreateDirectory($root)
+    $directory = Join-Path $root 'owned directory'
+    [void][IO.Directory]::CreateDirectory($directory)
+    # Deliberately old metadata ONLY on this owned unit fixture makes the cache
+    # regression deterministic. Production smoke never sets any timestamp.
+    $oldTime = [DateTime]::new(2020, 1, 1, 0, 0, 0, [DateTimeKind]::Utc)
+    $newTime = $oldTime.AddDays(1)
+    [IO.Directory]::SetLastWriteTimeUtc($directory, $oldTime)
+    $script:CachedEntry = Get-Item -LiteralPath $directory -Force
+    $cachedTicks = $script:CachedEntry.LastWriteTimeUtc.Ticks
+    [IO.Directory]::SetLastWriteTimeUtc($directory, $newTime)
+    Require-Test ($script:CachedEntry.LastWriteTimeUtc.Ticks -eq $cachedTicks) 'Regression fixture did not retain cached metadata'
+    function Get-ChildItem {
+        param([string]$LiteralPath, [switch]$Recurse, [switch]$Force)
+        $script:CachedEntry
+    }
+    $rows = @(Read-SnapshotRows (Snapshot $root))
+    $observed = @($rows | Where-Object { $_.path -eq 'owned directory' })
+    Require-Test ($observed.Count -eq 1 -and $observed[0].modified_utc_ticks -ceq $newTime.Ticks.ToString()) 'Snapshot used stale enumerated directory metadata'
+    $script:count += 1
+    [IO.Directory]::Delete($directory)
+    $failed = $false
+    try { [void](Snapshot $root) } catch {
+        Require-Test ($_.Exception.Message.Contains('Snapshot entry disappeared')) 'Unexpected missing-entry failure'
+        $failed = $true
+    }
+    Require-Test $failed 'Disappeared cached entry produced a sentinel snapshot'
+    $script:count += 1
+}
+function Test-LiveSetupSnapshot {
+    $root = Join-Path $temporary 'live setup fixture'
+    [void][IO.Directory]::CreateDirectory($root)
+    $cwd = Join-Path $root 'unrelated cwd'
+    [void][IO.Directory]::CreateDirectory($cwd)
+    [IO.File]::WriteAllText((Join-Path $cwd 'preferences-sentinel.txt'), 'owned unchanged fixture', $Utf8)
+    $source = Join-Path $root 'original'
+    [void][IO.Directory]::CreateDirectory($source)
+    [IO.File]::WriteAllBytes((Join-Path $source 'weights.bin'), [byte[]]@(0, 1, 2))
+    [IO.File]::WriteAllText((Join-Path $source 'manifest.txt'), 'owned fixture', $Utf8)
+    $missing = Join-Path $root 'missing-original'
+    Copy-Item -LiteralPath $source -Destination $missing -Recurse
+    Remove-Item -LiteralPath (Join-Path $missing 'weights.bin')
+    # All synchronous setup calls have returned. Freeze once, then immediately
+    # compare with fresh retrieval; no sleep, retry or baseline replacement.
+    $baseline = Snapshot $root
+    Assert-SnapshotEqual $baseline (Snapshot $root) 'owned-live-setup-stability'
+    $script:count += 1
 }
 function Baseline {
     return ConvertTo-Json -InputObject @(
@@ -41,6 +91,13 @@ function Expect-Failure([string]$Before, [string]$After, [string]$Field, [bool]$
     $script:count += 1
 }
 try {
+    # ACL integration is exercised on Windows. Linux's PowerShell lacks Get-Acl;
+    # use a declared fixture-only stand-in there for metadata-cache unit coverage.
+    if ($env:OS -ne 'Windows_NT') {
+        function Get-Acl { param([string]$LiteralPath) [pscustomobject]@{ Sddl = 'owned-linux-unit-acl-placeholder' } }
+    }
+    Test-CachedMetadataRefresh
+    Test-LiveSetupSnapshot
     $modes = @('native')
     if ($PSVersionTable.PSVersion.Major -ge 7) { $modes += 'legacy-array-output-simulation' }
     foreach ($mode in $modes) {
