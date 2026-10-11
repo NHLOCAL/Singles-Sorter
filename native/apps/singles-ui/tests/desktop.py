@@ -21,6 +21,7 @@ from windows_integrity import process_security, require_medium
 from native_picker import interact_with_owned_picker
 from native_fixtures import write_import_csv
 from desktop_layout import check_native_layout, capture_platform_fonts, check_phone_layout, assert_editor_actions, METRICS
+from desktop_ai import DesktopAI, ProtectedTrees, ai_mode, verify_package, REQUIRED_CHECKS
 
 ROOT = Path(__file__).resolve().parents[1]
 if os.name != 'nt' or os.environ.get('GITHUB_ACTIONS') != 'true':
@@ -31,6 +32,13 @@ OUTPUT.mkdir(parents=True, exist_ok=True)
 security = process_security()
 write_json(OUTPUT / 'test-process-security.json', security)
 require_medium(security)
+AI_MODE = ai_mode(os.environ)
+PACKAGE_MANIFEST_SHA256 = None
+package_guard = None
+if AI_MODE == 'on':
+    assert not OUTPUT.resolve().is_relative_to(BINARY.parent), 'Evidence must be outside the input package'
+    PACKAGE_MANIFEST_SHA256 = verify_package(BINARY.parent)
+    package_guard = ProtectedTrees({'input_package': BINARY.parent}, OUTPUT, 'input-package')
 if os.environ.get('SINGLES_UI_TEMP'):
     owned_temp = Path(os.environ['SINGLES_UI_TEMP'])
     owned_temp.mkdir(parents=True, exist_ok=True)
@@ -42,7 +50,9 @@ if not DRIVER:
 BASE = 'http://127.0.0.1:4444'
 ELEMENT = 'element-6066-11e4-a52e-4f735466cecf'
 session = None
+active_binary = BINARY
 checks = []
+original_ai_checks = []
 
 def call(method, path, body=None):
     data = None if body is None else json.dumps(body).encode('utf-8')
@@ -57,8 +67,8 @@ def call(method, path, body=None):
     return value
 
 def verify_app_security(label):
-    app_roots = [row for row in owned_processes(BINARY)
-                 if os.path.normcase(row.get('executable') or '') == os.path.normcase(str(BINARY))]
+    app_roots = [row for row in owned_processes(active_binary)
+                 if os.path.normcase(row.get('executable') or '') == os.path.normcase(str(active_binary))]
     app_security = [process_security(pid) for row in app_roots
                     for pid in (row['pid'], row['parent_pid'])]
     write_json(OUTPUT / f'{label}-process-security.json', app_security)
@@ -108,6 +118,21 @@ def pick_owned_path(selector, path):
     click(selector)
     interact_with_owned_picker(BINARY, path, OUTPUT, selector.removeprefix('#'))
 
+def restart_app(binary, label):
+    global session, active_binary
+    if session:
+        previous_binary = active_binary
+        previous_processes = owned_processes(previous_binary)
+        command('DELETE', '')
+        session = None
+        wait(lambda: not owned_processes(previous_binary, observed=previous_processes), timeout=45)
+    active_binary = binary
+    result = call('POST', '/session', {'capabilities': {'alwaysMatch': {
+        'browserName': 'wry', 'tauri:options': {'application': str(binary)}}}})
+    session = result['sessionId']
+    verify_app_security(label)
+    wait(lambda: script("return document.documentElement.dataset.startupState === 'ready' && !document.querySelector('#sort').disabled"), timeout=120)
+
 startup_probe(BINARY, OUTPUT)
 log = (OUTPUT / 'tauri-driver.log').open('wb')
 process = subprocess.Popen([DRIVER], stdout=log, stderr=subprocess.STDOUT)
@@ -136,6 +161,7 @@ try:
         media = source / 'אברהם פריד - בדיקה.mp3'
         shutil.copyfile(ROOT.parents[1] / 'tests/fixtures/media/tagged.mp3', media)
         before = hashlib.sha256(media.read_bytes()).hexdigest()
+        fixture_guard = ProtectedTrees({'source': source, 'target': target}, OUTPUT, 'native-fixtures')
         pick_owned_path('#source-picker', source)
         wait(lambda: script("return document.querySelector('#source').value") == str(source))
         pick_owned_path('#target-picker', target)
@@ -181,7 +207,12 @@ try:
         assert script("return document.querySelector('#duet-all').checked") == expected_duet
         capture('04-native-settings')
         check_phone_layout(command,script,capture,OUTPUT,'04-native-settings')
-        click('#edit-list'); click('#list-add')
+        click('#edit-list')
+        wait(lambda: script("return document.querySelector('#list-dialog').open"))
+        # The same owned CI profile survives off/on/extracted package lanes.
+        # Check this import's exact +2 duplicates without deleting prior results.
+        imported_baseline = script("return Array.from(document.querySelectorAll('[id^=list-alias-]')).filter(x=>x.value==='אמן מיובא').length")
+        click('#list-add')
         alias_id = script("return Array.from(document.querySelectorAll('[id^=list-alias-]')).at(-1).id")
         folder_id = alias_id.replace('alias','folder')
         fill('#'+alias_id,'אמן בדיקת ממשק'); fill('#'+folder_id,'תיקיית בדיקה')
@@ -207,7 +238,7 @@ try:
         click('#confirm-import')
         wait(lambda: script("return !document.querySelector('#import-dialog').open"))
         click('#edit-list')
-        wait(lambda: script("return Array.from(document.querySelectorAll('[id^=list-alias-]')).filter(x=>x.value==='אמן מיובא').length") == 2)
+        wait(lambda: script("return Array.from(document.querySelectorAll('[id^=list-alias-]')).filter(x=>x.value==='אמן מיובא').length") == imported_baseline + 2)
         assert script("return Array.from(document.querySelectorAll('[id^=list-alias-]')).some(x=>x.value==='אמן שנערך לפני אישור')")
         assert not script("return Array.from(document.querySelectorAll('[id^=list-alias-]')).some(x=>x.value==='אמן למחיקה')")
         checks.append('Actual CSV draft edits/deletion applied only on confirm; original duplicate aliases remained ordered')
@@ -225,10 +256,21 @@ try:
         wait(lambda: 'אמן בדיקת ממשק' in script("return Array.from(document.querySelectorAll('[id^=list-alias-]')).map(x=>x.value).join('|')"))
         capture('07-native-profile-after-reopen')
         checks.append('Native explicit preference Save, immediate duet and personal list persisted after app restart; source authority not persisted')
+        click('#list-cancel'); click('#advanced-dialog .close-dialog')
+        fixture_guard.verify()
+        ai_scratch = scratch / 'ai-cases'
+        ai_scratch.mkdir()
+        original_ai_checks = DesktopAI(command, script, click, fill, wait, capture,
+                                       restart_app, OUTPUT).run(BINARY, AI_MODE, ai_scratch)
+        checks.append('Real IPC AI mode ' + AI_MODE + ': ' + ', '.join(original_ai_checks))
     assert not script("return !!document.querySelector('vite-error-overlay')")
-    (OUTPUT / 'acceptance.json').write_text(json.dumps({'status':'passed','platform':'windows-native-tauri','binary_sha256':hashlib.sha256(BINARY.read_bytes()).hexdigest(),'ipc_mocked':False,'checks':checks,'remaining':['Narrator','200 percent DPI','Android SAF and physical ARM64','apply and recovery']},ensure_ascii=False,indent=2),encoding='utf-8')
+    if package_guard:
+        package_guard.verify()
+        assert verify_package(BINARY.parent) == PACKAGE_MANIFEST_SHA256
+        assert set(REQUIRED_CHECKS).issubset(original_ai_checks)
+    (OUTPUT / 'acceptance.json').write_text(json.dumps({'status':'passed','platform':'windows-native-tauri','binary_sha256':hashlib.sha256(BINARY.read_bytes()).hexdigest(),'ipc_mocked':False,'medium_integrity_verified':True,'ai_mode':AI_MODE,'package_sha256sums_sha256':PACKAGE_MANIFEST_SHA256,'original_ai_checks':original_ai_checks,'checks':checks,'remaining':['Narrator','200 percent DPI','Android SAF and physical ARM64','apply and recovery']},ensure_ascii=False,indent=2),encoding='utf-8')
 except Exception as error:
-    snapshot(BINARY, OUTPUT, 'webdriver-failure')
+    snapshot(active_binary, OUTPUT, 'webdriver-failure')
     if session:
         try:
             capture('failure')
