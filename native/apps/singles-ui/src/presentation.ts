@@ -1,4 +1,4 @@
-import type {PlanRow} from './contracts';
+import type {PlanRow,Platform} from './contracts';
 const kinds:Record<string,string>={Album:'בדיקת אלבום',Single:'בדיקת שיר',ItemError:'שגיאה בבדיקה',Vanished:'מקור לא זמין',FixNames:'תיקון שם ותגיות מתוכנן'};
 export function kindLabel(kind:string):string{return kinds[kind]??'רשומת תכנון';}
 export function reasonLabel(row:PlanRow):string{
@@ -36,3 +36,11 @@ const conciseNotices:Record<string,string>={
  'השורות נוספו בסוף הרשימה, ללא מיון או הסרת כפילויות.':'נוסף לרשימה',
 };
 export function noticeLabel(message:string|null):string{return message===null?'':Object.hasOwn(conciseNotices,message)?conciseNotices[message]:message;}
+
+/** Windows sources are display paths; other hosts already return display names.
+ * This is a label only: no decoding, path normalization or authority is created. */
+export function sourceLabel(source:string,platform:Platform|undefined):string{
+ if(platform!=='windows'||/[\\/]$/.test(source)||/^[a-z][a-z0-9+.-]*:\/\//i.test(source))return source;
+ const boundary=Math.max(source.lastIndexOf('\\'),source.lastIndexOf('/'));
+ return boundary<0?source:source.slice(boundary+1);
+}

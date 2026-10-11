@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {kindLabel,reasonLabel,blockerLabel,warningPresentation,noticeLabel} from '../src/presentation';
+import {kindLabel,reasonLabel,blockerLabel,warningPresentation,noticeLabel,sourceLabel} from '../src/presentation';
 import actualHostPage from '../src-tauri/tests/fixtures/real-preview-page.json';
 import type {PlanRow} from '../src/contracts';
 const row:PlanRow={id:'1',source:'שיר.mp3',destination:null,kind:'FixNames',reason:'rename_intended=false; save_intended=true; repairs=0; failure=None',blockers:[]};
@@ -26,5 +26,21 @@ describe('minimal notices preserve diagnostic information',()=>{
   expect(noticeLabel('הגדרות המיון נשמרו להפעלות הבאות.')).toBe('נשמר');
   expect(noticeLabel(null)).toBe('');
   for(const message of ['השמירה נכשלה','constructor','toString','__proto__'])expect(noticeLabel(message)).toBe(message);
+ });
+});
+
+describe('filename-first source labels preserve original display data',()=>{
+ it('extracts only the last component of Windows display paths',()=>{
+  expect(sourceLabel('C:\\Music\\מקור\\אברהם פריד - בדיקה.mp3','windows')).toBe('אברהם פריד - בדיקה.mp3');
+  expect(sourceLabel('\\\\server\\share\\שיר.mp3','windows')).toBe('שיר.mp3');
+  expect(sourceLabel('C:/Music/שיר.mp3','windows')).toBe('שיר.mp3');
+ });
+ it('retains roots, simple labels and opaque URI strings without decoding or inventing names',()=>{
+  for(const source of ['C:\\','שיר.mp3','content://provider/document/primary%3AMusic%2Ffile',''])expect(sourceLabel(source,'windows')).toBe(source);
+ });
+ it('does not split Android/Linux display names or unknown-platform data',()=>{
+  for(const platform of ['android','linux_test',undefined] as const){
+   for(const source of ['שם/תצוגה','שם\\תצוגה'])expect(sourceLabel(source,platform)).toBe(source);
+  }
  });
 });
