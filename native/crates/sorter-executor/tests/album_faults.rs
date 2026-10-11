@@ -9,7 +9,7 @@ use std::{
     io::{self, Cursor, Read},
     sync::{
         Arc,
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
     },
 };
 fn id(s: &str) -> ObjectIdentity {
@@ -163,6 +163,30 @@ fn binding() -> (AlbumBinding, ExecutionScope) {
     let b = validate_album_copy(&p, &mut s, &mut Meta, &mut Ai, &r, &scope).unwrap();
     (b, scope)
 }
+#[derive(Default)]
+struct GuardTracker {
+    live: AtomicUsize,
+    drops: AtomicUsize,
+}
+struct Guard<T> {
+    value: T,
+    tracker: Arc<GuardTracker>,
+}
+impl<T> Guard<T> {
+    fn new(value: T, tracker: &Arc<GuardTracker>) -> Self {
+        tracker.live.fetch_add(1, Ordering::SeqCst);
+        Self {
+            value,
+            tracker: tracker.clone(),
+        }
+    }
+}
+impl<T> Drop for Guard<T> {
+    fn drop(&mut self) {
+        self.tracker.live.fetch_sub(1, Ordering::SeqCst);
+        self.tracker.drops.fetch_add(1, Ordering::SeqCst);
+    }
+}
 #[derive(Default, Clone)]
 struct Sink {
     bytes: Vec<u8>,
@@ -171,6 +195,8 @@ struct Sink {
     partial: bool,
     cancel: Option<usize>,
     flag: Option<Arc<AtomicBool>>,
+    guard_tracker: Option<Arc<GuardTracker>>,
+    completing: bool,
 }
 impl Sink {
     fn hit(&mut self) -> sorter_executor::Result<()> {
@@ -190,6 +216,19 @@ impl JournalStore for Sink {
         Ok(self.bytes.clone())
     }
     fn append(&mut self, bytes: &[u8]) -> sorter_executor::Result<()> {
+        if bytes
+            .windows(b"\"event\":\"Complete\"".len())
+            .any(|w| w == b"\"event\":\"Complete\"")
+        {
+            self.completing = true;
+            if let Some(t) = &self.guard_tracker {
+                assert_eq!(
+                    t.live.load(Ordering::SeqCst),
+                    8,
+                    "guards dropped before Complete append"
+                );
+            }
+        }
         if self.partial && self.fail == Some(self.count + 1) {
             self.bytes.extend(&bytes[..bytes.len() / 2]);
             self.count += 1;
@@ -200,6 +239,15 @@ impl JournalStore for Sink {
         Ok(())
     }
     fn sync(&mut self) -> sorter_executor::Result<()> {
+        if self.completing
+            && let Some(t) = &self.guard_tracker
+        {
+            assert_eq!(
+                t.live.load(Ordering::SeqCst),
+                8,
+                "guards dropped before Complete sync"
+            );
+        }
         self.hit()
     }
 }
@@ -241,6 +289,9 @@ struct Fake {
     wrong_directory: bool,
     unknown_capability: bool,
     bad_parent: bool,
+    tracker: Arc<GuardTracker>,
+    require_final_guards: bool,
+    temp_alias: Option<ObjectIdentity>,
 }
 impl Fake {
     fn new(b: &AlbumBinding, flag: Arc<AtomicBool>) -> Self {
@@ -274,6 +325,9 @@ impl Fake {
             wrong_directory: false,
             unknown_capability: false,
             bad_parent: false,
+            tracker: Arc::default(),
+            require_final_guards: false,
+            temp_alias: None,
         }
     }
     fn hit(&mut self, at: &str) -> Result<(), MutationError> {
@@ -299,9 +353,9 @@ impl Fake {
 }
 impl MutationStorage for Fake {
     type Parent = ObjectIdentity;
-    type SourceLease = Cursor<Vec<u8>>;
+    type SourceLease = Guard<Cursor<Vec<u8>>>;
     type OwnedTemp = Temp;
-    type Published = String;
+    type Published = Guard<String>;
     fn capabilities(&self) -> MutationCapabilities {
         MutationCapabilities {
             exclusive_create: Capability::Supported,
@@ -321,7 +375,7 @@ impl MutationStorage for Fake {
         }) {
             return Err(error());
         }
-        Ok(Cursor::new(b"audio".to_vec()))
+        Ok(Guard::new(Cursor::new(b"audio".to_vec()), &self.tracker))
     }
     fn create_temp(
         &mut self,
@@ -342,7 +396,9 @@ impl MutationStorage for Fake {
         MutationOutcome::Applied(Temp {
             bytes: vec![],
             obs: observation(
-                id(&format!("temp{}", self.sequence)),
+                self.temp_alias
+                    .clone()
+                    .unwrap_or_else(|| id(&format!("temp{}", self.sequence))),
                 parent.clone(),
                 MutationName::Provider(format!("tmp{}", self.sequence)),
             ),
@@ -354,7 +410,7 @@ impl MutationStorage for Fake {
         parent: &Self::Parent,
         name: &MutationName,
         _: &AtomicBool,
-    ) -> MutationOutcome<String> {
+    ) -> MutationOutcome<Self::Published> {
         if let Err(e) = self.hit("publish") {
             return MutationOutcome::NoEffect(e);
         }
@@ -366,7 +422,7 @@ impl MutationStorage for Fake {
         t.obs.parent_identity = parent.clone();
         t.obs.actual_name = name.clone();
         self.published.insert(key.clone(), t);
-        MutationOutcome::Applied(key)
+        MutationOutcome::Applied(Guard::new(key, &self.tracker))
     }
     fn rename_no_replace(
         &mut self,
@@ -374,16 +430,16 @@ impl MutationStorage for Fake {
         _: &Self::Parent,
         _: &MutationName,
         _: &AtomicBool,
-    ) -> MutationOutcome<String> {
+    ) -> MutationOutcome<Self::Published> {
         panic!("album Copy must never rename")
     }
     fn verify(
         &mut self,
-        p: &String,
+        p: &Self::Published,
         d: &ContentDigest,
     ) -> Result<MutationObservation, MutationError> {
         self.hit("verify")?;
-        let t = &self.published[p];
+        let t = &self.published[&p.value];
         assert_eq!(t.bytes.len() as u64, d.length);
         assert_eq!(digest(&t.bytes), digest(b"audio"));
         Ok(t.obs.clone())
@@ -395,9 +451,9 @@ impl MutationStorage for Fake {
     ) -> MutationOutcome<RetirementOutcome> {
         panic!("album Copy must never retire")
     }
-    fn inspect(&mut self, p: &String) -> Result<MutationObservation, MutationError> {
+    fn inspect(&mut self, p: &Self::Published) -> Result<MutationObservation, MutationError> {
         self.hit("inspect")?;
-        Ok(self.published[p].obs.clone())
+        Ok(self.published[&p.value].obs.clone())
     }
 }
 impl TransferStorage for Fake {
@@ -431,12 +487,12 @@ impl TransferStorage for Fake {
     }
     fn rewind_source(&mut self, s: &mut Self::SourceLease) -> Result<(), MutationError> {
         self.hit("rewind")?;
-        s.set_position(0);
+        s.value.set_position(0);
         Ok(())
     }
     fn read_source(&mut self, s: &mut Self::SourceLease, b: &mut [u8]) -> io::Result<usize> {
         self.hit("read").map_err(io::Error::other)?;
-        s.read(b)
+        s.value.read(b)
     }
     fn write_temp(&mut self, t: &mut Temp, b: &[u8]) -> io::Result<usize> {
         self.hit("write").map_err(io::Error::other)?;
@@ -556,6 +612,13 @@ impl AlbumStorage for Fake {
     }
     fn check_album(&mut self, _: &(), b: &AlbumBinding) -> Result<(), MutationError> {
         self.hit("check_album")?;
+        if self.require_final_guards && self.published.len() == 4 {
+            assert_eq!(
+                self.tracker.live.load(Ordering::SeqCst),
+                8,
+                "guards dropped before final album check"
+            );
+        }
         if self.sources == b.children().cloned().collect::<Vec<_>>() {
             Ok(())
         } else {
@@ -1028,4 +1091,128 @@ fn provenance_tampering_and_child_binding_bypass_are_rejected() {
         )
         .is_err()
     );
+}
+
+#[test]
+fn child_guards_survive_final_album_check_and_parent_complete_sync() {
+    let (b, _) = binding();
+    let mut f = Fake::new(&b, Arc::new(AtomicBool::new(false)));
+    f.require_final_guards = true;
+    let tracker = f.tracker.clone();
+    let mut sink = Sink {
+        guard_tracker: Some(tracker.clone()),
+        ..Default::default()
+    };
+    let (_, result) = run(&b, &mut f, &mut sink);
+    assert_eq!(result.status, JobStatus::Complete);
+    assert!(sink.completing);
+    assert_eq!(tracker.live.load(Ordering::SeqCst), 0);
+    assert_eq!(tracker.drops.load(Ordering::SeqCst), 8);
+}
+#[test]
+fn child_temps_cannot_alias_album_or_required_directory_identities() {
+    for alias in ["album", "artist", "dir1"] {
+        let (p, mut s, r, scope) = fixture(|s, _| {
+            s.entries.push(entry(
+                "artist",
+                Some("target"),
+                "אברהם פריד",
+                EntryKind::Directory,
+            ))
+        });
+        let b = validate_album_copy(&p, &mut s, &mut Meta, &mut Ai, &r, &scope).unwrap();
+        let mut f = Fake::new(&b, Arc::new(AtomicBool::new(false)));
+        f.temp_alias = Some(id(alias));
+        let (_, result) = run(&b, &mut f, &mut Sink::default());
+        assert_eq!(result.status, JobStatus::NeedsRecovery, "alias {alias}");
+        assert!(
+            !f.trace.iter().any(|s| s == "write"),
+            "wrote through alias {alias}"
+        );
+        assert!(f.published.is_empty());
+    }
+}
+#[test]
+fn recovery_rejects_hash_valid_child_temp_alias_to_album_directories() {
+    #[derive(serde::Serialize, serde::Deserialize)]
+    struct Envelope<T> {
+        body: T,
+        sha256: String,
+    }
+    #[derive(serde::Serialize, serde::Deserialize)]
+    struct ChildRecord {
+        sequence: u64,
+        job_id: String,
+        plan_sha256: String,
+        previous: String,
+        event: Event,
+    }
+    #[derive(serde::Serialize, serde::Deserialize)]
+    struct OuterRecord {
+        sequence: usize,
+        job_id: String,
+        previous: String,
+        event: AlbumEvent,
+    }
+    let (b, scope) = binding();
+    let mut f = Fake::new(&b, Arc::new(AtomicBool::new(false)));
+    let mut sink = Sink::default();
+    run(&b, &mut f, &mut sink);
+    for alias in ["album", "dir1", "dir2"] {
+        let mut modified = vec![];
+        let mut injected = false;
+        for (n, raw) in sink
+            .bytes
+            .split(|b| *b == b'\n')
+            .filter(|r| !r.is_empty())
+            .enumerate()
+        {
+            if n == 0 {
+                modified.extend(raw);
+                modified.push(b'\n');
+                continue;
+            }
+            let mut outer: Envelope<OuterRecord> = serde_json::from_slice(raw).unwrap();
+            if let AlbumEvent::TransferRecord { bytes } = &mut outer.body.event
+                && let Ok(mut inner) = serde_json::from_slice::<Envelope<ChildRecord>>(bytes)
+                && inner.body.event.phase == Phase::TempAllocated
+            {
+                inner.body.event.observed_identity = Some(id(alias));
+                inner.sha256 = digest(&serde_json::to_vec(&inner.body).unwrap());
+                *bytes = serde_json::to_vec(&inner).unwrap();
+                bytes.push(b'\n');
+                outer.sha256 = digest(&serde_json::to_vec(&outer.body).unwrap());
+                modified.extend(serde_json::to_vec(&outer).unwrap());
+                modified.push(b'\n');
+                injected = true;
+                break;
+            }
+            modified.extend(raw);
+            modified.push(b'\n');
+        }
+        assert!(injected);
+        assert_eq!(
+            AlbumJournal::open_for_recovery(
+                &RecoveryScope {
+                    original_scope: scope.clone(),
+                    inspected_binding_sha256: b.sha256().unwrap(),
+                },
+                "job",
+                &modified
+            )
+            .unwrap_err(),
+            E::CorruptJournal,
+            "alias {alias}"
+        );
+    }
+}
+#[test]
+fn source_children_cannot_claim_source_root_or_album_directory_identity() {
+    for alias in ["source", "album"] {
+        let (p, mut s, r, scope) = fixture(|s, _| s.entries[3].identity = Some(id(alias)));
+        assert!(
+            validate_album_copy(&p, &mut s, &mut Meta, &mut Ai, &r, &scope).is_err(),
+            "file claimed {alias} directory identity"
+        );
+    }
 }

@@ -163,6 +163,8 @@ pub fn validate_album_copy(
             || !synthetic(e)
             || e.size.is_none()
             || e.modified.is_none()
+            || e.identity == source.identity
+            || e.identity == root.identity
             || e.parent_identity != source.identity
             || !supported_name(&e.name)
             || child.destination.root != target.reference

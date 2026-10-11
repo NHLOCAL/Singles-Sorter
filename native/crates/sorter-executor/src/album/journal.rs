@@ -295,7 +295,27 @@ impl AlbumJournal {
                 }
                 let mut combined = self.child_bytes.clone();
                 combined.extend(bytes);
-                PhysicalJournalV2::open(&self.binding.transfers(), &self.job_id, &combined)?;
+                let child =
+                    PhysicalJournalV2::open(&self.binding.transfers(), &self.job_id, &combined)?;
+                // A newly allocated file cannot alias any directory that this
+                // parent binding/lease protects. Check at TempAllocated, before
+                // the next BytesWritePrepared event can authorize streaming.
+                for event in child
+                    .events()
+                    .iter()
+                    .filter(|e| e.phase == Phase::TempAllocated)
+                {
+                    let identity = event
+                        .observed_identity
+                        .as_ref()
+                        .ok_or(E::InvalidTransition)?;
+                    if self.binding.source().identity.as_ref() == Some(identity)
+                        || (0..self.binding.directories().len())
+                            .any(|i| self.expected_directory_identity(i).as_ref() == Some(identity))
+                    {
+                        return Err(E::InvalidTransition);
+                    }
+                }
             }
             AlbumEvent::Complete => {
                 if self.child_bytes.is_empty() {

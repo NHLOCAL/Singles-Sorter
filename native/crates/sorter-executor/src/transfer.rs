@@ -275,6 +275,7 @@ pub fn run_job<S: TransferStorage>(
     progress: &mut dyn FnMut(TransferProgress),
 ) -> Result<JobResult> {
     run_job_inner(binding, storage, journal, sink, flag, progress, None)
+        .map(|(result, _guards)| result)
 }
 /// Only the album driver can supply its freshly held destination identity.
 pub(crate) fn run_album_transfers<S: TransferStorage>(
@@ -285,7 +286,7 @@ pub(crate) fn run_album_transfers<S: TransferStorage>(
     flag: &AtomicBool,
     progress: &mut dyn FnMut(TransferProgress),
     parent: &ObjectIdentity,
-) -> Result<JobResult> {
+) -> Result<(JobResult, HeldTransferGuards<S>)> {
     run_job_inner(
         binding,
         storage,
@@ -305,7 +306,7 @@ fn run_job_inner<S: TransferStorage>(
     flag: &AtomicBool,
     progress: &mut dyn FnMut(TransferProgress),
     album_parent: Option<&ObjectIdentity>,
-) -> Result<JobResult> {
+) -> Result<(JobResult, HeldTransferGuards<S>)> {
     if binding.data.album_context.is_some() != album_parent.is_some() {
         return Err(E::Scope);
     }
@@ -410,12 +411,23 @@ fn run_job_inner<S: TransferStorage>(
             item.detail.clear();
         }
     }
-    Ok(JobResult::from_journal(
-        runner.journal,
-        runner.items,
-        cancelled(flag),
+    let result = JobResult::from_journal(runner.journal, runner.items, cancelled(flag));
+    Ok((
+        result,
+        HeldTransferGuards {
+            _sources: runner.sources,
+            _published: runner.published,
+        },
     ))
 }
+/// Private ownership carrier: album finalization must keep these guards alive
+/// through its final inspection AND parent journal append/sync. No re-opening by
+/// name can substitute for retaining the original verified guards.
+pub(crate) struct HeldTransferGuards<S: TransferStorage> {
+    _sources: HashMap<StorageRef, S::SourceLease>,
+    _published: HashMap<usize, (S::Published, MutationObservation)>,
+}
+
 struct Runner<'a, S: TransferStorage> {
     binding: &'a ExecutionBinding,
     storage: &'a mut S,

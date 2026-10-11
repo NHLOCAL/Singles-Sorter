@@ -296,7 +296,7 @@ pub fn run_album_copy<S: AlbumStorage>(
             return Ok(result);
         }
     };
-    let child = run_album_transfers(
+    let (child, child_guards) = run_album_transfers(
         &transfers,
         storage,
         &mut child_journal,
@@ -330,6 +330,7 @@ pub fn run_album_copy<S: AlbumStorage>(
         result.status = JobStatus::NeedsRecovery;
     }
     // Explicitly retain these guards through child commitment and parent result.
+    drop(child_guards);
     drop(owned);
     drop(parents);
     drop(lease);

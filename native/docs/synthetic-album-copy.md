@@ -44,7 +44,9 @@ individual embedded records. Both levels validate provenance and transitions.
 A private context gate prevents running extracted album child bindings through
 the ordinary single-transfer API. File transfers must resolve back to the exact
 held, newly owned album-parent identity. All parent/source/owned-directory guards
-remain held through final result commitment. A child failure blocks later child
+and the original published-child guards remain held through final result
+commitment, including the parent Complete append and sync. Nested temporary-file
+identities cannot alias the source album or any existing/new directory. A child failure blocks later child
 effects; completed and partial objects remain in place. No source is deleted.
 The synthetic result's child counts are evidence counts, not legacy album counters.
 
