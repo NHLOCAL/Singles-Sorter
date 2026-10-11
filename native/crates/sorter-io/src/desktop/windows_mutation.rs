@@ -128,6 +128,7 @@ fn units(name: &MutationName) -> Result<&[u16], MutationError> {
 pub enum WindowsMutationDomain {
     OwnedSyntheticTree,
     SelectedRoots,
+    SelectedRepair,
 }
 
 /// A trusted native host's explicit grant for one selected directory.
@@ -162,6 +163,7 @@ enum RootRole {
     Source,
     Target,
     Journal,
+    Repair,
 }
 // Only synthetic ownership can run TempDir cleanup. Selected roots hold no
 // deletion/cleanup object, including when construction fails partway through.
@@ -378,6 +380,16 @@ impl WindowsMutationStorage {
             domain: WindowsMutationDomain::SelectedRoots,
         })
     }
+    /// Explicit in-place repair authority: the selected source may receive only
+    /// staged files and retained originals; application journal remains disjoint.
+    pub fn for_selected_repair_roots(source: WindowsSelectedRootGrant, journal: WindowsSelectedRootGrant) -> Result<Self, MutationError> {
+        let source=pin_root(source.path,Some(&source.expected_identity),RootRole::Repair,RootOwnership::Selected)?;
+        let journal=pin_root(journal.path,Some(&journal.expected_identity),RootRole::Journal,RootOwnership::Selected)?;
+        ensure_disjoint_roots(&source,&journal)?;
+        Ok(Self{roots:vec![source,journal],domain:WindowsMutationDomain::SelectedRepair})
+    }
+    pub fn selected_repair_reference(&self)->Result<StorageRef,MutationError>{self.selected_reference(RootRole::Repair)}
+    pub fn selected_repair_root(&self)->Result<WindowsParent,MutationError>{self.parent_under(self.selected_root(RootRole::Repair)?,Path::new(""))}
     pub fn domain(&self) -> WindowsMutationDomain {
         self.domain
     }
@@ -518,7 +530,8 @@ impl WindowsMutationStorage {
     }
     fn check_role(&self, parent: &WindowsParent, role: RootRole) -> Result<(), MutationError> {
         self.check_parent(parent)?;
-        if parent.root.role != RootRole::Synthetic && parent.root.role != role {
+        let repair_role = self.domain == WindowsMutationDomain::SelectedRepair && parent.root.role == RootRole::Repair && matches!(role, RootRole::Source | RootRole::Target);
+        if parent.root.role != RootRole::Synthetic && parent.root.role != role && !repair_role {
             return Err(err(
                 MutationErrorKind::StalePlan,
                 "parent has a different selected-root role",
@@ -1141,6 +1154,11 @@ impl WindowsSourceLease {
         &self.observation
     }
 }
+impl Seek for WindowsSourceLease {
+    fn seek(&mut self, position:SeekFrom)->io::Result<u64>{
+        self.file.as_mut().ok_or_else(||io::Error::other("lease consumed"))?.seek(position)
+    }
+}
 impl Read for WindowsSourceLease {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.file
@@ -1397,6 +1415,7 @@ impl MutationStorage for WindowsMutationStorage {
         source: &mut WindowsSourceLease,
         cancel: &AtomicBool,
     ) -> MutationOutcome<RetirementOutcome> {
+        if self.domain==WindowsMutationDomain::SelectedRepair{return MutationOutcome::NoEffect(err(MutationErrorKind::Unsupported,"repair domain never unlinks originals"));}
         let preflight = (|| {
             cancelled(cancel)?;
             self.validate_source(source)?;
@@ -2559,4 +2578,75 @@ mod selected_directory_uncertainty_tests {
             matches!(storage.create_destination_directory(&parent, &name, &AtomicBool::new(false)), MutationOutcome::NoEffect(error) if error.kind == MutationErrorKind::StalePlan)
         );
     }
+}
+
+/// Narrow in-place staging/backup adapter. There is deliberately no source unlink
+/// or backup cleanup method. Every replacement starts by preserving the original
+/// entire object through the established write-through no-replace rename.
+pub struct WindowsRepairStorage { rename:WindowsRenameStorage }
+impl WindowsRepairStorage {
+    pub fn new(roots:WindowsMutationStorage)->Result<Self,MutationError>{
+        if !matches!(roots.domain(),WindowsMutationDomain::SelectedRepair|WindowsMutationDomain::OwnedSyntheticTree){return Err(err(MutationErrorKind::Unsupported,"repair-specific root grant required"));}
+        Ok(Self{rename:WindowsRenameStorage::new(roots)})
+    }
+    pub fn roots(&self)->&WindowsMutationStorage{self.rename.owned()}
+    pub fn acquire_source(&mut self,parent:&WindowsParent,expected:&ExpectedSource)->Result<WindowsSourceLease,MutationError>{self.rename.acquire_source(parent,expected)}
+    pub fn create_staged(&mut self,parent:&WindowsParent,correlation:&str,cancel:&AtomicBool)->MutationOutcome<WindowsOwnedTemp>{self.rename.owned.create_temp(parent,correlation,cancel)}
+    pub fn preserve_original(&mut self,source:&mut WindowsSourceLease,backup_name:&MutationName,cancel:&AtomicBool)->MutationOutcome<WindowsPublished>{
+        let parent=source.parent.clone();
+        self.rename.rename_no_replace(source,&parent,backup_name,cancel)
+    }
+    pub fn publish_staged(&mut self,temp:&mut WindowsOwnedTemp,parent:&WindowsParent,name:&MutationName,cancel:&AtomicBool)->MutationOutcome<WindowsPublished>{
+        if temp.parent.identity!=parent.identity{return MutationOutcome::NoEffect(err(MutationErrorKind::StalePlan,"repair staging must remain in exact original parent"));}
+        self.rename.owned.publish_no_replace(temp,parent,name,cancel)
+    }
+    pub fn verify_staged_fields(&self,temp:&WindowsOwnedTemp,filename:&str,repairs:&[sorter_core::fix_plan::FieldRepair])->Result<(),MutationError>{
+        let file=temp.file.as_ref().ok_or_else(||err(MutationErrorKind::StalePlan,"temp consumed"))?;
+        let mut read=file.try_clone().map_err(io_error)?;read.seek(SeekFrom::Start(0)).map_err(io_error)?;
+        let length=read.metadata().map_err(io_error)?.len();
+        let mut fields=crate::metadata::MetadataReader.open(crate::storage::ReadInput::seekable(read,length),filename)
+            .map_err(|_|err(MutationErrorKind::VerificationFailed,"staged native metadata open failed"))?;
+        for repair in repairs {
+            let item=fields.get(repair.field).map_err(|_|err(MutationErrorKind::VerificationFailed,"staged native metadata field failed"))?;
+            if item.value!=Ok(sorter_core::metadata::LegacyScalar::Text(repair.replacement.clone())){return Err(err(MutationErrorKind::VerificationFailed,"staged native metadata differs"));}
+        }
+        Ok(())
+    }
+    pub fn sync_published(&mut self,published:&mut WindowsPublished,expected:&ContentDigest,cancel:&AtomicBool)->Result<PublishedFileSyncAcknowledgment,MutationError>{self.rename.owned.sync_published_file(published,expected,cancel)}
+    pub fn verify_published(&mut self,published:&mut WindowsPublished,expected:&ContentDigest)->Result<MutationObservation,MutationError>{self.rename.owned.verify(published,expected)}
+}
+
+#[cfg(test)]
+mod repair_backup_tests {
+    use super::*;
+    #[test]
+    fn selected_repair_roots_are_disjoint_nonowning_and_never_unlink(){
+        let tree=tempfile::tempdir().unwrap();let source=tree.path().join("music");let journal=tree.path().join("journals");std::fs::create_dir(&source).unwrap();std::fs::create_dir(&journal).unwrap();std::fs::write(source.join("song.mp3"),b"original").unwrap();
+        let grant=|p:&Path|{let handles=chain(p).unwrap();WindowsSelectedRootGrant::new(p.to_path_buf(),identity(handles.last().unwrap()).unwrap()).unwrap()};
+        let mut roots=WindowsMutationStorage::for_selected_repair_roots(grant(&source),grant(&journal)).unwrap();assert_eq!(roots.domain(),WindowsMutationDomain::SelectedRepair);assert!(roots.selected_source_root().is_err());assert!(roots.selected_target_root().is_err());let parent=roots.selected_repair_root().unwrap();let expected=roots.observe_source(&parent,&name("song.mp3")).unwrap();let mut lease=roots.acquire_source(&parent,&expected).unwrap();assert!(matches!(roots.retire_source(&mut lease,&AtomicBool::new(false)),MutationOutcome::NoEffect(error) if error.kind==MutationErrorKind::Unsupported));drop(lease);drop(parent);drop(roots);assert_eq!(std::fs::read(source.join("song.mp3")).unwrap(),b"original");assert!(journal.is_dir());assert!(WindowsMutationStorage::for_selected_repair_roots(grant(&source),grant(&source)).is_err());
+    }
+
+    fn name(s:&str)->MutationName{MutationName::Windows(s.encode_utf16().collect())}
+    fn applied<T>(outcome:MutationOutcome<T>)->T{match outcome{MutationOutcome::Applied(v)=>v,_=>panic!("expected applied")}}
+    fn fixture()->(WindowsRepairStorage,WindowsParent,ExpectedSource,PathBuf){
+        let tree=tempfile::tempdir().unwrap();let path=tree.path().to_path_buf();std::fs::write(path.join("song.mp3"),b"original").unwrap();
+        let mut roots=WindowsMutationStorage::for_owned_synthetic_tree(tree).unwrap();let parent=roots.parent(Path::new("")).unwrap();let expected=roots.observe_source(&parent,&name("song.mp3")).unwrap();
+        (WindowsRepairStorage::new(roots).unwrap(),parent,expected,path)
+    }
+    #[test]
+    fn entire_original_and_named_stream_survive_backup_publication(){
+        let(mut storage,parent,_,path)=fixture();std::fs::write(path.join("song.mp3:notes"),b"original notes").unwrap();let expected=storage.rename.owned.observe_source(&parent,&name("song.mp3")).unwrap();let mut source=storage.acquire_source(&parent,&expected).unwrap();let mut temp=applied(storage.create_staged(&parent,"repair",&AtomicBool::new(false)));temp.write_all(b"repaired").unwrap();temp.sync_data().unwrap();
+        let backup=applied(storage.preserve_original(&mut source,&name("original.sorter-backup"),&AtomicBool::new(false)));
+        let mut published=applied(storage.publish_staged(&mut temp,&parent,&name("song.mp3"),&AtomicBool::new(false)));
+        let expected=ContentDigest{sha256:Sha256::digest(b"repaired").into(),length:8};storage.sync_published(&mut published,&expected,&AtomicBool::new(false)).unwrap();storage.verify_published(&mut published,&expected).unwrap();drop(published);drop(backup);
+        assert_eq!(std::fs::read(path.join("song.mp3")).unwrap(),b"repaired");assert_eq!(std::fs::read(path.join("original.sorter-backup")).unwrap(),b"original");assert_eq!(std::fs::read(path.join("original.sorter-backup:notes")).unwrap(),b"original notes");
+    }
+    #[test]
+    fn backup_collision_never_overwrites_or_consumes_original(){let(mut storage,parent,expected,path)=fixture();std::fs::write(path.join("original.sorter-backup"),b"foreign").unwrap();let mut source=storage.acquire_source(&parent,&expected).unwrap();assert!(matches!(storage.preserve_original(&mut source,&name("original.sorter-backup"),&AtomicBool::new(false)),MutationOutcome::NoEffect(_)));drop(source);assert_eq!(std::fs::read(path.join("song.mp3")).unwrap(),b"original");assert_eq!(std::fs::read(path.join("original.sorter-backup")).unwrap(),b"foreign");}
+    #[test]
+    fn cancellation_before_backup_leaves_original_untouched(){let(mut storage,parent,expected,path)=fixture();let mut source=storage.acquire_source(&parent,&expected).unwrap();assert!(matches!(storage.preserve_original(&mut source,&name("original.sorter-backup"),&AtomicBool::new(true)),MutationOutcome::NoEffect(_)));drop(source);assert_eq!(std::fs::read(path.join("song.mp3")).unwrap(),b"original");assert!(!path.join("original.sorter-backup").exists());}
+    #[test]
+    fn cancellation_after_backup_preserves_original_recovery_object(){let(mut storage,parent,expected,path)=fixture();let mut source=storage.acquire_source(&parent,&expected).unwrap();let mut temp=applied(storage.create_staged(&parent,"repair",&AtomicBool::new(false)));temp.write_all(b"repaired").unwrap();let backup=applied(storage.preserve_original(&mut source,&name("original.sorter-backup"),&AtomicBool::new(false)));assert!(matches!(storage.publish_staged(&mut temp,&parent,&name("song.mp3"),&AtomicBool::new(true)),MutationOutcome::NoEffect(_)));drop(backup);assert_eq!(std::fs::read(path.join("original.sorter-backup")).unwrap(),b"original");assert!(!path.join("song.mp3").exists());}
+    #[test]
+    fn foreign_original_name_after_backup_is_never_replaced(){let(mut storage,parent,expected,path)=fixture();let mut source=storage.acquire_source(&parent,&expected).unwrap();let mut temp=applied(storage.create_staged(&parent,"repair",&AtomicBool::new(false)));temp.write_all(b"repaired").unwrap();let backup=applied(storage.preserve_original(&mut source,&name("original.sorter-backup"),&AtomicBool::new(false)));std::fs::write(path.join("song.mp3"),b"foreign").unwrap();assert!(matches!(storage.publish_staged(&mut temp,&parent,&name("song.mp3"),&AtomicBool::new(false)),MutationOutcome::NoEffect(_)));drop(backup);assert_eq!(std::fs::read(path.join("song.mp3")).unwrap(),b"foreign");assert_eq!(std::fs::read(path.join("original.sorter-backup")).unwrap(),b"original");}
 }
