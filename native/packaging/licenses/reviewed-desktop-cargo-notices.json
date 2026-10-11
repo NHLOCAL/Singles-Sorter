@@ -8,7 +8,7 @@
     "tauri/custom-protocol"
   ],
   "lock_path": "native/apps/singles-ui/src-tauri/Cargo.lock",
-  "lock_sha256_lf": "6907180a7f311036ffadbcbdaffc7b816bd85962a2dae20d45d80797ecae746e",
+  "lock_sha256_lf": "9dce6e0c9b0ced06a6eadb6c9cc32950f1edda659bbb7952f462798b36ed9ee3",
   "scope": "singles-ui-host desktop+original-ai+tauri/custom-protocol Windows normal and build dependency closure; no dev-only edges; full features and identity graph pinned",
   "packages": [
     {
@@ -7555,6 +7555,15 @@
       "package": "sorter-storage-contracts@0.1.0",
       "features": [],
       "dependencies": [
+        {
+          "package": "serde@1.0.229",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
         {
           "package": "sorter-core@0.1.0",
           "kinds": [
