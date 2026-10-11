@@ -55,6 +55,15 @@ pub fn validate_owned_copy(
         .parent_reference(&plan.request.source)
         .map_err(|_| E::Scope)?;
     let target_parent = owned.parent_reference(target).map_err(|_| E::Scope)?;
+    if source_parent
+        .contains_ancestor(target_parent.identity())
+        .map_err(|_| E::Scope)?
+        || target_parent
+            .contains_ancestor(source_parent.identity())
+            .map_err(|_| E::Scope)?
+    {
+        return Err(E::Scope);
+    }
     if source_parent.identity() != &scope.source_root
         || target_parent.identity() != &scope.target_root
     {
@@ -247,6 +256,15 @@ impl WindowsCopyRecovery {
         let target = owned
             .parent_reference(&binding.data.target_root.reference)
             .map_err(|_| E::Scope)?;
+        if source
+            .contains_ancestor(target.identity())
+            .map_err(|_| E::Scope)?
+            || target
+                .contains_ancestor(source.identity())
+                .map_err(|_| E::Scope)?
+        {
+            return Err(E::Scope);
+        }
         if Some(source.identity()) != binding.data.source_root.identity.as_ref()
             || Some(target.identity()) != binding.data.target_root.identity.as_ref()
         {
@@ -352,6 +370,15 @@ impl OwnedCopyReadStorage {
         }
         let source = owned.parent_reference(source).map_err(|_| E::Scope)?;
         let target = owned.parent_reference(target).map_err(|_| E::Scope)?;
+        if source
+            .contains_ancestor(target.identity())
+            .map_err(|_| E::Scope)?
+            || target
+                .contains_ancestor(source.identity())
+                .map_err(|_| E::Scope)?
+        {
+            return Err(E::Scope);
+        }
         let reads = DesktopStorage::new(&[source_path, target_path]).map_err(|_| E::Scope)?;
         Ok(Self {
             reads,

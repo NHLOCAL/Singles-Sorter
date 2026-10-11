@@ -806,6 +806,26 @@ fn serialized_domain_flags_and_foreign_capabilities_cannot_mint_copy_authority()
             .is_err()
     );
     assert!(other.owned.parent(Path::new("../source")).is_err());
+    // Lexical case-sensitive prefix checks alone miss NTFS ancestor aliases.
+    std::fs::create_dir_all(other.path.join("source/a/b/target")).unwrap();
+    use std::os::windows::ffi::OsStrExt;
+    let nested = StorageRef::WindowsPath {
+        utf16: other
+            .path
+            .join("SOURCE/a/b/target")
+            .as_os_str()
+            .encode_wide()
+            .collect(),
+    };
+    assert!(matches!(
+        OwnedCopyReadStorage::new(&other.owned, &other.plan.request.source, &nested),
+        Err(E::Scope)
+    ));
+    assert!(matches!(
+        OwnedCopyReadStorage::new(&other.owned, &nested, &other.plan.request.source),
+        Err(E::Scope)
+    ));
+
     let mut journal = PhysicalJournalV2::create(&f.binding, "foreign", &mut other.sink).unwrap();
     let result = run_job(
         &f.binding,

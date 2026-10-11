@@ -12,7 +12,8 @@ album/directory creation, tag writes or writable recovery is enabled.
 The ordinary `validate_execution` remains synthetic-only. `validate_owned_copy`
 requires the concrete `WindowsMutationStorage` capability which consumes the
 owned tree. Before metadata/planning/content reads, it checks root identity and
-containment, rejects mixed reference domains, overlapping roots, non-Copy modes,
+containment, rejects mixed reference domains, overlapping roots (including
+mixed-case NTFS aliases, checked through held ancestor identities), non-Copy modes,
 recursive/duet settings and more than one operation. Replanning then uses the
 owned-Copy read adapter restricted to those checked roots. It establishes directory
 listing by successful native enumeration, and file read/seek by checked actual
