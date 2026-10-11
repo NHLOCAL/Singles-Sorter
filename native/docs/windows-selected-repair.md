@@ -51,7 +51,7 @@ reads are bounded at 64 MiB. Fresh restart discovery/UI is a separate integratio
 
 ## Acceptance
 
-The source adds eleven owned Windows driver cases and retains the staged writer and
+The source adds twelve owned Windows driver cases and retains the staged writer and
 native preservation suites. These require actual Windows CI and a selected
 application build with native metadata. Source review or portable parsing alone
 is not runtime acceptance. Host and CLI must show filename/tag counts separately,

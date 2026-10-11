@@ -323,6 +323,8 @@ fn inspect_evidence(reads:&mut dyn ReadStorage,root:&StorageRef,role:&str,expect
 #[cfg(test)]
 mod journal_budget_tests {
     #[test]
+    fn local_drive_prefix_alignment_does_not_accept_device_or_other_volume_aliases(){use sorter_core::discovery::StorageRef;let reference=|value:&str|StorageRef::WindowsPath{utf16:value.encode_utf16().collect()};let root=reference(r"C:\music");assert_eq!(super::aligned_read_reference(&root,&reference(r"\\?\C:\music\song.mp3")).unwrap(),reference(r"C:\music\song.mp3"));for candidate in [r"\\?\D:\music\song.mp3",r"\\?\UNC\server\music\song.mp3",r"\\.\C:\music\song.mp3",r"\\?\Volume{other}\music\song.mp3"]{assert!(super::aligned_read_reference(&root,&reference(candidate)).is_err());}}
+    #[test]
     fn metadata_staleness_and_io_failures_never_continue_as_format_limits(){use sorter_storage_contracts::MutationErrorKind as K;assert!(super::may_continue_after_metadata_refusal(K::Unsupported));for kind in [K::StalePlan,K::Io,K::PermissionDenied,K::VerificationFailed]{assert!(!super::may_continue_after_metadata_refusal(kind));}}
     #[test]
     fn bounded_append_keeps_previous_prefix_readable(){assert_eq!(super::journal_budget(7,3,10),Some(10));assert_eq!(super::journal_budget(7,4,10),None);assert_eq!(super::journal_budget(usize::MAX,1,usize::MAX),None);}

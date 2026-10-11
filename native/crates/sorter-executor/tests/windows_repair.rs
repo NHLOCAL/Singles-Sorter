@@ -3,7 +3,7 @@
 use sorter_core::{Settings, discovery::*, job_plan::*, metadata::*};
 use sorter_executor::{ExecutionError as E, binding::Resources, digest, windows_copy::WindowsPlanningStorage, windows_repair::*};
 use sorter_io::desktop::{DesktopStorage, windows_mutation::*};
-use std::{path::PathBuf, sync::atomic::{AtomicBool, Ordering}};
+use std::{ffi::OsString,os::windows::ffi::{OsStrExt,OsStringExt},path::PathBuf, sync::atomic::{AtomicBool, Ordering}};
 #[derive(Clone,Copy)]
 struct Metadata(Option<&'static str>);
 impl MetadataProvider for Metadata {
@@ -24,8 +24,10 @@ fn media()->Vec<u8>{let file=include_bytes!("../../../tests/fixtures/media/tagge
 fn mp3()->Vec<u8>{let mut body=vec![];for id in [b"TPE1",b"TPE2",b"TIT2",b"TALB",b"TCON"]{body.extend(id);body.extend(sync(6));body.extend([0,0,0,0xe0,0xe1,0xf8,0xe4,0xed]);}body.extend([0;256]);let mut file=b"ID3\x04\0\0".to_vec();file.extend(sync(body.len()));file.extend(body);file.extend(media());file}
 struct Fixture { _tree:tempfile::TempDir,source:PathBuf,journal:PathBuf,plan:JobPlanV2,scope:RepairScope,metadata:Metadata }
 impl Fixture {
- fn new(files:&[(&str,Vec<u8>)],metadata:Metadata)->Self{
+ fn new(files:&[(&str,Vec<u8>)],metadata:Metadata)->Self{Self::new_with_prefix(files,metadata,false)}
+ fn new_with_prefix(files:&[(&str,Vec<u8>)],metadata:Metadata,verbatim:bool)->Self{
   let tree=tempfile::tempdir().unwrap();let source=tree.path().join("source");let journal=tree.path().join("journal");std::fs::create_dir(&source).unwrap();std::fs::create_dir(&journal).unwrap();for(name,bytes)in files{std::fs::write(source.join(name),bytes).unwrap();}
+  let spelling=|path:PathBuf|{let canonical=std::fs::canonicalize(path).unwrap();if verbatim{canonical}else{let mut units=canonical.as_os_str().encode_wide().collect::<Vec<_>>();if units.starts_with(&[92,92,63,92]){units.drain(..4);}PathBuf::from(OsString::from_wide(&units))}};let source=spelling(source);let journal=spelling(journal);
   let mut reads=WindowsPlanningStorage::for_repair_preview(&source).unwrap();let request=JobRequestV2{mode:JobMode::FixNames,source:reads.reference(&source).unwrap(),target:None,settings:Settings{main_folder_only:true,..Settings::default()},alias_rows:vec![],resource_ids:vec!["fixture".into()],adapter_versions:vec!["metadata-fixture".into()],ai_profile:AiProfile::Disabled};
   let plan=plan_job(&request,&mut reads,&mut {metadata},&mut Ai).unwrap();assert_eq!(plan.operations.len(),files.len(),"{plan:?}");
   let resources=Resources{resource_ids:request.resource_ids,adapter_versions:request.adapter_versions,ai_profile:AiProfile::Disabled,resource_hashes:vec![digest(b"fixture")],adapter_hashes:vec![digest(b"metadata-fixture")],model_hash:None};let scope=prepare_repair_scope(&plan,&mut reads,&resources,&AtomicBool::new(false)).unwrap();Self{_tree:tree,source,journal,plan,scope,metadata}
@@ -74,3 +76,6 @@ fn hash_valid_forbidden_phase_and_oversized_result_are_rejected(){
  let substituted=rewrite(&bytes,|body|{if body.phase=="Committed"{body.payload["current"]["actual_name"]=serde_json::json!({"Windows":"foreign.mp3".encode_utf16().collect::<Vec<_>>()});}});assert!(matches!(recover_repair_journal(&roots,&substituted,&AtomicBool::new(false)),Err(E::CorruptJournal)));
  let renamed=Fixture::new(&[("song__demo.mp3",mp3())],Metadata(None));let mut job=renamed.job();job.run(&AtomicBool::new(false),&mut |_|{}).unwrap();drop(job);let path=std::fs::read_dir(&renamed.journal).unwrap().next().unwrap().unwrap().path();let actual=std::fs::read(path).unwrap();let mut records=actual.split(|b|*b==b'\n').filter(|line|!line.is_empty()).map(|line|serde_json::from_slice::<Envelope>(line).unwrap()).collect::<Vec<_>>();let mut stopped=records.remove(4);assert_eq!(stopped.body.phase,"Stopped");records.truncate(3);stopped.body.sequence=3;stopped.body.payload["status"]=serde_json::json!("needs_recovery");stopped.body.payload["current"]=serde_json::Value::Null;stopped.body.payload["renamed"]=serde_json::json!(false);stopped.body.payload["processed"]=serde_json::json!(false);records.push(stopped);let mut lost=Vec::new();for record in records{lost.extend(serde_json::to_vec(&record).unwrap());lost.push(b'\n');}let lost=rewrite(&lost,|_|{});let roots=renamed.roots();let report=recover_repair_journal(&roots,&lost,&AtomicBool::new(false)).unwrap();assert!(report.operations[0].evidence.iter().any(|e|e.role=="planned_name"&&matches!(e.status,RepairEvidenceStatus::Verified)));
 }
+
+#[test]
+fn verbatim_selected_paths_reconcile_the_same_held_objects(){let fixture=Fixture::new_with_prefix(&[("song__demo.mp3",mp3())],Metadata(Some("àáøäí")),true);let mut job=fixture.job();let result=job.run(&AtomicBool::new(false),&mut |_|{}).unwrap();assert_eq!(result.status,RepairJobStatus::Complete);let report=job.inspect_recovery(&AtomicBool::new(false)).unwrap();assert!(report.operations[0].evidence.iter().all(|e|matches!(e.status,RepairEvidenceStatus::Verified)));}
