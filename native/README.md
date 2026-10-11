@@ -24,8 +24,11 @@ final acceptance.
   media parity does not establish arbitrary-library or native Windows/Android
   acceptance. V2 previews expose these limitations and the frozen coverage
   report explicitly.
-- No actual model inference, tag writes, transfers, UI,
-  network service or telemetry is implemented in this slice.
+- `sorter-recognition` and `sorter-classifier`: opt-in, original-only local AI
+  for read-only `plan-files` previews; see [build, explicit bundle, limits and
+  acceptance boundaries](docs/original-ai-preview.md).
+- No tag writes, transfers, UI AI activation, network service or telemetry is
+  enabled by this preview.
 
 The core's production dependencies are serde, serde_json and SHA256 (sha2),
 with exact versions/checksums preserved in Cargo.lock. No Python runtime is required by this
@@ -38,7 +41,9 @@ come from crates.io and their exact versions/checksums are in Cargo.lock.
 Install CMake 3.24+ and a C++17 toolchain for the metadata bridge. Its two native
 source dependencies are automatically fetched and verified at build time; see
 [native dependency cache/offline instructions](crates/sorter-io/dependencies/README.md).
-From this directory:
+Workspace tests additionally require the verified static PCRE2 archive described
+in [original AI preview](docs/original-ai-preview.md), even when the optional CLI
+feature is not selected. From this directory:
 
 ```sh
 cargo test --locked --workspace

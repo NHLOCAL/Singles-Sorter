@@ -1,0 +1,5 @@
+# Oracle-only metadata readers, official PyPI distributions.
+# music-tag publishes no wheel. Install its pinned source with --no-build-isolation;
+# the combined oracle already pins the setuptools build backend.
+music-tag==0.4.3 --hash=sha256:0aab6e6eeda8df0f5316ec2d2190bd74561b7e03562ab091ce8d5687cdbcfff6
+mutagen==1.47.0 --hash=sha256:edd96f50c5907a9539d8e5bba7245f62c9f520aef333d13392a79a4f70aca719

@@ -9,7 +9,12 @@ license.workspace = true
 name = "singles-sorter"
 path = "src/main.rs"
 
+[features]
+default = []
+original-ai = ["dep:sorter-recognition"]
+
 [dependencies]
+sorter-recognition = { path = "../sorter-recognition", optional = true }
 sorter-io = { path = "../sorter-io" }
 sha2.workspace = true
 sorter-core.workspace = true

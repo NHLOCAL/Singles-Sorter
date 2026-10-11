@@ -14,7 +14,11 @@ fn main() {
         panic!("target {target} has not passed this probe; Android is unfinished")
     };
     let library = dir.join(file);
-    assert!(library.is_file(), "missing pinned static library: {}", library.display());
+    assert!(
+        library.is_file(),
+        "missing pinned static library: {}",
+        library.display()
+    );
     println!("cargo:rerun-if-changed={}", library.display());
     println!("cargo:rustc-link-search=native={}", dir.display());
     println!("cargo:rustc-link-lib=static={name}");

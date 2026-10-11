@@ -50,6 +50,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tests/build/test_dependency_failure_containment.py
 
+      - name: Build pinned static PCRE2 for original adapter workspace tests
+        run: |
+          python probes/released-ner/acquire_pcre2.py --out probes/released-ner/.pcre2 --build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "PCRE2_STATIC_DIR=$((Resolve-Path probes/released-ner/.pcre2/install/lib).Path)" >> $env:GITHUB_ENV
+
       - name: Check formatting
         run: cargo +1.99.0 fmt --all -- --check
 

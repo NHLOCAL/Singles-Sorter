@@ -5,7 +5,10 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use sorter_core::{
     Settings,
-    job_plan::{AiProfile, DisabledRecognition, JobMode, JobPlanV2, JobRequestV2, plan_job},
+    job_plan::{
+        AiProfile, DisabledRecognition, JobMode, JobPlanV2, JobRequestV2, PlanningBoundary,
+        PlanningControl, RecognitionProvider, UncontrolledPlanning, plan_job_controlled,
+    },
 };
 #[cfg(windows)]
 use sorter_io::desktop::DesktopStorage as Desktop;
@@ -38,11 +41,20 @@ struct Request {
     ai_profile: RequestedAi,
     personal_aliases: Option<PathBuf>,
 }
+#[cfg(feature = "original-ai")]
+type RequestedLimits = sorter_recognition::Limits;
+#[cfg(not(feature = "original-ai"))]
+type RequestedLimits = serde::de::IgnoredAny;
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 enum RequestedAi {
     Disabled,
-    Configured { bundle_id: String },
+    Configured {
+        bundle_id: String,
+        model_directory: Option<PathBuf>,
+        #[serde(default)]
+        limits: Option<RequestedLimits>,
+    },
 }
 #[derive(Serialize)]
 pub(super) struct ResultPayload {
@@ -75,11 +87,15 @@ pub(super) fn capabilities() -> Value {
         "metadata_bridge_compiled": MetadataReader::is_available(),
         "metadata_coverage": serde_json::from_str::<Value>(COVERAGE).expect("embedded reviewed coverage JSON"),
         "metadata_coverage_sha256": hash(COVERAGE.as_bytes()),
-        "native_inference": false, "physical_apply": false,
+        "native_inference": cfg!(feature="original-ai"), "physical_apply": false,
+        "native_inference_scope": "explicit_verified_original_bundle_read_only_preview",
+        "model_assets_embedded": false, "bundle_validation": "both models verified locally for each configured job",
+        "cooperative_cancellation": "library_job_token_only; no CLI Ctrl-C handler",
+        "char35_enabled": false, "ui_inference": false,
         "android_provider": false, "windows_runtime_validated": false,
         "csv_parsing": true, "directory_traversal": cfg!(any(windows, target_os="linux")),
         "album_preview": true, "fix_names_preview": true,
-        "ai_profiles": ["intentionally_disabled", "configured_unavailable_blocker"],
+        "ai_profiles": ["intentionally_disabled", "original-v14-ner-3.7.5_requires_explicit_verified_directory"],
         "path_input": "absolute UTF-8 desktop paths; Windows observations retain UTF-16 identity; no Android URI conversion",
         "resource_limit_bytes": MAX_RESOURCE_BYTES,
         "writes_selected_trees_or_preferences": false,
@@ -169,6 +185,68 @@ fn resource_bytes(path: &Path) -> Result<Vec<u8>, Failure> {
     Ok(bytes)
 }
 
+type ConfiguredRecognition = (
+    Box<dyn RecognitionProvider>,
+    Box<dyn PlanningControl>,
+    Vec<String>,
+    Vec<String>,
+);
+fn recognition(request: &RequestedAi) -> Result<ConfiguredRecognition, Failure> {
+    match request {
+        RequestedAi::Disabled => Ok((
+            Box::new(DisabledRecognition),
+            Box::new(UncontrolledPlanning),
+            vec![],
+            vec![],
+        )),
+        RequestedAi::Configured {
+            bundle_id,
+            model_directory,
+            limits,
+        } => {
+            let unavailable = || {
+                Failure::new(
+                    3,
+                    "RECOGNITION_UNAVAILABLE",
+                    "Configured recognition requires the original-ai build, profile original-v14-ner-3.7.5 and an explicit verified original model directory",
+                )
+            };
+            let directory = model_directory.as_deref().ok_or_else(unavailable)?;
+            validate_path(directory)?;
+            #[cfg(not(feature = "original-ai"))]
+            {
+                let _ = (bundle_id, limits);
+                Err(unavailable())
+            }
+            #[cfg(feature = "original-ai")]
+            {
+                use sorter_recognition::{BUNDLE_ID, JobCancellation, Limits, OriginalRecognition};
+                if bundle_id != BUNDLE_ID {
+                    return Err(unavailable());
+                }
+                let limits: Limits = limits.clone().unwrap_or_default();
+                let control = JobCancellation::new();
+                let provider =
+                    OriginalRecognition::load(directory, bundle_id, limits, control.clone())
+                        .map_err(|e| match e {
+                            sorter_core::job_plan::RecognitionError::Abort(abort) => {
+                                let e: sorter_core::job_plan::JobError = abort.into();
+                                Failure::new(1, &e.code, e.detail)
+                            }
+                            _ => Failure::new(
+                                3,
+                                "RECOGNITION_UNAVAILABLE",
+                                "Both original models must pass complete local asset validation",
+                            ),
+                        })?;
+                let resources = provider.resource_ids();
+                let adapters = provider.adapter_versions();
+                Ok((Box::new(provider), Box::new(control), resources, adapters))
+            }
+        }
+    }
+}
+
 fn execute() -> Result<ResultPayload, Failure> {
     let request: Request = serde_json::from_slice(&read_request()?).map_err(|e| {
         Failure::new(
@@ -193,15 +271,6 @@ fn execute() -> Result<ResultPayload, Failure> {
             2,
             "TARGET_REQUIRED",
             "Sort requires an existing target directory",
-        ));
-    }
-    if let RequestedAi::Configured { bundle_id } = &request.ai_profile {
-        return Err(Failure::new(
-            3,
-            "RECOGNITION_UNAVAILABLE",
-            format!(
-                "Configured AI bundle {bundle_id:?} is unavailable. No native inference bundle is integrated; explicitly choose Disabled to plan without AI."
-            ),
         ));
     }
     #[cfg(not(any(windows, target_os = "linux")))]
@@ -245,7 +314,9 @@ fn execute() -> Result<ResultPayload, Failure> {
             storage: &mut metadata_storage,
             reader: MetadataReader,
         };
-        let core = JobRequestV2 {
+        let (mut recognition, control, recognition_resources, recognition_adapters) =
+            recognition(&request.ai_profile)?;
+        let mut core = JobRequestV2 {
             mode: request.mode,
             source,
             target,
@@ -272,28 +343,49 @@ fn execute() -> Result<ResultPayload, Failure> {
                 format!("metadata-coverage:sha256:{}", hash(COVERAGE.as_bytes())),
                 "recognition:intentionally-disabled:no-model".into(),
             ],
-            ai_profile: AiProfile::Disabled,
+            ai_profile: recognition.profile(),
         };
-        let plan = plan_job(&core, &mut storage, &mut metadata, &mut DisabledRecognition).map_err(
-            |e| {
-                Failure::new(
-                    if matches!(
-                        e.code.as_str(),
-                        "TARGET_REQUIRED"
-                            | "SOURCE_NOT_DIRECTORY"
-                            | "TARGET_NOT_DIRECTORY"
-                            | "SAME_ROOT"
-                    ) {
-                        2
-                    } else {
-                        1
-                    },
-                    &e.code,
-                    e.detail,
-                )
-            },
-        )?;
+        if !matches!(core.ai_profile, AiProfile::Disabled) {
+            core.adapter_versions
+                .retain(|s| s != "recognition:intentionally-disabled:no-model");
+        }
+        core.resource_ids.extend(recognition_resources);
+        core.adapter_versions.extend(recognition_adapters);
+        let outcome = plan_job_controlled(
+            &core,
+            &mut storage,
+            &mut metadata,
+            recognition.as_mut(),
+            control.as_ref(),
+        );
+        let executed = recognition.inference_executed();
+        let plan = outcome.map_err(|e| {
+            let mut f = Failure::new(
+                if matches!(
+                    e.code.as_str(),
+                    "TARGET_REQUIRED"
+                        | "SOURCE_NOT_DIRECTORY"
+                        | "TARGET_NOT_DIRECTORY"
+                        | "SAME_ROOT"
+                ) {
+                    2
+                } else {
+                    1
+                },
+                &e.code,
+                e.detail,
+            );
+            f.inference_executed = executed;
+            f
+        })?;
+        control.checkpoint(PlanningBoundary::Result).map_err(|e| {
+            let e: sorter_core::job_plan::JobError = e.into();
+            let mut f = Failure::new(1, &e.code, e.detail);
+            f.inference_executed = executed;
+            f
+        })?;
         let mut result = ResultPayload::empty();
+        result.inference_executed = executed;
         result.blockers = plan.blockers.clone();
         result.plan = Some(plan);
         result.resources = Some(resources);
@@ -324,6 +416,7 @@ pub(super) fn emit(response: Result<ResultPayload, Failure>) -> ExitCode {
         Err(f) => {
             let _ = writeln!(io::stderr().lock(), "{}: {}", f.error.code, f.error.message);
             let mut result = ResultPayload::empty();
+            result.inference_executed = f.inference_executed;
             result.blockers.push(f.error.code.clone());
             (
                 f.exit,

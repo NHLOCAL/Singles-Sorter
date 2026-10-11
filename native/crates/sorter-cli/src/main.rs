@@ -19,8 +19,9 @@ Usage:
 
 JSON commands emit one versioned envelope to stdout; diagnostics go to stderr.
 The stdin request limit is 16 MiB (16,777,216 bytes), including whitespace.
-No inference or physical execution occurs. All results are non-executable.
-Physical apply and native inference are unsupported.
+V1 executes no inference. All results are non-executable.
+V2 original inference requires the original-ai build and an explicit verified bundle.
+Physical apply is unsupported.
 V2 previews use read-only traversal, CSV aliases and fixture-scoped metadata.
 Linux is a test backend; Windows runtime and Android acceptance remain pending.
 NDJSON streaming and legacy positional flags are upcoming, currently unsupported.
@@ -71,12 +72,14 @@ struct ProtocolError {
 struct Failure {
     exit: u8,
     error: ProtocolError,
+    inference_executed: bool,
 }
 
 impl Failure {
     fn new(exit: u8, code: &str, message: impl Into<String>) -> Self {
         Self {
             exit,
+            inference_executed: false,
             error: ProtocolError {
                 code: code.into(),
                 message: message.into(),

@@ -144,6 +144,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
+name = "released-ner-probe"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
+name = "released-ner-text"
+version = "0.1.0"
+dependencies = [
+ "released-ner-probe",
+ "serde_json",
+]
+
+[[package]]
 name = "rustix"
 version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -211,6 +228,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "sorter-classifier"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "sorter-cli"
 version = "0.1.0"
 dependencies = [
@@ -219,6 +245,7 @@ dependencies = [
  "sha2",
  "sorter-core",
  "sorter-io",
+ "sorter-recognition",
  "tempfile",
 ]
 
@@ -253,6 +280,19 @@ dependencies = [
  "sorter-storage-contracts",
  "tempfile",
  "windows",
+]
+
+[[package]]
+name = "sorter-recognition"
+version = "0.1.0"
+dependencies = [
+ "released-ner-probe",
+ "released-ner-text",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sorter-classifier",
+ "sorter-core",
 ]
 
 [[package]]

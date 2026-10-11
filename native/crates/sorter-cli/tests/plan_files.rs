@@ -296,7 +296,7 @@ fn capability_report_is_explicit_and_metadata_readings_bind_real_resources() {
         0,
     );
     let caps = &v["result"]["capabilities"];
-    assert_eq!(caps["native_inference"], false);
+    assert_eq!(caps["native_inference"], cfg!(feature = "original-ai"));
     assert_eq!(caps["physical_apply"], false);
     assert_eq!(caps["android_provider"], false);
     assert_eq!(caps["windows_runtime_validated"], false);

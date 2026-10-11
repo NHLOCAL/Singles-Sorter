@@ -1,6 +1,7 @@
 [workspace]
-members = ["crates/sorter-core", "crates/sorter-cli", "crates/sorter-io", "crates/sorter-executor", "crates/sorter-storage-contracts"]
+members = ["crates/sorter-core", "crates/sorter-cli", "crates/sorter-io", "crates/sorter-executor", "crates/sorter-storage-contracts", "crates/sorter-classifier", "crates/sorter-recognition"]
 resolver = "3"
+exclude = ["probes/released-ner/released-ner-text", "probes/released-ner/released-ner-math"]
 
 [workspace.package]
 version = "0.1.0"
