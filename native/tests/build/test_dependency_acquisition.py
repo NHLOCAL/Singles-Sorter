@@ -18,6 +18,7 @@ class AcquisitionTests(unittest.TestCase):
         self.cache.mkdir()
         src = self.root / 'payload'; src.mkdir()
         (src / 'hello.txt').write_bytes(b'owned fixture\n')
+        (src / 'CMakeLists.txt').write_text('# owned test source marker\n')
         self.archive = self.cache / 'owned-1.tar.gz'
         with tarfile.open(self.archive, 'w:gz') as t:
             t.add(src, arcname='owned-1')
@@ -27,6 +28,7 @@ class AcquisitionTests(unittest.TestCase):
 project(acquisition_contract NONE)
 include("''' + (BRIDGE / 'cmake/AcquireDependency.cmake').as_posix() + '''")
 sorter_acquire_dependency(owned "1" "https://invalid.invalid/owned-1.tar.gz" "${EXPECTED_HASH}" result)
+sorter_require_acquired_source(owned "${result}" "${result_archive_sha256}" "${EXPECTED_HASH}")
 file(READ "${result}/hello.txt" contents)
 if(NOT contents STREQUAL "owned fixture\\n")
   message(FATAL_ERROR "payload mismatch")
@@ -59,6 +61,36 @@ endif()
         env = dict(os.environ, SORTER_DEPENDENCY_CACHE=str(self.cache))
         p = self.configure('-DSORTER_DEPENDENCY_CACHE=', env=env)
         self.assertEqual(p.returncode, 0, p.stdout)
+    def test_cache_parent_is_file_fails_before_population(self):
+        blocker = self.root / 'not a directory'
+        blocker.write_bytes(b'parent sentinel')
+        p = self.configure('-DSORTER_DEPENDENCY_CACHE=' + str(blocker / 'cache'))
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn('Cannot create dependency cache', p.stdout)
+        self.assertEqual(blocker.read_bytes(), b'parent sentinel')
+        self.assertFalse((self.root / 'build/_deps').exists())
+    def test_cache_lock_failure_fails_before_population(self):
+        (self.cache / 'acquire.lock').mkdir()
+        p = self.configure()
+        self.assertNotEqual(p.returncode, 0)
+        self.assertTrue('Cannot lock dependency cache' in p.stdout or
+                        ('acquire.lock' in p.stdout and 'creation failed' in p.stdout), p.stdout)
+        self.assertFalse((self.root / 'build/_deps').exists())
+    def test_caller_rejects_empty_root_and_foreign_source_before_effects(self):
+        # Owned minimal project exercises the production caller guard. No copy
+        # operation is present, even in a regressed helper: unsafe paths are data.
+        cmakelists = self.project / 'CMakeLists.txt'
+        cmakelists.write_text('cmake_minimum_required(VERSION 3.24)\n'
+            'project(guard_contract NONE)\ninclude("' +
+            (BRIDGE / 'cmake/AcquireDependency.cmake').as_posix() + '")\n'
+            'sorter_require_acquired_source(owned "${SOURCE}" "${EXPECTED_HASH}" "${EXPECTED_HASH}")\n'
+            'file(WRITE "${CMAKE_BINARY_DIR}/guard-returned" "unexpected")\n')
+        for index, source in enumerate(['', self.root.anchor, str(self.root / 'payload')]):
+            build = 'guard-' + str(index)
+            p = self.configure('-DSOURCE=' + source, build=build)
+            self.assertNotEqual(p.returncode, 0, p.stdout)
+            self.assertIn('Dependency acquisition', p.stdout)
+            self.assertFalse((self.root / build / 'guard-returned').exists())
     def test_missing_offline_archive_is_actionable(self):
         self.archive.unlink(); p=self.configure()
         self.assertNotEqual(p.returncode,0); self.assertIn('offline cache is missing',p.stdout)

@@ -7,6 +7,10 @@ foreach(name IN ITEMS taglib zlib)
   string(JSON url GET "${dependency_lock}" dependencies ${name} url)
   string(JSON sha256 GET "${dependency_lock}" dependencies ${name} archive_sha256)
   sorter_acquire_dependency("${name}" "${version}" "${url}" "${sha256}" ${name}_source)
+  # A nested CMake command may fail without returning a populated result. Never
+  # let an empty path reach file(COPY), where a trailing slash would mean root.
+  sorter_require_acquired_source("${name}" "${${name}_source}"
+    "${${name}_source_archive_sha256}" "${sha256}")
 endforeach()
 file(WRITE "${CMAKE_BINARY_DIR}/dependency-sources.txt" "${taglib_source}\n${zlib_source}\n")
 set(CMAKE_CXX_STANDARD 17)

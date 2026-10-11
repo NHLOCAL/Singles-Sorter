@@ -45,7 +45,10 @@ jobs:
           cargo +1.99.0 --version
 
       - name: Test pinned dependency acquisition and offline cache
-        run: python tests/build/test_dependency_acquisition.py
+        run: |
+          python tests/build/test_dependency_acquisition.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tests/build/test_dependency_failure_containment.py
 
       - name: Check formatting
         run: cargo +1.99.0 fmt --all -- --check
