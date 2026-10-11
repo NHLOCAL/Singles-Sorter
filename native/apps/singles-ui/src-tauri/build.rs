@@ -6,6 +6,7 @@ fn main() {
             "select_root",
             "resolve_typed_root",
             "start_preview",
+            "cancel_preview",
             "job_snapshot",
             "get_plan_page",
             "get_settings",

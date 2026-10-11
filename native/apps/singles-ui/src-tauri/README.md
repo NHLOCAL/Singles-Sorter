@@ -1,7 +1,7 @@
 # Read-only desktop host: integration boundary
 
 This is the first preview slice, not a complete desktop/Android release. It calls
-`sorter_core::job_plan::plan_job` directly with the existing desktop storage and
+`sorter_core::job_plan::plan_job_controlled` directly with the existing desktop storage and
 metadata bridge. It contains no sorting algorithm, Python process, shell command,
 file-copy/delete/tag-save adapter, or apply command.
 
@@ -15,8 +15,9 @@ file-copy/delete/tag-save adapter, or apply command.
   arbitrary paths. Replacing a selection invalidates its prior token.
 - `start_preview({request})` takes `mode`, `source_token`, `target_token`, all six
   `settings`, and `ai_profile` (`Disabled` or `Configured`). It returns `{job_id}`
-  after the background worker finishes. There is no simulated progress/cancel.
-- `job_snapshot({jobId})` returns the final `completed`/`failed` snapshot. Completed
+  immediately after reserving a background worker. `cancel_preview({jobId})`
+  signals real cooperative cancellation; the worker retains the busy guard.
+- `job_snapshot({jobId})` returns `running`, `completed`, `failed` or `cancelled`. Completed
   means planning completed, never that transfers or edits happened. The snapshot
   includes blockers, warnings, plan binding, row count, and an optional error.
 - `get_plan_page({jobId,offset,limit})` returns `{rows,total}`. Limits are 1–200.
@@ -25,7 +26,9 @@ file-copy/delete/tag-save adapter, or apply command.
   remains in Rust. Only the most recent job is retained.
 - `get_settings()` returns the saved development profile, or released defaults.
   The profile/personal-list section below documents the added persistence. `get_model_status()` explicitly reports unavailable native
-  inference and the actual platform. Configured AI never silently becomes disabled.
+  inference when built feature-off, or fully validates both original models
+  feature-on. Configured AI never silently becomes disabled. See
+  [original AI desktop contract](../../../docs/original-ai-desktop.md).
 
 Picking, resolving, and scanning share one host-side busy guard. Metadata/scanning
 runs outside the UI thread. Selected identities are rechecked against the opened
@@ -44,12 +47,12 @@ The default binary is `singles-sorter-preview`; bundle creation is disabled.
 The desktop feature requires platform SDKs: MSVC and WebView2 on Windows, GTK 3
 and WebKitGTK 4.1 development packages on Linux. No native-desktop acceptance or
 package-size claim may be inferred from the headless tests. Actual Windows build
-and UI-driver acceptance, Android provider integration, cancellation, automatic legacy
+and UI-driver acceptance, Android provider integration, automatic legacy
 preference migration and executable operations remain later gates.
 
 ## Security and source evidence
 
-Only the bundled `main` view receives the eight app-command permissions. The
+Only the bundled `main` view receives the enumerated app-command permissions. The
 build manifest explicitly enumerates commands because app commands are otherwise
 allowed by default. No general shell/fs/dialog plugin permissions are granted to
 JavaScript; the folder dialog is called only through the constrained Rust command.

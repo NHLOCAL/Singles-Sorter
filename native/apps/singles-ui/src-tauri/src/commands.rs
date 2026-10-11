@@ -61,8 +61,8 @@ pub async fn start_preview(
     let guard = host.claim()?;
     let profile = profile.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
-        let _guard = guard;
-        host.preview_with_personal(request, Some(profile.personal_bytes()?))
+        let personal = profile.personal_bytes()?;
+        host.start(request, personal, guard)
     })
     .await
     .map_err(|e| HostError::new("WORKER_FAILED", e.to_string()))?
@@ -87,19 +87,19 @@ pub async fn get_settings(
     let profile = profile.inner().clone();
     blocking(move || profile.settings()).await
 }
-#[derive(Serialize)]
-pub struct ModelStatus {
-    available: bool,
-    message: &'static str,
-    platform: &'static str,
+#[tauri::command]
+pub async fn get_model_status(state: State<'_, Host>) -> Result<ModelStatus, HostError> {
+    let host = state.inner().clone();
+    let guard = host.claim()?;
+    blocking(move || {
+        let _guard = guard;
+        Ok(host.model_status())
+    })
+    .await
 }
 #[tauri::command]
-pub fn get_model_status() -> ModelStatus {
-    ModelStatus {
-        available: false,
-        message: "מודל הזיהוי המקומי עדיין אינו משולב. לתצוגה מקדימה יש לבחור במפורש עבודה ללא AI.",
-        platform: platform(),
-    }
+pub fn cancel_preview(state: State<'_, Host>, job_id: String) -> Result<(), HostError> {
+    state.cancel(&job_id)
 }
 
 #[tauri::command]

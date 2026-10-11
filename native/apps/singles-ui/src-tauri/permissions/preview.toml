@@ -1,4 +1,4 @@
 [[permission]]
 identifier = "allow-preview-commands"
 description = "Inspect music plans and manage scoped development preferences/personal CSV; no generic filesystem, shell, network, or music-apply command."
-commands.allow = ["select_root", "resolve_typed_root", "start_preview", "job_snapshot", "get_plan_page", "get_settings", "get_model_status", "open_footer_link", "save_main_settings", "set_duet", "get_personal_list", "save_personal_list", "select_personal_import", "preview_personal_import", "confirm_personal_import", "export_personal_list", "get_first_run_status", "mark_first_run_seen"]
+commands.allow = ["select_root", "resolve_typed_root", "start_preview", "cancel_preview", "job_snapshot", "get_plan_page", "get_settings", "get_model_status", "open_footer_link", "save_main_settings", "set_duet", "get_personal_list", "save_personal_list", "select_personal_import", "preview_personal_import", "confirm_personal_import", "export_personal_list", "get_first_run_status", "mark_first_run_seen"]

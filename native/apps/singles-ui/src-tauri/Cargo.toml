@@ -12,6 +12,7 @@ resolver = "3"
 
 [features]
 default = ["desktop"]
+original-ai = ["dep:sorter-recognition"]
 desktop = ["dep:tauri", "dep:tauri-build", "dep:tauri-plugin-dialog", "dep:tauri-plugin-opener"]
 
 [[bin]]
@@ -29,6 +30,7 @@ tempfile = "=3.27.0"
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "=1.0.152"
 sha2 = "0.10"
+sorter-recognition = { path = "../../../crates/sorter-recognition", optional = true }
 sorter-core = { path = "../../../crates/sorter-core" }
 sorter-io = { path = "../../../crates/sorter-io" }
 tauri-plugin-opener = { version = "=2.7.1", optional = true }

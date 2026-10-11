@@ -7,7 +7,8 @@ use sorter_core::{
     discovery::{EntryKind, EntryObservation, StorageRef},
     job_plan::{
         AiProfile, DecisionV2, DisabledRecognition, JobMode, JobPlanV2, JobRequestV2,
-        OperationKind, plan_job,
+        OperationKind, PlanningAbort, PlanningBoundary, PlanningControl, RecognitionProvider,
+        plan_job_controlled,
     },
 };
 #[cfg(windows)]
@@ -121,6 +122,8 @@ pub struct JobSnapshot {
     pub host_schema: u16,
     pub job_id: String,
     pub status: &'static str,
+    /// Evidence only for an accepted complete plan; absent for aborted/failed jobs.
+    pub inference_executed: Option<bool>,
     pub plan_id: Option<String>,
     pub total_rows: usize,
     pub blockers: Vec<String>,
@@ -142,28 +145,62 @@ pub struct PlanPage {
     pub rows: Vec<DisplayRow>,
     pub total: usize,
 }
+struct Planned {
+    plan: JobPlanV2,
+    inference_executed: bool,
+}
 struct CompletedJob {
     snapshot: JobSnapshot,
     rows: Vec<DisplayRow>,
     _plan: Option<JobPlanV2>,
+    cancellation: Cancellation,
+}
+#[derive(Clone, Default)]
+struct Cancellation {
+    cancelled: Arc<AtomicBool>,
+    #[cfg(feature = "original-ai")]
+    recognition: sorter_recognition::JobCancellation,
+}
+impl Cancellation {
+    fn cancel(&self) {
+        self.cancelled.store(true, Ordering::Release);
+        #[cfg(feature = "original-ai")]
+        self.recognition.cancel();
+    }
+    fn is_cancelled(&self) -> bool {
+        self.cancelled.load(Ordering::Acquire)
+    }
+}
+impl PlanningControl for Cancellation {
+    fn checkpoint(&self, _: PlanningBoundary) -> std::result::Result<(), PlanningAbort> {
+        if self.is_cancelled() {
+            Err(PlanningAbort::cancelled())
+        } else {
+            Ok(())
+        }
+    }
 }
 #[derive(Default)]
 struct Inner {
     roots: Vec<Root>,
     job: Option<CompletedJob>,
+    model_probe: Option<Cancellation>,
 }
 #[derive(Default)]
 struct Shared {
     inner: Mutex<Inner>,
     busy: AtomicBool,
     serial: AtomicU64,
+    lifecycle: AtomicU64,
 }
 #[derive(Clone, Default)]
 pub struct Host {
     shared: Arc<Shared>,
+    model_directory: Option<PathBuf>,
 }
 pub struct BusyGuard {
     shared: Arc<Shared>,
+    lifecycle: u64,
 }
 impl Drop for BusyGuard {
     fn drop(&mut self) {
@@ -183,12 +220,14 @@ pub fn platform() -> &'static str {
 }
 impl Host {
     pub fn claim(&self) -> Result<BusyGuard> {
+        let lifecycle = self.shared.lifecycle.load(Ordering::Acquire);
         self.shared
             .busy
             .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
             .map_err(|_| HostError::new("BUSY", "A picker or preview is already running"))?;
         Ok(BusyGuard {
             shared: self.shared.clone(),
+            lifecycle,
         })
     }
     fn next(&self, prefix: &str) -> String {
@@ -228,19 +267,43 @@ impl Host {
         inner.job = None;
         Ok(selection)
     }
-    #[cfg(test)]
-    pub fn preview(&self, request: PreviewRequest) -> Result<JobId> {
-        self.preview_with_personal(request, None)
+    pub fn with_model_directory(directory: PathBuf) -> Self {
+        Self {
+            model_directory: Some(directory),
+            ..Self::default()
+        }
     }
-    pub fn preview_with_personal(
-        &self,
-        request: PreviewRequest,
-        personal: Option<Vec<u8>>,
-    ) -> Result<JobId> {
+    pub fn cancel(&self, id: &str) -> Result<()> {
+        let inner = self.lock()?;
+        let job = inner
+            .job
+            .as_ref()
+            .filter(|j| j.snapshot.job_id == id)
+            .ok_or_else(|| HostError::new("UNKNOWN_JOB", "Job is no longer retained"))?;
+        if job.snapshot.status == "running" {
+            job.cancellation.cancel();
+        }
+        Ok(())
+    }
+    pub fn cancel_active(&self) {
+        if let Ok(inner) = self.lock() {
+            self.shared.lifecycle.fetch_add(1, Ordering::AcqRel);
+            if let Some(probe) = &inner.model_probe {
+                probe.cancel();
+            }
+            if let Some(job) = &inner.job {
+                if job.snapshot.status == "running" {
+                    job.cancellation.cancel();
+                }
+            }
+        }
+    }
+    fn prepare(&self, request: &PreviewRequest) -> Result<(Root, Option<Root>)> {
+        #[cfg(not(feature = "original-ai"))]
         if request.ai_profile == RequestedAi::Configured {
             return Err(HostError::new(
                 "RECOGNITION_UNAVAILABLE",
-                "Configured AI is not integrated. Explicitly choose Disabled to preview without AI.",
+                "This build does not include original AI",
             ));
         }
         let (source, target) = {
@@ -274,17 +337,105 @@ impl Host {
             };
             (source, target)
         };
+        Ok((source, target))
+    }
+    pub fn start(
+        &self,
+        request: PreviewRequest,
+        personal: Vec<u8>,
+        guard: BusyGuard,
+    ) -> Result<JobId> {
+        let (source, target) = self.prepare(&request)?;
         let job_id = self.next("job");
-        // All storage, metadata providers and their Rc state remain on this worker thread.
-        let result = real_plan(&source, target.as_ref(), request, personal.as_deref());
+        let cancellation = Cancellation::default();
+        let mut inner = self.lock()?;
+        if guard.lifecycle != self.shared.lifecycle.load(Ordering::Acquire) {
+            return Err(HostError::new(
+                "PLANNING_CANCELLED",
+                "The owning view was closed or reloaded",
+            ));
+        }
+        inner.job = Some(CompletedJob {
+            snapshot: JobSnapshot {
+                host_schema: 1,
+                job_id: job_id.clone(),
+                status: "running",
+                inference_executed: None,
+                plan_id: None,
+                total_rows: 0,
+                blockers: vec![],
+                warnings: vec![],
+                error: None,
+            },
+            rows: vec![],
+            _plan: None,
+            cancellation: cancellation.clone(),
+        });
+        drop(inner);
+        let host = self.clone();
+        let id = job_id.clone();
+        if let Err(error) = std::thread::Builder::new()
+            .name("read-only-plan".into())
+            .spawn(move || {
+                let _guard = guard;
+                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    real_plan(
+                        &source,
+                        target.as_ref(),
+                        request,
+                        Some(&personal),
+                        host.model_directory.as_deref(),
+                        &cancellation,
+                    )
+                }))
+                .unwrap_or_else(|_| Err(HostError::new("WORKER_FAILED", "Planning worker failed")));
+                let _ = host.finish(&id, result, cancellation);
+            })
+        {
+            self.finish(
+                &job_id,
+                Err(HostError::new("WORKER_FAILED", error.to_string())),
+                Cancellation::default(),
+            )?;
+        }
+        Ok(JobId { job_id })
+    }
+    fn finish(
+        &self,
+        job_id: &str,
+        result: Result<Planned>,
+        cancellation: Cancellation,
+    ) -> Result<()> {
+        let mut inner = self.lock()?;
+        // Cancellation and result acceptance share the lock: a late success never
+        // revives a cancelled job, and an obsolete worker never replaces a newer job.
+        if inner
+            .job
+            .as_ref()
+            .is_some_and(|job| job.snapshot.job_id != job_id)
+        {
+            return Ok(());
+        }
+        let result = if cancellation.is_cancelled() {
+            Err(HostError::new(
+                "PLANNING_CANCELLED",
+                "הבדיקה בוטלה. לא בוצעו שינויים בקבצים.",
+            ))
+        } else {
+            result
+        };
         let job = match result {
-            Ok(plan) => {
+            Ok(Planned {
+                plan,
+                inference_executed,
+            }) => {
                 let rows = project_rows(&plan);
                 CompletedJob {
                     snapshot: JobSnapshot {
                         host_schema: 1,
-                        job_id: job_id.clone(),
+                        job_id: job_id.into(),
                         status: "completed",
+                        inference_executed: Some(inference_executed),
                         plan_id: Some(plan.binding_sha256.clone()),
                         total_rows: rows.len(),
                         blockers: plan.blockers.clone(),
@@ -293,13 +444,19 @@ impl Host {
                     },
                     rows,
                     _plan: Some(plan),
+                    cancellation,
                 }
             }
             Err(error) => CompletedJob {
                 snapshot: JobSnapshot {
                     host_schema: 1,
-                    job_id: job_id.clone(),
-                    status: "failed",
+                    job_id: job_id.into(),
+                    status: if error.code == "PLANNING_CANCELLED" {
+                        "cancelled"
+                    } else {
+                        "failed"
+                    },
+                    inference_executed: None,
                     plan_id: None,
                     total_rows: 0,
                     blockers: vec![error.code],
@@ -308,9 +465,34 @@ impl Host {
                 },
                 rows: vec![],
                 _plan: None,
+                cancellation,
             },
         };
-        self.lock()?.job = Some(job);
+        inner.job = Some(job);
+        Ok(())
+    }
+    #[cfg(test)]
+    pub fn preview(&self, request: PreviewRequest) -> Result<JobId> {
+        self.preview_with_personal(request, None)
+    }
+    #[cfg(test)]
+    pub fn preview_with_personal(
+        &self,
+        request: PreviewRequest,
+        personal: Option<Vec<u8>>,
+    ) -> Result<JobId> {
+        let (source, target) = self.prepare(&request)?;
+        let job_id = self.next("job");
+        let cancellation = Cancellation::default();
+        let result = real_plan(
+            &source,
+            target.as_ref(),
+            request,
+            personal.as_deref(),
+            self.model_directory.as_deref(),
+            &cancellation,
+        );
+        self.finish(&job_id, result, cancellation)?;
         Ok(JobId { job_id })
     }
     pub fn snapshot(&self, id: &str) -> Result<JobSnapshot> {
@@ -336,6 +518,12 @@ impl Host {
             .as_ref()
             .filter(|j| j.snapshot.job_id == id)
             .ok_or_else(|| HostError::new("UNKNOWN_JOB", "Preview is no longer retained"))?;
+        if job.snapshot.status != "completed" {
+            return Err(HostError::new(
+                "JOB_NOT_COMPLETED",
+                "Only completed jobs have result pages",
+            ));
+        }
         if offset > job.rows.len() {
             return Err(HostError::new(
                 "INVALID_PAGE",
@@ -395,7 +583,9 @@ fn real_plan(
     target: Option<&Root>,
     request: PreviewRequest,
     personal: Option<&[u8]>,
-) -> Result<JobPlanV2> {
+    model_directory: Option<&Path>,
+    cancellation: &Cancellation,
+) -> Result<Planned> {
     let mut roots = vec![source.path.clone()];
     if let Some(t) = target {
         roots.push(t.path.clone());
@@ -417,7 +607,9 @@ fn real_plan(
         .transpose()
         .map_err(storage_error)?;
     let aliases = load_aliases(BUNDLED, personal).map_err(storage_error)?;
-    let request = JobRequestV2 {
+    let (mut recognition, model_resources, model_adapters) =
+        recognition(&request.ai_profile, model_directory, cancellation)?;
+    let mut request = JobRequestV2 {
         mode: request.mode,
         source: source_ref,
         target: target_ref,
@@ -444,21 +636,31 @@ fn real_plan(
             format!("metadata-coverage:sha256:{:x}", Sha256::digest(COVERAGE)),
             "recognition:intentionally-disabled:no-model".into(),
         ],
-        ai_profile: AiProfile::Disabled,
+        ai_profile: recognition.profile(),
     };
+    request.resource_ids.extend(model_resources);
+    if request.ai_profile != AiProfile::Disabled {
+        request.adapter_versions.pop();
+    }
+    request.adapter_versions.extend(model_adapters);
     let mut storage = SharedReadStorage::new(desktop);
     let mut metadata_storage = storage.clone();
     let mut metadata = StorageMetadataProvider {
         storage: &mut metadata_storage,
         reader: MetadataReader,
     };
-    plan_job(
+    let plan = plan_job_controlled(
         &request,
         &mut storage,
         &mut metadata,
-        &mut DisabledRecognition,
+        recognition.as_mut(),
+        cancellation,
     )
-    .map_err(|e| HostError::new(&e.code, e.detail))
+    .map_err(|e| HostError::new(&e.code, e.detail))?;
+    Ok(Planned {
+        plan,
+        inference_executed: recognition.inference_executed(),
+    })
 }
 #[cfg(not(any(windows, target_os = "linux")))]
 fn real_plan(
@@ -466,11 +668,89 @@ fn real_plan(
     _target: Option<&Root>,
     _request: PreviewRequest,
     _personal: Option<&[u8]>,
-) -> Result<JobPlanV2> {
+    _model_directory: Option<&Path>,
+    _cancellation: &Cancellation,
+) -> Result<Planned> {
     Err(HostError::new(
         "PLATFORM_UNAVAILABLE",
         "No native Android provider is integrated",
     ))
+}
+type Recognition = (Box<dyn RecognitionProvider>, Vec<String>, Vec<String>);
+fn recognition(
+    profile: &RequestedAi,
+    directory: Option<&Path>,
+    cancellation: &Cancellation,
+) -> Result<Recognition> {
+    if *profile == RequestedAi::Disabled {
+        return Ok((Box::new(DisabledRecognition), vec![], vec![]));
+    }
+    #[cfg(feature = "original-ai")]
+    {
+        let directory = directory.ok_or_else(|| {
+            HostError::new(
+                "RECOGNITION_UNAVAILABLE",
+                "Original model directory missing",
+            )
+        })?;
+        let provider = sorter_recognition::OriginalRecognition::load(directory, sorter_recognition::BUNDLE_ID,
+            sorter_recognition::Limits::default(), cancellation.recognition.clone()).map_err(|error| match error {
+                sorter_core::job_plan::RecognitionError::Abort(abort) => {
+                    let error: sorter_core::job_plan::JobError = abort.into();
+                    HostError::new(&error.code, error.detail)
+                }
+                _ => HostError::new("RECOGNITION_UNAVAILABLE", "המודלים המקוריים חסרים או לא תקינים. הבדיקה לא הופעלה; אין מעבר אוטומטי לעבודה ללא AI."),
+            })?;
+        let resources = provider.resource_ids();
+        let adapters = provider.adapter_versions();
+        Ok((Box::new(provider), resources, adapters))
+    }
+    #[cfg(not(feature = "original-ai"))]
+    {
+        let _ = (directory, cancellation);
+        Err(HostError::new(
+            "RECOGNITION_UNAVAILABLE",
+            "This build does not include original AI",
+        ))
+    }
+}
+#[derive(Serialize)]
+pub struct ModelStatus {
+    pub available: bool,
+    pub message: String,
+    pub platform: &'static str,
+}
+impl Host {
+    pub fn model_status(&self) -> ModelStatus {
+        let cancellation = Cancellation::default();
+        if let Ok(mut inner) = self.lock() {
+            inner.model_probe = Some(cancellation.clone());
+        }
+        let result = recognition(
+            &RequestedAi::Configured,
+            self.model_directory.as_deref(),
+            &cancellation,
+        );
+        if let Ok(mut inner) = self.lock() {
+            inner.model_probe = None;
+        }
+        ModelStatus {
+            available: result.is_ok(),
+            platform: platform(),
+            message: match result {
+                Ok(_) => {
+                    "שני מודלי הזיהוי המקוריים אומתו. הקבצים נבדקים מחדש לפני כל בדיקה.".into()
+                }
+                Err(error) => {
+                    if cfg!(feature = "original-ai") {
+                        error.message
+                    } else {
+                        "מהדורה זו אינה כוללת את מודלי ה־AI המקוריים. בחר במפורש עבודה ללא AI או פתח את המהדורה הכוללת אותם.".into()
+                    }
+                }
+            },
+        }
+    }
 }
 fn entry_display(entry: &EntryObservation) -> String {
     match &entry.reference {
@@ -645,7 +925,14 @@ mod tests {
         );
         let mut r = request("bogus".into(), None, JobMode::FixNames);
         r.ai_profile = RequestedAi::Configured;
-        assert_eq!(h.preview(r).err().unwrap().code, "RECOGNITION_UNAVAILABLE");
+        assert_eq!(
+            h.preview(r).err().unwrap().code,
+            if cfg!(feature = "original-ai") {
+                "INVALID_ROOT_TOKEN"
+            } else {
+                "RECOGNITION_UNAVAILABLE"
+            }
+        );
     }
     #[cfg(any(windows, target_os = "linux"))]
     #[test]
@@ -897,3 +1184,7 @@ mod tests {
         assert!(!plan.executable);
     }
 }
+
+#[cfg(test)]
+#[path = "job_lifetime_tests.rs"]
+mod lifetime_tests;

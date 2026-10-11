@@ -4,3 +4,5 @@ test-results/
 
 node_modules
 __pycache__/
+
+src-tauri/target/
