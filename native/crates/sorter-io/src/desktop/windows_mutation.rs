@@ -289,6 +289,127 @@ impl WindowsMutationStorage {
         })
     }
 }
+/// A location capability produced only by successful exclusive journal creation.
+/// It holds the root and ancestry alive and identifies the exact file to read.
+#[derive(Clone)]
+pub struct WindowsJournalLocation {
+    parent: WindowsParent,
+    name: MutationName,
+    identity: ObjectIdentity,
+}
+
+/// Evidence only that the OS accepted a file-buffer flush request.
+/// This is not a namespace barrier or a mutation durability capability.
+#[derive(Debug)]
+#[must_use]
+pub struct FileBufferFlushAcknowledgment {
+    _private: (),
+}
+
+/// Private append-only journal bytes on an owned synthetic NTFS tree.
+/// No writable reopen, truncate, raw handle, or arbitrary-path constructor exists.
+/// `flush_file_buffers` acknowledges the OS request, not verified power-loss durability.
+pub struct WindowsJournalFile {
+    file: File,
+    location: WindowsJournalLocation,
+    poisoned: bool,
+}
+impl WindowsMutationStorage {
+    pub fn create_journal(
+        &self,
+        parent: &WindowsParent,
+        name: &MutationName,
+    ) -> Result<WindowsJournalFile, MutationError> {
+        self.check_parent(parent)?;
+        let file = open_relative_file(
+            parent.handle(),
+            units(name)?,
+            true,
+            FILE_GENERIC_READ | FILE_GENERIC_WRITE,
+        )?;
+        ensure_regular(&file)?;
+        let location = WindowsJournalLocation {
+            parent: parent.clone(),
+            name: name.clone(),
+            identity: identity(&file).map_err(read_error)?,
+        };
+        Ok(WindowsJournalFile {
+            file,
+            location,
+            poisoned: false,
+        })
+    }
+
+    /// Read-only close/reopen inspection, using previously captured identity and
+    /// held ancestry. A supplied filename is never sufficient recovery authority.
+    /// This is not a production restart-root authorization API.
+    pub fn read_journal(
+        &self,
+        location: &WindowsJournalLocation,
+    ) -> Result<Vec<u8>, MutationError> {
+        self.check_parent(&location.parent)?;
+        let mut file = open_relative_file(
+            location.parent.handle(),
+            units(&location.name)?,
+            false,
+            FILE_GENERIC_READ,
+        )?;
+        ensure_regular(&file)?;
+        if identity(&file).map_err(read_error)? != location.identity {
+            return Err(err(
+                MutationErrorKind::StalePlan,
+                "journal identity changed",
+            ));
+        }
+        let mut bytes = Vec::new();
+        file.read_to_end(&mut bytes).map_err(io_error)?;
+        Ok(bytes)
+    }
+}
+impl WindowsJournalFile {
+    pub fn location(&self) -> WindowsJournalLocation {
+        self.location.clone()
+    }
+
+    pub fn read_all(&mut self) -> Result<Vec<u8>, MutationError> {
+        let result = (|| {
+            self.file.seek(SeekFrom::Start(0)).map_err(io_error)?;
+            let mut bytes = Vec::new();
+            self.file.read_to_end(&mut bytes).map_err(io_error)?;
+            Ok(bytes)
+        })();
+        if result.is_err() {
+            self.poisoned = true;
+        }
+        result
+    }
+    pub fn append(&mut self, bytes: &[u8]) -> Result<(), MutationError> {
+        if self.poisoned {
+            return Err(err(
+                MutationErrorKind::UnknownOutcome,
+                "journal writer poisoned",
+            ));
+        }
+        self.poisoned = true;
+        self.file.seek(SeekFrom::End(0)).map_err(io_error)?;
+        self.file.write_all(bytes).map_err(io_error)?;
+        self.poisoned = false;
+        Ok(())
+    }
+    pub fn flush_file_buffers(&mut self) -> Result<FileBufferFlushAcknowledgment, MutationError> {
+        if self.poisoned {
+            return Err(err(
+                MutationErrorKind::UnknownOutcome,
+                "journal writer poisoned",
+            ));
+        }
+        self.poisoned = true;
+        unsafe { FlushFileBuffers(HANDLE(self.file.as_raw_handle())) }.map_err(win_error)?;
+        self.poisoned = false;
+        Ok(FileBufferFlushAcknowledgment { _private: () })
+    }
+}
+
 fn ensure_directory(file: &File) -> Result<(), MutationError> {
     match kind(&file.metadata().map_err(io_error)?) {
         EntryKind::Directory => ensure_case_insensitive(file),
@@ -402,6 +523,25 @@ fn open_directory(parent: &File, name: &[u16]) -> Result<File, MutationError> {
 }
 
 fn open_file(parent: &File, name: &[u16], create: bool) -> Result<File, MutationError> {
+    open_relative_file(
+        parent,
+        name,
+        create,
+        FILE_GENERIC_READ
+            | DELETE
+            | if create {
+                FILE_GENERIC_WRITE
+            } else {
+                FILE_ACCESS_RIGHTS(0)
+            },
+    )
+}
+fn open_relative_file(
+    parent: &File,
+    name: &[u16],
+    create: bool,
+    access: FILE_ACCESS_RIGHTS,
+) -> Result<File, MutationError> {
     let mut owned = name.to_vec();
     let length = (owned.len() * 2) as u16;
     let string = UNICODE_STRING {
@@ -422,13 +562,7 @@ fn open_file(parent: &File, name: &[u16], create: bool) -> Result<File, Mutation
     let status = unsafe {
         NtCreateFile(
             &mut handle,
-            FILE_GENERIC_READ
-                | DELETE
-                | if create {
-                    FILE_GENERIC_WRITE
-                } else {
-                    FILE_ACCESS_RIGHTS(0)
-                },
+            access,
             &attr,
             &mut ios,
             None,
@@ -879,4 +1013,48 @@ fn finish_publish(
         parent: parent.clone(),
         observation,
     })
+}
+
+#[cfg(test)]
+mod journal_flush_tests {
+    use super::*;
+
+    #[test]
+    fn os_rejected_flush_poison_is_permanent_and_preserves_bytes() {
+        let storage =
+            WindowsMutationStorage::for_owned_synthetic_tree(tempfile::tempdir().unwrap()).unwrap();
+        let parent = storage.parent(Path::new("")).unwrap();
+        let name = MutationName::Windows("journal".encode_utf16().collect());
+        let mut writer = storage.create_journal(&parent, &name).unwrap();
+        writer.append(b"owned fixture").unwrap();
+        let _ack = writer.flush_file_buffers().unwrap();
+        let location = writer.location();
+        drop(writer);
+        // Test-only construction with reduced access provokes a real Windows
+        // FlushFileBuffers error. The public API cannot create this bad handle.
+        let file = open_relative_file(
+            parent.handle(),
+            units(&name).unwrap(),
+            false,
+            FILE_GENERIC_READ,
+        )
+        .unwrap();
+        let mut rejected = WindowsJournalFile {
+            file,
+            location: location.clone(),
+            poisoned: false,
+        };
+        assert!(
+            matches!(rejected.flush_file_buffers(), Err(e) if e.kind == MutationErrorKind::PermissionDenied)
+        );
+        assert_eq!(rejected.read_all().unwrap(), b"owned fixture");
+        assert!(
+            matches!(rejected.append(b"must not write"), Err(e) if e.kind == MutationErrorKind::UnknownOutcome)
+        );
+        assert!(
+            matches!(rejected.flush_file_buffers(), Err(e) if e.kind == MutationErrorKind::UnknownOutcome)
+        );
+        drop(rejected);
+        assert_eq!(storage.read_journal(&location).unwrap(), b"owned fixture");
+    }
 }

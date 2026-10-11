@@ -236,3 +236,10 @@ pub fn binding_with(duet: bool, copy: bool, bytes: &[u8]) -> ExecutionBinding {
     )
     .unwrap()
 }
+
+pub fn recovery_scope(duet: bool) -> RecoveryScope {
+    RecoveryScope {
+        original_scope: fixture(duet).3,
+        inspected_binding_sha256: binding(duet).sha256().unwrap(),
+    }
+}

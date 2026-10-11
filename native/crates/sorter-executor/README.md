@@ -36,8 +36,12 @@ repeated artist names with suffixed distinct destinations stay distinct.
 ## Durability and state
 
 `JournalStore` requires exclusive ownership, append and durable sync. This task
-implements the protocol and fault-injecting in-memory store, not a platform file
-store. Events are hash-chained, sequenced and bound to job/plan/operation/source/
+implements the protocol and fault-injecting in-memory store. The optional
+`experimental-windows-journal` bridge now supports a newly created exclusive
+owned-TempDir local-NTFS journal file with checked FlushFileBuffers. Its ordinary
+OS-backed file-content durability assumptions and native evidence limits are
+documented in `native/docs/windows-owned-journal.md`. It grants no production
+root, transfer or album-namespace capability. Events are hash-chained, sequenced and bound to job/plan/operation/source/
 destination/digest. Intent is synced before effects; results follow effects.
 Allocation is preceded by TempAllocationPrepared, writing by BytesWritePrepared,
 publication by DestinationPublishPrepared, rename by AtomicRenamePrepared, and
@@ -94,8 +98,8 @@ also reproduced unsafe historical-commit counting before the current-state fix.
 The bounded transfer driver verifies streamed byte count and digest before
 publication, retains pending outcomes, and reports cancellation truthfully.
 Its fault tests do not establish native crash or power-loss durability.
-Windows primitive runtime acceptance, a durable platform journal store, real
-Android providers, production-root binding, album/tag effects, and public apply
+Windows runtime acceptance for each exact change, production journal/root
+authorization, real Android providers, production-root binding, album/tag effects, and public apply
 remain separate gates. Linux tests do not certify Windows or Android execution.
 
 ### Independent review correction

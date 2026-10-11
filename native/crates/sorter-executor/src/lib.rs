@@ -37,3 +37,6 @@ pub mod results;
 pub mod transfer;
 
 pub mod album;
+
+#[cfg(all(windows, feature = "experimental-windows-journal"))]
+pub mod windows_journal;

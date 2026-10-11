@@ -266,7 +266,9 @@ dependencies = [
  "serde_json",
  "sha2",
  "sorter-core",
+ "sorter-io",
  "sorter-storage-contracts",
+ "tempfile",
 ]
 
 [[package]]

@@ -78,6 +78,25 @@ jobs:
           if ($cases.Count -ne 12) { throw "Expected all 12 native Windows fixture cases; found $($cases.Count)" }
           cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --test windows_storage -- --test-threads=1
 
+      - name: Check experimental Windows journal bridge
+        if: runner.os == 'Windows'
+        run: cargo +1.99.0 clippy --locked -p sorter-executor --features experimental-windows-journal --all-targets -- -D warnings
+
+      - name: Exercise native journal flush errors and close/reopen recovery
+        if: runner.os == 'Windows'
+        run: |
+          $listing = cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-journal --test windows_journal -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $cases = @($listing | Where-Object { $_ -match ': test$' })
+          if ($cases.Count -ne 6) { throw "Expected all 6 native journal fixture cases; found $($cases.Count)" }
+          cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-journal --test windows_journal -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $flushListing = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib journal_flush_tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $flushCases = @($flushListing | Where-Object { $_ -match ': test$' })
+          if ($flushCases.Count -ne 1) { throw "Expected the native rejected-flush test; found $($flushCases.Count)" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib journal_flush_tests -- --test-threads=1
+
       - name: Test native metadata with static Windows CRT
         if: runner.os == 'Windows'
         env:
