@@ -18,8 +18,8 @@ native handles under explicitly authorized, pinned NTFS parents.
 4. `create_staged(&source, correlation, cancel)` derives the source parent. It
    revalidates the source and creates an empty no-replace temp there. Before
    returning a writable guard it compares source/staged owner, group, exact DACL
-   bytes and relevant descriptor control flags, including DACL protection and
-   inheritance. A mismatch never yields a writable guard. A rejected created
+   bytes, mandatory-integrity/resource-claim/Central Access Policy ACE bytes,
+   and relevant descriptor control flags, including ACL protection/inheritance. A mismatch never yields a writable guard. A rejected created
    object is retained empty and returned as `PendingUnknown` with actual identity,
    name, and size, not misreported as a side-effect-free rejection.
 5. Stream the repaired content, flush it, verify its digest and requested fields.
@@ -57,7 +57,9 @@ between backup and publication. Recovery remains inspection-only, never replay.
 The initial staging domain supports ordinary single-link local NTFS files with:
 
 - equal owner SID, group SID, exact DACL bytes (including ACE order/flags), and
-  owner/group/DACL defaulted and DACL inheritance/protection control bits;
+  owner/group/ACL defaulted and inheritance/protection control bits;
+- equal mandatory-integrity labels, resource claims and Central Access Policy
+  ACEs, queried using the existing READ_CONTROL right;
 - ordinary `ARCHIVE`, `HIDDEN`, `SYSTEM`, and `NOT_CONTENT_INDEXED` attributes;
 - positive creation and access timestamps that can be represented without Win32
   setter sentinel meanings; and
@@ -84,11 +86,14 @@ completion time of staging, matching the intent of a content modification rather
 than copying the old mtime. The retained original keeps its old last-write time.
 NTFS change time and new file identity are not copied.
 
-The supported security comparison is owner/group/DACL, not a claim to preserve
-privileged auditing SACLs, arbitrary resource-security policy, NTFS object IDs,
-extended attributes, or every metadata feature. No SACL-read privilege is enabled.
-These additional representations require separate native acceptance and support;
-this implementation must not be described as universal file-security cloning.
+Mandatory labels and resource/Central Access Policy ACEs are access controls,
+not merely auditing: their LABEL/ATTRIBUTE/SCOPE_SECURITY_INFORMATION portions
+are included in the exact held-handle comparison. A failure to query them fails
+closed. No privilege is enabled and no ACCESS_SYSTEM_SECURITY right is requested.
+The comparison does not claim to clone privileged audit ACEs, reserved security
+features, NTFS object IDs, extended attributes, or every metadata feature. These
+additional representations require separate native acceptance and support; this
+implementation must not be described as universal file-security cloning.
 
 ## Concurrent-change boundary
 
@@ -110,7 +115,8 @@ to the selected journal writer's readback. Synthetic-only journal behavior is
 unchanged. Serialized journal/root data is evidence, never mutation consent.
 
 Owned-TempDir native tests cover inherited-security success; restrictive/protected
-ACL mismatch with an empty retained temp; source, temp and backup ACL changes;
+ACL mismatch with an empty retained temp; mandatory-integrity NO_READ_UP policy
+mismatch; source, temp and backup ACL changes;
 ADS rejection and native late-stream change attempts; attribute policy including
 EFS/sparse/compression rejection; actual creation/access/mtime restoration and
 reopen checks; source/backup identity binding; cancellation; collision; retained
@@ -126,6 +132,8 @@ was retried or bypassed.
 ## API references
 
 - [GetSecurityInfo](https://learn.microsoft.com/en-us/windows/win32/api/aclapi/nf-aclapi-getsecurityinfo)
+- [Security information flags and required rights](https://learn.microsoft.com/en-us/windows/win32/secauthz/security-information)
+- [Mandatory integrity control](https://learn.microsoft.com/en-us/windows/win32/secauthz/mandatory-integrity-control)
 - [Security descriptor control flags](https://learn.microsoft.com/en-us/windows/win32/secauthz/security-descriptor-control)
 - [FILE_STREAM_INFO](https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_stream_info)
 - [SetFileTime](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-setfiletime)

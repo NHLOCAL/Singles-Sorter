@@ -36,8 +36,9 @@ use windows::{
             STATUS_REPARSE_POINT_ENCOUNTERED, UNICODE_STRING,
         },
         Security::{
-            ACL, DACL_SECURITY_INFORMATION, GROUP_SECURITY_INFORMATION,
-            GetLengthSid, GetSecurityDescriptorControl, IsValidAcl, IsValidSid,
+            ACL, ATTRIBUTE_SECURITY_INFORMATION, DACL_SECURITY_INFORMATION, GROUP_SECURITY_INFORMATION,
+            LABEL_SECURITY_INFORMATION, SCOPE_SECURITY_INFORMATION,
+            GetLengthSid, GetSecurityDescriptorControl, GetSecurityDescriptorSacl, IsValidAcl, IsValidSid,
             OWNER_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, PSID,
             Authorization::{GetSecurityInfo, SE_FILE_OBJECT},
         },
@@ -2643,6 +2644,9 @@ struct RepairSecurity {
     owner: Vec<u8>,
     group: Vec<u8>,
     dacl: Vec<u8>,
+    // Mandatory integrity label, resource claims and Central Access Policy ACEs
+    // are access controls too; READ_CONTROL suffices to query these portions.
+    access_sacl: Option<Vec<u8>>,
     control: u16,
 }
 
@@ -2660,10 +2664,12 @@ fn repair_security(file: &File) -> Result<RepairSecurity, MutationError> {
     let mut owner = PSID::default();
     let mut group = PSID::default();
     let mut dacl: *mut ACL = std::ptr::null_mut();
+    let mut access_sacl: *mut ACL = std::ptr::null_mut();
     let result = unsafe {
         GetSecurityInfo(
             HANDLE(file.as_raw_handle()), SE_FILE_OBJECT,
-            OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION,
+            OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION
+                | LABEL_SECURITY_INFORMATION | ATTRIBUTE_SECURITY_INFORMATION | SCOPE_SECURITY_INFORMATION,
             Some(&mut owner), Some(&mut group), Some(&mut dacl), None,
             Some(&mut descriptor),
         )
@@ -2678,12 +2684,16 @@ fn repair_security(file: &File) -> Result<RepairSecurity, MutationError> {
     let mut control = 0u16;
     let mut revision = 0u32;
     unsafe { GetSecurityDescriptorControl(allocation.0, &mut control, &mut revision) }.map_err(win_error)?;
+    let mut access_present = Default::default();
+    let mut access_defaulted = Default::default();
+    unsafe { GetSecurityDescriptorSacl(allocation.0, &mut access_present, &mut access_sacl, &mut access_defaulted) }.map_err(win_error)?;
     // Compare exact SID and ACL bytes, including ACE order and inheritance flags.
     // This is conservative equivalence (false negatives are safe), not an access
     // check or a claim that ACL/ADS changes are excluded by a main-stream lease.
     if !unsafe { IsValidSid(owner) }.as_bool()
         || !unsafe { IsValidSid(group) }.as_bool()
         || !unsafe { IsValidAcl(dacl) }.as_bool()
+        || (!access_sacl.is_null() && !unsafe { IsValidAcl(access_sacl) }.as_bool())
         || control & 0x0004 == 0
     {
         return Err(err(MutationErrorKind::Unsupported, "unrecognized repair security descriptor"));
@@ -2692,9 +2702,12 @@ fn repair_security(file: &File) -> Result<RepairSecurity, MutationError> {
         owner: unsafe { std::slice::from_raw_parts(owner.0.cast::<u8>(), GetLengthSid(owner) as usize) }.to_vec(),
         group: unsafe { std::slice::from_raw_parts(group.0.cast::<u8>(), GetLengthSid(group) as usize) }.to_vec(),
         dacl: unsafe { std::slice::from_raw_parts(dacl.cast::<u8>(), (*dacl).AclSize as usize) }.to_vec(),
-        // OWNER/GROUP_DEFAULTED, DACL_PRESENT/DEFAULTED, AUTO_INHERIT_REQ,
-        // AUTO_INHERITED and PROTECTED. SACL/auditing is outside this domain.
-        control: control & 0x150f,
+        access_sacl: if access_sacl.is_null() { None } else {
+            Some(unsafe { std::slice::from_raw_parts(access_sacl.cast::<u8>(), (*access_sacl).AclSize as usize) }.to_vec())
+        },
+        // OWNER/GROUP_DEFAULTED; DACL and access-SACL PRESENT/DEFAULTED,
+        // AUTO_INHERIT_REQ, AUTO_INHERITED and PROTECTED. Audit ACEs are not read.
+        control: control & 0x3f3f,
     })
 }
 
@@ -2794,7 +2807,7 @@ impl RepairPreservation {
     }
     fn check_security(&self, file: &File) -> Result<(), MutationError> {
         if repair_security(file)? != self.security {
-            return Err(err(MutationErrorKind::Unsupported, "repair owner/group/DACL/protection differs; no audio bytes may be staged"));
+            return Err(err(MutationErrorKind::Unsupported, "repair owner/group/DACL/integrity/resource-policy protection differs; no audio bytes may be staged"));
         }
         Ok(())
     }
@@ -3249,6 +3262,38 @@ mod repair_backup_tests {
     }
 
     #[test]
+    fn mandatory_integrity_policy_mismatch_never_writes_staging() {
+        let (mut storage, parent, _, path) = fixture();
+        {
+            // Add medium-integrity NO_READ_UP to the generated original. This
+            // does not elevate its integrity above the test token or change any
+            // token privilege, but is stricter than ordinary default NO_WRITE_UP.
+            let file = std::fs::OpenOptions::new().access_mode(READ_CONTROL.0 | WRITE_OWNER.0)
+                .open(path.join("song.mp3")).unwrap();
+            let mut descriptor = PSECURITY_DESCRIPTOR::default();
+            unsafe { ConvertStringSecurityDescriptorToSecurityDescriptorW(
+                windows::core::w!("S:(ML;;NWNR;;;ME)"), 1, &mut descriptor, None,
+            ) }.unwrap();
+            let allocation = SecurityAllocation(descriptor);
+            let mut sacl: *mut ACL = std::ptr::null_mut();
+            let mut present = Default::default();
+            let mut defaulted = Default::default();
+            unsafe { GetSecurityDescriptorSacl(allocation.0, &mut present, &mut sacl, &mut defaulted) }.unwrap();
+            let result = unsafe { SetSecurityInfo(HANDLE(file.as_raw_handle()), SE_FILE_OBJECT,
+                LABEL_SECURITY_INFORMATION, None, None, None, Some(sacl)) };
+            assert_eq!(result.0, 0);
+        }
+        let expected = storage.rename.owned.observe_source(&parent, &name("song.mp3")).unwrap();
+        let source = prepared(&mut storage, &parent, &expected);
+        assert!(source.repair.as_ref().unwrap().security.access_sacl.is_some());
+        assert!(matches!(storage.create_staged(&source, "integrity", &AtomicBool::new(false)),
+            MutationOutcome::PendingUnknown(error) if error.observed.as_ref().is_some_and(|observed| observed.size == Some(0))));
+        assert_eq!(std::fs::metadata(path.join(".sorter-integrity.tmp")).unwrap().len(), 0);
+        drop(source);
+        assert_eq!(std::fs::read(path.join("song.mp3")).unwrap(), b"original");
+    }
+
+    #[test]
     fn ordinary_attribute_policy_rejects_efs_sparse_compressed_and_unknown_flags() {
         for flag in [FILE_ATTRIBUTE_ENCRYPTED.0, FILE_ATTRIBUTE_SPARSE_FILE.0,
             FILE_ATTRIBUTE_COMPRESSED.0, FILE_ATTRIBUTE_READONLY.0, FILE_ATTRIBUTE_OFFLINE.0, 0x8000_0000] {
@@ -3284,16 +3329,17 @@ mod repair_backup_tests {
     }
 
     #[test]
-    fn repair_equivalence_checks_owner_group_dacl_and_protection_independently() {
+    fn repair_equivalence_checks_owner_group_dacl_integrity_policy_and_protection_independently() {
         let (mut storage, parent, expected, _) = fixture();
         let source = prepared(&mut storage, &parent, &expected);
         let file = source.file.as_ref().unwrap();
-        for part in 0..4 {
+        for part in 0..5 {
             let mut snapshot = source.repair.clone().unwrap();
             match part {
                 0 => snapshot.security.owner.push(0),
                 1 => snapshot.security.group.push(0),
                 2 => snapshot.security.dacl.push(0),
+                3 => snapshot.security.access_sacl = Some(vec![0]),
                 _ => snapshot.security.control ^= 0x1000,
             }
             assert!(snapshot.check_security(file).is_err());
