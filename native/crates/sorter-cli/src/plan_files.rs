@@ -32,14 +32,14 @@ const MAX_RESOURCE_BYTES: u64 = 16 * 1024 * 1024;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Request {
-    schema_version: u16,
-    mode: JobMode,
-    source: PathBuf,
-    target: Option<PathBuf>,
-    settings: Settings,
-    ai_profile: RequestedAi,
-    personal_aliases: Option<PathBuf>,
+pub(super) struct Request {
+    pub(super) schema_version: u16,
+    pub(super) mode: JobMode,
+    pub(super) source: PathBuf,
+    pub(super) target: Option<PathBuf>,
+    pub(super) settings: Settings,
+    pub(super) ai_profile: RequestedAi,
+    pub(super) personal_aliases: Option<PathBuf>,
 }
 #[cfg(feature = "original-ai")]
 type RequestedLimits = sorter_recognition::Limits;
@@ -47,7 +47,7 @@ type RequestedLimits = sorter_recognition::Limits;
 type RequestedLimits = serde::de::IgnoredAny;
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-enum RequestedAi {
+pub(super) enum RequestedAi {
     Disabled,
     Configured {
         bundle_id: String,
@@ -59,9 +59,9 @@ enum RequestedAi {
 #[derive(Serialize)]
 pub(super) struct ResultPayload {
     command: &'static str,
-    inference_executed: bool,
+    pub(super) inference_executed: bool,
     executable: bool,
-    plan: Option<JobPlanV2>,
+    pub(super) plan: Option<JobPlanV2>,
     resources: Option<Value>,
     capabilities: Value,
     blockers: Vec<String>,
@@ -105,7 +105,7 @@ pub(super) fn capabilities() -> Value {
 fn hash(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
 }
-fn validate_path(path: &Path) -> Result<(), Failure> {
+pub(super) fn validate_path(path: &Path) -> Result<(), Failure> {
     // Path::components normalizes interior ".", so check the original text too.
     let invalid_text = path.to_str().is_none_or(|raw| {
         raw.contains('\0')
@@ -142,7 +142,7 @@ fn storage_failure(e: StorageError) -> Failure {
     )
 }
 #[cfg(any(windows, target_os = "linux"))]
-fn resource_bytes(path: &Path) -> Result<Vec<u8>, Failure> {
+pub(super) fn resource_bytes(path: &Path) -> Result<Vec<u8>, Failure> {
     validate_path(path)?;
     let parent = path.parent().ok_or_else(|| {
         Failure::new(
@@ -191,7 +191,7 @@ type ConfiguredRecognition = (
     Vec<String>,
     Vec<String>,
 );
-fn recognition(request: &RequestedAi) -> Result<ConfiguredRecognition, Failure> {
+pub(super) fn recognition(request: &RequestedAi) -> Result<ConfiguredRecognition, Failure> {
     match request {
         RequestedAi::Disabled => Ok((
             Box::new(DisabledRecognition),
@@ -255,6 +255,9 @@ fn execute() -> Result<ResultPayload, Failure> {
             format!("Expected one strict v2 UTF-8 JSON request: {e}"),
         )
     })?;
+    execute_request(&request)
+}
+pub(super) fn execute_request(request: &Request) -> Result<ResultPayload, Failure> {
     if request.schema_version != 2 {
         return Err(Failure::new(
             2,
@@ -308,7 +311,13 @@ fn execute() -> Result<ResultPayload, Failure> {
             .map(|p| desktop.reference(p))
             .transpose()
             .map_err(storage_failure)?;
-        let mut storage = SharedReadStorage::new(desktop);
+        #[cfg(all(windows, feature = "selected-windows-execution"))]
+        let desktop: Box<dyn ReadStorage> = if let Some(target) = &request.target {
+            Box::new(sorter_executor::windows_copy::WindowsPlanningStorage::for_preview(&request.source, target).map_err(|e| Failure::new(1,"STORAGE_ERROR",e.to_string()))?)
+        } else { Box::new(desktop) };
+        #[cfg(not(all(windows, feature = "selected-windows-execution")))]
+        let desktop: Box<dyn ReadStorage> = Box::new(desktop);
+        let mut storage = SharedReadStorage::new(ReadAdapter(desktop));
         let mut metadata_storage = storage.clone();
         let mut metadata = StorageMetadataProvider {
             storage: &mut metadata_storage,
@@ -320,7 +329,7 @@ fn execute() -> Result<ResultPayload, Failure> {
             mode: request.mode,
             source,
             target,
-            settings: request.settings,
+            settings: request.settings.clone(),
             alias_rows: bundle.ordered_rows.into_iter().map(|r| r.fields).collect(),
             resource_ids: bundle
                 .source_hashes
@@ -445,4 +454,11 @@ pub(super) fn emit(response: Result<ResultPayload, Failure>) -> ExitCode {
         return ExitCode::from(1);
     }
     ExitCode::from(exit)
+}
+
+struct ReadAdapter(Box<dyn ReadStorage>);
+impl ReadStorage for ReadAdapter {
+    fn stat(&mut self, reference: &sorter_core::discovery::StorageRef) -> Result<sorter_core::discovery::EntryObservation, StorageError> { self.0.stat(reference) }
+    fn children(&mut self, reference: &sorter_core::discovery::StorageRef) -> Result<Vec<sorter_core::discovery::EntryObservation>, StorageError> { self.0.children(reference) }
+    fn open_read(&mut self, reference: &sorter_core::discovery::StorageRef) -> Result<sorter_core::discovery::ReadInput, StorageError> { self.0.open_read(reference) }
 }

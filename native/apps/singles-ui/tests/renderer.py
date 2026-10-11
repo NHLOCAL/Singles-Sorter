@@ -23,6 +23,7 @@ window.__personalList={revision:'r1',rows:[['אמן ראשון','אמן ראשו
 window.__TAURI_INTERNALS__={invoke:async(command,args={})=>{
  window.__calls.push({command,args});
  const settings={copy_mode:false,main_folder_only:false,singles_folder:true,exist_only:false,abc_sort:false,duet_mode:false};
+ if(command==='latest_execution')return null;
  if(command==='get_settings')return {...window.__storedSettings};
  if(command==='save_main_settings'){window.__storedSettings={...window.__storedSettings,...args.settings};return {...window.__storedSettings};}
  if(command==='set_duet'){window.__storedSettings.duet_mode=args.enabled;return {...window.__storedSettings};}

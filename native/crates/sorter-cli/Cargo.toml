@@ -12,9 +12,11 @@ path = "src/main.rs"
 [features]
 default = []
 original-ai = ["dep:sorter-recognition"]
+selected-windows-execution = ["dep:sorter-executor", "sorter-executor/selected-windows-execution"]
 
 [dependencies]
 sorter-recognition = { path = "../sorter-recognition", optional = true }
+sorter-executor = { path = "../sorter-executor", optional = true }
 sorter-io = { path = "../sorter-io" }
 sha2.workspace = true
 sorter-core.workspace = true

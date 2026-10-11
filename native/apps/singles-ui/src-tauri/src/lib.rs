@@ -22,6 +22,7 @@ pub fn run() {
     builder
         .setup(|app| {
             use tauri::Manager;
+            app.state::<job_owner::Host>().set_journal_directory(app.path().app_local_data_dir()?.join("execution-journals")).map_err(|e| std::io::Error::other(e.message))?;
             app.manage(profile::ProfileStore::new(
                 app.path().app_local_data_dir()?.join("profile-v1"),
             ));
@@ -69,6 +70,10 @@ pub fn run() {
             commands::select_root,
             commands::resolve_typed_root,
             commands::start_preview,
+            commands::start_apply,
+            commands::execution_snapshot,
+            commands::latest_execution,
+            commands::cancel_apply,
             commands::cancel_preview,
             commands::job_snapshot,
             commands::get_plan_page,

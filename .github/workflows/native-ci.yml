@@ -168,6 +168,14 @@ jobs:
           cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-rename
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Exercise inspected CLI execution protocol on owned Windows files
+        if: runner.os == 'Windows'
+        run: |
+          cargo +1.99.0 clippy --locked -p sorter-cli --features selected-windows-execution --all-targets -- -D warnings
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 test --locked -p sorter-cli --features selected-windows-execution --test run_files -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Exercise selected Windows roots and multi-file jobs
         if: runner.os == 'Windows'
         run: |

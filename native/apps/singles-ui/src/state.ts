@@ -1,12 +1,12 @@
 import {defaults} from './contracts';
-import type {Host,ProfileHost,Mode,ModelStatus,PlanPage,Role,RootSelection,Settings,Snapshot} from './contracts';
+import type {Host,ProfileHost,Mode,ModelStatus,PlanPage,Role,RootSelection,Settings,Snapshot,ExecutionSnapshot} from './contracts';
 export const PAGE_SIZE = 50;
 const rootKeys = {Source:'source',Target:'target'} as const;
 export interface RootInput {text:string;selection:RootSelection|null;pending:boolean;revision:number}
 export interface State {
   source:RootInput;target:RootInput;settings:Settings;model:ModelStatus|null;
-  initialized:boolean;startupWaiting:boolean;hostAvailable:boolean;busy:boolean;cancelRequested:boolean;activity:'preview'|'settings'|'page'|null;error:string|null;
-  snapshot:Snapshot|null;page:PlanPage|null;offset:number;ai:'Disabled'|'Configured';
+  initialized:boolean;startupWaiting:boolean;hostAvailable:boolean;busy:boolean;cancelRequested:boolean;activity:'preview'|'apply'|'settings'|'page'|null;error:string|null;
+  snapshot:Snapshot|null;execution:ExecutionSnapshot|null;page:PlanPage|null;offset:number;ai:'Disabled'|'Configured';
 }
 const newRoot = ():RootInput => ({text:'',selection:null,pending:false,revision:0});
 export function errorText(error:unknown):string {
@@ -31,7 +31,8 @@ export function errorText(error:unknown):string {
   return 'הפעולה לא הושלמה. נסה שוב לאחר בדיקת החיבור לתוכנה.';
 }
 export class PreviewController {
-  readonly state:State={source:newRoot(),target:newRoot(),settings:{...defaults},model:null,initialized:false,startupWaiting:false,hostAvailable:false,busy:false,cancelRequested:false,activity:null,error:null,snapshot:null,page:null,offset:0,ai:'Disabled'};
+  readonly state:State={source:newRoot(),target:newRoot(),settings:{...defaults},model:null,initialized:false,startupWaiting:false,hostAvailable:false,busy:false,cancelRequested:false,activity:null,error:null,snapshot:null,execution:null,page:null,offset:0,ai:'Disabled'};
+  private activeApply:{jobId:string;cancelSent:boolean;terminal:boolean}|null=null;
   private activePreview:{jobId:string|null;cancelSent:boolean;terminal:boolean}|null=null;
   private listeners=new Set<()=>void>();
   savedNotice:string|null=null;
@@ -39,7 +40,7 @@ export class PreviewController {
   constructor(private host:Host,private profile?:ProfileHost){}
   subscribe(listener:()=>void):()=>void{this.listeners.add(listener);return()=>this.listeners.delete(listener);}
   private emit(){for(const listener of this.listeners)listener();}
-  private invalidate(){this.state.snapshot=null;this.state.page=null;this.state.offset=0;this.state.error=null;}
+  private invalidate(){this.state.execution=null;this.state.snapshot=null;this.state.page=null;this.state.offset=0;this.state.error=null;}
   async initialize(){
     try{
       const settings=await this.host.getSettings();
@@ -55,6 +56,14 @@ export class PreviewController {
         }
       }
       this.state.settings={...settings};this.state.model=model;this.state.hostAvailable=true;
+      if(model.platform==='windows'&&this.host.latestExecution){
+        const retained=await this.host.latestExecution();
+        if(retained){
+          if(retained.preview.status!=='completed'||retained.preview.job_id!==retained.execution.job_id||retained.preview.plan_id!==retained.execution.plan_id||['running','preparing'].includes(retained.execution.status))throw new Error('תוצאת הביצוע הקודמת טרם אומתה.');
+          this.state.snapshot=retained.preview;this.state.execution=retained.execution;
+          this.state.page=await this.host.page(retained.preview.job_id,0,PAGE_SIZE);
+        }
+      }
     }catch(error){this.state.error=errorText(error);this.state.hostAvailable=false;}
     this.state.startupWaiting=false;this.state.initialized=true;this.emit();
   }
@@ -178,6 +187,63 @@ export class PreviewController {
       run.terminal=true;this.activePreview=null;
       this.state.busy=false;this.state.activity=null;this.emit();
     }
+  }
+  get canApply():boolean {
+    const snapshot=this.state.snapshot;
+    return !this.state.busy&&this.state.hostAvailable&&snapshot?.status==='completed'&&!!snapshot.plan_id&&snapshot.apply?.supported===true&&!this.state.execution&&!!this.host.startApply&&!!this.host.executionSnapshot&&!!this.host.cancelApply;
+  }
+  cancelApply(){
+    const run=this.activeApply;if(!run||run.terminal)return;
+    this.state.cancelRequested=true;this.emit();this.sendApplyCancellation(run);
+  }
+  private sendApplyCancellation(run:NonNullable<PreviewController['activeApply']>){
+    if(run.cancelSent||run.terminal||!this.host.cancelApply)return;
+    run.cancelSent=true;
+    void this.host.cancelApply(run.jobId).catch(error=>{
+      if(this.activeApply!==run||run.terminal)return;
+      run.cancelSent=false;this.state.error=errorText(error);this.emit();
+    });
+  }
+  async apply(){
+    if(!this.canApply)return;
+    const preview=this.state.snapshot!,planId=preview.plan_id!;
+    const run={jobId:preview.job_id,cancelSent:false,terminal:false};
+    this.activeApply=run;this.state.busy=true;this.state.activity='apply';this.state.cancelRequested=false;this.state.error=null;this.emit();
+    try{
+      try{
+        const started=await this.host.startApply!(run.jobId,planId);
+        if(started.job_id!==run.jobId)throw new Error('התקבלה תשובה שאינה שייכת לפעולה הנוכחית.');
+      }catch(error){
+        // Explicit native refusal is terminal. A lost IPC response is not proof
+        // that mutation never started: retain ownership and ask the known job.
+        if(error&&typeof error==='object'&&'code' in error)throw error;
+        this.state.error=errorText(error);this.emit();
+      }
+      for(;;){
+        if(this.state.cancelRequested)this.sendApplyCancellation(run);
+        let snapshot:ExecutionSnapshot;
+        try{
+          snapshot=await this.host.executionSnapshot!(run.jobId);
+          if(snapshot.host_schema!==1||snapshot.job_id!==run.jobId||snapshot.plan_id!==planId||!['preparing','running','complete','partial','cancelled','failed','needs_recovery'].includes(snapshot.status))throw new Error('מצב הפעולה לא אומת. ממתין לתשובה מהמארח.');
+        }catch(error){
+          if(error&&typeof error==='object'&&'code' in error&&['APPLY_NOT_STARTED','UNKNOWN_JOB'].includes(String(error.code))){
+            throw new Error('מצב הביצוע אינו זמין. יש לבדוק את יומן הפעולה לפני בדיקה או ביצוע נוספים.');
+          }
+          this.state.error=errorText(error);this.emit();await new Promise(resolve=>setTimeout(resolve,250));continue;
+        }
+        this.state.execution=snapshot;this.state.error=null;this.emit();
+        if(snapshot.status!=='running'&&snapshot.status!=='preparing'){
+          run.terminal=true;
+          if(snapshot.error)this.state.error=snapshot.error;
+          break;
+        }
+        await new Promise(resolve=>setTimeout(resolve,250));
+      }
+    }catch(error){
+      this.state.error=errorText(error);
+      // A refused/unknown attempt is never automatically retryable from the old plan.
+      if(this.state.snapshot?.apply)this.state.snapshot={...this.state.snapshot,apply:{...this.state.snapshot.apply,supported:false,reason:'יש לבצע בדיקה חדשה לפני ניסיון נוסף.'}};
+    }finally{run.terminal=true;this.activeApply=null;this.state.busy=false;this.state.activity=null;this.emit();}
   }
   async changePage(offset:number){
     const snapshot=this.state.snapshot;

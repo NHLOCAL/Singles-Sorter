@@ -10,8 +10,8 @@ export const defaults: Readonly<Settings> = Object.freeze({copy_mode:false,main_
 export interface RootSelection {token:string;display_name:string;capabilities:{read:boolean;list:boolean};platform:Platform}
 export interface PreviewRequest {mode:Mode;source_token:string;target_token:string|null;settings:Settings;ai_profile:'Disabled'|'Configured'}
 export interface ModelStatus {available:boolean;message:string;platform:Platform}
-export interface Snapshot {host_schema:1;job_id:string;status:'running'|'completed'|'failed'|'cancelled';plan_id:string|null;total_rows:number;blockers:string[];warnings:string[];error?:string|null}
-export interface PlanRow {id:string;source:string;kind:string;destination:string|null;reason:string;blockers:string[]}
+export interface Snapshot {host_schema:1;job_id:string;status:'running'|'completed'|'failed'|'cancelled';plan_id:string|null;total_rows:number;blockers:string[];warnings:string[];error?:string|null;apply?:ApplyReadiness|null}
+export interface PlanRow {id:string;source:string;kind:string;destination:string|null;reason:string;blockers:string[];operation_ids?:number[]}
 export interface PlanPage {rows:PlanRow[];total:number}
 export interface Host {
   selectRoot(role:Role):Promise<RootSelection|null>;
@@ -22,6 +22,10 @@ export interface Host {
   cancelPreview(jobId:string):Promise<void>;
   snapshot(jobId:string):Promise<Snapshot>;
   page(jobId:string,offset:number,limit:number):Promise<PlanPage>;
+  startApply?(jobId:string,planId:string):Promise<{job_id:string}>;
+  executionSnapshot?(jobId:string):Promise<ExecutionSnapshot>;
+  cancelApply?(jobId:string):Promise<void>;
+  latestExecution?():Promise<{preview:Snapshot;execution:ExecutionSnapshot}|null>;
 }
 
 export type MainSettings = Omit<Settings,'duet_mode'>;
@@ -43,3 +47,11 @@ export interface ProfileHost {
  getFirstRunStatus():Promise<{version:string;seen:boolean}>;
  markFirstRunSeen():Promise<{version:string;seen:boolean}>;
 }
+
+/** Apply eligibility is granted by retained native evidence, never inferred from rows. */
+export interface ApplyReadiness {supported:boolean;reason:string|null;operation_count:number;copy_mode:boolean;source:string;target:string}
+export type ExecutionStatus='preparing'|'running'|'complete'|'partial'|'cancelled'|'failed'|'needs_recovery';
+export type ItemStatus='complete'|'source_retained'|'failed'|'cancelled'|'blocked'|'needs_recovery';
+export interface ExecutionItem {operation:number;status:ItemStatus;detail:string}
+export interface ExecutionResult {source_items:number;committed_destinations:number;moved_sources:number;failed_operations:number;blocked_operations:number;recovery_operations:number;cancelled_operations:number;items:ExecutionItem[]}
+export interface ExecutionSnapshot {host_schema:1;job_id:string;plan_id:string;status:ExecutionStatus;operation_count:number;operation:number|null;bytes_written:number;source_length:number;journal_path:string|null;error:string|null;result:ExecutionResult|null;recovery?:{observed_directories:number;pending_directories:number;rejected_directories:number;incomplete_tail:boolean;transfers:{operation:number;status:string}[]}|null}

@@ -2,7 +2,7 @@ import './styles.css';
 import {nativeHost,openFooterLink} from './host';
 import {kindLabel,reasonLabel,blockerLabel,warningPresentation,noticeLabel,sourceLabel} from './presentation';
 import {PAGE_SIZE,PreviewController} from './state';
-import type {Settings,ImportEncoding,Mode,PlanRow} from './contracts';
+import type {Settings,ImportEncoding,Mode,PlanRow,ExecutionItem} from './contracts';
 import {PersonalListController} from './lists';
 import {installHelpBadges} from './help';
 import {WorkspaceNavigation} from './navigation';
@@ -35,6 +35,7 @@ app.innerHTML=`
 </aside></div>
 <section id="processing-screen" hidden aria-labelledby="processing-title"><progress aria-label="מתבצעת בדיקה"></progress><h2 id="processing-title" tabindex="-1">קורא ומנתח את הקבצים…</h2><p id="busy" role="status" aria-live="polite"></p><button id="cancel-preview" class="text-button">ביטול</button></section>
 <section id="results" class="results card" aria-labelledby="results-heading"><div class="results-toolbar"><button id="back-setup" class="text-button">חזרה להגדרות</button><div class="section-title"><h2 id="results-heading" tabindex="-1">תוכנית מיון</h2><span id="count" class="quiet-label" role="status"></span></div></div>
+<section id="execution-panel" class="execution-panel" aria-label="ביצוע התוכנית" hidden><div class="execution-heading"><div><h3 id="execution-title">התוכנית מוכנה לבדיקה</h3><p id="execution-summary" role="status" aria-live="polite"></p></div><button id="review-apply" class="primary">בצע את התוכנית</button><button id="cancel-apply" class="secondary" hidden>עצור ביצוע</button></div><progress id="execution-progress" aria-label="התקדמות הקובץ הנוכחי" hidden></progress><p id="execution-recovery" class="warning" hidden></p><p id="recovery-inspection" class="hint" hidden></p><label id="journal-label" class="detail-path-label" hidden>יומן הפעולה<input id="journal-path" class="source-path" dir="ltr" readonly></label></section>
 <div class="results-body" id="results-body" tabindex="0" aria-label="תוכן התוצאות">
 
 <div id="empty" class="empty">התוצאה תופיע כאן לאחר בחירת תיקיות והפעלת בדיקה.</div>
@@ -47,6 +48,7 @@ app.innerHTML=`
 </section>
 </main>
 <footer>להורדת סינגלים חינם · <button id="footer-link" class="footer-link">שיר בוט</button></footer>
+<dialog id="apply-dialog" aria-labelledby="apply-title"><div class="dialog-heading"><h2 id="apply-title">ביצוע התוכנית</h2><button id="apply-dismiss" class="icon-button" aria-label="חזור לתוכנית">×</button></div><p id="apply-description"></p><label class="detail-path-label">תיקית מקור<input id="apply-source" class="source-path" dir="ltr" readonly></label><label class="detail-path-label">תיקית יעד<input id="apply-target" class="source-path" dir="ltr" readonly></label><p class="hint">הקבצים והתוכנית ייבדקו מחדש לפני הביצוע. עצירה עשויה להשאיר פעולות שכבר הושלמו; התוצאה תציג מה בוצע בפועל.</p><div class="dialog-actions"><button id="confirm-apply" class="primary">אשר ביצוע</button><button id="apply-back" class="secondary">חזור לתוכנית</button></div></dialog>
 <dialog id="row-dialog" class="wide-dialog" aria-labelledby="row-title"><div class="dialog-heading"><h2 id="row-title"></h2><button id="row-close" class="icon-button" aria-label="סגור פרטים">×</button></div><div id="row-content"></div></dialog>
 <dialog id="menu-dialog" aria-labelledby="menu-title"><div class="dialog-heading"><h2 id="menu-title">עזרה ומידע</h2><button class="close-dialog icon-button" aria-label="סגור">×</button></div><div class="menu-items"><button data-help="help">איך משתמשים?</button><button data-help="about">אודות התוכנה</button></div><div id="help-content" class="help-content"></div></dialog>
 <dialog id="advanced-dialog" aria-labelledby="advanced-title"><div class="dialog-heading"><h2 id="advanced-title">הגדרות מתקדמות</h2><button class="close-dialog icon-button" aria-label="סגור">×</button></div>
@@ -64,11 +66,12 @@ target.addEventListener('input',()=>controller.editRoot('Target',target.value));
 $('source-picker').addEventListener('click',()=>void controller.selectRoot('Source'));
 $('target-picker').addEventListener('click',()=>void controller.selectRoot('Target'));
 function hasResults(){return controller.state.snapshot?.status==='completed'&&!!controller.state.page;}
-function showSetup(){if(controller.state.activity==='preview'){controller.cancelPreview();return;}if(navigation.screen==='results')resultsScroll=$('results-body').scrollTop;navigation.setup();render();source.focus();}
+function showSetup(){if(controller.state.activity==='apply')return;if(controller.state.activity==='preview'){controller.cancelPreview();return;}if(navigation.screen==='results')resultsScroll=$('results-body').scrollTop;navigation.setup();render();source.focus();}
 function showResults(push=true){navigation.results(hasResults());if(push)history.pushState({singlesView:'results',jobId:controller.state.snapshot?.job_id},'');render();$('results-heading').focus();requestAnimationFrame(()=>{$('results-body').scrollTop=resultsScroll;});}
 function backToSetup(){if(history.state?.singlesView==='results')history.back();else showSetup();}
 history.replaceState({singlesView:'setup'},'');
 window.addEventListener('popstate',()=>{
+ if(controller.state.activity==='apply'){history.replaceState({singlesView:'results',jobId:controller.state.snapshot?.job_id},'');return;}
  if(controller.state.activity==='preview'){controller.cancelPreview();history.replaceState({singlesView:'setup'},'');return;}
  const valid=hasResults()&&history.state?.jobId===controller.state.snapshot?.job_id;
  if($<HTMLDialogElement>('row-dialog').open){
@@ -84,6 +87,16 @@ window.addEventListener('popstate',()=>{
 });
 $('cancel-preview').addEventListener('click',()=>controller.cancelPreview());
 $('back-setup').addEventListener('click',backToSetup);
+$('review-apply').addEventListener('click',()=>{
+ if(!controller.canApply)return;
+ const readiness=controller.state.snapshot!.apply!;
+ $('apply-description').textContent=`${readiness.copy_mode?'העתקת':'העברת'} ${readiness.operation_count.toLocaleString('he-IL')} פעולות לפי התוכנית שהוצגה.`;
+ $<HTMLInputElement>('apply-source').value=readiness.source;$<HTMLInputElement>('apply-target').value=readiness.target;
+ openDialog('apply-dialog');$('apply-back').focus();
+});
+for(const id of ['apply-dismiss','apply-back'])$(id).addEventListener('click',()=>{$<HTMLDialogElement>('apply-dialog').close();$('review-apply').focus();});
+$('confirm-apply').addEventListener('click',()=>{$<HTMLDialogElement>('apply-dialog').close();void controller.apply();});
+$('cancel-apply').addEventListener('click',()=>controller.cancelApply());
 $('reopen-results').addEventListener('click',()=>showResults());
 async function runPreview(mode:Mode){
  if(controller.state.busy||personal.busy||!navigation.start(mode))return;
@@ -100,6 +113,7 @@ function openRow(row:PlanRow,trigger:HTMLButtonElement,push=true){
  detailTrigger=trigger;$('row-title').textContent=sourceLabel(row.source,controller.state.model?.platform);$('row-content').replaceChildren();
  for(const [label,value]of [['מקור',row.source],['יעד מוצע',row.destination]]as const){if(value===null)continue;const wrapper=text('label',label,'detail-path-label');const input=document.createElement('input');input.className='source-path';input.readOnly=true;input.dir='ltr';input.value=value;input.setAttribute('aria-label',label);input.addEventListener('focus',()=>input.select());wrapper.append(input);$('row-content').append(wrapper);}
  const description=text('p',reasonLabel(row),'detail-reason');$('row-content').append(description);
+ for(const item of executionItems(row))$('row-content').append(text('p',`${itemLabel(item)} · ${item.detail}`,'execution-item'));
  if(row.blockers.length)$('row-content').append(text('p',row.blockers.map(blockerLabel).join(' · '),'warning'));
  const technical=document.createElement('details');technical.append(text('summary','מידע טכני'),text('p',row.reason),text('p',row.blockers.join(' · ')));$('row-content').append(technical);
  if(push)history.pushState({singlesView:'detail',jobId:controller.state.snapshot?.job_id,rowId:row.id},'');openDialog('row-dialog');
@@ -143,6 +157,25 @@ for(const button of document.querySelectorAll<HTMLButtonElement>('[data-help]'))
 $('previous').addEventListener('click',()=>void controller.changePage(Math.max(0,controller.state.offset-PAGE_SIZE)));
 $('next').addEventListener('click',()=>void controller.changePage(controller.state.offset+PAGE_SIZE));
 function text(tag:string,value:string,className?:string){const node=document.createElement(tag);node.textContent=value;if(className)node.className=className;return node;}
+const executionTitles:Record<string,string>={preparing:'מאמת את הקבצים לפני ביצוע…',running:'מבצע את התוכנית…',complete:'הביצוע הושלם',partial:'הביצוע הושלם חלקית',cancelled:'הביצוע נעצר',failed:'הביצוע לא הושלם',needs_recovery:'נדרשת בדיקת התאוששות'};
+function itemLabel(item:ExecutionItem){return ({complete:'בוצע',source_retained:'היעד נכתב; המקור נשמר',failed:'נכשל',cancelled:'בוטל',blocked:'לא בוצע',needs_recovery:'נדרשת בדיקה'})[item.status];}
+function executionItems(row:PlanRow):ExecutionItem[]{return controller.state.execution?.result?.items.filter(item=>row.operation_ids?.includes(item.operation))??[];}
+function renderExecution(){
+ const s=controller.state,e=s.execution,readiness=s.snapshot?.apply;
+ $('execution-panel').hidden=!readiness&&!e;
+ $('review-apply').hidden=!!e||!readiness?.supported;$<HTMLButtonElement>('review-apply').disabled=!controller.canApply;
+ const running=s.activity==='apply';$('cancel-apply').hidden=!running;$<HTMLButtonElement>('cancel-apply').disabled=s.cancelRequested;
+ $<HTMLButtonElement>('back-setup').disabled=running;
+ $('execution-title').textContent=e?executionTitles[e.status]:running?'מאמת את הקבצים לפני ביצוע…':readiness?.supported?'התוכנית מוכנה לביצוע':'התוכנית זמינה לתצוגה בלבד';
+ const r=e?.result;
+ $('execution-summary').textContent=r?`${r.committed_destinations.toLocaleString('he-IL')} יעדים נכתבו · ${r.moved_sources.toLocaleString('he-IL')} קבצי מקור הועברו · ${r.failed_operations.toLocaleString('he-IL')} נכשלו · ${r.blocked_operations.toLocaleString('he-IL')} לא בוצעו`:s.cancelRequested&&running?'ממתין לעצירה בטוחה…':e?.status==='running'&&e.operation!==null?`פעולה ${e.operation+1} מתוך ${e.operation_count} · ${e.bytes_written.toLocaleString('he-IL')} מתוך ${e.source_length.toLocaleString('he-IL')} בתים`:readiness?.supported?`${readiness.operation_count.toLocaleString('he-IL')} פעולות ${readiness.copy_mode?'העתקה':'העברה'} ממתינות לאישור`:readiness?.reason??'';
+ const progress=$<HTMLProgressElement>('execution-progress');progress.hidden=!running;
+ if(e?.status==='running'&&e.source_length>0){progress.max=e.source_length;progress.value=Math.min(e.bytes_written,e.source_length);}else progress.removeAttribute('value');
+ $('execution-recovery').hidden=!e||!['needs_recovery','partial','cancelled','failed'].includes(e.status);
+ $('execution-recovery').textContent=e?.status==='needs_recovery'?'היומן נשמר. אין להפעיל שוב את התוכנית או למחוק את היומן לפני בדיקת הקבצים. התאוששות אוטומטית אינה מופעלת.':'פעולות שהושלמו נשארות בתוקף. עיין בפרטי הקבצים וביומן לפני בדיקה חדשה.';
+ $('recovery-inspection').hidden=!e?.recovery;$('recovery-inspection').textContent=e?.recovery?`נבדק היומן מול הקבצים: ${e.recovery.transfers.length} פעולות · ${e.recovery.pending_directories} יצירות תיקייה ממתינות לבירור${e.recovery.incomplete_tail?' · רשומה אחרונה לא שלמה':''}`:'';
+ $('journal-label').hidden=!e?.journal_path;$<HTMLInputElement>('journal-path').value=e?.journal_path??'';
+}
 function render(){
  const s=controller.state;const blocked=s.busy||!s.hostAvailable;
  app.dataset.view=navigation.screen;
@@ -176,7 +209,7 @@ function render(){
  if(ready)for(const row of s.page!.rows){
   const tr=document.createElement('tr');
   const origin=document.createElement('td');origin.className='file-name';const name=text('bdi',sourceLabel(row.source,s.model?.platform),'source-name');name.dir='auto';name.title=row.source;origin.append(name);tr.append(origin);
-  const action=text('td',kindLabel(row.kind),'row-action');tr.append(action);
+  const items=executionItems(row);const action=text('td',items.length?items.map(itemLabel).join(' · '):kindLabel(row.kind),'row-action');tr.append(action);
   const reason=document.createElement('td');reason.className='row-reason';reason.append(text('span',`${kindLabel(row.kind)} · `,'mobile-action'),text('span',row.blockers.length?row.blockers.map(blockerLabel).join(' · '):reasonLabel(row)));tr.append(reason);
   const detail=document.createElement('td');detail.className='row-detail';const button=document.createElement('button');button.className='icon-button detail-button';button.dataset.rowId=row.id;button.setAttribute('aria-label',`פרטים: ${sourceLabel(row.source,s.model?.platform)}`);button.append(iconElement('info'));button.addEventListener('click',()=>openRow(row,button));detail.append(button);tr.append(detail);$('rows').append(tr);
  }
@@ -189,11 +222,13 @@ function render(){
  $('details').hidden=!ready;$('plan-id').textContent=s.snapshot?.plan_id??'';$('blockers').textContent=s.snapshot?.blockers.join(' · ')||'ללא חסימות נוספות שדווחו.';
  $('pagination').hidden=!ready||s.page!.total<=PAGE_SIZE;
  $('page-label').textContent=ready?`${s.offset+1}–${Math.min(s.offset+PAGE_SIZE,s.page!.total)} מתוך ${s.page!.total}`:'';
+ renderExecution();
  $<HTMLButtonElement>('previous').disabled=s.busy||s.offset===0;$<HTMLButtonElement>('next').disabled=s.busy||!ready||s.offset+PAGE_SIZE>=s.page!.total;
 }
 document.documentElement.dataset.startupState='loading';
 controller.subscribe(render);render();void controller.initialize().then(()=>{
  document.documentElement.dataset.startupState=controller.state.hostAvailable?'ready':'failed';
+ if(controller.state.execution&&hasResults())showResults();
 });
 // Personal-list dialogs operate on ordered rows; all persistent writes are host commands.
 function returnAdvanced(){if(!$<HTMLDialogElement>('advanced-dialog').open)openDialog('advanced-dialog');}

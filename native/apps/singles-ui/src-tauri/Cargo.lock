@@ -3194,6 +3194,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "sorter-core",
+ "sorter-executor",
  "sorter-io",
  "sorter-recognition",
  "tauri",
@@ -3269,6 +3270,18 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+]
+
+[[package]]
+name = "sorter-executor"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha2",
+ "sorter-core",
+ "sorter-io",
+ "sorter-storage-contracts",
 ]
 
 [[package]]

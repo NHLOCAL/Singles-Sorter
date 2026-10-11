@@ -27,9 +27,13 @@ fn running(host: &Host, id: &str) -> Cancellation {
             blockers: vec![],
             warnings: vec![],
             error: None,
+            apply: None,
         },
         rows: vec![],
         _plan: None,
+        execution: None,
+        #[cfg(all(windows, feature = "selected-windows-execution"))]
+        selected: None,
         cancellation: cancellation.clone(),
     });
     cancellation

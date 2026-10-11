@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { Host,ProfileHost } from './contracts';
-/** No shell, filesystem, arbitrary URL or apply command is exposed here. */
+/** No generic shell, filesystem or arbitrary URL command is exposed here. Apply accepts only a retained job and its inspected plan digest. */
 export const nativeHost: Host & ProfileHost = {
   saveMainSettings: settings => invoke('save_main_settings',{settings}),
   setDuet: enabled => invoke('set_duet',{enabled}),
@@ -20,6 +20,10 @@ export const nativeHost: Host & ProfileHost = {
   cancelPreview: jobId => invoke('cancel_preview',{jobId}),
   snapshot: jobId => invoke('job_snapshot',{jobId}),
   page: (jobId,offset,limit) => invoke('get_plan_page',{jobId,offset,limit}),
+  startApply: (jobId,planId) => invoke('start_apply',{jobId,planId}),
+  executionSnapshot: jobId => invoke('execution_snapshot',{jobId}),
+  cancelApply: jobId => invoke('cancel_apply',{jobId}),
+  latestExecution: () => invoke('latest_execution'),
 };
 
 /** The host owns the single allowlisted destination; no URL arrives from JS. */

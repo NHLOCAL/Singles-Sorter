@@ -361,6 +361,22 @@ jobs:
           include-hidden-files: false
           overwrite: false
 
+      - name: Build selected-root execution desktop candidate
+        run: |
+          npm run build:desktop -- --ci --features selected-windows-execution -- --locked
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features selected-windows-execution
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise selected-root actual Copy Move review and stale-plan rejection
+        env:
+          SINGLES_DESKTOP_AI_EXPECTED: 'off'
+          SINGLES_DESKTOP_APPLY_EXPECTED: 'on'
+          SINGLES_UI_OUTPUT: ${{ github.workspace }}/native/apps/singles-ui/test-results/native-windows/selected-execution
+        run: |
+          python tests/run_desktop_medium.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Upload actual runtime evidence, including failures
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

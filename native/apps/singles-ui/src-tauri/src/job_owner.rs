@@ -1,4 +1,4 @@
-//! Read-only application authority. Paths never arrive through preview tokens.
+//! Native application authority. Paths never arrive through renderer job tokens.
 //! The renderer receives display projections, never an executable plan.
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -27,6 +27,10 @@ use std::{
         atomic::{AtomicBool, AtomicU64, Ordering},
     },
 };
+
+#[path = "execution.rs"]
+mod execution;
+pub use execution::{ApplyReadiness, ExecutionSnapshot, RetainedExecution};
 
 const BUNDLED: &[u8] =
     include_bytes!("../../../../tests/fixtures/full_contract/released-singer-list.csv");
@@ -130,6 +134,8 @@ pub struct JobSnapshot {
     pub warnings: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub apply: Option<ApplyReadiness>,
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct DisplayRow {
@@ -139,6 +145,7 @@ pub struct DisplayRow {
     pub destination: Option<String>,
     pub reason: String,
     pub blockers: Vec<String>,
+    pub operation_ids: Vec<usize>,
 }
 #[derive(Serialize)]
 pub struct PlanPage {
@@ -148,11 +155,17 @@ pub struct PlanPage {
 struct Planned {
     plan: JobPlanV2,
     inference_executed: bool,
+    apply: Option<ApplyReadiness>,
+    #[cfg(all(windows, feature = "selected-windows-execution"))]
+    selected: Option<execution::PreparedSelection>,
 }
 struct CompletedJob {
     snapshot: JobSnapshot,
     rows: Vec<DisplayRow>,
     _plan: Option<JobPlanV2>,
+    execution: Option<ExecutionSnapshot>,
+    #[cfg(all(windows, feature = "selected-windows-execution"))]
+    selected: Option<execution::PreparedSelection>,
     cancellation: Cancellation,
 }
 #[derive(Clone, Default)]
@@ -185,6 +198,7 @@ struct Inner {
     roots: Vec<Root>,
     job: Option<CompletedJob>,
     model_probe: Option<Cancellation>,
+    journal_directory: Option<PathBuf>,
 }
 #[derive(Default)]
 struct Shared {
@@ -292,7 +306,7 @@ impl Host {
                 probe.cancel();
             }
             if let Some(job) = &inner.job {
-                if job.snapshot.status == "running" {
+                if job.snapshot.status == "running" || job.execution.as_ref().is_some_and(|e| e.is_running()) {
                     job.cancellation.cancel();
                 }
             }
@@ -366,9 +380,13 @@ impl Host {
                 blockers: vec![],
                 warnings: vec![],
                 error: None,
+                apply: None,
             },
             rows: vec![],
             _plan: None,
+            execution: None,
+            #[cfg(all(windows, feature = "selected-windows-execution"))]
+            selected: None,
             cancellation: cancellation.clone(),
         });
         drop(inner);
@@ -428,6 +446,9 @@ impl Host {
             Ok(Planned {
                 plan,
                 inference_executed,
+                apply,
+                #[cfg(all(windows, feature = "selected-windows-execution"))]
+                selected,
             }) => {
                 let rows = project_rows(&plan);
                 CompletedJob {
@@ -441,9 +462,13 @@ impl Host {
                         blockers: plan.blockers.clone(),
                         warnings: plan.warnings.clone(),
                         error: None,
+                        apply,
                     },
                     rows,
                     _plan: Some(plan),
+                    execution: None,
+                    #[cfg(all(windows, feature = "selected-windows-execution"))]
+                    selected,
                     cancellation,
                 }
             }
@@ -462,9 +487,13 @@ impl Host {
                     blockers: vec![error.code],
                     warnings: vec![],
                     error: Some(error.message),
+                    apply: None,
                 },
                 rows: vec![],
                 _plan: None,
+                execution: None,
+                #[cfg(all(windows, feature = "selected-windows-execution"))]
+                selected: None,
                 cancellation,
             },
         };
@@ -609,6 +638,7 @@ fn real_plan(
     let aliases = load_aliases(BUNDLED, personal).map_err(storage_error)?;
     let (mut recognition, model_resources, model_adapters) =
         recognition(&request.ai_profile, model_directory, cancellation)?;
+    let requested_ai = request.ai_profile.clone();
     let mut request = JobRequestV2 {
         mode: request.mode,
         source: source_ref,
@@ -643,7 +673,13 @@ fn real_plan(
         request.adapter_versions.pop();
     }
     request.adapter_versions.extend(model_adapters);
-    let mut storage = SharedReadStorage::new(desktop);
+    #[cfg(all(windows, feature = "selected-windows-execution"))]
+    let desktop: Box<dyn ReadStorage> = if let Some(target) = target {
+        Box::new(sorter_executor::windows_copy::WindowsPlanningStorage::for_preview(&source.path, &target.path).map_err(storage_error)?)
+    } else { Box::new(desktop) };
+    #[cfg(not(all(windows, feature = "selected-windows-execution")))]
+    let desktop: Box<dyn ReadStorage> = Box::new(desktop);
+    let mut storage = SharedReadStorage::new(execution::ReadAdapter(desktop));
     let mut metadata_storage = storage.clone();
     let mut metadata = StorageMetadataProvider {
         storage: &mut metadata_storage,
@@ -657,9 +693,16 @@ fn real_plan(
         cancellation,
     )
     .map_err(|e| HostError::new(&e.code, e.detail))?;
+    #[cfg(all(windows, feature = "selected-windows-execution"))]
+    let (apply, selected) = execution::inspect_selection(&plan, source, target, personal, requested_ai, &mut storage, cancellation)?;
+    #[cfg(not(all(windows, feature = "selected-windows-execution")))]
+    let apply = { let _ = requested_ai; None };
     Ok(Planned {
         plan,
         inference_executed: recognition.inference_executed(),
+        apply,
+        #[cfg(all(windows, feature = "selected-windows-execution"))]
+        selected,
     })
 }
 #[cfg(not(any(windows, target_os = "linux")))]
@@ -793,6 +836,7 @@ fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
                         f.failure
                     ),
                     blockers: f.blockers.iter().map(|b| format!("{b:?}")).collect(),
+                    operation_ids: vec![op.id],
                 },
                 _ => unreachable!("fix planner only emits fix operations"),
             })
@@ -872,6 +916,7 @@ fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
                 destination: (!destinations.is_empty()).then(|| destinations.join("; ")),
                 reason,
                 blockers,
+                operation_ids: operations_by_source.get(&read.source.reference).into_iter().flatten().map(|op| op.id).collect(),
             }
         })
         .collect()

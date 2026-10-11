@@ -1,33 +1,40 @@
-# Phase 2 read-only preview acceptance boundary
+# Native planning and execution acceptance boundary
 
-The native CLI supports supplied-facts v1 decisions and read-only v2 real-file
-Sort/FixNames planning. V2 composes ordered alias resources, identity-aware
-storage, typed metadata observations and the release-compatible album/fix
-virtual timeline. It does not execute any predicted operation.
+The native CLI supports supplied-facts v1 decisions and v2 real-file Sort/FixNames
+planning. Planning composes original ordered aliases, identity-aware storage,
+typed metadata, album/fix virtual timelines and optional verified original AI.
+`plan-files` remains read-only and returns non-executable predicted effects.
 
-## Evidence established by automated tests
+## Established baseline versus new candidate
 
-- Frozen v14.0 policy/oracle comparisons, including sequential album metadata
-  errors, copy/move virtual traversal, collision reservations and fix intentions.
-- Owned synthetic audio field/error parity, with the fixture-class coverage
-  report embedded in capabilities. Unsupported representations remain explicit.
-- Real CLI subprocesses over owned fixtures, including unrelated working
-  directories and unchanged names, bytes, sizes and modification times.
-- Explicitly disabled AI versus configured-but-unavailable AI; no inference
-  claims or silent model fallback.
-- Unchanged v1 classify/plan transport bytes and schema behavior.
+- Frozen v14 policy/oracle tests cover sequential album metadata errors,
+  copy/move virtual traversal, collision reservations and fix intentions.
+- Both original recognition models have native integration. Original-only CLI
+  and Windows UI real-file preview gates verify asset identity, actual inference,
+  missing/corrupt model refusal, cancellation and unchanged selected files.
+  Native inference is no longer accurately described as wholly unimplemented.
+- Owned Windows tests exercise real identities, Unicode/reparse rejection,
+  durable journal records, verified Copy and same-volume rename. These owned
+  fixture results do not alone establish authorization over user-selected roots.
+- The new opt-in selected-root backend, desktop apply flow and CLI NDJSON
+  inspect/apply handshake have separate tests and final-head gates. Their source
+  presence is not evidence of a completed Windows acceptance run.
+- Existing v1 classify/plan transport remains non-executable and model-free.
 
-## Remaining gates
+## Remaining product gates
 
-- Actual native Windows runtime, Unicode-path and adversarial reparse tests.
-- Android storage-provider and file-descriptor/seek integration.
-- Native inference bundle integration and matching model behavior.
-- Physical transfer, rename, tag-save, execution journaling and recovery.
-- Arbitrary-library and release acceptance beyond the frozen synthetic corpus.
+See [the feature-by-feature matrix](product-acceptance-matrix.md) and
+[desktop/CLI execution contract](desktop-cli-execution.md). First-candidate
+selected execution covers supported single transfers only. Full album physical
+execution, FixNames/tag saving, cross-volume Move, Move duet retirement,
+process-restart recovery UI, complete legacy CLI compatibility and arbitrary
+music-library acceptance remain separate unfinished gates. Android provider and
+physical ARM64 acceptance cannot be inferred from Windows or Linux tests.
 
-Linux is explicitly a test adapter. Whole-audio content identity, unchanged
-access times, general metadata representation support and apply eligibility
-are not established. Plans are always non-executable; their effects and legacy
-summary counts are predictions. A plan hash binds recorded observations, not
-unchanged future file content. Any future executor must revalidate bindings and
-stop/replan on deviations from predicted effects.
+Linux is a read-only test adapter. Access times may change during inspection.
+A plan digest binds observations, not future audio bytes; selected execution
+retains additional inspected SHA-256 evidence and revalidates the entire plan
+before mutation. Preview counts always remain predictions. Actual completion
+counts come only from durable execution evidence, with partial/cancel/recovery
+states kept distinct. Unsupported whole plans stay disabled rather than being
+silently executed in part and labeled successful.

@@ -1,5 +1,6 @@
 //! Versioned supplied-facts v1 and read-only real-file v2 CLI.
 mod plan_files;
+mod run_files;
 
 use std::io::{self, Read, Write};
 use std::process::ExitCode;
@@ -14,6 +15,7 @@ Usage:
   singles-sorter classify --json       Read one v1 ClassifyRequest from UTF-8 stdin
   singles-sorter plan --json           Read one v1 PlanRequest from UTF-8 stdin
   singles-sorter plan-files --json     Read one v2 real-file preview request
+  singles-sorter run-files --ndjson    Inspect, explicitly confirm, and execute one Windows job
   singles-sorter capabilities --json   List supported and upcoming capabilities
   singles-sorter --help                Show this help without reading stdin
 
@@ -21,10 +23,11 @@ JSON commands emit one versioned envelope to stdout; diagnostics go to stderr.
 The stdin request limit is 16 MiB (16,777,216 bytes), including whitespace.
 V1 executes no inference. All results are non-executable.
 V2 original inference requires the original-ai build and an explicit verified bundle.
-Physical apply is unsupported.
+Physical apply requires the selected-windows-execution Windows build and an explicit
+run-files inspect/apply handshake. plan-files remains read-only.
 V2 previews use read-only traversal, CSV aliases and fixture-scoped metadata.
 Linux is a test backend; Windows runtime and Android acceptance remain pending.
-NDJSON streaming and legacy positional flags are upcoming, currently unsupported.
+run-files NDJSON is a separate single-job protocol. Legacy positional flags remain unsupported.
 Exit codes: 0 success; 1 processing/internal failure; 2 invalid request;
 3 unsupported capability. This slice is not the complete Windows/Android app.
 ";
@@ -152,6 +155,7 @@ impl Capabilities {
 enum Invocation {
     Help,
     Json(&'static str),
+    RunFiles,
 }
 
 fn dispatch(args: &[String]) -> Result<Invocation, Failure> {
@@ -160,6 +164,11 @@ fn dispatch(args: &[String]) -> Result<Invocation, Failure> {
     };
     if args.len() == 1 && matches!(command.as_str(), "--help" | "-h") {
         return Ok(Invocation::Help);
+    }
+    if command == "run-files" {
+        return if args.len() == 2 && args[1] == "--ndjson" { Ok(Invocation::RunFiles) }
+        else if args.len() == 2 && matches!(args[1].as_str(),"--help"|"-h") { Ok(Invocation::Help) }
+        else { Err(Failure::new(2,"INVALID_INPUT","Expected run-files --ndjson; inspect the returned plan before sending its exact apply confirmation")) };
     }
     let command = match command.as_str() {
         "classify" => "classify",
@@ -351,6 +360,7 @@ fn main() -> ExitCode {
             }
             ExitCode::SUCCESS
         }
+        Ok(Invocation::RunFiles) => run_files::run(),
         Ok(Invocation::Json("plan-files")) => plan_files::run(),
         Ok(Invocation::Json(command)) => emit(command, execute(command)),
         Err(failure) if args.first().is_some_and(|arg| arg == "plan-files") => {
