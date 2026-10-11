@@ -80,7 +80,7 @@ fn weights_are_bounded_sized_and_hashed() {
     assert!(matches!(d.load_error(), LoadError::Hash { .. }));
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 #[test]
 fn fifo_is_rejected_without_waiting_for_a_writer() {
     let d = Dir::new();

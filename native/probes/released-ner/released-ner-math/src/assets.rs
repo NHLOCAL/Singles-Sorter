@@ -87,10 +87,17 @@ impl std::error::Error for LoadError {
 /// Metadata rejects oversized files before allocation;
 /// the streaming bound also protects against growth after that check.
 pub fn read_bounded(path: &Path, asset: &'static str, limit: usize) -> Result<Vec<u8>, LoadError> {
-    if !cfg!(all(
+    // Compile-time experiment only; never enable a foreign platform from input
+    // or a runtime environment variable. Product capability gates are separate.
+    let android_probe = cfg!(all(
+        target_os = "android",
+        any(target_arch = "x86_64", target_arch = "aarch64")
+    )) && option_env!("SINGLES_SORTER_ANDROID_PROBE") == Some("1");
+    if !(cfg!(all(
         target_arch = "x86_64",
         any(target_os = "linux", target_os = "windows")
-    )) {
+    )) || android_probe)
+    {
         return Err(LoadError::Unsupported {
             field: "asset-loading platform".into(),
         });
@@ -103,10 +110,10 @@ pub fn read_bounded(path: &Path, asset: &'static str, limit: usize) -> Result<Ve
     }
     let mut options = OpenOptions::new();
     options.read(true);
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     {
         use std::os::unix::fs::OpenOptionsExt;
-        // Linux O_NONBLOCK (asm-generic/fcntl.h): a concurrent replacement by a
+        // Linux/Android O_NONBLOCK (NDK asm-generic/fcntl.h): a concurrent replacement by a
         // FIFO must not block open before we can reject its descriptor type.
         options.custom_flags(0o4000);
     }

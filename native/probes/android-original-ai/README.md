@@ -19,9 +19,10 @@ example using the official NDK's Clang driver. Compile pinned PCRE2 10.46 as a
 32-bit-code-unit static archive, Unicode enabled, JIT disabled. This avoids
 another inference framework or changed arithmetic/model representation.
 
-The only build-script extension permits `x86_64-linux-android` and
+The build-script extensions and bounded asset loader permit `x86_64-linux-android` and
 `aarch64-linux-android` **when `SINGLES_SORTER_ANDROID_PROBE=1` is set**. Other
 Android targets remain rejected. An Android build without this flag must fail.
+The loader retains regular-file, size, hash and nonblocking-open defenses.
 The recognition runtime identity continues to bind the exact target, build
 profile and linked PCRE2 archive hash.
 
@@ -85,6 +86,9 @@ cargo build --locked --release --target x86_64-linux-android \
   -p sorter-classifier --example parity
 cargo test --locked --release --target x86_64-linux-android \
   --manifest-path probes/released-ner/released-ner-text/Cargo.toml \
+  --no-run --message-format=json
+cargo test --locked --release --target x86_64-linux-android \
+  --manifest-path probes/released-ner/released-ner-math/Cargo.toml \
   --no-run --message-format=json
 ```
 
