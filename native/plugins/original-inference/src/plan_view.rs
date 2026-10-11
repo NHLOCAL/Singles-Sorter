@@ -129,6 +129,15 @@ pub fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
             let developer_only = routine_inspection(d, &operation_ids);
             let mut destinations = vec![];
             let mut blockers = vec![];
+            if let DecisionV2::Album { decision, .. } = d {
+                if decision
+                    .trace
+                    .iter()
+                    .any(|event| matches!(event, AlbumTraceEvent::ProtectedError { .. }))
+                {
+                    blockers.push("ALBUM_READ_ERROR".into());
+                }
+            }
             for op in operations_by_source
                 .get(&read.source.reference)
                 .into_iter()
