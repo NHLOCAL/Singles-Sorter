@@ -168,19 +168,27 @@ jobs:
           cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-rename
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Exercise inspected CLI execution protocol on owned Windows files
-        if: runner.os == 'Windows'
+      - name: Lint inspected CLI execution protocol
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
         run: |
           cargo +1.99.0 clippy --locked -p sorter-cli --features selected-windows-execution --all-targets -- -D warnings
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise inspected CLI execution protocol on owned Windows files
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        run: |
           cargo +1.99.0 test --locked -p sorter-cli --features selected-windows-execution --test run_files -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Exercise selected Windows roots and multi-file jobs
-        if: runner.os == 'Windows'
+      - name: Lint selected Windows multi-file jobs
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
         run: |
           cargo +1.99.0 clippy --locked -p sorter-executor --features selected-windows-execution --all-targets -- -D warnings
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise selected Windows root safety
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        run: |
           $roots = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --test windows_selected_roots -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if (@($roots | Where-Object { $_ -match ': test$' }).Count -ne 12) { throw "Expected 12 selected-root cases" }
@@ -188,6 +196,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib selected_directory_uncertainty_tests -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Exercise selected Windows multi-file job safety
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        run: |
           $jobs = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_selected_job -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if (@($jobs | Where-Object { $_ -match ': test$' }).Count -ne 7) { throw "Expected 7 selected-job cases" }
