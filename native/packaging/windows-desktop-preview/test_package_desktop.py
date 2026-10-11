@@ -77,6 +77,46 @@ class DesktopPackageTests(unittest.TestCase):
     def test_missing_medium_proof(self):
         del self.data['medium_integrity_verified'];self.save()
         with self.assertRaisesRegex(ValueError,'Medium'):p.report_gate(self.report,self.binary,'on',self.pkg)
+    def test_publication_recreates_nested_files_with_default_inheritance(self):
+        nested = self.pkg / 'licenses' / 'nested'
+        nested.mkdir(parents=True)
+        (nested / 'notice.txt').write_bytes(b'public notice')
+        (self.pkg / 'empty').mkdir()
+        output = self.root / 'published'
+        original_identity = (nested / 'notice.txt').stat().st_ino
+        with patch.object(p, 'validate_shape', return_value={'fixed': 'hash'}) as validate:
+            p.publish_inherited_copy(self.pkg, output)
+        self.assertEqual(validate.call_count, 2)
+        self.assertEqual((output / 'licenses/nested/notice.txt').read_bytes(), b'public notice')
+        self.assertNotEqual((output / 'licenses/nested/notice.txt').stat().st_ino, original_identity)
+        self.assertTrue((output / 'empty').is_dir())
+        self.assertTrue(self.pkg.exists())
+        self.assertEqual(list(self.root.glob('desktop-preview-publish-*')), [])
+        with self.assertRaisesRegex(ValueError, 'overwrite'):
+            p.publish_inherited_copy(self.pkg, output)
+
+    def test_publication_validation_failure_is_atomic(self):
+        output = self.root / 'never'
+        with patch.object(p, 'validate_shape', side_effect=[{'a': 'old'}, {'a': 'new'}]):
+            with self.assertRaisesRegex(ValueError, 'bytes changed'):
+                p.publish_inherited_copy(self.pkg, output)
+        self.assertFalse(output.exists())
+        self.assertTrue(self.pkg.exists())
+        self.assertEqual(list(self.root.glob('desktop-preview-publish-*')), [])
+
+    def test_publication_copy_failure_cleans_owned_partial_only(self):
+        output = self.root / 'never'
+        sentinel = self.root / 'unrelated'
+        sentinel.write_bytes(b'unchanged')
+        with patch.object(p, 'validate_shape', return_value={'fixed': 'hash'}), \
+             patch.object(p.shutil, 'copyfile', side_effect=OSError('copy failed')):
+            with self.assertRaisesRegex(OSError, 'copy failed'):
+                p.publish_inherited_copy(self.pkg, output)
+        self.assertFalse(output.exists())
+        self.assertEqual(sentinel.read_bytes(), b'unchanged')
+        self.assertTrue(self.pkg.exists())
+        self.assertEqual(list(self.root.glob('desktop-preview-publish-*')), [])
+
     def test_linux_cannot_build_windows_claim(self):
         with patch.object(p.sys,'platform','linux'),self.assertRaisesRegex(ValueError,'actual Windows'):
             p.build(types.SimpleNamespace())

@@ -35,3 +35,23 @@ Official prerequisite references:
 - https://v2.tauri.app/start/prerequisites/
 - https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution
 - https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170
+
+### Windows staging access
+
+Private construction uses Python TemporaryDirectory intentionally. On Windows,
+Python 3.12.10 mode-0700 directory creation installs a protected DACL; CPython
+explicitly documents that an elevated creator's directory is inaccessible to
+its non-elevated token. Renaming retains those security descriptors. Before
+publication, the packager therefore recreates every validated public package
+file and directory (including nested licenses) under a new exclusive sibling
+with ordinary parent inheritance. It copies bytes only, validates the complete
+package again, and then renames it to the final output. Copy/validation failures
+remove only the owned pending directory. No existing ACL, owner, integrity
+label, privilege or security policy is changed. Read-only ACL diagnostics cover
+private staging and published output; actual Medium-integrity UI acceptance
+remains mandatory.
+
+Primary references: [CPython owner-rights change](https://github.com/python/cpython/pull/118515),
+[3.12.10 tempfile](https://github.com/python/cpython/blob/v3.12.10/Lib/tempfile.py),
+[3.12.10 Windows mkdir](https://github.com/python/cpython/blob/v3.12.10/Modules/posixmodule.c),
+and [Microsoft file security inheritance](https://learn.microsoft.com/en-us/windows/win32/fileio/file-security-and-access-rights).

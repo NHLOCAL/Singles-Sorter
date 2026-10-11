@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import platform
 import re
@@ -13,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 import wave
+import uuid
 import zipfile
 
 HERE = Path(__file__).resolve().parent
@@ -71,6 +73,47 @@ def validate_shape(root):
     return files
 
 
+def read_windows_acl_evidence(paths):
+    """Read-only evidence for generated staging objects; never changes access."""
+    env = dict(os.environ, SINGLES_STAGING_ACL_PATHS=json.dumps([str(p) for p in paths]))
+    script = (
+        "$ErrorActionPreference='Stop'; [Console]::OutputEncoding=New-Object System.Text.UTF8Encoding($false); "
+        "$rows=@(foreach($p in ($env:SINGLES_STAGING_ACL_PATHS|ConvertFrom-Json)){"
+        "$a=Get-Acl -LiteralPath $p; "
+        "[pscustomobject]@{path=$p;owner=$a.Owner;sddl=$a.Sddl;protected=$a.AreAccessRulesProtected}}); "
+        "ConvertTo-Json -InputObject $rows -Compress"
+    )
+    result = subprocess.run(['powershell.exe', '-NoProfile', '-NonInteractive', '-Command', script],
+                            env=env, check=True, capture_output=True)
+    print('STAGING_ACCESS_EVIDENCE ' + result.stdout.decode('utf-8-sig').strip())
+
+
+def publish_inherited_copy(stage, output):
+    """Publish public preview bytes with ordinary parent inheritance, never ACL edits.
+
+    CPython 3.12 Windows TemporaryDirectory uses a protected mode-0700 DACL.
+    Moving that tree preserves its ACL, including nested license staging ACLs.
+    Recreate every directory/file under the owned output parent instead. copyfile
+    deliberately copies bytes only; no source security descriptor is propagated.
+    """
+    require(not output.exists(), 'refusing output overwrite')
+    expected = validate_shape(stage)
+    pending = output.parent / ('desktop-preview-publish-' + uuid.uuid4().hex)
+    pending.mkdir()  # default mode: normal Windows parent inheritance
+    try:
+        for source in sorted(stage.rglob('*')):
+            dest = pending / source.relative_to(stage)
+            if source.is_dir():
+                dest.mkdir()
+            else:
+                shutil.copyfile(source, dest)
+        require(validate_shape(pending) == expected, 'published package bytes changed')
+        pending.rename(output)
+    finally:
+        if pending.exists():
+            shutil.rmtree(pending)
+
+
 def build(args):
     require(sys.platform == 'win32' and platform.machine().upper() in ('AMD64', 'X86_64'), 'actual Windows x64 build required')
     out = args.output.resolve()
@@ -123,7 +166,9 @@ def build(args):
         files = sorted(p for p in stage.rglob('*') if p.is_file())
         (stage/'SHA256SUMS.txt').write_text(''.join(f'{digest(p)}  {p.relative_to(stage).as_posix()}\n' for p in files),encoding='utf-8')
         validate_shape(stage)
-        stage.rename(out)
+        read_windows_acl_evidence([out.parent, stage, stage / EXE, stage / "licenses"])
+        publish_inherited_copy(stage, out)
+        read_windows_acl_evidence([out.parent, out, out / EXE, out / "licenses"])
     print(f'Desktop package staged; real Windows UI acceptance still required: {out}')
 
 
