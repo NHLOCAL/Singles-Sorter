@@ -61,7 +61,17 @@ def main():
                    SINGLES_STAGING_PROBE_HASHES=json.dumps(expected))
         command = command_for(process_security(), Path(os.environ['SINGLES_GSUDO_EXE']),
                               sys.executable, Path(__file__).resolve())
-        subprocess.run(command, env=env, check=True, timeout=60)
+        process = subprocess.Popen(command, env=env)
+        try:
+            returncode = process.wait(timeout=60)
+            if returncode:
+                raise subprocess.CalledProcessError(returncode, command)
+        except subprocess.TimeoutExpired:
+            # Same bounded owned-process-tree cleanup as run_desktop_medium.py.
+            subprocess.run(['taskkill', '/PID', str(process.pid), '/T', '/F'],
+                           capture_output=True, timeout=10, check=True)
+            process.wait(timeout=10)
+            raise
     # Retain these authored public fixtures for ephemeral-runner failure diagnosis.
     print('STAGING_ACCESS_PREFLIGHT_PASSED', flush=True)
 
