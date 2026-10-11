@@ -2592,6 +2592,19 @@ impl WindowsRepairStorage {
     pub fn roots(&self)->&WindowsMutationStorage{self.rename.owned()}
     pub fn acquire_source(&mut self,parent:&WindowsParent,expected:&ExpectedSource)->Result<WindowsSourceLease,MutationError>{self.rename.acquire_source(parent,expected)}
     pub fn create_staged(&mut self,parent:&WindowsParent,correlation:&str,cancel:&AtomicBool)->MutationOutcome<WindowsOwnedTemp>{self.rename.owned.create_temp(parent,correlation,cancel)}
+    /// Preserve the released FixNames ordering: perform the planned filename
+    /// rename first, then continue reading exactly that same original object.
+    pub fn rename_original(&mut self,source:&mut WindowsSourceLease,name:&MutationName,cancel:&AtomicBool)->MutationOutcome<WindowsSourceLease>{
+        let parent=source.parent.clone();let mut expected=source.expected.clone();
+        match self.rename.rename_no_replace(source,&parent,name,cancel){
+            MutationOutcome::Applied(published)=>{
+                expected.name=name.clone();expected.parent_identity=parent.identity.clone();
+                MutationOutcome::Applied(WindowsSourceLease{file:Some(published.file),parent,expected,observation:published.observation,mode:SourceLeaseMode::WriteThroughRename})
+            }
+            MutationOutcome::NoEffect(error)=>MutationOutcome::NoEffect(error),
+            MutationOutcome::PendingUnknown(error)=>MutationOutcome::PendingUnknown(error),
+        }
+    }
     pub fn preserve_original(&mut self,source:&mut WindowsSourceLease,backup_name:&MutationName,cancel:&AtomicBool)->MutationOutcome<WindowsPublished>{
         let parent=source.parent.clone();
         self.rename.rename_no_replace(source,&parent,backup_name,cancel)
@@ -2628,6 +2641,10 @@ mod repair_backup_tests {
 
     fn name(s:&str)->MutationName{MutationName::Windows(s.encode_utf16().collect())}
     fn applied<T>(outcome:MutationOutcome<T>)->T{match outcome{MutationOutcome::Applied(v)=>v,_=>panic!("expected applied")}}
+    #[test]
+    fn planned_filename_rename_rebinds_original_before_tag_staging(){
+        let(mut storage,parent,expected,path)=fixture();let mut original=storage.acquire_source(&parent,&expected).unwrap();let mut rebound=applied(storage.rename_original(&mut original,&name("clean.mp3"),&AtomicBool::new(false)));assert!(original.file.is_none());assert_eq!(rebound.expected.identity,expected.identity);assert_eq!(rebound.expected.name,name("clean.mp3"));let mut bytes=Vec::new();rebound.rewind().unwrap();rebound.read_to_end(&mut bytes).unwrap();assert_eq!(bytes,b"original");let backup=applied(storage.preserve_original(&mut rebound,&name("original.sorter-backup"),&AtomicBool::new(false)));drop(backup);assert!(!path.join("song.mp3").exists());assert!(!path.join("clean.mp3").exists());assert_eq!(std::fs::read(path.join("original.sorter-backup")).unwrap(),b"original");
+    }
     fn fixture()->(WindowsRepairStorage,WindowsParent,ExpectedSource,PathBuf){
         let tree=tempfile::tempdir().unwrap();let path=tree.path().to_path_buf();std::fs::write(path.join("song.mp3"),b"original").unwrap();
         let mut roots=WindowsMutationStorage::for_owned_synthetic_tree(tree).unwrap();let parent=roots.parent(Path::new("")).unwrap();let expected=roots.observe_source(&parent,&name("song.mp3")).unwrap();
