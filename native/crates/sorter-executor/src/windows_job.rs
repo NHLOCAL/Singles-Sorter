@@ -24,9 +24,15 @@ fn name(text: &str) -> MutationName { MutationName::Windows(text.encode_utf16().
 /// prepare, and permissions/collisions are checked again under held handles.
 pub fn supported_plan(plan: &JobPlanV2) -> Result<()> {
     if plan.request.mode != JobMode::Sort || plan.operations.is_empty() { return Err(E::Unsupported); }
+    if plan.blockers.iter().any(|b| b != "PHYSICAL_APPLY_UNAVAILABLE" && b != "HISTORICAL_DUET_DELETE_REQUIRES_VERIFIED_ALL_DESTINATIONS") { return Err(E::Unsupported); }
+    if !plan.request.settings.copy_mode {
+        let source = plan.observations.iter().find(|o|o.reference == plan.request.source).and_then(|o|o.identity.as_ref());
+        let target = plan.observations.iter().find(|o|Some(&o.reference) == plan.request.target.as_ref()).and_then(|o|o.identity.as_ref());
+        if !matches!((source,target),(Some(ObjectIdentity::Windows{volume:a,..}),Some(ObjectIdentity::Windows{volume:b,..})) if a==b) {return Err(E::Unsupported);}
+    }
     for operation in &plan.operations {
         let OperationKind::SingleTransfer { source, transfer, .. } = &operation.kind else { return Err(E::Unsupported); };
-        if source.kind != EntryKind::File || transfer.copy != plan.request.settings.copy_mode { return Err(E::Unsupported); }
+        if source.kind != EntryKind::File || !transfer.predicted_success || !transfer.blockers.is_empty() || transfer.copy != plan.request.settings.copy_mode { return Err(E::Unsupported); }
         let leaf = path(&source.reference)?.file_name().ok_or(E::Scope)?.encode_wide().collect::<Vec<_>>();
         if String::from_utf16(&leaf).map_err(|_| E::Unsupported)? != source.name { return Err(E::Unsupported); }
     }
