@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "root": "native/apps/singles-ui",
+  "lock_sha256_lf": "b4a64eddbbc9ab8dc5cde7457a8a42f717897516ecaf3b62c8ed28eee826b96a",
+  "manifest_sha256_lf": "9a84f27f2f5162ed038a4523be2cbd470339c27f2285e438e9609c7a1c3ac403",
+  "production_packages": [
+    "node_modules/@tauri-apps/api"
+  ],
+  "packages": [
+    {
+      "name": "@tauri-apps/api",
+      "lock_path": "node_modules/@tauri-apps/api",
+      "version": "2.12.3",
+      "resolved": "https://registry.npmjs.org/@tauri-apps/api/-/api-2.12.3.tgz",
+      "integrity": "sha512-9s0PKw0p4r3kFq92jhpivYSp+cSht15o0gXpZxuQd0+dV9KCexEVkNaLELVoLdJWyoH4KlfQo5h3W2LIM8siJg==",
+      "license": "Apache-2.0 OR MIT",
+      "scope": "embedded frontend API",
+      "notices": {
+        "LICENSE-APACHE-2.0": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+        "LICENSE-MIT": "9dd42ea92cff2ede5cd477cbfcce051b2d0115c0ac7f368ee88cb545055dff1d",
+        "LICENSE.spdx": "5e834fe9788c524210deda859c46a550ffa5aa0cba9ea0572f0d81120e97c008"
+      }
+    },
+    {
+      "name": "vite",
+      "lock_path": "node_modules/vite",
+      "version": "8.3.4",
+      "resolved": "https://registry.npmjs.org/vite/-/vite-8.3.4.tgz",
+      "integrity": "sha512-IftLE8phJhdNRIGNEV4JCCvfNScoZQVfcXaN8TQropWGJtOHcu+iAB9pHcuGvmEb/kddw0LBe/jS8ztdC6xdiQ==",
+      "license": "MIT",
+      "scope": "conservative build-generated helper notices; build tool not shipped",
+      "notices": {
+        "LICENSE.md": "a47172e44a86a7e2cd1c16282341f7726ec60caafe3a6166fe3e0602005b6fa6"
+      }
+    },
+    {
+      "name": "rolldown",
+      "lock_path": "node_modules/rolldown",
+      "version": "1.2.13",
+      "resolved": "https://registry.npmjs.org/rolldown/-/rolldown-1.2.13.tgz",
+      "integrity": "sha512-/5apOkwWxtACcQtZ5WlrAsKS4JwXVThQPJZ3RqIruRY9UG9M8e0VlXN068xum/JRKA4aIUoJ13ghe/kGCvidiQ==",
+      "license": "MIT",
+      "scope": "conservative build-generated helper notices; build tool not shipped",
+      "notices": {
+        "LICENSE": "23ecfff35a5a2e80d92142f75228912c3b1abc4b5a8337a821ff4397e2f9f734",
+        "THIRD-PARTY-LICENSE": "a877291d800ed43692f3f9ae09d8e01cc6f7293ad39d43896059c188ffbb8b7c"
+      }
+    }
+  ],
+  "asset_directories": [
+    "public",
+    "src/assets",
+    "src-tauri/icons"
+  ],
+  "assets": {
+    "public/icon.png": "d2736d916158770ef6fd373d28a62983e24cd9a012d22402a81ddd7816fac0f8",
+    "public/licenses/fluent-system-icons-MIT.txt": "69bc45dc42b9acb96a69823adbc6ae538374e3c0bde169b855b32c48eaaef52f",
+    "src/assets/fluent/PROVENANCE.json": "bccefc19aeaf5632110d8af5868167a5fb70a0c164c6410b6c7171c077a63dca",
+    "src/assets/fluent/add_20_regular.svg": "eace2d0d89e66e50d5c93cf82d21eb9e73a452dc370a76846d1f1802788dd71c",
+    "src/assets/fluent/arrow_export_20_regular.svg": "02ae2c55ce1c831701cb5d00a9a5b2eb8dca757f070f2442df888cbf1461ff2f",
+    "src/assets/fluent/arrow_import_20_regular.svg": "aa324edaff9ce3b52abebded8937211344c4b6acec2a46242cd6521b4d7b936d",
+    "src/assets/fluent/arrow_left_20_regular.svg": "d94a8b83b6764b02c7e80a80d7854b37eaa2ce0b505f289ed2a0e3b2a1d2f82c",
+    "src/assets/fluent/arrow_right_20_regular.svg": "be74746338292cc2bb120ab6fa119bf8d8065e4bdcd67baef406c3444368b08d",
+    "src/assets/fluent/arrow_sort_down_lines_20_regular.svg": "2f68afa08bf9a5613647513f4e46ec07aa91e900b7e42d42ccef22e5e94cf6f3",
+    "src/assets/fluent/delete_20_regular.svg": "117dd937dfea155b95a157489089b658bb0611c736cbad4e5339c8470d5a3b93",
+    "src/assets/fluent/dismiss_20_regular.svg": "3d95fdce4bb3a29b983377648e5528d73d965ed90409bce5fa096ef790b75ccb",
+    "src/assets/fluent/folder_20_regular.svg": "d144cc84fe8997e44aede97843ba009454b5302e9d9827e01c6540e8eef4aaa8",
+    "src/assets/fluent/folder_open_20_regular.svg": "ed56c692301eba6af0415171afdd55ff11577206e739b2887f60047935ff5a6a",
+    "src/assets/fluent/info_20_regular.svg": "b2171313057fcd3cffca9c20cf905a05977e63eebe5275bab4371b1f0d4a1ff8",
+    "src/assets/fluent/more_horizontal_20_regular.svg": "d700fdb05f2b48ed931352413ce2fd110fbbaa77f661858568312d31aadd2cdf",
+    "src/assets/fluent/question_circle_20_regular.svg": "b42a01c3a7d4721158305403a563aa348bf47dce28f59919ee0caa2fb8648003",
+    "src/assets/fluent/save_20_regular.svg": "c28f4f46d9a4ab46b1d39491b734ee41e84919b9ee6b67f2833a46682bf404af",
+    "src/assets/fluent/settings_20_regular.svg": "082803991d9af2fdb934957c5c8cddb04885665c7669d73d0c3d3dfee7ac7e6a",
+    "src/assets/fluent/wrench_20_regular.svg": "35032e75227053783c0a35d87fdd3e99a8287b57175876e4ea04304e305ce554",
+    "src-tauri/icons/icon.ico": "f542b17e5f80b2ed0db21699de19629a736d9121a3395e495a5cf3f1fe84a8b1"
+  },
+  "retained_notices": [
+    "public/licenses/fluent-system-icons-MIT.txt",
+    "src/assets/fluent/PROVENANCE.json"
+  ]
+}

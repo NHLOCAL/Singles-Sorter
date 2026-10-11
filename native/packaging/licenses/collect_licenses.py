@@ -7,6 +7,7 @@ clearance claim. Unexpected graph, source, checksum or notice drift stops output
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -26,6 +27,13 @@ RUST_LICENSE_FILES = {
     "GCC-exception-3.1.txt", "GPL-2.0-only.txt", "GPL-3.0-or-later.txt",
     "ISC.txt", "LLVM-exception.txt", "MIT.txt", "NCSA.txt", "OFL-1.1.txt",
     "Unicode-3.0.txt",
+}
+PROFILES = {
+    "cli": {"root": "sorter-cli", "manifest": "native/Cargo.toml", "lock": "native/Cargo.lock",
+            "features": ["sorter-cli/original-ai"], "policy": "reviewed-cargo-notices.json"},
+    "desktop": {"root": "singles-ui-host", "manifest": "native/apps/singles-ui/src-tauri/Cargo.toml",
+                "lock": "native/apps/singles-ui/src-tauri/Cargo.lock", "features": ["desktop", "original-ai"],
+                "policy": "reviewed-desktop-cargo-notices.json"},
 }
 SOURCE_REPOSITORY = "https://github.com/NHLOCAL/Singles-Sorter"
 NATIVE_PINS = {
@@ -89,13 +97,13 @@ def run(args: list[str], cwd: Path) -> str:
     return result.stdout.strip()
 
 
-def closure(metadata: dict) -> tuple[list[dict], dict]:
+def closure(metadata: dict, root_name: str = "sorter-cli") -> tuple[list[dict], dict]:
     packages = {p["id"]: p for p in metadata["packages"]}
     nodes = {n["id"]: n for n in metadata["resolve"]["nodes"]}
-    roots = [p for p in packages.values() if p["name"] == "sorter-cli" and p["source"] is None]
-    require(len(roots) == 1, "Expected exactly one local sorter-cli package")
+    roots = [p for p in packages.values() if p["name"] == root_name and p["source"] is None]
+    require(len(roots) == 1, f"Expected exactly one local {root_name} package")
     root = roots[0]
-    require("original-ai" in nodes[root["id"]]["features"], "Cargo metadata lacks sorter-cli/original-ai")
+    require("original-ai" in nodes[root["id"]]["features"], f"Cargo metadata lacks {root_name}/original-ai")
     seen, pending = set(), [root["id"]]
     while pending:
         pkg = pending.pop()
@@ -122,6 +130,26 @@ def archive_member(archive: Path, member_name: str) -> bytes:
         return data
 
 
+def verify_unmodified_source(archive: Path, source: Path, prefix: str) -> None:
+    # Same-media source must be the source actually built, not merely a pristine
+    # upstream archive next to a patched extracted tree. Cargo adds .cargo-ok.
+    archived = set()
+    with tarfile.open(archive, "r:gz") as tf:
+        for member in tf.getmembers():
+            require(member.name.startswith(prefix + "/"), "Unexpected Cargo source archive root")
+            if member.isdir():
+                continue
+            require(member.isfile(), "Nonregular Cargo source archive member")
+            name = member.name[len(prefix) + 1:]
+            path = checked_under(source, name)
+            require(path.is_file() and not path.is_symlink(), f"Missing source file: {name}")
+            stream = tf.extractfile(member)
+            require(stream is not None and path.read_bytes() == stream.read(), f"Modified MPL source: {name}")
+            archived.add(name)
+    actual = {p.relative_to(source).as_posix() for p in source.rglob("*") if p.is_file()}
+    require(actual - {".cargo-ok", ".cargo-checksum.json"} == archived, "Unreviewed files in MPL source tree")
+
+
 class Collector:
     def __init__(self, output: Path):
         self.output = output
@@ -140,15 +168,33 @@ class Collector:
         return self.add(destination, read_file(source), provenance)
 
 
+def cargo_graph(packages: list[dict], nodes: dict) -> list[dict]:
+    identities = {p["id"]: f"{p['name']}@{p['version']}" for p in packages}
+    return [{"package": identities[p["id"]], "features": sorted(nodes[p["id"]]["features"]),
+             "dependencies": sorted([{"package": identities[d["pkg"]],
+                 "kinds": sorted([{"kind": k["kind"] or "normal", "target": k.get("target")}
+                    for k in d["dep_kinds"] if k["kind"] in (None, "normal", "build")],
+                    key=lambda k: (k["kind"], k["target"] or ""))}
+                 for d in nodes[p["id"]]["deps"]
+                 if any(k["kind"] in (None, "normal", "build") for k in d["dep_kinds"])],
+                 key=lambda d: d["package"])}
+            for p in packages]
+
+
 def collect_cargo(c: Collector, repo: Path, metadata: dict, policy: dict) -> list[dict]:
-    packages, nodes = closure(metadata)
+    packages, nodes = closure(metadata, policy.get("root_package", "sorter-cli"))
     expected = {(p["name"], p["version"]): p for p in policy["packages"]}
     local = {(p["name"], p["version"]): p for p in policy["local_packages"]}
     found = {(p["name"], p["version"]) for p in packages}
     require(found == expected.keys() | local.keys(),
             f"Unreviewed dependency closure; added={sorted(found - expected.keys() - local.keys())}; "
             f"missing={sorted((expected.keys() | local.keys()) - found)}")
-    lock = tomllib.loads(read_file(repo / "native/Cargo.lock").decode("utf-8"))
+    lock_path = checked_under(repo, policy.get("lock_path", "native/Cargo.lock"))
+    lock_bytes = read_file(lock_path)
+    if "lock_sha256_lf" in policy:
+        require(sha256(lock_bytes.replace(b"\r\n", b"\n")) == policy["lock_sha256_lf"], "Reviewed Cargo.lock changed")
+        require(cargo_graph(packages, nodes) == policy["graph"], "Reviewed Cargo feature/dependency graph changed")
+    lock = tomllib.loads(lock_bytes.decode("utf-8"))
     locked = {(p["name"], p["version"], p.get("source")): p for p in lock["package"]}
     rows = []
     for package in packages:
@@ -182,12 +228,87 @@ def collect_cargo(c: Collector, repo: Path, metadata: dict, policy: dict) -> lis
                 require(read_file(checked_under(source, name)) == data, f"Altered registry notice: {key}/{name}")
                 notices.append(c.add(f"cargo/{key[0]}-{key[1]}/{name}", data,
                                      f"crates.io {key[0]} {key[1]}, locked archive {rule['checksum']}"))
+            for supplement in rule.get("upstream_notices", []):
+                vcs = json.loads(archive_member(archive, f"{key[0]}-{key[1]}/.cargo_vcs_info.json"))
+                require(vcs["git"]["sha1"] == supplement["vcs_revision"], f"Upstream notice revision mismatch: {key}")
+                data = read_file(checked_under(HERE, supplement["path"]))
+                require(sha256(data.replace(b"\r\n", b"\n")) == supplement["sha256"], f"Upstream notice drift: {key}")
+                notices.append(c.add(f"cargo/{key[0]}-{key[1]}/upstream/{Path(supplement['path']).name}", data, supplement["url"]))
+            if rule.get("include_source"):
+                require(rule["license"] == "MPL-2.0", "Unreviewed Cargo source-distribution route")
+                verify_unmodified_source(archive, source, f"{key[0]}-{key[1]}")
+                row["included_source"] = c.copy(archive, f"sources/cargo/{archive.name}", "Exact Cargo.lock-authenticated MPL-2.0 source")
+                row["source_license"] = "MPL-2.0"
             require(bool(notices), f"No reviewed complete notices: {key}")
             row.update({"source": rule["source"], "license": rule["license"],
                         "crate_sha256": rule["checksum"], "notices": notices,
                         "source_url": f"https://crates.io/api/v1/crates/{key[0]}/{key[1]}/download"})
         rows.append(row)
     return rows
+
+
+def collect_frontend(c: Collector, repo: Path, policy: dict, npm_cache: Path) -> list[dict]:
+    root = checked_under(repo, policy["root"])
+    lock_bytes = read_file(root / "package-lock.json")
+    require(sha256(lock_bytes.replace(b"\r\n", b"\n")) == policy["lock_sha256_lf"], "Reviewed frontend lock changed")
+    manifest_bytes = read_file(root / "package.json")
+    require(sha256(manifest_bytes.replace(b"\r\n", b"\n")) == policy["manifest_sha256_lf"], "Reviewed frontend manifest changed")
+    lock = json.loads(lock_bytes)
+    require(lock["lockfileVersion"] == 3, "Unsupported npm lock format")
+    production = {name for name, pkg in lock["packages"].items() if name and not pkg.get("dev", False)}
+    require(production == set(policy["production_packages"]), "Unreviewed frontend production closure")
+    rows = []
+    for rule in policy["packages"]:
+        package = lock["packages"][rule["lock_path"]]
+        require(all(package[k] == rule[k] for k in ("version", "resolved", "integrity", "license")),
+                f"Unreviewed frontend package: {rule['lock_path']}")
+        require(rule["resolved"].startswith("https://registry.npmjs.org/"), "Only official npm registry archives are supported")
+        algorithm, encoded = rule["integrity"].split("-", 1)
+        require(algorithm == "sha512", "Only SHA512 npm integrity is reviewed")
+        digest = base64.b64decode(encoded, validate=True).hex()
+        archive = npm_cache / "_cacache/content-v2/sha512" / digest[:2] / digest[2:4] / digest[4:]
+        require(hashlib.sha512(read_file(archive)).hexdigest() == digest, f"npm archive integrity mismatch: {rule['name']}")
+        source = checked_under(root, rule["lock_path"])
+        actual = json.loads(read_file(source / "package.json"))
+        require((actual["name"], actual["version"]) == (rule["name"], rule["version"]), "Installed npm package drift")
+        notices = []
+        for name, expected in rule["notices"].items():
+            data = archive_member(archive, "package/" + name)
+            require(sha256(data) == expected, f"Reviewed npm notice changed: {rule['name']}/{name}")
+            require(read_file(checked_under(source, name)) == data, f"Installed npm notice changed: {rule['name']}/{name}")
+            notices.append(c.add(f"frontend/{rule['name'].replace('@', '').replace('/', '-')}-{rule['version']}/{name}", data, rule["resolved"]))
+        require(bool(notices), "Missing frontend notices")
+        rows.append({"component": rule["name"], "version": rule["version"], "license": rule["license"],
+                     "scope": rule["scope"], "source_url": rule["resolved"], "integrity": rule["integrity"], "notices": notices})
+    expected_assets = policy["assets"]
+    actual_assets = {p.relative_to(root).as_posix() for folder in policy["asset_directories"]
+                     for p in checked_under(root, folder).rglob("*") if p.is_file()}
+    require(actual_assets == set(expected_assets), "Unreviewed frontend asset set")
+    for name, digest in expected_assets.items():
+        data = read_file(checked_under(root, name))
+        if Path(name).suffix.lower() in (".txt", ".json", ".svg"):
+            data = data.replace(b"\r\n", b"\n")
+        require(sha256(data) == digest, f"Reviewed frontend asset changed: {name}")
+    for name in policy["retained_notices"]:
+        c.copy(checked_under(root, name), f"frontend/assets/{name}", "Reviewed retained frontend icon notice/provenance")
+    return rows
+
+
+def collect_desktop_sdk(c: Collector, metadata: dict, policy: dict) -> dict:
+    matches = [p for p in metadata["packages"] if (p["name"], p["version"]) ==
+               (policy["wrapper_package"], policy["wrapper_version"])]
+    require(len(matches) == 1, "Missing reviewed WebView2 SDK wrapper")
+    source = Path(matches[0]["manifest_path"]).parent
+    loader = read_file(checked_under(source, policy["loader_path"]))
+    require(sha256(loader) == policy["loader_sha256"], "WebView2 static loader differs from exact official SDK")
+    notices = []
+    for path, digest in policy["notices"].items():
+        data = read_file(checked_under(HERE, path))
+        require(sha256(data.replace(b"\r\n", b"\n")) == digest, "Reviewed WebView2 SDK notice changed")
+        notices.append(c.add(f"native/microsoft-webview2-sdk-{policy['version']}/{Path(path).name}", data,
+                             policy["source_url"] + " member " + Path(path).name))
+    return {**{k: policy[k] for k in ("name", "version", "source_url", "source_archive_sha256", "loader_sha256", "license")},
+            "notices": notices, "distribution": "Loader linked statically in executable; SDK archive, loader binary, Runtime and installers not copied"}
 
 
 def collect_retained(c: Collector, repo: Path, policy: dict) -> list[dict]:
@@ -348,10 +469,41 @@ use authorized toolchains and honor the terms of the selected CRT linkage.
 """
 
 
+def desktop_source_notice(cargo: list[dict]) -> str:
+    sources = "\n".join(f"- {p['name']} {p['version']}: {p['included_source']} (SHA256 {p['crate_sha256']})"
+                        for p in cargo if p.get("source_license") == "MPL-2.0")
+    return f"""
+
+## Additional desktop MPL 2.0 source and frontend notices
+
+The desktop normal/build graph includes the following MPL-2.0 components.
+Their complete, unmodified Cargo source archives are provided on the same media,
+under MPL 2.0, including original source notices. No source patches are applied.
+The exact locked manifests and build inputs accompany them. The complete MPL
+text is retained with their cargo/ notices. Executable-form recipients may use,
+modify and distribute this covered source under MPL 2.0; no application terms
+limit those rights. See MPL 2.0 sections 3.1, 3.2 and 3.4. Some of these crates
+are build helpers; source is retained conservatively rather than asserting
+that each is linked into the executable. Modified distributions must supply
+their actual modified Covered Software and retain the applicable notices.
+
+{sources}
+
+frontend/ retains the exact npm @tauri-apps/api notices, Vite and Rolldown notices
+for build-generated helpers, and the vendored Fluent icon license/provenance.
+The application uses system Segoe UI/Arial fonts; no font files are bundled.
+See DESKTOP-REVIEW.md for the static WebView2 SDK loader and separately installed
+WebView2 Runtime / Visual C++ Runtime prerequisites. Neither Microsoft runtime
+nor a Microsoft runtime installer/DLL is added to this folder by the collector.
+"""
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo-root", type=Path, default=HERE.parents[2])
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--profile", choices=sorted(PROFILES), default="cli")
+    parser.add_argument("--npm-cache", type=Path, help="npm cache used by npm ci; desktop only")
     parser.add_argument("--target", choices=[TARGET], default=TARGET)
     parser.add_argument("--cargo-metadata", type=Path, help="Previously generated target-filtered, locked original-ai metadata")
     parser.add_argument("--rust-sysroot", type=Path)
@@ -362,10 +514,11 @@ def main(argv: list[str] | None = None) -> int:
     output = args.output_dir.resolve()
     require(not output.exists(), f"Output must not already exist: {output}")
     require(not output.is_relative_to(HERE), "Do not write generated notices into the collector source directory")
-    cargo_policy = json.loads(read_file(HERE / "reviewed-cargo-notices.json"))
+    profile = PROFILES[args.profile]
+    cargo_policy = json.loads(read_file(HERE / profile["policy"]))
     retained_policy = json.loads(read_file(HERE / "reviewed-retained-notices.json"))
-    command = ["cargo", "metadata", "--format-version", "1", "--manifest-path", str(repo / "native/Cargo.toml"),
-               "--locked", "--features", "sorter-cli/original-ai", "--filter-platform", args.target]
+    command = ["cargo", "metadata", "--format-version", "1", "--manifest-path", str(repo / profile["manifest"]),
+               "--locked", "--features", ",".join(profile["features"]), "--filter-platform", args.target]
     if args.offline:
         command.append("--offline")
     metadata = json.loads(read_file(args.cargo_metadata)) if args.cargo_metadata else json.loads(run(command, repo / "native"))
@@ -386,16 +539,25 @@ def main(argv: list[str] | None = None) -> int:
         collector = Collector(stage)
         retained = collect_retained(collector, repo, retained_policy)
         cargo = collect_cargo(collector, repo, metadata, cargo_policy)
+        frontend = []
+        embedded_sdk = None
+        if args.profile == "desktop":
+            npm_cache = args.npm_cache or Path(run(["npm.cmd" if os.name == "nt" else "npm", "config", "get", "cache"], repo / "native/apps/singles-ui"))
+            embedded_sdk = collect_desktop_sdk(collector, metadata, json.loads(read_file(HERE / "reviewed-desktop-sdk-notices.json")))
+            frontend = collect_frontend(collector, repo, json.loads(read_file(HERE / "reviewed-desktop-frontend-notices.json")), npm_cache)
+            for name in [profile["manifest"], profile["lock"], "native/apps/singles-ui/package.json", "native/apps/singles-ui/package-lock.json", "native/apps/singles-ui/vite.config.ts", "native/apps/singles-ui/src-tauri/build.rs"]:
+                collector.copy(checked_under(repo, name), f"sources/build-inputs/{name}", name)
+            collector.copy(HERE / "DESKTOP-REVIEW.md", "DESKTOP-REVIEW.md", "Desktop dependency/source and prerequisite review")
         native = collect_native(collector, repo, args.dependency_cache or default_cache())
         rust = collect_rust(collector, sysroot, compiler)
-        collector.add("SOURCE-AVAILABILITY.md", source_notice(revision, native).encode("utf-8"), "generated source-availability route")
+        collector.add("SOURCE-AVAILABILITY.md", (source_notice(revision, native) + (desktop_source_notice(cargo) if args.profile == "desktop" else "")).encode("utf-8"), "generated source-availability route")
         collector.copy(HERE / "REVIEW.md", "REVIEW.md", "reviewed primary-source references and scope")
-        inventory = {"schema_version": 1, "target": args.target, "features": ["sorter-cli/original-ai"],
+        inventory = {"schema_version": 1, "target": args.target, "features": profile["features"], "profile": args.profile,
                      "source_revision": revision, "source_tree_dirty": dirty,
-                     "cargo_lock_sha256": sha256(read_file(repo / "native/Cargo.lock")),
-                     "cargo_metadata_command": [x if x != str(repo / "native/Cargo.toml") else "native/Cargo.toml" for x in command],
+                     "cargo_lock_sha256": sha256(read_file(repo / profile["lock"])),
+                     "cargo_metadata_command": [x if x != str(repo / profile["manifest"]) else profile["manifest"] for x in command],
                      "scope": cargo_policy["scope"], "cargo_packages": cargo,
-                     "retained_components": retained, "native_sources": native, "rust": rust,
+                     "frontend_components": frontend, "embedded_sdk": embedded_sdk, "retained_components": retained, "native_sources": native, "rust": rust,
                      "files": sorted(collector.files, key=lambda f: f["path"])}
         (stage / "inventory.json").write_text(json.dumps(inventory, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         stage.rename(output)

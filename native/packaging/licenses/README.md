@@ -83,3 +83,35 @@ integration check, run the command above with the exact downloaded archives and
 build toolchain, inspect inventory.json, and verify the parent package manifest
 includes every license/source file. A Linux-hosted target-filtered inventory is
 not proof that a Windows executable was built or executed.
+
+
+## Separate desktop profile
+
+`--profile desktop` selects `singles-ui-host` with `desktop,original-ai` from
+`native/apps/singles-ui/src-tauri/Cargo.toml`; omitted `--profile` remains CLI.
+It requires the reviewed desktop Cargo lock and exact feature/normal-build
+graph (266 packages), the reviewed frontend lock and assets, the installed
+frontend packages from `npm ci`, and npm's corresponding content-addressed cache.
+Use `--npm-cache path` when `npm ci --cache path` selected a non-default cache;
+otherwise the collector reads `npm config get cache`. Missing cached archives
+fail closed; the collector does not download npm packages. CLI needs no npm.
+
+```
+python native/packaging/licenses/collect_licenses.py --profile desktop \
+  --repo-root . --output-dir stage/licenses --npm-cache path/to/npm-cache \
+  --dependency-cache path/to/verified-native-source-cache
+```
+
+Reusable desktop metadata must come from:
+
+```
+cargo metadata --format-version 1 --manifest-path native/apps/singles-ui/src-tauri/Cargo.toml --locked --features desktop,original-ai --filter-platform x86_64-pc-windows-msvc
+```
+
+Desktop output adds full MPL-2.0 source archives, frontend API/helper and icon
+notices, exact upstream notices missing from seven Cargo archives, and the
+Microsoft SDK static-loader LICENSE/NOTICE. See DESKTOP-REVIEW.md for the exact
+reviewed sources, distinction between static SDK loader and installed Runtime,
+and prerequisite/distribution limits. The collector never copies Microsoft
+DLLs, runtime installers, SDK binaries or the SDK archive. Only generated output
+contains dependency source archives; they are not committed to Git.
