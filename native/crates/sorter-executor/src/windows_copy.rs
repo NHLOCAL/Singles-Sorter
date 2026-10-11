@@ -303,7 +303,13 @@ pub(crate) fn open_owned_recovery_domain(
         domain,
         ExecutionDomain::SelectedWindowsCopy | ExecutionDomain::SelectedWindowsRename
     );
-    if owned.domain() != if selected { WindowsMutationDomain::SelectedRoots } else { WindowsMutationDomain::OwnedSyntheticTree } {
+    if owned.domain()
+        != if selected {
+            WindowsMutationDomain::SelectedRoots
+        } else {
+            WindowsMutationDomain::OwnedSyntheticTree
+        }
+    {
         return Err(E::Scope);
     }
     let journal = crate::physical_journal::PhysicalJournalV2::open_for_recovery_domain(
@@ -343,7 +349,13 @@ impl WindowsCopyRecovery {
             domain,
             ExecutionDomain::SelectedWindowsCopy | ExecutionDomain::SelectedWindowsRename
         );
-        if owned.domain() != if selected { WindowsMutationDomain::SelectedRoots } else { WindowsMutationDomain::OwnedSyntheticTree } {
+        if owned.domain()
+            != if selected {
+                WindowsMutationDomain::SelectedRoots
+            } else {
+                WindowsMutationDomain::OwnedSyntheticTree
+            }
+        {
             return Err(E::Scope);
         }
         if !binding.recovery_only || binding.data.domain() != domain || !binding.data.valid_domain()
@@ -522,18 +534,28 @@ impl OwnedCopyReadStorage {
         })
     }
     /// Single-root capability-probing read adapter for original FixNames policy.
-    pub fn for_repair_preview(source:&Path)->Result<Self>{
-        if !source.is_absolute(){return Err(E::Scope);}
-        let roots=[source.to_path_buf(),source.to_path_buf()];
-        let reads=DesktopStorage::new(&[source.to_path_buf()]).map_err(|_|E::Scope)?;
-        Ok(Self{reads,roots,_source:None,_target:None})
+    pub fn for_repair_preview(source: &Path) -> Result<Self> {
+        if !source.is_absolute() {
+            return Err(E::Scope);
+        }
+        let roots = [source.to_path_buf(), source.to_path_buf()];
+        let reads = DesktopStorage::new(&[source.to_path_buf()]).map_err(|_| E::Scope)?;
+        Ok(Self {
+            reads,
+            roots,
+            _source: None,
+            _target: None,
+        })
     }
-    pub fn for_repair(owned:&WindowsMutationStorage)->Result<Self>{
-        if owned.domain()!=WindowsMutationDomain::SelectedRepair{return Err(E::Scope);}
-        let source=owned.selected_repair_root().map_err(|_|E::Scope)?;
-        let reference=owned.selected_repair_reference().map_err(|_|E::Scope)?;
-        let mut result=Self::for_repair_preview(&path(&reference).map_err(|_|E::Scope)?)?;
-        result._source=Some(source);Ok(result)
+    pub fn for_repair(owned: &WindowsMutationStorage) -> Result<Self> {
+        if owned.domain() != WindowsMutationDomain::SelectedRepair {
+            return Err(E::Scope);
+        }
+        let source = owned.selected_repair_root().map_err(|_| E::Scope)?;
+        let reference = owned.selected_repair_reference().map_err(|_| E::Scope)?;
+        let mut result = Self::for_repair_preview(&path(&reference).map_err(|_| E::Scope)?)?;
+        result._source = Some(source);
+        Ok(result)
     }
     pub fn reference(&mut self, path: &Path) -> std::result::Result<StorageRef, StorageError> {
         within_roots(&reference(path), &self.roots)?;

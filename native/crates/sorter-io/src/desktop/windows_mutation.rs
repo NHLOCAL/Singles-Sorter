@@ -24,23 +24,25 @@ use windows::{
     Wdk::{
         Foundation::OBJECT_ATTRIBUTES,
         Storage::FileSystem::{
-            FILE_CREATE, FILE_DIRECTORY_FILE, FILE_EA_INFORMATION, FILE_NON_DIRECTORY_FILE, FILE_OPEN,
-            FILE_OPEN_REPARSE_POINT, FILE_RENAME_INFORMATION, FILE_SYNCHRONOUS_IO_NONALERT,
-            FILE_WRITE_THROUGH, FileEaInformation, FileRenameInformation, NTCREATEFILE_CREATE_OPTIONS, NtCreateFile,
+            FILE_CREATE, FILE_DIRECTORY_FILE, FILE_EA_INFORMATION, FILE_NON_DIRECTORY_FILE,
+            FILE_OPEN, FILE_OPEN_REPARSE_POINT, FILE_RENAME_INFORMATION,
+            FILE_SYNCHRONOUS_IO_NONALERT, FILE_WRITE_THROUGH, FileEaInformation,
+            FileRenameInformation, NTCREATEFILE_CREATE_OPTIONS, NtCreateFile,
             NtQueryInformationFile, NtSetInformationFile,
         },
     },
     Win32::{
         Foundation::{
-            FILETIME, HANDLE, HLOCAL, LocalFree, OBJ_CASE_INSENSITIVE, OBJ_DONT_REPARSE, RtlNtStatusToDosError,
-            STATUS_REPARSE_POINT_ENCOUNTERED, UNICODE_STRING,
+            FILETIME, HANDLE, HLOCAL, LocalFree, OBJ_CASE_INSENSITIVE, OBJ_DONT_REPARSE,
+            RtlNtStatusToDosError, STATUS_REPARSE_POINT_ENCOUNTERED, UNICODE_STRING,
         },
         Security::{
-            ACL, ATTRIBUTE_SECURITY_INFORMATION, DACL_SECURITY_INFORMATION, GROUP_SECURITY_INFORMATION,
-            LABEL_SECURITY_INFORMATION, SCOPE_SECURITY_INFORMATION,
-            GetLengthSid, GetSecurityDescriptorControl, GetSecurityDescriptorSacl, IsValidAcl, IsValidSid,
-            OWNER_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, PSID,
+            ACL, ATTRIBUTE_SECURITY_INFORMATION,
             Authorization::{GetSecurityInfo, SE_FILE_OBJECT},
+            DACL_SECURITY_INFORMATION, GROUP_SECURITY_INFORMATION, GetLengthSid,
+            GetSecurityDescriptorControl, GetSecurityDescriptorSacl, IsValidAcl, IsValidSid,
+            LABEL_SECURITY_INFORMATION, OWNER_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, PSID,
+            SCOPE_SECURITY_INFORMATION,
         },
         Storage::FileSystem::*,
         System::IO::IO_STATUS_BLOCK,
@@ -389,14 +391,34 @@ impl WindowsMutationStorage {
     }
     /// Explicit in-place repair authority: the selected source may receive only
     /// staged files and retained originals; application journal remains disjoint.
-    pub fn for_selected_repair_roots(source: WindowsSelectedRootGrant, journal: WindowsSelectedRootGrant) -> Result<Self, MutationError> {
-        let source=pin_root(source.path,Some(&source.expected_identity),RootRole::Repair,RootOwnership::Selected)?;
-        let journal=pin_root(journal.path,Some(&journal.expected_identity),RootRole::Journal,RootOwnership::Selected)?;
-        ensure_disjoint_roots(&source,&journal)?;
-        Ok(Self{roots:vec![source,journal],domain:WindowsMutationDomain::SelectedRepair})
+    pub fn for_selected_repair_roots(
+        source: WindowsSelectedRootGrant,
+        journal: WindowsSelectedRootGrant,
+    ) -> Result<Self, MutationError> {
+        let source = pin_root(
+            source.path,
+            Some(&source.expected_identity),
+            RootRole::Repair,
+            RootOwnership::Selected,
+        )?;
+        let journal = pin_root(
+            journal.path,
+            Some(&journal.expected_identity),
+            RootRole::Journal,
+            RootOwnership::Selected,
+        )?;
+        ensure_disjoint_roots(&source, &journal)?;
+        Ok(Self {
+            roots: vec![source, journal],
+            domain: WindowsMutationDomain::SelectedRepair,
+        })
     }
-    pub fn selected_repair_reference(&self)->Result<StorageRef,MutationError>{self.selected_reference(RootRole::Repair)}
-    pub fn selected_repair_root(&self)->Result<WindowsParent,MutationError>{self.parent_under(self.selected_root(RootRole::Repair)?,Path::new(""))}
+    pub fn selected_repair_reference(&self) -> Result<StorageRef, MutationError> {
+        self.selected_reference(RootRole::Repair)
+    }
+    pub fn selected_repair_root(&self) -> Result<WindowsParent, MutationError> {
+        self.parent_under(self.selected_root(RootRole::Repair)?, Path::new(""))
+    }
     pub fn domain(&self) -> WindowsMutationDomain {
         self.domain
     }
@@ -537,7 +559,9 @@ impl WindowsMutationStorage {
     }
     fn check_role(&self, parent: &WindowsParent, role: RootRole) -> Result<(), MutationError> {
         self.check_parent(parent)?;
-        let repair_role = self.domain == WindowsMutationDomain::SelectedRepair && parent.root.role == RootRole::Repair && matches!(role, RootRole::Source | RootRole::Target);
+        let repair_role = self.domain == WindowsMutationDomain::SelectedRepair
+            && parent.root.role == RootRole::Repair
+            && matches!(role, RootRole::Source | RootRole::Target);
         if parent.root.role != RootRole::Synthetic && parent.root.role != role && !repair_role {
             return Err(err(
                 MutationErrorKind::StalePlan,
@@ -775,11 +799,19 @@ fn read_journal_bytes(file: &mut File, selected: bool) -> Result<Vec<u8>, Mutati
     const LIMIT: usize = 64 * 1024 * 1024;
     let length = file.metadata().map_err(io_error)?.len();
     if selected && length > LIMIT as u64 {
-        return Err(err(MutationErrorKind::Unsupported, "selected journal exceeds 64 MiB read limit"));
+        return Err(err(
+            MutationErrorKind::Unsupported,
+            "selected journal exceeds 64 MiB read limit",
+        ));
     }
     let mut bytes = Vec::new();
     if selected {
-        bytes.try_reserve_exact(length as usize).map_err(|error| err(MutationErrorKind::Io, &format!("bounded journal allocation: {error}")))?;
+        bytes.try_reserve_exact(length as usize).map_err(|error| {
+            err(
+                MutationErrorKind::Io,
+                &format!("bounded journal allocation: {error}"),
+            )
+        })?;
         // Bound allocation as well as reads, including if size changes after the
         // native length observation. A one-byte stack probe detects excess data.
         let mut chunk = [0u8; 64 * 1024];
@@ -788,14 +820,24 @@ fn read_journal_bytes(file: &mut File, selected: bool) -> Result<Vec<u8>, Mutati
             if remaining == 0 {
                 let mut probe = [0u8; 1];
                 if file.read(&mut probe).map_err(io_error)? != 0 {
-                    return Err(err(MutationErrorKind::Unsupported, "selected journal exceeds 64 MiB read limit"));
+                    return Err(err(
+                        MutationErrorKind::Unsupported,
+                        "selected journal exceeds 64 MiB read limit",
+                    ));
                 }
                 break;
             }
             let amount = remaining.min(chunk.len());
             let n = file.read(&mut chunk[..amount]).map_err(io_error)?;
-            if n == 0 { break; }
-            bytes.try_reserve_exact(n).map_err(|error| err(MutationErrorKind::Io, &format!("bounded journal allocation: {error}")))?;
+            if n == 0 {
+                break;
+            }
+            bytes.try_reserve_exact(n).map_err(|error| {
+                err(
+                    MutationErrorKind::Io,
+                    &format!("bounded journal allocation: {error}"),
+                )
+            })?;
             bytes.extend_from_slice(&chunk[..n]);
         }
     } else {
@@ -812,7 +854,10 @@ impl WindowsJournalFile {
     pub fn read_all(&mut self) -> Result<Vec<u8>, MutationError> {
         let result = (|| {
             self.file.seek(SeekFrom::Start(0)).map_err(io_error)?;
-            read_journal_bytes(&mut self.file, self.location.parent.root.role != RootRole::Synthetic)
+            read_journal_bytes(
+                &mut self.file,
+                self.location.parent.root.role != RootRole::Synthetic,
+            )
         })();
         if result.is_err() {
             self.poisoned = true;
@@ -1120,7 +1165,9 @@ pub struct WindowsPublished {
     repair: Option<RepairPublication>,
 }
 impl WindowsPublished {
-    pub fn observation(&self) -> &MutationObservation { &self.observation }
+    pub fn observation(&self) -> &MutationObservation {
+        &self.observation
+    }
 }
 /// Checked file-buffer synchronization of the exact held, verified publication.
 /// Not a namespace durability capability, source retirement, or replay authority.
@@ -1198,8 +1245,11 @@ impl WindowsSourceLease {
     }
 }
 impl Seek for WindowsSourceLease {
-    fn seek(&mut self, position:SeekFrom)->io::Result<u64>{
-        self.file.as_mut().ok_or_else(||io::Error::other("lease consumed"))?.seek(position)
+    fn seek(&mut self, position: SeekFrom) -> io::Result<u64> {
+        self.file
+            .as_mut()
+            .ok_or_else(|| io::Error::other("lease consumed"))?
+            .seek(position)
     }
 }
 impl Read for WindowsSourceLease {
@@ -1212,14 +1262,19 @@ impl Read for WindowsSourceLease {
 }
 impl Write for WindowsOwnedTemp {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let file = self.file.as_mut().ok_or_else(|| io::Error::other("temp consumed"))?;
+        let file = self
+            .file
+            .as_mut()
+            .ok_or_else(|| io::Error::other("temp consumed"))?;
         if let Some(state) = &mut self.repair {
             if state.finalized_write_time.is_some() || state.poisoned {
                 return Err(io::Error::other("repair temp finalized or poisoned"));
             }
             // A main-stream share-denying handle is NOT an ACL/ADS lock. Check
             // each write as well as the create/finalize/publication boundaries.
-            let checked = state.original.check_original(&state.held_original)
+            let checked = state
+                .original
+                .check_original(&state.held_original)
                 .and_then(|_| check_repair_representation(file))
                 .and_then(|_| state.original.check_security(file));
             if let Err(error) = checked {
@@ -1471,7 +1526,12 @@ impl MutationStorage for WindowsMutationStorage {
         source: &mut WindowsSourceLease,
         cancel: &AtomicBool,
     ) -> MutationOutcome<RetirementOutcome> {
-        if self.domain==WindowsMutationDomain::SelectedRepair{return MutationOutcome::NoEffect(err(MutationErrorKind::Unsupported,"repair domain never unlinks originals"));}
+        if self.domain == WindowsMutationDomain::SelectedRepair {
+            return MutationOutcome::NoEffect(err(
+                MutationErrorKind::Unsupported,
+                "repair domain never unlinks originals",
+            ));
+        }
         let preflight = (|| {
             cancelled(cancel)?;
             self.validate_source(source)?;
@@ -2654,7 +2714,9 @@ struct SecurityAllocation(PSECURITY_DESCRIPTOR);
 impl Drop for SecurityAllocation {
     fn drop(&mut self) {
         if !self.0.0.is_null() {
-            unsafe { let _ = LocalFree(Some(HLOCAL(self.0.0))); }
+            unsafe {
+                let _ = LocalFree(Some(HLOCAL(self.0.0)));
+            }
         }
     }
 }
@@ -2667,10 +2729,18 @@ fn repair_security(file: &File) -> Result<RepairSecurity, MutationError> {
     let mut access_sacl: *mut ACL = std::ptr::null_mut();
     let result = unsafe {
         GetSecurityInfo(
-            HANDLE(file.as_raw_handle()), SE_FILE_OBJECT,
-            OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION
-                | LABEL_SECURITY_INFORMATION | ATTRIBUTE_SECURITY_INFORMATION | SCOPE_SECURITY_INFORMATION,
-            Some(&mut owner), Some(&mut group), Some(&mut dacl), None,
+            HANDLE(file.as_raw_handle()),
+            SE_FILE_OBJECT,
+            OWNER_SECURITY_INFORMATION
+                | GROUP_SECURITY_INFORMATION
+                | DACL_SECURITY_INFORMATION
+                | LABEL_SECURITY_INFORMATION
+                | ATTRIBUTE_SECURITY_INFORMATION
+                | SCOPE_SECURITY_INFORMATION,
+            Some(&mut owner),
+            Some(&mut group),
+            Some(&mut dacl),
+            None,
             Some(&mut descriptor),
         )
     };
@@ -2679,14 +2749,26 @@ fn repair_security(file: &File) -> Result<RepairSecurity, MutationError> {
         return Err(io_error(io::Error::from_raw_os_error(result.0 as i32)));
     }
     if allocation.0.0.is_null() || owner.0.is_null() || group.0.is_null() || dacl.is_null() {
-        return Err(err(MutationErrorKind::Unsupported, "repair requires owner, group and a non-null DACL"));
+        return Err(err(
+            MutationErrorKind::Unsupported,
+            "repair requires owner, group and a non-null DACL",
+        ));
     }
     let mut control = 0u16;
     let mut revision = 0u32;
-    unsafe { GetSecurityDescriptorControl(allocation.0, &mut control, &mut revision) }.map_err(win_error)?;
+    unsafe { GetSecurityDescriptorControl(allocation.0, &mut control, &mut revision) }
+        .map_err(win_error)?;
     let mut access_present = Default::default();
     let mut access_defaulted = Default::default();
-    unsafe { GetSecurityDescriptorSacl(allocation.0, &mut access_present, &mut access_sacl, &mut access_defaulted) }.map_err(win_error)?;
+    unsafe {
+        GetSecurityDescriptorSacl(
+            allocation.0,
+            &mut access_present,
+            &mut access_sacl,
+            &mut access_defaulted,
+        )
+    }
+    .map_err(win_error)?;
     // Compare exact SID and ACL bytes, including ACE order and inheritance flags.
     // This is conservative equivalence (false negatives are safe), not an access
     // check or a claim that ACL/ADS changes are excluded by a main-stream lease.
@@ -2696,14 +2778,34 @@ fn repair_security(file: &File) -> Result<RepairSecurity, MutationError> {
         || (!access_sacl.is_null() && !unsafe { IsValidAcl(access_sacl) }.as_bool())
         || control & 0x0004 == 0
     {
-        return Err(err(MutationErrorKind::Unsupported, "unrecognized repair security descriptor"));
+        return Err(err(
+            MutationErrorKind::Unsupported,
+            "unrecognized repair security descriptor",
+        ));
     }
     Ok(RepairSecurity {
-        owner: unsafe { std::slice::from_raw_parts(owner.0.cast::<u8>(), GetLengthSid(owner) as usize) }.to_vec(),
-        group: unsafe { std::slice::from_raw_parts(group.0.cast::<u8>(), GetLengthSid(group) as usize) }.to_vec(),
-        dacl: unsafe { std::slice::from_raw_parts(dacl.cast::<u8>(), (*dacl).AclSize as usize) }.to_vec(),
-        access_sacl: if access_sacl.is_null() { None } else {
-            Some(unsafe { std::slice::from_raw_parts(access_sacl.cast::<u8>(), (*access_sacl).AclSize as usize) }.to_vec())
+        owner: unsafe {
+            std::slice::from_raw_parts(owner.0.cast::<u8>(), GetLengthSid(owner) as usize)
+        }
+        .to_vec(),
+        group: unsafe {
+            std::slice::from_raw_parts(group.0.cast::<u8>(), GetLengthSid(group) as usize)
+        }
+        .to_vec(),
+        dacl: unsafe { std::slice::from_raw_parts(dacl.cast::<u8>(), (*dacl).AclSize as usize) }
+            .to_vec(),
+        access_sacl: if access_sacl.is_null() {
+            None
+        } else {
+            Some(
+                unsafe {
+                    std::slice::from_raw_parts(
+                        access_sacl.cast::<u8>(),
+                        (*access_sacl).AclSize as usize,
+                    )
+                }
+                .to_vec(),
+            )
         },
         // OWNER/GROUP_DEFAULTED; DACL and access-SACL PRESENT/DEFAULTED,
         // AUTO_INHERIT_REQ, AUTO_INHERITED and PROTECTED. Audit ACEs are not read.
@@ -2714,42 +2816,78 @@ fn repair_security(file: &File) -> Result<RepairSecurity, MutationError> {
 fn repair_basic(file: &File) -> Result<FILE_BASIC_INFO, MutationError> {
     let mut info = FILE_BASIC_INFO::default();
     unsafe {
-        GetFileInformationByHandleEx(HANDLE(file.as_raw_handle()), FileBasicInfo,
-            (&mut info as *mut FILE_BASIC_INFO).cast(), size_of::<FILE_BASIC_INFO>() as u32)
-    }.map_err(win_error)?;
+        GetFileInformationByHandleEx(
+            HANDLE(file.as_raw_handle()),
+            FileBasicInfo,
+            (&mut info as *mut FILE_BASIC_INFO).cast(),
+            size_of::<FILE_BASIC_INFO>() as u32,
+        )
+    }
+    .map_err(win_error)?;
     Ok(info)
 }
 
 fn repair_attributes(attributes: u32) -> Result<u32, MutationError> {
     // The initial ordinary-file domain deliberately rejects readonly, EFS,
     // sparse, compressed, offline/recall, integrity and every unrecognized bit.
-    let ordinary = FILE_ATTRIBUTE_NORMAL.0 | FILE_ATTRIBUTE_ARCHIVE.0
-        | FILE_ATTRIBUTE_HIDDEN.0 | FILE_ATTRIBUTE_SYSTEM.0 | FILE_ATTRIBUTE_NOT_CONTENT_INDEXED.0;
+    let ordinary = FILE_ATTRIBUTE_NORMAL.0
+        | FILE_ATTRIBUTE_ARCHIVE.0
+        | FILE_ATTRIBUTE_HIDDEN.0
+        | FILE_ATTRIBUTE_SYSTEM.0
+        | FILE_ATTRIBUTE_NOT_CONTENT_INDEXED.0;
     if attributes & !ordinary != 0 {
-        return Err(err(MutationErrorKind::Unsupported, "repair cannot preserve this file representation or attribute"));
+        return Err(err(
+            MutationErrorKind::Unsupported,
+            "repair cannot preserve this file representation or attribute",
+        ));
     }
     Ok(attributes & !FILE_ATTRIBUTE_NORMAL.0)
 }
 
 fn only_unnamed_stream(bytes: &[u8]) -> Result<(), MutationError> {
-    let invalid = || err(MutationErrorKind::Unsupported, "repair stream inventory is unsupported or malformed");
+    let invalid = || {
+        err(
+            MutationErrorKind::Unsupported,
+            "repair stream inventory is unsupported or malformed",
+        )
+    };
     let header = std::mem::offset_of!(FILE_STREAM_INFO, StreamName);
     let mut offset = 0usize;
     let mut count = 0usize;
     loop {
-        if offset.checked_add(header).is_none_or(|end| end > bytes.len()) { return Err(invalid()); }
+        if offset
+            .checked_add(header)
+            .is_none_or(|end| end > bytes.len())
+        {
+            return Err(invalid());
+        }
         let next = u32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap()) as usize;
         let length = u32::from_le_bytes(bytes[offset + 4..offset + 8].try_into().unwrap()) as usize;
         let start = offset + header;
-        let end = start.checked_add(length).filter(|end| *end <= bytes.len()).ok_or_else(invalid)?;
-        if length % 2 != 0 { return Err(invalid()); }
-        let name: Vec<u16> = bytes[start..end].chunks_exact(2).map(|u| u16::from_le_bytes([u[0], u[1]])).collect();
+        let end = start
+            .checked_add(length)
+            .filter(|end| *end <= bytes.len())
+            .ok_or_else(invalid)?;
+        if length % 2 != 0 {
+            return Err(invalid());
+        }
+        let name: Vec<u16> = bytes[start..end]
+            .chunks_exact(2)
+            .map(|u| u16::from_le_bytes([u[0], u[1]]))
+            .collect();
         if name != "::$DATA".encode_utf16().collect::<Vec<_>>() || count != 0 {
-            return Err(err(MutationErrorKind::Unsupported, "repair with named or multiple data streams is unsupported"));
+            return Err(err(
+                MutationErrorKind::Unsupported,
+                "repair with named or multiple data streams is unsupported",
+            ));
         }
         count += 1;
-        if next == 0 { return Ok(()); }
-        if next % 8 != 0 || next < header + length { return Err(invalid()); }
+        if next == 0 {
+            return Ok(());
+        }
+        if next % 8 != 0 || next < header + length {
+            return Err(invalid());
+        }
         offset = offset.checked_add(next).ok_or_else(invalid)?;
     }
 }
@@ -2760,17 +2898,30 @@ fn check_repair_streams(file: &File) -> Result<(), MutationError> {
     loop {
         let mut allocation = vec![0u64; size / 8];
         let result = unsafe {
-            GetFileInformationByHandleEx(HANDLE(file.as_raw_handle()), FileStreamInfo,
-                allocation.as_mut_ptr().cast(), size as u32)
+            GetFileInformationByHandleEx(
+                HANDLE(file.as_raw_handle()),
+                FileStreamInfo,
+                allocation.as_mut_ptr().cast(),
+                size as u32,
+            )
         };
         match result {
             Ok(()) => {
-                let bytes = unsafe { std::slice::from_raw_parts(allocation.as_ptr().cast::<u8>(), size) };
+                let bytes =
+                    unsafe { std::slice::from_raw_parts(allocation.as_ptr().cast::<u8>(), size) };
                 return only_unnamed_stream(bytes);
             }
-            Err(error) if matches!(error.code().0 as u32 & 0xffff, 122 | 234) && size < 1024 * 1024 => { size *= 2; }
-            Err(error) => return Err(err(MutationErrorKind::Unsupported,
-                &format!("cannot establish a complete repair stream inventory: {error}"))),
+            Err(error)
+                if matches!(error.code().0 as u32 & 0xffff, 122 | 234) && size < 1024 * 1024 =>
+            {
+                size *= 2;
+            }
+            Err(error) => {
+                return Err(err(
+                    MutationErrorKind::Unsupported,
+                    &format!("cannot establish a complete repair stream inventory: {error}"),
+                ));
+            }
         }
     }
 }
@@ -2778,14 +2929,29 @@ fn check_repair_streams(file: &File) -> Result<(), MutationError> {
 fn check_repair_extended_attributes(file: &File) -> Result<(), MutationError> {
     let mut information = FILE_EA_INFORMATION::default();
     let mut status_block = IO_STATUS_BLOCK::default();
-    let status = unsafe { NtQueryInformationFile(HANDLE(file.as_raw_handle()), &mut status_block,
-        (&mut information as *mut FILE_EA_INFORMATION).cast(), size_of::<FILE_EA_INFORMATION>() as u32,
-        FileEaInformation) };
+    let status = unsafe {
+        NtQueryInformationFile(
+            HANDLE(file.as_raw_handle()),
+            &mut status_block,
+            (&mut information as *mut FILE_EA_INFORMATION).cast(),
+            size_of::<FILE_EA_INFORMATION>() as u32,
+            FileEaInformation,
+        )
+    };
     if status.0 != 0 || unsafe { status_block.Anonymous.Status }.0 != 0 {
-        return Err(err(MutationErrorKind::Unsupported, &format!("cannot establish completed repair extended-attribute inventory: NTSTATUS {:#x}", status.0)));
+        return Err(err(
+            MutationErrorKind::Unsupported,
+            &format!(
+                "cannot establish completed repair extended-attribute inventory: NTSTATUS {:#x}",
+                status.0
+            ),
+        ));
     }
     if status_block.Information != size_of::<FILE_EA_INFORMATION>() || information.EaSize != 0 {
-        return Err(err(MutationErrorKind::Unsupported, "repair with extended attributes is unsupported"));
+        return Err(err(
+            MutationErrorKind::Unsupported,
+            "repair with extended attributes is unsupported",
+        ));
     }
     Ok(())
 }
@@ -2813,17 +2979,26 @@ impl RepairPreservation {
         let basic = check_repair_representation(file)?;
         // Zero and negative FILETIME values have setter sentinel meanings.
         if basic.CreationTime <= 0 || basic.LastAccessTime <= 0 {
-            return Err(err(MutationErrorKind::Unsupported, "repair timestamp cannot be preserved exactly"));
+            return Err(err(
+                MutationErrorKind::Unsupported,
+                "repair timestamp cannot be preserved exactly",
+            ));
         }
         Ok(Self {
-            identity: identity(file).map_err(read_error)?, security: repair_security(file)?,
-            attributes: repair_attributes(basic.FileAttributes)?, creation_time: basic.CreationTime,
-            access_time: basic.LastAccessTime, original_write_time: basic.LastWriteTime,
+            identity: identity(file).map_err(read_error)?,
+            security: repair_security(file)?,
+            attributes: repair_attributes(basic.FileAttributes)?,
+            creation_time: basic.CreationTime,
+            access_time: basic.LastAccessTime,
+            original_write_time: basic.LastWriteTime,
         })
     }
     fn check_security(&self, file: &File) -> Result<(), MutationError> {
         if repair_security(file)? != self.security {
-            return Err(err(MutationErrorKind::Unsupported, "repair owner/group/DACL/integrity/resource-policy protection differs; no audio bytes may be staged"));
+            return Err(err(
+                MutationErrorKind::Unsupported,
+                "repair owner/group/DACL/integrity/resource-policy protection differs; no audio bytes may be staged",
+            ));
         }
         Ok(())
     }
@@ -2832,9 +3007,13 @@ impl RepairPreservation {
         self.check_security(file)?;
         if identity(file).map_err(read_error)? != self.identity
             || repair_attributes(basic.FileAttributes)? != self.attributes
-            || basic.CreationTime != self.creation_time || basic.LastWriteTime != self.original_write_time
+            || basic.CreationTime != self.creation_time
+            || basic.LastWriteTime != self.original_write_time
         {
-            return Err(err(MutationErrorKind::StalePlan, "repair original metadata changed"));
+            return Err(err(
+                MutationErrorKind::StalePlan,
+                "repair original metadata changed",
+            ));
         }
         // LastAccessTime may change due to our own source reads; ChangeTime
         // changes on the intended filename/backup rename. Neither is a lease.
@@ -2857,63 +3036,130 @@ enum RepairPublication {
 }
 
 fn check_finalized_repair(file: &File, state: &RepairTempState) -> Result<(), MutationError> {
-    let write_time = state.finalized_write_time.ok_or_else(|| err(MutationErrorKind::StalePlan, "repair staging not finalized"))?;
-    if state.poisoned { return Err(err(MutationErrorKind::UnknownOutcome, "repair staging metadata poisoned")); }
+    let write_time = state
+        .finalized_write_time
+        .ok_or_else(|| err(MutationErrorKind::StalePlan, "repair staging not finalized"))?;
+    if state.poisoned {
+        return Err(err(
+            MutationErrorKind::UnknownOutcome,
+            "repair staging metadata poisoned",
+        ));
+    }
     state.original.check_original(&state.held_original)?;
     let basic = check_repair_representation(file)?;
     state.original.check_security(file)?;
     if repair_attributes(basic.FileAttributes)? != state.original.attributes
         || basic.CreationTime != state.original.creation_time
-        || basic.LastAccessTime != state.original.access_time || basic.LastWriteTime != write_time
+        || basic.LastAccessTime != state.original.access_time
+        || basic.LastWriteTime != write_time
     {
-        return Err(err(MutationErrorKind::VerificationFailed, "staged repair metadata differs"));
+        return Err(err(
+            MutationErrorKind::VerificationFailed,
+            "staged repair metadata differs",
+        ));
     }
     Ok(())
 }
 
 fn repair_pending(error: MutationError, observation: &MutationObservation) -> MutationError {
-    err(MutationErrorKind::UnknownOutcome, &format!("repair has retained objects; reconcile without replay: {error:?}"))
-        .with_observation(error.observed.as_deref().cloned().unwrap_or_else(|| observation.clone()))
+    err(
+        MutationErrorKind::UnknownOutcome,
+        &format!("repair has retained objects; reconcile without replay: {error:?}"),
+    )
+    .with_observation(
+        error
+            .observed
+            .as_deref()
+            .cloned()
+            .unwrap_or_else(|| observation.clone()),
+    )
 }
 
 /// Narrow in-place staging/backup adapter. There is deliberately no source unlink
 /// or backup cleanup method. The exact retained original is required to publish.
 /// See docs/windows-fix-preservation.md for the supported security domain and races.
-pub struct WindowsRepairStorage { rename: WindowsRenameStorage }
+pub struct WindowsRepairStorage {
+    rename: WindowsRenameStorage,
+}
 impl WindowsRepairStorage {
     pub fn new(roots: WindowsMutationStorage) -> Result<Self, MutationError> {
-        if !matches!(roots.domain(), WindowsMutationDomain::SelectedRepair | WindowsMutationDomain::OwnedSyntheticTree) {
-            return Err(err(MutationErrorKind::Unsupported, "repair-specific root grant required"));
+        if !matches!(
+            roots.domain(),
+            WindowsMutationDomain::SelectedRepair | WindowsMutationDomain::OwnedSyntheticTree
+        ) {
+            return Err(err(
+                MutationErrorKind::Unsupported,
+                "repair-specific root grant required",
+            ));
         }
-        Ok(Self { rename: WindowsRenameStorage::new(roots) })
+        Ok(Self {
+            rename: WindowsRenameStorage::new(roots),
+        })
     }
-    pub fn roots(&self) -> &WindowsMutationStorage { self.rename.owned() }
-    pub fn acquire_source(&mut self, parent: &WindowsParent, expected: &ExpectedSource) -> Result<WindowsSourceLease, MutationError> {
+    pub fn roots(&self) -> &WindowsMutationStorage {
+        self.rename.owned()
+    }
+    pub fn acquire_source(
+        &mut self,
+        parent: &WindowsParent,
+        expected: &ExpectedSource,
+    ) -> Result<WindowsSourceLease, MutationError> {
         self.rename.acquire_source(parent, expected)
     }
     /// Invoke after the optional filename-first rename, and only for tag changes.
     /// A filename-only rename retains the original representation without staging.
-    pub fn prepare_metadata_preservation(&self, source: &mut WindowsSourceLease) -> Result<(), MutationError> {
+    pub fn prepare_metadata_preservation(
+        &self,
+        source: &mut WindowsSourceLease,
+    ) -> Result<(), MutationError> {
         self.rename.owned.validate_source(source)?;
         let file = source.file.as_ref().expect("validated source");
-        if let Some(snapshot) = &source.repair { return snapshot.check_original(file); }
+        if let Some(snapshot) = &source.repair {
+            return snapshot.check_original(file);
+        }
         source.repair = Some(RepairPreservation::capture(file)?);
         Ok(())
     }
-    pub fn create_staged(&mut self, source: &WindowsSourceLease, correlation: &str, cancel: &AtomicBool) -> MutationOutcome<WindowsOwnedTemp> {
+    pub fn create_staged(
+        &mut self,
+        source: &WindowsSourceLease,
+        correlation: &str,
+        cancel: &AtomicBool,
+    ) -> MutationOutcome<WindowsOwnedTemp> {
         let preflight = (|| {
             cancelled(cancel)?;
             self.rename.owned.validate_source(source)?;
-            let snapshot = source.repair.as_ref().ok_or_else(|| err(MutationErrorKind::Unsupported, "repair preservation was not prepared"))?;
+            let snapshot = source.repair.as_ref().ok_or_else(|| {
+                err(
+                    MutationErrorKind::Unsupported,
+                    "repair preservation was not prepared",
+                )
+            })?;
             snapshot.check_original(source.file.as_ref().expect("validated source"))?;
-            let held_original = Arc::new(source.file.as_ref().expect("validated source").try_clone().map_err(io_error)?);
+            let held_original = Arc::new(
+                source
+                    .file
+                    .as_ref()
+                    .expect("validated source")
+                    .try_clone()
+                    .map_err(io_error)?,
+            );
             Ok((snapshot.clone(), held_original))
         })();
-        let (snapshot, held_original) = match preflight { Ok(value) => value, Err(error) => return MutationOutcome::NoEffect(error) };
-        let mut temp = match self.rename.owned.create_temp(&source.parent, correlation, cancel) {
+        let (snapshot, held_original) = match preflight {
+            Ok(value) => value,
+            Err(error) => return MutationOutcome::NoEffect(error),
+        };
+        let mut temp = match self
+            .rename
+            .owned
+            .create_temp(&source.parent, correlation, cancel)
+        {
             MutationOutcome::Applied(value) => value,
             MutationOutcome::NoEffect(error) => return MutationOutcome::NoEffect(error),
-            MutationOutcome::PendingUnknown(error) => return MutationOutcome::PendingUnknown(error),
+            MutationOutcome::PendingUnknown(error) => {
+                return MutationOutcome::PendingUnknown(error);
+            }
         };
         let checked = (|| {
             cancelled(cancel)?;
@@ -2928,48 +3174,116 @@ impl WindowsRepairStorage {
             // and never describe the failed post-create checks as NoEffect.
             return MutationOutcome::PendingUnknown(repair_pending(error, &temp.observation));
         }
-        temp.repair = Some(RepairTempState { original: snapshot, held_original, finalized_write_time: None, poisoned: false });
+        temp.repair = Some(RepairTempState {
+            original: snapshot,
+            held_original,
+            finalized_write_time: None,
+            poisoned: false,
+        });
         MutationOutcome::Applied(temp)
     }
     /// Flush content, set ordinary attributes and original creation/access times,
     /// then verify on the same handle. LastWriteTime is the completion time of the
     /// changed content, not the original mtime. No writes are accepted afterward.
-    pub fn finalize_staged(&self, source: &WindowsSourceLease, temp: &mut WindowsOwnedTemp) -> Result<(), MutationError> {
+    pub fn finalize_staged(
+        &self,
+        source: &WindowsSourceLease,
+        temp: &mut WindowsOwnedTemp,
+    ) -> Result<(), MutationError> {
         self.rename.owned.validate_source(source)?;
-        self.rename.owned.check_role(&temp.parent, RootRole::Target)?;
-        let snapshot = source.repair.as_ref().ok_or_else(|| err(MutationErrorKind::Unsupported, "repair preservation was not prepared"))?;
-        let state = temp.repair.as_mut().ok_or_else(|| err(MutationErrorKind::Unsupported, "ordinary temp is not repair staging"))?;
-        if state.original != *snapshot || source.parent.identity != temp.parent.identity || state.poisoned {
-            return Err(err(MutationErrorKind::StalePlan, "repair staging/source mismatch or poisoned state"));
+        self.rename
+            .owned
+            .check_role(&temp.parent, RootRole::Target)?;
+        let snapshot = source.repair.as_ref().ok_or_else(|| {
+            err(
+                MutationErrorKind::Unsupported,
+                "repair preservation was not prepared",
+            )
+        })?;
+        let state = temp.repair.as_mut().ok_or_else(|| {
+            err(
+                MutationErrorKind::Unsupported,
+                "ordinary temp is not repair staging",
+            )
+        })?;
+        if state.original != *snapshot
+            || source.parent.identity != temp.parent.identity
+            || state.poisoned
+        {
+            return Err(err(
+                MutationErrorKind::StalePlan,
+                "repair staging/source mismatch or poisoned state",
+            ));
         }
-        let file = temp.file.as_ref().ok_or_else(|| err(MutationErrorKind::StalePlan, "temp consumed"))?;
+        let file = temp
+            .file
+            .as_ref()
+            .ok_or_else(|| err(MutationErrorKind::StalePlan, "temp consumed"))?;
         snapshot.check_original(source.file.as_ref().expect("validated source"))?;
-        if identity(file).map_err(read_error)? != temp.identity { return Err(err(MutationErrorKind::StalePlan, "temp identity changed")); }
-        if state.finalized_write_time.is_some() { return check_finalized_repair(file, state); }
+        if identity(file).map_err(read_error)? != temp.identity {
+            return Err(err(MutationErrorKind::StalePlan, "temp identity changed"));
+        }
+        if state.finalized_write_time.is_some() {
+            return check_finalized_repair(file, state);
+        }
         check_repair_representation(file)?;
         snapshot.check_security(file)?;
-        let ticks = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)
-            .map_err(|_| err(MutationErrorKind::Unsupported, "system clock predates Unix epoch"))?.as_nanos() / 100;
+        let ticks = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|_| {
+                err(
+                    MutationErrorKind::Unsupported,
+                    "system clock predates Unix epoch",
+                )
+            })?
+            .as_nanos()
+            / 100;
         let write_time = i64::try_from(ticks + 116_444_736_000_000_000u128)
             .map_err(|_| err(MutationErrorKind::Unsupported, "repair timestamp overflow"))?;
         let basic = FILE_BASIC_INFO {
-            CreationTime: snapshot.creation_time, LastAccessTime: snapshot.access_time,
-            LastWriteTime: write_time, ChangeTime: 0,
-            FileAttributes: if snapshot.attributes == 0 { FILE_ATTRIBUTE_NORMAL.0 } else { snapshot.attributes },
+            CreationTime: snapshot.creation_time,
+            LastAccessTime: snapshot.access_time,
+            LastWriteTime: write_time,
+            ChangeTime: 0,
+            FileAttributes: if snapshot.attributes == 0 {
+                FILE_ATTRIBUTE_NORMAL.0
+            } else {
+                snapshot.attributes
+            },
         };
         // No retry through this guard after a dispatched metadata/flush failure.
         state.poisoned = true;
         let dispatched = (|| {
             unsafe { FlushFileBuffers(HANDLE(file.as_raw_handle())) }.map_err(win_error)?;
-            unsafe { SetFileInformationByHandle(HANDLE(file.as_raw_handle()), FileBasicInfo,
-                (&basic as *const FILE_BASIC_INFO).cast(), size_of::<FILE_BASIC_INFO>() as u32) }.map_err(win_error)?;
-            let freeze = FILETIME { dwLowDateTime: u32::MAX, dwHighDateTime: u32::MAX };
-            unsafe { SetFileTime(HANDLE(file.as_raw_handle()), None, Some(&freeze), Some(&freeze)) }.map_err(win_error)?;
+            unsafe {
+                SetFileInformationByHandle(
+                    HANDLE(file.as_raw_handle()),
+                    FileBasicInfo,
+                    (&basic as *const FILE_BASIC_INFO).cast(),
+                    size_of::<FILE_BASIC_INFO>() as u32,
+                )
+            }
+            .map_err(win_error)?;
+            let freeze = FILETIME {
+                dwLowDateTime: u32::MAX,
+                dwHighDateTime: u32::MAX,
+            };
+            unsafe {
+                SetFileTime(
+                    HANDLE(file.as_raw_handle()),
+                    None,
+                    Some(&freeze),
+                    Some(&freeze),
+                )
+            }
+            .map_err(win_error)?;
             unsafe { FlushFileBuffers(HANDLE(file.as_raw_handle())) }.map_err(win_error)?;
             snapshot.check_original(source.file.as_ref().expect("validated source"))?;
             Ok(())
         })();
-        if let Err(error) = dispatched { return Err(repair_pending(error, &temp.observation)); }
+        if let Err(error) = dispatched {
+            return Err(repair_pending(error, &temp.observation));
+        }
         state.finalized_write_time = Some(write_time);
         state.poisoned = false;
         if let Err(error) = check_finalized_repair(file, state) {
@@ -2979,9 +3293,19 @@ impl WindowsRepairStorage {
         Ok(())
     }
     /// Preserve filename-first behavior while rebinding the same held original.
-    pub fn rename_original(&mut self, source: &mut WindowsSourceLease, name: &MutationName, cancel: &AtomicBool) -> MutationOutcome<WindowsSourceLease> {
+    pub fn rename_original(
+        &mut self,
+        source: &mut WindowsSourceLease,
+        name: &MutationName,
+        cancel: &AtomicBool,
+    ) -> MutationOutcome<WindowsSourceLease> {
         if let Some(snapshot) = &source.repair {
-            if let Err(error) = source.file.as_ref().ok_or_else(|| err(MutationErrorKind::StalePlan, "source consumed")).and_then(|file| snapshot.check_original(file)) {
+            if let Err(error) = source
+                .file
+                .as_ref()
+                .ok_or_else(|| err(MutationErrorKind::StalePlan, "source consumed"))
+                .and_then(|file| snapshot.check_original(file))
+            {
                 return MutationOutcome::NoEffect(error);
             }
         }
@@ -2992,39 +3316,68 @@ impl WindowsRepairStorage {
             MutationOutcome::Applied(published) => {
                 if let Some(snapshot) = &snapshot {
                     if let Err(error) = snapshot.check_original(&published.file) {
-                        return MutationOutcome::PendingUnknown(repair_pending(error, &published.observation));
+                        return MutationOutcome::PendingUnknown(repair_pending(
+                            error,
+                            &published.observation,
+                        ));
                     }
                 }
-                expected.name = name.clone(); expected.parent_identity = parent.identity.clone();
-                MutationOutcome::Applied(WindowsSourceLease { file: Some(published.file), parent, expected,
-                    observation: published.observation, mode: SourceLeaseMode::WriteThroughRename, repair: snapshot })
+                expected.name = name.clone();
+                expected.parent_identity = parent.identity.clone();
+                MutationOutcome::Applied(WindowsSourceLease {
+                    file: Some(published.file),
+                    parent,
+                    expected,
+                    observation: published.observation,
+                    mode: SourceLeaseMode::WriteThroughRename,
+                    repair: snapshot,
+                })
             }
             MutationOutcome::NoEffect(error) => MutationOutcome::NoEffect(error),
             MutationOutcome::PendingUnknown(error) => MutationOutcome::PendingUnknown(error),
         }
     }
-    pub fn preserve_original(&mut self, source: &mut WindowsSourceLease, backup_name: &MutationName, cancel: &AtomicBool) -> MutationOutcome<WindowsPublished> {
+    pub fn preserve_original(
+        &mut self,
+        source: &mut WindowsSourceLease,
+        backup_name: &MutationName,
+        cancel: &AtomicBool,
+    ) -> MutationOutcome<WindowsPublished> {
         let snapshot = match source.repair.as_ref() {
             Some(snapshot) => snapshot.clone(),
-            None => return MutationOutcome::NoEffect(err(MutationErrorKind::Unsupported, "repair preservation was not prepared")),
+            None => {
+                return MutationOutcome::NoEffect(err(
+                    MutationErrorKind::Unsupported,
+                    "repair preservation was not prepared",
+                ));
+            }
         };
         let parent = source.parent.clone();
-        let held = match source.file.as_ref().ok_or_else(|| err(MutationErrorKind::StalePlan, "source consumed"))
-            .and_then(|file| file.try_clone().map_err(io_error)) {
+        let held = match source
+            .file
+            .as_ref()
+            .ok_or_else(|| err(MutationErrorKind::StalePlan, "source consumed"))
+            .and_then(|file| file.try_clone().map_err(io_error))
+        {
             Ok(file) => file,
             Err(error) => return MutationOutcome::NoEffect(error),
         };
         // This checkpoint runs after digest/preflush work, immediately before the
         // native rename. The main-stream lease cannot stop concurrent ADS/ACL edits.
-        match self.rename.rename_no_replace_with(source, &parent, backup_name, cancel, |point| {
-            if point == RenameCheckpoint::BeforeRename {
-                snapshot.check_original(&held)?;
-            }
-            Ok(())
-        }) {
+        match self
+            .rename
+            .rename_no_replace_with(source, &parent, backup_name, cancel, |point| {
+                if point == RenameCheckpoint::BeforeRename {
+                    snapshot.check_original(&held)?;
+                }
+                Ok(())
+            }) {
             MutationOutcome::Applied(mut published) => {
                 if let Err(error) = snapshot.check_original(&published.file) {
-                    return MutationOutcome::PendingUnknown(repair_pending(error, &published.observation));
+                    return MutationOutcome::PendingUnknown(repair_pending(
+                        error,
+                        &published.observation,
+                    ));
                 }
                 published.repair = Some(RepairPublication::Original(snapshot));
                 MutationOutcome::Applied(published)
@@ -3033,73 +3386,176 @@ impl WindowsRepairStorage {
             MutationOutcome::PendingUnknown(error) => MutationOutcome::PendingUnknown(error),
         }
     }
-    pub fn publish_staged(&mut self, temp: &mut WindowsOwnedTemp, backup: &WindowsPublished, parent: &WindowsParent, name: &MutationName, cancel: &AtomicBool) -> MutationOutcome<WindowsPublished> {
+    pub fn publish_staged(
+        &mut self,
+        temp: &mut WindowsOwnedTemp,
+        backup: &WindowsPublished,
+        parent: &WindowsParent,
+        name: &MutationName,
+        cancel: &AtomicBool,
+    ) -> MutationOutcome<WindowsPublished> {
         let preflight = (|| {
             cancelled(cancel)?;
             self.rename.owned.check_role(parent, RootRole::Target)?;
             self.rename.owned.inspect(backup)?;
-            if temp.parent.identity != parent.identity || backup.parent.identity != parent.identity {
-                return Err(err(MutationErrorKind::StalePlan, "repair staging and backup require the exact original parent"));
+            if temp.parent.identity != parent.identity || backup.parent.identity != parent.identity
+            {
+                return Err(err(
+                    MutationErrorKind::StalePlan,
+                    "repair staging and backup require the exact original parent",
+                ));
             }
-            let Some(RepairPublication::Original(snapshot)) = &backup.repair else { return Err(err(MutationErrorKind::Unsupported, "matching retained original required")); };
-            let state = temp.repair.as_ref().ok_or_else(|| err(MutationErrorKind::Unsupported, "ordinary temp is not repair staging"))?;
-            if state.original != *snapshot { return Err(err(MutationErrorKind::StalePlan, "repair staging/backup identity mismatch")); }
+            let Some(RepairPublication::Original(snapshot)) = &backup.repair else {
+                return Err(err(
+                    MutationErrorKind::Unsupported,
+                    "matching retained original required",
+                ));
+            };
+            let state = temp.repair.as_ref().ok_or_else(|| {
+                err(
+                    MutationErrorKind::Unsupported,
+                    "ordinary temp is not repair staging",
+                )
+            })?;
+            if state.original != *snapshot {
+                return Err(err(
+                    MutationErrorKind::StalePlan,
+                    "repair staging/backup identity mismatch",
+                ));
+            }
             snapshot.check_original(&backup.file)?;
-            check_finalized_repair(temp.file.as_ref().ok_or_else(|| err(MutationErrorKind::StalePlan, "temp consumed"))?, state)?;
+            check_finalized_repair(
+                temp.file
+                    .as_ref()
+                    .ok_or_else(|| err(MutationErrorKind::StalePlan, "temp consumed"))?,
+                state,
+            )?;
             Ok(state.clone())
         })();
         let state = match preflight {
             Ok(state) => state,
-            Err(error) => return MutationOutcome::PendingUnknown(repair_pending(error, &backup.observation)),
+            Err(error) => {
+                return MutationOutcome::PendingUnknown(repair_pending(error, &backup.observation));
+            }
         };
-        match self.rename.owned.publish_no_replace(temp, parent, name, cancel) {
+        match self
+            .rename
+            .owned
+            .publish_no_replace(temp, parent, name, cancel)
+        {
             MutationOutcome::Applied(mut published) => {
                 // The publication now owns the held original evidence; do not
                 // leave an extra share-denying guard in the consumed temp.
                 temp.repair = None;
                 published.repair = Some(RepairPublication::Replacement(state.clone()));
-                if let Err(error) = state.original.check_original(&backup.file).and_then(|_| check_finalized_repair(&published.file, &state)) {
-                    return MutationOutcome::PendingUnknown(repair_pending(error, &published.observation));
+                if let Err(error) = state
+                    .original
+                    .check_original(&backup.file)
+                    .and_then(|_| check_finalized_repair(&published.file, &state))
+                {
+                    return MutationOutcome::PendingUnknown(repair_pending(
+                        error,
+                        &published.observation,
+                    ));
                 }
                 MutationOutcome::Applied(published)
             }
-            MutationOutcome::NoEffect(error) | MutationOutcome::PendingUnknown(error) =>
-                MutationOutcome::PendingUnknown(repair_pending(error, &backup.observation)),
+            MutationOutcome::NoEffect(error) | MutationOutcome::PendingUnknown(error) => {
+                MutationOutcome::PendingUnknown(repair_pending(error, &backup.observation))
+            }
         }
     }
     /// Fresh held-handle evidence, including bytes written before interruption.
-    pub fn observe_staged(&self, temp: &WindowsOwnedTemp) -> Result<MutationObservation, MutationError> {
-        self.rename.owned.check_role(&temp.parent, RootRole::Target)?;
-        let file = temp.file.as_ref().ok_or_else(|| err(MutationErrorKind::StalePlan, "temp consumed"))?;
+    pub fn observe_staged(
+        &self,
+        temp: &WindowsOwnedTemp,
+    ) -> Result<MutationObservation, MutationError> {
+        self.rename
+            .owned
+            .check_role(&temp.parent, RootRole::Target)?;
+        let file = temp
+            .file
+            .as_ref()
+            .ok_or_else(|| err(MutationErrorKind::StalePlan, "temp consumed"))?;
         let observed = observe(file, &temp.parent)?;
-        if observed.identity != temp.identity || observed.actual_name != temp.observation.actual_name {
-            return Err(err(MutationErrorKind::StalePlan, "staged repair object changed").with_observation(observed));
+        if observed.identity != temp.identity
+            || observed.actual_name != temp.observation.actual_name
+        {
+            return Err(
+                err(MutationErrorKind::StalePlan, "staged repair object changed")
+                    .with_observation(observed),
+            );
         }
         Ok(observed)
     }
-    pub fn verify_staged_fields(&self,temp:&WindowsOwnedTemp,filename:&str,repairs:&[sorter_core::fix_plan::FieldRepair])->Result<(),MutationError>{
-        let file=temp.file.as_ref().ok_or_else(||err(MutationErrorKind::StalePlan,"temp consumed"))?;
-        let mut read=file.try_clone().map_err(io_error)?;read.seek(SeekFrom::Start(0)).map_err(io_error)?;
-        let length=read.metadata().map_err(io_error)?.len();
-        let mut fields=crate::metadata::MetadataReader.open(crate::storage::ReadInput::seekable(read,length),filename)
-            .map_err(|_|err(MutationErrorKind::VerificationFailed,"staged native metadata open failed"))?;
+    pub fn verify_staged_fields(
+        &self,
+        temp: &WindowsOwnedTemp,
+        filename: &str,
+        repairs: &[sorter_core::fix_plan::FieldRepair],
+    ) -> Result<(), MutationError> {
+        let file = temp
+            .file
+            .as_ref()
+            .ok_or_else(|| err(MutationErrorKind::StalePlan, "temp consumed"))?;
+        let mut read = file.try_clone().map_err(io_error)?;
+        read.seek(SeekFrom::Start(0)).map_err(io_error)?;
+        let length = read.metadata().map_err(io_error)?.len();
+        let mut fields = crate::metadata::MetadataReader
+            .open(crate::storage::ReadInput::seekable(read, length), filename)
+            .map_err(|_| {
+                err(
+                    MutationErrorKind::VerificationFailed,
+                    "staged native metadata open failed",
+                )
+            })?;
         for repair in repairs {
-            let item=fields.get(repair.field).map_err(|_|err(MutationErrorKind::VerificationFailed,"staged native metadata field failed"))?;
-            if item.value!=Ok(sorter_core::metadata::LegacyScalar::Text(repair.replacement.clone())){return Err(err(MutationErrorKind::VerificationFailed,"staged native metadata differs"));}
+            let item = fields.get(repair.field).map_err(|_| {
+                err(
+                    MutationErrorKind::VerificationFailed,
+                    "staged native metadata field failed",
+                )
+            })?;
+            if item.value
+                != Ok(sorter_core::metadata::LegacyScalar::Text(
+                    repair.replacement.clone(),
+                ))
+            {
+                return Err(err(
+                    MutationErrorKind::VerificationFailed,
+                    "staged native metadata differs",
+                ));
+            }
         }
         Ok(())
     }
-    pub fn sync_published(&mut self, published: &mut WindowsPublished, expected: &ContentDigest, cancel: &AtomicBool) -> Result<PublishedFileSyncAcknowledgment, MutationError> {
+    pub fn sync_published(
+        &mut self,
+        published: &mut WindowsPublished,
+        expected: &ContentDigest,
+        cancel: &AtomicBool,
+    ) -> Result<PublishedFileSyncAcknowledgment, MutationError> {
         self.verify_published(published, expected)?;
-        let acknowledgement = self.rename.owned.sync_published_file(published, expected, cancel)?;
+        let acknowledgement = self
+            .rename
+            .owned
+            .sync_published_file(published, expected, cancel)?;
         self.verify_published(published, expected)?;
         Ok(acknowledgement)
     }
-    pub fn verify_published(&mut self, published: &mut WindowsPublished, expected: &ContentDigest) -> Result<MutationObservation, MutationError> {
+    pub fn verify_published(
+        &mut self,
+        published: &mut WindowsPublished,
+        expected: &ContentDigest,
+    ) -> Result<MutationObservation, MutationError> {
         let Some(RepairPublication::Replacement(state)) = &published.repair else {
-            return Err(err(MutationErrorKind::Unsupported, "verified repair publication required"));
+            return Err(err(
+                MutationErrorKind::Unsupported,
+                "verified repair publication required",
+            ));
         };
-        check_finalized_repair(&published.file, state).map_err(|error| repair_pending(error, &published.observation))?;
+        check_finalized_repair(&published.file, state)
+            .map_err(|error| repair_pending(error, &published.observation))?;
         self.rename.owned.verify(published, expected)
     }
 }
@@ -3110,17 +3566,26 @@ mod repair_backup_tests {
     use std::os::windows::fs::OpenOptionsExt;
     use windows::Wdk::Storage::FileSystem::{FILE_FULL_EA_INFORMATION, NtSetEaFile};
     use windows::Win32::Security::{
-        GetSecurityDescriptorDacl, PROTECTED_DACL_SECURITY_INFORMATION,
         Authorization::{ConvertStringSecurityDescriptorToSecurityDescriptorW, SetSecurityInfo},
+        GetSecurityDescriptorDacl, PROTECTED_DACL_SECURITY_INFORMATION,
     };
 
-    fn name(s: &str) -> MutationName { MutationName::Windows(s.encode_utf16().collect()) }
+    fn name(s: &str) -> MutationName {
+        MutationName::Windows(s.encode_utf16().collect())
+    }
     fn applied<T>(outcome: MutationOutcome<T>) -> T {
-        match outcome { MutationOutcome::Applied(value) => value, _ => panic!("expected applied") }
+        match outcome {
+            MutationOutcome::Applied(value) => value,
+            _ => panic!("expected applied"),
+        }
     }
     fn grant(path: &Path) -> WindowsSelectedRootGrant {
         let handles = chain(path).unwrap();
-        WindowsSelectedRootGrant::new(path.to_path_buf(), identity(handles.last().unwrap()).unwrap()).unwrap()
+        WindowsSelectedRootGrant::new(
+            path.to_path_buf(),
+            identity(handles.last().unwrap()).unwrap(),
+        )
+        .unwrap()
     }
     fn fixture() -> (WindowsRepairStorage, WindowsParent, ExpectedSource, PathBuf) {
         let tree = tempfile::tempdir().unwrap();
@@ -3129,14 +3594,27 @@ mod repair_backup_tests {
         let mut roots = WindowsMutationStorage::for_owned_synthetic_tree(tree).unwrap();
         let parent = roots.parent(Path::new("")).unwrap();
         let expected = roots.observe_source(&parent, &name("song.mp3")).unwrap();
-        (WindowsRepairStorage::new(roots).unwrap(), parent, expected, path)
+        (
+            WindowsRepairStorage::new(roots).unwrap(),
+            parent,
+            expected,
+            path,
+        )
     }
-    fn prepared(storage: &mut WindowsRepairStorage, parent: &WindowsParent, expected: &ExpectedSource) -> WindowsSourceLease {
+    fn prepared(
+        storage: &mut WindowsRepairStorage,
+        parent: &WindowsParent,
+        expected: &ExpectedSource,
+    ) -> WindowsSourceLease {
         let mut source = storage.acquire_source(parent, expected).unwrap();
         storage.prepare_metadata_preservation(&mut source).unwrap();
         source
     }
-    fn staged(storage: &mut WindowsRepairStorage, source: &WindowsSourceLease, correlation: &str) -> WindowsOwnedTemp {
+    fn staged(
+        storage: &mut WindowsRepairStorage,
+        source: &WindowsSourceLease,
+        correlation: &str,
+    ) -> WindowsOwnedTemp {
         let mut temp = applied(storage.create_staged(source, correlation, &AtomicBool::new(false)));
         temp.write_all(b"repaired").unwrap();
         storage.finalize_staged(source, &mut temp).unwrap();
@@ -3145,20 +3623,38 @@ mod repair_backup_tests {
     fn restrict_dacl(path: &Path) {
         // Generated fixture only: owner-rights full access, protected from wider
         // parent inheritance. No token privileges or real user paths are changed.
-        let file = std::fs::OpenOptions::new().access_mode(READ_CONTROL.0 | WRITE_DAC.0)
-            .share_mode(FILE_SHARE_READ.0 | FILE_SHARE_WRITE.0 | FILE_SHARE_DELETE.0).open(path).unwrap();
+        let file = std::fs::OpenOptions::new()
+            .access_mode(READ_CONTROL.0 | WRITE_DAC.0)
+            .share_mode(FILE_SHARE_READ.0 | FILE_SHARE_WRITE.0 | FILE_SHARE_DELETE.0)
+            .open(path)
+            .unwrap();
         let mut descriptor = PSECURITY_DESCRIPTOR::default();
-        unsafe { ConvertStringSecurityDescriptorToSecurityDescriptorW(
-            windows::core::w!("D:P(A;;FA;;;OW)"), 1, &mut descriptor, None,
-        ) }.unwrap();
+        unsafe {
+            ConvertStringSecurityDescriptorToSecurityDescriptorW(
+                windows::core::w!("D:P(A;;FA;;;OW)"),
+                1,
+                &mut descriptor,
+                None,
+            )
+        }
+        .unwrap();
         let allocation = SecurityAllocation(descriptor);
         let mut dacl: *mut ACL = std::ptr::null_mut();
         let mut present = Default::default();
         let mut defaulted = Default::default();
-        unsafe { GetSecurityDescriptorDacl(allocation.0, &mut present, &mut dacl, &mut defaulted) }.unwrap();
-        let result = unsafe { SetSecurityInfo(HANDLE(file.as_raw_handle()), SE_FILE_OBJECT,
-            DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION,
-            None, None, Some(dacl), None) };
+        unsafe { GetSecurityDescriptorDacl(allocation.0, &mut present, &mut dacl, &mut defaulted) }
+            .unwrap();
+        let result = unsafe {
+            SetSecurityInfo(
+                HANDLE(file.as_raw_handle()),
+                SE_FILE_OBJECT,
+                DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION,
+                None,
+                None,
+                Some(dacl),
+                None,
+            )
+        };
         assert_eq!(result.0, 0);
     }
 
@@ -3167,19 +3663,30 @@ mod repair_backup_tests {
         let tree = tempfile::tempdir().unwrap();
         let source = tree.path().join("music");
         let journal = tree.path().join("journals");
-        std::fs::create_dir(&source).unwrap(); std::fs::create_dir(&journal).unwrap();
+        std::fs::create_dir(&source).unwrap();
+        std::fs::create_dir(&journal).unwrap();
         std::fs::write(source.join("song.mp3"), b"original").unwrap();
-        let mut roots = WindowsMutationStorage::for_selected_repair_roots(grant(&source), grant(&journal)).unwrap();
+        let mut roots =
+            WindowsMutationStorage::for_selected_repair_roots(grant(&source), grant(&journal))
+                .unwrap();
         assert_eq!(roots.domain(), WindowsMutationDomain::SelectedRepair);
-        assert!(roots.selected_source_root().is_err()); assert!(roots.selected_target_root().is_err());
+        assert!(roots.selected_source_root().is_err());
+        assert!(roots.selected_target_root().is_err());
         let parent = roots.selected_repair_root().unwrap();
         let expected = roots.observe_source(&parent, &name("song.mp3")).unwrap();
         let mut lease = roots.acquire_source(&parent, &expected).unwrap();
-        assert!(matches!(roots.retire_source(&mut lease, &AtomicBool::new(false)), MutationOutcome::NoEffect(error) if error.kind == MutationErrorKind::Unsupported));
-        drop(lease); drop(parent); drop(roots);
+        assert!(
+            matches!(roots.retire_source(&mut lease, &AtomicBool::new(false)), MutationOutcome::NoEffect(error) if error.kind == MutationErrorKind::Unsupported)
+        );
+        drop(lease);
+        drop(parent);
+        drop(roots);
         assert_eq!(std::fs::read(source.join("song.mp3")).unwrap(), b"original");
         assert!(journal.is_dir());
-        assert!(WindowsMutationStorage::for_selected_repair_roots(grant(&source), grant(&source)).is_err());
+        assert!(
+            WindowsMutationStorage::for_selected_repair_roots(grant(&source), grant(&source))
+                .is_err()
+        );
     }
 
     #[test]
@@ -3187,67 +3694,136 @@ mod repair_backup_tests {
         let (mut storage, parent, expected, path) = fixture();
         let mut original = prepared(&mut storage, &parent, &expected);
         let snapshot = original.repair.clone();
-        let mut rebound = applied(storage.rename_original(&mut original, &name("clean.mp3"), &AtomicBool::new(false)));
+        let mut rebound = applied(storage.rename_original(
+            &mut original,
+            &name("clean.mp3"),
+            &AtomicBool::new(false),
+        ));
         assert!(original.file.is_none());
         assert_eq!(rebound.expected.identity, expected.identity);
         assert_eq!(rebound.expected.name, name("clean.mp3"));
         assert_eq!(rebound.repair, snapshot);
-        let mut bytes = Vec::new(); rebound.rewind().unwrap(); rebound.read_to_end(&mut bytes).unwrap();
+        let mut bytes = Vec::new();
+        rebound.rewind().unwrap();
+        rebound.read_to_end(&mut bytes).unwrap();
         assert_eq!(bytes, b"original");
-        let backup = applied(storage.preserve_original(&mut rebound, &name("original.sorter-backup"), &AtomicBool::new(false)));
+        let backup = applied(storage.preserve_original(
+            &mut rebound,
+            &name("original.sorter-backup"),
+            &AtomicBool::new(false),
+        ));
         drop(backup);
-        assert!(!path.join("song.mp3").exists()); assert!(!path.join("clean.mp3").exists());
-        assert_eq!(std::fs::read(path.join("original.sorter-backup")).unwrap(), b"original");
+        assert!(!path.join("song.mp3").exists());
+        assert!(!path.join("clean.mp3").exists());
+        assert_eq!(
+            std::fs::read(path.join("original.sorter-backup")).unwrap(),
+            b"original"
+        );
     }
 
     #[test]
     fn ads_rejects_tag_staging_but_filename_only_cleanup_retains_whole_object() {
         let (mut storage, parent, _, path) = fixture();
         std::fs::write(path.join("song.mp3:notes"), b"original notes").unwrap();
-        let expected = storage.rename.owned.observe_source(&parent, &name("song.mp3")).unwrap();
+        let expected = storage
+            .rename
+            .owned
+            .observe_source(&parent, &name("song.mp3"))
+            .unwrap();
         let mut source = storage.acquire_source(&parent, &expected).unwrap();
-        let mut renamed = applied(storage.rename_original(&mut source, &name("clean.mp3"), &AtomicBool::new(false)));
-        let error = storage.prepare_metadata_preservation(&mut renamed).unwrap_err();
+        let mut renamed = applied(storage.rename_original(
+            &mut source,
+            &name("clean.mp3"),
+            &AtomicBool::new(false),
+        ));
+        let error = storage
+            .prepare_metadata_preservation(&mut renamed)
+            .unwrap_err();
         assert_eq!(error.kind, MutationErrorKind::Unsupported);
-        assert!(matches!(storage.create_staged(&renamed, "ads", &AtomicBool::new(false)), MutationOutcome::NoEffect(_)));
-        drop(renamed); drop(source);
+        assert!(matches!(
+            storage.create_staged(&renamed, "ads", &AtomicBool::new(false)),
+            MutationOutcome::NoEffect(_)
+        ));
+        drop(renamed);
+        drop(source);
         assert!(!path.join(".sorter-ads.tmp").exists());
         assert_eq!(std::fs::read(path.join("clean.mp3")).unwrap(), b"original");
-        assert_eq!(std::fs::read(path.join("clean.mp3:notes")).unwrap(), b"original notes");
+        assert_eq!(
+            std::fs::read(path.join("clean.mp3:notes")).unwrap(),
+            b"original notes"
+        );
     }
 
     #[test]
     fn inherited_security_metadata_and_retained_original_survive_publication() {
         let (mut storage, parent, _, path) = fixture();
         {
-            let file = std::fs::OpenOptions::new().access_mode(FILE_READ_ATTRIBUTES.0 | FILE_WRITE_ATTRIBUTES.0)
-                .open(path.join("song.mp3")).unwrap();
-            let basic = FILE_BASIC_INFO { CreationTime: 125_000_000_000_000_000,
-                LastAccessTime: 126_000_000_000_000_000, LastWriteTime: 127_000_000_000_000_000,
-                ChangeTime: 0, FileAttributes: FILE_ATTRIBUTE_ARCHIVE.0 | FILE_ATTRIBUTE_HIDDEN.0
-                    | FILE_ATTRIBUTE_SYSTEM.0 | FILE_ATTRIBUTE_NOT_CONTENT_INDEXED.0 };
-            unsafe { SetFileInformationByHandle(HANDLE(file.as_raw_handle()), FileBasicInfo,
-                (&basic as *const FILE_BASIC_INFO).cast(), size_of::<FILE_BASIC_INFO>() as u32) }.unwrap();
+            let file = std::fs::OpenOptions::new()
+                .access_mode(FILE_READ_ATTRIBUTES.0 | FILE_WRITE_ATTRIBUTES.0)
+                .open(path.join("song.mp3"))
+                .unwrap();
+            let basic = FILE_BASIC_INFO {
+                CreationTime: 125_000_000_000_000_000,
+                LastAccessTime: 126_000_000_000_000_000,
+                LastWriteTime: 127_000_000_000_000_000,
+                ChangeTime: 0,
+                FileAttributes: FILE_ATTRIBUTE_ARCHIVE.0
+                    | FILE_ATTRIBUTE_HIDDEN.0
+                    | FILE_ATTRIBUTE_SYSTEM.0
+                    | FILE_ATTRIBUTE_NOT_CONTENT_INDEXED.0,
+            };
+            unsafe {
+                SetFileInformationByHandle(
+                    HANDLE(file.as_raw_handle()),
+                    FileBasicInfo,
+                    (&basic as *const FILE_BASIC_INFO).cast(),
+                    size_of::<FILE_BASIC_INFO>() as u32,
+                )
+            }
+            .unwrap();
         }
-        let expected = storage.rename.owned.observe_source(&parent, &name("song.mp3")).unwrap();
+        let expected = storage
+            .rename
+            .owned
+            .observe_source(&parent, &name("song.mp3"))
+            .unwrap();
         let mut source = prepared(&mut storage, &parent, &expected);
         let snapshot = source.repair.clone().unwrap();
         let mut temp = staged(&mut storage, &source, "repair");
         assert!(temp.write_all(b"cannot write after finalize").is_err());
-        let backup = applied(storage.preserve_original(&mut source, &name("original.sorter-backup"), &AtomicBool::new(false)));
+        let backup = applied(storage.preserve_original(
+            &mut source,
+            &name("original.sorter-backup"),
+            &AtomicBool::new(false),
+        ));
         assert_eq!(backup.observation.identity, snapshot.identity);
-        let mut published = applied(storage.publish_staged(&mut temp, &backup, &parent, &name("song.mp3"), &AtomicBool::new(false)));
-        let expected = ContentDigest { sha256: Sha256::digest(b"repaired").into(), length: 8 };
-        storage.sync_published(&mut published, &expected, &AtomicBool::new(false)).unwrap();
+        let mut published = applied(storage.publish_staged(
+            &mut temp,
+            &backup,
+            &parent,
+            &name("song.mp3"),
+            &AtomicBool::new(false),
+        ));
+        let expected = ContentDigest {
+            sha256: Sha256::digest(b"repaired").into(),
+            length: 8,
+        };
+        storage
+            .sync_published(&mut published, &expected, &AtomicBool::new(false))
+            .unwrap();
         storage.verify_published(&mut published, &expected).unwrap();
         assert_eq!(repair_security(&published.file).unwrap(), snapshot.security);
         let basic = repair_basic(&published.file).unwrap();
-        assert_eq!(repair_attributes(basic.FileAttributes).unwrap(), snapshot.attributes);
+        assert_eq!(
+            repair_attributes(basic.FileAttributes).unwrap(),
+            snapshot.attributes
+        );
         assert_eq!(basic.CreationTime, snapshot.creation_time);
         assert_eq!(basic.LastAccessTime, snapshot.access_time);
         assert_ne!(basic.LastWriteTime, snapshot.original_write_time);
         snapshot.check_original(&backup.file).unwrap();
-        drop(published); drop(backup);
+        drop(published);
+        drop(backup);
         // Reopen after handle closure to catch deferred native timestamp updates.
         let file = File::open(path.join("song.mp3")).unwrap();
         let reopened = repair_basic(&file).unwrap();
@@ -3256,14 +3832,21 @@ mod repair_backup_tests {
         assert_eq!(reopened.LastWriteTime, basic.LastWriteTime);
         drop(file);
         assert_eq!(std::fs::read(path.join("song.mp3")).unwrap(), b"repaired");
-        assert_eq!(std::fs::read(path.join("original.sorter-backup")).unwrap(), b"original");
+        assert_eq!(
+            std::fs::read(path.join("original.sorter-backup")).unwrap(),
+            b"original"
+        );
     }
 
     #[test]
     fn restrictive_protected_acl_never_writes_under_wider_inherited_acl() {
         let (mut storage, parent, _, path) = fixture();
         restrict_dacl(&path.join("song.mp3"));
-        let expected = storage.rename.owned.observe_source(&parent, &name("song.mp3")).unwrap();
+        let expected = storage
+            .rename
+            .owned
+            .observe_source(&parent, &name("song.mp3"))
+            .unwrap();
         let source = prepared(&mut storage, &parent, &expected);
         assert_ne!(source.repair.as_ref().unwrap().security.control & 0x1000, 0);
         let error = match storage.create_staged(&source, "acl", &AtomicBool::new(false)) {
@@ -3271,9 +3854,17 @@ mod repair_backup_tests {
             _ => panic!("wider inherited DACL must reject the created empty temp"),
         };
         assert_eq!(error.kind, MutationErrorKind::UnknownOutcome);
-        assert_eq!(error.observed.as_ref().unwrap().actual_name, name(".sorter-acl.tmp"));
+        assert_eq!(
+            error.observed.as_ref().unwrap().actual_name,
+            name(".sorter-acl.tmp")
+        );
         assert_eq!(error.observed.as_ref().unwrap().size, Some(0));
-        assert_eq!(std::fs::metadata(path.join(".sorter-acl.tmp")).unwrap().len(), 0);
+        assert_eq!(
+            std::fs::metadata(path.join(".sorter-acl.tmp"))
+                .unwrap()
+                .len(),
+            0
+        );
         drop(source);
         assert_eq!(std::fs::read(path.join("song.mp3")).unwrap(), b"original");
     }
@@ -3289,13 +3880,26 @@ mod repair_backup_tests {
             (*pointer).Flags = 0;
             (*pointer).EaNameLength = name.len() as u8;
             (*pointer).EaValueLength = 1;
-            std::ptr::copy_nonoverlapping(name.as_ptr(), pointer.cast::<u8>().add(offset), name.len());
+            std::ptr::copy_nonoverlapping(
+                name.as_ptr(),
+                pointer.cast::<u8>().add(offset),
+                name.len(),
+            );
             *pointer.cast::<u8>().add(offset + name.len() + 1) = b'x';
         }
         let mut status_block = IO_STATUS_BLOCK::default();
-        let status = unsafe { NtSetEaFile(HANDLE(file.as_raw_handle()), &mut status_block,
-            pointer.cast(), length as u32) };
-        assert_eq!(status.0, 0, "owned fixture EA creation did not complete: {status:?}");
+        let status = unsafe {
+            NtSetEaFile(
+                HANDLE(file.as_raw_handle()),
+                &mut status_block,
+                pointer.cast(),
+                length as u32,
+            )
+        };
+        assert_eq!(
+            status.0, 0,
+            "owned fixture EA creation did not complete: {status:?}"
+        );
         assert_eq!(unsafe { status_block.Anonymous.Status }.0, 0);
     }
 
@@ -3308,14 +3912,25 @@ mod repair_backup_tests {
                 storage.prepare_metadata_preservation(&mut source).unwrap();
                 let mut temp = staged(&mut storage, &source, "late-ea");
                 set_test_extended_attribute(source.file.as_ref().unwrap());
-                assert!(matches!(storage.preserve_original(&mut source, &name("original.sorter-backup"), &AtomicBool::new(false)),
-                    MutationOutcome::NoEffect(error) if error.kind == MutationErrorKind::Unsupported));
+                assert!(
+                    matches!(storage.preserve_original(&mut source, &name("original.sorter-backup"), &AtomicBool::new(false)),
+                    MutationOutcome::NoEffect(error) if error.kind == MutationErrorKind::Unsupported)
+                );
                 assert!(storage.finalize_staged(&source, &mut temp).is_err());
                 assert!(!path.join("original.sorter-backup").exists());
             } else {
                 set_test_extended_attribute(source.file.as_ref().unwrap());
-                assert_eq!(storage.prepare_metadata_preservation(&mut source).unwrap_err().kind, MutationErrorKind::Unsupported);
-                assert!(matches!(storage.create_staged(&source, "early-ea", &AtomicBool::new(false)), MutationOutcome::NoEffect(_)));
+                assert_eq!(
+                    storage
+                        .prepare_metadata_preservation(&mut source)
+                        .unwrap_err()
+                        .kind,
+                    MutationErrorKind::Unsupported
+                );
+                assert!(matches!(
+                    storage.create_staged(&source, "early-ea", &AtomicBool::new(false)),
+                    MutationOutcome::NoEffect(_)
+                ));
                 assert!(!path.join(".sorter-early-ea.tmp").exists());
             }
         }
@@ -3328,40 +3943,92 @@ mod repair_backup_tests {
             // Add medium-integrity NO_READ_UP to the generated original. This
             // does not elevate its integrity above the test token or change any
             // token privilege, but is stricter than ordinary default NO_WRITE_UP.
-            let file = std::fs::OpenOptions::new().access_mode(READ_CONTROL.0 | WRITE_OWNER.0)
-                .open(path.join("song.mp3")).unwrap();
+            let file = std::fs::OpenOptions::new()
+                .access_mode(READ_CONTROL.0 | WRITE_OWNER.0)
+                .open(path.join("song.mp3"))
+                .unwrap();
             let mut descriptor = PSECURITY_DESCRIPTOR::default();
-            unsafe { ConvertStringSecurityDescriptorToSecurityDescriptorW(
-                windows::core::w!("S:(ML;;NWNR;;;ME)"), 1, &mut descriptor, None,
-            ) }.unwrap();
+            unsafe {
+                ConvertStringSecurityDescriptorToSecurityDescriptorW(
+                    windows::core::w!("S:(ML;;NWNR;;;ME)"),
+                    1,
+                    &mut descriptor,
+                    None,
+                )
+            }
+            .unwrap();
             let allocation = SecurityAllocation(descriptor);
             let mut sacl: *mut ACL = std::ptr::null_mut();
             let mut present = Default::default();
             let mut defaulted = Default::default();
-            unsafe { GetSecurityDescriptorSacl(allocation.0, &mut present, &mut sacl, &mut defaulted) }.unwrap();
-            let result = unsafe { SetSecurityInfo(HANDLE(file.as_raw_handle()), SE_FILE_OBJECT,
-                LABEL_SECURITY_INFORMATION, None, None, None, Some(sacl)) };
+            unsafe {
+                GetSecurityDescriptorSacl(allocation.0, &mut present, &mut sacl, &mut defaulted)
+            }
+            .unwrap();
+            let result = unsafe {
+                SetSecurityInfo(
+                    HANDLE(file.as_raw_handle()),
+                    SE_FILE_OBJECT,
+                    LABEL_SECURITY_INFORMATION,
+                    None,
+                    None,
+                    None,
+                    Some(sacl),
+                )
+            };
             assert_eq!(result.0, 0);
         }
-        let expected = storage.rename.owned.observe_source(&parent, &name("song.mp3")).unwrap();
+        let expected = storage
+            .rename
+            .owned
+            .observe_source(&parent, &name("song.mp3"))
+            .unwrap();
         let source = prepared(&mut storage, &parent, &expected);
-        assert!(source.repair.as_ref().unwrap().security.access_sacl.is_some());
-        assert!(matches!(storage.create_staged(&source, "integrity", &AtomicBool::new(false)),
-            MutationOutcome::PendingUnknown(error) if error.observed.as_ref().is_some_and(|observed| observed.size == Some(0))));
-        assert_eq!(std::fs::metadata(path.join(".sorter-integrity.tmp")).unwrap().len(), 0);
+        assert!(
+            source
+                .repair
+                .as_ref()
+                .unwrap()
+                .security
+                .access_sacl
+                .is_some()
+        );
+        assert!(
+            matches!(storage.create_staged(&source, "integrity", &AtomicBool::new(false)),
+            MutationOutcome::PendingUnknown(error) if error.observed.as_ref().is_some_and(|observed| observed.size == Some(0)))
+        );
+        assert_eq!(
+            std::fs::metadata(path.join(".sorter-integrity.tmp"))
+                .unwrap()
+                .len(),
+            0
+        );
         drop(source);
         assert_eq!(std::fs::read(path.join("song.mp3")).unwrap(), b"original");
     }
 
     #[test]
     fn ordinary_attribute_policy_rejects_efs_sparse_compressed_and_unknown_flags() {
-        for flag in [FILE_ATTRIBUTE_ENCRYPTED.0, FILE_ATTRIBUTE_SPARSE_FILE.0,
-            FILE_ATTRIBUTE_COMPRESSED.0, FILE_ATTRIBUTE_READONLY.0, FILE_ATTRIBUTE_OFFLINE.0, 0x8000_0000] {
-            assert_eq!(repair_attributes(FILE_ATTRIBUTE_ARCHIVE.0 | flag).unwrap_err().kind, MutationErrorKind::Unsupported);
+        for flag in [
+            FILE_ATTRIBUTE_ENCRYPTED.0,
+            FILE_ATTRIBUTE_SPARSE_FILE.0,
+            FILE_ATTRIBUTE_COMPRESSED.0,
+            FILE_ATTRIBUTE_READONLY.0,
+            FILE_ATTRIBUTE_OFFLINE.0,
+            0x8000_0000,
+        ] {
+            assert_eq!(
+                repair_attributes(FILE_ATTRIBUTE_ARCHIVE.0 | flag)
+                    .unwrap_err()
+                    .kind,
+                MutationErrorKind::Unsupported
+            );
         }
         assert_eq!(repair_attributes(FILE_ATTRIBUTE_NORMAL.0).unwrap(), 0);
-        assert_eq!(repair_attributes(FILE_ATTRIBUTE_HIDDEN.0 | FILE_ATTRIBUTE_SYSTEM.0).unwrap(),
-            FILE_ATTRIBUTE_HIDDEN.0 | FILE_ATTRIBUTE_SYSTEM.0);
+        assert_eq!(
+            repair_attributes(FILE_ATTRIBUTE_HIDDEN.0 | FILE_ATTRIBUTE_SYSTEM.0).unwrap(),
+            FILE_ATTRIBUTE_HIDDEN.0 | FILE_ATTRIBUTE_SYSTEM.0
+        );
     }
 
     #[test]
@@ -3372,7 +4039,8 @@ mod repair_backup_tests {
             let mut bytes = vec![0u8; header + encoded.len() * 2];
             bytes[4..8].copy_from_slice(&((encoded.len() * 2) as u32).to_le_bytes());
             for (index, unit) in encoded.iter().enumerate() {
-                bytes[header + index * 2..header + index * 2 + 2].copy_from_slice(&unit.to_le_bytes());
+                bytes[header + index * 2..header + index * 2 + 2]
+                    .copy_from_slice(&unit.to_le_bytes());
             }
             bytes
         };
@@ -3411,7 +4079,10 @@ mod repair_backup_tests {
         let (mut storage, parent, expected, path) = fixture();
         let source = prepared(&mut storage, &parent, &expected);
         restrict_dacl(&path.join("song.mp3"));
-        assert!(matches!(storage.create_staged(&source, "changed", &AtomicBool::new(false)), MutationOutcome::NoEffect(_)));
+        assert!(matches!(
+            storage.create_staged(&source, "changed", &AtomicBool::new(false)),
+            MutationOutcome::NoEffect(_)
+        ));
         assert!(!path.join(".sorter-changed.tmp").exists());
     }
 
@@ -3419,7 +4090,8 @@ mod repair_backup_tests {
     fn staged_acl_change_is_rechecked_before_each_audio_write() {
         let (mut storage, parent, expected, path) = fixture();
         let source = prepared(&mut storage, &parent, &expected);
-        let mut temp = applied(storage.create_staged(&source, "acl-write", &AtomicBool::new(false)));
+        let mut temp =
+            applied(storage.create_staged(&source, "acl-write", &AtomicBool::new(false)));
         restrict_dacl(&path.join(".sorter-acl-write.tmp"));
         assert!(temp.write_all(b"audio must not be exposed").is_err());
         assert_eq!(storage.observe_staged(&temp).unwrap().size, Some(0));
@@ -3430,13 +4102,23 @@ mod repair_backup_tests {
         let (mut storage, parent, expected, path) = fixture();
         let mut source = prepared(&mut storage, &parent, &expected);
         let mut temp = staged(&mut storage, &source, "security-change");
-        let backup = applied(storage.preserve_original(&mut source, &name("original.sorter-backup"), &AtomicBool::new(false)));
+        let backup = applied(storage.preserve_original(
+            &mut source,
+            &name("original.sorter-backup"),
+            &AtomicBool::new(false),
+        ));
         restrict_dacl(&path.join("original.sorter-backup"));
-        assert!(matches!(storage.publish_staged(&mut temp, &backup, &parent, &name("song.mp3"), &AtomicBool::new(false)), MutationOutcome::PendingUnknown(error) if error.observed.is_some()));
+        assert!(
+            matches!(storage.publish_staged(&mut temp, &backup, &parent, &name("song.mp3"), &AtomicBool::new(false)), MutationOutcome::PendingUnknown(error) if error.observed.is_some())
+        );
         assert!(temp.file.is_some());
         assert!(!path.join("song.mp3").exists());
-        drop(backup); drop(temp);
-        assert_eq!(std::fs::read(path.join("original.sorter-backup")).unwrap(), b"original");
+        drop(backup);
+        drop(temp);
+        assert_eq!(
+            std::fs::read(path.join("original.sorter-backup")).unwrap(),
+            b"original"
+        );
     }
 
     #[test]
@@ -3448,14 +4130,32 @@ mod repair_backup_tests {
         // rejection is not evidence that all possible ADS/security edits lock.
         match std::fs::write(path.join("song.mp3:late"), b"late source stream") {
             Ok(()) => {
-                assert!(matches!(storage.preserve_original(&mut source, &name("original.sorter-backup"), &AtomicBool::new(false)), MutationOutcome::NoEffect(error) if error.kind == MutationErrorKind::Unsupported));
+                assert!(
+                    matches!(storage.preserve_original(&mut source, &name("original.sorter-backup"), &AtomicBool::new(false)), MutationOutcome::NoEffect(error) if error.kind == MutationErrorKind::Unsupported)
+                );
                 return;
             }
             Err(error) => assert!(matches!(error.raw_os_error(), Some(32 | 33))),
         }
-        let backup = applied(storage.preserve_original(&mut source, &name("original.sorter-backup"), &AtomicBool::new(false)));
-        match std::fs::write(path.join("original.sorter-backup:late"), b"late backup stream") {
-            Ok(()) => assert!(matches!(storage.publish_staged(&mut temp, &backup, &parent, &name("song.mp3"), &AtomicBool::new(false)), MutationOutcome::PendingUnknown(_))),
+        let backup = applied(storage.preserve_original(
+            &mut source,
+            &name("original.sorter-backup"),
+            &AtomicBool::new(false),
+        ));
+        match std::fs::write(
+            path.join("original.sorter-backup:late"),
+            b"late backup stream",
+        ) {
+            Ok(()) => assert!(matches!(
+                storage.publish_staged(
+                    &mut temp,
+                    &backup,
+                    &parent,
+                    &name("song.mp3"),
+                    &AtomicBool::new(false)
+                ),
+                MutationOutcome::PendingUnknown(_)
+            )),
             Err(error) => assert!(matches!(error.raw_os_error(), Some(32 | 33))),
         }
         assert!(temp.file.is_some());
@@ -3465,15 +4165,35 @@ mod repair_backup_tests {
     fn staging_requires_prepared_same_identity_and_matching_backup() {
         let (mut storage, parent, expected, path) = fixture();
         let mut source = storage.acquire_source(&parent, &expected).unwrap();
-        assert!(matches!(storage.create_staged(&source, "unprepared", &AtomicBool::new(false)), MutationOutcome::NoEffect(_)));
+        assert!(matches!(
+            storage.create_staged(&source, "unprepared", &AtomicBool::new(false)),
+            MutationOutcome::NoEffect(_)
+        ));
         storage.prepare_metadata_preservation(&mut source).unwrap();
         let mut temp = staged(&mut storage, &source, "identity");
         std::fs::write(path.join("other.mp3"), b"other").unwrap();
-        let other_expected = storage.rename.owned.observe_source(&parent, &name("other.mp3")).unwrap();
+        let other_expected = storage
+            .rename
+            .owned
+            .observe_source(&parent, &name("other.mp3"))
+            .unwrap();
         let mut other = prepared(&mut storage, &parent, &other_expected);
         assert!(storage.finalize_staged(&other, &mut temp).is_err());
-        let backup = applied(storage.preserve_original(&mut other, &name("other.backup"), &AtomicBool::new(false)));
-        assert!(matches!(storage.publish_staged(&mut temp, &backup, &parent, &name("wrong.mp3"), &AtomicBool::new(false)), MutationOutcome::PendingUnknown(_)));
+        let backup = applied(storage.preserve_original(
+            &mut other,
+            &name("other.backup"),
+            &AtomicBool::new(false),
+        ));
+        assert!(matches!(
+            storage.publish_staged(
+                &mut temp,
+                &backup,
+                &parent,
+                &name("wrong.mp3"),
+                &AtomicBool::new(false)
+            ),
+            MutationOutcome::PendingUnknown(_)
+        ));
         assert!(!path.join("wrong.mp3").exists());
     }
 
@@ -3482,21 +4202,43 @@ mod repair_backup_tests {
         let (mut storage, parent, expected, path) = fixture();
         std::fs::write(path.join("original.sorter-backup"), b"foreign").unwrap();
         let mut source = prepared(&mut storage, &parent, &expected);
-        assert!(matches!(storage.preserve_original(&mut source, &name("original.sorter-backup"), &AtomicBool::new(false)), MutationOutcome::NoEffect(_)));
-        assert!(source.file.is_some()); drop(source);
+        assert!(matches!(
+            storage.preserve_original(
+                &mut source,
+                &name("original.sorter-backup"),
+                &AtomicBool::new(false)
+            ),
+            MutationOutcome::NoEffect(_)
+        ));
+        assert!(source.file.is_some());
+        drop(source);
         assert_eq!(std::fs::read(path.join("song.mp3")).unwrap(), b"original");
-        assert_eq!(std::fs::read(path.join("original.sorter-backup")).unwrap(), b"foreign");
+        assert_eq!(
+            std::fs::read(path.join("original.sorter-backup")).unwrap(),
+            b"foreign"
+        );
     }
 
     #[test]
     fn cancellation_before_create_and_backup_leaves_original_untouched() {
         let (mut storage, parent, expected, path) = fixture();
         let mut source = prepared(&mut storage, &parent, &expected);
-        assert!(matches!(storage.create_staged(&source, "cancelled", &AtomicBool::new(true)), MutationOutcome::NoEffect(_)));
-        assert!(matches!(storage.preserve_original(&mut source, &name("original.sorter-backup"), &AtomicBool::new(true)), MutationOutcome::NoEffect(_)));
+        assert!(matches!(
+            storage.create_staged(&source, "cancelled", &AtomicBool::new(true)),
+            MutationOutcome::NoEffect(_)
+        ));
+        assert!(matches!(
+            storage.preserve_original(
+                &mut source,
+                &name("original.sorter-backup"),
+                &AtomicBool::new(true)
+            ),
+            MutationOutcome::NoEffect(_)
+        ));
         drop(source);
         assert_eq!(std::fs::read(path.join("song.mp3")).unwrap(), b"original");
-        assert!(!path.join(".sorter-cancelled.tmp").exists()); assert!(!path.join("original.sorter-backup").exists());
+        assert!(!path.join(".sorter-cancelled.tmp").exists());
+        assert!(!path.join("original.sorter-backup").exists());
     }
 
     #[test]
@@ -3504,11 +4246,28 @@ mod repair_backup_tests {
         let (mut storage, parent, expected, path) = fixture();
         let mut source = prepared(&mut storage, &parent, &expected);
         let mut temp = staged(&mut storage, &source, "repair");
-        let backup = applied(storage.preserve_original(&mut source, &name("original.sorter-backup"), &AtomicBool::new(false)));
-        assert!(matches!(storage.publish_staged(&mut temp, &backup, &parent, &name("song.mp3"), &AtomicBool::new(true)), MutationOutcome::PendingUnknown(_)));
+        let backup = applied(storage.preserve_original(
+            &mut source,
+            &name("original.sorter-backup"),
+            &AtomicBool::new(false),
+        ));
+        assert!(matches!(
+            storage.publish_staged(
+                &mut temp,
+                &backup,
+                &parent,
+                &name("song.mp3"),
+                &AtomicBool::new(true)
+            ),
+            MutationOutcome::PendingUnknown(_)
+        ));
         assert_eq!(storage.observe_staged(&temp).unwrap().size, Some(8));
-        drop(backup); drop(temp);
-        assert_eq!(std::fs::read(path.join("original.sorter-backup")).unwrap(), b"original");
+        drop(backup);
+        drop(temp);
+        assert_eq!(
+            std::fs::read(path.join("original.sorter-backup")).unwrap(),
+            b"original"
+        );
         assert!(!path.join("song.mp3").exists());
     }
 
@@ -3517,30 +4276,70 @@ mod repair_backup_tests {
         let (mut storage, parent, expected, path) = fixture();
         let mut source = prepared(&mut storage, &parent, &expected);
         let mut temp = staged(&mut storage, &source, "repair");
-        let backup = applied(storage.preserve_original(&mut source, &name("original.sorter-backup"), &AtomicBool::new(false)));
+        let backup = applied(storage.preserve_original(
+            &mut source,
+            &name("original.sorter-backup"),
+            &AtomicBool::new(false),
+        ));
         std::fs::write(path.join("song.mp3"), b"foreign").unwrap();
-        assert!(matches!(storage.publish_staged(&mut temp, &backup, &parent, &name("song.mp3"), &AtomicBool::new(false)), MutationOutcome::PendingUnknown(_)));
-        drop(backup); drop(temp);
+        assert!(matches!(
+            storage.publish_staged(
+                &mut temp,
+                &backup,
+                &parent,
+                &name("song.mp3"),
+                &AtomicBool::new(false)
+            ),
+            MutationOutcome::PendingUnknown(_)
+        ));
+        drop(backup);
+        drop(temp);
         assert_eq!(std::fs::read(path.join("song.mp3")).unwrap(), b"foreign");
-        assert_eq!(std::fs::read(path.join("original.sorter-backup")).unwrap(), b"original");
+        assert_eq!(
+            std::fs::read(path.join("original.sorter-backup")).unwrap(),
+            b"original"
+        );
     }
 
     #[test]
     fn selected_repair_journal_reads_are_identity_checked_and_bounded() {
         let tree = tempfile::tempdir().unwrap();
-        let source = tree.path().join("music"); let journal = tree.path().join("journals");
-        std::fs::create_dir(&source).unwrap(); std::fs::create_dir(&journal).unwrap();
-        let roots = WindowsMutationStorage::for_selected_repair_roots(grant(&source), grant(&journal)).unwrap();
+        let source = tree.path().join("music");
+        let journal = tree.path().join("journals");
+        std::fs::create_dir(&source).unwrap();
+        std::fs::create_dir(&journal).unwrap();
+        let roots =
+            WindowsMutationStorage::for_selected_repair_roots(grant(&source), grant(&journal))
+                .unwrap();
         let parent = roots.selected_journal_root().unwrap();
-        let mut writer = roots.create_journal(&parent, &name("large.journal")).unwrap();
+        let mut writer = roots
+            .create_journal(&parent, &name("large.journal"))
+            .unwrap();
         writer.file.set_len(64 * 1024 * 1024 + 1).unwrap();
         assert!(writer.read_all().is_err());
-        let location = writer.location(); drop(writer);
-        assert!(roots.read_selected_journal(&name("large.journal"), location.identity()).is_err());
-        let mut small = roots.create_journal(&parent, &name("small.journal")).unwrap();
+        let location = writer.location();
+        drop(writer);
+        assert!(
+            roots
+                .read_selected_journal(&name("large.journal"), location.identity())
+                .is_err()
+        );
+        let mut small = roots
+            .create_journal(&parent, &name("small.journal"))
+            .unwrap();
         small.append(b"evidence").unwrap();
-        let small_location = small.location(); drop(small);
-        assert_eq!(roots.read_selected_journal(&name("small.journal"), small_location.identity()).unwrap(), b"evidence");
-        assert!(roots.read_selected_journal(&name("small.journal"), location.identity()).is_err());
+        let small_location = small.location();
+        drop(small);
+        assert_eq!(
+            roots
+                .read_selected_journal(&name("small.journal"), small_location.identity())
+                .unwrap(),
+            b"evidence"
+        );
+        assert!(
+            roots
+                .read_selected_journal(&name("small.journal"), location.identity())
+                .is_err()
+        );
     }
 }

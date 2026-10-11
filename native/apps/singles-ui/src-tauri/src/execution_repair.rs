@@ -3,7 +3,9 @@
 use super::*;
 use sorter_executor::{
     windows_copy::WindowsPlanningStorage,
-    windows_repair::{RepairJobStatus, RepairResult, RepairScope, RepairStatus, SelectedWindowsRepairJob},
+    windows_repair::{
+        RepairJobStatus, RepairResult, RepairScope, RepairStatus, SelectedWindowsRepairJob,
+    },
 };
 use sorter_io::desktop::windows_mutation::{WindowsMutationStorage, WindowsSelectedRootGrant};
 
@@ -32,10 +34,19 @@ impl Host {
             .map_err(storage_error)?,
         )
         .map_err(storage_error)?;
-        let mut reads = WindowsPlanningStorage::for_repair_preview(source).map_err(storage_error)?;
-        let mut metadata = StorageMetadataProvider { storage: &mut reads, reader: MetadataReader };
+        let mut reads =
+            WindowsPlanningStorage::for_repair_preview(source).map_err(storage_error)?;
+        let mut metadata = StorageMetadataProvider {
+            storage: &mut reads,
+            reader: MetadataReader,
+        };
         let mut job = SelectedWindowsRepairJob::prepare(
-            roots, plan, &mut metadata, recognition, scope.resources(), scope,
+            roots,
+            plan,
+            &mut metadata,
+            recognition,
+            scope.resources(),
+            scope,
             &cancellation.cancelled,
         )
         .map_err(storage_error)?;
@@ -57,12 +68,19 @@ impl Host {
                     pending_directories: 0,
                     rejected_directories: 0,
                     incomplete_tail: report.incomplete_tail,
-                    transfers: report.operations.into_iter().map(|operation| RecoveryItem {
-                        operation: operation.operation,
-                        status: operation.evidence.iter().map(|evidence| {
-                            format!("{}:{:?}", evidence.role, evidence.status)
-                        }).collect::<Vec<_>>().join(", "),
-                    }).collect(),
+                    transfers: report
+                        .operations
+                        .into_iter()
+                        .map(|operation| RecoveryItem {
+                            operation: operation.operation,
+                            status: operation
+                                .evidence
+                                .iter()
+                                .map(|evidence| format!("{}:{:?}", evidence.role, evidence.status))
+                                .collect::<Vec<_>>()
+                                .join(", "),
+                        })
+                        .collect(),
                 });
             });
         }
@@ -84,14 +102,18 @@ impl Host {
                 } else {
                     "needs_recovery"
                 },
-                &format!("תיקון הקבצים נעצר: {error}. יש לבדוק את הקבצים והגיבויים לפני ניסיון נוסף."),
+                &format!(
+                    "תיקון הקבצים נעצר: {error}. יש לבדוק את הקבצים והגיבויים לפני ניסיון נוסף."
+                ),
             ),
         }
         Ok(())
     }
     fn update_repair(&self, id: &str, update: impl FnOnce(&mut ExecutionSnapshot)) {
         if let Ok(mut inner) = self.lock()
-            && let Some(snapshot) = inner.job.as_mut()
+            && let Some(snapshot) = inner
+                .job
+                .as_mut()
                 .filter(|job| job.snapshot.job_id == id)
                 .and_then(|job| job.execution.as_mut())
         {
@@ -118,26 +140,38 @@ fn project(result: RepairResult) -> ExecutionResult {
         moved_sources: 0,
         failed_operations: result.failed_files,
         blocked_operations: result.total_files.saturating_sub(result.items.len()),
-        recovery_operations: result.items.iter().filter(|item| item.status == RepairStatus::NeedsRecovery).count(),
-        cancelled_operations: result.items.iter().filter(|item| item.status == RepairStatus::Cancelled).count(),
+        recovery_operations: result
+            .items
+            .iter()
+            .filter(|item| item.status == RepairStatus::NeedsRecovery)
+            .count(),
+        cancelled_operations: result
+            .items
+            .iter()
+            .filter(|item| item.status == RepairStatus::Cancelled)
+            .count(),
         repair: Some(summary),
-        items: result.items.into_iter().map(|item| ExecutionItem {
-            operation: item.operation,
-            status: match item.status {
-                RepairStatus::Complete => "complete",
-                RepairStatus::UnsupportedTags => "unsupported_tags",
-                RepairStatus::MetadataFailure => "metadata_failure",
-                RepairStatus::Failed => "failed",
-                RepairStatus::Cancelled => "cancelled",
-                RepairStatus::NeedsRecovery => "needs_recovery",
-            },
-            detail: item.detail,
-            repair: Some(RepairOutcome {
-                renamed: item.renamed,
-                repaired: item.repaired,
-                unchanged: item.unchanged,
-            }),
-        }).collect(),
+        items: result
+            .items
+            .into_iter()
+            .map(|item| ExecutionItem {
+                operation: item.operation,
+                status: match item.status {
+                    RepairStatus::Complete => "complete",
+                    RepairStatus::UnsupportedTags => "unsupported_tags",
+                    RepairStatus::MetadataFailure => "metadata_failure",
+                    RepairStatus::Failed => "failed",
+                    RepairStatus::Cancelled => "cancelled",
+                    RepairStatus::NeedsRecovery => "needs_recovery",
+                },
+                detail: item.detail,
+                repair: Some(RepairOutcome {
+                    renamed: item.renamed,
+                    repaired: item.repaired,
+                    unchanged: item.unchanged,
+                }),
+            })
+            .collect(),
     }
 }
 
@@ -160,7 +194,9 @@ mod tests {
             retained_backup_bytes: 0,
             items: vec![RepairItem {
                 operation: 0,
-                original: StorageRef::WindowsPath { utf16: vec![67, 58, 92, 120] },
+                original: StorageRef::WindowsPath {
+                    utf16: vec![67, 58, 92, 120],
+                },
                 status: RepairStatus::UnsupportedTags,
                 detail: "unsupported representation".into(),
                 renamed: true,

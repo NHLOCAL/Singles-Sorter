@@ -181,7 +181,10 @@ mod selected {
     }
     #[derive(Clone)]
     enum PreparedScope {
-        Sort { target: PathBuf, scope: ExecutionScope },
+        Sort {
+            target: PathBuf,
+            scope: ExecutionScope,
+        },
         Repair(RepairScope),
     }
     impl PreparedSelection {
@@ -254,8 +257,9 @@ mod selected {
             let resources = evidence(plan)?;
             if plan.request.mode == JobMode::FixNames {
                 supported_repair_plan(plan).map_err(storage_error)?;
-                let scope = prepare_repair_scope(plan, storage, &resources, &cancellation.cancelled)
-                    .map_err(storage_error)?;
+                let scope =
+                    prepare_repair_scope(plan, storage, &resources, &cancellation.cancelled)
+                        .map_err(storage_error)?;
                 return Ok(PreparedSelection {
                     source: source.path.clone(),
                     personal: personal.unwrap_or_default().to_vec(),
@@ -263,7 +267,8 @@ mod selected {
                     scope: PreparedScope::Repair(scope),
                 });
             }
-            let target = target.ok_or_else(|| HostError::new("TARGET_REQUIRED", "בחר תיקיית יעד למיון."))?;
+            let target =
+                target.ok_or_else(|| HostError::new("TARGET_REQUIRED", "בחר תיקיית יעד למיון."))?;
             supported_plan(plan).map_err(storage_error)?;
             let scope = prepare_scope(plan, storage, &resources, &cancellation.cancelled)
                 .map_err(storage_error)?;
@@ -279,7 +284,10 @@ mod selected {
                 source: source.path.clone(),
                 personal: personal.unwrap_or_default().to_vec(),
                 ai,
-                scope: PreparedScope::Sort { target: target.path.clone(), scope },
+                scope: PreparedScope::Sort {
+                    target: target.path.clone(),
+                    scope,
+                },
             })
         })();
         if cancellation.is_cancelled() {
@@ -455,8 +463,15 @@ mod selected {
             }
             let (target, scope) = match selected.scope {
                 PreparedScope::Repair(scope) => {
-                    return self.execute_repair(id, plan, &selected.source, directory,
-                        &scope, recognition.as_mut(), cancellation);
+                    return self.execute_repair(
+                        id,
+                        plan,
+                        &selected.source,
+                        directory,
+                        &scope,
+                        recognition.as_mut(),
+                        cancellation,
+                    );
                 }
                 PreparedScope::Sort { target, scope } => (target, scope),
             };

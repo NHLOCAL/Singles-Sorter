@@ -133,11 +133,18 @@ mod selected {
     #[test]
     fn capability_report_identifies_repair_scope_without_cleanup_authority() {
         let output = Command::new(env!("CARGO_BIN_EXE_singles-sorter"))
-            .args(["capabilities", "--json"]).output().unwrap();
+            .args(["capabilities", "--json"])
+            .output()
+            .unwrap();
         assert!(output.status.success());
         let report: Value = serde_json::from_slice(&output.stdout).unwrap();
         let selected = &report["result"]["capabilities"]["selected_execution"];
-        assert!(selected["modes"].as_array().unwrap().contains(&json!("FixNames")));
+        assert!(
+            selected["modes"]
+                .as_array()
+                .unwrap()
+                .contains(&json!("FixNames"))
+        );
         assert_eq!(selected["automatic_backup_cleanup"], false);
         assert_eq!(selected["automatic_replay"], false);
     }
@@ -161,24 +168,38 @@ mod selected {
         fs::write(&path, &original).unwrap();
         let mut child = Command::new(env!("CARGO_BIN_EXE_singles-sorter"))
             .args(["run-files", "--ndjson"])
-            .stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped())
-            .spawn().unwrap();
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
         let mut stdin = child.stdin.take().unwrap();
         let mut output = BufReader::new(child.stdout.take().unwrap());
         let request = json!({"schema_version":1,"journal_directory":journal,"preview":{"schema_version":2,"mode":"FixNames","source":source,"target":null,"settings":{"copy_mode":false,"main_folder_only":false,"singles_folder":true,"exist_only":false,"abc_sort":false,"duet_mode":false},"ai_profile":"Disabled","personal_aliases":null}});
-        writeln!(stdin, "{request}").unwrap();stdin.flush().unwrap();
-        let mut line = String::new();output.read_line(&mut line).unwrap();
+        writeln!(stdin, "{request}").unwrap();
+        stdin.flush().unwrap();
+        let mut line = String::new();
+        output.read_line(&mut line).unwrap();
         let planned: Value = serde_json::from_str(&line).unwrap();
         assert_eq!(planned["event"], "planned", "{planned}");
         assert!(planned["data"]["target"].is_null());
         assert_eq!(fs::read(&path).unwrap(), original);
         assert_eq!(fs::read_dir(&source).unwrap().count(), 1);
-        if action == "stale" { original.push(7);fs::write(&path, &original).unwrap(); }
-        let decision = if action == "cancel" { json!({"action":"cancel"}) } else {
+        if action == "stale" {
+            original.push(7);
+            fs::write(&path, &original).unwrap();
+        }
+        let decision = if action == "cancel" {
+            json!({"action":"cancel"})
+        } else {
             json!({"action":"apply","plan_id":planned["data"]["plan"]["binding_sha256"]})
         };
-        writeln!(stdin, "{decision}").unwrap();stdin.flush().unwrap();
-        let events = output.lines().map(|line| serde_json::from_str::<Value>(&line.unwrap()).unwrap()).collect::<Vec<_>>();
+        writeln!(stdin, "{decision}").unwrap();
+        stdin.flush().unwrap();
+        let events = output
+            .lines()
+            .map(|line| serde_json::from_str::<Value>(&line.unwrap()).unwrap())
+            .collect::<Vec<_>>();
         let status = child.wait().unwrap();
         if action != "apply" {
             assert_eq!(fs::read(&path).unwrap(), original);
@@ -187,7 +208,10 @@ mod selected {
             return;
         }
         assert!(status.success(), "{events:?}");
-        let result = &events.iter().find(|event| event["event"] == "result").unwrap()["data"];
+        let result = &events
+            .iter()
+            .find(|event| event["event"] == "result")
+            .unwrap()["data"];
         assert_eq!(result["status"], "complete");
         assert_eq!(result["mode"], "FixNames");
         assert_eq!(result["repair"]["renamed_files"], 1);
@@ -197,9 +221,16 @@ mod selected {
         let repaired = fs::read(source.join("owned repair.mp3")).unwrap();
         assert_ne!(repaired, original);
         assert_eq!(&repaired[137..], audio);
-        assert!(repaired.windows("אבג".len()).any(|bytes| bytes == "אבג".as_bytes()));
-        let backups = fs::read_dir(&source).unwrap().map(|entry| entry.unwrap().path())
-            .filter(|path| path.extension().is_some_and(|ext| ext == "backup")).collect::<Vec<_>>();
+        assert!(
+            repaired
+                .windows("אבג".len())
+                .any(|bytes| bytes == "אבג".as_bytes())
+        );
+        let backups = fs::read_dir(&source)
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .filter(|path| path.extension().is_some_and(|ext| ext == "backup"))
+            .collect::<Vec<_>>();
         assert_eq!(backups.len(), 1);
         assert_eq!(fs::read(&backups[0]).unwrap(), original);
         assert!(result["recovery"]["recorded_finished"].as_bool().unwrap());
@@ -213,5 +244,4 @@ mod selected {
         run_repair_case("cancel");
         run_repair_case("stale");
     }
-
 }

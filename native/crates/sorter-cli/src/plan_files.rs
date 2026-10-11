@@ -322,8 +322,10 @@ pub(super) fn execute_request(request: &Request) -> Result<ResultPayload, Failur
             )
         } else if request.mode == JobMode::FixNames {
             Box::new(
-                sorter_executor::windows_copy::WindowsPlanningStorage::for_repair_preview(&request.source)
-                    .map_err(|e| Failure::new(1, "STORAGE_ERROR", e.to_string()))?,
+                sorter_executor::windows_copy::WindowsPlanningStorage::for_repair_preview(
+                    &request.source,
+                )
+                .map_err(|e| Failure::new(1, "STORAGE_ERROR", e.to_string()))?,
             )
         } else {
             Box::new(desktop)

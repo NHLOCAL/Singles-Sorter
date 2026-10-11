@@ -119,7 +119,10 @@ fn execute() -> Result<(), Failure> {
         results::{ItemStatus, JobStatus},
         windows_copy::WindowsPlanningStorage,
         windows_job::{SelectedWindowsJob, supported_plan},
-        windows_repair::{RepairScope, SelectedWindowsRepairJob, RepairJobStatus, prepare_repair_scope, supported_repair_plan},
+        windows_repair::{
+            RepairJobStatus, RepairScope, SelectedWindowsRepairJob, prepare_repair_scope,
+            supported_repair_plan,
+        },
     };
     use sorter_io::{
         desktop::{
@@ -180,10 +183,14 @@ fn execute() -> Result<(), Failure> {
         WindowsPlanningStorage::for_repair_preview(&request.preview.source)
     } else {
         supported_plan(&plan).map_err(|e| fail(&e))?;
-        WindowsPlanningStorage::for_preview(&request.preview.source, target.ok_or_else(|| {
-            Failure::new(2, "TARGET_REQUIRED", "Sort execution requires a target")
-        })?)
-    }.map_err(|e| fail(&e))?;
+        WindowsPlanningStorage::for_preview(
+            &request.preview.source,
+            target.ok_or_else(|| {
+                Failure::new(2, "TARGET_REQUIRED", "Sort execution requires a target")
+            })?,
+        )
+    }
+    .map_err(|e| fail(&e))?;
     let digest = |bytes: &[u8]| format!("{:x}", Sha256::digest(bytes));
     let resource_hashes = plan
         .request
@@ -215,9 +222,14 @@ fn execute() -> Result<(), Failure> {
         model_hash: (!matches!(plan.request.ai_profile, AiProfile::Disabled))
             .then(|| digest(&serde_json::to_vec(&models).expect("string IDs"))),
     };
-    enum Scope { Sort(ExecutionScope), Repair(RepairScope) }
+    enum Scope {
+        Sort(ExecutionScope),
+        Repair(RepairScope),
+    }
     let scope = if repairing {
-        Scope::Repair(prepare_repair_scope(&plan, &mut reads, &resources, &cancel).map_err(|e| fail(&e))?)
+        Scope::Repair(
+            prepare_repair_scope(&plan, &mut reads, &resources, &cancel).map_err(|e| fail(&e))?,
+        )
     } else {
         let scope = prepare_scope(&plan, &mut reads, &resources, &cancel).map_err(|e| fail(&e))?;
         if !plan.request.settings.copy_mode
@@ -294,12 +306,23 @@ fn execute() -> Result<(), Failure> {
             let roots = WindowsMutationStorage::for_selected_repair_roots(
                 grant(request.preview.source.clone(), scope.source_root().clone())?,
                 grant(request.journal_directory.clone(), journal_identity)?,
-            ).map_err(|e| fail(&e))?;
+            )
+            .map_err(|e| fail(&e))?;
             let mut job = SelectedWindowsRepairJob::prepare(
-                roots, &plan, &mut metadata, recognition.as_mut(), &resources, &scope, &cancel,
-            ).map_err(|e| fail(&e))?;
+                roots,
+                &plan,
+                &mut metadata,
+                recognition.as_mut(),
+                &resources,
+                &scope,
+                &cancel,
+            )
+            .map_err(|e| fail(&e))?;
             let native_id = job.job_id().to_owned();
-            event("started", json!({"job_id":native_id,"plan_id":plan.binding_sha256,"mode":"FixNames","journal_directory":request.journal_directory}))?;
+            event(
+                "started",
+                json!({"job_id":native_id,"plan_id":plan.binding_sha256,"mode":"FixNames","journal_directory":request.journal_directory}),
+            )?;
             let mut output_failed = false;
             let result = job.run(&cancel, &mut |progress| {
                 if event("progress", json!({"job_id":native_id,"operation":progress.operation,"total_files":progress.total_files,"phase":progress.phase})).is_err() {
@@ -307,21 +330,37 @@ fn execute() -> Result<(), Failure> {
                     cancel.store(true, Ordering::Release);
                 }
             });
-            let recovery = if job.journal_locations().is_empty() { None } else {
+            let recovery = if job.journal_locations().is_empty() {
+                None
+            } else {
                 job.inspect_recovery(&cancel).ok()
             };
             match result {
                 Ok(result) => {
                     let complete = result.status == RepairJobStatus::Complete;
-                    event("result", json!({"job_id":native_id,"mode":"FixNames","status":result.status,"repair":result,"recovery":recovery,"journal_directory":request.journal_directory,"invalid_control":invalid_control.load(Ordering::Acquire)}))?;
+                    event(
+                        "result",
+                        json!({"job_id":native_id,"mode":"FixNames","status":result.status,"repair":result,"recovery":recovery,"journal_directory":request.journal_directory,"invalid_control":invalid_control.load(Ordering::Acquire)}),
+                    )?;
                     if output_failed || invalid_control.load(Ordering::Acquire) || !complete {
-                        return Err(Failure::new(1, "EXECUTION_INCOMPLETE", "Inspect actual repair outcomes and retained originals before retrying"));
+                        return Err(Failure::new(
+                            1,
+                            "EXECUTION_INCOMPLETE",
+                            "Inspect actual repair outcomes and retained originals before retrying",
+                        ));
                     }
                     return Ok(());
                 }
                 Err(error) => {
-                    event("result", json!({"job_id":native_id,"mode":"FixNames","status":if job.journal_locations().is_empty() && cancel.load(Ordering::Acquire) {"cancelled"} else {"needs_recovery"},"error":error.to_string(),"recovery":recovery,"journal_directory":request.journal_directory}))?;
-                    return Err(Failure::new(1, "EXECUTION_INCOMPLETE", "Inspect the repair journal; no automatic replay or backup deletion was attempted"));
+                    event(
+                        "result",
+                        json!({"job_id":native_id,"mode":"FixNames","status":if job.journal_locations().is_empty() && cancel.load(Ordering::Acquire) {"cancelled"} else {"needs_recovery"},"error":error.to_string(),"recovery":recovery,"journal_directory":request.journal_directory}),
+                    )?;
+                    return Err(Failure::new(
+                        1,
+                        "EXECUTION_INCOMPLETE",
+                        "Inspect the repair journal; no automatic replay or backup deletion was attempted",
+                    ));
                 }
             }
         }
@@ -329,7 +368,12 @@ fn execute() -> Result<(), Failure> {
     };
     let roots = WindowsMutationStorage::for_selected_roots(
         grant(request.preview.source.clone(), scope.source_root.clone())?,
-        grant(target.ok_or_else(|| Failure::new(2, "TARGET_REQUIRED", "Sort requires target"))?.clone(), scope.target_root.clone())?,
+        grant(
+            target
+                .ok_or_else(|| Failure::new(2, "TARGET_REQUIRED", "Sort requires target"))?
+                .clone(),
+            scope.target_root.clone(),
+        )?,
         grant(request.journal_directory.clone(), journal_identity)?,
     )
     .map_err(|e| fail(&e))?;
