@@ -11,6 +11,7 @@ def exercise_information(command, script, click, wait, capture, root, output):
             'duration':0,'origin':{ELEMENT:element},'x':0,'y':0}]}]})
     badge = '[aria-label="עזרה: תיקית מקור"]'
     visible = "return !document.querySelector('#context-help').hidden"
+    hover('h1')
     hover(badge)
     wait(lambda: script(visible))
     capture('01-native-help-hover')
