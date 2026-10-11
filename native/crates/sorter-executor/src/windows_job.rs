@@ -224,7 +224,7 @@ pub fn inspect_recovery(
         sequence+=1;previous=envelope.sha256;
         match envelope.body.event {
             DirectoryEvent::Header{schema,job_id:record_job,binding_sha256,binding:header,target_root}=>{
-                if sequence!=1 || schema!=1 || record_job!=job_id || crate::hash(&header)?!=binding_sha256 || binding_sha256!=scope.inspected_binding_sha256 || header.scope_sha256!=scope_digest(&scope.original_scope)? || header.scope_evidence.resources!=scope.original_scope.resources || header.plan_sha256!=scope.original_scope.inspected_plan || !header.valid_domain() || !(header.selected_windows_copy || header.selected_windows_rename) || target_root!=scope.original_scope.target_root {return Err(E::Scope);}
+                if sequence!=1 || schema!=1 || record_job!=job_id || crate::hash(&header)?!=binding_sha256 || binding_sha256!=scope.inspected_binding_sha256 || header.scope_sha256!=scope_digest(&scope.original_scope)? || header.scope_evidence.resources!=scope.original_scope.resources || header.plan_sha256!=scope.original_scope.inspected_plan || !header.valid_domain() || !(header.selected_windows_copy || header.selected_windows_rename) || target_root!=scope.original_scope.target_root || header.source_root.identity.as_ref()!=Some(&scope.original_scope.source_root) || header.target_root.identity.as_ref()!=Some(&scope.original_scope.target_root) {return Err(E::Scope);}
                 if roots.selected_source_reference().map_err(|_|E::Scope)?!=header.source_root.reference || roots.selected_target_reference().map_err(|_|E::Scope)?!=header.target_root.reference || roots.selected_source_root().map_err(|_|E::Scope)?.identity()!=&scope.original_scope.source_root || roots.selected_target_root().map_err(|_|E::Scope)?.identity()!=&scope.original_scope.target_root {return Err(E::Scope);}
                 binding=Some(header);
             }
@@ -233,7 +233,7 @@ pub fn inspect_recovery(
                 if pending.is_some() || !matches!(parent,ObjectIdentity::Windows{..}) {return Err(E::CorruptJournal);}
                 let intended=header.operations.iter().any(|op|{
                     let Ok(mut p)=path(&op.destination.root) else{return false;};
-                    op.destination.components[..op.destination.components.len()-1].iter().any(|c|{p.push(c);self::reference(&p)==reference})
+                    op.destination.components[..op.destination.components.len().saturating_sub(1)].iter().any(|c|{p.push(c);self::reference(&p)==reference})
                 });
                 if !intended || report.observed.iter().any(|(r,_)|r==&reference) || report.rejected.contains(&reference) {return Err(E::CorruptJournal);}
                 pending=Some(reference);
