@@ -13,3 +13,5 @@ SOURCES+=("$ROOT/native/plugins/original-inference/android/src/com/nhlocal/singl
 "$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.OwnedCompletionTest
 
 "$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.ProjectLinksTest
+
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.PlanPageSelectionTest

@@ -48,7 +48,14 @@ final class AndroidHost implements AutoCloseable {
                     if(!args.getString("jobId").equals(jobId)||snapshot==null)throw new IllegalArgumentException("STALE_JOB");reply(id,true,new JSONObject(snapshot.toString()));return;
                 case "get_plan_page":
                     if(!args.getString("jobId").equals(jobId)||snapshot==null||!"completed".equals(snapshot.optString("status")))throw new IllegalArgumentException("PLAN_UNAVAILABLE");
-                    int offset=args.getInt("offset"),limit=args.getInt("limit");if(offset<0||limit<1||limit>200)throw new IllegalArgumentException("PAGE_LIMIT");JSONArray page=new JSONArray();for(int n=offset;n<rows.length()&&n-offset<limit;n++)page.put(rows.get(n));reply(id,true,new JSONObject().put("rows",page).put("total",rows.length()));return;
+                    int offset=args.getInt("offset"),limit=args.getInt("limit");
+                    if(args.has("developerMode")&&!(args.get("developerMode") instanceof Boolean))throw new IllegalArgumentException("DEVELOPER_MODE");
+                    boolean developerMode=args.optBoolean("developerMode",false);
+                    boolean[] developerOnly=new boolean[rows.length()],skippedRows=new boolean[rows.length()];
+                    for(int n=0;n<rows.length();n++){JSONObject row=rows.getJSONObject(n);developerOnly[n]=row.getBoolean("developer_only");skippedRows[n]="Single".equals(row.getString("kind"))&&row.getJSONArray("operation_ids").length()==0;}
+                    PlanPageSelection selection=PlanPageSelection.select(developerOnly,skippedRows,developerMode,offset,limit);
+                    JSONArray page=new JSONArray();for(int index:selection.indices)page.put(rows.get(index));
+                    reply(id,true,new JSONObject().put("rows",page).put("total",selection.total).put("skipped",selection.skipped));return;
                 default:break;
             }
             if(busy||pendingPicker!=0||documentAction!=null){error(id,"BUSY",new IllegalStateException("פעולה קודמת עדיין מסתיימת."));return;}

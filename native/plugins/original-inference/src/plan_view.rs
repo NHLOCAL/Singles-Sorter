@@ -11,6 +11,9 @@ pub struct DisplayRow {
     pub destination: Option<String>,
     pub reason: String,
     pub blockers: Vec<String>,
+    pub operation_ids: Vec<usize>,
+    pub artist: Option<String>,
+    pub developer_only: bool,
 }
 fn entry_display(entry: &EntryObservation) -> String {
     match &entry.reference {
@@ -35,6 +38,9 @@ pub fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
             .map(|op| match &op.kind {
                 OperationKind::FixFile(f) => DisplayRow {
                     id: format!("operation-{}", op.id),
+                    operation_ids: vec![op.id],
+                    artist: None,
+                    developer_only: false,
                     source: entry_display(&f.source),
                     kind: "FixNames".into(),
                     destination: f.intended_name.clone(),
@@ -93,6 +99,23 @@ pub fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
                     (read, "Vanished", "המקור אינו זמין בשלב זה של התכנון".into())
                 }
             };
+            let artist = match d {
+                DecisionV2::Album { decision, .. } => decision.artist_name.clone(),
+                DecisionV2::Single { artists, .. } if !artists.is_empty() => {
+                    Some(artists.join("; "))
+                }
+                _ => None,
+            };
+            let operation_ids: Vec<usize> = operations_by_source
+                .get(&read.source.reference)
+                .into_iter()
+                .flatten()
+                .map(|op| op.id)
+                .collect();
+            let developer_only = match d {
+                DecisionV2::Album { decision, .. } => !decision.is_album && operation_ids.is_empty(),
+                _ => false,
+            };
             let mut destinations = vec![];
             let mut blockers = vec![];
             for op in operations_by_source
@@ -120,6 +143,9 @@ pub fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
             }
             DisplayRow {
                 id: format!("decision-{i}"),
+                operation_ids,
+                artist,
+                developer_only,
                 source: entry_display(&read.source),
                 kind: kind.into(),
                 destination: (!destinations.is_empty()).then(|| destinations.join("; ")),
