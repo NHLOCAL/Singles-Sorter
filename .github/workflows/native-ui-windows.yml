@@ -201,6 +201,13 @@ jobs:
             ${{ env.TAURI_DRIVER_ROOT }}/.crates2.json
           key: ${{ steps.driver-cache.outputs.cache-primary-key }}
 
+      - name: Capture actual reviewed-profile dependency resolution
+        run: |
+          New-Item -ItemType Directory -Force test-results/native-windows/dependency-review | Out-Null
+          cargo metadata --locked --format-version 1 --manifest-path src-tauri/Cargo.toml --filter-platform x86_64-pc-windows-msvc --no-default-features --features desktop,original-ai,tauri/custom-protocol | Set-Content -Encoding utf8 test-results/native-windows/dependency-review/desktop-metadata.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-FileHash src-tauri/Cargo.lock -Algorithm SHA256 | ConvertTo-Json | Set-Content -Encoding utf8 test-results/native-windows/dependency-review/lock-hash.json
+
       - name: Always discard every local crate's cached build outputs
         run: |
           $metadataJson = (& cargo metadata --locked --format-version 1 --manifest-path src-tauri/Cargo.toml | Out-String)

@@ -172,7 +172,8 @@ mod selected {
             let mut ids=aliases.source_hashes.iter().map(|s| format!("{}:sha256:{}",match s.source {sorter_io::resources::AliasSource::Bundled=>"bundled",sorter_io::resources::AliasSource::Personal=>"personal"},s.sha256)).collect::<Vec<_>>();
             ids.extend(model_resources);
             if ids != selected.scope.resources.resource_ids || recognition.profile() != selected.scope.resources.ai_profile {return Err(HostError::new("RESOURCE_CHANGED","Resources changed; inspect a fresh plan"));}
-            std::fs::create_dir_all(&directory).map_err(storage_error)?;
+            // Startup profile access already established this application directory.
+            // Never create a path selected relative to a music tree here.
             let journal = inspect_root(&directory)?;
             let grant = |path, identity| WindowsSelectedRootGrant::new(path,identity).map_err(storage_error);
             let roots = WindowsMutationStorage::for_selected_roots(grant(selected.source.clone(),selected.scope.source_root.clone())?,grant(selected.target.clone(),selected.scope.target_root.clone())?,grant(directory.clone(),journal.identity.ok_or_else(|| HostError::new("JOURNAL_UNAVAILABLE","Journal root identity missing"))?)?).map_err(storage_error)?;

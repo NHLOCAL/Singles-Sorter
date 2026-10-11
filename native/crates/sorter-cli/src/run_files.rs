@@ -25,6 +25,35 @@ pub(super) fn run() -> ExitCode {
         }
     }
 }
+#[cfg(any(test, all(windows,feature="selected-windows-execution")))]
+fn read_requests(mut input:impl std::io::BufRead, sender:std::sync::mpsc::SyncSender<Result<Vec<u8>,Failure>>, cancel:&std::sync::atomic::AtomicBool, invalid:&std::sync::atomic::AtomicBool) {
+    use std::{io::{BufRead,Read},sync::atomic::Ordering};
+    let mut forwarded=0;
+    loop {
+        let mut bytes=Vec::new();
+        let read=input.by_ref().take((MAX_INPUT_BYTES+1) as u64).read_until(b'\n',&mut bytes);
+        match read {
+            Ok(0)=>break,
+            Ok(_) if bytes.len()<=MAX_INPUT_BYTES=>{
+                if forwarded<2 {
+                    if forwarded==1 && matches!(serde_json::from_slice::<Decision>(&bytes),Ok(Decision::Cancel)) {cancel.store(true,Ordering::Release);}
+                    forwarded+=1;
+                    if sender.send(Ok(bytes)).is_err(){break;}
+                } else {
+                    // Only request and confirmation enter the bounded queue.
+                    // Later controls can never block behind an undrained message.
+                    if !matches!(serde_json::from_slice::<Decision>(&bytes),Ok(Decision::Cancel)) {invalid.store(true,Ordering::Release);}
+                    cancel.store(true,Ordering::Release);
+                }
+            }
+            _=>{
+                invalid.store(true,Ordering::Release);cancel.store(true,Ordering::Release);
+                if forwarded<2 {let _=sender.send(Err(Failure::new(2,"INVALID_INPUT","Each NDJSON request must fit within 16 MiB")));}
+                break;
+            }
+        }
+    }
+}
 #[cfg(not(all(windows,feature="selected-windows-execution")))]
 fn execute() -> Result<(), Failure> {
     // Do not consume any user paths in a build that cannot execute them.
@@ -38,27 +67,18 @@ fn execute() -> Result<(), Failure> {
     use sorter_core::{discovery::{ReadStorage,ObjectIdentity},job_plan::AiProfile};
     use sorter_executor::{binding::{Resources,prepare_scope},windows_copy::WindowsPlanningStorage,windows_job::{SelectedWindowsJob,supported_plan},results::{JobStatus,ItemStatus}};
     use sorter_io::{metadata::{MetadataReader,StorageMetadataProvider},desktop::{DesktopStorage,windows_mutation::{WindowsSelectedRootGrant,WindowsMutationStorage}}};
-    use std::{io::{BufRead,Read},path::PathBuf,sync::{Arc,atomic::{AtomicBool,Ordering},mpsc}};
+    use std::{path::PathBuf,sync::{Arc,atomic::{AtomicBool,Ordering},mpsc}};
     #[derive(Deserialize)]
     #[serde(deny_unknown_fields)]
     struct Request { schema_version:u16, preview:plan_files::Request, journal_directory:PathBuf }
     let cancel=Arc::new(AtomicBool::new(false));
     let reader_cancel=cancel.clone();
-    let (tx,rx)=mpsc::sync_channel(8);
+    let (tx,rx)=mpsc::sync_channel(1);
+    let invalid_control=Arc::new(AtomicBool::new(false));
+    let reader_invalid=invalid_control.clone();
     std::thread::Builder::new().name("execution-stdin".into()).spawn(move || {
-        let stdin=io::stdin();let mut input=stdin.lock();let mut first=true;
-        loop {
-            let mut bytes=Vec::new();
-            let read=input.by_ref().take((MAX_INPUT_BYTES+1) as u64).read_until(b'\n',&mut bytes);
-            match read {
-                Ok(0)=>break,
-                Ok(_) if bytes.len()<=MAX_INPUT_BYTES=>{
-                    if !first && matches!(serde_json::from_slice::<Decision>(&bytes),Ok(Decision::Cancel)) {reader_cancel.store(true,Ordering::Release);}
-                    first=false;if tx.send(Ok(bytes)).is_err(){break;}
-                }
-                _=>{reader_cancel.store(true,Ordering::Release);let _=tx.send(Err(Failure::new(2,"INVALID_INPUT","Each NDJSON request must fit within 16 MiB")));break;}
-            }
-        }
+        let stdin=io::stdin();
+        read_requests(stdin.lock(), tx, &reader_cancel, &reader_invalid);
     }).map_err(|e|Failure::new(1,"WORKER_FAILED",e.to_string()))?;
     let request_bytes=rx.recv().map_err(|_|Failure::new(2,"INVALID_INPUT","Expected a run-files request line"))??;
     let request:Request=serde_json::from_slice(&request_bytes).map_err(|e|Failure::new(2,"INVALID_INPUT",e.to_string()))?;
@@ -89,7 +109,8 @@ fn execute() -> Result<(), Failure> {
     let fresh=plan_files::execute_request(&request.preview)?;
     if fresh.plan.as_ref().map(|p|&p.binding_sha256)!=Some(&plan.binding_sha256) {return Err(Failure::new(1,"PLAN_CHANGED","Files or resources changed; inspect a fresh plan"));}
     let (mut recognition,_,_,_)=plan_files::recognition(&request.preview.ai_profile)?;
-    std::fs::create_dir_all(&request.journal_directory).map_err(|e|fail(&e))?;
+    // The explicit journal directory must already exist. Do not create any
+    // path before independently pinning roots and checking their separation.
     let mut journal_reads=DesktopStorage::new(std::slice::from_ref(&request.journal_directory)).map_err(|e|fail(&e))?;
     let journal_ref=journal_reads.reference(&request.journal_directory).map_err(|e|fail(&e))?;
     let journal_identity=journal_reads.stat(&journal_ref).map_err(|e|fail(&e))?.identity.ok_or_else(||Failure::new(1,"JOURNAL_UNAVAILABLE","Journal identity missing"))?;
@@ -107,7 +128,7 @@ fn execute() -> Result<(), Failure> {
         Ok(result)=>{
             let status=match result.status {JobStatus::Complete=>"complete",JobStatus::Partial=>"partial",JobStatus::Cancelled=>"cancelled",JobStatus::NeedsRecovery=>"needs_recovery"};
             let items=result.items.iter().map(|item|json!({"operation":item.operation,"status":match item.status {ItemStatus::Complete=>"complete",ItemStatus::SourceRetained=>"source_retained",ItemStatus::Failed=>"failed",ItemStatus::Cancelled=>"cancelled",ItemStatus::Blocked=>"blocked",ItemStatus::NeedsRecovery=>"needs_recovery"},"detail":item.detail})).collect::<Vec<_>>();
-            event("result",json!({"job_id":native_id,"status":status,"source_items":result.source_items,"committed_destinations":result.committed_destinations,"moved_sources":result.moved_sources,"failed_operations":result.failed_operations,"blocked_operations":result.blocked_operations,"recovery_operations":result.recovery_operations,"cancelled_operations":result.cancelled_operations,"items":items,"journal_directory":request.journal_directory}))?;
+            event("result",json!({"job_id":native_id,"status":status,"source_items":result.source_items,"committed_destinations":result.committed_destinations,"moved_sources":result.moved_sources,"failed_operations":result.failed_operations,"blocked_operations":result.blocked_operations,"recovery_operations":result.recovery_operations,"cancelled_operations":result.cancelled_operations,"items":items,"journal_directory":request.journal_directory,"invalid_control":invalid_control.load(Ordering::Acquire)}))?;
             if output_failed || status!="complete" {return Err(Failure::new(1,"EXECUTION_INCOMPLETE","Read the actual result and journal before retrying; completed changes were not rolled back"));}
         }
         Err(error)=>{
@@ -120,6 +141,22 @@ fn execute() -> Result<(), Failure> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn repeated_or_malformed_post_confirmation_commands_cannot_block_cancel() {
+        use std::sync::{Arc,atomic::{AtomicBool,Ordering},mpsc};
+        for extra in ["{\"action\":\"apply\",\"plan_id\":\"duplicate\"}\n", "not-json\n"] {
+            let input=format!("{{}}\n{{\"action\":\"apply\",\"plan_id\":\"inspected\"}}\n{}{{\"action\":\"cancel\"}}\n",extra.repeat(32));
+            let cancel=Arc::new(AtomicBool::new(false));let invalid=Arc::new(AtomicBool::new(false));
+            let (tx,rx)=mpsc::sync_channel(1);let (finished_tx,finished_rx)=mpsc::channel();
+            let c=cancel.clone();let i=invalid.clone();
+            let worker=std::thread::spawn(move||{read_requests(std::io::Cursor::new(input),tx,&c,&i);finished_tx.send(()).unwrap();});
+            assert!(rx.recv_timeout(std::time::Duration::from_secs(2)).unwrap().is_ok());
+            assert!(rx.recv_timeout(std::time::Duration::from_secs(2)).unwrap().is_ok());
+            finished_rx.recv_timeout(std::time::Duration::from_secs(2)).expect("reader blocked on commands nobody consumes");
+            worker.join().unwrap();assert!(cancel.load(Ordering::Acquire));assert!(invalid.load(Ordering::Acquire));
+            assert!(rx.try_recv().is_err());
+        }
+    }
     #[test]
     fn confirmation_is_strict_and_cannot_supply_a_replacement_plan() {
         assert!(matches!(serde_json::from_str::<Decision>(r#"{"action":"apply","plan_id":"abc"}"#),Ok(Decision::Apply {plan_id}) if plan_id=="abc"));

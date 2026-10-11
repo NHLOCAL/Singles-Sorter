@@ -34,7 +34,9 @@ completion. The results expose the journal directory for inspection.
 
 Run `singles-sorter run-files --ndjson` from a Windows build with the explicit
 feature. Unlike `plan-files --json`, this is a bidirectional single-process
-session. Send one UTF-8 line:
+session. The explicitly selected journal directory must already exist and be disjoint from
+source and target. The host never recursively creates it from the supplied path.
+Send one UTF-8 line:
 
 ```json
 {"schema_version":1,"journal_directory":"C:\\AppData\\SinglesJobJournals","preview":{"schema_version":2,"mode":"Sort","source":"C:\\Music\\Incoming","target":"C:\\Music\\Sorted","settings":{"copy_mode":true,"main_folder_only":false,"singles_folder":true,"exist_only":false,"abc_sort":false,"duet_mode":false},"ai_profile":"Disabled","personal_aliases":null}}
@@ -45,7 +47,9 @@ Read the `planned` event, review the complete plan and paths, then send exactly
 `{"action":"cancel"}` before confirmation changes no music files. During apply,
 the same cancel command sets the cooperative cancellation token; already
 committed effects are reported and are not rolled back. Each line is bounded to
-16 MiB. The stdin queue is bounded. Lost stdout cancels subsequent work rather
+16 MiB. Only the first request and its confirmation enter the one-slot stdin queue.
+After confirmation, only cancel is accepted; malformed or repeated commands
+cancel safely without enqueuing undrained messages. Lost stdout cancels subsequent work rather
 than silently proceeding without reporting it. EOF before confirmation is an
 error. Closing stdin after confirmation does not itself request cancellation.
 
