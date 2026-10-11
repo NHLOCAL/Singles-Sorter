@@ -84,6 +84,10 @@ final class AndroidHost implements AutoCloseable {
                         case "get_model_status":
                             if(models==null)models=OriginalAssets.prepare(activity.getApplicationContext(),()->{synchronized(AndroidHost.this){return closed;}});
                             value=new JSONObject().put("available",true).put("platform","android").put("message","שני מודלי הזיהוי המקוריים אומתו. הקבצים נבדקים מחדש לפני כל בדיקה.");break;
+                        case "open_project_link":
+                            if(args.length()!=1||!args.has("target"))throw new IllegalArgumentException("PROJECT_LINK_ARGUMENTS");
+                            final String projectUrl=ProjectLinks.resolve(args.getString("target"));
+                            activity.runOnUiThread(()->{synchronized(AndroidHost.this){if(closed)return;try{activity.startActivity(new Intent(Intent.ACTION_VIEW,android.net.Uri.parse(projectUrl)));completion.finish(()->reply(requestId,true,JSONObject.NULL));}catch(RuntimeException failure){completion.finish(()->error(requestId,"LINK_UNAVAILABLE",failure));}}});return;
                         case "open_footer_link":
                             activity.runOnUiThread(()->{synchronized(AndroidHost.this){if(closed)return;try{activity.startActivity(new Intent(Intent.ACTION_VIEW,android.net.Uri.parse("https://nhlocal.github.io/shir-bot?utm_source=singles_sorter_program&utm_medium=android")));completion.finish(()->reply(requestId,true,JSONObject.NULL));}catch(RuntimeException failure){completion.finish(()->error(requestId,"LINK_UNAVAILABLE",failure));}}});return;
                         default:throw new IllegalArgumentException("הפעולה עדיין אינה זמינה במהדורת Android זו: "+command);

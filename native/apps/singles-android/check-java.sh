@@ -11,3 +11,5 @@ mapfile -d '' SOURCES < <(find "$BASE/src" "$BASE/tests" "$ROOT/native/plugins/s
 SOURCES+=("$ROOT/native/plugins/original-inference/android/src/com/nhlocal/singlesorter/inference/OriginalAssets.java" "$ROOT/native/plugins/original-inference/android/src/com/nhlocal/singlesorter/inference/OriginalInference.java")
 "$JAVA_HOME/bin/javac" --release 8 -Xlint:all,-options -Werror -cp "$ANDROID_JAR" -d "$OUT" "${SOURCES[@]}"
 "$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.OwnedCompletionTest
+
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.ProjectLinksTest
