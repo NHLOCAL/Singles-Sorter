@@ -402,8 +402,11 @@ fn prepare_directory(path: &Path) -> Result<File> {
     #[cfg(windows)]
     let directory = {
         use std::os::windows::fs::OpenOptionsExt;
+        // Attribute-only handles do not participate in Windows sharing checks.
+        // Include read-only directory-data access so withholding delete/write
+        // sharing actually prevents replacement while this guard is held.
         OpenOptions::new()
-            .access_mode(0x80) // FILE_READ_ATTRIBUTES
+            .access_mode(0x1 | 0x80) // FILE_LIST_DIRECTORY | FILE_READ_ATTRIBUTES
             .share_mode(1) // FILE_SHARE_READ; prevent replacement while held
             .custom_flags(0x02000000 | 0x00200000) // BACKUP_SEMANTICS | OPEN_REPARSE_POINT
             .open(path)
