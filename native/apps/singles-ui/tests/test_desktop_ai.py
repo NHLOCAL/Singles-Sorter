@@ -44,6 +44,28 @@ class DesktopAIContracts(unittest.TestCase):
             ai.digest(p) + '  ' + p.relative_to(package).as_posix() + '\n'
             for p in sorted(entries)), encoding='utf-8')
 
+    def test_public_observer_avoids_documented_raw_stat_disagreement(self):
+        public = dict(win32_path_attributes=16, win32_handle_attributes=16)
+        self.assertEqual(ai.observed_attributes(16, public), 16)
+        self.assertEqual(ai.observed_attributes(0x10000010, public), 16)
+        # All public bits, including ones unknown to this test, stay significant.
+        for attributes in (17, 18, 0x10000010, 0x80000010):
+            changed = dict(win32_path_attributes=attributes, win32_handle_attributes=attributes)
+            self.assertEqual(ai.observed_attributes(16, changed), attributes)
+            self.assertNotEqual(ai.observed_attributes(16, changed), 16)
+        with self.assertRaisesRegex(AssertionError, 'APIs disagree'):
+            ai.observed_attributes(16, dict(win32_path_attributes=16, win32_handle_attributes=17))
+        with self.assertRaisesRegex(AssertionError, 'reparse'):
+            ai.observed_attributes(16, dict(win32_path_attributes=0x410, win32_handle_attributes=0x410))
+
+    def test_field_diagnostic_keeps_attribute_identity_acl_and_mtime_changes(self):
+        before = {'target': [dict(path='.', attributes=16, identity=1, permissions='acl', modified_ns=1)]}
+        for field, value in [('attributes',17),('identity',2),('permissions','changed'),('modified_ns',2)]:
+            after = {'target': [dict(before['target'][0], **{field:value})]}
+            differences = ai.snapshot_differences(before, after)
+            self.assertEqual([d['field'] for d in differences], [field])
+        self.assertEqual(ai.snapshot_differences(before, {'target': []})[0]['field'], 'entry')
+
     def test_explicit_feature_mode_rejects_unrecognized_values(self):
         self.assertEqual(ai.ai_mode({}), 'off')
         self.assertEqual(ai.ai_mode({'SINGLES_DESKTOP_AI_EXPECTED': 'on'}), 'on')

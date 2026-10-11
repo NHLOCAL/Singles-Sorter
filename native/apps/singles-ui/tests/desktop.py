@@ -158,14 +158,19 @@ try:
         scratch = Path(temporary)
         source, target = scratch / 'מקור', scratch / 'יעד'
         source.mkdir(); target.mkdir()
+        observer_control = scratch / 'unselected observer control'
+        observer_control.mkdir()
         media = source / 'אברהם פריד - בדיקה.mp3'
         shutil.copyfile(ROOT.parents[1] / 'tests/fixtures/media/tagged.mp3', media)
         before = hashlib.sha256(media.read_bytes()).hexdigest()
-        fixture_guard = ProtectedTrees({'source': source, 'target': target}, OUTPUT, 'native-fixtures')
+        fixture_guard = ProtectedTrees({'source': source, 'target': target, 'unselected_control': observer_control}, OUTPUT, 'native-fixtures')
+        fixture_guard.verify('before-native-picker')
         pick_owned_path('#source-picker', source)
         wait(lambda: script("return document.querySelector('#source').value") == str(source))
+        fixture_guard.verify('after-source-picker')
         pick_owned_path('#target-picker', target)
         wait(lambda: script("return document.querySelector('#target').value") == str(target))
+        fixture_guard.verify('after-target-picker')
         checks.append('Native folder dialogs selected only the owned source and target fixtures')
         click('#sort')
         wait(lambda: script("return document.querySelector('#app').dataset.view === 'results' && document.querySelectorAll('#rows tr').length > 0 && !document.querySelector('#sort').disabled"))
@@ -182,6 +187,7 @@ try:
         wait(lambda:not script("return document.querySelector('#row-dialog').open"))
         assert media.is_file() and hashlib.sha256(media.read_bytes()).hexdigest() == before
         assert list(target.iterdir()) == []
+        fixture_guard.verify('after-sort-preview')
         checks.append('Real owned MP3 sort preview produced Hebrew singer/destination; source hash and empty target unchanged')
         click('#back-setup')
         wait(lambda:script("return document.querySelector('#app').dataset.view === 'setup'"))
@@ -192,6 +198,7 @@ try:
         assert script("return document.querySelector('#error').hidden"), text('#error')
         capture('03-native-real-fix-preview')
         assert hashlib.sha256(media.read_bytes()).hexdigest() == before
+        fixture_guard.verify('after-fixnames-preview')
         checks.append('Target-free real FixNames preview; owned source bytes unchanged')
         click('#back-setup')
         wait(lambda:script("return document.querySelector('#app').dataset.view === 'setup'"))
@@ -241,6 +248,7 @@ try:
         wait(lambda: script("return Array.from(document.querySelectorAll('[id^=list-alias-]')).filter(x=>x.value==='אמן מיובא').length") == imported_baseline + 2)
         assert script("return Array.from(document.querySelectorAll('[id^=list-alias-]')).some(x=>x.value==='אמן שנערך לפני אישור')")
         assert not script("return Array.from(document.querySelectorAll('[id^=list-alias-]')).some(x=>x.value==='אמן למחיקה')")
+        fixture_guard.verify('after-settings-and-import')
         checks.append('Actual CSV draft edits/deletion applied only on confirm; original duplicate aliases remained ordered')
         click('#list-cancel'); click('#advanced-dialog .close-dialog')
         command('DELETE',''); session = None
@@ -257,7 +265,7 @@ try:
         capture('07-native-profile-after-reopen')
         checks.append('Native explicit preference Save, immediate duet and personal list persisted after app restart; source authority not persisted')
         click('#list-cancel'); click('#advanced-dialog .close-dialog')
-        fixture_guard.verify()
+        fixture_guard.verify('after-app-restart')
         ai_scratch = scratch / 'ai-cases'
         ai_scratch.mkdir()
         original_ai_checks = DesktopAI(command, script, click, fill, wait, capture,

@@ -63,11 +63,93 @@ def security_descriptor(path):
     return buffer.raw[:needed.value].hex()
 
 
-def tree_snapshot(root, permissions=security_descriptor):
+def windows_attribute_observation(path):
+    """Independent, documented Win32 reads; never mask or set attributes.
+
+    Keep both a path query and FILE_BASIC_INFO through an opened metadata handle.
+    Raw CPython lstat attributes remain in separate diagnostic observations.
+    https://learn.microsoft.com/windows/win32/api/fileapi/nf-fileapi-getfileinformationbyhandleex
+    """
+    if os.name != 'nt':
+        raise RuntimeError('Windows attribute observation requires actual Windows')
+    from ctypes import wintypes
+    class FileBasicInfo(ctypes.Structure):
+        _fields_ = [('creation', ctypes.c_longlong), ('access', ctypes.c_longlong),
+                    ('write', ctypes.c_longlong), ('change', ctypes.c_longlong),
+                    ('attributes', wintypes.DWORD)]
+    class FileIdInfo(ctypes.Structure):
+        _fields_ = [('volume', ctypes.c_ulonglong), ('identity', ctypes.c_ubyte * 16)]
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    kernel.GetFileAttributesW.argtypes = [wintypes.LPCWSTR]
+    kernel.GetFileAttributesW.restype = wintypes.DWORD
+    kernel.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                                  ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    kernel.CreateFileW.restype = wintypes.HANDLE
+    kernel.GetFileInformationByHandleEx.argtypes = [wintypes.HANDLE, ctypes.c_int,
+                                                   ctypes.c_void_p, wintypes.DWORD]
+    kernel.GetFileInformationByHandleEx.restype = wintypes.BOOL
+    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel.CloseHandle.restype = wintypes.BOOL
+    attributes = kernel.GetFileAttributesW(str(path))
+    if attributes == 0xffffffff:
+        raise ctypes.WinError(ctypes.get_last_error())
+    # FILE_READ_ATTRIBUTES only; full sharing; OPEN_EXISTING; BACKUP_SEMANTICS
+    # permits directory handles, OPEN_REPARSE_POINT never follows a substitute.
+    handle = kernel.CreateFileW(str(path), 0x80, 7, None, 3, 0x02200000, None)
+    if handle == ctypes.c_void_p(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        basic = FileBasicInfo()
+        if not kernel.GetFileInformationByHandleEx(handle, 0, ctypes.byref(basic), ctypes.sizeof(basic)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        identity = FileIdInfo()
+        if not kernel.GetFileInformationByHandleEx(handle, 18, ctypes.byref(identity), ctypes.sizeof(identity)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        require(not (attributes | basic.attributes) & 0x400, 'Win32 observed a reparse point')
+        return {'win32_path_attributes': attributes, 'win32_handle_attributes': basic.attributes,
+                'win32_volume_serial': identity.volume,
+                'win32_file_id': int.from_bytes(bytes(identity.identity), 'little'),
+                'win32_last_write_ticks': basic.write, 'win32_change_ticks': basic.change}
+    finally:
+        if not kernel.CloseHandle(handle):
+            raise ctypes.WinError(ctypes.get_last_error())
+
+
+def snapshot_differences(before, after):
+    differences = []
+    for root in sorted(set(before) | set(after)):
+        left = {row['path']: row for row in before.get(root, [])}
+        right = {row['path']: row for row in after.get(root, [])}
+        for path in sorted(set(left) | set(right)):
+            a, b = left.get(path), right.get(path)
+            if a is None or b is None:
+                differences.append(dict(root=root, path=path, field='entry', before=a, after=b))
+            else:
+                for field in sorted(set(a) | set(b)):
+                    if a.get(field) != b.get(field):
+                        differences.append(dict(root=root, path=path, field=field, before=a.get(field), after=b.get(field)))
+    return differences
+
+
+def observed_attributes(raw, public=None):
+    if public is None:
+        return raw
+    require(public['win32_path_attributes'] == public['win32_handle_attributes'],
+            f"Public Windows attribute APIs disagree: path={public['win32_path_attributes']:#010x}, handle={public['win32_handle_attributes']:#010x}, lstat={raw:#010x}")
+    require(not public['win32_handle_attributes'] & 0x400, 'Win32 observed a reparse point')
+    # No bit masks: retain every bit returned consistently by both public APIs.
+    return public['win32_handle_attributes']
+
+
+def tree_snapshot(root, permissions=security_descriptor, raw_observations=None):
     """Fresh lstat each pass, including directories; reject links/reparse points.
 
     Access time is intentionally omitted because reading may legitimately update
-    it. File identity, last-write time, attributes, content and ACLs must match.
+    it. File identity, last-write time, public attributes, content and ACLs must match.
+    CPython issue #126253 documents lstat leaking a variable NTFS-only bit; on
+    Windows use exact agreeing GetFileAttributesW/FILE_BASIC_INFO values instead.
+    Raw lstat is retained separately, never silently masked.
+    https://github.com/python/cpython/issues/126253
     """
     root = Path(root)
     rows = []
@@ -83,6 +165,16 @@ def tree_snapshot(root, permissions=security_descriptor):
                    directory=directory, device=info.st_dev, identity=info.st_ino,
                    mode=info.st_mode, attributes=getattr(info, 'st_file_attributes', 0),
                    modified_ns=info.st_mtime_ns, permissions=permissions(path))
+        if os.name == 'nt':
+            public = windows_attribute_observation(path)
+            row['attributes'] = observed_attributes(getattr(info, 'st_file_attributes', 0), public)
+            require((public['win32_volume_serial'], public['win32_file_id']) ==
+                    (info.st_dev, info.st_ino), 'Independent Windows handle identifies another object')
+            row.update(win32_path_attributes=public['win32_path_attributes'],
+                       win32_handle_attributes=public['win32_handle_attributes'])
+            if raw_observations is not None:
+                raw_observations.append(dict(path=row['path'],
+                    raw_lstat_attributes=getattr(info, 'st_file_attributes', 0), **public))
         if not directory:
             row.update(size=info.st_size, sha256=digest(path))
         rows.append(row)
@@ -128,18 +220,32 @@ class ProtectedTrees:
         self.name = name
         self.before = self.snapshot()
         self.write('before', self.before)
+        self.write('before-observations', self.raw_observations)
 
     def snapshot(self):
-        return {name: tree_snapshot(root) for name, root in self.roots.items()}
+        self.raw_observations = {}
+        result = {}
+        for name, root in self.roots.items():
+            raw = []
+            result[name] = tree_snapshot(root, raw_observations=raw)
+            self.raw_observations[name] = raw
+        return result
 
     def write(self, suffix, value):
         (self.output / f'{self.name}-{suffix}.json').write_text(
             json.dumps(value, ensure_ascii=False, indent=2), encoding='utf-8')
 
-    def verify(self):
+    def verify(self, context='after'):
         after = self.snapshot()
-        self.write('after', after)
-        require(self.before == after, f'{self.name}: protected contents or metadata changed')
+        self.write(context, after)
+        self.write(context + '-observations', self.raw_observations)
+        if self.before != after:
+            differences = snapshot_differences(self.before, after)
+            report = dict(context=context, differences=differences,
+                          order_only=not differences)
+            self.write(context + '-differences', report)
+            print('FILESYSTEM_INVARIANCE ' + json.dumps(report, ensure_ascii=False), flush=True)
+            require(False, f'{self.name} ({context}): protected contents or metadata changed')
 
 
 def write_wave(path):
