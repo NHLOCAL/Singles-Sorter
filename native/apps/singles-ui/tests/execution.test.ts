@@ -19,4 +19,12 @@ describe('retained native apply ownership',()=>{
  it('restores retained terminal execution after a view reload without offering apply again',async()=>{const h=host();h.latestExecution=async()=>({preview:readyPlan,execution:done});const c=new PreviewController(h);await c.initialize();expect(c.state.execution?.status).toBe('complete');expect(c.state.snapshot?.job_id).toBe('job');expect(c.canApply).toBe(false);});
  it('rejects mismatched retained execution instead of attaching it to another plan',async()=>{const h=host();h.latestExecution=async()=>({preview:readyPlan,execution:{...done,plan_id:'other'}});const c=new PreviewController(h);await c.initialize();expect(c.state.hostAvailable).toBe(false);expect(c.state.execution).toBeNull();});
 
+ it('defers cancellation until a delayed native start is acknowledged',async()=>{vi.useFakeTimers();try{
+   let acknowledge!:(value:{job_id:string})=>void;const h=host();h.startApply=vi.fn(()=>new Promise<{job_id:string}>(resolve=>{acknowledge=resolve;}));
+   h.executionSnapshot=vi.fn().mockResolvedValueOnce({...done,status:'running',result:null}).mockResolvedValue({...done,status:'cancelled'});
+   const c=await selected(h),run=c.apply();c.cancelApply();expect(h.cancelApply).not.toHaveBeenCalled();expect(c.state.busy).toBe(true);
+   acknowledge({job_id:'job'});await vi.advanceTimersByTimeAsync(0);expect(h.cancelApply).toHaveBeenCalledExactlyOnceWith('job');
+   await vi.advanceTimersByTimeAsync(250);await run;expect(c.state.execution?.status).toBe('cancelled');
+ }finally{vi.useRealTimers();}});
+
 });

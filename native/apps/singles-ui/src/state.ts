@@ -32,7 +32,7 @@ export function errorText(error:unknown):string {
 }
 export class PreviewController {
   readonly state:State={source:newRoot(),target:newRoot(),settings:{...defaults},model:null,initialized:false,startupWaiting:false,hostAvailable:false,busy:false,cancelRequested:false,activity:null,error:null,snapshot:null,execution:null,page:null,offset:0,ai:'Disabled'};
-  private activeApply:{jobId:string;cancelSent:boolean;terminal:boolean}|null=null;
+  private activeApply:{jobId:string;started:boolean;cancelSent:boolean;terminal:boolean}|null=null;
   private activePreview:{jobId:string|null;cancelSent:boolean;terminal:boolean}|null=null;
   private listeners=new Set<()=>void>();
   savedNotice:string|null=null;
@@ -197,7 +197,7 @@ export class PreviewController {
     this.state.cancelRequested=true;this.emit();this.sendApplyCancellation(run);
   }
   private sendApplyCancellation(run:NonNullable<PreviewController['activeApply']>){
-    if(run.cancelSent||run.terminal||!this.host.cancelApply)return;
+    if(!run.started||run.cancelSent||run.terminal||!this.host.cancelApply)return;
     run.cancelSent=true;
     void this.host.cancelApply(run.jobId).catch(error=>{
       if(this.activeApply!==run||run.terminal)return;
@@ -207,12 +207,13 @@ export class PreviewController {
   async apply(){
     if(!this.canApply)return;
     const preview=this.state.snapshot!,planId=preview.plan_id!;
-    const run={jobId:preview.job_id,cancelSent:false,terminal:false};
+    const run={jobId:preview.job_id,started:false,cancelSent:false,terminal:false};
     this.activeApply=run;this.state.busy=true;this.state.activity='apply';this.state.cancelRequested=false;this.state.error=null;this.emit();
     try{
       try{
         const started=await this.host.startApply!(run.jobId,planId);
         if(started.job_id!==run.jobId)throw new Error('התקבלה תשובה שאינה שייכת לפעולה הנוכחית.');
+        run.started=true;
       }catch(error){
         // Explicit native refusal is terminal. A lost IPC response is not proof
         // that mutation never started: retain ownership and ask the known job.
@@ -231,6 +232,8 @@ export class PreviewController {
           }
           this.state.error=errorText(error);this.emit();await new Promise(resolve=>setTimeout(resolve,250));continue;
         }
+        run.started=true;
+        if(this.state.cancelRequested&&['running','preparing'].includes(snapshot.status))this.sendApplyCancellation(run);
         this.state.execution=snapshot;this.state.error=null;this.emit();
         if(snapshot.status!=='running'&&snapshot.status!=='preparing'){
           run.terminal=true;

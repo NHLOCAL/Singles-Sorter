@@ -38,6 +38,6 @@ plus owned native Windows identity/reparse/journal/Copy/rename tests. The new
 selected-root/UI/CLI integration is source implementation with explicit tests;
 it is not yet a verified release until its combined final-head build and actual
 Windows subprocess/WebView runs pass. Local frontend typecheck, production build
-and 75 state/presentation tests passed during implementation. Local Chromium
+and 76 state/presentation tests passed during implementation. Local Chromium
 rendering was blocked by OS socket restrictions, and local Rust installation was
 blocked; neither limitation was converted into a passing verification claim.
