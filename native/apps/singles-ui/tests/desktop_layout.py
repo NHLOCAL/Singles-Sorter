@@ -5,7 +5,21 @@ from pathlib import Path
 
 METRICS = (Path(__file__).with_name('layout_metrics.js')).read_text(encoding='utf-8')
 
+def assert_editor_actions(metrics):
+    if metrics['dialogs']:
+        assert metrics['backgroundLocked'], metrics
+    for dialog in metrics['dialogs']:
+        if not dialog['editor']:
+            continue
+        assert dialog['scrollHeight'] <= dialog['rect']['height'] + 1, dialog
+        for action in dialog['actions']:
+            box=action['rect']
+            assert box['height'] > 0, action
+            assert box['y'] >= dialog['rect']['y'] and box['bottom'] <= dialog['rect']['bottom'], action
+            assert 0 <= box['y'] and box['bottom'] <= metrics['innerHeight'], action
+
 def assert_layout(metrics, require_bounded=True):
+    assert_editor_actions(metrics)
     if require_bounded:
         assert not metrics['reflow'], metrics
         assert metrics['chrome']['header']['height'] <= 56, metrics
@@ -90,7 +104,11 @@ def check_phone_layout(command, script, capture, output, label):
                 for control in dialog['controls']:
                     box=control['rect']
                     assert box['x'] >= bounds['x']-1 and box['right'] <= bounds['right']+1,control
-                    assert box['bottom']-bounds['y']+dialog['scrollTop'] <= dialog['scrollHeight']+2,control
+                    scroll=control['scrollParent']
+                    if scroll:
+                        assert box['bottom']-scroll['rect']['y']+scroll['scrollTop'] <= scroll['scrollHeight']+2,control
+                    else:
+                        assert box['bottom']-bounds['y']+dialog['scrollTop'] <= dialog['scrollHeight']+2,control
                     if control['tag'] in ['BUTTON','SELECT'] or control['tag']=='INPUT' and control['type'] not in ['checkbox','radio']:
                         assert box['height'] >= 48,control
             receipts.append(metrics);capture(f'{label}-{width}px')

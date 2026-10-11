@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 import threading
 from playwright.sync_api import sync_playwright, expect
-from desktop_layout import METRICS, assert_layout
+from desktop_layout import METRICS, assert_layout, assert_editor_actions
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = Path(os.environ.get('SINGLES_UI_EVIDENCE', str(ROOT / 'test-results')))
@@ -198,6 +198,28 @@ try:
         page.locator('#import-encoding').select_option('Windows1255')
         page.locator('#decode-import').click()
         expect(page.locator('#import-rows .list-row')).to_have_count(50)
+        for width in [1000,360,390]:
+            page.set_viewport_size({'width':width,'height':650 if width==1000 else 800})
+            page.wait_for_timeout(150)
+            assert_editor_actions(page.evaluate('() => {'+METRICS+'}'))
+            background_y=page.evaluate('window.scrollY')
+            page.mouse.move(1,400)
+            page.mouse.wheel(0,600)
+            page.wait_for_timeout(100)
+            assert page.evaluate('window.scrollY')==background_y
+            page.locator('#import-alias-49').focus()
+            assert_editor_actions(page.evaluate('() => {'+METRICS+'}'))
+            assert page.locator('#import-alias-49').evaluate('(el)=>{const r=el.getBoundingClientRect();const footer=el.closest("dialog").querySelector(".editor-footer").getBoundingClientRect();return r.top>=0&&r.bottom<=footer.top}')
+        page.set_viewport_size({'width':1000,'height':650})
+        page.evaluate("document.documentElement.style.fontSize='200%';window.dispatchEvent(new Event('resize'))")
+        page.wait_for_timeout(150)
+        assert_editor_actions(page.evaluate('() => {'+METRICS+'}'))
+        page.locator('#import-alias-0').focus()
+        page.locator('#import-alias-49').focus()
+        assert page.locator('#import-alias-49').evaluate('(el)=>{const r=el.getBoundingClientRect();return r.top>=0&&r.bottom<=el.closest("dialog").querySelector(".editor-footer").getBoundingClientRect().top}')
+        page.evaluate("document.documentElement.style.fontSize='';window.dispatchEvent(new Event('resize'))")
+        page.wait_for_timeout(150)
+
         page.locator('#import-alias-0').fill('עריכה שנשמרת בטיוטה')
         page.locator('[data-import-delete="1"]').click()
         expect(page.locator('#import-alias-2')).to_be_focused()

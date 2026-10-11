@@ -35,3 +35,17 @@ main{display:flex;flex-direction:column;gap:16px;align-items:stretch}.workspace{
 #row-title{min-width:0;overflow-wrap:anywhere}#import-filename{overflow-wrap:anywhere;unicode-bidi:isolate}
 
 @media(max-width:740px){.source-path,.list-row input,dialog select,dialog summary,#details>summary{min-height:48px}dialog summary,#details>summary{display:flex;align-items:center}}
+
+/* Editor commands remain reachable while ordered draft rows scroll independently. */
+html:has(dialog[open]),body:has(dialog[open]){overflow:hidden;overscroll-behavior:none}
+.editor-dialog[open]{display:flex;flex-direction:column;max-height:calc(100dvh - 32px);overflow:visible;padding:16px 20px}
+.editor-dialog .dialog-heading{flex:none;gap:8px;margin-bottom:10px}.editor-dialog .dialog-heading h2{flex:1}.editor-dialog .dialog-heading .help-badge{order:1}.editor-dialog .dialog-heading .icon-button{order:2}
+.editor-content{display:flex;flex-direction:column;min-height:0}.editor-config{flex:none}.editor-config:empty{display:none}.editor-config>p:empty{display:none}
+.editor-row-scroll{min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:3px}
+.editor-columns{display:grid;grid-template-columns:32px minmax(0,1fr) minmax(0,1fr) 76px;gap:10px;padding:6px 0;color:var(--muted);font-size:.9286rem;position:sticky;top:-3px;background:white;z-index:1}
+.editor-dialog .list-row{grid-template-columns:32px minmax(0,1fr) minmax(0,1fr) 76px;padding:6px 0}.editor-dialog .list-row input{margin-top:0}.editor-cell-label{display:none}.editor-dialog .list-row>button{width:76px}.editor-dialog .list-index{line-height:38px}
+.editor-footer{flex:none;padding-top:10px;border-top:1px solid var(--line);background:white}.editor-footer .list-pagination{margin-top:0}.editor-footer .dialog-actions{margin-top:8px}.editor-dialog #import-filename{margin-bottom:8px}.editor-dialog #import-summary{margin:8px 0}.editor-dialog #decode-import{margin-block:6px}.editor-dialog .error{margin-bottom:6px}
+@media(max-width:740px){.editor-dialog[open]{max-height:calc(100dvh - 24px);padding:12px}.editor-columns{display:none}.editor-cell-label{display:inline}.editor-dialog .list-row{grid-template-columns:24px minmax(0,1fr) 48px;gap:6px;padding:8px 0}.editor-dialog .list-row>button{width:48px}.editor-dialog .list-row input{margin-top:4px}.editor-footer .dialog-actions{flex-wrap:wrap}.editor-footer .dialog-actions button{padding-inline:8px}.editor-dialog .dialog-heading h2{min-width:0;overflow-wrap:anywhere}.editor-dialog .list-index{line-height:48px}}
+/* On very short or enlarged-text windows scroll all middle content, never the actions. */
+@media(max-height:600px){.editor-content{overflow:auto;overscroll-behavior:contain}.editor-row-scroll{overflow:visible;flex:none}.editor-columns{position:static}}
+#app.reflow .editor-content{overflow:auto;overscroll-behavior:contain}#app.reflow .editor-row-scroll{overflow:visible;flex:none}#app.reflow .editor-columns{position:static}

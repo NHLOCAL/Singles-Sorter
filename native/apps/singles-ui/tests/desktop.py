@@ -20,7 +20,7 @@ from desktop_diagnostics import snapshot, startup_probe, owned_processes, write_
 from windows_integrity import process_security, require_medium
 from native_picker import interact_with_owned_picker
 from native_fixtures import write_import_csv
-from desktop_layout import check_native_layout, capture_platform_fonts, check_phone_layout
+from desktop_layout import check_native_layout, capture_platform_fonts, check_phone_layout, assert_editor_actions, METRICS
 
 ROOT = Path(__file__).resolve().parents[1]
 if os.name != 'nt' or os.environ.get('GITHUB_ACTIONS') != 'true':
@@ -186,6 +186,7 @@ try:
         folder_id = alias_id.replace('alias','folder')
         fill('#'+alias_id,'אמן בדיקת ממשק'); fill('#'+folder_id,'תיקיית בדיקה')
         click('#list-save'); wait(lambda: text('#list-notice') == 'נשמר')
+        assert_editor_actions(script(METRICS))
         capture('05-native-personal-list')
         check_phone_layout(command,script,capture,OUTPUT,'05-native-personal-list')
         click('#list-cancel')
@@ -200,6 +201,7 @@ try:
         fill('#import-folder-2','תיקייה ערוכה')
         click('[data-import-delete="3"]')
         assert '3 שורות לייבוא' in text('#import-summary')
+        assert_editor_actions(script(METRICS))
         capture('06-native-import-preview')
         check_phone_layout(command,script,capture,OUTPUT,'06-native-import-preview')
         click('#confirm-import')
