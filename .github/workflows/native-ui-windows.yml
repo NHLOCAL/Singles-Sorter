@@ -343,7 +343,7 @@ jobs:
           python ../../packaging/windows-desktop-preview/package_desktop.py build --binary src-tauri/target/release/singles-sorter-preview.exe --bundle "$out/bundle" --featureoff-report test-results/native-windows/feature-off/acceptance.json --featureoff-binary "$out/feature-off/singles-sorter-preview.exe" --pcre2-receipt "$out/pcre2/build-receipt.json" --build-info "$out/native-build-info.txt" --dumpbin-report "$out/dumpbin-dependents.txt" --ci-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" --output "$out/windows-desktop-preview"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Exercise staged original-AI desktop and actual selected Copy Move
+      - name: Exercise staged original-AI desktop and actual selected Copy Move and FixNames
         env:
           SINGLES_DESKTOP_AI_EXPECTED: 'on'
           SINGLES_DESKTOP_APPLY_EXPECTED: 'on'
@@ -359,7 +359,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Expand-Archive -LiteralPath ../../target/desktop-original/singles-sorter-original-ai-windows-x64-selected-desktop.zip -DestinationPath '../../target/desktop-original/תצוגה חדשה extracted'
 
-      - name: Exercise extracted original-AI desktop and actual selected Copy Move
+      - name: Exercise extracted original-AI desktop and actual selected Copy Move and FixNames
         env:
           SINGLES_DESKTOP_AI_EXPECTED: 'on'
           SINGLES_DESKTOP_APPLY_EXPECTED: 'on'

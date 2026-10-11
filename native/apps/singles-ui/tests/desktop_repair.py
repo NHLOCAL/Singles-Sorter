@@ -1,0 +1,131 @@
+"""Actual source-only FixNames UI acceptance on owned generated MP3 fixtures.
+
+The independent parser checks physical ID3 fields, media offsets, unknown frames,
+and retained original bytes. It is deliberately not a general-purpose tag reader.
+"""
+import hashlib
+import json
+from pathlib import Path
+
+FIELDS = {b'TPE1': ('àáâ', 'אבג'), b'TPE2': ('äåæ', 'הוז'),
+          b'TIT2': ('çèé', 'חטי'), b'TALB': ('ëìî', 'כלמ'), b'TCON': ('ðñò', 'נסע')}
+PRIVATE = b'owned-fixture-owner\x00opaque\x00\xff\x10payload'
+CHECKS = {'actual-fix-id3v23', 'actual-fix-id3v24', 'fix-original-backup-retained',
+          'fix-media-and-unknown-frame-preserved', 'fix-source-only-confirmation',
+          'fix-unsupported-tags-partial', 'fix-stale-plan-no-effects'}
+
+
+def sync_size(number):
+    assert 0 <= number < 1 << 28
+    return bytes((number >> 21, (number >> 14) & 127, (number >> 7) & 127, number & 127))
+
+
+def read_size(data):
+    assert len(data) == 4 and all(byte < 128 for byte in data)
+    return sum(byte << shift for byte, shift in zip(data, (21, 14, 7, 0)))
+
+
+def generated_mp3(audio, version, unsupported=False):
+    assert version in (3, 4) and audio[:2] == b'\xff\xfb'
+    body = bytearray()
+    frames = []
+    for name, (original, _) in FIELDS.items():
+        payload = b'\x00' + original.encode('latin1') if unsupported else (
+            b'\x01' + original.encode('utf-16') if version == 3 else b'\x03' + original.encode('utf-8'))
+        frames.append((name, payload))
+    frames.append((b'PRIV', PRIVATE))
+    for name, payload in frames:
+        body.extend(name + (sync_size(len(payload)) if version == 4 else len(payload).to_bytes(4, 'big')) + b'\x00\x00' + payload)
+    if not unsupported:
+        body.extend(bytes(256))
+    return b'ID3' + bytes((version, 0, 0)) + sync_size(len(body)) + body + audio
+
+
+def inspect_mp3(data):
+    assert data[:3] == b'ID3' and data[3] in (3, 4) and data[4:6] == b'\x00\x00'
+    end = 10 + read_size(data[6:10]); at = 10; fields = {}; raw = {}
+    assert end <= len(data)
+    while at < end and data[at]:
+        name = data[at:at + 4]
+        size = read_size(data[at + 4:at + 8]) if data[3] == 4 else int.from_bytes(data[at + 4:at + 8], 'big')
+        assert at + 10 + size <= end and data[at + 8:at + 10] == b'\x00\x00' and name not in raw
+        payload = data[at + 10:at + 10 + size]; raw[name] = data[at:at + 10 + size]
+        if name in FIELDS:
+            encoding = {0: 'latin1', 1: 'utf-16', 2: 'utf-16-be', 3: 'utf-8'}[payload[0]]
+            fields[name] = payload[1:].decode(encoding).rstrip('\x00')
+        at += 10 + size
+    assert not any(data[at:end]) and set(fields) == set(FIELDS)
+    return fields, raw, end, data[end:]
+
+
+def digest(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def exercise_repair(script, click, fill, wait, capture, root, output, audio_path):
+    root = Path(root); root.mkdir()  # Never reuse another test's tree.
+    audio = Path(audio_path).read_bytes()
+    receipts = []
+
+    def setup(source):
+        if script("return document.querySelector('#app').dataset.view==='results'"):
+            click('#back-setup')
+            wait(lambda: script("return document.querySelector('#app').dataset.view==='setup'"))
+        fill('#source', str(source)); fill('#target', '')
+        click('#advanced'); click('#duet-first')
+        wait(lambda: script("return !document.querySelector('#duet-first').disabled"))
+        script("document.querySelector('#ai-profile').value='Disabled';document.querySelector('#ai-profile').dispatchEvent(new Event('change',{bubbles:true}));")
+        click('#advanced-dialog .close-dialog'); click('#fix')
+        wait(lambda: script("return document.querySelector('#app').dataset.view==='results' && !document.querySelector('#back-setup').disabled"), timeout=120)
+        assert script("return !document.querySelector('#review-apply').hidden && !document.querySelector('#review-apply').disabled"), 'Source-only repair was not authorized'
+        click('#review-apply')
+        assert script("return document.querySelector('#apply-target-label').hidden")
+        assert script("return document.querySelector('#apply-source').value") == str(source)
+        assert 'תגיות' in script("return document.querySelector('#apply-description').textContent")
+
+    for version, unsupported in ((3, False), (4, False), (4, True)):
+        label = 'unsupported' if unsupported else f'id3v2{version}'
+        source = root / label; source.mkdir()
+        path = source / f'repair_input_{version}.mp3'
+        expected_name = f'repair input {version}.mp3'
+        before = generated_mp3(audio, version, unsupported); path.write_bytes(before)
+        fields, raw, offset, payload = inspect_mp3(before)
+        assert fields == {key: value[0] for key, value in FIELDS.items()}
+        setup(source)
+        capture('fix-review-' + label)
+        click('#apply-back')
+        assert list(source.iterdir()) == [path] and path.read_bytes() == before
+        click('#review-apply'); click('#confirm-apply')
+        expected_title = 'הביצוע הושלם חלקית' if unsupported else 'הביצוע הושלם'
+        wait(lambda: script("return document.querySelector('#execution-title').textContent") == expected_title, timeout=120)
+        assert script("return document.querySelector('#review-apply').hidden")
+        fixed = source / expected_name
+        assert fixed.is_file() and not path.exists()
+        backups = list(source.glob('*.backup'))
+        after = fixed.read_bytes()
+        summary = script("return document.querySelector('#execution-summary').textContent")
+        assert 'שמות תוקנו' in summary and 'הועברו' not in summary and 'עותקים' not in summary
+        if unsupported:
+            assert after == before and not backups
+            assert 'תגיות שלא תוקנו' in summary
+            assert 'בוצע חלקית' in script("return document.querySelector('#rows').textContent")
+        else:
+            assert len(backups) == 1 and backups[0].read_bytes() == before
+            changed, new_raw, new_offset, new_payload = inspect_mp3(after)
+            assert changed == {key: value[1] for key, value in FIELDS.items()}
+            assert new_offset == offset and new_payload == payload
+            assert new_raw[b'PRIV'] == raw[b'PRIV']
+        capture('fix-result-' + label)
+        receipts.append(dict(case=label, original_sha256=digest(before), current_sha256=digest(after),
+                             backup_sha256=[digest(backup.read_bytes()) for backup in backups],
+                             renamed=True, tags_repaired=not unsupported, media_sha256=digest(payload), ipc_mocked=False))
+    source = root / 'stale'; source.mkdir(); path = source / 'stale_input.mp3'
+    path.write_bytes(generated_mp3(audio, 4)); setup(source)
+    path.write_bytes(path.read_bytes() + b'owned-stale-change'); changed = path.read_bytes()
+    click('#confirm-apply')
+    wait(lambda: script("return !document.querySelector('#back-setup').disabled && !document.querySelector('#error').hidden"), timeout=120)
+    assert list(source.iterdir()) == [path] and path.read_bytes() == changed
+    capture('fix-stale-plan-rejected')
+    receipts.append(dict(case='stale', source_unchanged=True, ipc_mocked=False))
+    (Path(output) / 'repair-execution.json').write_text(json.dumps(dict(status='passed', checks=sorted(CHECKS), cases=receipts), ensure_ascii=False, indent=2), encoding='utf-8')
+    return sorted(CHECKS)

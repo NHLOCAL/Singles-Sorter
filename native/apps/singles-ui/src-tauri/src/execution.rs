@@ -2,6 +2,9 @@
 //! paths, settings, operation lists, resource hashes, or serialized authority.
 use super::*;
 use sorter_core::discovery::{ReadInput, StorageError};
+#[cfg(all(windows, feature = "selected-windows-execution"))]
+#[path = "execution_repair.rs"]
+mod repair;
 
 pub(super) struct ReadAdapter(pub Box<dyn ReadStorage>);
 impl ReadStorage for ReadAdapter {
@@ -31,13 +34,33 @@ pub struct ApplyReadiness {
     pub operation_count: usize,
     pub copy_mode: bool,
     pub source: String,
-    pub target: String,
+    pub target: Option<String>,
+    pub mode: JobMode,
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct ExecutionItem {
     pub operation: usize,
     pub status: &'static str,
     pub detail: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub repair: Option<RepairOutcome>,
+}
+#[derive(Clone, Debug, Serialize)]
+pub struct RepairOutcome {
+    pub renamed: bool,
+    pub repaired: bool,
+    pub unchanged: bool,
+}
+#[derive(Clone, Debug, Serialize)]
+pub struct RepairSummary {
+    pub total_files: usize,
+    pub processed_files: usize,
+    pub renamed_files: usize,
+    pub repaired_files: usize,
+    pub unchanged_files: usize,
+    pub unsupported_files: usize,
+    pub failed_files: usize,
+    pub retained_backup_bytes: u64,
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct ExecutionResult {
@@ -49,6 +72,8 @@ pub struct ExecutionResult {
     pub recovery_operations: usize,
     pub cancelled_operations: usize,
     pub items: Vec<ExecutionItem>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub repair: Option<RepairSummary>,
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct ExecutionSnapshot {
@@ -144,15 +169,28 @@ mod selected {
         binding::{ExecutionScope, Resources, prepare_scope},
         results::{ItemStatus, JobResult, JobStatus},
         windows_job::{SelectedWindowsJob, supported_plan},
+        windows_repair::{RepairScope, prepare_repair_scope, supported_repair_plan},
     };
     use sorter_io::desktop::windows_mutation::{WindowsMutationStorage, WindowsSelectedRootGrant};
     #[derive(Clone)]
     pub(crate) struct PreparedSelection {
         source: PathBuf,
-        target: PathBuf,
         personal: Vec<u8>,
         ai: RequestedAi,
-        scope: ExecutionScope,
+        scope: PreparedScope,
+    }
+    #[derive(Clone)]
+    enum PreparedScope {
+        Sort { target: PathBuf, scope: ExecutionScope },
+        Repair(RepairScope),
+    }
+    impl PreparedSelection {
+        fn resources(&self) -> &Resources {
+            match &self.scope {
+                PreparedScope::Sort { scope, .. } => &scope.resources,
+                PreparedScope::Repair(scope) => scope.resources(),
+            }
+        }
     }
     fn digest(value: &[u8]) -> String {
         format!("{:x}", Sha256::digest(value))
@@ -212,12 +250,21 @@ mod selected {
         storage: &mut dyn ReadStorage,
         cancellation: &Cancellation,
     ) -> Result<(Option<ApplyReadiness>, Option<PreparedSelection>)> {
-        let Some(target) = target else {
-            return Ok((None, None));
-        };
         let inspected = (|| {
-            supported_plan(plan).map_err(storage_error)?;
             let resources = evidence(plan)?;
+            if plan.request.mode == JobMode::FixNames {
+                supported_repair_plan(plan).map_err(storage_error)?;
+                let scope = prepare_repair_scope(plan, storage, &resources, &cancellation.cancelled)
+                    .map_err(storage_error)?;
+                return Ok(PreparedSelection {
+                    source: source.path.clone(),
+                    personal: personal.unwrap_or_default().to_vec(),
+                    ai,
+                    scope: PreparedScope::Repair(scope),
+                });
+            }
+            let target = target.ok_or_else(|| HostError::new("TARGET_REQUIRED", "בחר תיקיית יעד למיון."))?;
+            supported_plan(plan).map_err(storage_error)?;
             let scope = prepare_scope(plan, storage, &resources, &cancellation.cancelled)
                 .map_err(storage_error)?;
             if !plan.request.settings.copy_mode
@@ -230,10 +277,9 @@ mod selected {
             }
             Ok(PreparedSelection {
                 source: source.path.clone(),
-                target: target.path.clone(),
                 personal: personal.unwrap_or_default().to_vec(),
                 ai,
-                scope,
+                scope: PreparedScope::Sort { target: target.path.clone(), scope },
             })
         })();
         if cancellation.is_cancelled() {
@@ -260,7 +306,8 @@ mod selected {
                 operation_count: plan.operations.len(),
                 copy_mode: plan.request.settings.copy_mode,
                 source: source.selection.display_name.clone(),
-                target: target.selection.display_name.clone(),
+                target: target.map(|root| root.selection.display_name.clone()),
+                mode: plan.request.mode,
             }),
             selected,
         ))
@@ -355,7 +402,7 @@ mod selected {
                 job_id: returned_id,
             })
         }
-        fn execution_error(&self, id: &str, status: &'static str, error: &str) {
+        pub(super) fn execution_error(&self, id: &str, status: &'static str, error: &str) {
             if let Ok(mut inner) = self.lock() {
                 if let Some(e) = inner
                     .job
@@ -398,14 +445,21 @@ mod selected {
                 })
                 .collect::<Vec<_>>();
             ids.extend(model_resources);
-            if ids != selected.scope.resources.resource_ids
-                || recognition.profile() != selected.scope.resources.ai_profile
+            if ids != selected.resources().resource_ids
+                || recognition.profile() != selected.resources().ai_profile
             {
                 return Err(HostError::new(
                     "RESOURCE_CHANGED",
                     "Resources changed; inspect a fresh plan",
                 ));
             }
+            let (target, scope) = match selected.scope {
+                PreparedScope::Repair(scope) => {
+                    return self.execute_repair(id, plan, &selected.source, directory,
+                        &scope, recognition.as_mut(), cancellation);
+                }
+                PreparedScope::Sort { target, scope } => (target, scope),
+            };
             // Startup profile access already established this application directory.
             // Never create a path selected relative to a music tree here.
             let journal = inspect_root(&directory)?;
@@ -413,8 +467,8 @@ mod selected {
                 WindowsSelectedRootGrant::new(path, identity).map_err(storage_error)
             };
             let roots = WindowsMutationStorage::for_selected_roots(
-                grant(selected.source.clone(), selected.scope.source_root.clone())?,
-                grant(selected.target.clone(), selected.scope.target_root.clone())?,
+                grant(selected.source.clone(), scope.source_root.clone())?,
+                grant(target.clone(), scope.target_root.clone())?,
                 grant(
                     directory.clone(),
                     journal.identity.ok_or_else(|| {
@@ -425,7 +479,7 @@ mod selected {
             .map_err(storage_error)?;
             let mut reads = sorter_executor::windows_copy::WindowsPlanningStorage::for_preview(
                 &selected.source,
-                &selected.target,
+                &target,
             )
             .map_err(storage_error)?;
             let mut metadata = StorageMetadataProvider {
@@ -437,13 +491,13 @@ mod selected {
                 plan,
                 &mut metadata,
                 recognition.as_mut(),
-                &selected.scope.resources,
-                &selected.scope,
+                &scope.resources,
+                &scope,
             )
             .map_err(storage_error)?;
             let journal_path = directory.to_string_lossy().into_owned();
             let recovery_scope = sorter_executor::binding::RecoveryScope {
-                original_scope: selected.scope.clone(),
+                original_scope: scope.clone(),
                 inspected_binding_sha256: job.binding_sha256().map_err(storage_error)?,
             };
             if let Ok(mut inner) = self.lock() {
@@ -550,6 +604,7 @@ mod selected {
             blocked_operations: result.blocked_operations,
             recovery_operations: result.recovery_operations,
             cancelled_operations: result.cancelled_operations,
+            repair: None,
             items: result
                 .items
                 .into_iter()
@@ -564,6 +619,7 @@ mod selected {
                         ItemStatus::NeedsRecovery => "needs_recovery",
                     },
                     detail: i.detail,
+                    repair: None,
                 })
                 .collect(),
         }

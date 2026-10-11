@@ -27,10 +27,15 @@ class DesktopPackageTests(unittest.TestCase):
         self.report=self.root/'report.json'
         self.data={'medium_integrity_verified':True,'status':'passed','platform':'windows-native-tauri','ipc_mocked':False,'ai_mode':'on',
                    'binary_sha256':p.digest(self.binary),'package_sha256sums_sha256':p.digest(self.pkg/'SHA256SUMS.txt'),
-                   'original_ai_checks':sorted(p.REQUIRED_CHECKS),'apply_mode':'on','apply_checks':sorted(p.APPLY_CHECKS)}
+                   'original_ai_checks':sorted(p.REQUIRED_CHECKS),'apply_mode':'on','apply_checks':sorted(p.APPLY_CHECKS),'repair_checks':sorted(p.REPAIR_CHECKS)}
         self.save()
     def save(self): self.report.write_text(json.dumps(self.data),encoding='utf-8')
     def test_exact_acceptance(self): p.report_gate(self.report,self.binary,'on',self.pkg)
+    def test_repair_proof_is_mandatory_and_complete(self):
+        for missing in p.REPAIR_CHECKS:
+            self.data['repair_checks'] = sorted(p.REPAIR_CHECKS - {missing});self.save()
+            with self.assertRaisesRegex(ValueError, 'actual FixNames'):
+                p.report_gate(self.report, self.binary, 'on', self.pkg)
     def test_off_acceptance(self):
         self.data['ai_mode']='off';self.save();p.report_gate(self.report,self.binary,'off')
     def test_bad_reports(self):

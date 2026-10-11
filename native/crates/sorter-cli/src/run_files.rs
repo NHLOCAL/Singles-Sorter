@@ -112,13 +112,14 @@ fn execute() -> Result<(), Failure> {
     use sha2::{Digest, Sha256};
     use sorter_core::{
         discovery::{ObjectIdentity, ReadStorage},
-        job_plan::AiProfile,
+        job_plan::{AiProfile, JobMode},
     };
     use sorter_executor::{
-        binding::{Resources, prepare_scope},
+        binding::{ExecutionScope, Resources, prepare_scope},
         results::{ItemStatus, JobStatus},
         windows_copy::WindowsPlanningStorage,
         windows_job::{SelectedWindowsJob, supported_plan},
+        windows_repair::{RepairScope, SelectedWindowsRepairJob, RepairJobStatus, prepare_repair_scope, supported_repair_plan},
     };
     use sorter_io::{
         desktop::{
@@ -172,14 +173,17 @@ fn execute() -> Result<(), Failure> {
         .plan
         .ok_or_else(|| Failure::new(1, "PLAN_MISSING", "No complete plan was produced"))?;
     let fail = |e: &dyn std::fmt::Display| Failure::new(1, "EXECUTION_REFUSED", e.to_string());
-    supported_plan(&plan).map_err(|e| fail(&e))?;
-    let target = request
-        .preview
-        .target
-        .as_ref()
-        .ok_or_else(|| Failure::new(2, "TARGET_REQUIRED", "Execution requires a target"))?;
-    let mut reads = WindowsPlanningStorage::for_preview(&request.preview.source, target)
-        .map_err(|e| fail(&e))?;
+    let target = request.preview.target.as_ref();
+    let repairing = plan.request.mode == JobMode::FixNames;
+    let mut reads = if repairing {
+        supported_repair_plan(&plan).map_err(|e| fail(&e))?;
+        WindowsPlanningStorage::for_repair_preview(&request.preview.source)
+    } else {
+        supported_plan(&plan).map_err(|e| fail(&e))?;
+        WindowsPlanningStorage::for_preview(&request.preview.source, target.ok_or_else(|| {
+            Failure::new(2, "TARGET_REQUIRED", "Sort execution requires a target")
+        })?)
+    }.map_err(|e| fail(&e))?;
     let digest = |bytes: &[u8]| format!("{:x}", Sha256::digest(bytes));
     let resource_hashes = plan
         .request
@@ -211,14 +215,20 @@ fn execute() -> Result<(), Failure> {
         model_hash: (!matches!(plan.request.ai_profile, AiProfile::Disabled))
             .then(|| digest(&serde_json::to_vec(&models).expect("string IDs"))),
     };
-    let scope = prepare_scope(&plan, &mut reads, &resources, &cancel).map_err(|e| fail(&e))?;
-    if !plan.request.settings.copy_mode
-        && !matches!((&scope.source_root,&scope.target_root),(ObjectIdentity::Windows {volume:a,..},ObjectIdentity::Windows {volume:b,..}) if a==b)
-    {
-        return Err(Failure::unsupported(
-            "Cross-volume Move is unsupported; select Copy and inspect a fresh plan",
-        ));
-    }
+    enum Scope { Sort(ExecutionScope), Repair(RepairScope) }
+    let scope = if repairing {
+        Scope::Repair(prepare_repair_scope(&plan, &mut reads, &resources, &cancel).map_err(|e| fail(&e))?)
+    } else {
+        let scope = prepare_scope(&plan, &mut reads, &resources, &cancel).map_err(|e| fail(&e))?;
+        if !plan.request.settings.copy_mode
+            && !matches!((&scope.source_root,&scope.target_root),(ObjectIdentity::Windows {volume:a,..},ObjectIdentity::Windows {volume:b,..}) if a==b)
+        {
+            return Err(Failure::unsupported(
+                "Cross-volume Move is unsupported; select Copy and inspect a fresh plan",
+            ));
+        }
+        Scope::Sort(scope)
+    };
     event(
         "planned",
         json!({"plan":plan,"inference_executed":planned.inference_executed,"apply_eligible":true,"source":request.preview.source,"target":target,"journal_directory":request.journal_directory,"confirmation":{"action":"apply","plan_id":plan.binding_sha256}}),
@@ -275,16 +285,54 @@ fn execute() -> Result<(), Failure> {
         .ok_or_else(|| Failure::new(1, "JOURNAL_UNAVAILABLE", "Journal identity missing"))?;
     let grant =
         |path, identity| WindowsSelectedRootGrant::new(path, identity).map_err(|e| fail(&e));
-    let roots = WindowsMutationStorage::for_selected_roots(
-        grant(request.preview.source.clone(), scope.source_root.clone())?,
-        grant(target.clone(), scope.target_root.clone())?,
-        grant(request.journal_directory.clone(), journal_identity)?,
-    )
-    .map_err(|e| fail(&e))?;
     let mut metadata = StorageMetadataProvider {
         storage: &mut reads,
         reader: MetadataReader,
     };
+    let scope = match scope {
+        Scope::Repair(scope) => {
+            let roots = WindowsMutationStorage::for_selected_repair_roots(
+                grant(request.preview.source.clone(), scope.source_root().clone())?,
+                grant(request.journal_directory.clone(), journal_identity)?,
+            ).map_err(|e| fail(&e))?;
+            let mut job = SelectedWindowsRepairJob::prepare(
+                roots, &plan, &mut metadata, recognition.as_mut(), &resources, &scope, &cancel,
+            ).map_err(|e| fail(&e))?;
+            let native_id = job.job_id().to_owned();
+            event("started", json!({"job_id":native_id,"plan_id":plan.binding_sha256,"mode":"FixNames","journal_directory":request.journal_directory}))?;
+            let mut output_failed = false;
+            let result = job.run(&cancel, &mut |progress| {
+                if event("progress", json!({"job_id":native_id,"operation":progress.operation,"total_files":progress.total_files,"phase":progress.phase})).is_err() {
+                    output_failed = true;
+                    cancel.store(true, Ordering::Release);
+                }
+            });
+            let recovery = if job.journal_locations().is_empty() { None } else {
+                job.inspect_recovery(&cancel).ok()
+            };
+            match result {
+                Ok(result) => {
+                    let complete = result.status == RepairJobStatus::Complete;
+                    event("result", json!({"job_id":native_id,"mode":"FixNames","status":result.status,"repair":result,"recovery":recovery,"journal_directory":request.journal_directory,"invalid_control":invalid_control.load(Ordering::Acquire)}))?;
+                    if output_failed || invalid_control.load(Ordering::Acquire) || !complete {
+                        return Err(Failure::new(1, "EXECUTION_INCOMPLETE", "Inspect actual repair outcomes and retained originals before retrying"));
+                    }
+                    return Ok(());
+                }
+                Err(error) => {
+                    event("result", json!({"job_id":native_id,"mode":"FixNames","status":if job.journal_locations().is_empty() && cancel.load(Ordering::Acquire) {"cancelled"} else {"needs_recovery"},"error":error.to_string(),"recovery":recovery,"journal_directory":request.journal_directory}))?;
+                    return Err(Failure::new(1, "EXECUTION_INCOMPLETE", "Inspect the repair journal; no automatic replay or backup deletion was attempted"));
+                }
+            }
+        }
+        Scope::Sort(scope) => scope,
+    };
+    let roots = WindowsMutationStorage::for_selected_roots(
+        grant(request.preview.source.clone(), scope.source_root.clone())?,
+        grant(target.ok_or_else(|| Failure::new(2, "TARGET_REQUIRED", "Sort requires target"))?.clone(), scope.target_root.clone())?,
+        grant(request.journal_directory.clone(), journal_identity)?,
+    )
+    .map_err(|e| fail(&e))?;
     let mut job = SelectedWindowsJob::prepare(
         roots,
         &plan,

@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,DEVELOPER_PREFERENCE} from '../src/result-presentation';
+import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,DEVELOPER_PREFERENCE} from '../src/result-presentation';
 import type {ExecutionSnapshot,PlanRow,ExecutionItem} from '../src/contracts';
 const row:PlanRow={id:'file',source:'song.mp3',artist:'אמן',kind:'Single',destination:'אמן/song.mp3',reason:'raw_trace(hash)',blockers:[],operation_ids:[0]};
 const item=(status:ExecutionItem['status']):ExecutionItem=>({operation:0,status,detail:'raw filesystem evidence'});
@@ -35,6 +35,20 @@ describe('ordinary result presentation',()=>{
   const execution:Pick<ExecutionSnapshot,'status'|'result'>={status:'partial',result:{source_items:1,committed_destinations:2,moved_sources:0,failed_operations:1,blocked_operations:0,cancelled_operations:0,recovery_operations:0,items:[]}};
   expect(simpleExecutionSummary(execution,true)).toBe('נוצרו 2 עותקים · 1 לא הושלמו');
   expect(simpleExecutionSummary(execution,false)).toContain('0 קבצים הועברו · חלק מקובצי המקור נשמרו');
+ });
+ it('reports actual Fix outcomes without copy or move claims',()=>{
+  const fix={...row,kind:'FixNames'};
+  const renamed={...item('complete'),repair:{renamed:true,repaired:false,unchanged:true}};
+  expect(simpleStatus(fix,[renamed],false)).toBe('תוקן');
+  expect(simpleStatus(fix,[{...renamed,repair:{renamed:false,repaired:false,unchanged:true}}],false)).toBe('ללא שינוי');
+  const partial={...renamed,status:'unsupported_tags' as const};
+  expect(simpleStatus(fix,[partial],false)).toBe('בוצע חלקית');
+  expect(simpleRepairReason(partial)).toContain('שם הקובץ תוקן');
+  expect(simpleStatus(fix,[{...partial,repair:{renamed:false,repaired:false,unchanged:false}}],false)).toBe('לא הושלם');
+  const result={source_items:3,committed_destinations:0,moved_sources:0,failed_operations:0,blocked_operations:0,cancelled_operations:0,recovery_operations:0,items:[partial],repair:{total_files:3,processed_files:3,renamed_files:2,repaired_files:1,unchanged_files:1,unsupported_files:1,failed_files:0,retained_backup_bytes:128}};
+  const summary=simpleExecutionSummary({status:'partial',result},false);
+  expect(summary).toContain('2 שמות תוקנו');expect(summary).toContain('1 קבצים עם תגיות מתוקנות');expect(summary).toContain('1 עם תגיות שלא תוקנו');
+  expect(summary).not.toContain('הועברו');expect(summary).not.toContain('עותקים');expect(summary).not.toContain('128');
  });
  it('does not claim zero effects from missing final counters or expose raw errors',()=>{
   expect(simpleExecutionSummary({status:'failed',result:null},false)).toContain('לא התקבל אישור');

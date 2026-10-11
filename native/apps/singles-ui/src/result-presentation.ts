@@ -5,13 +5,19 @@ export function readDeveloperMode(storage:Pick<Storage,'getItem'>):boolean{try{r
 export function saveDeveloperMode(storage:Pick<Storage,'setItem'>,enabled:boolean){try{storage.setItem(DEVELOPER_PREFERENCE,String(enabled));}catch{/* The current view still works when local storage is unavailable. */}}
 export function simpleStatus(row:PlanRow,items:ExecutionItem[],copy:boolean):string{
  if(items.length){
-  const completed=items.some(item=>item.status==='complete'||item.status==='source_retained');
+  const completed=items.some(item=>item.status==='complete'||item.status==='source_retained'||item.repair?.renamed||item.repair?.repaired);
   if(items.some(item=>item.status==='needs_recovery'))return 'נדרשת בדיקה';
+  if(items.some(item=>item.status==='unsupported_tags'||item.status==='metadata_failure'))return completed?'בוצע חלקית':'לא הושלם';
   if(items.some(item=>item.status==='failed'))return completed?'בוצע חלקית':'לא הושלם';
   if(items.some(item=>item.status==='cancelled'))return completed?'בוצע חלקית':'נעצר';
   if(items.some(item=>item.status==='blocked'))return completed?'בוצע חלקית':'לא בוצע';
   if(items.some(item=>item.status==='source_retained'))return 'הועתק; המקור נשמר';
-  return row.kind==='FixNames'?'תוקן':copy?'הועתק':'הועבר';
+  if(row.kind==='FixNames'){
+   if(items.some(item=>item.repair?.renamed||item.repair?.repaired))return 'תוקן';
+   if(items.every(item=>item.repair?.unchanged))return 'ללא שינוי';
+   return 'תוקן';
+  }
+  return copy?'הועתק':'הועבר';
  }
  if(row.kind==='ItemError'||row.blockers.includes('ALBUM_READ_ERROR'))return 'לא ניתן לבדוק';
  if(row.kind==='Vanished')return 'הקובץ לא נמצא';
@@ -19,6 +25,11 @@ export function simpleStatus(row:PlanRow,items:ExecutionItem[],copy:boolean):str
  if(row.kind==='FixNames')return 'לתיקון';
  if(!row.operation_ids?.length)return 'דולג';
  return copy?'להעתקה':'להעברה';
+}
+export function simpleRepairReason(item:ExecutionItem):string{
+ if(item.status==='unsupported_tags')return item.repair?.renamed?'שם הקובץ תוקן. תיקון התגיות בקובץ הזה עדיין אינו נתמך.':'תיקון התגיות בקובץ הזה עדיין אינו נתמך.';
+ if(item.status==='metadata_failure')return item.repair?.renamed?'שם הקובץ תוקן, אך לא ניתן היה לקרוא את התגיות.':'לא ניתן היה לקרוא את התגיות לתיקון.';
+ return '';
 }
 export function simpleReason(row:PlanRow):string{
  if(row.kind==='ItemError'||row.blockers.includes('ALBUM_READ_ERROR'))return 'לא ניתן לקרוא את הפריט. בדוק שהוא זמין ושהתוכנה מורשית לקרוא אותו.';
@@ -32,7 +43,14 @@ export function simpleExecutionSummary(execution:Pick<ExecutionSnapshot,'status'
  const result=execution.result;
  if(!result)return execution.status==='failed'?'לא התקבל אישור להשלמת הפעולה. בדוק את הקבצים לפני ניסיון נוסף.':execution.status==='needs_recovery'?'יש לבדוק את הקבצים לפני המשך העבודה.':'';
  const parts:string[]=[];
- if(copy)parts.push(`נוצרו ${result.committed_destinations.toLocaleString('he-IL')} עותקים`);
+ if(result.repair){
+  const repair=result.repair;
+  if(repair.renamed_files)parts.push(`${repair.renamed_files.toLocaleString('he-IL')} שמות תוקנו`);
+  if(repair.repaired_files)parts.push(`${repair.repaired_files.toLocaleString('he-IL')} קבצים עם תגיות מתוקנות`);
+  if(!repair.renamed_files&&!repair.repaired_files&&repair.unchanged_files)parts.push(`${repair.unchanged_files.toLocaleString('he-IL')} ללא שינוי`);
+  if(repair.unsupported_files)parts.push(`${repair.unsupported_files.toLocaleString('he-IL')} עם תגיות שלא תוקנו`);
+ }
+ else if(copy)parts.push(`נוצרו ${result.committed_destinations.toLocaleString('he-IL')} עותקים`);
  else{
   parts.push(`${result.moved_sources.toLocaleString('he-IL')} קבצים הועברו`);
   if(result.committed_destinations>result.moved_sources)parts.push('חלק מקובצי המקור נשמרו');

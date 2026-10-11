@@ -1,7 +1,7 @@
 import './styles.css';
 import {nativeHost,openFooterLink,openProjectLink} from './host';
 import {installAbout} from './about';
-import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError} from './result-presentation';
+import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason} from './result-presentation';
 import {kindLabel,reasonLabel,blockerLabel,warningPresentation,noticeLabel,sourceLabel} from './presentation';
 import {PAGE_SIZE,PreviewController} from './state';
 import type {Settings,ImportEncoding,Mode,PlanRow,ExecutionItem} from './contracts';
@@ -51,7 +51,7 @@ app.innerHTML=`
 </section>
 </main>
 <footer>להורדת סינגלים חינם · <button id="footer-link" class="footer-link">שיר בוט</button></footer>
-<dialog id="apply-dialog" aria-labelledby="apply-title"><div class="dialog-heading"><h2 id="apply-title">ביצוע התוכנית</h2><button id="apply-dismiss" class="icon-button" aria-label="חזור לתוכנית">×</button></div><p id="apply-description"></p><label class="detail-path-label">תיקית מקור<input id="apply-source" class="source-path" dir="ltr" readonly></label><label class="detail-path-label">תיקית יעד<input id="apply-target" class="source-path" dir="ltr" readonly></label><p class="hint">הקבצים והתוכנית ייבדקו מחדש לפני הביצוע. עצירה עשויה להשאיר פעולות שכבר הושלמו; התוצאה תציג מה בוצע בפועל.</p><div class="dialog-actions"><button id="confirm-apply" class="primary">אשר ביצוע</button><button id="apply-back" class="secondary">חזור לתוכנית</button></div></dialog>
+<dialog id="apply-dialog" aria-labelledby="apply-title"><div class="dialog-heading"><h2 id="apply-title">ביצוע התוכנית</h2><button id="apply-dismiss" class="icon-button" aria-label="חזור לתוכנית">×</button></div><p id="apply-description"></p><label class="detail-path-label">תיקית מקור<input id="apply-source" class="source-path" dir="ltr" readonly></label><label id="apply-target-label" class="detail-path-label">תיקית יעד<input id="apply-target" class="source-path" dir="ltr" readonly></label><p class="hint">הקבצים והתוכנית ייבדקו מחדש לפני הביצוע. עצירה עשויה להשאיר פעולות שכבר הושלמו; התוצאה תציג מה בוצע בפועל.</p><div class="dialog-actions"><button id="confirm-apply" class="primary">אשר ביצוע</button><button id="apply-back" class="secondary">חזור לתוכנית</button></div></dialog>
 <dialog id="row-dialog" class="wide-dialog" aria-labelledby="row-title"><div class="dialog-heading"><h2 id="row-title"></h2><button id="row-close" class="icon-button" aria-label="סגור פרטים">×</button></div><div id="row-content"></div></dialog>
 <dialog id="menu-dialog" aria-labelledby="menu-title"><div class="dialog-heading"><h2 id="menu-title">עזרה ומידע</h2><button class="close-dialog icon-button" aria-label="סגור">×</button></div><div class="menu-items" role="group" aria-label="נושאי מידע"><button data-help="help" aria-pressed="true" aria-controls="usage-content">איך משתמשים?</button><button data-help="about" aria-pressed="false" aria-controls="about-content">אודות התוכנה</button></div>
 <div id="help-content" class="help-content">
@@ -96,8 +96,11 @@ $('back-setup').addEventListener('click',backToSetup);
 $('review-apply').addEventListener('click',()=>{
  if(!controller.canApply)return;
  const readiness=controller.state.snapshot!.apply!;
- $('apply-description').textContent=controller.state.developerMode?`${readiness.copy_mode?'העתקת':'העברת'} ${readiness.operation_count.toLocaleString('he-IL')} פעולות לפי התוכנית שהוצגה.`:readiness.copy_mode?'העתקת הקבצים שברשימה. קובצי המקור יישארו במקומם.':'העברת הקבצים שברשימה אל תיקיית היעד.';
- $<HTMLInputElement>('apply-source').value=readiness.source;$<HTMLInputElement>('apply-target').value=readiness.target;
+ const repairing=readiness.mode==='FixNames';
+ $('apply-title').textContent=repairing?'תיקון שמות ותגיות':'ביצוע התוכנית';
+ $('apply-target-label').hidden=repairing;
+ $('apply-description').textContent=repairing?'תיקון שמות ותגיות בקבצים שברשימה. לפני החלפת תגיות נשמר עותק מקורי לצד הקובץ.':controller.state.developerMode?`${readiness.copy_mode?'העתקת':'העברת'} ${readiness.operation_count.toLocaleString('he-IL')} פעולות לפי התוכנית שהוצגה.`:readiness.copy_mode?'העתקת הקבצים שברשימה. קובצי המקור יישארו במקומם.':'העברת הקבצים שברשימה אל תיקיית היעד.';
+ $<HTMLInputElement>('apply-source').value=readiness.source;$<HTMLInputElement>('apply-target').value=readiness.target??'';
  openDialog('apply-dialog');$('apply-back').focus();
 });
 for(const id of ['apply-dismiss','apply-back'])$(id).addEventListener('click',()=>{$<HTMLDialogElement>('apply-dialog').close();$('review-apply').focus();});
@@ -121,8 +124,9 @@ function openRow(row:PlanRow,trigger:HTMLButtonElement,push=true){
   const status=simpleStatus(row,executionItems(row),controller.state.snapshot?.apply?.copy_mode??controller.state.settings.copy_mode);
   if(row.artist)$('row-content').append(text('p',row.artist,'detail-artist'));
   $('row-content').append(text('p',status,'detail-status'));
+  for(const item of executionItems(row)){const repairReason=simpleRepairReason(item);if(repairReason)$('row-content').append(text('p',repairReason,'hint'));}
   const reason=simpleReason(row);if(reason&&!executionItems(row).length)$('row-content').append(text('p',reason,'hint'));
-  if(executionItems(row).some(item=>['failed','needs_recovery','source_retained'].includes(item.status)))$('row-content').append(text('p','בדוק את הקובץ בתיקיית המקור ובתיקיית היעד לפני ניסיון נוסף.','hint'));
+  if(executionItems(row).some(item=>['failed','needs_recovery','source_retained'].includes(item.status)))$('row-content').append(text('p',row.kind==='FixNames'?'בדוק את הקובץ ואת הגיבוי בתיקיית המקור לפני ניסיון נוסף.':'בדוק את הקובץ בתיקיית המקור ובתיקיית היעד לפני ניסיון נוסף.','hint'));
   if(push)history.pushState({singlesView:'detail',jobId:controller.state.snapshot?.job_id,rowId:row.id},'');openDialog('row-dialog');return;
  }
 
@@ -177,7 +181,7 @@ $('previous').addEventListener('click',()=>void controller.changePage(Math.max(0
 $('next').addEventListener('click',()=>void controller.changePage(controller.state.offset+PAGE_SIZE));
 function text(tag:string,value:string,className?:string){const node=document.createElement(tag);node.textContent=value;if(className)node.className=className;return node;}
 const executionTitles:Record<string,string>={preparing:'מאמת את הקבצים לפני ביצוע…',running:'מבצע את התוכנית…',complete:'הביצוע הושלם',partial:'הביצוע הושלם חלקית',cancelled:'הביצוע נעצר',failed:'הביצוע לא הושלם',needs_recovery:'נדרשת בדיקת התאוששות'};
-function itemLabel(item:ExecutionItem){return ({complete:'בוצע',source_retained:'היעד נכתב; המקור נשמר',failed:'נכשל',cancelled:'בוטל',blocked:'לא בוצע',needs_recovery:'נדרשת בדיקה'})[item.status];}
+function itemLabel(item:ExecutionItem){return ({complete:'בוצע',source_retained:'היעד נכתב; המקור נשמר',failed:'נכשל',cancelled:'בוטל',blocked:'לא בוצע',needs_recovery:'נדרשת בדיקה',unsupported_tags:'תגיות לא נתמכות',metadata_failure:'קריאת התגיות נכשלה'})[item.status];}
 function executionItems(row:PlanRow):ExecutionItem[]{return controller.state.execution?.result?.items.filter(item=>row.operation_ids?.includes(item.operation))??[];}
 function renderExecution(){
  const s=controller.state,e=s.execution,readiness=s.snapshot?.apply;
@@ -188,13 +192,13 @@ function renderExecution(){
  $('execution-title').textContent=e?executionTitles[e.status]:running?'מאמת את הקבצים לפני ביצוע…':readiness?.supported?'התוכנית מוכנה לביצוע':'התוכנית זמינה לתצוגה בלבד';
  const r=e?.result;
  const developer=s.developerMode;
- $('execution-summary').textContent=developer?(r?`${r.committed_destinations.toLocaleString('he-IL')} יעדים נכתבו · ${r.moved_sources.toLocaleString('he-IL')} קבצי מקור הועברו · ${r.failed_operations.toLocaleString('he-IL')} נכשלו · ${r.blocked_operations.toLocaleString('he-IL')} לא בוצעו`:s.cancelRequested&&running?'ממתין לעצירה בטוחה…':e?.status==='running'&&e.operation!==null?`פעולה ${e.operation+1} מתוך ${e.operation_count} · ${e.bytes_written.toLocaleString('he-IL')} מתוך ${e.source_length.toLocaleString('he-IL')} בתים`:e&&!['preparing','running'].includes(e.status)?(e.error??'לא התקבלו מוני ביצוע מאומתים. יש לבדוק את היומן.'):readiness?.supported?`${readiness.operation_count.toLocaleString('he-IL')} פעולות ${readiness.copy_mode?'העתקה':'העברה'} ממתינות לאישור`:readiness?.reason??''):(e?simpleExecutionSummary(e,readiness?.copy_mode??s.settings.copy_mode):readiness?.supported?'הקבצים מוכנים. אפשר לבדוק ולאשר את הביצוע.':'לא בוצעו שינויים בקבצים.');
+ $('execution-summary').textContent=developer?(r?r.repair?`${r.repair.renamed_files} שמות תוקנו · ${r.repair.repaired_files} תגיות תוקנו · ${r.repair.unchanged_files} ללא שינוי בתגיות · ${r.repair.unsupported_files} לא נתמכים · ${r.repair.retained_backup_bytes.toLocaleString('he-IL')} בתים נשמרו בגיבוי`:`${r.committed_destinations.toLocaleString('he-IL')} יעדים נכתבו · ${r.moved_sources.toLocaleString('he-IL')} קבצי מקור הועברו · ${r.failed_operations.toLocaleString('he-IL')} נכשלו · ${r.blocked_operations.toLocaleString('he-IL')} לא בוצעו`:s.cancelRequested&&running?'ממתין לעצירה בטוחה…':e?.status==='running'&&e.operation!==null?`פעולה ${e.operation+1} מתוך ${e.operation_count} · ${e.bytes_written.toLocaleString('he-IL')} מתוך ${e.source_length.toLocaleString('he-IL')} בתים`:e&&!['preparing','running'].includes(e.status)?(e.error??'לא התקבלו מוני ביצוע מאומתים. יש לבדוק את היומן.'):readiness?.supported?`${readiness.operation_count.toLocaleString('he-IL')} פעולות ${readiness.mode==='FixNames'?'תיקון':readiness.copy_mode?'העתקה':'העברה'} ממתינות לאישור`:readiness?.reason??''):(e?simpleExecutionSummary(e,readiness?.copy_mode??s.settings.copy_mode):readiness?.supported?'הקבצים מוכנים. אפשר לבדוק ולאשר את הביצוע.':'לא בוצעו שינויים בקבצים.');
  if(!developer&&running)$('execution-summary').textContent=s.cancelRequested?'ממתין לעצירה בטוחה…':e?.operation!==null&&e?.operation!==undefined?`התקדמות: ${e.operation+1} מתוך ${e.operation_count}`:'בודק שהקבצים מוכנים…';
  const progress=$<HTMLProgressElement>('execution-progress');progress.hidden=!running;
  if(e?.status==='running'&&e.source_length>0){progress.max=e.source_length;progress.value=Math.min(e.bytes_written,e.source_length);}else progress.removeAttribute('value');
  $('execution-recovery').hidden=!e||!['needs_recovery','partial','cancelled','failed'].includes(e.status);
- $('execution-recovery').textContent=developer?(e?.status==='needs_recovery'?'היומן נשמר. אין להפעיל שוב את התוכנית או למחוק את היומן לפני בדיקת הקבצים. התאוששות אוטומטית אינה מופעלת.':'פעולות שהושלמו נשארות בתוקף. עיין בפרטי הקבצים וביומן לפני בדיקה חדשה.'):'קבצים שכבר טופלו נשארים במקומם. בדוק את המקור והיעד לפני ניסיון נוסף.';
- $('recovery-inspection').hidden=!developer||!e?.recovery;$('recovery-inspection').textContent=e?.recovery?`נבדק היומן מול הקבצים: ${e.recovery.transfers.length} פעולות · ${e.recovery.pending_directories} יצירות תיקייה ממתינות לבירור${e.recovery.incomplete_tail?' · רשומה אחרונה לא שלמה':''}`:'';
+ $('execution-recovery').textContent=developer?(e?.status==='needs_recovery'?'היומן נשמר. אין להפעיל שוב את התוכנית או למחוק את היומן לפני בדיקת הקבצים. התאוששות אוטומטית אינה מופעלת.':'פעולות שהושלמו נשארות בתוקף. עיין בפרטי הקבצים וביומן לפני בדיקה חדשה.'):readiness?.mode==='FixNames'?'בדוק את הקבצים והגיבויים בתיקיית המקור לפני ניסיון נוסף.':'קבצים שכבר טופלו נשארים במקומם. בדוק את המקור והיעד לפני ניסיון נוסף.';
+ $('recovery-inspection').hidden=!developer||!e?.recovery;$('recovery-inspection').textContent=e?.recovery?`נבדק היומן מול הקבצים: ${e.recovery.transfers.length} פעולות · ${readiness?.mode==='FixNames'?'תיקון שמות ותגיות':`${e.recovery.pending_directories} יצירות תיקייה ממתינות לבירור`}${e.recovery.incomplete_tail?' · רשומה אחרונה לא שלמה':''}`:'';
  $('journal-label').hidden=!developer||!e?.journal_path;$<HTMLInputElement>('journal-path').value=e?.journal_path??'';
 }
 function render(){
@@ -227,7 +231,7 @@ function render(){
  $('error').hidden=!s.error;$('error').textContent=s.error?(developer?s.error:simpleError(s.error)):'';$('error').tabIndex=-1;
  const ready=s.snapshot?.status==='completed'&&!!s.page;
  $('empty').hidden=s.busy||!!s.error||ready&&s.page!.total>0;
- $('empty').textContent=ready?'לא נמצאו קבצים למיון.':'התוצאה תופיע כאן לאחר בחירת תיקיות והפעלת בדיקה.';
+ $('empty').textContent=ready?navigation.mode==='FixNames'?'לא נמצאו קבצים לתיקון.':'לא נמצאו קבצים למיון.':'התוצאה תופיע כאן לאחר בחירת תיקיות והפעלת בדיקה.';
  $('table-wrap').hidden=!ready||!s.page!.rows.length;
  $('count').textContent=ready?`${s.page!.total.toLocaleString('he-IL')} ${developer?'רשומות':s.page!.total===1?'פריט':'פריטים'}${s.page!.skipped?` · ${s.page!.skipped.toLocaleString('he-IL')} דולגו`:''}`:'';
  $('rows').replaceChildren();

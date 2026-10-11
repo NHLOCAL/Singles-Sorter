@@ -49,9 +49,11 @@ export interface ProfileHost {
 }
 
 /** Apply eligibility is granted by retained native evidence, never inferred from rows. */
-export interface ApplyReadiness {supported:boolean;reason:string|null;operation_count:number;copy_mode:boolean;source:string;target:string}
+export interface ApplyReadiness {supported:boolean;reason:string|null;operation_count:number;copy_mode:boolean;source:string;target:string|null;mode?:Mode}
 export type ExecutionStatus='preparing'|'running'|'complete'|'partial'|'cancelled'|'failed'|'needs_recovery';
-export type ItemStatus='complete'|'source_retained'|'failed'|'cancelled'|'blocked'|'needs_recovery';
-export interface ExecutionItem {operation:number;status:ItemStatus;detail:string}
-export interface ExecutionResult {source_items:number;committed_destinations:number;moved_sources:number;failed_operations:number;blocked_operations:number;recovery_operations:number;cancelled_operations:number;items:ExecutionItem[]}
+export type ItemStatus='complete'|'source_retained'|'failed'|'cancelled'|'blocked'|'needs_recovery'|'unsupported_tags'|'metadata_failure';
+export interface RepairOutcome {renamed:boolean;repaired:boolean;unchanged:boolean}
+export interface RepairSummary {total_files:number;processed_files:number;renamed_files:number;repaired_files:number;unchanged_files:number;unsupported_files:number;failed_files:number;retained_backup_bytes:number}
+export interface ExecutionItem {operation:number;status:ItemStatus;detail:string;repair?:RepairOutcome|null}
+export interface ExecutionResult {source_items:number;committed_destinations:number;moved_sources:number;failed_operations:number;blocked_operations:number;recovery_operations:number;cancelled_operations:number;items:ExecutionItem[];repair?:RepairSummary|null}
 export interface ExecutionSnapshot {host_schema:1;job_id:string;plan_id:string;status:ExecutionStatus;operation_count:number;operation:number|null;bytes_written:number;source_length:number;journal_path:string|null;error:string|null;result:ExecutionResult|null;recovery?:{observed_directories:number;pending_directories:number;rejected_directories:number;incomplete_tail:boolean;transfers:{operation:number;status:string}[]}|null}

@@ -727,6 +727,11 @@ fn real_plan(
             )
             .map_err(storage_error)?,
         )
+    } else if request.mode == JobMode::FixNames {
+        Box::new(
+            sorter_executor::windows_copy::WindowsPlanningStorage::for_repair_preview(&source.path)
+                .map_err(storage_error)?,
+        )
     } else {
         Box::new(desktop)
     };

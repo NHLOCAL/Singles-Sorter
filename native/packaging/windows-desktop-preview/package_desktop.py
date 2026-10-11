@@ -34,6 +34,9 @@ REQUIRED_CHECKS = {'original-models-executed', 'disabled-no-inference', 'cancel-
                    'corrupt-model-fail-closed', 'protected-files-unchanged'}
 APPLY_CHECKS = {'actual-multi-file-copy', 'actual-same-volume-move', 'artist-and-singles-folders',
                 'review-dismiss-no-effects', 'stale-plan-no-effects', 'one-shot-no-repeat', 'original-ai-selected-copy'}
+REPAIR_CHECKS = {'actual-fix-id3v23', 'actual-fix-id3v24', 'fix-original-backup-retained',
+                 'fix-media-and-unknown-frame-preserved', 'fix-source-only-confirmation',
+                 'fix-unsupported-tags-partial', 'fix-stale-plan-no-effects'}
 DESKTOP_FEATURES = ['desktop', 'original-ai', 'selected-windows-execution', 'tauri/custom-protocol']
 require, digest = cli.require, cli.digest
 
@@ -47,6 +50,7 @@ def report_gate(path, binary, mode, package=None):
     if mode == 'on':
         require(REQUIRED_CHECKS <= set(report.get('original_ai_checks', [])), 'incomplete original-AI acceptance')
         require(report.get('apply_mode') == 'on' and APPLY_CHECKS <= set(report.get('apply_checks', [])), 'incomplete actual selected Copy/Move acceptance')
+        require(REPAIR_CHECKS <= set(report.get('repair_checks', [])), 'incomplete actual FixNames acceptance')
         require(package is not None and report.get('package_sha256sums_sha256') == digest(package / 'SHA256SUMS.txt'), 'acceptance not bound to exact package')
     return report
 
