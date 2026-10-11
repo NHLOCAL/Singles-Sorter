@@ -20,7 +20,7 @@ from desktop_diagnostics import snapshot, startup_probe, owned_processes, write_
 from windows_integrity import process_security, require_medium
 from native_picker import interact_with_owned_picker
 from native_fixtures import write_import_csv
-from desktop_layout import check_native_layout, capture_platform_fonts
+from desktop_layout import check_native_layout, capture_platform_fonts, check_phone_layout
 
 ROOT = Path(__file__).resolve().parents[1]
 if os.name != 'nt' or os.environ.get('GITHUB_ACTIONS') != 'true':
@@ -127,6 +127,7 @@ try:
     capture_platform_fonts(command, OUTPUT)
     checks.append('Actual measured desktop CSS viewports retain controls without document overflow')
     capture('01-native-home')
+    check_phone_layout(command,script,capture,OUTPUT,'01-native-home')
     checks.append('Actual Windows Tauri/WebView2 rendered local assets and initialized real IPC')
     with tempfile.TemporaryDirectory(prefix='singles-ui-owned-') as temporary:
         scratch = Path(temporary)
@@ -141,21 +142,33 @@ try:
         wait(lambda: script("return document.querySelector('#target').value") == str(target))
         checks.append('Native folder dialogs selected only the owned source and target fixtures')
         click('#sort')
-        wait(lambda: script("return document.querySelectorAll('#rows tr').length > 0 && !document.querySelector('#sort').disabled"))
+        wait(lambda: script("return document.querySelector('#app').dataset.view === 'results' && document.querySelectorAll('#rows tr').length > 0 && !document.querySelector('#sort').disabled"))
         assert 'אברהם פריד' in text('#rows')
         assert script("return document.querySelector('#error').hidden"), text('#error')
         capture('02-native-real-sort-preview')
         check_native_layout(command, script, capture, OUTPUT, '02-native-results')
+        check_phone_layout(command,script,capture,OUTPUT,'02-native-results')
+        click('#rows tr:last-child .detail-button')
+        wait(lambda:script("return document.querySelector('#row-dialog').open"))
+        assert script("return document.querySelector('#row-dialog .source-path').value") == str(media)
+        capture('02-native-result-details')
+        click('#row-close')
+        wait(lambda:not script("return document.querySelector('#row-dialog').open"))
         assert media.is_file() and hashlib.sha256(media.read_bytes()).hexdigest() == before
         assert list(target.iterdir()) == []
         checks.append('Real owned MP3 sort preview produced Hebrew singer/destination; source hash and empty target unchanged')
+        click('#back-setup')
+        wait(lambda:script("return document.querySelector('#app').dataset.view === 'setup'"))
+        assert script("return document.querySelector('#source').value") == str(source)
         fill('#target','')
         click('#fix')
-        wait(lambda: script("return document.querySelectorAll('#rows tr').length > 0 && !document.querySelector('#fix').disabled"))
+        wait(lambda: script("return document.querySelector('#app').dataset.view === 'results' && document.querySelectorAll('#rows tr').length > 0 && !document.querySelector('#fix').disabled"))
         assert script("return document.querySelector('#error').hidden"), text('#error')
         capture('03-native-real-fix-preview')
         assert hashlib.sha256(media.read_bytes()).hexdigest() == before
         checks.append('Target-free real FixNames preview; owned source bytes unchanged')
+        click('#back-setup')
+        wait(lambda:script("return document.querySelector('#app').dataset.view === 'setup'"))
         # Task 2 uses a separate development profile. The runner has no user profile.
         assert script("return !!document.querySelector('#save-settings')"), "Task 2 preferences UI is missing; stale binary cannot pass"
         click('#copy_mode'); click('#save-settings')
@@ -167,25 +180,35 @@ try:
         wait(lambda: script("return !document.querySelector('#duet-all').disabled"))
         assert script("return document.querySelector('#duet-all').checked") == expected_duet
         capture('04-native-settings')
+        check_phone_layout(command,script,capture,OUTPUT,'04-native-settings')
         click('#edit-list'); click('#list-add')
         alias_id = script("return Array.from(document.querySelectorAll('[id^=list-alias-]')).at(-1).id")
         folder_id = alias_id.replace('alias','folder')
         fill('#'+alias_id,'אמן בדיקת ממשק'); fill('#'+folder_id,'תיקיית בדיקה')
         click('#list-save'); wait(lambda: text('#list-notice') == 'נשמר')
         capture('05-native-personal-list')
+        check_phone_layout(command,script,capture,OUTPUT,'05-native-personal-list')
         click('#list-cancel')
         imported_csv = scratch / 'אמנים.csv'
         write_import_csv(imported_csv)
+        imported_csv.write_bytes(imported_csv.read_bytes()+'אמן לעריכה,תיקייה לעריכה\r\nאמן למחיקה,תיקייה למחיקה\r\n'.encode('utf-8'))
         pick_owned_path('#import-list', imported_csv)
         wait(lambda: script("return document.querySelector('#import-dialog').open"))
-        assert '2 שורות לייבוא' in text('#import-summary')
-        assert 'תיקייה מיובאת' in text('#import-rows')
+        assert '4 שורות לייבוא' in text('#import-summary')
+        assert script("return document.querySelector('#import-folder-0').value") == 'תיקייה מיובאת'
+        fill('#import-alias-2','אמן שנערך לפני אישור')
+        fill('#import-folder-2','תיקייה ערוכה')
+        click('[data-import-delete="3"]')
+        assert '3 שורות לייבוא' in text('#import-summary')
         capture('06-native-import-preview')
+        check_phone_layout(command,script,capture,OUTPUT,'06-native-import-preview')
         click('#confirm-import')
         wait(lambda: script("return !document.querySelector('#import-dialog').open"))
         click('#edit-list')
         wait(lambda: script("return Array.from(document.querySelectorAll('[id^=list-alias-]')).filter(x=>x.value==='אמן מיובא').length") == 2)
-        checks.append('Actual native CSV file dialog, UTF-8 Hebrew preview and explicit append preserved duplicate aliases')
+        assert script("return Array.from(document.querySelectorAll('[id^=list-alias-]')).some(x=>x.value==='אמן שנערך לפני אישור')")
+        assert not script("return Array.from(document.querySelectorAll('[id^=list-alias-]')).some(x=>x.value==='אמן למחיקה')")
+        checks.append('Actual CSV draft edits/deletion applied only on confirm; original duplicate aliases remained ordered')
         click('#list-cancel'); click('#advanced-dialog .close-dialog')
         command('DELETE',''); session = None
         restarted = call('POST','/session',{'capabilities':{'alwaysMatch':{'browserName':'wry','tauri:options':{'application':str(BINARY)}}}})

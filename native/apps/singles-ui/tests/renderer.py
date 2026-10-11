@@ -31,8 +31,8 @@ window.__TAURI_INTERNALS__={invoke:async(command,args={})=>{
  if(command==='save_personal_list'){window.__personalList={revision:'r2',rows:args.rows,diagnostics:[]};return structuredClone(window.__personalList);}
  if(command==='export_personal_list')return null;
  if(command==='select_personal_import')return {token:'i1',filename:'sample.csv',encoding_required:true,preview:null};
- if(command==='preview_personal_import')return {token:'i1',encoding:args.encoding,rows:[['זמר נוסף','תיקייה']],diagnostics:[]};
- if(command==='confirm_personal_import'){window.__personalList.rows.push(['זמר נוסף','תיקייה']);window.__personalList.revision='r3';return structuredClone(window.__personalList);}
+ if(command==='preview_personal_import')return {token:'i1',encoding:args.encoding,rows:structuredClone(window.__importRows??[['זמר נוסף','תיקייה']]),diagnostics:[]};
+ if(command==='confirm_personal_import'){const rows=structuredClone(window.__importRows??[['זמר נוסף','תיקייה']]);const removed=new Set();for(const edit of args.edits??[]){if(edit.kind==='delete')removed.add(edit.index);else rows[edit.index][edit.column]=edit.value;}window.__personalList.rows.push(...rows.filter((_,index)=>!removed.has(index)));window.__personalList.revision='r3';return structuredClone(window.__personalList);}
  if(command==='open_footer_link')return null;
  if(command==='get_model_status')return {available:false,message:'בדיקת ממשק בלבד עם IPC מדומה. לא בוצעה הסקה.',platform:'linux_test'};
  if(command==='select_root')return window.__pickerCancel?null:{token:args.role,display_name:args.role==='Source'?'C:\\Music\\שירים':'D:\\מוזיקה',capabilities:{read:true,list:true},platform:'linux_test'};
@@ -113,6 +113,8 @@ try:
         expect(page.locator('#technical-notices')).to_contain_text('Effects and counters are predicted')
         expect(page.locator('#technical-notices')).to_contain_text('AI intentionally disabled')
         checks.append('Sort sends explicit false and preserves routine notices only in technical details while unknown warnings remain visible')
+        page.locator('#back-setup').click()
+        expect(page.locator('#setup-screen')).to_be_visible()
         page.evaluate("window.__realHostFixture.rows[1].source='<img src=x onerror=alert(1)>.mp3'")
         page.locator('#sort').click()
         expect(page.locator('#rows')).to_contain_text('<img src=x onerror=alert(1)>.mp3')
@@ -133,20 +135,32 @@ try:
         windows_page.locator('#source').fill('C:\\Music')
         windows_page.locator('#target').fill('D:\\Music')
         windows_page.locator('#sort').click()
-        source_summary=windows_page.locator('.source-details summary')
+        source_summary=windows_page.locator('#rows tr').nth(1).locator('.source-name')
         expect(source_summary).to_have_text('אברהם פריד - בדיקה.mp3')
         expect(source_summary).to_have_attribute('title',long_source)
-        source_summary.focus()
+        detail_button=windows_page.locator('#rows tr').nth(1).locator('.detail-button')
+        detail_button.focus()
         windows_page.keyboard.press('Enter')
-        full_source=windows_page.locator('.source-path')
+        full_source=windows_page.locator('#row-dialog [aria-label="מקור"]')
         expect(full_source).to_have_value(long_source)
         full_source.focus()
         assert full_source.evaluate('(el)=>el.value.substring(el.selectionStart,el.selectionEnd)')==long_source
+        windows_page.keyboard.press('Escape')
+        expect(windows_page.locator('#row-dialog')).not_to_be_visible()
+        expect(detail_button).to_be_focused()
         windows_page.wait_for_timeout(100)
         assert_layout(windows_page.evaluate('() => {'+METRICS+'}'))
         windows_page.close()
         checks.append('Windows source filename first; unmodified full path available by hover, keyboard disclosure and copy selection')
         page.screenshot(path=str(OUTPUT / 'renderer-mock-results.png'), full_page=True)
+        scans=page.evaluate("window.__calls.filter(call=>call.command==='start_preview').length")
+        page.locator('#back-setup').click()
+        expect(page.locator('#setup-screen')).to_be_visible()
+        page.locator('#reopen-results').click()
+        expect(page.locator('#results')).to_be_visible()
+        assert page.evaluate("window.__calls.filter(call=>call.command==='start_preview').length")==scans
+        page.locator('#back-setup').click()
+        expect(page.locator('#setup-screen')).to_be_visible()
         page.locator('#advanced').click()
         expect(page.locator('#advanced-dialog')).to_be_visible()
         expect(page.locator('#model-status')).to_have_text('לא זמין')
@@ -166,14 +180,44 @@ try:
         expect(page.locator('#list-notice')).to_have_text('נשמר')
         expect(page.locator('#profile-notice')).to_be_hidden()
         page.locator('#list-cancel').click()
+        before_import=page.evaluate('JSON.stringify(window.__personalList.rows)')
+        page.evaluate("window.__importRows=Array.from({length:53},(_,i)=>['זמר '+i,'תיקייה '+i]);window.__importRows[0].push('עמודה נוספת')")
+        page.locator('#import-list').click()
+        page.locator('#import-encoding').select_option('Windows1255')
+        page.locator('#decode-import').click()
+        expect(page.locator('#import-rows .list-row')).to_have_count(50)
+        page.locator('#import-alias-0').fill('עריכה שנשמרת בטיוטה')
+        page.locator('[data-import-delete="1"]').click()
+        expect(page.locator('#import-alias-2')).to_be_focused()
+        expect(page.locator('#import-alias-1')).to_have_count(0)
+        page.locator('#import-next').click()
+        expect(page.locator('#import-alias-51')).to_be_visible()
+        page.locator('#import-alias-51').fill('עריכה בעמוד שני')
+        page.locator('#import-prev').click()
+        expect(page.locator('#import-alias-0')).to_have_value('עריכה שנשמרת בטיוטה')
+        expect(page.locator('#import-rows')).to_contain_text('עמודה נוספת')
+        page.locator('#cancel-import').click()
+        assert page.evaluate('JSON.stringify(window.__personalList.rows)')==before_import
+        page.evaluate('delete window.__importRows')
+        page.locator('#import-list').click()
+        page.locator('#import-encoding').select_option('Windows1255')
+        page.locator('#decode-import').click()
+        page.locator('[data-import-delete="0"]').click()
+        expect(page.locator('#confirm-import')).to_be_disabled()
+        expect(page.locator('#cancel-import')).to_be_focused()
+        page.locator('#cancel-import').click()
+        assert page.evaluate('JSON.stringify(window.__personalList.rows)')==before_import
+        checks.append('Import draft pagination, stable indices, delete focus, raw extra fields, cancel and empty draft guard')
         page.locator('#import-list').click()
         expect(page.locator('#confirm-import')).to_be_disabled()
         page.locator('#import-encoding').select_option('Windows1255')
         page.locator('#decode-import').click()
         expect(page.locator('#import-summary')).to_contain_text('1 שורות')
+        page.locator('#import-alias-0').fill('זמר שנערך לפני אישור')
         page.locator('#confirm-import').click()
         expect(page.locator('#advanced-dialog')).to_be_visible()
         assert page.evaluate('window.__personalList.rows.length') == 2
+        assert page.evaluate('window.__personalList.rows[1][0]') == 'זמר שנערך לפני אישור'
         checks.append('Draft cancellation, explicit list save, encoding preview and confirmed append')
         page.locator('#ai-profile').select_option('Configured')
         page.keyboard.press('Escape')
@@ -238,9 +282,9 @@ try:
         expect(touch_page.locator('#context-help')).to_be_visible()
         touch_badge.tap()
         expect(touch_page.locator('#context-help')).to_be_hidden()
-        assert touch_badge.bounding_box()['height'] >= 44
+        assert touch_badge.bounding_box()['height'] >= 48
         touch.close()
-        checks.append('Touch badge toggles and retains a 44px target')
+        checks.append('Touch badge toggles and retains a 48px target')
         browser.close()
 finally:
     server.shutdown()

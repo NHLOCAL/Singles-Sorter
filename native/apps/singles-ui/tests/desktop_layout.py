@@ -11,8 +11,15 @@ def assert_layout(metrics, require_bounded=True):
     assert metrics['pageWidth'] <= metrics['innerWidth'] + 1, metrics
     if not metrics['reflow']:
         assert metrics['pageHeight'] <= metrics['innerHeight'] + 1, metrics
-        assert metrics['resultsOverflow'] == 'auto', metrics
+        if metrics['view'] == 'results':
+            assert metrics['resultsVisible'] and not metrics['setupVisible'], metrics
+            assert metrics['resultsOverflow'] == 'auto', metrics
+            assert metrics['resultsBody']['height'] >= metrics['innerHeight'] * .5, metrics
+            assert all(height <= 48 for height in metrics['rowHeights']), metrics
+        else:
+            assert metrics['setupVisible'] and not metrics['resultsVisible'], metrics
         for name, rect in metrics['controls'].items():
+            assert rect['height'] > 0, (name, rect)
             assert 0 <= rect['x'] and rect['right'] <= metrics['innerWidth'] + 1, (name, rect)
             assert 0 <= rect['y'] and rect['bottom'] <= metrics['innerHeight'] + 1, (name, rect)
 
@@ -58,3 +65,22 @@ def capture_platform_fonts(command, output):
         except Exception as error:
             receipt['errors'].append(str(error))
     (output / 'actual-platform-fonts.json').write_text(json.dumps(receipt,ensure_ascii=False,indent=2),encoding='utf-8')
+
+
+def check_phone_layout(command, script, capture, output, label):
+    """Narrow actual Windows WebView rendering only; this is not native Android proof."""
+    original=command('GET','/window/rect')
+    receipts=[]
+    try:
+        for width in [360,390]:
+            for _ in range(3):
+                metrics=script(METRICS);outer=command('GET','/window/rect')
+                command('POST','/window/rect',{'width':round(outer['width']+width-metrics['innerWidth']),'height':round(outer['height']+800-metrics['innerHeight'])})
+                time.sleep(.15)
+            metrics=script(METRICS)
+            assert abs(metrics['innerWidth']-width)<=1,metrics
+            assert_layout(metrics,require_bounded=False)
+            receipts.append(metrics);capture(f'{label}-{width}px')
+    finally:
+        command('POST','/window/rect',original)
+        (output/f'{label}-phone-css-metrics.json').write_text(json.dumps({'kind':'narrow_windows_webview_not_native_android','measurements':receipts},ensure_ascii=False,indent=2),encoding='utf-8')

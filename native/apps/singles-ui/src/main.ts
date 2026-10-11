@@ -2,12 +2,16 @@ import './styles.css';
 import {nativeHost,openFooterLink} from './host';
 import {kindLabel,reasonLabel,blockerLabel,warningPresentation,noticeLabel,sourceLabel} from './presentation';
 import {PAGE_SIZE,PreviewController} from './state';
-import type {Settings,ImportEncoding,Mode} from './contracts';
+import type {Settings,ImportEncoding,Mode,PlanRow} from './contracts';
 import {PersonalListController} from './lists';
 import {installHelpBadges} from './help';
+import {WorkspaceNavigation} from './navigation';
+import {installIcons,iconElement,setButtonLabel} from './icons';
 const controller=new PreviewController(nativeHost,nativeHost);
 const personal=new PersonalListController(nativeHost,()=>controller.resourcesChanged());
-let listOffset=0;
+let listOffset=0,importOffset=0;
+const navigation=new WorkspaceNavigation();
+let detailTrigger:HTMLButtonElement|null=null;
 
 const app=document.querySelector<HTMLDivElement>('#app')!;
 // Static trusted markup only. Every host/file value is rendered with textContent.
@@ -15,39 +19,41 @@ app.innerHTML=`
 <header class="topbar"><div class="brand"><img src="/icon.png" alt="" width="32" height="32"><h1>מסדר הסינגלים</h1></div><button id="menu" class="icon-button" aria-label="עזרה ומידע" aria-haspopup="dialog">⋮</button></header>
 <main>
 <div id="connection" class="notice" role="status" hidden></div>
-<div class="workspace">
+<div id="error" class="error" role="alert" hidden></div>
+<div class="workspace" id="setup-screen">
 <section class="source-panel" aria-labelledby="folders-heading"><h2 id="folders-heading">תיקיות</h2>
 <div class="folder"><div class="field-label"><label for="source">תיקית מקור</label><button class="help-badge" aria-label="עזרה: תיקית מקור" data-help-text="בחירת תיקיה המכילה את המוזיקה שברצונך לסדר.">?</button></div><div class="folder-row"><input id="source" dir="ltr" autocomplete="off" spellcheck="false" placeholder="C:\\Music\\סינגלים"><button id="source-picker" class="secondary">בחר תיקיה</button></div></div>
 <div class="folder"><div class="field-label"><label for="target">תיקית יעד</label><button class="help-badge" aria-label="עזרה: תיקית יעד" data-help-text="בחירת תיקית יעד אליה יוכנסו תיקיות המוזיקה שיווצרו. נדרשת למיון בלבד.">?</button></div><div class="folder-row"><input id="target" dir="ltr" autocomplete="off" spellcheck="false" placeholder="D:\\המוזיקה שלי"><button id="target-picker" class="secondary">בחר תיקיה</button></div></div>
-<div class="actions"><div class="action-command"><button id="sort" class="primary">מיין שירים (תצוגה מקדימה)</button><button class="help-badge" aria-label="עזרה: מיין שירים" data-help-text="מיון מתקדם של הסינגלים שלך בתיקיות לפי אמנים.">?</button></div><div class="action-command"><button id="fix" class="secondary">תקן שמות (תצוגה מקדימה)</button><button class="help-badge" aria-label="עזרה: תקן שמות" data-help-text="תיקון ג׳יבריש במאפייני הקובץ והסרת תוכן מיותר בשמות הקבצים.">?</button></div></div>
-
-
+<div class="actions"><div class="action-command"><button id="sort" class="primary">מיין שירים</button><button class="help-badge" aria-label="עזרה: מיין שירים" data-help-text="מיון מתקדם של הסינגלים שלך בתיקיות לפי אמנים.">?</button></div><div class="action-command"><button id="fix" class="secondary">תקן שמות</button><button class="help-badge" aria-label="עזרה: תקן שמות" data-help-text="תיקון ג׳יבריש במאפייני הקובץ והסרת תוכן מיותר בשמות הקבצים.">?</button></div></div>
+<button id="reopen-results" class="text-button" hidden>הצג תוצאות</button>
 </section>
 <aside class="options card" aria-labelledby="options-heading"><div class="section-title"><div class="field-label"><h2 id="options-heading">אפשרויות מיון</h2><button class="help-badge" aria-label="עזרה: אפשרויות מיון" data-help-text="חמש האפשרויות נשמרות בלחיצה על שמור הגדרות; מצב דואטים נשמר מיד בהגדרות מתקדמות.">?</button></div><span id="settings-label" class="quiet-label">ההגדרות שלך</span></div>
 <fieldset><legend class="visually-hidden">בסיסי</legend><div class="option-row"><label class="option"><input id="copy_mode" type="checkbox" role="switch"><span id="copy_mode-label">העתק קבצים</span></label><button class="help-badge" aria-label="עזרה: העתק קבצים" data-help-text="קבע אם להעתיק או להעביר את הקבצים לתיקיית היעד">?</button></div><div class="option-row"><label class="option"><input id="main_folder_only" type="checkbox" role="switch"><span id="main_folder_only-label">סרוק רק תיקייה ראשית</span></label><button class="help-badge" aria-label="עזרה: סרוק רק תיקייה ראשית" data-help-text="בחר אם לסרוק את כל תיקיות המשנה או רק את תיקיית המקור הראשית">?</button></div></fieldset>
 <fieldset><legend class="visually-hidden">מתקדם</legend><div class="option-row"><label class="option"><input id="singles_folder" type="checkbox"><span id="singles_folder-label">צור תיקיות סינגלים</span></label><button class="help-badge" aria-label="עזרה: צור תיקיות סינגלים" data-help-text="יצירת תיקייה ייעודית בשם ״סינגלים״ בתוך כל תיקיית אמן">?</button></div><div class="option-row"><label class="option"><input id="abc_sort" type="checkbox"><span id="abc_sort-label">מיון אלפביתי</span></label><button class="help-badge" aria-label="עזרה: מיון אלפביתי" data-help-text="יצירת תיקיות ראשיות לפי אותיות הא׳-ב׳ וארגון תיקיות האמנים בתוכן">?</button></div><div class="option-row"><label class="option"><input id="exist_only" type="checkbox"><span id="exist_only-label">שימוש בתיקיות קיימות</span></label><button class="help-badge" aria-label="עזרה: שימוש בתיקיות קיימות" data-help-text="העברת קבצים רק לתיקיות אמנים הקיימות כבר בתיקית היעד">?</button></div></fieldset>
 <div class="options-bottom"><button id="advanced" class="text-button">הגדרות מתקדמות</button><button id="save-settings" class="text-button">שמור הגדרות</button></div><p id="settings-notice" role="status" class="hint"></p>
 </aside></div>
-<section id="results" class="results card" aria-labelledby="results-heading"><div class="section-title"><h2 id="results-heading" tabindex="-1">תוצאות</h2><span id="count" class="quiet-label" role="status"></span></div>
-<div class="results-body" id="results-body" tabindex="0" aria-label="תוכן התוצאות"><div id="busy" hidden role="status" aria-live="polite"><span class="busy-mark" aria-hidden="true">◷</span> קורא ומנתח את הקבצים… </div>
-<div id="error" class="error" role="alert" hidden></div>
+<section id="processing-screen" hidden aria-labelledby="processing-title"><progress aria-label="מתבצעת בדיקה"></progress><h2 id="processing-title" tabindex="-1">קורא ומנתח את הקבצים…</h2><p id="busy" role="status" aria-live="polite"></p></section>
+<section id="results" class="results card" aria-labelledby="results-heading"><div class="results-toolbar"><button id="back-setup" class="text-button">חזרה להגדרות</button><div class="section-title"><h2 id="results-heading" tabindex="-1">תוכנית מיון</h2><span id="count" class="quiet-label" role="status"></span></div></div>
+<div class="results-body" id="results-body" tabindex="0" aria-label="תוכן התוצאות">
+
 <div id="empty" class="empty">התוצאה תופיע כאן לאחר בחירת תיקיות והפעלת בדיקה.</div>
 
 <div id="warnings"></div>
-<div id="table-wrap" hidden><table><thead><tr><th scope="col">מקור</th><th scope="col">פעולה ויעד מוצע</th><th scope="col">סיבה / חסימה</th></tr></thead><tbody id="rows"></tbody></table></div>
+<div id="table-wrap" hidden><table><thead><tr><th scope="col">מקור</th><th scope="col">פעולה</th><th scope="col">סיבה / חסימה</th><th scope="col"><span class="visually-hidden">פרטים</span></th></tr></thead><tbody id="rows"></tbody></table></div>
 
 <details id="details" hidden><summary>פרטי התכנית והבדיקה</summary><dl><dt>מזהה תכנית</dt><dd id="plan-id" dir="ltr"></dd><dt>חסימות ביצוע</dt><dd id="blockers"></dd></dl><div id="technical-notices"></div></details>
 </div><nav id="pagination" aria-label="עמודי תוצאות" hidden><button id="previous" class="secondary">הקודם</button><span id="page-label"></span><button id="next" class="secondary">הבא</button></nav>
 </section>
 </main>
-<footer>להורדת סינגלים חינם · <button id="footer-link" class="footer-link">שיר בוט ↗</button></footer>
+<footer>להורדת סינגלים חינם · <button id="footer-link" class="footer-link">שיר בוט</button></footer>
+<dialog id="row-dialog" class="wide-dialog" aria-labelledby="row-title"><div class="dialog-heading"><h2 id="row-title"></h2><button id="row-close" class="icon-button" aria-label="סגור פרטים">×</button></div><div id="row-content"></div></dialog>
 <dialog id="menu-dialog" aria-labelledby="menu-title"><div class="dialog-heading"><h2 id="menu-title">עזרה ומידע</h2><button class="close-dialog icon-button" aria-label="סגור">×</button></div><div class="menu-items"><button data-help="help">איך משתמשים?</button><button data-help="about">אודות התוכנה</button></div><div id="help-content" class="help-content"></div></dialog>
 <dialog id="advanced-dialog" aria-labelledby="advanced-title"><div class="dialog-heading"><h2 id="advanced-title">הגדרות מתקדמות</h2><button class="close-dialog icon-button" aria-label="סגור">×</button></div>
 <fieldset><legend>מיון דואטים <button class="help-badge" aria-label="עזרה: דואטים" data-help-text="בחר להיכן יועתקו שירי דואט. הבחירה נשמרת מיד, בלי לשמור שינויים באפשרויות האחרות.">?</button></legend><label class="option"><input type="radio" name="duet" id="duet-first" value="first" checked><span>לזמר הראשון בשם השיר</span></label><label class="option"><input type="radio" name="duet" id="duet-all" value="all"><span>לכל הזמרים המופיעים בשיר</span></label></fieldset>
 <fieldset><legend class="ai-heading"><span>זיהוי בעזרת AI</span><span id="model-status" class="quiet-label"></span><button id="model-help" class="help-badge" aria-label="עזרה: זמינות AI" data-help-text="">?</button></legend><div class="field-label"><label for="ai-profile">פרופיל הבדיקה</label><button class="help-badge" aria-label="עזרה: פרופיל הבדיקה" data-help-text="אם נדרש מודל ואינו זמין, הבדיקה תיחסם. אין מעבר אוטומטי לפרופיל אחר.">?</button></div><select id="ai-profile"><option value="Disabled">ללא AI</option><option value="Configured">דרוש מודל AI זמין</option></select></fieldset>
 <section><div class="field-label"><h3>הוספת זמרים</h3><button class="help-badge" aria-label="עזרה: רשימת אמנים" data-help-text="השורות האישיות מתווספות אחרי הרשימה המובנית. סדר ההתאמה נשמר.">?</button></div><div class="list-actions"><button id="edit-list" class="secondary">ערוך רשימה</button><button id="import-list" class="secondary">יבא קובץ CSV</button><button id="export-list" class="secondary">יצא לקובץ CSV</button></div><p id="profile-notice" class="hint" role="status"></p><p id="profile-error" class="error" role="alert" hidden></p></section><p id="settings-error" class="error" role="alert" hidden></p><button class="close-dialog primary">סגור</button></dialog>
 <dialog id="list-dialog" class="wide-dialog" aria-labelledby="list-title"><div class="dialog-heading"><h2 id="list-title">הוספת זמרים</h2><button id="list-cancel-x" class="icon-button" aria-label="סגור בלי לשמור">×</button></div><button class="help-badge" aria-label="עזרה: עריכת רשימה" data-help-text="שם האמן הוא הטקסט לחיפוש; שם התיקייה הוא היעד. אין שינוי סדר או הסרת כפילויות אוטומטיים.">?</button><p id="list-error" class="error" role="alert" hidden></p><p id="list-notice" role="status"></p><div id="list-rows"></div><nav class="list-pagination" aria-label="עמודי רשימת אמנים"><button id="list-prev" class="secondary">הקודם</button><span id="list-range"></span><button id="list-next" class="secondary">הבא</button></nav><div class="dialog-actions"><button id="list-add" class="secondary">הוסף שורה</button><button id="list-save" class="primary">שמור רשימה</button><button id="list-cancel" class="secondary">ביטול</button></div></dialog>
-<dialog id="import-dialog" class="wide-dialog" aria-labelledby="import-title"><div class="dialog-heading"><h2 id="import-title">בדיקת קובץ הייבוא</h2><button id="import-cancel-x" class="icon-button" aria-label="בטל ייבוא">×</button></div><p id="import-filename" dir="auto"></p><label for="import-encoding">קידוד הקובץ</label><select id="import-encoding"><option value="Utf8">UTF-8</option><option value="Utf8Bom">UTF-8 עם BOM</option><option value="Windows1255">Windows-1255 (עברית)</option><option value="Windows1252">Windows-1252</option><option value="Utf16Le">UTF-16 LE</option><option value="Utf16Be">UTF-16 BE</option></select><button id="decode-import" class="secondary">הצג לפי הקידוד שבחרתי</button><p id="import-error" class="error" role="alert" hidden></p><p id="import-summary"></p><ol id="import-rows"></ol><button class="help-badge" aria-label="עזרה: ייבוא רשימה" data-help-text="האישור מוסיף את כל השורות בסוף הרשימה. שורות לא תקינות וכפילויות אינן מוסרות אוטומטית. מוצגות עד 20 שורות ראשונות.">?</button><div class="dialog-actions"><button id="confirm-import" class="primary">אשר הוספה לרשימה</button><button id="cancel-import" class="secondary">ביטול</button></div></dialog>`;
+<dialog id="import-dialog" class="wide-dialog" aria-labelledby="import-title"><div class="dialog-heading"><h2 id="import-title">בדיקת קובץ הייבוא</h2><button id="import-cancel-x" class="icon-button" aria-label="בטל ייבוא">×</button></div><p id="import-filename" dir="auto"></p><label for="import-encoding">קידוד הקובץ</label><select id="import-encoding"><option value="Utf8">UTF-8</option><option value="Utf8Bom">UTF-8 עם BOM</option><option value="Windows1255">Windows-1255 (עברית)</option><option value="Windows1252">Windows-1252</option><option value="Utf16Le">UTF-16 LE</option><option value="Utf16Be">UTF-16 BE</option></select><button id="decode-import" class="secondary">הצג לפי הקידוד שבחרתי</button><p id="import-error" class="error" role="alert" hidden></p><p id="import-summary"></p><div id="import-rows"></div><nav class="list-pagination" aria-label="עמודי הייבוא"><button id="import-prev" class="secondary">הקודם</button><span id="import-range"></span><button id="import-next" class="secondary">הבא</button></nav><button class="help-badge" aria-label="עזרה: ייבוא רשימה" data-help-text="האישור מוסיף את כל השורות בסוף הרשימה. שורות לא תקינות וכפילויות אינן מוסרות אוטומטית. אפשר לערוך או למחוק שורות לפני האישור.">?</button><div class="dialog-actions"><button id="confirm-import" class="primary">אשר הוספה לרשימה</button><button id="cancel-import" class="secondary">ביטול</button></div></dialog>`;
 // Keep the historical footer destination, verified from the released source.
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 const source=$<HTMLInputElement>('source'),target=$<HTMLInputElement>('target');
@@ -56,7 +62,37 @@ source.addEventListener('input',()=>controller.editRoot('Source',source.value));
 target.addEventListener('input',()=>controller.editRoot('Target',target.value));
 $('source-picker').addEventListener('click',()=>void controller.selectRoot('Source'));
 $('target-picker').addEventListener('click',()=>void controller.selectRoot('Target'));
-async function runPreview(mode:Mode){await controller.preview(mode);if(controller.state.snapshot?.status==='completed'&&!document.querySelector('dialog[open]'))$('results-heading').focus();}
+function hasResults(){return controller.state.snapshot?.status==='completed'&&!!controller.state.page;}
+function showSetup(){navigation.setup();render();source.focus();}
+function showResults(push=true){navigation.results(hasResults());if(push)history.pushState({singlesView:'results'},'');render();$('results-heading').focus();}
+function backToSetup(){if(history.state?.singlesView==='results')history.back();else showSetup();}
+history.replaceState({singlesView:'setup'},'');
+window.addEventListener('popstate',()=>{
+ if($<HTMLDialogElement>('row-dialog').open){
+  $<HTMLDialogElement>('row-dialog').close();detailTrigger?.focus();
+  if(history.state?.singlesView==='results'&&hasResults())return;
+ }
+ if(['results','detail'].includes(history.state?.singlesView)&&hasResults())showResults(false);else showSetup();
+});
+$('back-setup').addEventListener('click',backToSetup);
+$('reopen-results').addEventListener('click',()=>showResults());
+async function runPreview(mode:Mode){
+ if(controller.state.busy||!navigation.start(mode))return;
+ render();$('processing-title').focus();
+ await controller.preview(mode);navigation.finish(hasResults());
+ if(hasResults())showResults();else{render();$('error').focus();}
+}
+function closeRow(){if(history.state?.singlesView==='detail')history.back();else{$<HTMLDialogElement>('row-dialog').close();detailTrigger?.focus();}}
+$('row-close').addEventListener('click',closeRow);
+$('row-dialog').addEventListener('cancel',event=>{event.preventDefault();closeRow();});
+function openRow(row:PlanRow,trigger:HTMLButtonElement){
+ detailTrigger=trigger;$('row-title').textContent=sourceLabel(row.source,controller.state.model?.platform);$('row-content').replaceChildren();
+ for(const [label,value]of [['מקור',row.source],['יעד מוצע',row.destination]]as const){if(value===null)continue;const wrapper=text('label',label,'detail-path-label');const input=document.createElement('input');input.className='source-path';input.readOnly=true;input.dir='ltr';input.value=value;input.setAttribute('aria-label',label);input.addEventListener('focus',()=>input.select());wrapper.append(input);$('row-content').append(wrapper);}
+ const description=text('p',reasonLabel(row),'detail-reason');$('row-content').append(description);
+ if(row.blockers.length)$('row-content').append(text('p',row.blockers.map(blockerLabel).join(' · '),'warning'));
+ const technical=document.createElement('details');technical.append(text('summary','מידע טכני'),text('p',row.reason),text('p',row.blockers.join(' · ')));$('row-content').append(technical);
+ history.pushState({singlesView:'detail'},'');openDialog('row-dialog');
+}
 $('sort').addEventListener('click',()=>void runPreview('Sort'));
 $('fix').addEventListener('click',()=>void runPreview('FixNames'));
 const keys:['copy_mode','main_folder_only','singles_folder','abc_sort','exist_only']=['copy_mode','main_folder_only','singles_folder','abc_sort','exist_only'];
@@ -73,29 +109,37 @@ function openDialog(id:string){$<HTMLDialogElement>(id).showModal();syncPersonal
 for(const id of ['list-dialog','import-dialog'])$(id).addEventListener('close',syncPersonalNotices);
 $('menu').addEventListener('click',()=>openDialog('menu-dialog'));
 $('advanced').addEventListener('click',()=>openDialog('advanced-dialog'));
+$('advanced-dialog').addEventListener('close',()=>{if(!document.querySelector('dialog[open]')&&navigation.screen==='setup')$('advanced').focus();});
+$('menu-dialog').addEventListener('close',()=>{if(!document.querySelector('dialog[open]'))$('menu').focus();});
 for(const button of document.querySelectorAll<HTMLButtonElement>('.close-dialog'))button.addEventListener('click',()=>button.closest('dialog')?.close());
+installIcons(app);
 installHelpBadges(app);
 // Respect enlarged text without hiding controls or trapping the page in a fixed height.
-const main=app.querySelector('main')!,workspace=app.querySelector<HTMLElement>('.workspace')!,connection=$('connection');
+const main=app.querySelector('main')!,workspace=app.querySelector<HTMLElement>('.workspace')!,connection=$('connection'),errorBox=$('error');
 function fitWorkspace(){
  const styles=getComputedStyle(main);
- const noticeHeight=connection.hidden?0:connection.getBoundingClientRect().height+parseFloat(styles.rowGap==='normal'?'0':styles.rowGap);
- const required=noticeHeight+workspace.getBoundingClientRect().height+app.querySelector('header')!.getBoundingClientRect().height+app.querySelector('footer')!.getBoundingClientRect().height+parseFloat(styles.paddingTop)+parseFloat(styles.paddingBottom)+parseFloat(styles.rowGap==='normal'?'0':styles.rowGap)+160;
- app.classList.toggle('reflow',required>window.innerHeight);
+ const gap=parseFloat(styles.rowGap==='normal'?'0':styles.rowGap);
+ const noticeHeight=[connection,errorBox].reduce((height,element)=>height+(element.hidden?0:element.getBoundingClientRect().height+gap),0);
+ const screenHeight=navigation.screen==='setup'?workspace.getBoundingClientRect().height:220;
+ const required=noticeHeight+screenHeight+app.querySelector('header')!.getBoundingClientRect().height+app.querySelector('footer')!.getBoundingClientRect().height+parseFloat(styles.paddingTop)+parseFloat(styles.paddingBottom)+parseFloat(styles.rowGap==='normal'?'0':styles.rowGap)+160;
+ app.classList.toggle('reflow',required>window.innerHeight||parseFloat(getComputedStyle(document.documentElement).fontSize)>21);
 }
 const layoutObserver=new ResizeObserver(fitWorkspace);
-for(const element of [workspace,connection,app.querySelector('header')!,app.querySelector('footer')!])layoutObserver.observe(element);
+for(const element of [workspace,connection,errorBox,app.querySelector('header')!,app.querySelector('footer')!])layoutObserver.observe(element);
 window.addEventListener('resize',fitWorkspace);fitWorkspace();
-const help={help:'בחר תיקית מקור, ובמיון גם תיקית יעד. התאם את האפשרויות ולחץ על תצוגה מקדימה. במצב תיקון אין צורך ביעד. עיין בהצעות ובסיבות לחסימה.',about:'מסדר הסינגלים · כללי המיון מבוססים על גרסה 14.0.'};
+const help={help:'בחר תיקית מקור, ובמיון גם תיקית יעד. התאם את האפשרויות ולחץ על מיין שירים או תקן שמות. במצב תיקון אין צורך ביעד. עיין בהצעות ובסיבות לחסימה.',about:'מסדר הסינגלים · כללי המיון מבוססים על גרסה 14.0.'};
 for(const button of document.querySelectorAll<HTMLButtonElement>('[data-help]'))button.addEventListener('click',()=>{$('help-content').textContent=help[button.dataset.help as keyof typeof help];});
 $('previous').addEventListener('click',()=>void controller.changePage(Math.max(0,controller.state.offset-PAGE_SIZE)));
 $('next').addEventListener('click',()=>void controller.changePage(controller.state.offset+PAGE_SIZE));
 function text(tag:string,value:string,className?:string){const node=document.createElement(tag);node.textContent=value;if(className)node.className=className;return node;}
 function render(){
  const s=controller.state;const blocked=s.busy||!s.hostAvailable;
+ app.dataset.view=navigation.screen;
+ $('setup-screen').hidden=navigation.screen!=='setup';$('processing-screen').hidden=navigation.screen!=='processing';$('results').hidden=navigation.screen!=='results';$('reopen-results').hidden=!hasResults();
+ $('results-heading').textContent=navigation.mode==='Sort'?'תוכנית מיון':'תוכנית תיקון שמות';
  if(source.value!==s.source.text)source.value=s.source.text;if(target.value!==s.target.text)target.value=s.target.text;
  source.disabled=blocked;target.disabled=blocked;source.readOnly=s.model?.platform==='android';target.readOnly=s.model?.platform==='android';
- for(const [id,pending]of [['source-picker',s.source.pending],['target-picker',s.target.pending]]as const){$<HTMLButtonElement>(id).disabled=blocked||pending;$(id).textContent=pending?'ממתין לבחירה…':'בחר תיקיה';}
+ for(const [id,pending]of [['source-picker',s.source.pending],['target-picker',s.target.pending]]as const){$<HTMLButtonElement>(id).disabled=blocked||pending;setButtonLabel($(id),pending?'ממתין לבחירה…':'בחר תיקיה',id==='source-picker'?'source':'folder');}
  for(const id of ['sort','fix'])$<HTMLButtonElement>(id).disabled=blocked||s.source.pending||s.target.pending;
  for(const key of keys){const input=$<HTMLInputElement>(key);input.checked=s.settings[key as keyof Settings];input.disabled=blocked;}
  $('copy_mode-label').textContent=s.settings.copy_mode?'העתק קבצים':'העבר קבצים';
@@ -110,23 +154,20 @@ function render(){
  $('settings-label').textContent=controller.settingsDirty?'שינויים שלא נשמרו':'ההגדרות שלך';$('settings-notice').textContent=noticeLabel(controller.savedNotice);$<HTMLButtonElement>('save-settings').disabled=blocked;$('settings-error').hidden=!s.error;$('settings-error').textContent=s.error??'';
  $('busy').textContent=s.activity==='settings'?'שומר הגדרות…':s.activity==='page'?'טוען עמוד תוצאות…':'קורא ומנתח את הקבצים…';
  $('busy').hidden=!s.busy;$('results').setAttribute('aria-busy',String(s.busy));
- $('error').hidden=!s.error;$('error').textContent=s.error??'';
+ $('error').hidden=!s.error;$('error').textContent=s.error??'';$('error').tabIndex=-1;
  const ready=s.snapshot?.status==='completed'&&!!s.page;
  $('empty').hidden=s.busy||!!s.error||ready&&s.page!.total>0;
  $('empty').textContent=ready?'לא נמצאו החלטות או פעולות להצגה בתכנית זו.':'התוצאה תופיע כאן לאחר בחירת תיקיות והפעלת בדיקה.';
  $('table-wrap').hidden=!ready||!s.page!.rows.length;
  $('count').textContent=ready?`${s.page!.total.toLocaleString('he-IL')} רשומות בתכנית`:'';
  $('rows').replaceChildren();
- if(ready)for(const row of s.page!.rows){const tr=document.createElement('tr');const origin=document.createElement('td');origin.className='file-name';
-  const name=sourceLabel(row.source,s.model?.platform);
-  const label=text('bdi',name,'source-name');label.dir='auto';
-  if(name!==row.source){
-   const pathDetails=document.createElement('details');pathDetails.className='source-details';
-   const summary=document.createElement('summary');summary.title=row.source;summary.setAttribute('aria-label',`מקור: ${row.source}`);summary.append(label);
-   const fullPath=document.createElement('input');fullPath.className='source-path';fullPath.type='text';fullPath.readOnly=true;fullPath.value=row.source;fullPath.dir='ltr';fullPath.setAttribute('aria-label','נתיב מקור מלא');fullPath.addEventListener('focus',()=>fullPath.select());
-   pathDetails.append(summary,fullPath);origin.append(pathDetails);
-  }else origin.append(label);
-  tr.append(origin);const action=document.createElement('td');action.append(text('strong',kindLabel(row.kind)));if(row.destination){const path=text('bdi',row.destination,'destination');path.dir='auto';action.append(path);}tr.append(action);const reason=document.createElement('td');reason.append(text('span',reasonLabel(row)));if(row.blockers.length)reason.append(text('small',row.blockers.map(blockerLabel).join(' · '),'row-blockers'));const technical=document.createElement('details');technical.append(text('summary','מידע טכני'),text('p',row.reason),text('p',row.blockers.join(' · ')));reason.append(technical);tr.append(reason);$('rows').append(tr);}
+ if(ready)for(const row of s.page!.rows){
+  const tr=document.createElement('tr');
+  const origin=document.createElement('td');origin.className='file-name';const name=text('bdi',sourceLabel(row.source,s.model?.platform),'source-name');name.dir='auto';name.title=row.source;origin.append(name);tr.append(origin);
+  const action=text('td',kindLabel(row.kind),'row-action');tr.append(action);
+  const reason=document.createElement('td');reason.className='row-reason';reason.append(text('span',`${kindLabel(row.kind)} · `,'mobile-action'),text('span',row.blockers.length?row.blockers.map(blockerLabel).join(' · '):reasonLabel(row)));tr.append(reason);
+  const detail=document.createElement('td');detail.className='row-detail';const button=document.createElement('button');button.className='icon-button detail-button';button.setAttribute('aria-label',`פרטים: ${sourceLabel(row.source,s.model?.platform)}`);button.append(iconElement('info'));button.addEventListener('click',()=>openRow(row,button));detail.append(button);tr.append(detail);$('rows').append(tr);
+ }
  $('warnings').replaceChildren();$('technical-notices').replaceChildren();
  if(ready)for(const warning of s.snapshot!.warnings){
   const display=warningPresentation(warning);
@@ -146,8 +187,8 @@ controller.subscribe(render);render();void controller.initialize().then(()=>{
 function returnAdvanced(){if(!$<HTMLDialogElement>('advanced-dialog').open)openDialog('advanced-dialog');}
 function closeList(){if(personal.busy)return;personal.cancel();$<HTMLDialogElement>('list-dialog').close();returnAdvanced();}
 function closeImport(){if(personal.busy)return;personal.cancel();$<HTMLDialogElement>('import-dialog').close();returnAdvanced();}
-$('edit-list').addEventListener('click',async()=>{if(controller.state.busy||personal.busy)return;await personal.open();if(personal.error)return;listOffset=0;renderPersonal();openDialog('list-dialog');});
-$('import-list').addEventListener('click',async()=>{if(controller.state.busy||personal.busy)return;await personal.selectImport();if(!personal.selection)return;renderPersonal();openDialog('import-dialog');});
+$('edit-list').addEventListener('click',async()=>{if(controller.state.busy||personal.busy)return;await personal.open();if(personal.error)return;listOffset=0;renderPersonal();$<HTMLDialogElement>('advanced-dialog').close();openDialog('list-dialog');});
+$('import-list').addEventListener('click',async()=>{if(controller.state.busy||personal.busy)return;await personal.selectImport();if(!personal.selection)return;importOffset=0;renderPersonal();$<HTMLDialogElement>('advanced-dialog').close();openDialog('import-dialog');});
 $('export-list').addEventListener('click',()=>{if(!controller.state.busy)void personal.export();});
 for(const id of ['list-cancel','list-cancel-x'])$(id).addEventListener('click',closeList);
 for(const id of ['cancel-import','import-cancel-x'])$(id).addEventListener('click',closeImport);
@@ -159,7 +200,9 @@ $('list-save').addEventListener('click',()=>void personal.save());
 $('list-prev').addEventListener('click',()=>{listOffset=Math.max(0,listOffset-50);renderPersonal();});
 $('list-next').addEventListener('click',()=>{listOffset+=50;renderPersonal();});
 $<HTMLSelectElement>('import-encoding').addEventListener('change',()=>personal.chooseEncoding($<HTMLSelectElement>('import-encoding').value as ImportEncoding));
-$('decode-import').addEventListener('click',()=>void personal.decode(personal.selectedEncoding));
+$('decode-import').addEventListener('click',()=>{importOffset=0;void personal.decode(personal.selectedEncoding);});
+$('import-prev').addEventListener('click',()=>{importOffset=Math.max(0,importOffset-50);renderPersonal();});
+$('import-next').addEventListener('click',()=>{importOffset+=50;renderPersonal();});
 $('confirm-import').addEventListener('click',async()=>{await personal.confirmImport();if(!personal.error&&!personal.selection){$<HTMLDialogElement>('import-dialog').close();returnAdvanced();}});
 function renderPersonal(){
  for(const button of document.querySelectorAll<HTMLButtonElement>('#advanced-dialog .close-dialog'))button.disabled=personal.busy||controller.state.busy;
@@ -174,7 +217,7 @@ function renderPersonal(){
   const row=personal.draft[index],entry=document.createElement('div');entry.className='list-row';
   entry.append(text('span',String(index+1),'list-index'));
   for(const [column,label] of [[1,'שם תיקיה'],[0,'שם זמר']] as const){const wrapper=document.createElement('label');wrapper.textContent=label;const input=document.createElement('input');input.id=`list-${column===0?'alias':'folder'}-${index}`;input.value=row[column]??'';input.dir='auto';input.disabled=personal.busy;input.setAttribute('aria-label',`${label}, שורה ${index+1}`);input.addEventListener('input',()=>personal.edit(index,column,input.value));wrapper.append(input);entry.append(wrapper);}
-  const remove=document.createElement('button');remove.textContent='מחק';remove.className='text-button';remove.disabled=personal.busy;remove.setAttribute('aria-label',`מחק שורה ${index+1}`);remove.addEventListener('click',()=>{personal.remove(index);$('list-add').focus();});entry.append(remove);
+  const remove=document.createElement('button');setButtonLabel(remove,'מחק','delete');remove.className='text-button';remove.disabled=personal.busy;remove.setAttribute('aria-label',`מחק שורה ${index+1}`);remove.addEventListener('click',()=>{personal.remove(index);const next=Math.min(index,personal.draft.length-1);if(next>=0)$(`list-alias-${next}`).focus();else $('list-add').focus();});entry.append(remove);
   if(row.length!==2){entry.append(text('p',`מבנה לא תקין (${row.length} שדות): ${JSON.stringify(row)}. יש לתקן או למחוק במפורש.`,'list-row-warning'));}
   $('list-rows').append(entry);
  }
@@ -182,9 +225,18 @@ function renderPersonal(){
  $<HTMLButtonElement>('list-prev').disabled=personal.busy||listOffset===0;$<HTMLButtonElement>('list-next').disabled=personal.busy||listOffset+50>=personal.draft.length;
  $('import-filename').textContent=personal.selection?.filename??'';
  $<HTMLSelectElement>('import-encoding').value=personal.selectedEncoding;
- $('import-summary').textContent=personal.preview?`${personal.preview.rows.length} שורות לייבוא; ${personal.preview.diagnostics.length} אזהרות מבנה.`:personal.selection?.encoding_required?'הקידוד לא זוהה בוודאות. בחר קידוד ובדוק את הטקסט לפני אישור.':'לא התקבלה עדיין תצוגה מקדימה.';
+ $('import-summary').textContent=personal.preview?`${personal.importRows.length} שורות לייבוא`:personal.selection?.encoding_required?'בחר קידוד ובדוק את הטקסט לפני אישור.':'';
  $('import-rows').replaceChildren();
- for(const row of personal.preview?.rows.slice(0,20)??[])$('import-rows').append(text('li',row.length===2?`שם אמן: ${row[0]} · תיקייה: ${row[1]}`:`מבנה לא תקין (${row.length} שדות): ${JSON.stringify(row)}`));
- $<HTMLButtonElement>('confirm-import').disabled=personal.busy||!personal.preview||personal.preview.encoding!==personal.selectedEncoding;
+ const imports=personal.importRows;importOffset=Math.min(importOffset,Math.floor(Math.max(0,imports.length-1)/50)*50);
+ for(const {row,index}of imports.slice(importOffset,importOffset+50)){
+  const entry=document.createElement('div');entry.className='list-row';entry.append(text('span',String(index+1),'list-index'));
+  for(const [column,label]of [[1,'שם תיקיה'],[0,'שם זמר']]as const){const wrapper=text('label',label);const input=document.createElement('input');input.id=`import-${column===0?'alias':'folder'}-${index}`;input.value=row[column]??'';input.dir='auto';input.disabled=personal.busy;input.setAttribute('aria-label',`${label}, שורה ${index+1}`);input.addEventListener('input',()=>personal.editImport(index,column,input.value));wrapper.append(input);entry.append(wrapper);}
+  const remove=document.createElement('button');setButtonLabel(remove,'מחק','delete');remove.className='text-button';remove.disabled=personal.busy;remove.dataset.importDelete=String(index);remove.setAttribute('aria-label',`מחק שורה ${index+1} מהייבוא`);remove.addEventListener('click',()=>{const position=personal.importRows.findIndex(item=>item.index===index);personal.deleteImport(index);const remaining=personal.importRows;const next=remaining[Math.min(position,remaining.length-1)];if(next)$(`import-alias-${next.index}`).focus();else $('cancel-import').focus();});entry.append(remove);
+  const original=personal.preview!.rows[index];if(original.length!==2||original.some(field=>!field))entry.append(text('p',`מבנה מקורי: ${JSON.stringify(original)}`,'list-row-warning'));
+  $('import-rows').append(entry);
+ }
+ $('import-range').textContent=imports.length?`${importOffset+1}–${Math.min(importOffset+50,imports.length)} מתוך ${imports.length}`:'הרשימה ריקה';
+ $<HTMLButtonElement>('import-prev').disabled=personal.busy||importOffset===0;$<HTMLButtonElement>('import-next').disabled=personal.busy||importOffset+50>=imports.length;
+ $<HTMLButtonElement>('confirm-import').disabled=personal.busy||!personal.preview||!personal.importRows.length||personal.preview.encoding!==personal.selectedEncoding;
 }
 personal.subscribe(renderPersonal);controller.subscribe(renderPersonal);renderPersonal();
