@@ -46,11 +46,21 @@ fn main() {
         };
         let ndk = PathBuf::from(env::var_os("ANDROID_NDK_HOME").expect("official NDK required"));
         assert!(ndk.is_absolute());
-        configure.arg(format!("-DCMAKE_TOOLCHAIN_FILE={}", ndk.join("build/cmake/android.toolchain.cmake").display()))
+        configure
+            .arg(format!(
+                "-DCMAKE_TOOLCHAIN_FILE={}",
+                ndk.join("build/cmake/android.toolchain.cmake").display()
+            ))
             .arg(format!("-DANDROID_ABI={abi}"))
-            .args(["-DANDROID_PLATFORM=android-24", "-DANDROID_STL=c++_static", "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"]);
+            .args([
+                "-DANDROID_PLATFORM=android-24",
+                "-DANDROID_STL=c++_static",
+                "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON",
+            ]);
         Some(ndk)
-    } else { None };
+    } else {
+        None
+    };
     if msvc {
         let features = env::var("CARGO_CFG_TARGET_FEATURE").unwrap_or_default();
         let runtime = if features.split(',').any(|f| f == "crt-static") {
@@ -92,8 +102,17 @@ fn main() {
     println!("cargo:rustc-link-lib=static=tag");
     println!("cargo:rustc-link-lib=static=sorter_zlib");
     if let Some(ndk) = ndk {
-        let triple = if target.starts_with("aarch64") { "aarch64-linux-android" } else { "x86_64-linux-android" };
-        println!("cargo:rustc-link-search=native={}", ndk.join("toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib").join(triple).display());
+        let triple = if target.starts_with("aarch64") {
+            "aarch64-linux-android"
+        } else {
+            "x86_64-linux-android"
+        };
+        println!(
+            "cargo:rustc-link-search=native={}",
+            ndk.join("toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib")
+                .join(triple)
+                .display()
+        );
         println!("cargo:rustc-link-lib=static=c++_static");
         println!("cargo:rustc-link-lib=static=c++abi");
     } else if !msvc {

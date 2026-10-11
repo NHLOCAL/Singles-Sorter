@@ -1,7 +1,17 @@
 use serde::Serialize;
-use sorter_core::{discovery::{EntryObservation,StorageRef},job_plan::{JobPlanV2,JobMode,OperationKind,DecisionV2}};
+use sorter_core::{
+    discovery::{EntryObservation, StorageRef},
+    job_plan::{DecisionV2, JobMode, JobPlanV2, OperationKind},
+};
 #[derive(Serialize)]
-pub struct DisplayRow {pub id:String,pub source:String,pub kind:String,pub destination:Option<String>,pub reason:String,pub blockers:Vec<String>}
+pub struct DisplayRow {
+    pub id: String,
+    pub source: String,
+    pub kind: String,
+    pub destination: Option<String>,
+    pub reason: String,
+    pub blockers: Vec<String>,
+}
 fn entry_display(entry: &EntryObservation) -> String {
     match &entry.reference {
         StorageRef::WindowsPath { utf16 } => String::from_utf16_lossy(utf16),

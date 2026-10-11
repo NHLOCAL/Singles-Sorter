@@ -74,7 +74,10 @@ jobs:
         run: |
           rustup toolchain install 1.99.0 --profile minimal --component rustfmt,clippy
           rustup target add --toolchain 1.99.0 x86_64-linux-android aarch64-linux-android
-          sdkmanager 'ndk;27.3.13750724' 'build-tools;35.0.0' 'platforms;android-35'
+          # The hosted image installs this tool outside PATH. Fail closed if absent.
+          SDKMANAGER="${ANDROID_HOME:?}/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" 'ndk;27.3.13750724' 'build-tools;35.0.0' 'platforms;android-35'
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.3.13750724" >> "$GITHUB_ENV"
           echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
           python3 native/probes/released-ner/acquire_pcre2.py --out "$RUNNER_TEMP/android-pcre" --build
