@@ -55,3 +55,11 @@ Primary references: [CPython owner-rights change](https://github.com/python/cpyt
 [3.12.10 tempfile](https://github.com/python/cpython/blob/v3.12.10/Lib/tempfile.py),
 [3.12.10 Windows mkdir](https://github.com/python/cpython/blob/v3.12.10/Modules/posixmodule.c),
 and [Microsoft file security inheritance](https://learn.microsoft.com/en-us/windows/win32/fileio/file-security-and-access-rights).
+
+The read-only Windows PowerShell ACL subprocess removes `PSModulePath` from
+its child environment only. This follows Microsoft's documented
+[pwsh → Python → Windows PowerShell resolution](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_psmodulepath?view=powershell-7.6#starting-windows-powershell-from-powershell-7),
+so Windows PowerShell reconstructs its standard module paths instead of trying
+to load incompatible PowerShell 7 modules. The parent's environment and all
+execution/security policies remain unchanged. Module/ACL errors still fail the
+early access preflight and preserve their captured diagnostic text.

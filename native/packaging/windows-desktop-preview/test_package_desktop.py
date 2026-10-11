@@ -132,6 +132,19 @@ class DesktopPackageTests(unittest.TestCase):
         self.assertFalse(run.call_args.kwargs['check'])
         self.assertEqual(run.call_args.kwargs['timeout'], 30)
 
+    def test_acl_child_rebuilds_only_its_standard_module_path(self):
+        original = {'PSModulePath': 'incompatible ps7 modules', 'KEEP_OWNED': 'value'}
+        result = subprocess.CompletedProcess(['powershell.exe'], 0, b'[]', b'')
+        with patch.dict(p.os.environ, original, clear=True), \
+             patch.object(p.subprocess, 'run', return_value=result) as run, \
+             contextlib.redirect_stdout(io.StringIO()):
+            p.read_windows_acl_evidence([self.pkg])
+            self.assertEqual(dict(p.os.environ), original)
+        child = run.call_args.kwargs['env']
+        self.assertFalse(any(key.upper() == 'PSMODULEPATH' for key in child))
+        self.assertEqual(child['KEEP_OWNED'], 'value')
+        self.assertEqual(json.loads(child['SINGLES_STAGING_ACL_PATHS']), [str(self.pkg)])
+
     def test_linux_cannot_build_windows_claim(self):
         with patch.object(p.sys,'platform','linux'),self.assertRaisesRegex(ValueError,'actual Windows'):
             p.build(types.SimpleNamespace())

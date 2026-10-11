@@ -75,7 +75,11 @@ def validate_shape(root):
 
 def read_windows_acl_evidence(paths):
     """Read-only evidence for generated staging objects; never changes access."""
-    env = dict(os.environ, SINGLES_STAGING_ACL_PATHS=json.dumps([str(p) for p in paths]))
+    # pwsh -> Python -> powershell.exe otherwise inherits incompatible PS7 modules.
+    # Microsoft documents clearing this child-only variable so Windows PowerShell
+    # reconstructs its standard module paths. Parent environment/policy is unchanged.
+    env = {key: value for key, value in os.environ.items() if key.upper() != 'PSMODULEPATH'}
+    env['SINGLES_STAGING_ACL_PATHS'] = json.dumps([str(p) for p in paths])
     script = (
         "$ErrorActionPreference='Stop'; [Console]::OutputEncoding=New-Object System.Text.UTF8Encoding($false); "
         "$rows=@(foreach($p in ($env:SINGLES_STAGING_ACL_PATHS|ConvertFrom-Json)){"
