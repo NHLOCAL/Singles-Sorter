@@ -1,3 +1,4 @@
+import './android.css';
 /** Only the packaged Android host injects this narrow command transport.
  * No paths, URLs or generic filesystem operations are accepted by this layer.
  */
@@ -31,3 +32,13 @@ window.addEventListener('pagehide',()=>{
   for (const value of pending.values()) value.reject(new Error('View closed'));
   pending.clear();
 });
+
+// Vite lowers syntax, not missing built-ins. Android 11's original WebView
+// predates Object.hasOwn; preserve the exact own-property semantics in the UI.
+if(hasAndroidHost()) {
+  if(typeof Object.hasOwn!=='function')Object.defineProperty(Object,'hasOwn',{configurable:true,writable:true,value:(value:object,key:PropertyKey)=>Object.prototype.hasOwnProperty.call(value,key)});
+  if(typeof document!=='undefined') {
+    document.documentElement.dataset.androidHost='true';
+    queueMicrotask(()=>{for(const id of ['source','target']){const input=document.getElementById(id) as HTMLInputElement|null;if(input){input.readOnly=true;input.placeholder='בחר תיקיה';input.addEventListener('click',()=>document.getElementById(`${id}-picker`)?.click());}}});
+  }
+}

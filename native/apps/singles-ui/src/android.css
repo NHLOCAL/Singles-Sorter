@@ -1,0 +1,4 @@
+/* Platform-only fallback for the Android 11 system WebView. Shared UI text and
+   desktop layout stay unchanged. dvh overrides vh on newer WebViews. */
+html[data-android-host] #app {height:100vh;height:100dvh}
+html[data-android-host] input[readonly] {cursor:pointer}
