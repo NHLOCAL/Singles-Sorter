@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import threading
 from playwright.sync_api import sync_playwright, expect
+from desktop_layout import METRICS, assert_layout
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = Path(os.environ.get('SINGLES_UI_EVIDENCE', str(ROOT / 'test-results')))
@@ -25,7 +26,7 @@ window.__TAURI_INTERNALS__={invoke:async(command,args={})=>{
  if(command==='get_settings')return {...window.__storedSettings};
  if(command==='save_main_settings'){window.__storedSettings={...window.__storedSettings,...args.settings};return {...window.__storedSettings};}
  if(command==='set_duet'){window.__storedSettings.duet_mode=args.enabled;return {...window.__storedSettings};}
- if(command==='get_first_run_status'||command==='mark_first_run_seen')return {version:'0.1.0',seen:true};
+ if(command==='get_first_run_status'||command==='mark_first_run_seen')return {version:'0.1.0',seen:false};
  if(command==='get_personal_list')return structuredClone(window.__personalList);
  if(command==='save_personal_list'){window.__personalList={revision:'r2',rows:args.rows,diagnostics:[]};return structuredClone(window.__personalList);}
  if(command==='export_personal_list')return null;
@@ -64,7 +65,30 @@ try:
         page.goto(f'http://127.0.0.1:{server.server_port}/')
         expect(page.get_by_role('heading', name='מסדר הסינגלים', exact=True)).to_be_visible()
         expect(page.locator('#sort')).to_be_enabled()
-        page.evaluate("document.title='Renderer test • mocked IPC';document.querySelector('#connection').prepend('בדיקת Renderer עם IPC מדומה · ')")
+        page.evaluate("document.title='Renderer test • mocked IPC'")
+        expect(page.locator('dialog[open]')).to_have_count(0)
+        measurements=[]
+        for width,height in [(1000,650),(1024,768)]:
+            page.set_viewport_size({'width':width,'height':height})
+            page.wait_for_timeout(100)
+            metrics=page.evaluate('() => {'+METRICS+'}')
+            assert_layout(metrics)
+            measurements.append(metrics)
+            page.screenshot(path=str(OUTPUT / f'renderer-home-{width}x{height}.png'),full_page=True)
+        badge=page.locator('[aria-label="עזרה: תיקית מקור"]')
+        badge.hover()
+        expect(page.locator('#context-help')).to_be_visible()
+        page.locator('#context-help').hover()
+        expect(page.locator('#context-help')).to_be_visible()
+        page.keyboard.press('Escape')
+        expect(page.locator('#context-help')).to_be_hidden()
+        badge.focus()
+        page.keyboard.press('Enter')
+        expect(page.locator('#context-help')).to_be_visible()
+        page.locator('h1').click()
+        expect(page.locator('#context-help')).to_be_hidden()
+        checks.append('Help hover, hoverable content, keyboard pin, Escape and outside dismissal')
+        (OUTPUT / 'layout-metrics.json').write_text(json.dumps(measurements,ensure_ascii=False,indent=2),encoding='utf-8')
         page.screenshot(path=str(OUTPUT / 'renderer-mock-desktop.png'), full_page=True)
         checks.append('Desktop page identity and nonblank renderer')
         page.locator('#source-picker').click()
@@ -90,6 +114,11 @@ try:
         expect(page.locator('#rows')).to_contain_text('<img src=x onerror=alert(1)>.mp3')
         expect(page.locator('#rows img')).to_have_count(0)
         checks.append('Additional hostile filename remains literal text without HTML execution')
+        page.evaluate("document.querySelector('#warnings').textContent='אזהרה ארוכה '.repeat(500); document.querySelector('#details').open=true")
+        page.wait_for_timeout(100)
+        assert_layout(page.evaluate('() => {'+METRICS+'}'))
+        assert page.evaluate("document.querySelector('#results-body').scrollHeight > document.querySelector('#results-body').clientHeight")
+        checks.append('Long warnings and expanded details stay in the single results scroller')
         page.screenshot(path=str(OUTPUT / 'renderer-mock-results.png'), full_page=True)
         page.locator('#advanced').click()
         expect(page.locator('#advanced-dialog')).to_be_visible()
@@ -129,10 +158,21 @@ try:
         checks.append('Dialog escape/focus return, sixth setting, configured AI fail closed')
         page.locator('#menu').click()
         page.get_by_role('button', name='איך משתמשים?').click()
-        expect(page.locator('#help-content')).to_contain_text('בחר תיקיית מקור')
+        expect(page.locator('#help-content')).to_contain_text('בחר תיקית מקור')
         page.keyboard.press('Escape')
         expect(page.locator('#menu')).to_be_focused()
         checks.append('Help menu keyboard dismissal and focus return')
+        page.set_viewport_size({'width':1000,'height':650})
+        page.evaluate("document.documentElement.style.fontSize='200%'")
+        page.wait_for_timeout(100)
+        large=page.evaluate('() => {'+METRICS+'}')
+        assert large['reflow']
+        assert_layout(large,require_bounded=False)
+        for selector in ['#source','#target','#copy_mode','#exist_only','#advanced','#save-settings','#sort','#fix']:
+            page.locator(selector).scroll_into_view_if_needed()
+            expect(page.locator(selector)).to_be_in_viewport()
+        page.evaluate("document.documentElement.style.fontSize=''")
+        checks.append('200% desktop text intentionally reflows and retains every primary command')
         page.set_viewport_size({'width': 360, 'height': 800})
         page.screenshot(path=str(OUTPUT / 'renderer-mock-mobile.png'), full_page=True)
         assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth')
@@ -144,6 +184,33 @@ try:
         checks.append('200% base text no horizontal page overflow')
         assert not errors, errors
         checks.append('No JavaScript page errors')
+        for scale in [1.25,1.5]:
+            context=browser.new_context(viewport={'width':1000,'height':650},device_scale_factor=scale)
+            scaled=context.new_page()
+            scaled.add_init_script('window.__realHostFixture='+json.dumps(REAL_PAGE,ensure_ascii=False)+';'+MOCK)
+            scaled.goto(f'http://127.0.0.1:{server.server_port}/')
+            expect(scaled.locator('#sort')).to_be_enabled()
+            scaled.wait_for_timeout(100)
+            metrics=scaled.evaluate('() => {'+METRICS+'}')
+            assert metrics['dpr']==scale
+            assert_layout(metrics)
+            scaled.screenshot(path=str(OUTPUT / f'renderer-dpr-{scale}.png'),full_page=True)
+            (OUTPUT / f'renderer-dpr-{scale}.json').write_text(json.dumps(metrics,ensure_ascii=False,indent=2),encoding='utf-8')
+            context.close()
+        checks.append('Renderer DPR 1.25/1.5 at measured 1000x650 CSS viewport; not OS scaling proof')
+        touch=browser.new_context(viewport={'width':360,'height':800},has_touch=True,is_mobile=True)
+        touch_page=touch.new_page()
+        touch_page.add_init_script('window.__realHostFixture='+json.dumps(REAL_PAGE,ensure_ascii=False)+';'+MOCK)
+        touch_page.goto(f'http://127.0.0.1:{server.server_port}/')
+        expect(touch_page.locator('#sort')).to_be_enabled()
+        touch_badge=touch_page.locator('[aria-label="עזרה: תיקית מקור"]')
+        touch_badge.tap()
+        expect(touch_page.locator('#context-help')).to_be_visible()
+        touch_badge.tap()
+        expect(touch_page.locator('#context-help')).to_be_hidden()
+        assert touch_badge.bounding_box()['height'] >= 44
+        touch.close()
+        checks.append('Touch badge toggles and retains a 44px target')
         browser.close()
 finally:
     server.shutdown()
