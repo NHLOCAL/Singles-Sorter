@@ -187,18 +187,32 @@ class DiagnosticContracts(unittest.TestCase):
             binary.write_bytes(b'fixture')
             child = Mock(pid=42, returncode=0)
             child.poll.return_value = None
-            observed = [{'pid': 43, 'created': 'stable-process-identity'}]
+            observed = [{'pid': 42, 'created': 'root-identity', 'executable': str(binary)},
+                        {'pid': 43, 'created': 'stable-process-identity'}]
+            guard = Mock(records=[], failures=[])
+            guard.unconfirmed_residuals.return_value = []
+            order = []
+            guard.wait.side_effect = lambda _: order.append('wait')
+            def retain(rows):
+                self.assertEqual(rows, observed)
+                order.append('retain')
+                return guard
             def terminate(command, **kwargs):
                 self.assertEqual(command, ['taskkill', '/PID', '42', '/T', '/F'])
                 self.assertEqual(kwargs['timeout'], 10)
+                order.append('kill')
                 child.poll.return_value = 0
             with patch.object(diagnostics.subprocess, 'Popen', return_value=child), \
                  patch.object(diagnostics.subprocess, 'run', side_effect=terminate), \
                  patch.object(diagnostics.time, 'monotonic', side_effect=[0, 9]), \
                  patch.object(diagnostics, 'snapshot', return_value={'processes': observed}), \
+                 patch.object(diagnostics, 'OwnedProcessHandles', side_effect=retain), \
                  patch.object(diagnostics, 'owned_processes', return_value=[]) as residual:
                 diagnostics.startup_probe(binary, output)
                 residual.assert_called_once_with(binary, 42, observed)
+                guard.wait.assert_called_once_with(10)
+                guard.close.assert_called_once_with()
+                self.assertEqual(order, ['retain', 'kill', 'wait'])
             self.assertEqual(json.loads((output / 'startup-probe.json').read_text())['residual_processes_after_cleanup'], [])
 
     def test_early_exit_is_recorded_without_killing_other_processes(self):
@@ -211,7 +225,8 @@ class DiagnosticContracts(unittest.TestCase):
                  patch.object(diagnostics.subprocess, 'run') as terminate, \
                  patch.object(diagnostics, 'snapshot', return_value={'processes': []}), \
                  patch.object(diagnostics, 'owned_processes', return_value=[]):
-                diagnostics.startup_probe(binary, Path(temp))
+                with self.assertRaisesRegex(RuntimeError, 'exit was not confirmed'):
+                    diagnostics.startup_probe(binary, Path(temp))
                 terminate.assert_not_called()
             self.assertEqual(json.loads((Path(temp) / 'startup-probe.json').read_text())['exit_code_before_cleanup'], 101)
 

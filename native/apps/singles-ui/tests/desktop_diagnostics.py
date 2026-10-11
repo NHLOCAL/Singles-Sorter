@@ -8,6 +8,7 @@ import sys
 import time
 
 from windows_integrity import process_security
+from windows_process_exit import OwnedProcessHandles, image_identity
 
 
 def write_json(path, value):
@@ -97,15 +98,19 @@ def snapshot(binary, output, label, root_pid=None):
 
 
 def startup_probe(binary, output):
-    """Launch only the owned binary, observe for eight seconds, then reap it.
+    """Observe an owned launch, then prove its captured process tree terminated.
 
     This is deliberately not an acceptance check and adds no automation flags,
-    remote-debugging port, app permission, or security exception.
+    remote-debugging port, app permission, or security exception. One taskkill is
+    rooted at the still-live Popen child; descendant exit confirmation is read-only.
     """
     evidence = {'kind': 'startup-diagnostic-only', 'binary': str(binary),
-                'binary_sha256': hashlib.sha256(binary.read_bytes()).hexdigest()}
+                'binary_sha256': hashlib.sha256(binary.read_bytes()).hexdigest(),
+                'process_exit_wait_seconds': 10}
     child = None
     observed = []
+    handles = None
+    unconfirmed = []
     try:
         with (output / 'startup-stdout.log').open('wb') as stdout, \
              (output / 'startup-stderr.log').open('wb') as stderr:
@@ -118,27 +123,57 @@ def startup_probe(binary, output):
             evidence['alive_before_cleanup'] = child.poll() is None
             before = snapshot(binary, output, 'startup-before-webdriver', root_pid=child.pid)
             observed = before.get('processes', [])
-            if child.poll() is None:
-                # taskkill roots cleanup at our still-live child PID, including
-                # only its WebView2 descendants; no image-name-wide termination.
-                subprocess.run(['taskkill', '/PID', str(child.pid), '/T', '/F'],
-                               capture_output=True, timeout=10, check=True)
-            child.wait(timeout=10)
-            evidence['exit_code_after_cleanup'] = child.returncode
+            # Retain every observed identity before any root-tree termination.
+            # Even partial acquisitions are kept until the outer finally closes them.
+            handles = OwnedProcessHandles(observed)
+            evidence['process_exit_confirmation'] = handles.records
+            if before.get('diagnostic_error'):
+                raise RuntimeError('Startup process observation failed: ' + before['diagnostic_error'])
+            if not any(row.get('pid') == child.pid and
+                       image_identity(row.get('executable')) == image_identity(str(binary))
+                       for row in observed):
+                raise RuntimeError('Startup observation lacks the owned root identity')
     except Exception as error:
         evidence['diagnostic_error'] = str(error)
     finally:
         try:
-            if child is not None and child.poll() is None:
-                subprocess.run(['taskkill', '/PID', str(child.pid), '/T', '/F'],
-                               capture_output=True, timeout=10, check=True)
-                child.wait(timeout=10)
+            if child is not None:
+                try:
+                    if child.poll() is None:
+                        # Popen retains the root handle, preventing PID reuse. Do
+                        # not retry, kill individual descendants, or kill by image.
+                        subprocess.run(['taskkill', '/PID', str(child.pid), '/T', '/F'],
+                                       capture_output=True, timeout=10, check=True)
+                    child.wait(timeout=10)
+                    evidence['exit_code_after_cleanup'] = child.returncode
+                except Exception as error:
+                    evidence['cleanup_error'] = str(error)
+                if handles is not None:
+                    try:
+                        # Ten seconds total across all captured handles, including
+                        # a zero-time poll for later handles if that budget expires.
+                        handles.wait(evidence['process_exit_wait_seconds'])
+                    except Exception as error:
+                        evidence['exit_confirmation_error'] = str(error)
+                try:
+                    residual = owned_processes(binary, child.pid, observed)
+                    evidence['residual_processes_after_cleanup'] = residual
+                    unconfirmed = (handles.unconfirmed_residuals(residual)
+                                   if handles is not None else residual)
+                    evidence['unconfirmed_residual_processes'] = unconfirmed
+                except Exception as error:
+                    evidence['residual_observation_error'] = str(error)
         finally:
+            # Keep handles through the post-cleanup CIM gate: the exact retained
+            # objects, not a reopened PID, are the only source of exit proof.
+            if handles is not None:
+                handles.close()
+                evidence['process_exit_failures'] = handles.failures
             write_json(output / 'startup-probe.json', evidence)
 
-    # Fail closed if a preflight descendant survives; do not contaminate acceptance.
-    residual = owned_processes(binary, child.pid, observed) if child is not None else []
-    evidence['residual_processes_after_cleanup'] = residual
-    write_json(output / 'startup-probe.json', evidence)
-    if residual:
+    if unconfirmed:
         raise RuntimeError('Owned startup-probe processes survived cleanup; WebDriver was not started')
+    if any(key in evidence for key in ('diagnostic_error', 'cleanup_error',
+                                      'exit_confirmation_error', 'residual_observation_error')) or \
+            evidence.get('process_exit_failures'):
+        raise RuntimeError('Owned startup-probe process exit was not confirmed; WebDriver was not started')
