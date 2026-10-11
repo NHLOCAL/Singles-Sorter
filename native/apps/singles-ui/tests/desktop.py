@@ -19,6 +19,7 @@ import urllib.request
 from desktop_diagnostics import snapshot, startup_probe, owned_processes, write_json
 from windows_integrity import process_security, require_medium
 from native_picker import interact_with_owned_picker
+from native_fixtures import write_import_csv
 from desktop_layout import check_native_layout, capture_platform_fonts
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -174,7 +175,7 @@ try:
         capture('05-native-personal-list')
         click('#list-cancel')
         imported_csv = scratch / 'אמנים.csv'
-        imported_csv.write_text('אמן מיובא,תיקייה מיובאת\r\nאמן מיובא,תיקייה שנייה\r\n', encoding='utf-8')
+        write_import_csv(imported_csv)
         pick_owned_path('#import-list', imported_csv)
         wait(lambda: script("return document.querySelector('#import-dialog').open"))
         assert '2 שורות לייבוא' in text('#import-summary')

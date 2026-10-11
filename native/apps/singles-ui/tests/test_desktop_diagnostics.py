@@ -1,4 +1,6 @@
 import json
+import csv
+import io
 import os
 import subprocess
 from pathlib import Path
@@ -13,9 +15,28 @@ from owned_window_capture import png_from_bgra
 from windows_integrity import require_medium
 import run_desktop_medium as launcher
 from native_picker import unique_folder_edit, interact_with_owned_picker
+from native_fixtures import write_import_csv
 
 
 class DiagnosticContracts(unittest.TestCase):
+    def test_native_import_fixture_has_exact_two_utf8_crlf_records(self):
+        expected_rows = [['אמן מיובא', 'תיקייה מיובאת'], ['אמן מיובא', 'תיקייה שנייה']]
+        expected = ''.join(','.join(row) + '\r\n' for row in expected_rows).encode('utf-8')
+        # Reproduce the former Windows text-mode corruption on every platform.
+        buffer = io.BytesIO()
+        writer = io.TextIOWrapper(buffer, encoding='utf-8', newline='\r\n')
+        writer.write(expected.decode('utf-8'))
+        writer.flush()
+        self.assertIn(b'\r\r\n', buffer.getvalue())
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'אמנים.csv'
+            write_import_csv(path)
+            raw = path.read_bytes()
+            self.assertEqual(raw, expected)
+            self.assertNotIn(b'\r\r\n', raw)
+            self.assertEqual(raw.count(b'\r\n'), 2)
+            self.assertEqual(list(csv.reader(io.StringIO(raw.decode('utf-8'), newline=''))), expected_rows)
+
     def test_native_picker_com_interaction_has_process_timeout(self):
         with patch('native_picker.subprocess.run', return_value=Mock(returncode=0)) as run:
             interact_with_owned_picker(Path('owned.exe'), Path('fixture'), Path('evidence'), 'source')
