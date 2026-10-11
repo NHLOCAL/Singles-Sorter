@@ -1,5 +1,5 @@
-//! Synthetic-only physical journal/recovery contract. No native mutation adapter,
-//! CLI apply, or Windows durability claim is provided by this crate.
+//! Identity-bound experimental journal/recovery and transfer contracts.
+//! Native Copy is restricted to owned Windows fixtures; no CLI/UI apply exists.
 pub mod binding;
 pub mod physical_journal;
 pub mod recovery;
@@ -40,3 +40,6 @@ pub mod album;
 
 #[cfg(all(windows, feature = "experimental-windows-journal"))]
 pub mod windows_journal;
+
+#[cfg(all(windows, feature = "experimental-windows-copy"))]
+pub mod windows_copy;

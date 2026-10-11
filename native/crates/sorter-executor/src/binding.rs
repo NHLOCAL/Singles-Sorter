@@ -26,7 +26,8 @@ pub enum TransferMode {
     Move,
 }
 /// Host-only grant. Deliberately not Deserialize: a plan/journal cannot mint consent.
-/// This slice grants only owned synthetic storage, never Windows paths or SAF URIs.
+/// This evidence alone grants no native path access. Native Copy validation also
+/// requires the consumed owned-TempDir capability; SAF execution remains disabled.
 #[derive(Clone, Debug)]
 pub struct ExecutionScope {
     pub inspected_plan: String,
@@ -80,6 +81,8 @@ pub(crate) struct BindingData {
     pub scope_sha256: String,
     pub scope_evidence: ScopeEvidence,
     pub synthetic_only: bool,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub owned_windows_copy: bool,
 }
 /// Only validation constructs a usable binding. A serialized header is evidence,
 /// never an ExecutionBinding or authorization token.
@@ -144,8 +147,35 @@ pub fn validate_execution(
     resources: &Resources,
     scope: &ExecutionScope,
 ) -> Result<ExecutionBinding> {
-    let (root, target) =
-        validate_plan_scope(plan, storage, metadata, recognition, resources, scope)?;
+    validate_execution_domain(
+        plan,
+        storage,
+        metadata,
+        recognition,
+        resources,
+        scope,
+        false,
+    )
+}
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn validate_execution_domain(
+    plan: &JobPlanV2,
+    storage: &mut dyn ReadStorage,
+    metadata: &mut dyn MetadataProvider,
+    recognition: &mut dyn RecognitionProvider,
+    resources: &Resources,
+    scope: &ExecutionScope,
+    owned_windows_copy: bool,
+) -> Result<ExecutionBinding> {
+    let (root, target) = validate_plan_scope_domain(
+        plan,
+        storage,
+        metadata,
+        recognition,
+        resources,
+        scope,
+        owned_windows_copy,
+    )?;
     let mut operations = vec![];
     let mut destinations = HashSet::new();
     let mut sources = HashSet::new();
@@ -306,7 +336,8 @@ pub fn validate_execution(
                 resources: scope.resources.clone(),
                 allowed_modes: scope.allowed_modes.clone(),
             },
-            synthetic_only: true,
+            synthetic_only: !owned_windows_copy,
+            owned_windows_copy,
         },
     })
 }
@@ -365,6 +396,26 @@ pub(crate) fn validate_plan_scope(
     resources: &Resources,
     scope: &ExecutionScope,
 ) -> Result<(EntryObservation, EntryObservation)> {
+    validate_plan_scope_domain(
+        plan,
+        storage,
+        metadata,
+        recognition,
+        resources,
+        scope,
+        false,
+    )
+}
+#[allow(clippy::too_many_arguments)]
+fn validate_plan_scope_domain(
+    plan: &JobPlanV2,
+    storage: &mut dyn ReadStorage,
+    metadata: &mut dyn MetadataProvider,
+    recognition: &mut dyn RecognitionProvider,
+    resources: &Resources,
+    scope: &ExecutionScope,
+    owned_windows_copy: bool,
+) -> Result<(EntryObservation, EntryObservation)> {
     verify_job_plan_binding(plan).map_err(|_| E::InvalidBinding)?;
     if plan.request.mode != JobMode::Sort || plan.operations.is_empty() {
         return Err(E::Unsupported);
@@ -399,7 +450,16 @@ pub(crate) fn validate_plan_scope(
     if scope.inspected_plan != plan.binding_sha256 {
         return Err(E::Scope);
     }
-    if plan.observations.iter().any(|e| !synthetic(e)) {
+    if owned_windows_copy {
+        if !cfg!(all(windows, feature = "experimental-windows-copy"))
+            || !plan.request.settings.copy_mode
+            || plan.operations.len() != 1
+            || scope.allowed_modes != [TransferMode::Copy]
+            || plan.observations.iter().any(|e| !windows(e))
+        {
+            return Err(E::Unsupported);
+        }
+    } else if plan.observations.iter().any(|e| !synthetic(e)) {
         return Err(E::Unsupported);
     }
     let mut checked = CheckedRecognition {
@@ -423,4 +483,37 @@ pub(crate) fn validate_plan_scope(
         return Err(E::Scope);
     }
     Ok((root, target))
+}
+
+fn windows(e: &EntryObservation) -> bool {
+    matches!(e.reference, StorageRef::WindowsPath { .. })
+        && matches!(e.identity, Some(ObjectIdentity::Windows { .. }))
+}
+impl BindingData {
+    /// Domain evidence is necessary but never sufficient authority to execute.
+    pub(crate) fn valid_domain(&self) -> bool {
+        if self.synthetic_only && !self.owned_windows_copy {
+            return synthetic(&self.source_root)
+                && synthetic(&self.target_root)
+                && self.operations.iter().all(|o| {
+                    synthetic(&o.source.observation)
+                        && matches!(o.destination.root, StorageRef::TestOpaque { .. })
+                });
+        }
+        !self.synthetic_only
+            && self.owned_windows_copy
+            && cfg!(all(windows, feature = "experimental-windows-copy"))
+            && self.album_context.is_none()
+            && self.operations.len() == 1
+            && windows(&self.source_root)
+            && windows(&self.target_root)
+            && self.scope_evidence.allowed_modes == [TransferMode::Copy]
+            && self.operations.iter().all(|o| {
+                o.mode == TransferMode::Copy
+                    && o.copy_effect
+                    && o.duet_cohort.is_none()
+                    && windows(&o.source.observation)
+                    && o.destination.root == self.target_root.reference
+            })
+    }
 }

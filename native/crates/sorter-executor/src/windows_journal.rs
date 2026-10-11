@@ -8,8 +8,8 @@ use sorter_io::desktop::windows_mutation::{WindowsJournalFile, WindowsJournalLoc
 
 /// Consumes a newly, exclusively created file with held root/ancestor guards.
 /// No writable reopen exists. Recovery reads require its identity-bound location.
-/// This bridge cannot authorize a real transfer: bindings remain synthetic-only
-/// and native mutation durable_flush remains Unknown.
+/// This bridge alone cannot authorize a transfer. The separate owned-Copy feature
+/// requires a real owned-tree capability; native durable_flush remains Unknown.
 pub struct WindowsJournalStore {
     file: WindowsJournalFile,
 }

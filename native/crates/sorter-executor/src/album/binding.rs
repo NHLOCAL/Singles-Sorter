@@ -310,6 +310,7 @@ pub fn validate_album_copy(
                     allowed_modes: scope.allowed_modes.clone(),
                 },
                 synthetic_only: true,
+                owned_windows_copy: false,
             },
         },
     })

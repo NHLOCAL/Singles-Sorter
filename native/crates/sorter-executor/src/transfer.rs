@@ -1,5 +1,5 @@
-//! Bounded, identity-bound transfers for validated synthetic execution bindings.
-//! There is no production adapter implementation or shipping apply entry point.
+//! Bounded transfers for validated synthetic or owned-Windows Copy bindings.
+//! There is no production-root adapter or shipping apply entry point.
 use crate::{ExecutionError as E, Result, binding::*, physical_journal::*, results::*};
 use sha2::{Digest, Sha256};
 use sorter_core::discovery::{ObjectIdentity, StorageRef};
@@ -87,7 +87,16 @@ fn source_expected(op: &BoundOperation) -> Result<ExpectedSource> {
     Ok(ExpectedSource {
         identity: e.identity.clone().ok_or(E::InvalidBinding)?,
         parent_identity: e.parent_identity.clone().ok_or(E::InvalidBinding)?,
-        name: MutationName::Provider(e.name.clone()),
+        name: match &e.reference {
+            StorageRef::WindowsPath { utf16 } => {
+                let leaf = utf16
+                    .rsplit(|u| *u == 92 || *u == 47)
+                    .next()
+                    .ok_or(E::InvalidBinding)?;
+                MutationName::Windows(leaf.to_vec())
+            }
+            _ => mutation_name(&e.reference, &e.name)?,
+        },
         size: e.size,
         modified: e.modified.clone(),
         digest: ContentDigest {
@@ -131,7 +140,14 @@ fn check_observation(
         || &observed.parent_identity != parent
         || name.is_some_and(|n| n != &observed.actual_name)
         || length.is_some_and(|n| observed.size.is_some_and(|size| size != n))
-        || !matches!(observed.reference, StorageRef::TestOpaque { .. })
+        || !matches!(
+            (&observed.reference, &observed.identity),
+            (StorageRef::TestOpaque { .. }, ObjectIdentity::Test { .. })
+                | (
+                    StorageRef::WindowsPath { .. },
+                    ObjectIdentity::Windows { .. }
+                )
+        )
     {
         return Err(error(
             MutationErrorKind::VerificationFailed,
@@ -241,8 +257,8 @@ struct Failure {
 impl From<MutationError> for Failure {
     fn from(error: MutationError) -> Self {
         Self {
+            pending: error.kind == MutationErrorKind::UnknownOutcome,
             error,
-            pending: false,
         }
     }
 }
@@ -311,7 +327,7 @@ fn run_job_inner<S: TransferStorage>(
         return Err(E::Scope);
     }
     if binding.recovery_only
-        || !binding.data.synthetic_only
+        || !binding.data.valid_domain()
         || binding.sha256()? != journal.binding().sha256()?
         || binding.operations().is_empty()
     {
@@ -511,13 +527,15 @@ impl<S: TransferStorage> Runner<'_, S> {
         {
             return Err(error(MutationErrorKind::StalePlan, "owned album parent changed").into());
         }
-        let name = MutationName::Provider(
+        let name = mutation_name(
+            &op.destination.root,
             op.destination
                 .components
                 .last()
                 .ok_or_else(|| error(MutationErrorKind::InvalidName, "empty destination"))?
-                .clone(),
-        );
+                .as_str(),
+        )
+        .map_err(|_| error(MutationErrorKind::InvalidName, "unsupported name domain"))?;
         let atomic = op.mode == TransferMode::Move
             && !op.copy_effect
             && op.duet_cohort.is_none()
@@ -732,5 +750,17 @@ impl<S: TransferStorage> Runner<'_, S> {
             }
         }
         Ok(())
+    }
+}
+
+fn mutation_name(reference: &StorageRef, name: &str) -> Result<MutationName> {
+    match reference {
+        StorageRef::TestOpaque { .. } => Ok(MutationName::Provider(name.into())),
+        StorageRef::WindowsPath { .. }
+            if cfg!(all(windows, feature = "experimental-windows-copy")) =>
+        {
+            Ok(MutationName::Windows(name.encode_utf16().collect()))
+        }
+        _ => Err(E::Unsupported),
     }
 }

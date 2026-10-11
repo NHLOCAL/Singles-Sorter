@@ -97,6 +97,19 @@ jobs:
           if ($flushCases.Count -ne 1) { throw "Expected the native rejected-flush test; found $($flushCases.Count)" }
           cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib journal_flush_tests -- --test-threads=1
 
+      - name: Check and exercise owned Windows single-file Copy
+        if: runner.os == 'Windows'
+        run: |
+          cargo +1.99.0 clippy --locked -p sorter-executor --features experimental-windows-copy --all-targets -- -D warnings
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $listing = cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-copy --test windows_copy -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $cases = @($listing | Where-Object { $_ -match ': test$' })
+          if ($cases.Count -ne 8) { throw "Expected all 8 owned Windows Copy fixture cases; found $($cases.Count)" }
+          cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-copy --test windows_copy -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-copy
+
       - name: Test native metadata with static Windows CRT
         if: runner.os == 'Windows'
         env:

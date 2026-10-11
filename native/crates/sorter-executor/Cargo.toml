@@ -22,3 +22,6 @@ tempfile = "=3.27.0"
 default = []
 # Owned fixture journal I/O only; never enables native transfer or apply.
 experimental-windows-journal = ["dep:sorter-io"]
+
+# Real identities and held handles, exclusively on consumed fixture TempDir roots.
+experimental-windows-copy = ["experimental-windows-journal"]

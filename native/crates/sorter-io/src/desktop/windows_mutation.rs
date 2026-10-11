@@ -11,7 +11,7 @@ use std::{
     fs::File,
     io::{self, Read, Seek, SeekFrom, Write},
     os::windows::{
-        ffi::OsStrExt,
+        ffi::{OsStrExt, OsStringExt},
         io::{AsRawHandle, FromRawHandle},
     },
     path::{Component, Path},
@@ -136,6 +136,14 @@ impl WindowsParent {
     fn handle(&self) -> &File {
         self.ancestors.last().unwrap_or(&self.root.directory)
     }
+    pub fn contains_ancestor(&self, expected: &ObjectIdentity) -> Result<bool, MutationError> {
+        for file in std::iter::once(&self.root.directory).chain(self.ancestors.iter()) {
+            if &identity(file).map_err(read_error)? == expected {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
     pub fn identity(&self) -> &ObjectIdentity {
         &self.identity
     }
@@ -248,6 +256,24 @@ impl WindowsMutationStorage {
             ancestors: Arc::new(ancestors),
             identity: id,
         })
+    }
+    /// Resolve only a directory beneath the consumed TempDir, using held ancestry.
+    /// A serialized Windows path is evidence, never an ownership grant.
+    pub fn parent_reference(&self, reference: &StorageRef) -> Result<WindowsParent, MutationError> {
+        let StorageRef::WindowsPath { utf16 } = reference else {
+            return Err(err(
+                MutationErrorKind::Unsupported,
+                "Windows reference required",
+            ));
+        };
+        if utf16.contains(&0) {
+            return Err(err(MutationErrorKind::InvalidName, "NUL in reference"));
+        }
+        let path = std::path::PathBuf::from(std::ffi::OsString::from_wide(utf16));
+        let relative = path
+            .strip_prefix(self.root._tree.path())
+            .map_err(|_| err(MutationErrorKind::StalePlan, "reference outside owned tree"))?;
+        self.parent(relative)
     }
     fn check_parent(&self, parent: &WindowsParent) -> Result<(), MutationError> {
         if !Arc::ptr_eq(&self.root, &parent.root) {
@@ -659,6 +685,14 @@ pub struct WindowsPublished {
     observation: MutationObservation,
 }
 impl WindowsSourceLease {
+    pub fn rewind(&mut self) -> Result<(), MutationError> {
+        self.file
+            .as_mut()
+            .ok_or_else(|| err(MutationErrorKind::StalePlan, "lease consumed"))?
+            .seek(SeekFrom::Start(0))
+            .map_err(io_error)?;
+        Ok(())
+    }
     pub fn observation(&self) -> &MutationObservation {
         &self.observation
     }
@@ -686,6 +720,27 @@ impl Write for WindowsOwnedTemp {
     }
 }
 impl WindowsOwnedTemp {
+    pub fn verify_content(
+        &self,
+        expected: &ContentDigest,
+    ) -> Result<MutationObservation, MutationError> {
+        let file = self
+            .file
+            .as_ref()
+            .ok_or_else(|| err(MutationErrorKind::StalePlan, "temp consumed"))?;
+        ensure_regular(file)?;
+        let observed = observe(file, &self.parent)?;
+        if observed.identity != self.identity
+            || observed.actual_name != self.observation.actual_name
+            || digest(file)? != *expected
+        {
+            return Err(err(
+                MutationErrorKind::VerificationFailed,
+                "temp identity/name/content changed",
+            ));
+        }
+        Ok(observed)
+    }
     pub fn observation(&self) -> &MutationObservation {
         &self.observation
     }
@@ -771,12 +826,6 @@ impl MutationStorage for WindowsMutationStorage {
         if expected.parent_identity != parent.identity {
             return Err(err(MutationErrorKind::StalePlan, "source parent mismatch"));
         }
-        if expected.modified.is_some() {
-            return Err(err(
-                MutationErrorKind::Unsupported,
-                "timestamp encoding is not defined for this primitive; reissue digest-bound observation",
-            ));
-        }
         let file = open_file(parent.handle(), units(&expected.name)?, false)?;
         ensure_regular(&file)?;
         let obs = observe(&file, parent)?;
@@ -784,6 +833,14 @@ impl MutationStorage for WindowsMutationStorage {
             || obs.actual_name != expected.name
             || expected.size.is_some_and(|s| obs.size != Some(s))
             || digest(&file)? != expected.digest
+            || expected.modified.as_ref().is_some_and(|expected| {
+                file.metadata()
+                    .and_then(|m| m.modified())
+                    .map(|t| format!("{t:?}"))
+                    .as_ref()
+                    .ok()
+                    != Some(expected)
+            })
         {
             return Err(err(
                 MutationErrorKind::StalePlan,

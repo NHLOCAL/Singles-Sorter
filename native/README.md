@@ -27,11 +27,12 @@ final acceptance.
 - `sorter-recognition` and `sorter-classifier`: opt-in, original-only local AI
   for read-only `plan-files` previews; see [build, explicit bundle, limits and
   acceptance boundaries](docs/original-ai-preview.md).
-- `sorter-executor`: synthetic-only identity-bound transfer/journal tests and
+- `sorter-executor`: identity-bound synthetic transfer/journal tests, opt-in
+  [owned Windows single-file Copy fixtures](docs/windows-owned-copy.md), and
   [exclusive owned-directory / flat album Copy contracts](docs/synthetic-album-copy.md).
   This is not a production mutation adapter or an apply entry point.
-- No tag writes, transfers, UI AI activation, network service or telemetry is
-  enabled by this preview.
+- No tag writes, user-library transfers, UI AI activation, network service or
+  telemetry is enabled by this preview.
 
 The core's production dependencies are serde, serde_json and SHA256 (sha2),
 with exact versions/checksums preserved in Cargo.lock. No Python runtime is required by this

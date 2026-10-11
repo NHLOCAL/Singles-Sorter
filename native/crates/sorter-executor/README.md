@@ -6,7 +6,10 @@ aggregation are tested against owned in-memory fault-injecting storage.
 `sorter-io` separately provides an experimental Windows NTFS primitive adapter,
 available only behind `experimental-windows-mutation` and an owned `TempDir`
 constructor. Its native fixture suite must pass on Windows; Linux compilation
-or skipped tests are not platform acceptance.
+or skipped tests are not platform acceptance. The separate
+`experimental-windows-copy` feature now bridges the verified driver to actual
+single-file Copy within that owned fixture tree, with real IDs and checked file
+sync. See [boundaries and verification](../../docs/windows-owned-copy.md).
 
 There is no public CLI apply command, production-root mutation constructor,
 shipping execution flag, or automatic recovery replay. Existing v1/v2 previews

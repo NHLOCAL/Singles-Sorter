@@ -1,0 +1,333 @@
+//! Experimental single-file Copy on a consumed, caller-owned NTFS fixture tree.
+//! No path constructor grants mutation ownership; no Move, albums or tag writes.
+use crate::{ExecutionError as E, Result, binding::*, transfer::TransferStorage};
+use sorter_core::{discovery::*, job_plan::*, metadata::MetadataProvider};
+use sorter_io::desktop::{DesktopStorage, windows_mutation::*};
+use sorter_storage_contracts::*;
+use std::{
+    ffi::OsString,
+    io::{self, Read, Write},
+    os::windows::ffi::{OsStrExt, OsStringExt},
+    path::{Path, PathBuf},
+};
+
+fn error(detail: &str) -> MutationError {
+    MutationError::new(MutationErrorKind::StalePlan, detail)
+}
+fn path(reference: &StorageRef) -> std::result::Result<PathBuf, MutationError> {
+    match reference {
+        StorageRef::WindowsPath { utf16 } if !utf16.contains(&0) => {
+            Ok(OsString::from_wide(utf16).into())
+        }
+        _ => Err(error("lossless Windows reference required")),
+    }
+}
+fn reference(path: &Path) -> StorageRef {
+    StorageRef::WindowsPath {
+        utf16: path.as_os_str().encode_wide().collect(),
+    }
+}
+/// Revalidate against real read handles, then bind only a single Copy beneath
+/// the already-owned mutation capability. Serialized paths cannot mint that capability.
+pub fn validate_owned_copy(
+    owned: &WindowsMutationStorage,
+    plan: &JobPlanV2,
+    metadata: &mut dyn MetadataProvider,
+    recognition: &mut dyn RecognitionProvider,
+    resources: &Resources,
+    scope: &ExecutionScope,
+) -> Result<ExecutionBinding> {
+    if !plan.request.settings.copy_mode
+        || !plan.request.settings.main_folder_only
+        || plan.request.settings.duet_mode
+        || plan.operations.len() != 1
+        || scope.allowed_modes != [TransferMode::Copy]
+    {
+        return Err(E::Unsupported);
+    }
+    let target = plan.request.target.as_ref().ok_or(E::Scope)?;
+    let source_path = path(&plan.request.source).map_err(|_| E::Scope)?;
+    let target_path = path(target).map_err(|_| E::Scope)?;
+    if source_path.starts_with(&target_path) || target_path.starts_with(&source_path) {
+        return Err(E::Scope);
+    }
+    let source_parent = owned
+        .parent_reference(&plan.request.source)
+        .map_err(|_| E::Scope)?;
+    let target_parent = owned.parent_reference(target).map_err(|_| E::Scope)?;
+    if source_parent.identity() != &scope.source_root
+        || target_parent.identity() != &scope.target_root
+    {
+        return Err(E::Scope);
+    }
+    // Reject external/mixed observations before any planner, metadata or content reads.
+    for observation in &plan.observations {
+        let observed_path = path(&observation.reference).map_err(|_| E::Scope)?;
+        if !observed_path.starts_with(&source_path) && !observed_path.starts_with(&target_path) {
+            return Err(E::Scope);
+        }
+        if !matches!(observation.identity, Some(ObjectIdentity::Windows { .. })) {
+            return Err(E::Scope);
+        }
+    }
+    let OperationKind::SingleTransfer {
+        source, transfer, ..
+    } = &plan.operations[0].kind
+    else {
+        return Err(E::Unsupported);
+    };
+    let source_file_path = path(&source.reference).map_err(|_| E::Scope)?;
+    let leaf = source_file_path
+        .file_name()
+        .ok_or(E::Scope)?
+        .encode_wide()
+        .collect::<Vec<_>>();
+    // The planner's display string cannot represent unpaired surrogates. Refuse
+    // that unsupported policy boundary instead of publishing a lossy replacement.
+    if String::from_utf16(&leaf).map_err(|_| E::Unsupported)? != source.name {
+        return Err(E::Unsupported);
+    }
+    if source_file_path.parent() != Some(source_path.as_path())
+        || transfer.destination.root != *target
+        || !transfer.copy
+    {
+        return Err(E::Scope);
+    }
+    // This slice cannot create directories. Resolve all destination ancestors now,
+    // and again under the held scope immediately before effects.
+    let destination = DestinationEvidence {
+        id: String::new(),
+        root: target.clone(),
+        components: transfer.destination.components.clone(),
+    };
+    destination_parent(owned, &destination, &scope.target_root).map_err(|_| E::Scope)?;
+    let mut reads = DesktopStorage::new(&[source_path, target_path]).map_err(|_| E::Scope)?;
+    let binding = validate_execution_domain(
+        plan,
+        &mut reads,
+        metadata,
+        recognition,
+        resources,
+        scope,
+        true,
+    )?;
+    if !binding.data.valid_domain() {
+        return Err(E::InvalidBinding);
+    }
+    Ok(binding)
+}
+fn destination_parent(
+    owned: &WindowsMutationStorage,
+    destination: &DestinationEvidence,
+    root: &ObjectIdentity,
+) -> std::result::Result<WindowsParent, MutationError> {
+    let anchor = owned.parent_reference(&destination.root)?;
+    if anchor.identity() != root || destination.components.is_empty() {
+        return Err(error("target root differs"));
+    }
+    let mut directory = path(&destination.root)?;
+    for component in &destination.components[..destination.components.len() - 1] {
+        if component.is_empty()
+            || component == "."
+            || component == ".."
+            || component.contains(['/', '\\', ':', '\0'])
+        {
+            return Err(error("unsafe destination component"));
+        }
+        directory.push(component);
+    }
+    let parent = owned.parent_reference(&reference(&directory))?;
+    if !parent.contains_ancestor(root)? {
+        return Err(error("target ancestor differs"));
+    }
+    Ok(parent)
+}
+impl TransferStorage for WindowsMutationStorage {
+    fn source_parent(
+        &mut self,
+        source: &SourceEvidence,
+        root: &ObjectIdentity,
+    ) -> std::result::Result<WindowsParent, MutationError> {
+        let path = path(&source.observation.reference)?;
+        let parent = self.parent_reference(&reference(
+            path.parent()
+                .ok_or_else(|| error("missing source parent"))?,
+        ))?;
+        if !parent.contains_ancestor(root)? {
+            return Err(error("source root differs"));
+        }
+        Ok(parent)
+    }
+    fn destination_parent(
+        &mut self,
+        destination: &DestinationEvidence,
+        root: &ObjectIdentity,
+    ) -> std::result::Result<WindowsParent, MutationError> {
+        destination_parent(self, destination, root)
+    }
+    fn parent_identity(&self, parent: &WindowsParent) -> ObjectIdentity {
+        parent.identity().clone()
+    }
+    fn temp_observation(&self, temp: &WindowsOwnedTemp) -> MutationObservation {
+        temp.observation().clone()
+    }
+    fn rewind_source(
+        &mut self,
+        source: &mut WindowsSourceLease,
+    ) -> std::result::Result<(), MutationError> {
+        source.rewind()
+    }
+    fn read_source(
+        &mut self,
+        source: &mut WindowsSourceLease,
+        buffer: &mut [u8],
+    ) -> io::Result<usize> {
+        source.read(buffer)
+    }
+    fn write_temp(&mut self, temp: &mut WindowsOwnedTemp, buffer: &[u8]) -> io::Result<usize> {
+        temp.write(buffer)
+    }
+    fn sync_temp(&mut self, temp: &mut WindowsOwnedTemp) -> std::result::Result<(), MutationError> {
+        temp.sync_data()
+    }
+    fn verify_temp(
+        &mut self,
+        temp: &WindowsOwnedTemp,
+        digest: &ContentDigest,
+    ) -> std::result::Result<MutationObservation, MutationError> {
+        temp.verify_content(digest)
+    }
+    fn rename_eligible(&self, _: &WindowsSourceLease, _: &WindowsParent) -> bool {
+        false
+    }
+}
+
+/// Fresh owned-root identity verification followed by read-only reconciliation.
+/// Retained in-process handles model close/reopen; no cross-process grant is inferred.
+pub fn open_owned_copy_recovery(
+    owned: &WindowsMutationStorage,
+    scope: &RecoveryScope,
+    job_id: &str,
+    bytes: &[u8],
+) -> Result<crate::physical_journal::PhysicalJournalV2> {
+    let journal = crate::physical_journal::PhysicalJournalV2::open_for_recovery_domain(
+        scope, job_id, bytes, true,
+    )?;
+    let binding = journal.binding();
+    for observed in [&binding.data.source_root, &binding.data.target_root] {
+        let parent = owned
+            .parent_reference(&observed.reference)
+            .map_err(|_| E::Scope)?;
+        if Some(parent.identity()) != observed.identity.as_ref() {
+            return Err(E::Scope);
+        }
+    }
+    Ok(journal)
+}
+
+/// Read-only observations limited to one recovered binding and its freshly checked
+/// owned roots. It cannot resume, publish, delete, append or adopt a found temp.
+pub struct WindowsCopyRecovery {
+    binding: ExecutionBinding,
+    reads: DesktopStorage,
+    _source: WindowsParent,
+    _target: WindowsParent,
+}
+impl WindowsCopyRecovery {
+    pub fn new(owned: &WindowsMutationStorage, binding: &ExecutionBinding) -> Result<Self> {
+        if !binding.recovery_only
+            || !binding.data.owned_windows_copy
+            || !binding.data.valid_domain()
+        {
+            return Err(E::Scope);
+        }
+        let source = owned
+            .parent_reference(&binding.data.source_root.reference)
+            .map_err(|_| E::Scope)?;
+        let target = owned
+            .parent_reference(&binding.data.target_root.reference)
+            .map_err(|_| E::Scope)?;
+        if Some(source.identity()) != binding.data.source_root.identity.as_ref()
+            || Some(target.identity()) != binding.data.target_root.identity.as_ref()
+        {
+            return Err(E::Scope);
+        }
+        let reads = DesktopStorage::new(&[
+            path(&binding.data.source_root.reference).map_err(|_| E::Scope)?,
+            path(&binding.data.target_root.reference).map_err(|_| E::Scope)?,
+        ])
+        .map_err(|_| E::Scope)?;
+        Ok(Self {
+            binding: binding.clone(),
+            reads,
+            _source: source,
+            _target: target,
+        })
+    }
+    fn observe(
+        &mut self,
+        reference: &StorageRef,
+    ) -> Result<Option<crate::recovery::ObservedObject>> {
+        let before = match self.reads.stat(reference) {
+            Ok(e) => e,
+            Err(e) if e.kind == StorageErrorKind::NotFound => return Ok(None),
+            Err(_) => return Err(E::Io),
+        };
+        let mut input = self.reads.open_read(reference).map_err(|_| E::Io)?;
+        let bound = input.binding().ok_or(E::Stale)?;
+        if Some(&bound.identity) != before.identity.as_ref()
+            || Some(bound.size) != before.size
+            || Some(&bound.modified) != before.modified.as_ref()
+        {
+            return Err(E::Stale);
+        }
+        use sha2::{Digest, Sha256};
+        let mut hash = Sha256::new();
+        let mut buffer = [0; 65536];
+        let mut length = 0u64;
+        loop {
+            let n = input.read(&mut buffer).map_err(|_| E::Io)?;
+            if n == 0 {
+                break;
+            }
+            hash.update(&buffer[..n]);
+            length += n as u64;
+            if Some(length) > before.size {
+                return Err(E::Stale);
+            }
+        }
+        if Some(length) != before.size
+            || self.reads.stat(reference).map_err(|_| E::Stale)? != before
+        {
+            return Err(E::Stale);
+        }
+        Ok(Some(crate::recovery::ObservedObject {
+            identity: before.identity.ok_or(E::Stale)?,
+            sha256: format!("{:x}", hash.finalize()),
+        }))
+    }
+}
+impl crate::recovery::RecoveryStorage for WindowsCopyRecovery {
+    fn source(
+        &mut self,
+        reference: &StorageRef,
+    ) -> Result<Option<crate::recovery::ObservedObject>> {
+        if self.binding.operations()[0].source.observation.reference != *reference {
+            return Err(E::Scope);
+        }
+        self.observe(reference)
+    }
+    fn destination(
+        &mut self,
+        destination: &DestinationEvidence,
+    ) -> Result<Option<crate::recovery::ObservedObject>> {
+        if self.binding.operations()[0].destination != *destination {
+            return Err(E::Scope);
+        }
+        let mut destination_path = path(&destination.root).map_err(|_| E::Scope)?;
+        for component in &destination.components {
+            destination_path.push(component);
+        }
+        self.observe(&reference(&destination_path))
+    }
+}

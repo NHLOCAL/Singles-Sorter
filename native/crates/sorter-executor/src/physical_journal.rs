@@ -167,6 +167,14 @@ impl PhysicalJournalV2 {
     /// independently identify the complete inspected binding and original scope.
     /// This does not require the pre-job source still to exist after a rename.
     pub fn open_for_recovery(scope: &RecoveryScope, job_id: &str, bytes: &[u8]) -> Result<Self> {
+        Self::open_for_recovery_domain(scope, job_id, bytes, false)
+    }
+    pub(crate) fn open_for_recovery_domain(
+        scope: &RecoveryScope,
+        job_id: &str,
+        bytes: &[u8],
+        owned_windows_copy: bool,
+    ) -> Result<Self> {
         let end = bytes
             .iter()
             .position(|b| *b == b'\n')
@@ -181,7 +189,8 @@ impl PhysicalJournalV2 {
                 != Some(&scope.original_scope.source_root)
             || head.body.binding.target_root.identity.as_ref()
                 != Some(&scope.original_scope.target_root)
-            || !head.body.binding.synthetic_only
+            || !head.body.binding.valid_domain()
+            || head.body.binding.owned_windows_copy != owned_windows_copy
         {
             return Err(E::Scope);
         }
@@ -351,7 +360,12 @@ impl PhysicalJournalV2 {
                 .and_then(|e| e.observed_identity.as_ref())
         };
         if event.phase == TempAllocated {
-            if !matches!(event.observed_identity, Some(ObjectIdentity::Test { .. }))
+            if !(matches!(event.observed_identity, Some(ObjectIdentity::Test { .. }))
+                && self.binding.data.synthetic_only
+                || matches!(
+                    event.observed_identity,
+                    Some(ObjectIdentity::Windows { .. })
+                ) && self.binding.data.owned_windows_copy)
                 || event.observed_identity == self.binding.data.source_root.identity
                 || event.observed_identity == self.binding.data.target_root.identity
                 || self
