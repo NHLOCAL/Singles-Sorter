@@ -70,6 +70,8 @@ pub struct DestinationEvidence {
 #[serde(deny_unknown_fields)]
 pub(crate) struct BindingData {
     pub schema: u16,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub album_context: Option<String>,
     pub plan_sha256: String,
     pub source_root: EntryObservation,
     pub target_root: EntryObservation,
@@ -142,63 +144,8 @@ pub fn validate_execution(
     resources: &Resources,
     scope: &ExecutionScope,
 ) -> Result<ExecutionBinding> {
-    verify_job_plan_binding(plan).map_err(|_| E::InvalidBinding)?;
-    if plan.request.mode != JobMode::Sort || plan.operations.is_empty() {
-        return Err(E::Unsupported);
-    }
-    if plan.blockers.iter().any(|b| {
-        b != "PHYSICAL_APPLY_UNAVAILABLE"
-            && b != "HISTORICAL_DUET_DELETE_REQUIRES_VERIFIED_ALL_DESTINATIONS"
-    }) {
-        return Err(E::Unsupported);
-    }
-    if resources != &scope.resources
-        || resources.resource_ids != plan.request.resource_ids
-        || resources.adapter_versions != plan.request.adapter_versions
-        || resources.ai_profile != plan.request.ai_profile
-        || resources.resource_hashes.len() != resources.resource_ids.len()
-        || resources.adapter_hashes.len() != resources.adapter_versions.len()
-        || !resources
-            .resource_hashes
-            .iter()
-            .chain(&resources.adapter_hashes)
-            .all(|h| valid_hash(h))
-    {
-        return Err(E::InvalidBinding);
-    }
-    match &resources.ai_profile {
-        AiProfile::Disabled if resources.model_hash.is_none() => {}
-        AiProfile::Configured {
-            available: true, ..
-        } if resources.model_hash.as_deref().is_some_and(valid_hash) => {}
-        _ => return Err(E::Unsupported),
-    }
-    if scope.inspected_plan != plan.binding_sha256 {
-        return Err(E::Scope);
-    }
-    if plan.observations.iter().any(|e| !synthetic(e)) {
-        return Err(E::Unsupported);
-    }
-    let mut checked = CheckedRecognition {
-        inner: recognition,
-        failed: false,
-    };
-    let fresh = plan_job(&plan.request, storage, metadata, &mut checked).map_err(|_| E::Stale)?;
-    if checked.failed {
-        return Err(E::Unsupported);
-    }
-    if fresh.binding_sha256 != plan.binding_sha256 {
-        return Err(E::Stale);
-    }
-    let root = storage.stat(&plan.request.source).map_err(|_| E::Stale)?;
-    let target = storage
-        .stat(plan.request.target.as_ref().ok_or(E::InvalidBinding)?)
-        .map_err(|_| E::Stale)?;
-    if root.identity.as_ref() != Some(&scope.source_root)
-        || target.identity.as_ref() != Some(&scope.target_root)
-    {
-        return Err(E::Scope);
-    }
+    let (root, target) =
+        validate_plan_scope(plan, storage, metadata, recognition, resources, scope)?;
     let mut operations = vec![];
     let mut destinations = HashSet::new();
     let mut sources = HashSet::new();
@@ -344,6 +291,7 @@ pub fn validate_execution(
         recovery_only: false,
         data: BindingData {
             schema: 2,
+            album_context: None,
             plan_sha256: plan.binding_sha256.clone(),
             source_root: root,
             target_root: target,
@@ -407,4 +355,72 @@ pub(crate) fn same_duet_cohort(prior: &BoundOperation, next: &BoundOperation) ->
                 && ids.contains(&next.id)
                 && next.duet_cohort.as_ref() == Some(ids)
         })
+}
+
+pub(crate) fn validate_plan_scope(
+    plan: &JobPlanV2,
+    storage: &mut dyn ReadStorage,
+    metadata: &mut dyn MetadataProvider,
+    recognition: &mut dyn RecognitionProvider,
+    resources: &Resources,
+    scope: &ExecutionScope,
+) -> Result<(EntryObservation, EntryObservation)> {
+    verify_job_plan_binding(plan).map_err(|_| E::InvalidBinding)?;
+    if plan.request.mode != JobMode::Sort || plan.operations.is_empty() {
+        return Err(E::Unsupported);
+    }
+    if plan.blockers.iter().any(|b| {
+        b != "PHYSICAL_APPLY_UNAVAILABLE"
+            && b != "HISTORICAL_DUET_DELETE_REQUIRES_VERIFIED_ALL_DESTINATIONS"
+    }) {
+        return Err(E::Unsupported);
+    }
+    if resources != &scope.resources
+        || resources.resource_ids != plan.request.resource_ids
+        || resources.adapter_versions != plan.request.adapter_versions
+        || resources.ai_profile != plan.request.ai_profile
+        || resources.resource_hashes.len() != resources.resource_ids.len()
+        || resources.adapter_hashes.len() != resources.adapter_versions.len()
+        || !resources
+            .resource_hashes
+            .iter()
+            .chain(&resources.adapter_hashes)
+            .all(|h| valid_hash(h))
+    {
+        return Err(E::InvalidBinding);
+    }
+    match &resources.ai_profile {
+        AiProfile::Disabled if resources.model_hash.is_none() => {}
+        AiProfile::Configured {
+            available: true, ..
+        } if resources.model_hash.as_deref().is_some_and(valid_hash) => {}
+        _ => return Err(E::Unsupported),
+    }
+    if scope.inspected_plan != plan.binding_sha256 {
+        return Err(E::Scope);
+    }
+    if plan.observations.iter().any(|e| !synthetic(e)) {
+        return Err(E::Unsupported);
+    }
+    let mut checked = CheckedRecognition {
+        inner: recognition,
+        failed: false,
+    };
+    let fresh = plan_job(&plan.request, storage, metadata, &mut checked).map_err(|_| E::Stale)?;
+    if checked.failed {
+        return Err(E::Unsupported);
+    }
+    if fresh.binding_sha256 != plan.binding_sha256 {
+        return Err(E::Stale);
+    }
+    let root = storage.stat(&plan.request.source).map_err(|_| E::Stale)?;
+    let target = storage
+        .stat(plan.request.target.as_ref().ok_or(E::InvalidBinding)?)
+        .map_err(|_| E::Stale)?;
+    if root.identity.as_ref() != Some(&scope.source_root)
+        || target.identity.as_ref() != Some(&scope.target_root)
+    {
+        return Err(E::Scope);
+    }
+    Ok((root, target))
 }

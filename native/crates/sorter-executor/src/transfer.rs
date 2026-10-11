@@ -274,6 +274,41 @@ pub fn run_job<S: TransferStorage>(
     flag: &AtomicBool,
     progress: &mut dyn FnMut(TransferProgress),
 ) -> Result<JobResult> {
+    run_job_inner(binding, storage, journal, sink, flag, progress, None)
+}
+/// Only the album driver can supply its freshly held destination identity.
+pub(crate) fn run_album_transfers<S: TransferStorage>(
+    binding: &ExecutionBinding,
+    storage: &mut S,
+    journal: &mut PhysicalJournalV2,
+    sink: &mut dyn JournalStore,
+    flag: &AtomicBool,
+    progress: &mut dyn FnMut(TransferProgress),
+    parent: &ObjectIdentity,
+) -> Result<JobResult> {
+    run_job_inner(
+        binding,
+        storage,
+        journal,
+        sink,
+        flag,
+        progress,
+        Some(parent),
+    )
+}
+#[allow(clippy::too_many_arguments)]
+fn run_job_inner<S: TransferStorage>(
+    binding: &ExecutionBinding,
+    storage: &mut S,
+    journal: &mut PhysicalJournalV2,
+    sink: &mut dyn JournalStore,
+    flag: &AtomicBool,
+    progress: &mut dyn FnMut(TransferProgress),
+    album_parent: Option<&ObjectIdentity>,
+) -> Result<JobResult> {
+    if binding.data.album_context.is_some() != album_parent.is_some() {
+        return Err(E::Scope);
+    }
     if binding.recovery_only
         || !binding.data.synthetic_only
         || binding.sha256()? != journal.binding().sha256()?
@@ -295,6 +330,7 @@ pub fn run_job<S: TransferStorage>(
         published: HashMap::new(),
         items: vec![],
         stop: false,
+        album_parent,
     };
     for op in binding.operations() {
         if runner.stop || !runner.journal.dependencies_ready(op.id) {
@@ -391,6 +427,7 @@ struct Runner<'a, S: TransferStorage> {
     published: HashMap<usize, (S::Published, MutationObservation)>,
     items: Vec<ItemResult>,
     stop: bool,
+    album_parent: Option<&'a ObjectIdentity>,
 }
 impl<S: TransferStorage> Runner<'_, S> {
     fn append(
@@ -456,6 +493,12 @@ impl<S: TransferStorage> Runner<'_, S> {
             self.binding.data.target_root.identity.as_ref().unwrap(),
         )?;
         let parent_id = self.storage.parent_identity(&parent);
+        if self
+            .album_parent
+            .is_some_and(|expected| expected != &parent_id)
+        {
+            return Err(error(MutationErrorKind::StalePlan, "owned album parent changed").into());
+        }
         let name = MutationName::Provider(
             op.destination
                 .components

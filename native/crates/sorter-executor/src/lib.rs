@@ -35,3 +35,5 @@ pub(crate) fn hash<T: Serialize>(v: &T) -> Result<String> {
 
 pub mod results;
 pub mod transfer;
+
+pub mod album;

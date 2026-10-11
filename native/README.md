@@ -27,6 +27,9 @@ final acceptance.
 - `sorter-recognition` and `sorter-classifier`: opt-in, original-only local AI
   for read-only `plan-files` previews; see [build, explicit bundle, limits and
   acceptance boundaries](docs/original-ai-preview.md).
+- `sorter-executor`: synthetic-only identity-bound transfer/journal tests and
+  [exclusive owned-directory / flat album Copy contracts](docs/synthetic-album-copy.md).
+  This is not a production mutation adapter or an apply entry point.
 - No tag writes, transfers, UI AI activation, network service or telemetry is
   enabled by this preview.
 

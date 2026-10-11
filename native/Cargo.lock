@@ -299,6 +299,7 @@ dependencies = [
 name = "sorter-storage-contracts"
 version = "0.1.0"
 dependencies = [
+ "serde",
  "sorter-core",
 ]
 

@@ -41,7 +41,7 @@ pub struct MutationCapabilities {
 /// unpaired UTF-16 units; provider names are opaque display-name strings. An
 /// adapter must reject the other platform's variant, invalid leaf names and
 /// unsupported names rather than normalize, reinterpret, or silently suffix them.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum MutationName {
     Windows(Vec<u16>),
     Provider(String),
@@ -71,7 +71,8 @@ pub struct ExpectedSource {
 /// Observed references are evidence only, not leases or permission to mutate.
 /// A provider may change its URI/document ID on rename; the returned reference,
 /// identity, parent and actual name must be observed anew from that operation.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct MutationObservation {
     pub reference: StorageRef,
     pub identity: ObjectIdentity,
@@ -237,4 +238,42 @@ pub trait MutationStorage {
         &mut self,
         published: &Self::Published,
     ) -> Result<MutationObservation, MutationError>;
+}
+
+/// Stronger directory-specific guarantees; generic file creation is insufficient.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct DirectoryCapabilities {
+    pub exclusive_owned_create: Capability,
+    pub held_ancestry: Capability,
+    pub stable_child_set: Capability,
+    pub durable_directory_sync: Capability,
+}
+
+/// Synthetic executor seam, not an implementation of Windows/SAF mkdir.
+/// Guards retain exact identity and all relevant ancestor leases until dropped.
+/// No method may adopt an existing directory, silently create parents, follow a
+/// link/reparse, normalize a name, or clean up on Drop. An adapter must reject
+/// unsupported guarantees and recheck capabilities immediately before dispatch.
+pub trait OwnedDirectoryStorage: MutationStorage {
+    type OwnedDirectory;
+    fn directory_capabilities(&self) -> DirectoryCapabilities;
+    /// Exclusive single-leaf creation under a held parent. A lost response is
+    /// PendingUnknown even if a subsequent name lookup finds a directory.
+    fn create_owned_directory(
+        &mut self,
+        parent: &Self::Parent,
+        name: &MutationName,
+        cancelled: &AtomicBool,
+    ) -> MutationOutcome<Self::OwnedDirectory>;
+    fn directory_observation(&self, directory: &Self::OwnedDirectory) -> MutationObservation;
+    /// Prove persistence of this exact directory AND its entry in the held parent
+    /// namespace, including any platform-required ancestor synchronization. Merely
+    /// flushing an empty directory handle is insufficient. A successful return is
+    /// an adapter guarantee, not a portable fsync claim.
+    fn sync_owned_directory(
+        &mut self,
+        directory: &Self::OwnedDirectory,
+    ) -> Result<(), MutationError>;
+    /// Retains/borrows the same identity-bound guard; never opens by guessed name.
+    fn owned_directory_parent(&self, directory: &Self::OwnedDirectory) -> Self::Parent;
 }
