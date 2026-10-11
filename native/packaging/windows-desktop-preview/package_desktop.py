@@ -84,8 +84,12 @@ def read_windows_acl_evidence(paths):
         "ConvertTo-Json -InputObject $rows -Compress"
     )
     result = subprocess.run(['powershell.exe', '-NoProfile', '-NonInteractive', '-Command', script],
-                            env=env, check=True, capture_output=True)
-    print('STAGING_ACCESS_EVIDENCE ' + result.stdout.decode('utf-8-sig').strip())
+                            env=env, check=False, capture_output=True, timeout=30)
+    print('STAGING_ACCESS_EVIDENCE ' + result.stdout.decode('utf-8-sig', errors='replace').strip(), flush=True)
+    if result.returncode:
+        print('STAGING_ACCESS_ERROR ' + result.stderr.decode('utf-8-sig', errors='replace')[:16000],
+              file=sys.stderr, flush=True)
+    result.check_returncode()
 
 
 def publish_inherited_copy(stage, output):

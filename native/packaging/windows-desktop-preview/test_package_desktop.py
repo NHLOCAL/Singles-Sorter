@@ -1,6 +1,9 @@
 """Structural contract tests only; never substitute for actual Windows acceptance."""
 import importlib.util
 import json
+import contextlib
+import io
+import subprocess
 from pathlib import Path
 import tempfile
 import types
@@ -116,6 +119,18 @@ class DesktopPackageTests(unittest.TestCase):
         self.assertEqual(sentinel.read_bytes(), b'unchanged')
         self.assertTrue(self.pkg.exists())
         self.assertEqual(list(self.root.glob('desktop-preview-publish-*')), [])
+
+    def test_acl_failure_preserves_diagnostics_before_raising(self):
+        result = subprocess.CompletedProcess(['powershell.exe'], 1, b'owned stdout', b'exact owned failure')
+        output, error = io.StringIO(), io.StringIO()
+        with patch.object(p.subprocess, 'run', return_value=result) as run, \
+             contextlib.redirect_stdout(output), contextlib.redirect_stderr(error):
+            with self.assertRaises(subprocess.CalledProcessError):
+                p.read_windows_acl_evidence([self.pkg])
+        self.assertIn('owned stdout', output.getvalue())
+        self.assertIn('exact owned failure', error.getvalue())
+        self.assertFalse(run.call_args.kwargs['check'])
+        self.assertEqual(run.call_args.kwargs['timeout'], 30)
 
     def test_linux_cannot_build_windows_claim(self):
         with patch.object(p.sys,'platform','linux'),self.assertRaisesRegex(ValueError,'actual Windows'):

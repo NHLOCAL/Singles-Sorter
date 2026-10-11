@@ -85,6 +85,9 @@ jobs:
       - name: Verify effective normal-user rights before compilation
         run: python tests/run_desktop_medium.py --preflight
 
+      - name: Probe exact staging diagnostics and inherited Medium access before builds
+        run: python ../../packaging/windows-desktop-preview/probe_staging_access.py
+
       - name: Probe strict profile guard and same-directory Windows rename
         run: python tests/windows-profile-rename-probe.py
 
