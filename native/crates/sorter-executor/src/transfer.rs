@@ -52,6 +52,21 @@ pub trait TransferStorage: MutationStorage {
     ) -> std::result::Result<MutationObservation, MutationError>;
     /// Positive, lease-derived same-volume evidence. False uses the copy path.
     fn rename_eligible(&self, source: &Self::SourceLease, parent: &Self::Parent) -> bool;
+    /// Extra checked file-sync step for the private owned-Windows Copy domain.
+    /// Other domains never call this hook. An adapter cannot silently substitute
+    /// a no-op; the default refuses the operation after publication.
+    #[cfg(all(windows, feature = "experimental-windows-copy"))]
+    fn sync_owned_windows_publication(
+        &mut self,
+        _published: &mut Self::Published,
+        _digest: &ContentDigest,
+        _cancel: &AtomicBool,
+    ) -> std::result::Result<MutationObservation, MutationError> {
+        Err(error(
+            MutationErrorKind::Unsupported,
+            "owned Windows publication sync unavailable",
+        ))
+    }
 }
 #[derive(Clone, Debug)]
 pub struct TransferProgress {
@@ -645,7 +660,8 @@ impl<S: TransferStorage> Runner<'_, S> {
             Phase::DestinationPublishPrepared,
             Some(temp_observed.identity.clone()),
         )?;
-        let published = outcome(
+        #[allow(unused_mut)]
+        let mut published = outcome(
             self.storage
                 .publish_no_replace(&mut temp, &parent, &name, self.flag),
         )?;
@@ -664,6 +680,28 @@ impl<S: TransferStorage> Runner<'_, S> {
             Phase::DestinationPublished,
             Some(observed.identity.clone()),
         )?;
+        #[cfg(all(windows, feature = "experimental-windows-copy"))]
+        if self.binding.data.owned_windows_copy {
+            let synced = self
+                .storage
+                .sync_owned_windows_publication(&mut published, &expected.digest, self.flag)
+                .map_err(Failure::pending)?;
+            check_observation(
+                &synced,
+                &observed.identity,
+                &parent_id,
+                Some(&name),
+                Some(expected.digest.length),
+            )
+            .map_err(Failure::pending)?;
+            // Publication already occurred; cancellation cannot imply rollback.
+            if cancelled(self.flag) {
+                return Err(Failure::pending(error(
+                    MutationErrorKind::Cancelled,
+                    "cancelled after published file sync",
+                )));
+            }
+        }
         let verified = self
             .storage
             .verify(&published, &expected.digest)

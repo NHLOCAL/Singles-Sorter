@@ -683,6 +683,69 @@ pub struct WindowsPublished {
     file: File,
     parent: WindowsParent,
     observation: MutationObservation,
+    sync_poisoned: bool,
+}
+/// Checked file-buffer synchronization of the exact held, verified publication.
+/// Not a namespace durability capability, source retirement, or replay authority.
+#[derive(Debug)]
+#[must_use]
+pub struct PublishedFileSyncAcknowledgment {
+    observation: MutationObservation,
+}
+impl PublishedFileSyncAcknowledgment {
+    pub fn observation(&self) -> &MutationObservation {
+        &self.observation
+    }
+}
+impl WindowsMutationStorage {
+    /// Verify, flush, and reverify without closing or reopening the publication.
+    /// Any failure after dispatch permanently disables further sync on this guard;
+    /// inspection remains read-only and possible. No source is retired here.
+    pub fn sync_published_file(
+        &mut self,
+        published: &mut WindowsPublished,
+        expected: &ContentDigest,
+        cancel: &AtomicBool,
+    ) -> Result<PublishedFileSyncAcknowledgment, MutationError> {
+        self.sync_published_file_with(published, expected, cancel, |file| {
+            unsafe { FlushFileBuffers(HANDLE(file.as_raw_handle())) }.map_err(win_error)
+        })
+    }
+    fn sync_published_file_with(
+        &mut self,
+        published: &mut WindowsPublished,
+        expected: &ContentDigest,
+        cancel: &AtomicBool,
+        flush: impl FnOnce(&File) -> Result<(), MutationError>,
+    ) -> Result<PublishedFileSyncAcknowledgment, MutationError> {
+        self.check_parent(&published.parent)?;
+        if published.sync_poisoned {
+            return Err(err(
+                MutationErrorKind::UnknownOutcome,
+                "published sync poisoned",
+            ));
+        }
+        cancelled(cancel)?;
+        self.verify(published, expected)?;
+        cancelled(cancel)?;
+        published.sync_poisoned = true;
+        flush(&published.file).map_err(|e| {
+            err(
+                MutationErrorKind::UnknownOutcome,
+                &format!("published file sync: {e:?}"),
+            )
+            .with_observation(published.observation.clone())
+        })?;
+        let observation = self.verify(published, expected).map_err(|e| {
+            err(
+                MutationErrorKind::UnknownOutcome,
+                &format!("post-sync verification: {e:?}"),
+            )
+            .with_observation(published.observation.clone())
+        })?;
+        published.sync_poisoned = false;
+        Ok(PublishedFileSyncAcknowledgment { observation })
+    }
 }
 impl WindowsSourceLease {
     pub fn rewind(&mut self) -> Result<(), MutationError> {
@@ -1069,6 +1132,7 @@ fn finish_publish(
         file,
         parent: parent.clone(),
         observation,
+        sync_poisoned: false,
     })
 }
 
@@ -1113,5 +1177,195 @@ mod journal_flush_tests {
         );
         drop(rejected);
         assert_eq!(storage.read_journal(&location).unwrap(), b"owned fixture");
+    }
+}
+
+#[cfg(test)]
+mod published_sync_tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    fn applied<T>(outcome: MutationOutcome<T>) -> T {
+        match outcome {
+            MutationOutcome::Applied(value) => value,
+            other => panic!(
+                "expected Applied, got {}",
+                match other {
+                    MutationOutcome::NoEffect(_) => "NoEffect",
+                    _ => "PendingUnknown",
+                }
+            ),
+        }
+    }
+    fn name(value: &str) -> MutationName {
+        MutationName::Windows(value.encode_utf16().collect())
+    }
+    fn fixture(
+        leaf: MutationName,
+    ) -> (
+        WindowsMutationStorage,
+        WindowsPublished,
+        ContentDigest,
+        PathBuf,
+    ) {
+        let tree = tempfile::tempdir().unwrap();
+        let path = tree.path().to_owned();
+        std::fs::write(path.join("source"), b"retained original").unwrap();
+        std::fs::create_dir(path.join("target")).unwrap();
+        let mut storage = WindowsMutationStorage::for_owned_synthetic_tree(tree).unwrap();
+        let parent = storage.parent(Path::new("target")).unwrap();
+        let cancel = AtomicBool::new(false);
+        let mut temp = applied(storage.create_temp(&parent, "sync", &cancel));
+        let bytes = vec![0x51; 131_091];
+        temp.write_all(&bytes).unwrap();
+        temp.sync_data().unwrap();
+        let expected = ContentDigest {
+            sha256: Sha256::digest(&bytes).into(),
+            length: bytes.len() as u64,
+        };
+        let published = applied(storage.publish_no_replace(&mut temp, &parent, &leaf, &cancel));
+        (storage, published, expected, path)
+    }
+    #[test]
+    fn verified_unicode_publication_sync_retains_identity_source_and_guards() {
+        let leaf = name("שלום-🎵.mp3");
+        let (mut storage, mut published, expected, path) = fixture(leaf.clone());
+        let before = storage.inspect(&published).unwrap();
+        let ack = storage
+            .sync_published_file(&mut published, &expected, &AtomicBool::new(false))
+            .unwrap();
+        assert_eq!(ack.observation(), &before);
+        assert_eq!(ack.observation().actual_name, leaf);
+        assert!(std::fs::remove_file(path.join("target/שלום-🎵.mp3")).is_err());
+        assert!(std::fs::rename(path.join("target"), path.join("renamed-parent")).is_err());
+        assert_eq!(
+            std::fs::read(path.join("source")).unwrap(),
+            b"retained original"
+        );
+        assert_eq!(storage.capabilities().durable_flush, Capability::Unknown);
+        drop(published);
+        let parent = storage.parent(Path::new("target")).unwrap();
+        let reopened = storage.observe_source(&parent, &leaf).unwrap();
+        assert_eq!(reopened.identity, before.identity);
+        assert_eq!(reopened.digest, expected);
+    }
+    #[test]
+    fn cancellation_before_dispatch_and_after_sync_is_not_false_rollback() {
+        let (mut storage, mut published, expected, _) = fixture(name("final"));
+        let cancel = AtomicBool::new(true);
+        assert!(
+            matches!(storage.sync_published_file_with(&mut published, &expected, &cancel, |_| panic!("cancelled dispatch")), Err(e) if e.kind == MutationErrorKind::Cancelled)
+        );
+        assert!(!published.sync_poisoned);
+        cancel.store(false, Ordering::Release);
+        let ack = storage
+            .sync_published_file_with(&mut published, &expected, &cancel, |file| {
+                unsafe { FlushFileBuffers(HANDLE(file.as_raw_handle())) }.map_err(win_error)?;
+                cancel.store(true, Ordering::Release);
+                Ok(())
+            })
+            .unwrap();
+        assert_eq!(
+            ack.observation().identity,
+            storage.inspect(&published).unwrap().identity
+        );
+        assert!(cancel.load(Ordering::Acquire));
+        assert!(!published.sync_poisoned);
+    }
+    #[test]
+    fn foreign_owner_and_wrong_content_reject_before_flush() {
+        let (mut storage, mut published, expected, _) = fixture(name("final"));
+        let mut foreign =
+            WindowsMutationStorage::for_owned_synthetic_tree(tempfile::tempdir().unwrap()).unwrap();
+        let cancel = AtomicBool::new(false);
+        assert!(
+            matches!(foreign.sync_published_file_with(&mut published, &expected, &cancel, |_| panic!("foreign dispatch")), Err(e) if e.kind == MutationErrorKind::StalePlan)
+        );
+        let mut wrong = expected.clone();
+        wrong.sha256[0] ^= 1;
+        assert!(
+            matches!(storage.sync_published_file_with(&mut published, &wrong, &cancel, |_| panic!("wrong digest dispatch")), Err(e) if e.kind == MutationErrorKind::VerificationFailed)
+        );
+        assert!(!published.sync_poisoned);
+        let _ack = storage
+            .sync_published_file(&mut published, &expected, &cancel)
+            .unwrap();
+    }
+    #[test]
+    fn real_os_rejected_read_only_rename_sync_poison_is_permanent() {
+        let tree = tempfile::tempdir().unwrap();
+        let path = tree.path().to_owned();
+        std::fs::write(path.join("source"), b"known object").unwrap();
+        let mut storage = WindowsMutationStorage::for_owned_synthetic_tree(tree).unwrap();
+        let parent = storage.parent(Path::new("")).unwrap();
+        let expected = storage.observe_source(&parent, &name("source")).unwrap();
+        let mut source = storage.acquire_source(&parent, &expected).unwrap();
+        let cancel = AtomicBool::new(false);
+        let mut published =
+            applied(storage.rename_no_replace(&mut source, &parent, &name("renamed"), &cancel));
+        let error = storage
+            .sync_published_file(&mut published, &expected.digest, &cancel)
+            .unwrap_err();
+        assert_eq!(error.kind, MutationErrorKind::UnknownOutcome);
+        assert!(error.detail.contains("PermissionDenied"), "{error:?}");
+        assert!(published.sync_poisoned);
+        assert!(
+            matches!(storage.sync_published_file_with(&mut published, &expected.digest, &cancel, |_| panic!("must not retry rejected sync")), Err(e) if e.kind == MutationErrorKind::UnknownOutcome)
+        );
+        assert_eq!(
+            storage
+                .verify(&published, &expected.digest)
+                .unwrap()
+                .identity,
+            expected.identity
+        );
+        drop(published);
+        assert_eq!(
+            std::fs::read(path.join("renamed")).unwrap(),
+            b"known object"
+        );
+        assert!(!path.join("source").exists());
+    }
+    #[test]
+    fn lost_flush_responses_preserve_published_evidence_and_forbid_retry() {
+        for after in [false, true] {
+            let (mut storage, mut published, expected, path) = fixture(name("final"));
+            let cancel = AtomicBool::new(false);
+            let result =
+                storage.sync_published_file_with(&mut published, &expected, &cancel, |file| {
+                    if after {
+                        unsafe { FlushFileBuffers(HANDLE(file.as_raw_handle())) }
+                            .map_err(win_error)?;
+                    }
+                    Err(err(MutationErrorKind::Io, "injected response loss"))
+                });
+            assert!(matches!(result, Err(e) if e.kind == MutationErrorKind::UnknownOutcome));
+            assert!(published.sync_poisoned);
+            assert!(
+                matches!(storage.sync_published_file_with(&mut published, &expected, &cancel, |_| panic!("must not replay sync")), Err(e) if e.kind == MutationErrorKind::UnknownOutcome)
+            );
+            let observed = storage.verify(&published, &expected).unwrap();
+            drop(published);
+            let parent = storage.parent(Path::new("target")).unwrap();
+            let reopened = storage.observe_source(&parent, &name("final")).unwrap();
+            assert_eq!(reopened.identity, observed.identity);
+            assert_eq!(reopened.digest, expected);
+            assert_eq!(
+                std::fs::read(path.join("source")).unwrap(),
+                b"retained original"
+            );
+        }
+    }
+    #[test]
+    fn native_unpaired_utf16_publication_is_not_lossily_reinterpreted() {
+        let leaf = MutationName::Windows(vec![0x5e9, 0xd800, 0x2e, 0x6d, 0x70, 0x33]);
+        let (mut storage, mut published, expected, _) = fixture(leaf.clone());
+        let ack = storage
+            .sync_published_file(&mut published, &expected, &AtomicBool::new(false))
+            .unwrap();
+        assert_eq!(ack.observation().actual_name, leaf);
+        // This primitive handles raw UTF-16. The string-based Copy planner still
+        // rejects this filename; the test does not change that separate boundary.
+        assert_eq!(storage.capabilities().durable_flush, Capability::Unknown);
     }
 }

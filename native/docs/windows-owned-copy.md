@@ -49,8 +49,12 @@ encoding) and digest must match on the same held source lease. That lease denies
 read/write/delete sharing; ancestor handles remain held. The driver streams into
 an exclusively created owned temporary file, handles bounded short writes, checks
 length/hash/EOF, calls checked `FlushFileBuffers` on that same temp handle, and
-verifies its identity/name/content before no-replace publication. The published
-handle remains held through verification and the final journal acknowledgment.
+verifies its identity/name/content before no-replace publication. After the
+`DestinationPublished` journal acknowledgment, it verifies and flushes the same
+published handle, then reverifies before `DestinationVerified` and `Committed`.
+That handle remains held through the final journal acknowledgment. See
+[held publication sync](windows-published-sync.md) for response-loss/cancellation
+behavior and the separately assessed practical Move contract.
 The source is retained on every outcome.
 
 Journal intent is appended and synced before each effect. An append/sync error,
@@ -94,16 +98,19 @@ planning enumeration or root timestamps.
 
 ## Verification boundary
 
-Eight native Windows tests cover exact multi-buffer Unicode copies and source
+Nine native Windows tests cover exact multi-buffer Unicode copies and source
 lease protection; final-name and foreign-temp collisions; source changes and
 foreign owned roots; cancellation before/during writes with retained orphan data;
 short writes and lost write/flush/publish responses; partial/lost journal responses
 at every Copy phase; mixed domains/disabled modes; and rehashed domain forgery,
-constructor containment and read-only recovery restrictions. All I/O uses
+constructor containment and read-only recovery restrictions; and post-publication
+sync failures/cancellation with no false commit or replay. Six additional native
+primitive tests cover held-publication synchronization, including real OS flush
+rejection and raw UTF-16. All I/O uses
 generated owned files. Fault wrappers simulate response loss around actual I/O;
 they are not kernel-crash or power-cut tests.
 
-CI requires exactly eight nonzero Windows fixtures and reruns existing executor
+CI requires exactly nine nonzero Windows Copy fixtures and reruns existing executor
 regressions with the feature enabled. Linux contract tests and Windows-target
 Clippy are useful gates but do not establish native runtime acceptance. Report
 actual Windows results only for the exact tested commit.

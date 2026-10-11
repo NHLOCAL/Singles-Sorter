@@ -229,6 +229,15 @@ impl TransferStorage for WindowsMutationStorage {
     fn rename_eligible(&self, _: &WindowsSourceLease, _: &WindowsParent) -> bool {
         false
     }
+    fn sync_owned_windows_publication(
+        &mut self,
+        published: &mut WindowsPublished,
+        digest: &ContentDigest,
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> std::result::Result<MutationObservation, MutationError> {
+        let ack = self.sync_published_file(published, digest, cancel)?;
+        Ok(ack.observation().clone())
+    }
 }
 
 /// Fresh owned-root identity verification followed by read-only reconciliation.

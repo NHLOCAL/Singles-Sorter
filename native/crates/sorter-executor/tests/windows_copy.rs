@@ -381,6 +381,10 @@ enum Fault {
     PartialWriteLost,
     SyncLost,
     PublishLost,
+    PublishedSyncBefore,
+    PublishedSyncLost,
+    PublishedSyncCancelBefore,
+    PublishedSyncCancelAfter,
 }
 struct FaultStorage {
     inner: WindowsMutationStorage,
@@ -517,6 +521,103 @@ impl TransferStorage for FaultStorage {
     }
     fn rename_eligible(&self, _: &Self::SourceLease, _: &Self::Parent) -> bool {
         false
+    }
+    fn sync_owned_windows_publication(
+        &mut self,
+        p: &mut Self::Published,
+        d: &ContentDigest,
+        c: &AtomicBool,
+    ) -> std::result::Result<MutationObservation, MutationError> {
+        if self.fault == Fault::PublishedSyncBefore {
+            return Err(lost());
+        }
+        if self.fault == Fault::PublishedSyncCancelBefore {
+            c.store(true, Ordering::Release);
+        }
+        let observed = self.inner.sync_owned_windows_publication(p, d, c)?;
+        if self.fault == Fault::PublishedSyncLost {
+            return Err(lost());
+        }
+        if self.fault == Fault::PublishedSyncCancelAfter {
+            c.store(true, Ordering::Release);
+        }
+        Ok(observed)
+    }
+}
+#[test]
+fn published_sync_faults_stop_before_verified_commit_and_recover_read_only() {
+    for fault in [
+        Fault::PublishedSyncBefore,
+        Fault::PublishedSyncLost,
+        Fault::PublishedSyncCancelBefore,
+        Fault::PublishedSyncCancelAfter,
+    ] {
+        let f = Fixture::new();
+        let scope = f.recovery_scope();
+        let mut sink = f.sink;
+        let mut storage = FaultStorage {
+            inner: f.owned,
+            fault,
+        };
+        let mut journal = PhysicalJournalV2::create(&f.binding, "copy", &mut sink).unwrap();
+        let result = run_job(
+            &f.binding,
+            &mut storage,
+            &mut journal,
+            &mut sink,
+            &AtomicBool::new(false),
+            &mut |_| {},
+        )
+        .unwrap();
+        assert_eq!(result.status, JobStatus::NeedsRecovery);
+        assert_eq!(result.committed_destinations, 0);
+        assert_eq!(std::fs::read(&f.source).unwrap(), f.bytes);
+        assert_eq!(std::fs::read(&f.destination).unwrap(), f.bytes);
+        let location = sink.location();
+        drop(sink);
+        let bytes = storage.inner.read_journal(&location).unwrap();
+        let lines: Vec<serde_json::Value> = bytes
+            .split(|b| *b == b'\n')
+            .filter(|line| !line.is_empty())
+            .map(|line| serde_json::from_slice(line).unwrap())
+            .collect();
+        assert_eq!(
+            lines.last().unwrap()["body"]["event"]["phase"],
+            serde_json::to_value(Phase::DestinationPublished).unwrap()
+        );
+        assert!(!lines.iter().any(|line| {
+            [
+                Phase::DestinationVerified,
+                Phase::Committed,
+                Phase::SourceRetirementPrepared,
+                Phase::SourceRetired,
+            ]
+            .iter()
+            .any(|phase| line["body"]["event"]["phase"] == serde_json::to_value(phase).unwrap())
+        }));
+        let mut recovered =
+            open_owned_copy_recovery(&storage.inner, &scope, "copy", &bytes).unwrap();
+        let mut observations =
+            WindowsCopyRecovery::new(&storage.inner, recovered.binding()).unwrap();
+        let report = recover_job(recovered.binding(), &recovered, &mut observations).unwrap();
+        assert_ne!(report.operations[0].status, RecoveryStatus::Committed);
+        let binding = recovered.binding().clone();
+        let mut forbidden = MemorySink::default();
+        assert!(
+            run_job(
+                &binding,
+                &mut storage,
+                &mut recovered,
+                &mut forbidden,
+                &AtomicBool::new(false),
+                &mut |_| {}
+            )
+            .is_err()
+        );
+        assert!(forbidden.bytes.is_empty());
+        assert_eq!(storage.inner.read_journal(&location).unwrap(), bytes);
+        assert_eq!(std::fs::read(&f.source).unwrap(), f.bytes);
+        assert_eq!(std::fs::read(&f.destination).unwrap(), f.bytes);
     }
 }
 #[test]

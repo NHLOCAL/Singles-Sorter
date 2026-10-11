@@ -92,6 +92,16 @@ jobs:
         if: runner.os == 'Windows'
         run: cargo +1.99.0 clippy --locked -p sorter-executor --features experimental-windows-journal --all-targets -- -D warnings
 
+      - name: Exercise verified held-publication file sync
+        if: runner.os == 'Windows'
+        run: |
+          $listing = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib published_sync_tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $cases = @($listing | Where-Object { $_ -match ': test$' })
+          if ($cases.Count -ne 6) { throw "Expected all 6 native published-sync cases; found $($cases.Count)" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib published_sync_tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Exercise native journal flush errors and close/reopen recovery
         if: runner.os == 'Windows'
         run: |
@@ -115,7 +125,7 @@ jobs:
           $listing = cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-copy --test windows_copy -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $cases = @($listing | Where-Object { $_ -match ': test$' })
-          if ($cases.Count -ne 8) { throw "Expected all 8 owned Windows Copy fixture cases; found $($cases.Count)" }
+          if ($cases.Count -ne 9) { throw "Expected all 9 owned Windows Copy fixture cases; found $($cases.Count)" }
           cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-copy --test windows_copy -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-copy
