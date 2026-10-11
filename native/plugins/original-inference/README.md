@@ -52,7 +52,9 @@ Run `cargo build --locked --release --target x86_64-linux-android` and separatel
 `aarch64-linux-android`. `cargo test --locked --lib` tests bounds and ownership.
 
 `android/build-fixture.sh` builds the existing Java sources without Gradle.
-Its inputs are documented in the script. This **debug fixture** has min/target
+Its inputs are documented in the script. Python 3 is a host-only packaging
+helper; it is not packaged in the APK. If a later host enables R8/ProGuard,
+include `android/consumer-rules.pro` to preserve symbol-based JNI entry points. This **debug fixture** has min/target
 API 30; that is a harness floor, not a change to the intended app's API 24 floor.
 It is signed by a local fixture key, never a production signing identity.
 
@@ -70,12 +72,13 @@ segments alone do not establish Android 16 KiB runtime compatibility.
 Fixture checks cover verified extraction, native single-job admission, pre-load
 cancellation, stale IDs, JNI request length/null handling, malformed input,
 document-count limits, missing/tampered bundles, Hebrew/NUL/supplementary Unicode,
-observed in-inference cancellation, duplicate execution, slot recovery, and Java
+cancellation after model load at the inference-call boundary, duplicate execution, slot recovery, and Java
 owner disposal. This supplements the earlier direct native parity proof; it does
 not replace original 33-document/170-action and 1519-classifier-case evidence.
 
 No Android FIFO/path-swap, physical ARM64 performance, actual Activity recreation
-or process-death recovery, production Tauri frontend, SAF provider behavior or
+or process-death recovery, deterministic cancellation strictly inside a model
+computation, production Tauri frontend, SAF provider behavior or
 sorting acceptance is implied. The existing FIFO setup limitation remains
 explicitly environment-blocked.
 

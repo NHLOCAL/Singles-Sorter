@@ -88,13 +88,13 @@ public final class FixtureActivity extends Activity {
             worker.start();
             long deadline = System.nanoTime() + 120_000_000_000L;
             while (OriginalInference.phase0(running) != 3 && worker.isAlive() && System.nanoTime() < deadline) Thread.sleep(1);
-            check(OriginalInference.phase0(running) == 3, "observed_inference_phase");
+            check(OriginalInference.phase0(running) == 3, "observed_model_call_boundary");
             check(!run(running, assets, request("x", 1)).getBoolean("ok"), "duplicate_run_rejected");
             check(OriginalInference.begin0() == 0, "busy_during_inference");
             OriginalInference.cancel0(running);
             worker.join(120000);
             check(!worker.isAlive() && error.get() == null, "cancel_worker_exits");
-            check(!result.get().getBoolean("ok") && result.get().getString("error").toLowerCase(java.util.Locale.ROOT).contains("cancel"), "cancel_during_inference");
+            check(!result.get().getBoolean("ok") && result.get().getString("error").toLowerCase(java.util.Locale.ROOT).contains("cancel"), "cancel_after_model_load");
             long after = newJob();
             check(after > running, "new_owner_after_cancel");
             OriginalInference.abandon0(after);
