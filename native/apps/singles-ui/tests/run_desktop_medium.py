@@ -24,7 +24,7 @@ def command_for(security, launcher, python, script):
     return [str(launcher), '--integrity', 'Medium', '--wait', '--direct', python, str(script)]
 
 
-def main():
+def main(preflight=False):
     if not is_ci_windows():
         raise SystemExit('Medium-integrity launcher is restricted to owned Windows CI')
     output = ROOT / 'test-results/native-windows'
@@ -38,10 +38,10 @@ def main():
     env = dict(os.environ, SINGLES_UI_EVIDENCE=str(owned / 'evidence'),
                SINGLES_UI_TEMP=str(owned / 'fixtures'), PYTHONDONTWRITEBYTECODE='1')
     launcher = Path(os.environ['SINGLES_GSUDO_EXE']).resolve(strict=True)
-    command = command_for(security, launcher, sys.executable, ROOT / 'tests/desktop.py')
+    command = command_for(security, launcher, sys.executable, ROOT / ('tests/probe_windows_token.py' if preflight else 'tests/desktop.py'))
     process = subprocess.Popen(command, cwd=ROOT, env=env)
     try:
-        return process.wait(timeout=900)
+        return process.wait(timeout=60 if preflight else 900)
     except subprocess.TimeoutExpired:
         subprocess.run(['taskkill', '/PID', str(process.pid), '/T', '/F'],
                        capture_output=True, timeout=10, check=True)
@@ -56,4 +56,4 @@ def main():
 
 
 if __name__ == '__main__':
-    raise SystemExit(main())
+    raise SystemExit(main(preflight=sys.argv[1:] == ['--preflight']))

@@ -152,9 +152,9 @@ that cause remains a hypothesis until the new token/acceptance evidence confirms
 CI now records the parent's actual integrity RID and elevation flag, then runs the
 unchanged acceptance harness at normal Medium integrity using the SHA-256-pinned
 official gsudo 2.6.1 portable binary. Already-Medium parents launch directly; other
-unexpected tokens fail closed. The harness independently requires RID 8192 and a
-non-elevated token for itself, tauri-driver, and both actual app/native-driver
-processes at initial launch and restart. Diagnostic process records include token
+unexpected tokens fail closed. The harness independently requires RID 8192 and verified normal-user effective
+rights for itself, tauri-driver, and both actual app/native-driver processes at
+initial launch and restart. Diagnostic process records include token
 information when accessible. No ACL grant, registry policy, credential cache,
 service installation, sandbox change, or application debug exception is used.
 
@@ -171,3 +171,29 @@ Primary references:
 - https://github.com/tauri-apps/tauri/blob/dev/.github/workflows/test-api-e2e.yml
 - https://github.com/gerardog/gsudo/releases/tag/v2.6.1
 - https://learn.microsoft.com/en-us/windows/win32/secauthz/mandatory-integrity-control
+
+#### Effective-rights preflight correction
+
+Run 38110837694 confirmed a High-integrity parent and a Medium-integrity child
+whose TokenElevation flag remained true. That flag alone did not establish
+effective administrator rights. Microsoft's WebView2 security documentation
+defines the elevated-host boundary as High IL; pinned gsudo uses a linked token
+or SAFER NormalUser token to reduce rights. Microsoft documents NormalUser as
+excluding Administrator/Power User rights.
+
+Before compilation, CI now reads the exact launched token's integrity, elevation
+metadata, TokenHasRestrictions, privileged builtin group attributes, and all
+present privilege names/attributes. The gate requires Medium IL; privileged groups
+must be absent or irreversibly deny-only, and administrator-capable privileges
+are rejected even when disabled. Only ChangeNotify may be enabled; the small
+standard-user privilege allowlist is otherwise accepted only disabled. A retained
+true elevation flag additionally requires evidence of token filtering. Missing or
+unrecognized rights fail closed. The same gate still checks the real acceptance
+processes; the preflight does not count as UI acceptance. EnableLUA is read only
+to explain the runner configuration, never changed.
+
+Additional primary sources:
+- https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/security
+- https://learn.microsoft.com/en-us/windows/win32/secauthz/sid-attributes-in-an-access-token
+- https://learn.microsoft.com/en-us/windows/win32/secauthz/privileges
+- https://learn.microsoft.com/en-us/windows/win32/api/winsafer/nf-winsafer-safercreatelevel

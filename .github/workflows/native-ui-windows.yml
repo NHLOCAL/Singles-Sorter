@@ -40,6 +40,24 @@ jobs:
       - name: Test bounded startup diagnostic contracts
         run: python -m unittest discover -s tests -p 'test_desktop_diagnostics.py' -v
 
+      - name: Fetch hash-pinned official portable least-privilege launcher
+        run: |
+          $directory = Join-Path $env:RUNNER_TEMP 'singles-ui-gsudo-2.6.1'
+          New-Item -ItemType Directory -Force $directory | Out-Null
+          $archive = Join-Path $directory 'gsudo.portable.zip'
+          Invoke-WebRequest 'https://github.com/gerardog/gsudo/releases/download/v2.6.1/gsudo.portable.zip' -OutFile $archive
+          $expected = '21130bf178d7b9891207f00bff56f05b6b363ce9cec7b2d084e45fb12ee51f44'
+          if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) {
+            throw 'Official portable gsudo archive hash mismatch'
+          }
+          Expand-Archive $archive -DestinationPath $directory
+          $launcher = Join-Path $directory 'x64/gsudo.exe'
+          if (-not (Test-Path $launcher)) { throw 'Pinned x64 launcher missing' }
+          "SINGLES_GSUDO_EXE=$launcher" >> $env:GITHUB_ENV
+
+      - name: Verify effective normal-user rights before compilation
+        run: python tests/run_desktop_medium.py --preflight
+
       - name: Probe strict profile guard and same-directory Windows rename
         run: python tests/windows-profile-rename-probe.py
 
@@ -90,21 +108,6 @@ jobs:
 
       - name: Build actual desktop application through pinned Tauri CLI
         run: npm run build:desktop -- --ci -- --locked
-
-      - name: Fetch hash-pinned official portable least-privilege launcher
-        run: |
-          $directory = Join-Path $env:RUNNER_TEMP 'singles-ui-gsudo-2.6.1'
-          New-Item -ItemType Directory -Force $directory | Out-Null
-          $archive = Join-Path $directory 'gsudo.portable.zip'
-          Invoke-WebRequest 'https://github.com/gerardog/gsudo/releases/download/v2.6.1/gsudo.portable.zip' -OutFile $archive
-          $expected = '21130bf178d7b9891207f00bff56f05b6b363ce9cec7b2d084e45fb12ee51f44'
-          if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) {
-            throw 'Official portable gsudo archive hash mismatch'
-          }
-          Expand-Archive $archive -DestinationPath $directory
-          $launcher = Join-Path $directory 'x64/gsudo.exe'
-          if (-not (Test-Path $launcher)) { throw 'Pinned x64 launcher missing' }
-          "SINGLES_GSUDO_EXE=$launcher" >> $env:GITHUB_ENV
 
       - name: Exercise owned native Windows UI at verified Medium integrity
         run: python tests/run_desktop_medium.py

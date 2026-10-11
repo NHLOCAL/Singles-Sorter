@@ -15,11 +15,24 @@ import run_desktop_medium as launcher
 
 
 class DiagnosticContracts(unittest.TestCase):
-    def test_medium_requires_both_integrity_and_non_elevation(self):
-        require_medium({'integrity_rid': 8192, 'elevated': False})
-        for rid, elevated in [(12288, True), (8192, True), (4096, False), (8448, False)]:
-            with self.assertRaisesRegex(RuntimeError, 'non-elevated Medium'):
-                require_medium({'integrity_rid': rid, 'elevated': elevated})
+    def test_medium_requires_effectively_restricted_rights_not_historical_flag(self):
+        normal = {'integrity_rid': 8192, 'elevated': False, 'has_restrictions': False,
+                  'power_groups': [], 'privileges': [{'name': 'SeChangeNotifyPrivilege', 'attributes': 3}]}
+        require_medium(normal)
+        filtered = dict(normal, elevated=True, has_restrictions=True,
+                        power_groups=[{'sid': 'S-1-5-32-544', 'attributes': 0x10}])
+        require_medium(filtered)
+        for bad in [dict(filtered, integrity_rid=12288), dict(filtered, has_restrictions=False),
+                    dict(filtered, power_groups=[{'sid': 'S-1-5-32-544', 'attributes': 4}]),
+                    dict(filtered, power_groups=[{'sid': 'S-1-5-32-544', 'attributes': 0}]),
+                    dict(filtered, power_groups=[{'sid': 'S-1-5-32-544', 'attributes': 0x14}]),
+                    dict(filtered, privileges=[{'name': 'SeDebugPrivilege', 'attributes': 0}]),
+                    dict(filtered, privileges=[{'name': 'SeDebugPrivilege', 'attributes': 2}]),
+                    dict(filtered, privileges=[{'name': 'SeShutdownPrivilege', 'attributes': 2}])]:
+            with self.assertRaises(RuntimeError):
+                require_medium(bad)
+        with self.assertRaises(KeyError):
+            require_medium({'integrity_rid': 8192, 'elevated': False})
 
     def test_launcher_only_reduces_verified_high_integrity(self):
         expected = ['gsudo.exe', '--integrity', 'Medium', '--wait', '--direct', 'python.exe', 'desktop.py']
@@ -55,6 +68,21 @@ class DiagnosticContracts(unittest.TestCase):
                  patch.object(launcher.subprocess, 'Popen', side_effect=spawn):
                 self.assertEqual(launcher.main(), 7)
             self.assertEqual((root / 'test-results/native-windows/failure.json').read_text(), 'actual failure')
+
+    def test_preflight_uses_lightweight_script_and_sixty_second_bound(self):
+        with tempfile.TemporaryDirectory() as temp:
+            executable = Path(temp) / 'gsudo.exe'
+            executable.write_bytes(b'fixture')
+            process = Mock(pid=99)
+            process.wait.return_value = 0
+            with patch.object(launcher, 'ROOT', Path(temp) / 'repo'), \
+                 patch.object(launcher, 'is_ci_windows', return_value=True), \
+                 patch.object(launcher, 'process_security', return_value={'pid': 1, 'integrity_rid': 12288, 'elevated': True}), \
+                 patch.dict(os.environ, {'LOCALAPPDATA': temp, 'SINGLES_GSUDO_EXE': str(executable)}), \
+                 patch.object(launcher.subprocess, 'Popen', return_value=process) as launch:
+                self.assertEqual(launcher.main(preflight=True), 0)
+                self.assertTrue(launch.call_args.args[0][-1].endswith('probe_windows_token.py'))
+                process.wait.assert_called_once_with(timeout=60)
 
     def test_launcher_timeout_reaps_only_owned_launcher_tree(self):
         with tempfile.TemporaryDirectory() as temp:
