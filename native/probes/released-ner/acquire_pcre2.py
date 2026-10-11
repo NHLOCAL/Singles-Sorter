@@ -23,6 +23,10 @@ def unpack(archive, destination, lock=LOCK):
             raise ValueError('expanded archive exceeds bound')
         seen = set()
         for e in entries:
+            # Reject reader normalization (Windows separators, NUL truncation,
+            # or alternate Unicode names) before validating or creating paths.
+            if e.orig_filename != e.filename:
+                raise ValueError('archive member name was normalized')
             p = PurePosixPath(e.filename)
             key = e.filename.rstrip('/').casefold()
             mode = e.external_attr >> 16
