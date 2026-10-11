@@ -1,4 +1,6 @@
 import json
+import os
+import subprocess
 from pathlib import Path
 import struct
 import tempfile
@@ -8,9 +10,69 @@ import zlib
 
 import desktop_diagnostics as diagnostics
 from owned_window_capture import png_from_bgra
+from windows_integrity import require_medium
+import run_desktop_medium as launcher
 
 
 class DiagnosticContracts(unittest.TestCase):
+    def test_medium_requires_both_integrity_and_non_elevation(self):
+        require_medium({'integrity_rid': 8192, 'elevated': False})
+        for rid, elevated in [(12288, True), (8192, True), (4096, False), (8448, False)]:
+            with self.assertRaisesRegex(RuntimeError, 'non-elevated Medium'):
+                require_medium({'integrity_rid': rid, 'elevated': elevated})
+
+    def test_launcher_only_reduces_verified_high_integrity(self):
+        expected = ['gsudo.exe', '--integrity', 'Medium', '--wait', '--direct', 'python.exe', 'desktop.py']
+        self.assertEqual(launcher.command_for({'integrity_rid': 12288, 'elevated': True},
+                                             'gsudo.exe', 'python.exe', 'desktop.py'), expected)
+        self.assertEqual(launcher.command_for({'integrity_rid': 8192, 'elevated': False},
+                                             'gsudo.exe', 'python.exe', 'desktop.py'), ['python.exe', 'desktop.py'])
+        for rid, elevated in [(4096, False), (16384, True), (8192, True), (12288, False)]:
+            with self.assertRaisesRegex(RuntimeError, 'refusing any privilege increase'):
+                launcher.command_for({'integrity_rid': rid, 'elevated': elevated}, 'g', 'p', 's')
+
+    def test_launcher_keeps_writes_in_owned_user_temp_and_copies_evidence(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / 'repo'
+            local = Path(temp) / 'profile'
+            executable = Path(temp) / 'gsudo.exe'
+            executable.write_bytes(b'fixture')
+            process = Mock(pid=99)
+            process.wait.return_value = 7
+            def spawn(command, cwd, env):
+                self.assertEqual(cwd, root)
+                evidence = Path(env['SINGLES_UI_EVIDENCE'])
+                self.assertTrue(evidence.is_relative_to(local))
+                self.assertFalse(evidence.is_relative_to(root))
+                self.assertEqual(env['PYTHONDONTWRITEBYTECODE'], '1')
+                evidence.mkdir(parents=True)
+                (evidence / 'failure.json').write_text('actual failure')
+                return process
+            with patch.object(launcher, 'ROOT', root), \
+                 patch.object(launcher, 'is_ci_windows', return_value=True), \
+                 patch.object(launcher, 'process_security', return_value={'pid': 1, 'integrity_rid': 12288, 'elevated': True}), \
+                 patch.dict(os.environ, {'LOCALAPPDATA': str(local), 'SINGLES_GSUDO_EXE': str(executable)}), \
+                 patch.object(launcher.subprocess, 'Popen', side_effect=spawn):
+                self.assertEqual(launcher.main(), 7)
+            self.assertEqual((root / 'test-results/native-windows/failure.json').read_text(), 'actual failure')
+
+    def test_launcher_timeout_reaps_only_owned_launcher_tree(self):
+        with tempfile.TemporaryDirectory() as temp:
+            executable = Path(temp) / 'gsudo.exe'
+            executable.write_bytes(b'fixture')
+            process = Mock(pid=99)
+            process.wait.side_effect = [subprocess.TimeoutExpired('owned-launcher', 900), 1]
+            with patch.object(launcher, 'ROOT', Path(temp) / 'repo'), \
+                 patch.object(launcher, 'is_ci_windows', return_value=True), \
+                 patch.object(launcher, 'process_security', return_value={'pid': 1, 'integrity_rid': 12288, 'elevated': True}), \
+                 patch.dict(os.environ, {'LOCALAPPDATA': temp, 'SINGLES_GSUDO_EXE': str(executable)}), \
+                 patch.object(launcher.subprocess, 'Popen', return_value=process), \
+                 patch.object(launcher.subprocess, 'run') as cleanup:
+                with self.assertRaises(subprocess.TimeoutExpired):
+                    launcher.main()
+                cleanup.assert_called_once_with(['taskkill', '/PID', '99', '/T', '/F'],
+                                                capture_output=True, timeout=10, check=True)
+
     def test_png_preserves_pixel_order_and_ignores_uninitialized_alpha(self):
         png = png_from_bgra(2, 1, bytes([0, 0, 255, 0, 0, 255, 0, 0]))
         self.assertEqual(png[:8], b'\x89PNG\r\n\x1a\n')

@@ -140,3 +140,34 @@ References inspected 11 October 2026:
 - https://github.com/tauri-apps/tauri/blob/tauri-driver-v2.1.0/crates/tauri-driver/src/server.rs
 - https://learn.microsoft.com/en-us/microsoft-edge/webview2/how-to/webdriver
 - https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-printwindow
+
+### Non-elevated Windows acceptance
+
+The application rendered successfully in diagnostic run 38109858800 using the
+actual WebView2 153.0.4234.48 runtime, while WebDriver session creation timed out.
+This matches an upstream WebView2 150+ restriction on browser-argument environment
+variables in elevated hosts. The runner token was not captured in that run, so
+that cause remains a hypothesis until the new token/acceptance evidence confirms it.
+
+CI now records the parent's actual integrity RID and elevation flag, then runs the
+unchanged acceptance harness at normal Medium integrity using the SHA-256-pinned
+official gsudo 2.6.1 portable binary. Already-Medium parents launch directly; other
+unexpected tokens fail closed. The harness independently requires RID 8192 and a
+non-elevated token for itself, tauri-driver, and both actual app/native-driver
+processes at initial launch and restart. Diagnostic process records include token
+information when accessible. No ACL grant, registry policy, credential cache,
+service installation, sandbox change, or application debug exception is used.
+
+Evidence and owned fixture writes go into a unique directory under the CI user's
+existing LocalAppData Temp permissions; only reads are needed in the checkout. The
+parent copies evidence back for artifact upload and propagates the real test exit
+code. Permissions failures remain failures instead of triggering broader access.
+The actual native functional assertions remain required; screenshots alone cannot
+pass this gate.
+
+Primary references:
+- https://github.com/tauri-apps/wry/issues/1782
+- https://github.com/MicrosoftEdge/WebView2Feedback/issues/5645
+- https://github.com/tauri-apps/tauri/blob/dev/.github/workflows/test-api-e2e.yml
+- https://github.com/gerardog/gsudo/releases/tag/v2.6.1
+- https://learn.microsoft.com/en-us/windows/win32/secauthz/mandatory-integrity-control

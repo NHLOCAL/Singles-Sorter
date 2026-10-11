@@ -16,7 +16,8 @@ import time
 import urllib.error
 import urllib.request
 
-from desktop_diagnostics import snapshot, startup_probe
+from desktop_diagnostics import snapshot, startup_probe, owned_processes, write_json
+from windows_integrity import process_security, require_medium
 
 ROOT = Path(__file__).resolve().parents[1]
 if os.name != 'nt' or os.environ.get('GITHUB_ACTIONS') != 'true':
@@ -24,6 +25,14 @@ if os.name != 'nt' or os.environ.get('GITHUB_ACTIONS') != 'true':
 BINARY = Path(os.environ.get('SINGLES_DESKTOP_BIN', str(ROOT / 'src-tauri/target/release/singles-sorter-preview.exe'))).resolve(strict=True)
 OUTPUT = Path(os.environ.get('SINGLES_UI_EVIDENCE', str(ROOT / 'test-results/native-windows')))
 OUTPUT.mkdir(parents=True, exist_ok=True)
+security = process_security()
+write_json(OUTPUT / 'test-process-security.json', security)
+require_medium(security)
+if os.environ.get('SINGLES_UI_TEMP'):
+    owned_temp = Path(os.environ['SINGLES_UI_TEMP'])
+    owned_temp.mkdir(parents=True, exist_ok=True)
+    tempfile.tempdir = str(owned_temp)
+    os.environ['TEMP'] = os.environ['TMP'] = str(owned_temp)
 DRIVER = shutil.which('tauri-driver')
 if not DRIVER:
     raise SystemExit('tauri-driver is not installed; native runtime was not tested.')
@@ -43,6 +52,16 @@ def call(method, path, body=None):
     if isinstance(value, dict) and value.get('error'):
         raise RuntimeError(f"{value['error']}: {value.get('message')}")
     return value
+
+def verify_app_security(label):
+    app_roots = [row for row in owned_processes(BINARY)
+                 if os.path.normcase(row.get('executable') or '') == os.path.normcase(str(BINARY))]
+    app_security = [process_security(pid) for row in app_roots
+                    for pid in (row['pid'], row['parent_pid'])]
+    write_json(OUTPUT / f'{label}-process-security.json', app_security)
+    assert app_security, 'No owned application process found for integrity verification'
+    for token in app_security:
+        require_medium(token)
 
 def command(method, path, body=None):
     return call(method, f'/session/{session}{path}', body)
@@ -99,9 +118,13 @@ startup_probe(BINARY, OUTPUT)
 log = (OUTPUT / 'tauri-driver.log').open('wb')
 process = subprocess.Popen([DRIVER], stdout=log, stderr=subprocess.STDOUT)
 try:
+    driver_security = process_security(process.pid)
+    write_json(OUTPUT / 'tauri-driver-security.json', driver_security)
+    require_medium(driver_security)
     wait(lambda: call('GET','/status'))
     result = call('POST','/session',{'capabilities':{'alwaysMatch':{'browserName':'wry','tauri:options':{'application':str(BINARY)}}}})
     session = result['sessionId']
+    verify_app_security('initial-app')
     wait(lambda: 'מסדר הסינגלים' in text('h1'))
     wait(lambda: script("return document.documentElement.dataset.startupState === 'ready'"))
     wait(lambda: script("return !document.querySelector('#sort').disabled"))
@@ -171,6 +194,7 @@ try:
         command('DELETE',''); session = None
         restarted = call('POST','/session',{'capabilities':{'alwaysMatch':{'browserName':'wry','tauri:options':{'application':str(BINARY)}}}})
         session = restarted['sessionId']
+        verify_app_security('restarted-app')
         wait(lambda: script("return document.documentElement.dataset.startupState === 'ready' && !document.querySelector('#sort').disabled"))
         assert script("return document.querySelector('#copy_mode').checked") == expected_copy
         assert script("return document.querySelector('#source').value") == ''
@@ -197,7 +221,9 @@ finally:
             command('DELETE','')
         except Exception:
             pass
-    process.terminate()
+    if process.poll() is None:
+        subprocess.run(['taskkill', '/PID', str(process.pid), '/T', '/F'],
+                       capture_output=True, timeout=10, check=True)
     try:
         process.wait(timeout=10)
     except subprocess.TimeoutExpired:

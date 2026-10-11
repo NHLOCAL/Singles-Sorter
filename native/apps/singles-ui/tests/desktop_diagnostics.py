@@ -7,6 +7,8 @@ import subprocess
 import sys
 import time
 
+from windows_integrity import process_security
+
 
 def write_json(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding='utf-8')
@@ -80,6 +82,11 @@ def snapshot(binary, output, label, root_pid=None):
     evidence = {'kind': 'startup-diagnostic-only', 'binary': str(binary)}
     try:
         evidence['processes'] = owned_processes(binary, root_pid)
+        for row in evidence['processes']:
+            try:
+                row['security'] = process_security(row['pid'])
+            except Exception as error:
+                row['security_error'] = str(error)
         pids = [row['pid'] for row in evidence['processes']
                 if os.path.normcase(row.get('executable') or '') == os.path.normcase(str(binary))]
         evidence['windows'] = capture_owned_windows(output, label, pids)
