@@ -230,6 +230,28 @@ try:
         expect(page.locator('#list-notice')).to_have_text('נשמר')
         expect(page.locator('#profile-notice')).to_be_hidden()
         page.locator('#list-cancel').click()
+        # Five stacked personal rows reproduce the native narrow editor overflow.
+        # Hidden delete labels must stay anchored inside the scrolling row buttons.
+        original_personal_rows=page.evaluate('structuredClone(window.__personalList.rows)')
+        page.evaluate("window.__personalList.rows=Array.from({length:5},(_,i)=>['אמן '+i,'תיקייה '+i])")
+        page.locator('#edit-list').click()
+        for width in [360,390,1000]:
+            page.set_viewport_size({'width':width,'height':800 if width<740 else 650})
+            page.wait_for_timeout(150)
+            metrics=page.evaluate('() => {'+METRICS+'}')
+            (OUTPUT/f'personal-five-{width}px-metrics.json').write_text(json.dumps(metrics,ensure_ascii=False,indent=2),encoding='utf-8')
+            page.screenshot(path=str(OUTPUT/f'personal-five-{width}px.png'),full_page=True)
+            assert_editor_actions(metrics)
+            if width<740:
+                labels=metrics['dialogs'][0]['absoluteRowLabels']
+                assert len(labels)==5 and all(label['containedByButton'] for label in labels),labels
+            for selector in ['#list-alias-0','#list-alias-4']:
+                page.locator(selector).focus()
+                assert_editor_actions(page.evaluate('() => {'+METRICS+'}'))
+                assert page.locator(selector).evaluate('(el)=>{const r=el.getBoundingClientRect(),footer=el.closest("dialog").querySelector(".editor-footer").getBoundingClientRect();return r.top>=0&&r.bottom<=footer.top}')
+        page.locator('#list-cancel').click()
+        page.evaluate('(rows)=>{window.__personalList.rows=rows}',original_personal_rows)
+        checks.append('Five personal rows keep narrow hidden labels inside scroll owner and footer reachable')
         before_import=page.evaluate('JSON.stringify(window.__personalList.rows)')
         page.evaluate("window.__importRows=Array.from({length:53},(_,i)=>['זמר '+i,'תיקייה '+i]);window.__importRows[0].push('עמודה נוספת')")
         page.locator('#import-list').click()

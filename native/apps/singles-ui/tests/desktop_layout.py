@@ -12,6 +12,8 @@ def assert_editor_actions(metrics):
         if not dialog['editor']:
             continue
         assert dialog['scrollHeight'] <= dialog['rect']['height'] + 1, dialog
+        for label in dialog.get('absoluteRowLabels', []):
+            assert label['containedByButton'], label
         for action in dialog['actions']:
             box=action['rect']
             assert box['height'] > 0, action
@@ -51,11 +53,12 @@ def check_native_layout(command, script, capture, output, label):
                 command('POST', '/window/rect', {'width':round(outer['width'] + width - metrics['innerWidth']), 'height':round(outer['height'] + height - metrics['innerHeight'])})
                 time.sleep(.15)
             metrics = script(METRICS)
-            assert abs(metrics['innerWidth'] - width) <= 1 and abs(metrics['innerHeight'] - height) <= 1, metrics
-            assert_layout(metrics)
+            # Preserve the failing viewport before assertions restore the window.
             metrics['label'] = label
             receipts.append(metrics)
             capture(f'{label}-{width}x{height}')
+            assert abs(metrics['innerWidth'] - width) <= 1 and abs(metrics['innerHeight'] - height) <= 1, metrics
+            assert_layout(metrics)
     finally:
         command('POST', '/window/rect', original)
         (output / f'{label}-layout-metrics.json').write_text(json.dumps({'kind':'actual_windows_webview','system_scaling':'measured DPR only; 125/150% system DPI not claimed unless DPR confirms it','measurements':receipts}, ensure_ascii=False, indent=2), encoding='utf-8')
@@ -94,6 +97,9 @@ def check_phone_layout(command, script, capture, output, label):
                 command('POST','/window/rect',{'width':round(outer['width']+width-metrics['innerWidth']),'height':round(outer['height']+800-metrics['innerHeight'])})
                 time.sleep(.15)
             metrics=script(METRICS)
+            # Capture before any assertion: the finally block restores wide bounds.
+            receipts.append(metrics)
+            capture(f'{label}-{width}px')
             assert abs(metrics['innerWidth']-width)<=1,metrics
             assert_layout(metrics,require_bounded=False)
             for dialog in metrics['dialogs']:
@@ -111,7 +117,6 @@ def check_phone_layout(command, script, capture, output, label):
                         assert box['bottom']-bounds['y']+dialog['scrollTop'] <= dialog['scrollHeight']+2,control
                     if control['tag'] in ['BUTTON','SELECT'] or control['tag']=='INPUT' and control['type'] not in ['checkbox','radio']:
                         assert box['height'] >= 48,control
-            receipts.append(metrics);capture(f'{label}-{width}px')
     finally:
         command('POST','/window/rect',original)
         (output/f'{label}-phone-css-metrics.json').write_text(json.dumps({'kind':'narrow_windows_webview_not_native_android','measurements':receipts},ensure_ascii=False,indent=2),encoding='utf-8')
