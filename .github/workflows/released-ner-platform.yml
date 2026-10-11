@@ -106,6 +106,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo +1.99.0 test --locked --manifest-path released-ner-math/Cargo.toml
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 test --locked --release --manifest-path released-ner-text/Cargo.toml --test bounded -- --ignored
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 test --locked --release --manifest-path released-ner-text/Cargo.toml --lib -- --ignored
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 test --locked --release --manifest-path released-ner-math/Cargo.toml --lib -- --ignored
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 test --locked --release --manifest-path released-ner-math/Cargo.toml --test bounded_math -- --ignored
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo +1.99.0 build --locked --release --manifest-path released-ner-text/Cargo.toml --bins
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo +1.99.0 build --locked --release --manifest-path released-ner-math/Cargo.toml --bins

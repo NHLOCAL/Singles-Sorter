@@ -2,9 +2,9 @@
 import hashlib,json,shutil,tempfile,os
 from pathlib import Path
 HERE=Path(__file__).resolve().parent
-# Only the loader boundary is new. Preserve all frozen scalar source bytes as
-# an exact prefix; this suffix declares the shared bounded-loader API.
-LOADER_API_ADAPTER=b'\npub mod assets;\npub use assets::LoadError;\n'
+# Preserve every frozen scalar byte as an exact prefix. The suffix exposes
+# shared asset/control types, not a replacement numerical kernel.
+LOADER_API_ADAPTER=b'\npub mod assets;\npub use assets::LoadError;\npub mod control;\n'
 
 def prepare():
     destination=HERE/'.baseline'
@@ -23,6 +23,20 @@ def prepare():
                 if (source/name).exists():shutil.copyfile(source/name,target/name)
         (stage/'released-ner-math/src/lib.rs').write_bytes((HERE/'baseline/math-lib.rs').read_bytes()+LOADER_API_ADAPTER)
         shutil.copyfile(HERE/'baseline/raw-ner.rs',stage/'released-ner-text/src/bin/raw-ner.rs')
+        # The original scalar has no bounded inference methods. Keep this tree a
+        # diagnostic scalar comparator, never a second purported production API.
+        text_lib=stage/'released-ner-text/src/lib.rs'
+        if text_lib.exists():
+            text_lib.write_bytes(text_lib.read_bytes().replace(b'pub mod inference;\n',b''))
+        # The immutable-bundle test uses the optimized convenience method.
+        # Original scalar forward returns the same affine values with tracing.
+        loading=stage/'released-ner-text/tests/loading.rs'
+        if loading.exists():
+            loading.write_bytes(loading.read_bytes().replace(b'.forward_fast(',b'.forward('))
+        for crate in ('released-ner-math','released-ner-text'):
+            for name in ('bounded.rs','bounded_math.rs'):
+                bounded=stage/crate/'tests'/name
+                if bounded.exists():bounded.unlink()
         os.rename(stage,destination)
     print('Prepared isolated original baseline for this CI job')
 if __name__=='__main__':prepare()

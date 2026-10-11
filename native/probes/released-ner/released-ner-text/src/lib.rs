@@ -1,5 +1,6 @@
 //! Frozen spaCy 3.7.5 lexical features. Python is an offline oracle, never runtime.
 pub mod assets;
+pub mod inference;
 pub mod regex;
 mod tables;
 pub mod tokenizer;

@@ -149,14 +149,12 @@ inspect it and choose a fresh directory instead.
 - Runtime size is not established: model tensors alone are 3,829,976 bytes;
   native executable bytes are recorded per CI leg. Windows CRT deployment,
   installed footprint, peak RAM and representative latency still need measuring.
-- Regex match/depth/heap limits still use upstream defaults. No explicit
-  per-request regex contexts, time budgets or cancellation integration exist.
-- Input/token/JSON-line limits and allocation/OOM containment are unfinished.
-  Long inputs must never be silently truncated or routed through an approximate
-  fallback. A future bounded API must return explicit unsupported/resource-limit
-  errors and preserve full-input semantics for accepted inputs.
-- Model loader assertions/panics and forward-stage allocations need production
-  error containment. Process timeouts in CI are not product cancellation.
+- Bounded cancellable inference is now available only as the isolated API in
+  [INFERENCE-BOUNDS.md](INFERENCE-BOUNDS.md). Its configurable finite ceilings
+  are probe admission policy, not product sorting rules. Old raw JSONL/proof
+  helpers remain unbounded diagnostics and must not be used for product wiring.
+- Global process OOM recovery, wall-clock deadlines and downstream stale-result
+  delivery remain outside this API; product integration needs separate review.
 - Android ARM64 needs pinned NDK/toolchain/API/ABI setup, 32-bit PCRE2 static PIC
   linkage, on-device exact parity, size/RAM/latency and cancellation tests. The
   build script rejects unproven targets rather than guessing system libraries.

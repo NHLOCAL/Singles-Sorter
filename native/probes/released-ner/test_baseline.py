@@ -8,6 +8,9 @@ class Baseline(unittest.TestCase):
         d=tempfile.TemporaryDirectory();self.addCleanup(d.cleanup);root=Path(d.name)
         files={'baseline/math-lib.rs':'original math','baseline/raw-ner.rs':'original raw',
                'released-ner-math/src/lib.rs':'optimized math','released-ner-text/src/bin/raw-ner.rs':'optimized raw',
+               'released-ner-text/src/lib.rs':'pub mod inference;\npub mod tokenizer;\n',
+               'released-ner-text/tests/bounded.rs':'requires bounded methods',
+               'released-ner-text/tests/loading.rs':'model.forward_fast(&hashes)',
                'released-ner-math/Cargo.toml':'math manifest','released-ner-text/Cargo.toml':'text manifest',
                '.oracle/tensors.f32':'must not copy','.pcre2/source.c':'must not copy',
                'released-ner-text/target/old-binary':'must not copy'}
@@ -25,6 +28,9 @@ class Baseline(unittest.TestCase):
         self.assertEqual((out/'released-ner-text/src/bin/raw-ner.rs').read_text(),'original raw')
         self.assertFalse((out/'.oracle').exists());self.assertFalse((out/'released-ner-text/target').exists())
         self.assertFalse((out/'.pcre2').exists())
+        self.assertEqual((out/'released-ner-text/src/lib.rs').read_text(),'pub mod tokenizer;\n')
+        self.assertFalse((out/'released-ner-text/tests/bounded.rs').exists())
+        self.assertEqual((out/'released-ner-text/tests/loading.rs').read_text(),'model.forward(&hashes)')
     def test_changed_baseline_fails_before_copy(self):
         root=self.fixture();(root/'baseline/math-lib.rs').write_text('changed')
         with patch.object(p,'HERE',root):
