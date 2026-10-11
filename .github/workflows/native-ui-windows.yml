@@ -27,6 +27,7 @@ jobs:
     env:
       RUSTUP_TOOLCHAIN: '1.99.0'
       CARGO_BUILD_JOBS: '2'
+      CARGO_TARGET_DIR: ${{ github.workspace }}/native/apps/singles-ui/src-tauri/target
       MSEDGEDRIVER_TELEMETRY_OPTOUT: '1'
       PYTHONUTF8: '1'
     steps:
@@ -35,7 +36,9 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 1
-          sparse-checkout: native
+          sparse-checkout: |
+            native
+            .github/workflows
 
       - name: Test bounded startup diagnostic contracts
         run: python -m unittest discover -s tests -p 'test_desktop_diagnostics.py' -v
@@ -61,8 +64,59 @@ jobs:
       - name: Probe strict profile guard and same-directory Windows rename
         run: python tests/windows-profile-rename-probe.py
 
+      - name: Isolate public Cargo downloads and driver installation
+        run: |
+          "CARGO_HOME=$env:RUNNER_TEMP/singles-ui-cargo" >> $env:GITHUB_ENV
+          "TAURI_DRIVER_ROOT=$env:RUNNER_TEMP/singles-ui-tauri-driver-2.1.0" >> $env:GITHUB_ENV
+
       - name: Install pinned official Rust toolchain
         run: rustup toolchain install 1.99.0 --profile minimal --component rustfmt --component clippy
+
+      # Cache only public dependency downloads and generated build intermediates.
+      # Never cache credentials, the checkout, frontend dist, or app/test executables.
+      # Local crate intermediates are included but always cleaned before rebuilding.
+      - name: Fingerprint pinned compiler and build environment
+        id: rust-cache-key
+        run: |
+          $compiler = (& rustc -vV | Out-String)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $cargo = (& cargo -V | Out-String)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $buildEnv = Get-ChildItem Env: | Where-Object {
+            $_.Name -match '^(RUST|CARGO_BUILD|CARGO_TARGET|CARGO_PROFILE|CARGO_ENCODED_RUSTFLAGS|CC|CXX|CFLAGS|CXXFLAGS|CMAKE)' -and
+            $_.Name -notmatch '(TOKEN|SECRET|PASSWORD|CREDENTIAL)'
+          } | Sort-Object Name | ForEach-Object { "$($_.Name)=$($_.Value)" }
+          $input = "$compiler`n$cargo`n$env:ImageOS`n$env:ImageVersion`n$env:CARGO_HOME`n$env:CARGO_TARGET_DIR`n$($buildEnv -join "`n")"
+          $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($input))).ToLowerInvariant()
+          "fingerprint=$hash" >> $env:GITHUB_OUTPUT
+
+      - name: Restore Rust downloads and build intermediates
+        id: rust-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ env.CARGO_HOME }}/registry/index
+            ${{ env.CARGO_HOME }}/registry/cache
+            ${{ env.CARGO_HOME }}/git/db
+            ${{ env.CARGO_TARGET_DIR }}/debug/deps/*
+            !${{ env.CARGO_TARGET_DIR }}/debug/deps/*.exe
+            ${{ env.CARGO_TARGET_DIR }}/debug/build
+            ${{ env.CARGO_TARGET_DIR }}/debug/.fingerprint
+            ${{ env.CARGO_TARGET_DIR }}/release/deps/*
+            !${{ env.CARGO_TARGET_DIR }}/release/deps/*.exe
+            ${{ env.CARGO_TARGET_DIR }}/release/build
+            ${{ env.CARGO_TARGET_DIR }}/release/.fingerprint
+          key: native-ui-rust-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.rust-cache-key.outputs.fingerprint }}-${{ hashFiles('native/**/Cargo.lock', 'native/**/Cargo.toml', 'native/**/rust-toolchain*', 'native/**/.cargo/config*', 'native/**/build.rs', 'native/apps/singles-ui/src-tauri/tauri*.conf.*', 'native/apps/singles-ui/package*.json', '.github/workflows/native-ui-windows.yml') }}
+
+      - name: Restore pinned official tauri-driver installation
+        id: driver-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ env.TAURI_DRIVER_ROOT }}/bin/tauri-driver.exe
+            ${{ env.TAURI_DRIVER_ROOT }}/.crates.toml
+            ${{ env.TAURI_DRIVER_ROOT }}/.crates2.json
+          key: native-ui-tauri-driver-2.1.0-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.rust-cache-key.outputs.fingerprint }}-${{ hashFiles('.github/workflows/native-ui-windows.yml') }}
 
       - name: Verify runner tools and matching Edge driver
         run: |
@@ -92,8 +146,50 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip install pywinauto==0.6.9
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo install tauri-driver --version 2.1.0 --locked
+
+      - name: Install and verify exact tauri-driver receipt
+        run: |
+          $driver = Join-Path $env:TAURI_DRIVER_ROOT 'bin/tauri-driver.exe'
+          if (-not (Test-Path $driver)) {
+            cargo install tauri-driver --version '=2.1.0' --locked --root $env:TAURI_DRIVER_ROOT --target-dir "$env:RUNNER_TEMP/tauri-driver-build"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          # This version has no --version flag. Cargo records the exact installed version.
+          $installed = (& cargo install --list --root $env:TAURI_DRIVER_ROOT | Out-String)
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($installed -notmatch '(?m)^tauri-driver v2\.1\.0:\r?$') {
+            throw 'Pinned tauri-driver 2.1.0 install receipt missing or mismatched'
+          }
+          & $driver --help
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          (Join-Path $env:TAURI_DRIVER_ROOT 'bin') >> $env:GITHUB_PATH
+
+      - name: Save verified driver for this same-repository PR
+        if: github.event.pull_request.head.repo.full_name == github.repository && steps.driver-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ env.TAURI_DRIVER_ROOT }}/bin/tauri-driver.exe
+            ${{ env.TAURI_DRIVER_ROOT }}/.crates.toml
+            ${{ env.TAURI_DRIVER_ROOT }}/.crates2.json
+          key: ${{ steps.driver-cache.outputs.cache-primary-key }}
+
+      - name: Always discard every local crate's cached build outputs
+        run: |
+          $metadataJson = (& cargo metadata --locked --format-version 1 --manifest-path src-tauri/Cargo.toml | Out-String)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $metadata = $metadataJson | ConvertFrom-Json
+          $localPackages = @($metadata.packages | Where-Object { $null -eq $_.source })
+          if ($localPackages.Count -eq 0) { throw 'No local crates found to clean' }
+          foreach ($package in $localPackages) {
+            cargo clean --manifest-path src-tauri/Cargo.toml --package $package.id
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            cargo clean --manifest-path src-tauri/Cargo.toml --release --package $package.id
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          if (Test-Path 'src-tauri/target/release/singles-sorter-preview.exe') {
+            throw 'Stale desktop executable survived local-package cleanup'
+          }
 
       - name: Test renderer and native profile contracts
         run: |
@@ -108,6 +204,27 @@ jobs:
 
       - name: Build actual desktop application through pinned Tauri CLI
         run: npm run build:desktop -- --ci -- --locked
+
+      # Save only after all contracts and the actual desktop build succeed. Saving
+      # before UI execution keeps useful compilation work even if UI acceptance fails.
+      # PR caches stay merge-ref scoped; forks never publish caches from this workflow.
+      - name: Save successful build intermediates for this same-repository PR
+        if: github.event.pull_request.head.repo.full_name == github.repository && steps.rust-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ env.CARGO_HOME }}/registry/index
+            ${{ env.CARGO_HOME }}/registry/cache
+            ${{ env.CARGO_HOME }}/git/db
+            ${{ env.CARGO_TARGET_DIR }}/debug/deps/*
+            !${{ env.CARGO_TARGET_DIR }}/debug/deps/*.exe
+            ${{ env.CARGO_TARGET_DIR }}/debug/build
+            ${{ env.CARGO_TARGET_DIR }}/debug/.fingerprint
+            ${{ env.CARGO_TARGET_DIR }}/release/deps/*
+            !${{ env.CARGO_TARGET_DIR }}/release/deps/*.exe
+            ${{ env.CARGO_TARGET_DIR }}/release/build
+            ${{ env.CARGO_TARGET_DIR }}/release/.fingerprint
+          key: ${{ steps.rust-cache.outputs.cache-primary-key }}
 
       - name: Exercise owned native Windows UI at verified Medium integrity
         run: python tests/run_desktop_medium.py
