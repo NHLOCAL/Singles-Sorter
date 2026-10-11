@@ -27,6 +27,7 @@ export type MainSettings = Omit<Settings,'duet_mode'>;
 export interface ListDiagnostic {index:number;code:string;width:number}
 export interface PersonalList {revision:string;rows:string[][];diagnostics:ListDiagnostic[]}
 export type ImportEncoding = 'Utf8'|'Utf8Bom'|'Windows1255'|'Windows1252'|'Utf16Le'|'Utf16Be';
+export type ImportEdit={kind:'set';index:number;column:0|1;value:string}|{kind:'delete';index:number};
 export interface ImportPreview {token:string;encoding:ImportEncoding;rows:string[][];diagnostics:ListDiagnostic[]}
 export interface ImportSelection {token:string;filename:string;encoding_required:boolean;preview:ImportPreview|null}
 export interface ProfileHost {
@@ -36,7 +37,7 @@ export interface ProfileHost {
  savePersonalList(revision:string,rows:string[][]):Promise<PersonalList>;
  selectPersonalImport():Promise<ImportSelection|null>;
  previewPersonalImport(token:string,encoding:ImportEncoding):Promise<ImportPreview>;
- confirmPersonalImport(token:string,encoding:ImportEncoding,revision:string):Promise<PersonalList>;
+ confirmPersonalImport(token:string,encoding:ImportEncoding,revision:string,edits?:ImportEdit[]):Promise<PersonalList>;
  exportPersonalList():Promise<{filename:string;rows:number}|null>;
  getFirstRunStatus():Promise<{version:string;seen:boolean}>;
  markFirstRunSeen():Promise<{version:string;seen:boolean}>;

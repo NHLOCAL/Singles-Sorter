@@ -8,7 +8,7 @@ export const nativeHost: Host & ProfileHost = {
   savePersonalList: (revision,rows) => invoke('save_personal_list',{revision,rows}),
   selectPersonalImport: () => invoke('select_personal_import'),
   previewPersonalImport: (token,encoding) => invoke('preview_personal_import',{token,encoding}),
-  confirmPersonalImport: (token,encoding,revision) => invoke('confirm_personal_import',{token,encoding,revision}),
+  confirmPersonalImport: (token,encoding,revision,edits=[]) => invoke('confirm_personal_import',{token,encoding,revision,edits}),
   exportPersonalList: () => invoke('export_personal_list'),
   getFirstRunStatus: () => invoke('get_first_run_status'),
   markFirstRunSeen: () => invoke('mark_first_run_seen'),
