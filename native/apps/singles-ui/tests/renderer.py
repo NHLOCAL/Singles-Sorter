@@ -41,7 +41,7 @@ window.__TAURI_INTERNALS__={invoke:async(command,args={})=>{
   if(args.request.ai_profile==='Configured')throw 'RECOGNITION_UNAVAILABLE';
   await new Promise(resolve=>setTimeout(resolve,80));return {job_id:'renderer-fixture'};
  }
- if(command==='job_snapshot')return {host_schema:1,job_id:'renderer-fixture',status:'completed',plan_id:'renderer-fixture-not-native',total_rows:2,blockers:['PHYSICAL_APPLY_UNAVAILABLE'],warnings:[]};
+ if(command==='job_snapshot')return {host_schema:1,job_id:'renderer-fixture',status:'completed',plan_id:'renderer-fixture-not-native',total_rows:2,blockers:['PHYSICAL_APPLY_UNAVAILABLE'],warnings:['Effects and counters are predicted; no files or tags were changed','AI intentionally disabled; no native inference bundle is used','Unknown actionable fixture warning']};
  if(command==='get_plan_page')return window.__realHostFixture;
  throw new Error('Unexpected mock command '+command);
 }};
@@ -108,7 +108,11 @@ try:
         expect(page.locator('#rows')).to_contain_text('בדיקת אלבום')
         expect(page.locator('#rows')).to_contain_text('בדיקת שיר')
         assert page.evaluate("window.__calls.find(c=>c.command==='start_preview').args.request.settings.singles_folder") is False
-        checks.append('Sort sends explicit false and renders actual serialized Rust host fixture in Hebrew')
+        expect(page.locator('#warnings .warning')).to_have_count(1)
+        expect(page.locator('#warnings')).to_have_text('Unknown actionable fixture warning')
+        expect(page.locator('#technical-notices')).to_contain_text('Effects and counters are predicted')
+        expect(page.locator('#technical-notices')).to_contain_text('AI intentionally disabled')
+        checks.append('Sort sends explicit false and preserves routine notices only in technical details while unknown warnings remain visible')
         page.evaluate("window.__realHostFixture.rows[1].source='<img src=x onerror=alert(1)>.mp3'")
         page.locator('#sort').click()
         expect(page.locator('#rows')).to_contain_text('<img src=x onerror=alert(1)>.mp3')
@@ -122,6 +126,8 @@ try:
         page.screenshot(path=str(OUTPUT / 'renderer-mock-results.png'), full_page=True)
         page.locator('#advanced').click()
         expect(page.locator('#advanced-dialog')).to_be_visible()
+        expect(page.locator('#model-status')).to_have_text('לא זמין')
+        expect(page.locator('#model-help')).to_have_attribute('data-help-text', 'בדיקת ממשק בלבד עם IPC מדומה. לא בוצעה הסקה.')
         page.locator('#duet-all').check()
         expect(page.locator('#duet-all')).to_be_checked()
         assert page.evaluate('window.__storedSettings.duet_mode') is True
@@ -134,7 +140,8 @@ try:
         page.locator('#edit-list').click()
         page.locator('#list-alias-0').fill('אמן ראשון חדש')
         page.locator('#list-save').click()
-        expect(page.locator('#list-notice')).to_contain_text('הרשימה נשמרה')
+        expect(page.locator('#list-notice')).to_have_text('נשמר')
+        expect(page.locator('#profile-notice')).to_be_hidden()
         page.locator('#list-cancel').click()
         page.locator('#import-list').click()
         expect(page.locator('#confirm-import')).to_be_disabled()
@@ -150,7 +157,7 @@ try:
         expect(page.locator('#advanced-dialog')).not_to_be_visible()
         expect(page.locator('#advanced')).to_be_focused()
         page.locator('#save-settings').click()
-        expect(page.locator('#settings-notice')).to_contain_text('נשמרו')
+        expect(page.locator('#settings-notice')).to_have_text('נשמר')
         assert page.evaluate('window.__storedSettings.singles_folder') is False
         checks.append('Main settings save separately from immediate duet persistence')
         page.locator('#fix').click()

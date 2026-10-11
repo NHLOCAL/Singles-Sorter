@@ -1,6 +1,6 @@
 import './styles.css';
 import {nativeHost,openFooterLink} from './host';
-import {kindLabel,reasonLabel,blockerLabel} from './presentation';
+import {kindLabel,reasonLabel,blockerLabel,warningPresentation,noticeLabel} from './presentation';
 import {PAGE_SIZE,PreviewController} from './state';
 import type {Settings,ImportEncoding,Mode} from './contracts';
 import {PersonalListController} from './lists';
@@ -36,7 +36,7 @@ app.innerHTML=`
 <div id="warnings"></div>
 <div id="table-wrap" hidden><table><thead><tr><th scope="col">מקור</th><th scope="col">פעולה ויעד מוצע</th><th scope="col">סיבה / חסימה</th></tr></thead><tbody id="rows"></tbody></table></div>
 
-<details id="details" hidden><summary>פרטי התכנית והבדיקה</summary><dl><dt>מזהה תכנית</dt><dd id="plan-id" dir="ltr"></dd><dt>חסימות ביצוע</dt><dd id="blockers"></dd></dl></details>
+<details id="details" hidden><summary>פרטי התכנית והבדיקה</summary><dl><dt>מזהה תכנית</dt><dd id="plan-id" dir="ltr"></dd><dt>חסימות ביצוע</dt><dd id="blockers"></dd></dl><div id="technical-notices"></div></details>
 </div><nav id="pagination" aria-label="עמודי תוצאות" hidden><button id="previous" class="secondary">הקודם</button><span id="page-label"></span><button id="next" class="secondary">הבא</button></nav>
 </section>
 </main>
@@ -44,7 +44,7 @@ app.innerHTML=`
 <dialog id="menu-dialog" aria-labelledby="menu-title"><div class="dialog-heading"><h2 id="menu-title">עזרה ומידע</h2><button class="close-dialog icon-button" aria-label="סגור">×</button></div><div class="menu-items"><button data-help="help">איך משתמשים?</button><button data-help="about">אודות התוכנה</button></div><div id="help-content" class="help-content"></div></dialog>
 <dialog id="advanced-dialog" aria-labelledby="advanced-title"><div class="dialog-heading"><h2 id="advanced-title">הגדרות מתקדמות</h2><button class="close-dialog icon-button" aria-label="סגור">×</button></div>
 <fieldset><legend>מיון דואטים <button class="help-badge" aria-label="עזרה: דואטים" data-help-text="בחר להיכן יועתקו שירי דואט. הבחירה נשמרת מיד, בלי לשמור שינויים באפשרויות האחרות.">?</button></legend><label class="option"><input type="radio" name="duet" id="duet-first" value="first" checked><span>לזמר הראשון בשם השיר</span></label><label class="option"><input type="radio" name="duet" id="duet-all" value="all"><span>לכל הזמרים המופיעים בשיר</span></label></fieldset>
-<fieldset><legend>זיהוי בעזרת AI</legend><p id="model-status" class="muted"></p><div class="field-label"><label for="ai-profile">פרופיל הבדיקה</label><button class="help-badge" aria-label="עזרה: פרופיל הבדיקה" data-help-text="אם נדרש מודל ואינו זמין, הבדיקה תיחסם. אין מעבר אוטומטי לפרופיל אחר.">?</button></div><select id="ai-profile"><option value="Disabled">בדיקה עם AI מושבת במפורש</option><option value="Configured">דרוש מודל AI זמין</option></select></fieldset>
+<fieldset><legend>זיהוי בעזרת AI <span id="model-status" class="quiet-label"></span><button id="model-help" class="help-badge" aria-label="עזרה: זמינות AI" data-help-text="">?</button></legend><div class="field-label"><label for="ai-profile">פרופיל הבדיקה</label><button class="help-badge" aria-label="עזרה: פרופיל הבדיקה" data-help-text="אם נדרש מודל ואינו זמין, הבדיקה תיחסם. אין מעבר אוטומטי לפרופיל אחר.">?</button></div><select id="ai-profile"><option value="Disabled">ללא AI</option><option value="Configured">דרוש מודל AI זמין</option></select></fieldset>
 <section><div class="field-label"><h3>הוספת זמרים</h3><button class="help-badge" aria-label="עזרה: רשימת אמנים" data-help-text="השורות האישיות מתווספות אחרי הרשימה המובנית. סדר ההתאמה נשמר.">?</button></div><div class="list-actions"><button id="edit-list" class="secondary">ערוך רשימה</button><button id="import-list" class="secondary">יבא קובץ CSV</button><button id="export-list" class="secondary">יצא לקובץ CSV</button></div><p id="profile-notice" class="hint" role="status"></p><p id="profile-error" class="error" role="alert" hidden></p></section><p id="settings-error" class="error" role="alert" hidden></p><button class="close-dialog primary">סגור</button></dialog>
 <dialog id="list-dialog" class="wide-dialog" aria-labelledby="list-title"><div class="dialog-heading"><h2 id="list-title">הוספת זמרים</h2><button id="list-cancel-x" class="icon-button" aria-label="סגור בלי לשמור">×</button></div><button class="help-badge" aria-label="עזרה: עריכת רשימה" data-help-text="שם האמן הוא הטקסט לחיפוש; שם התיקייה הוא היעד. אין שינוי סדר או הסרת כפילויות אוטומטיים.">?</button><p id="list-error" class="error" role="alert" hidden></p><p id="list-notice" role="status"></p><div id="list-rows"></div><nav class="list-pagination" aria-label="עמודי רשימת אמנים"><button id="list-prev" class="secondary">הקודם</button><span id="list-range"></span><button id="list-next" class="secondary">הבא</button></nav><div class="dialog-actions"><button id="list-add" class="secondary">הוסף שורה</button><button id="list-save" class="primary">שמור רשימה</button><button id="list-cancel" class="secondary">ביטול</button></div></dialog>
 <dialog id="import-dialog" class="wide-dialog" aria-labelledby="import-title"><div class="dialog-heading"><h2 id="import-title">בדיקת קובץ הייבוא</h2><button id="import-cancel-x" class="icon-button" aria-label="בטל ייבוא">×</button></div><p id="import-filename" dir="auto"></p><label for="import-encoding">קידוד הקובץ</label><select id="import-encoding"><option value="Utf8">UTF-8</option><option value="Utf8Bom">UTF-8 עם BOM</option><option value="Windows1255">Windows-1255 (עברית)</option><option value="Windows1252">Windows-1252</option><option value="Utf16Le">UTF-16 LE</option><option value="Utf16Be">UTF-16 BE</option></select><button id="decode-import" class="secondary">הצג לפי הקידוד שבחרתי</button><p id="import-error" class="error" role="alert" hidden></p><p id="import-summary"></p><ol id="import-rows"></ol><button class="help-badge" aria-label="עזרה: ייבוא רשימה" data-help-text="האישור מוסיף את כל השורות בסוף הרשימה. שורות לא תקינות וכפילויות אינן מוסרות אוטומטית. מוצגות עד 20 שורות ראשונות.">?</button><div class="dialog-actions"><button id="confirm-import" class="primary">אשר הוספה לרשימה</button><button id="cancel-import" class="secondary">ביטול</button></div></dialog>`;
@@ -65,7 +65,12 @@ $('duet-first').addEventListener('change',()=>void controller.setDuet(false));
 $('duet-all').addEventListener('change',()=>void controller.setDuet(true));
 $('save-settings').addEventListener('click',()=>void controller.saveMainSettings());
 $<HTMLSelectElement>('ai-profile').addEventListener('change',event=>controller.changeAi((event.target as HTMLSelectElement).value as 'Disabled'|'Configured'));
-function openDialog(id:string){$<HTMLDialogElement>(id).showModal();}
+function syncPersonalNotices(){
+ const editing=$<HTMLDialogElement>('list-dialog').open||$<HTMLDialogElement>('import-dialog').open;
+ $('profile-notice').hidden=editing;
+}
+function openDialog(id:string){$<HTMLDialogElement>(id).showModal();syncPersonalNotices();}
+for(const id of ['list-dialog','import-dialog'])$(id).addEventListener('close',syncPersonalNotices);
 $('menu').addEventListener('click',()=>openDialog('menu-dialog'));
 $('advanced').addEventListener('click',()=>openDialog('advanced-dialog'));
 for(const button of document.querySelectorAll<HTMLButtonElement>('.close-dialog'))button.addEventListener('click',()=>button.closest('dialog')?.close());
@@ -98,10 +103,11 @@ function render(){
  $<HTMLInputElement>('duet-first').checked=!s.settings.duet_mode;$<HTMLInputElement>('duet-all').checked=s.settings.duet_mode;
  for(const id of ['duet-first','duet-all','ai-profile'])$(id).toggleAttribute('disabled',blocked);
  $<HTMLSelectElement>('ai-profile').value=s.ai;
- $('model-status').textContent=s.model?.message??'לא התקבל מצב המודל מהמארח.';
+ $('model-status').textContent=s.model?.available?'זמין':'לא זמין';
+ $('model-help').dataset.helpText=s.model?.message??'לא התקבל מצב המודל מהמארח.';
  $('connection').hidden=s.hostAvailable||!s.initialized;
  $('connection').textContent='המארח המקומי אינו מחובר. יש לפתוח את התוכנה כדי לבדוק תיקיות.';
- $('settings-label').textContent=controller.settingsDirty?'שינויים שלא נשמרו':'ההגדרות שלך';$('settings-notice').textContent=controller.savedNotice??'';$<HTMLButtonElement>('save-settings').disabled=blocked;$('settings-error').hidden=!s.error;$('settings-error').textContent=s.error??'';
+ $('settings-label').textContent=controller.settingsDirty?'שינויים שלא נשמרו':'ההגדרות שלך';$('settings-notice').textContent=noticeLabel(controller.savedNotice);$<HTMLButtonElement>('save-settings').disabled=blocked;$('settings-error').hidden=!s.error;$('settings-error').textContent=s.error??'';
  $('busy').textContent=s.activity==='settings'?'שומר הגדרות…':s.activity==='page'?'טוען עמוד תוצאות…':'קורא ומנתח את הקבצים…';
  $('busy').hidden=!s.busy;$('results').setAttribute('aria-busy',String(s.busy));
  $('error').hidden=!s.error;$('error').textContent=s.error??'';
@@ -112,7 +118,12 @@ function render(){
  $('count').textContent=ready?`${s.page!.total.toLocaleString('he-IL')} רשומות בתכנית`:'';
  $('rows').replaceChildren();
  if(ready)for(const row of s.page!.rows){const tr=document.createElement('tr');const origin=text('td',row.source,'file-name');origin.setAttribute('dir','auto');tr.append(origin);const action=document.createElement('td');action.append(text('strong',kindLabel(row.kind)));if(row.destination){const path=text('bdi',row.destination,'destination');path.dir='auto';action.append(path);}tr.append(action);const reason=document.createElement('td');reason.append(text('span',reasonLabel(row)));if(row.blockers.length)reason.append(text('small',row.blockers.map(blockerLabel).join(' · '),'row-blockers'));const technical=document.createElement('details');technical.append(text('summary','מידע טכני'),text('p',row.reason),text('p',row.blockers.join(' · ')));reason.append(technical);tr.append(reason);$('rows').append(tr);}
- $('warnings').replaceChildren();if(ready)for(const warning of s.snapshot!.warnings)$('warnings').append(text('p',warning,'warning'));
+ $('warnings').replaceChildren();$('technical-notices').replaceChildren();
+ if(ready)for(const warning of s.snapshot!.warnings){
+  const display=warningPresentation(warning);
+  if(display.technical)$('technical-notices').append(text('p',warning));
+  else $('warnings').append(text('p',display.label,'warning'));
+ }
  $('details').hidden=!ready;$('plan-id').textContent=s.snapshot?.plan_id??'';$('blockers').textContent=s.snapshot?.blockers.join(' · ')||'ללא חסימות נוספות שדווחו.';
  $('pagination').hidden=!ready||s.page!.total<=PAGE_SIZE;
  $('page-label').textContent=ready?`${s.offset+1}–${Math.min(s.offset+PAGE_SIZE,s.page!.total)} מתוך ${s.page!.total}`:'';
@@ -145,8 +156,8 @@ function renderPersonal(){
  for(const button of document.querySelectorAll<HTMLButtonElement>('#advanced-dialog .close-dialog'))button.disabled=personal.busy||controller.state.busy;
  $<HTMLSelectElement>('import-encoding').disabled=personal.busy;
  for(const id of ['profile-error','list-error','import-error']){$(id).hidden=!personal.error;$(id).textContent=personal.error??'';}
- $('profile-notice').textContent=personal.busy?'ממתין להשלמת הפעולה…':personal.notice??'';
- $('list-notice').textContent=personal.busy?'ממתין להשלמת הפעולה…':personal.notice??'';
+ $('profile-notice').textContent=personal.busy?'ממתין להשלמת הפעולה…':noticeLabel(personal.notice);
+ $('list-notice').textContent=personal.busy?'ממתין להשלמת הפעולה…':noticeLabel(personal.notice);
  for(const id of ['edit-list','import-list','export-list','list-save','list-add','list-cancel','list-cancel-x','decode-import','cancel-import','import-cancel-x'])$<HTMLButtonElement>(id).disabled=personal.busy||controller.state.busy;
  $('list-rows').replaceChildren();
  listOffset=Math.min(listOffset,Math.floor(Math.max(0,personal.draft.length-1)/50)*50);

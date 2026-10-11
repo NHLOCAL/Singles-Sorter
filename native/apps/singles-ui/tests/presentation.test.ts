@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {kindLabel,reasonLabel,blockerLabel} from '../src/presentation';
+import {kindLabel,reasonLabel,blockerLabel,warningPresentation,noticeLabel} from '../src/presentation';
 import actualHostPage from '../src-tauri/tests/fixtures/real-preview-page.json';
 import type {PlanRow} from '../src/contracts';
 const row:PlanRow={id:'1',source:'שיר.mp3',destination:null,kind:'FixNames',reason:'rename_intended=false; save_intended=true; repairs=0; failure=None',blockers:[]};
@@ -9,4 +9,22 @@ describe('display language does not change engine codes',()=>{
  it('does not expose debug formatting as the main explanation',()=>{expect(reasonLabel(row)).not.toContain('rename_intended');expect(row.reason).toContain('rename_intended');});
  it('keeps chosen singer strings untouched',()=>{expect(reasonLabel({...row,kind:'Single',destination:'זמר/שיר.mp3',reason:'זמר א; זמר ב'})).toContain('זמר א; זמר ב');});
  it('does not invent an unknown blocker cause',()=>{expect(blockerLabel('NEW_CODE')).toContain('הסיבה הטכנית');});
+});
+
+describe('minimal notices preserve diagnostic information',()=>{
+ const routine=['Effects and counters are predicted; no files or tags were changed','AI intentionally disabled; no native inference bundle is used'];
+ it('routes only the exact two routine notices to technical details without altering originals',()=>{
+  for(const message of routine)expect(warningPresentation(message)).toEqual({technical:true,label:message});
+ });
+ it('keeps unknown, similar-prefix and actionable messages visible',()=>{
+  for(const message of ['Disk full',...routine.map(value=>value+'; file read failed'),'RECOGNITION_UNAVAILABLE'])expect(warningPresentation(message).technical).toBe(false);
+  expect(warningPresentation('Disk full').label).toBe('Disk full');
+  expect(warningPresentation('RECOGNITION_UNAVAILABLE').label).toBe('מודל הזיהוי הדרוש אינו זמין');
+ });
+ it('shortens exact save feedback only, preserving unknown and failed outcomes',()=>{
+  expect(noticeLabel('הרשימה נשמרה. סדר השורות והכפילויות נשמרו.')).toBe('נשמר');
+  expect(noticeLabel('הגדרות המיון נשמרו להפעלות הבאות.')).toBe('נשמר');
+  expect(noticeLabel(null)).toBe('');
+  expect(noticeLabel('השמירה נכשלה')).toBe('השמירה נכשלה');
+ });
 });
