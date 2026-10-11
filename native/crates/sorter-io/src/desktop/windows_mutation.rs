@@ -2781,8 +2781,8 @@ fn check_repair_extended_attributes(file: &File) -> Result<(), MutationError> {
     let status = unsafe { NtQueryInformationFile(HANDLE(file.as_raw_handle()), &mut status_block,
         (&mut information as *mut FILE_EA_INFORMATION).cast(), size_of::<FILE_EA_INFORMATION>() as u32,
         FileEaInformation) };
-    if status.0 < 0 {
-        return Err(err(MutationErrorKind::Unsupported, &format!("cannot establish repair extended-attribute inventory: NTSTATUS {:#x}", status.0)));
+    if status.0 != 0 || unsafe { status_block.Anonymous.Status }.0 != 0 {
+        return Err(err(MutationErrorKind::Unsupported, &format!("cannot establish completed repair extended-attribute inventory: NTSTATUS {:#x}", status.0)));
     }
     if status_block.Information != size_of::<FILE_EA_INFORMATION>() || information.EaSize != 0 {
         return Err(err(MutationErrorKind::Unsupported, "repair with extended attributes is unsupported"));
@@ -3295,7 +3295,8 @@ mod repair_backup_tests {
         let mut status_block = IO_STATUS_BLOCK::default();
         let status = unsafe { NtSetEaFile(HANDLE(file.as_raw_handle()), &mut status_block,
             pointer.cast(), length as u32) };
-        assert!(status.0 >= 0, "owned fixture EA creation failed: {status:?}");
+        assert_eq!(status.0, 0, "owned fixture EA creation did not complete: {status:?}");
+        assert_eq!(unsafe { status_block.Anonymous.Status }.0, 0);
     }
 
     #[test]
