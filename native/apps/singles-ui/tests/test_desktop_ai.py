@@ -176,10 +176,27 @@ class DesktopAIContracts(unittest.TestCase):
         self.assertEqual((method, endpoint), ('POST', '/execute/async'))
         self.assertIn('window.__TAURI_INTERNALS__.invoke(name, args)', body['script'])
         self.assertNotIn('__TAURI_INTERNALS__.invoke =', body['script'])
-        command.return_value = {'ok': False, 'error': {'code': 'RECOGNITION_UNAVAILABLE'}}
+        command.return_value = {'ok': False, 'application_error': {'code': 'RECOGNITION_UNAVAILABLE'}}
         driver.ipc('start_preview', {}, 'RECOGNITION_UNAVAILABLE')
         with self.assertRaises(AssertionError):
             driver.ipc('start_preview', {}, 'HOST_BUSY')
+
+    def test_application_error_envelope_does_not_collide_with_webdriver_error(self):
+        def transport(method, endpoint, body):
+            # Model the existing real WebDriver transport guard. The application's
+            # expected negative response must never occupy its reserved error key.
+            self.assertIn('done({ok:false,application_error:', body['script'])
+            response = {'ok': False, 'application_error': {'code': 'RECOGNITION_UNAVAILABLE'}}
+            if response.get('error'):
+                raise RuntimeError('WebDriver transport rejected application envelope')
+            return response
+        driver = ai.DesktopAI(transport, Mock(), Mock(), Mock(), Mock(), Mock(), Mock(), self.root)
+        self.assertEqual(driver.ipc('start_preview', {}, 'RECOGNITION_UNAVAILABLE')['code'],
+                         'RECOGNITION_UNAVAILABLE')
+        with self.assertRaises(AssertionError):
+            driver.ipc('start_preview', {}, 'UNKNOWN_JOB')
+        with self.assertRaises(AssertionError):
+            driver.ipc('start_preview')
 
     def test_positive_artist_assertion_requires_ai_only_destination_and_alias(self):
         rows = [dict(source=ai.AI_NAME, kind='Single', reason=ai.ARTIST,

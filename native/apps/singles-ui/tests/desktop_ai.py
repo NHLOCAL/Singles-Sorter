@@ -203,7 +203,7 @@ const done = arguments[arguments.length - 1];
 const input = arguments[0];
 const invoke = (name, args) => window.__TAURI_INTERNALS__.invoke(name, args);
 (async () => { SOURCE })().then(value => done({ok:true,value}),
-  error => done({ok:false,error:typeof error==='object'?error:{message:String(error)}}));
+  error => done({ok:false,application_error:typeof error==='object'?error:{message:String(error)}}));
 """.replace('SOURCE', source), 'args': [args]})
 
     def ipc(self, name, args=None, error=None):
@@ -211,9 +211,9 @@ const invoke = (name, args) => window.__TAURI_INTERNALS__.invoke(name, args);
                                  {'name': name, 'args': args or {}})
         self.events.append({'command': name, 'arguments': args or {}, 'response': result})
         if error:
-            require(not result['ok'] and result['error'].get('code') == error,
+            require(not result['ok'] and result['application_error'].get('code') == error,
                     f'{name}: expected {error}, got {result}')
-            return result['error']
+            return result['application_error']
         require(result['ok'], f'Real IPC {name} failed: {result}')
         return result.get('value')
 
