@@ -1,7 +1,14 @@
 import {blockerLabel,reasonLabel} from './presentation';
 import {userErrorLabels} from './state';
-import type {PlanRow,ExecutionItem,ExecutionSnapshot,Platform} from './contracts';
+import type {PlanRow,ExecutionItem,ExecutionSnapshot,Platform,ApplyReadiness} from './contracts';
 import {sourceLabel} from './presentation';
+/** Readiness counts retained validation work, never completed or guaranteed
+ * physical changes. Fix plans also retain unchanged files for fresh validation. */
+export function executionReadinessText(readiness:ApplyReadiness,developer:boolean):string{
+ if(readiness.mode==='FixNames')return developer?`${readiness.operation_count===1?'קובץ אחד':readiness.operation_count.toLocaleString('he-IL')+' קבצים'} בתוכנית לאימות ולתיקון לפי הצורך`:'מוכן לאימות הקבצים ולביצוע תיקונים לפי הצורך.';
+ return developer?`${readiness.operation_count.toLocaleString('he-IL')} פעולות ${readiness.copy_mode?'העתקה':'העברה'} ממתינות לאישור`:'הקבצים מוכנים. אפשר לבדוק ולאשר את הביצוע.';
+}
+export const REPAIR_REVIEW_TEXT='בדיקה חוזרת של הקבצים שבתוכנית וביצוע תיקונים מתוכננים בלבד. קבצים שלא נדרש בהם תיקון יישארו ללא שינוי. לפני החלפת תגיות נשמר עותק מקורי לצד הקובץ.';
 export const DEVELOPER_PREFERENCE='singles-sorter.developer-mode.v1';
 export function readDeveloperMode(storage:Pick<Storage,'getItem'>):boolean{try{return storage.getItem(DEVELOPER_PREFERENCE)==='true';}catch{return false;}}
 export function saveDeveloperMode(storage:Pick<Storage,'setItem'>,enabled:boolean){try{storage.setItem(DEVELOPER_PREFERENCE,String(enabled));}catch{/* The current view still works when local storage is unavailable. */}}

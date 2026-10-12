@@ -97,10 +97,13 @@ def exercise_repair(command, script, click, fill, wait, capture, root, output, a
         click('#fix')
         wait(lambda: script("return document.querySelector('#app').dataset.view==='results' && !document.querySelector('#back-setup').disabled"), timeout=120)
         assert script("return !document.querySelector('#review-apply').hidden && !document.querySelector('#review-apply').disabled"), 'Source-only repair was not authorized'
+        assert script("return document.querySelector('#execution-summary').textContent") == 'מוכן לאימות הקבצים ולביצוע תיקונים לפי הצורך.'
         click('#review-apply')
         assert script("return document.querySelector('#apply-target-label').hidden")
         assert script("return document.querySelector('#apply-source').value") == str(source)
-        assert 'תגיות' in script("return document.querySelector('#apply-description').textContent")
+        description = script("return document.querySelector('#apply-description').textContent")
+        assert 'תגיות' in description and 'תיקונים מתוכננים בלבד' in description
+        assert 'קבצים שלא נדרש בהם תיקון יישארו ללא שינוי' in description
 
     for version, unsupported in ((3, False), (4, False), (4, True)):
         label = 'unsupported' if unsupported else f'id3v2{version}'

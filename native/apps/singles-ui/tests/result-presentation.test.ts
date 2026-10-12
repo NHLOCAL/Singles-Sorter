@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
-import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,verificationWarning,developerRowSummary,recoveryNoticeText,verificationProgressText,resultFilename,DEVELOPER_PREFERENCE} from '../src/result-presentation';
-import type {ExecutionSnapshot,PlanRow,ExecutionItem} from '../src/contracts';
+import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,verificationWarning,developerRowSummary,recoveryNoticeText,verificationProgressText,resultFilename,DEVELOPER_PREFERENCE,executionReadinessText,REPAIR_REVIEW_TEXT} from '../src/result-presentation';
+import type {ExecutionSnapshot,PlanRow,ExecutionItem,ApplyReadiness} from '../src/contracts';
 const row:PlanRow={id:'file',source:'song.mp3',artist:'אמן',kind:'Single',destination:'אמן/song.mp3',reason:'raw_trace(hash)',blockers:[],operation_ids:[0]};
 const item=(status:ExecutionItem['status']):ExecutionItem=>({operation:0,status,detail:'raw filesystem evidence'});
 describe('ordinary result presentation',()=>{
@@ -227,5 +227,39 @@ describe('developer current-state summary',()=>{
   const blocked={...row,blockers:['PHYSICAL_APPLY_UNAVAILABLE'],effective_blockers:['AMBIGUOUS_DISPLAY_NAME']};
   expect(developerRowSummary(blocked,'לא ניתן לבצע',false)).not.toBe('להעברה');
   expect(developerRowSummary({...row,blockers:['PHYSICAL_APPLY_UNAVAILABLE']},'להעברה',false)).not.toBe('להעברה');
+ });
+});
+
+
+describe('retained repair validation wording',()=>{
+ const readiness:ApplyReadiness={supported:true,reason:null,operation_count:1,mode:'FixNames',copy_mode:false,source:'source',target:null};
+ it('does not call retained unchanged validation a pending physical repair',()=>{
+  expect(executionReadinessText(readiness,true)).toBe('קובץ אחד בתוכנית לאימות ולתיקון לפי הצורך');
+  expect(executionReadinessText(readiness,false)).toBe('מוכן לאימות הקבצים ולביצוע תיקונים לפי הצורך.');
+  expect(executionReadinessText(readiness,true)).not.toContain('פעולות תיקון ממתינות');
+ });
+ it('uses the full retained count without a display-page dependency or mutation',()=>{
+  const full=Object.freeze({...readiness,operation_count:101});
+  expect(executionReadinessText(full,true)).toBe('101 קבצים בתוכנית לאימות ולתיקון לפי הצורך');
+  expect(executionReadinessText({...full,operation_count:0},true)).toBe('0 קבצים בתוכנית לאימות ולתיקון לפי הצורך');
+  expect(full.operation_count).toBe(101);
+ });
+ it('preserves older host and Sort labels without new protocol fields',()=>{
+  for(const mode of [undefined,'Sort'] as const){
+   expect(executionReadinessText({...readiness,mode},false)).toBe('הקבצים מוכנים. אפשר לבדוק ולאשר את הביצוע.');
+   expect(executionReadinessText({...readiness,mode},true)).toBe('1 פעולות העברה ממתינות לאישור');
+   expect(executionReadinessText({...readiness,mode,copy_mode:true},true)).toBe('1 פעולות העתקה ממתינות לאישור');
+  }
+ });
+ it('makes unchanged validation and planned-only changes explicit before confirmation',()=>{
+  expect(REPAIR_REVIEW_TEXT).toContain('בדיקה חוזרת של הקבצים שבתוכנית');
+  expect(REPAIR_REVIEW_TEXT).toContain('תיקונים מתוכננים בלבד');
+  expect(REPAIR_REVIEW_TEXT).toContain('קבצים שלא נדרש בהם תיקון יישארו ללא שינוי');
+  expect(REPAIR_REVIEW_TEXT).toContain('לפני החלפת תגיות נשמר עותק מקורי');
+ });
+ it('keeps actual unchanged terminal counters separate from readiness',()=>{
+  const result={source_items:1,committed_destinations:0,moved_sources:0,failed_operations:0,blocked_operations:0,recovery_operations:0,cancelled_operations:0,items:[],repair:{total_files:1,processed_files:1,renamed_files:0,repaired_files:0,unchanged_files:1,unsupported_files:0,failed_files:0,retained_backup_bytes:0}};
+  expect(simpleExecutionSummary({status:'complete',result},false)).toBe('1 ללא שינוי');
+  expect(result.repair).toMatchObject({renamed_files:0,repaired_files:0,unchanged_files:1});
  });
 });
