@@ -15,5 +15,14 @@ class SettingsContract(unittest.TestCase):
         self.assertIn("'01-native-display-settings'", native)
         self.assertIn("#menu-dialog #developer-mode", native)
 
+    def test_narrow_and_touch_dialog_icons_override_compact_icon_size(self):
+        root = Path(__file__).resolve().parents[1]
+        css = (root / 'src/styles.css').read_text(encoding='utf-8')
+        # A bare button selector loses to the compact .icon-button class.
+        # Keep this structural check in addition to the actual WebView 48px gate.
+        for query in ['@media (max-width: 740px) {', '@media (pointer: coarse) {']:
+            section = css.split(query, 1)[1].split('@media', 1)[0]
+            self.assertRegex(section, r'dialog \.icon-button\s*\{\s*min-width: 48px;\s*min-height: 48px;\s*\}')
+
 if __name__ == '__main__':
     unittest.main()

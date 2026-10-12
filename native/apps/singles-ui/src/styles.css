@@ -1746,6 +1746,10 @@ footer {
   button, .help-badge, .option, dialog .option, .detail-button {
     min-height: 48px;
   }
+  dialog .icon-button {
+    min-width: 48px;
+    min-height: 48px;
+  }
   .help-badge {
     min-width: 48px;
   }
@@ -1892,6 +1896,10 @@ footer {
 
 @media (pointer: coarse) {
   button, .help-badge, .option, dialog .option, .detail-button {
+    min-height: 48px;
+  }
+  dialog .icon-button {
+    min-width: 48px;
     min-height: 48px;
   }
   .help-badge {
