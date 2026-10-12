@@ -3,9 +3,10 @@
 `sorter_io::staged_flac::FlacStagedPlan` is an isolated byte-stream transformer.
 It does not open paths and cannot replace, rename, delete, or publish a user
 file. The shared `staged_repair::StagedRepairPlan` product dispatcher reuses this
-transformer and the unchanged MP3 transformer. The Windows selected-root repair
-driver supplies separate original/replacement evidence and retained-original
-publication; Android may use the same stream API with its own storage authority.
+transformer and the unchanged MP3 transformer. The dispatcher is ready for
+separately reviewed platform integration: each driver must supply its own
+original/replacement evidence, retained-original publication and storage
+authority. The stream API and dispatcher alone do not activate a platform.
 
 ## API and trust boundary
 
@@ -144,8 +145,9 @@ From `native`, the required Rust gates are:
 
 Rust/Cargo/rustfmt and the native bridge are unavailable in the authoring
 container. These gates have **not run**. No installation retry or alternate
-installation route was attempted. Windows product source integration is present, but actual Windows CI, Android
-publication and user-library acceptance remain unproven. Product dispatch cases
+installation route was attempted. This shared checkpoint does not prove Windows or Android product integration,
+publication or user-library acceptance. Those require separate platform changes
+and exact-source validation. Product dispatch cases
 add three portable tests to the original eleven-case suite including its native
 reader roundtrip. Normal CI must discover and execute the exact native roundtrip,
 not silently omit it when the metadata bridge is unavailable.
