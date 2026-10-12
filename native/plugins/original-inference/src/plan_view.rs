@@ -265,15 +265,18 @@ mod tests {
         omitted.depends_on = vec![0];
         let omissions = std::collections::HashMap::from([(&read.source.reference, 0)]);
         assert_eq!(
-            included_album(&DecisionV2::Vanished { read: omitted.clone() }, &omissions),
+            included_album(
+                &DecisionV2::Vanished {
+                    read: omitted.clone()
+                },
+                &omissions
+            ),
             Some(0)
         );
         for variation in 0..4 {
             let mut unexpected = omitted.clone();
             match variation {
-                0 => {
-                    unexpected.source.reference = StorageRef::TestOpaque { id: "other".into() }
-                }
+                0 => unexpected.source.reference = StorageRef::TestOpaque { id: "other".into() },
                 1 => unexpected.after_operations = 0,
                 2 => unexpected.depends_on.clear(),
                 _ => unexpected.virtually_present = true,

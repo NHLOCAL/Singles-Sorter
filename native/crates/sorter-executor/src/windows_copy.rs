@@ -326,7 +326,9 @@ pub(crate) fn open_owned_recovery_domain(
 ) -> Result<crate::physical_journal::PhysicalJournalV2> {
     let selected = matches!(
         domain,
-        ExecutionDomain::SelectedWindowsCopy | ExecutionDomain::SelectedWindowsRename | ExecutionDomain::SelectedWindowsCopiedMove
+        ExecutionDomain::SelectedWindowsCopy
+            | ExecutionDomain::SelectedWindowsRename
+            | ExecutionDomain::SelectedWindowsCopiedMove
     );
     if owned.domain()
         != if selected {
@@ -373,7 +375,9 @@ impl<'a> WindowsCopyRecovery<'a> {
     ) -> Result<Self> {
         let selected = matches!(
             domain,
-            ExecutionDomain::SelectedWindowsCopy | ExecutionDomain::SelectedWindowsRename | ExecutionDomain::SelectedWindowsCopiedMove
+            ExecutionDomain::SelectedWindowsCopy
+                | ExecutionDomain::SelectedWindowsRename
+                | ExecutionDomain::SelectedWindowsCopiedMove
         );
         if owned.domain()
             != if selected {
@@ -468,23 +472,80 @@ impl<'a> WindowsCopyRecovery<'a> {
 }
 impl crate::recovery::RecoveryStorage for WindowsCopyRecovery<'_> {
     fn verify_move_source_streams(&mut self, expected: &CopiedMoveSourceEvidence) -> Result<bool> {
-        if !self.binding.data.copied_move_sources.as_ref().is_some_and(|sources| sources.contains(expected)) {
+        if !self
+            .binding
+            .data
+            .copied_move_sources
+            .as_ref()
+            .is_some_and(|sources| sources.contains(expected))
+        {
             return Err(E::Scope);
         }
         let source_path = path(&expected.source).map_err(|_| E::Scope)?;
-        let parent = self.owned.parent_reference(&reference(source_path.parent().ok_or(E::Scope)?)).map_err(|_| E::Scope)?;
-        let name = MutationName::Windows(source_path.file_name().ok_or(E::Scope)?.encode_wide().collect());
-        let actual = self.owned.inspect_copied_move_streams(&parent, &name, &expected.identity, &AtomicBool::new(false)).map_err(|_| E::Stale)?;
+        let parent = self
+            .owned
+            .parent_reference(&reference(source_path.parent().ok_or(E::Scope)?))
+            .map_err(|_| E::Scope)?;
+        let name = MutationName::Windows(
+            source_path
+                .file_name()
+                .ok_or(E::Scope)?
+                .encode_wide()
+                .collect(),
+        );
+        let actual = self
+            .owned
+            .inspect_copied_move_streams(
+                &parent,
+                &name,
+                &expected.identity,
+                &AtomicBool::new(false),
+            )
+            .map_err(|_| E::Stale)?;
         Ok(actual.attributes == expected.attributes && move_streams_match(&actual, expected))
     }
-    fn verify_move_destination_streams(&mut self, destination: &DestinationEvidence, identity: &ObjectIdentity, expected: &CopiedMoveSourceEvidence) -> Result<bool> {
-        if !self.binding.data.copied_move_sources.as_ref().is_some_and(|sources| sources.contains(expected))
-            || !self.binding.operations().iter().any(|operation| operation.destination == *destination && operation.source.observation.reference == expected.source) {
+    fn verify_move_destination_streams(
+        &mut self,
+        destination: &DestinationEvidence,
+        identity: &ObjectIdentity,
+        expected: &CopiedMoveSourceEvidence,
+    ) -> Result<bool> {
+        if !self
+            .binding
+            .data
+            .copied_move_sources
+            .as_ref()
+            .is_some_and(|sources| sources.contains(expected))
+            || !self.binding.operations().iter().any(|operation| {
+                operation.destination == *destination
+                    && operation.source.observation.reference == expected.source
+            })
+        {
             return Err(E::Scope);
         }
-        let parent = destination_parent(self.owned, destination, self.binding.data.target_root.identity.as_ref().ok_or(E::Scope)?).map_err(|_| E::Scope)?;
-        let name = MutationName::Windows(destination.components.last().ok_or(E::Scope)?.encode_utf16().collect());
-        let actual = self.owned.inspect_copied_move_streams(&parent, &name, identity, &AtomicBool::new(false)).map_err(|_| E::Stale)?;
+        let parent = destination_parent(
+            self.owned,
+            destination,
+            self.binding
+                .data
+                .target_root
+                .identity
+                .as_ref()
+                .ok_or(E::Scope)?,
+        )
+        .map_err(|_| E::Scope)?;
+        let name = MutationName::Windows(
+            destination
+                .components
+                .last()
+                .ok_or(E::Scope)?
+                .encode_utf16()
+                .collect(),
+        );
+        let actual = self
+            .owned
+            .inspect_copied_move_streams(&parent, &name, identity, &AtomicBool::new(false))
+            .map_err(|_| E::Stale)?;
         Ok(move_streams_match(&actual, expected))
     }
 
@@ -859,7 +920,18 @@ impl ReadStorage for WindowsAlbumPlanningStorage<'_> {
     }
 }
 
-fn move_streams_match(actual: &WindowsMoveSourceEvidence, expected: &CopiedMoveSourceEvidence) -> bool {
-    actual.streams.len() == expected.streams.len() && actual.streams.iter().zip(&expected.streams).all(|(actual, expected)|
-        actual.name == expected.name && actual.length == expected.length && actual.sha256 == expected.sha256)
+fn move_streams_match(
+    actual: &WindowsMoveSourceEvidence,
+    expected: &CopiedMoveSourceEvidence,
+) -> bool {
+    actual.streams.len() == expected.streams.len()
+        && actual
+            .streams
+            .iter()
+            .zip(&expected.streams)
+            .all(|(actual, expected)| {
+                actual.name == expected.name
+                    && actual.length == expected.length
+                    && actual.sha256 == expected.sha256
+            })
 }

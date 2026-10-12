@@ -203,20 +203,43 @@ pub(crate) fn validate_execution_domain(
     scope: &ExecutionScope,
     domain: ExecutionDomain,
 ) -> Result<ExecutionBinding> {
-    validate_execution_domain_inner(plan, storage, metadata, recognition, resources, scope, (domain, None))
+    validate_execution_domain_inner(
+        plan,
+        storage,
+        metadata,
+        recognition,
+        resources,
+        scope,
+        (domain, None),
+    )
 }
 #[cfg(all(windows, feature = "selected-windows-execution"))]
 pub(crate) fn validate_copied_move_controlled(
-    plan: &JobPlanV2, storage: &mut dyn ReadStorage, metadata: &mut dyn MetadataProvider,
-    recognition: &mut dyn RecognitionProvider, resources: &Resources, scope: &ExecutionScope,
+    plan: &JobPlanV2,
+    storage: &mut dyn ReadStorage,
+    metadata: &mut dyn MetadataProvider,
+    recognition: &mut dyn RecognitionProvider,
+    resources: &Resources,
+    scope: &ExecutionScope,
     cancel: &std::sync::atomic::AtomicBool,
 ) -> Result<ExecutionBinding> {
-    validate_execution_domain_inner(plan, storage, metadata, recognition, resources, scope,
-        (ExecutionDomain::SelectedWindowsCopiedMove, Some(cancel)))
+    validate_execution_domain_inner(
+        plan,
+        storage,
+        metadata,
+        recognition,
+        resources,
+        scope,
+        (ExecutionDomain::SelectedWindowsCopiedMove, Some(cancel)),
+    )
 }
 fn validate_execution_domain_inner(
-    plan: &JobPlanV2, storage: &mut dyn ReadStorage, metadata: &mut dyn MetadataProvider,
-    recognition: &mut dyn RecognitionProvider, resources: &Resources, scope: &ExecutionScope,
+    plan: &JobPlanV2,
+    storage: &mut dyn ReadStorage,
+    metadata: &mut dyn MetadataProvider,
+    recognition: &mut dyn RecognitionProvider,
+    resources: &Resources,
+    scope: &ExecutionScope,
     control: (ExecutionDomain, Option<&std::sync::atomic::AtomicBool>),
 ) -> Result<ExecutionBinding> {
     let (domain, cancel) = control;
@@ -378,8 +401,12 @@ fn validate_execution_domain_inner(
         data: BindingData {
             schema: 2,
             album_context: None,
-            copied_move_sources: (domain == ExecutionDomain::SelectedWindowsCopiedMove).then(Vec::new),
-            copy_metadata_version: if matches!(domain, ExecutionDomain::SelectedWindowsCopy | ExecutionDomain::SelectedWindowsCopiedMove) {
+            copied_move_sources: (domain == ExecutionDomain::SelectedWindowsCopiedMove)
+                .then(Vec::new),
+            copy_metadata_version: if matches!(
+                domain,
+                ExecutionDomain::SelectedWindowsCopy | ExecutionDomain::SelectedWindowsCopiedMove
+            ) {
                 Some(1)
             } else {
                 None
@@ -481,10 +508,22 @@ pub(crate) fn validate_plan_scope_domain(
     scope: &ExecutionScope,
     domain: ExecutionDomain,
 ) -> Result<(EntryObservation, EntryObservation)> {
-    validate_plan_scope_inner(plan, storage, metadata, recognition, resources, scope, (domain, None))
+    validate_plan_scope_inner(
+        plan,
+        storage,
+        metadata,
+        recognition,
+        resources,
+        scope,
+        (domain, None),
+    )
 }
 fn check_binding_cancel(cancel: Option<&std::sync::atomic::AtomicBool>) -> Result<()> {
-    if cancel.is_some_and(|flag| flag.load(std::sync::atomic::Ordering::Acquire)) { Err(E::Cancelled) } else { Ok(()) }
+    if cancel.is_some_and(|flag| flag.load(std::sync::atomic::Ordering::Acquire)) {
+        Err(E::Cancelled)
+    } else {
+        Ok(())
+    }
 }
 struct BindingPlanningControl<'a>(Option<&'a std::sync::atomic::AtomicBool>);
 impl PlanningControl for BindingPlanningControl<'_> {
@@ -493,8 +532,12 @@ impl PlanningControl for BindingPlanningControl<'_> {
     }
 }
 fn validate_plan_scope_inner(
-    plan: &JobPlanV2, storage: &mut dyn ReadStorage, metadata: &mut dyn MetadataProvider,
-    recognition: &mut dyn RecognitionProvider, resources: &Resources, scope: &ExecutionScope,
+    plan: &JobPlanV2,
+    storage: &mut dyn ReadStorage,
+    metadata: &mut dyn MetadataProvider,
+    recognition: &mut dyn RecognitionProvider,
+    resources: &Resources,
+    scope: &ExecutionScope,
     control: (ExecutionDomain, Option<&std::sync::atomic::AtomicBool>),
 ) -> Result<(EntryObservation, EntryObservation)> {
     let (domain, cancel) = control;
@@ -550,18 +593,22 @@ fn validate_plan_scope_inner(
                 true,
                 TransferMode::Copy,
             ),
-            ExecutionDomain::SelectedWindowsRename | ExecutionDomain::SelectedWindowsCopiedMove => (
-                cfg!(all(windows, feature = "selected-windows-execution")),
-                false,
-                TransferMode::Move,
-            ),
+            ExecutionDomain::SelectedWindowsRename | ExecutionDomain::SelectedWindowsCopiedMove => {
+                (
+                    cfg!(all(windows, feature = "selected-windows-execution")),
+                    false,
+                    TransferMode::Move,
+                )
+            }
             ExecutionDomain::Synthetic => unreachable!(),
         };
         if !enabled
             || plan.request.settings.copy_mode != copy_mode
             || (!matches!(
                 domain,
-                ExecutionDomain::SelectedWindowsCopy | ExecutionDomain::SelectedWindowsRename | ExecutionDomain::SelectedWindowsCopiedMove
+                ExecutionDomain::SelectedWindowsCopy
+                    | ExecutionDomain::SelectedWindowsRename
+                    | ExecutionDomain::SelectedWindowsCopiedMove
             ) && plan.operations.len() != 1)
             || scope.allowed_modes != [mode]
             || plan.observations.iter().any(|e| !windows(e))
@@ -575,8 +622,20 @@ fn validate_plan_scope_inner(
         inner: recognition,
         failed: false,
     };
-    let fresh = plan_job_controlled(&plan.request, storage, metadata, &mut checked, &BindingPlanningControl(cancel))
-        .map_err(|_| if check_binding_cancel(cancel).is_err() { E::Cancelled } else { E::Stale })?;
+    let fresh = plan_job_controlled(
+        &plan.request,
+        storage,
+        metadata,
+        &mut checked,
+        &BindingPlanningControl(cancel),
+    )
+    .map_err(|_| {
+        if check_binding_cancel(cancel).is_err() {
+            E::Cancelled
+        } else {
+            E::Stale
+        }
+    })?;
     check_binding_cancel(cancel)?;
     if checked.failed {
         return Err(E::Unsupported);
@@ -596,8 +655,13 @@ fn validate_plan_scope_inner(
     Ok((root, target))
 }
 
-pub(crate) fn copied_move_route_required(source: Option<&ObjectIdentity>, target: Option<&ObjectIdentity>, copy_effect: bool) -> bool {
-    copy_effect || matches!((source, target), (Some(ObjectIdentity::Windows { volume: source, .. }), Some(ObjectIdentity::Windows { volume: target, .. })) if source != target)
+pub(crate) fn copied_move_route_required(
+    source: Option<&ObjectIdentity>,
+    target: Option<&ObjectIdentity>,
+    copy_effect: bool,
+) -> bool {
+    copy_effect
+        || matches!((source, target), (Some(ObjectIdentity::Windows { volume: source, .. }), Some(ObjectIdentity::Windows { volume: target, .. })) if source != target)
 }
 fn windows(e: &EntryObservation) -> bool {
     matches!(e.reference, StorageRef::WindowsPath { .. })
@@ -612,10 +676,9 @@ impl BindingData {
     }
     /// Domain evidence is necessary but never sufficient authority to execute.
     pub(crate) fn valid_domain(&self) -> bool {
-        if self
-            .copy_metadata_version
-            .is_some_and(|version| version != 1 || !(self.selected_windows_copy || self.copied_move_sources.is_some()))
-        {
+        if self.copy_metadata_version.is_some_and(|version| {
+            version != 1 || !(self.selected_windows_copy || self.copied_move_sources.is_some())
+        }) {
             return false;
         }
         if let Some(sources) = &self.copied_move_sources {
@@ -680,8 +743,11 @@ impl BindingData {
             })
     }
     pub(crate) fn copied_move_operation(&self, operation: &BoundOperation) -> bool {
-        self.copied_move_sources.as_ref().is_some_and(|sources| sources.iter().any(|source|
-            source.source == operation.source.observation.reference))
+        self.copied_move_sources.as_ref().is_some_and(|sources| {
+            sources
+                .iter()
+                .any(|source| source.source == operation.source.observation.reference)
+        })
     }
     pub(crate) fn metadata_required_for(&self, operation: &BoundOperation) -> bool {
         self.copy_metadata_version == Some(1)
@@ -689,50 +755,111 @@ impl BindingData {
     }
     fn valid_copied_move_domain(&self, sources: &[CopiedMoveSourceEvidence]) -> bool {
         if !cfg!(all(windows, feature = "selected-windows-execution"))
-            || self.synthetic_only || self.owned_windows_copy || self.owned_windows_rename
-            || self.selected_windows_copy || self.selected_windows_rename
-            || self.copy_metadata_version != Some(1) || self.album_context.is_some()
-            || !windows(&self.source_root) || !windows(&self.target_root)
+            || self.synthetic_only
+            || self.owned_windows_copy
+            || self.owned_windows_rename
+            || self.selected_windows_copy
+            || self.selected_windows_rename
+            || self.copy_metadata_version != Some(1)
+            || self.album_context.is_some()
+            || !windows(&self.source_root)
+            || !windows(&self.target_root)
             || self.scope_evidence.allowed_modes != [TransferMode::Move]
-            || self.operations.is_empty() || sources.is_empty()
-        { return false; }
-        let unique = self.operations.iter().filter(|op| copied_move_route_required(op.source.observation.identity.as_ref(), self.target_root.identity.as_ref(), op.copy_effect))
-            .map(|op| &op.source.observation.reference).collect::<HashSet<_>>();
-        if unique.len() != sources.len() { return false; }
+            || self.operations.is_empty()
+            || sources.is_empty()
+        {
+            return false;
+        }
+        let unique = self
+            .operations
+            .iter()
+            .filter(|op| {
+                copied_move_route_required(
+                    op.source.observation.identity.as_ref(),
+                    self.target_root.identity.as_ref(),
+                    op.copy_effect,
+                )
+            })
+            .map(|op| &op.source.observation.reference)
+            .collect::<HashSet<_>>();
+        if unique.len() != sources.len() {
+            return false;
+        }
         let mut seen = HashSet::new();
         for source in sources {
-            let Some(op) = self.operations.iter().find(|op| op.source.observation.reference == source.source) else { return false; };
-            if !unique.contains(&source.source) || !seen.insert(&source.source) || Some(&source.identity) != op.source.observation.identity.as_ref()
-                || source.attributes & !0x20 != 0 || source.streams.is_empty() || source.streams.len() > 256
-            { return false; }
+            let Some(op) = self
+                .operations
+                .iter()
+                .find(|op| op.source.observation.reference == source.source)
+            else {
+                return false;
+            };
+            if !unique.contains(&source.source)
+                || !seen.insert(&source.source)
+                || Some(&source.identity) != op.source.observation.identity.as_ref()
+                || source.attributes & !0x20 != 0
+                || source.streams.is_empty()
+                || source.streams.len() > 256
+            {
+                return false;
+            }
             let mut names = HashSet::new();
             for stream in &source.streams {
                 let suffix = ":$DATA".encode_utf16().collect::<Vec<_>>();
-                if !names.insert(&stream.name) || stream.name.first() != Some(&58)
-                    || !stream.name.ends_with(&suffix) || stream.name.len() < suffix.len() + 1
+                if !names.insert(&stream.name)
+                    || stream.name.first() != Some(&58)
+                    || !stream.name.ends_with(&suffix)
+                    || stream.name.len() < suffix.len() + 1
                     || stream.name.len() > 32767
-                    || stream.name[1..stream.name.len() - suffix.len()].iter().any(|u| matches!(*u, 0 | 47 | 58 | 92))
-                { return false; }
+                    || stream.name[1..stream.name.len() - suffix.len()]
+                        .iter()
+                        .any(|u| matches!(*u, 0 | 47 | 58 | 92))
+                {
+                    return false;
+                }
             }
             let main = &source.streams[0];
             if main.name != "::$DATA".encode_utf16().collect::<Vec<_>>()
                 || Some(main.length) != op.source.observation.size
-                || main.sha256.iter().map(|byte| format!("{byte:02x}")).collect::<String>() != op.source.sha256
-                || source.streams[1..].windows(2).any(|pair| pair[0].name >= pair[1].name)
-            { return false; }
+                || main
+                    .sha256
+                    .iter()
+                    .map(|byte| format!("{byte:02x}"))
+                    .collect::<String>()
+                    != op.source.sha256
+                || source.streams[1..]
+                    .windows(2)
+                    .any(|pair| pair[0].name >= pair[1].name)
+            {
+                return false;
+            }
         }
         self.operations.iter().all(|op| {
-            op.mode == TransferMode::Move && windows(&op.source.observation)
-                && self.copied_move_operation(op) == copied_move_route_required(op.source.observation.identity.as_ref(), self.target_root.identity.as_ref(), op.copy_effect)
+            op.mode == TransferMode::Move
+                && windows(&op.source.observation)
+                && self.copied_move_operation(op)
+                    == copied_move_route_required(
+                        op.source.observation.identity.as_ref(),
+                        self.target_root.identity.as_ref(),
+                        op.copy_effect,
+                    )
                 && op.destination.root == self.target_root.reference
                 && match &op.duet_cohort {
                     None => !op.copy_effect,
-                    Some(cohort) => op.copy_effect && cohort.len() >= 2 && cohort.contains(&op.id)
-                        && cohort.iter().copied().collect::<HashSet<_>>().len() == cohort.len()
-                        && cohort.iter().all(|id| self.operations.get(*id).is_some_and(|other| {
-                            other.source == op.source && other.copy_effect && other.mode == TransferMode::Move
-                                && other.duet_cohort.as_ref() == Some(cohort)
-                        })),
+                    Some(cohort) => {
+                        op.copy_effect
+                            && cohort.len() >= 2
+                            && cohort.contains(&op.id)
+                            && cohort.iter().copied().collect::<HashSet<_>>().len() == cohort.len()
+                            && cohort.iter().all(|id| {
+                                self.operations.get(*id).is_some_and(|other| {
+                                    other.source == op.source
+                                        && other.copy_effect
+                                        && other.mode == TransferMode::Move
+                                        && other.duet_cohort.as_ref() == Some(cohort)
+                                })
+                            })
+                    }
                 }
         })
     }

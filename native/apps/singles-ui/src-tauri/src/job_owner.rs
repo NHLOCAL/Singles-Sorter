@@ -1357,7 +1357,13 @@ mod tests {
         snapshot.recovery_error = Some("unverified album root".into());
         assert!(!inactive(&row, &snapshot));
         snapshot.recovery_error = None;
-        for status in ["failed", "partial", "cancelled", "needs_recovery", "blocked"] {
+        for status in [
+            "failed",
+            "partial",
+            "cancelled",
+            "needs_recovery",
+            "blocked",
+        ] {
             snapshot.result.as_mut().unwrap().items[0].status = status;
             assert!(!inactive(&row, &snapshot), "{status}");
         }
@@ -1523,12 +1529,11 @@ mod tests {
                 children: vec![],
                 remove_empty_source: true,
             };
-            omission_plan.predicted_effects = vec![
-                sorter_core::job_plan::PredictedEffect::SourceUnavailable {
+            omission_plan.predicted_effects =
+                vec![sorter_core::job_plan::PredictedEffect::SourceUnavailable {
                     operation: 0,
                     source: read.source.reference.clone(),
-                },
-            ];
+                }];
             let mut omitted = read.clone();
             omitted.virtually_present = false;
             omitted.after_operations = 1;

@@ -263,7 +263,12 @@ impl PhysicalJournalV2 {
         };
         let (bytes, next) = line(record)?;
         if self.binding.data.copied_move_sources.is_some()
-            && self.bytes.len().checked_add(bytes.len()).is_none_or(|length| length > 64 * 1024 * 1024) {
+            && self
+                .bytes
+                .len()
+                .checked_add(bytes.len())
+                .is_none_or(|length| length > 64 * 1024 * 1024)
+        {
             return Err(E::NeedsRecovery);
         }
         sink.append(&bytes)?;
@@ -337,15 +342,26 @@ impl PhysicalJournalV2 {
             return Err(E::InvalidTransition);
         }
         let streams_required = self.binding.data.copied_move_operation(op);
-        if self.binding.data.copied_move_sources.is_some() && !streams_required
-            && matches!(event.phase, TempAllocationPrepared | SourceRetirementPrepared) {
+        if self.binding.data.copied_move_sources.is_some()
+            && !streams_required
+            && matches!(
+                event.phase,
+                TempAllocationPrepared | SourceRetirementPrepared
+            )
+        {
             return Err(E::InvalidTransition);
         }
-        if matches!(event.phase, AuxiliaryStreamsPrepared | AuxiliaryStreamsObserved) && !streams_required {
+        if matches!(
+            event.phase,
+            AuxiliaryStreamsPrepared | AuxiliaryStreamsObserved
+        ) && !streams_required
+        {
             return Err(E::InvalidTransition);
         }
-        if streams_required && (event.phase == AtomicRenamePrepared
-            || event.phase == CopyMetadataPrepared && last != Some(AuxiliaryStreamsObserved)) {
+        if streams_required
+            && (event.phase == AtomicRenamePrepared
+                || event.phase == CopyMetadataPrepared && last != Some(AuxiliaryStreamsObserved))
+        {
             return Err(E::InvalidTransition);
         }
         let metadata_required = self.binding.data.metadata_required_for(op);
@@ -452,7 +468,8 @@ impl PhysicalJournalV2 {
                 || matches!(
                     event.observed_identity,
                     Some(ObjectIdentity::Windows { .. })
-                ) && (self.binding.data.windows_copy() || self.binding.data.copied_move_sources.is_some()))
+                ) && (self.binding.data.windows_copy()
+                    || self.binding.data.copied_move_sources.is_some()))
                 || event.observed_identity == self.binding.data.source_root.identity
                 || event.observed_identity == self.binding.data.target_root.identity
                 || self
@@ -827,29 +844,54 @@ mod selected_copy_metadata_transition_tests {
 
 #[cfg(all(test, windows, feature = "selected-windows-execution"))]
 mod copied_move_journal_tests {
+    use super::selected_copy_metadata_transition_tests::{
+        Sink, binding as copy_binding, event, observed,
+    };
     use super::*;
     use sorter_core::discovery::ObjectIdentity;
-    use super::selected_copy_metadata_transition_tests::{binding as copy_binding, event, observed, Sink};
     fn binding() -> ExecutionBinding {
         let mut binding = copy_binding();
         binding.data.selected_windows_copy = false;
-        if let Some(ObjectIdentity::Windows { volume, .. }) = &mut binding.data.target_root.identity { *volume = 2; }
-        if let ObjectIdentity::Windows { volume, .. } = &mut binding.data.scope_evidence.target_root { *volume = 2; }
+        if let Some(ObjectIdentity::Windows { volume, .. }) = &mut binding.data.target_root.identity
+        {
+            *volume = 2;
+        }
+        if let ObjectIdentity::Windows { volume, .. } = &mut binding.data.scope_evidence.target_root
+        {
+            *volume = 2;
+        }
         binding.data.scope_evidence.allowed_modes = vec![TransferMode::Move];
         binding.data.operations[0].mode = TransferMode::Move;
         binding.data.operations[0].copy_effect = false;
         let source = &binding.data.operations[0].source;
-        let digest = crate::transfer::source_expected(&binding.data.operations[0]).unwrap().digest;
+        let digest = crate::transfer::source_expected(&binding.data.operations[0])
+            .unwrap()
+            .digest;
         binding.data.copied_move_sources = Some(vec![CopiedMoveSourceEvidence {
-            source: source.observation.reference.clone(), identity: source.observation.identity.clone().unwrap(), attributes: 0,
-            streams: vec![CopiedMoveStreamEvidence { name: "::$DATA".encode_utf16().collect(), length: digest.length, sha256: digest.sha256 }],
+            source: source.observation.reference.clone(),
+            identity: source.observation.identity.clone().unwrap(),
+            attributes: 0,
+            streams: vec![CopiedMoveStreamEvidence {
+                name: "::$DATA".encode_utf16().collect(),
+                length: digest.length,
+                sha256: digest.sha256,
+            }],
         }]);
-        assert!(binding.data.valid_domain()); binding
+        assert!(binding.data.valid_domain());
+        binding
     }
     fn ready() -> (ExecutionBinding, PhysicalJournalV2, Sink) {
-        let binding = binding(); let mut sink = Sink::default();
-        let mut journal = PhysicalJournalV2::create(&binding, "copied-move-phases", &mut sink).unwrap();
-        for phase in [Phase::Prepared, Phase::TempAllocationPrepared, Phase::TempAllocated, Phase::BytesWritePrepared, Phase::BytesSynced] {
+        let binding = binding();
+        let mut sink = Sink::default();
+        let mut journal =
+            PhysicalJournalV2::create(&binding, "copied-move-phases", &mut sink).unwrap();
+        for phase in [
+            Phase::Prepared,
+            Phase::TempAllocationPrepared,
+            Phase::TempAllocated,
+            Phase::BytesWritePrepared,
+            Phase::BytesSynced,
+        ] {
             journal.append(&mut sink, event(&binding, phase)).unwrap();
         }
         (binding, journal, sink)
@@ -857,19 +899,44 @@ mod copied_move_journal_tests {
     #[test]
     fn copied_move_requires_auxiliary_ack_before_metadata_and_publication() {
         let (binding, mut journal, mut sink) = ready();
-        assert!(journal.validate(&event(&binding, Phase::CopyMetadataPrepared)).is_err());
-        assert!(journal.validate(&event(&binding, Phase::DestinationPublishPrepared)).is_err());
-        journal.append(&mut sink, event(&binding, Phase::AuxiliaryStreamsPrepared)).unwrap();
-        assert!(journal.validate(&event(&binding, Phase::CopyMetadataPrepared)).is_err());
-        journal.append(&mut sink, event(&binding, Phase::AuxiliaryStreamsObserved)).unwrap();
-        journal.append(&mut sink, event(&binding, Phase::CopyMetadataPrepared)).unwrap();
+        assert!(
+            journal
+                .validate(&event(&binding, Phase::CopyMetadataPrepared))
+                .is_err()
+        );
+        assert!(
+            journal
+                .validate(&event(&binding, Phase::DestinationPublishPrepared))
+                .is_err()
+        );
+        journal
+            .append(&mut sink, event(&binding, Phase::AuxiliaryStreamsPrepared))
+            .unwrap();
+        assert!(
+            journal
+                .validate(&event(&binding, Phase::CopyMetadataPrepared))
+                .is_err()
+        );
+        journal
+            .append(&mut sink, event(&binding, Phase::AuxiliaryStreamsObserved))
+            .unwrap();
+        journal
+            .append(&mut sink, event(&binding, Phase::CopyMetadataPrepared))
+            .unwrap();
         journal.append(&mut sink, observed(&binding)).unwrap();
-        journal.append(&mut sink, event(&binding, Phase::DestinationPublishPrepared)).unwrap();
+        journal
+            .append(
+                &mut sink,
+                event(&binding, Phase::DestinationPublishPrepared),
+            )
+            .unwrap();
     }
     #[test]
     fn copied_move_auxiliary_ack_binds_the_exact_temp_identity() {
         let (binding, mut journal, mut sink) = ready();
-        journal.append(&mut sink, event(&binding, Phase::AuxiliaryStreamsPrepared)).unwrap();
+        journal
+            .append(&mut sink, event(&binding, Phase::AuxiliaryStreamsPrepared))
+            .unwrap();
         let mut wrong = event(&binding, Phase::AuxiliaryStreamsObserved);
         wrong.observed_identity = binding.data.source_root.identity.clone();
         assert!(journal.validate(&wrong).is_err());
@@ -878,12 +945,23 @@ mod copied_move_journal_tests {
     }
     #[test]
     fn ordinary_copy_does_not_accept_auxiliary_move_phases() {
-        let binding = copy_binding(); let mut sink = Sink::default();
+        let binding = copy_binding();
+        let mut sink = Sink::default();
         let mut journal = PhysicalJournalV2::create(&binding, "ordinary-copy", &mut sink).unwrap();
-        for phase in [Phase::Prepared, Phase::TempAllocationPrepared, Phase::TempAllocated, Phase::BytesWritePrepared, Phase::BytesSynced] {
+        for phase in [
+            Phase::Prepared,
+            Phase::TempAllocationPrepared,
+            Phase::TempAllocated,
+            Phase::BytesWritePrepared,
+            Phase::BytesSynced,
+        ] {
             journal.append(&mut sink, event(&binding, phase)).unwrap();
         }
-        assert!(journal.validate(&event(&binding, Phase::AuxiliaryStreamsPrepared)).is_err());
+        assert!(
+            journal
+                .validate(&event(&binding, Phase::AuxiliaryStreamsPrepared))
+                .is_err()
+        );
     }
     #[test]
     fn copied_move_domain_rejects_missing_or_inconsistent_stream_markers() {
@@ -893,7 +971,9 @@ mod copied_move_journal_tests {
                 0 => binding.data.copied_move_sources = Some(vec![]),
                 1 => binding.data.copy_metadata_version = None,
                 2 => binding.data.selected_windows_copy = true,
-                3 => binding.data.copied_move_sources.as_mut().unwrap()[0].streams[0].name.clear(),
+                3 => binding.data.copied_move_sources.as_mut().unwrap()[0].streams[0]
+                    .name
+                    .clear(),
                 _ => binding.data.copied_move_sources.as_mut().unwrap()[0].streams[0].length += 1,
             }
             let bytes = serde_json::to_vec(&binding.data).unwrap();
@@ -904,44 +984,75 @@ mod copied_move_journal_tests {
     #[test]
     fn mixed_route_ordinary_source_accepts_only_rename_and_needs_no_copy_metadata() {
         let mut binding = binding();
-        if let Some(ObjectIdentity::Windows { volume, .. }) = &mut binding.data.target_root.identity { *volume = 1; }
+        if let Some(ObjectIdentity::Windows { volume, .. }) = &mut binding.data.target_root.identity
+        {
+            *volume = 1;
+        }
         binding.data.operations[0].copy_effect = true;
         binding.data.operations[0].duet_cohort = Some(vec![0, 1]);
         let mut duet = binding.data.operations[0].clone();
-        duet.id = 1; duet.destination.id = "second".into(); duet.destination.components = vec!["second".into()];
+        duet.id = 1;
+        duet.destination.id = "second".into();
+        duet.destination.components = vec!["second".into()];
         binding.data.operations.push(duet);
         let mut ordinary = binding.data.operations[0].clone();
-        ordinary.id = 2; ordinary.copy_effect = false; ordinary.duet_cohort = None; ordinary.depends_on.clear();
-        ordinary.source.observation.reference = sorter_core::discovery::StorageRef::WindowsPath { utf16: r"C:\fixture\source\ordinary".encode_utf16().collect() };
+        ordinary.id = 2;
+        ordinary.copy_effect = false;
+        ordinary.duet_cohort = None;
+        ordinary.depends_on.clear();
+        ordinary.source.observation.reference = sorter_core::discovery::StorageRef::WindowsPath {
+            utf16: r"C:\fixture\source\ordinary".encode_utf16().collect(),
+        };
         ordinary.source.observation.name = "ordinary".into();
-        ordinary.source.observation.identity = Some(ObjectIdentity::Windows { volume: 1, file_id: [8; 16] });
-        ordinary.destination.id = "ordinary".into(); ordinary.destination.components = vec!["ordinary".into()];
+        ordinary.source.observation.identity = Some(ObjectIdentity::Windows {
+            volume: 1,
+            file_id: [8; 16],
+        });
+        ordinary.destination.id = "ordinary".into();
+        ordinary.destination.components = vec!["ordinary".into()];
         binding.data.operations.push(ordinary.clone());
         assert!(binding.data.valid_domain());
-        assert!(binding.data.metadata_required_for(&binding.data.operations[0]));
+        assert!(
+            binding
+                .data
+                .metadata_required_for(&binding.data.operations[0])
+        );
         assert!(!binding.data.metadata_required_for(&ordinary));
         let mut sink = Sink::default();
         let mut journal = PhysicalJournalV2::create(&binding, "mixed-route", &mut sink).unwrap();
         let mut prepared = event(&binding, Phase::Prepared);
-        prepared.operation = 2; prepared.destination_id = ordinary.destination.id.clone();
+        prepared.operation = 2;
+        prepared.destination_id = ordinary.destination.id.clone();
         prepared.expected_source = ordinary.source.observation.identity.clone().unwrap();
         journal.append(&mut sink, prepared.clone()).unwrap();
-        let mut temp = prepared.clone(); temp.phase = Phase::TempAllocationPrepared;
+        let mut temp = prepared.clone();
+        temp.phase = Phase::TempAllocationPrepared;
         assert!(journal.validate(&temp).is_err());
-        let mut rename = prepared; rename.phase = Phase::AtomicRenamePrepared;
+        let mut rename = prepared;
+        rename.phase = Phase::AtomicRenamePrepared;
         rename.observed_identity = Some(rename.expected_source.clone());
         journal.append(&mut sink, rename).unwrap();
         let mut forged = binding.data.copied_move_sources.as_ref().unwrap()[0].clone();
-        forged.source = ordinary.source.observation.reference; forged.identity = ordinary.source.observation.identity.unwrap();
-        binding.data.copied_move_sources.as_mut().unwrap().push(forged);
+        forged.source = ordinary.source.observation.reference;
+        forged.identity = ordinary.source.observation.identity.unwrap();
+        binding
+            .data
+            .copied_move_sources
+            .as_mut()
+            .unwrap()
+            .push(forged);
         assert!(!binding.data.valid_domain());
     }
 
     #[test]
     fn copied_move_never_accepts_atomic_rename_intent() {
-        let binding = binding(); let mut sink = Sink::default();
-        let mut journal = PhysicalJournalV2::create(&binding, "copied-no-rename", &mut sink).unwrap();
-        journal.append(&mut sink, event(&binding, Phase::Prepared)).unwrap();
+        let binding = binding();
+        let mut sink = Sink::default();
+        let mut journal =
+            PhysicalJournalV2::create(&binding, "copied-no-rename", &mut sink).unwrap();
+        journal
+            .append(&mut sink, event(&binding, Phase::Prepared))
+            .unwrap();
         let mut rename = event(&binding, Phase::AtomicRenamePrepared);
         rename.observed_identity = Some(rename.expected_source.clone());
         assert!(journal.validate(&rename).is_err());

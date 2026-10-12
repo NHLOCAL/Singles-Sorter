@@ -261,7 +261,10 @@ impl WindowsMutationStorage {
         self.finalize_selected_copy_metadata_with(source, temp, cancel, |_| Ok(()))
     }
     pub(super) fn finalize_selected_copy_metadata_controlled(
-        &self, source: &WindowsSourceLease, temp: &mut WindowsOwnedTemp, cancel: &AtomicBool,
+        &self,
+        source: &WindowsSourceLease,
+        temp: &mut WindowsOwnedTemp,
+        cancel: &AtomicBool,
     ) -> MutationOutcome<WindowsCopyMetadataEvidence> {
         self.finalize_copy_metadata_inner(source, temp, cancel, true, |_| Ok(()))
     }
@@ -275,8 +278,12 @@ impl WindowsMutationStorage {
         self.finalize_copy_metadata_inner(source, temp, cancel, false, checkpoint)
     }
     fn finalize_copy_metadata_inner(
-        &self, source: &WindowsSourceLease, temp: &mut WindowsOwnedTemp, cancel: &AtomicBool,
-        controlled: bool, mut checkpoint: impl FnMut(CopyMetadataCheckpoint) -> Result<(), MutationError>,
+        &self,
+        source: &WindowsSourceLease,
+        temp: &mut WindowsOwnedTemp,
+        cancel: &AtomicBool,
+        controlled: bool,
+        mut checkpoint: impl FnMut(CopyMetadataCheckpoint) -> Result<(), MutationError>,
     ) -> MutationOutcome<WindowsCopyMetadataEvidence> {
         let preflight = (|| {
             cancelled(cancel)?;
@@ -358,7 +365,11 @@ impl WindowsMutationStorage {
     }
 
     pub(super) fn publish_finalized_copy_controlled(
-        &mut self, temp: &mut WindowsOwnedTemp, parent: &WindowsParent, name: &MutationName, cancel: &AtomicBool,
+        &mut self,
+        temp: &mut WindowsOwnedTemp,
+        parent: &WindowsParent,
+        name: &MutationName,
+        cancel: &AtomicBool,
     ) -> MutationOutcome<WindowsPublished> {
         self.publish_finalized_copy_inner(temp, parent, name, cancel, true)
     }
@@ -372,7 +383,12 @@ impl WindowsMutationStorage {
         self.publish_finalized_copy_inner(temp, parent, name, cancel, false)
     }
     fn publish_finalized_copy_inner(
-        &mut self, temp: &mut WindowsOwnedTemp, parent: &WindowsParent, name: &MutationName, cancel: &AtomicBool, controlled: bool,
+        &mut self,
+        temp: &mut WindowsOwnedTemp,
+        parent: &WindowsParent,
+        name: &MutationName,
+        cancel: &AtomicBool,
+        controlled: bool,
     ) -> MutationOutcome<WindowsPublished> {
         let preflight = (|| {
             cancelled(cancel)?;
@@ -384,8 +400,11 @@ impl WindowsMutationStorage {
                     "copy metadata binding missing",
                 )
             })?;
-            if controlled { temp.verify_content_controlled(&state.digest, cancel)?; }
-            else { temp.verify_content(&state.digest)?; }
+            if controlled {
+                temp.verify_content_controlled(&state.digest, cancel)?;
+            } else {
+                temp.verify_content(&state.digest)?;
+            }
             units(name)?;
             ensure_same_volume(&temp.identity, &parent.identity)?;
             cancelled(cancel)?;
@@ -414,8 +433,11 @@ impl WindowsMutationStorage {
                         .copy_metadata
                         .as_ref()
                         .expect("transferred copy state");
-                    if controlled { self.verify_published_controlled(&published, &state.digest, cancel)?; }
-                    else { self.verify(&published, &state.digest)?; }
+                    if controlled {
+                        self.verify_published_controlled(&published, &state.digest, cancel)?;
+                    } else {
+                        self.verify(&published, &state.digest)?;
+                    }
                     Ok(())
                 })();
                 match checked {

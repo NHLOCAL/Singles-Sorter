@@ -18,9 +18,13 @@ pub trait RecoveryStorage {
         Err(E::Unsupported)
     }
     fn verify_move_destination_streams(
-        &mut self, _destination: &DestinationEvidence, _identity: &ObjectIdentity,
+        &mut self,
+        _destination: &DestinationEvidence,
+        _identity: &ObjectIdentity,
         _expected: &CopiedMoveSourceEvidence,
-    ) -> Result<bool> { Err(E::Unsupported) }
+    ) -> Result<bool> {
+        Err(E::Unsupported)
+    }
     /// A recorded receipt does not imply that target metadata still matches.
     fn verify_copy_metadata(
         &mut self,
@@ -71,21 +75,32 @@ pub fn recover_job(
     };
     // Capture every metadata receipt before any file-content/stream reads. A
     // retirement cohort can inspect a later destination during the first item.
-    let metadata_evidence = binding.operations().iter().map(|op| {
-        if !binding.data.metadata_required_for(op) {
-            return CopyMetadataRecoveryStatus::NotRequested;
-        }
-        let expected = journal.events().iter().filter(|event| event.operation == op.id)
-            .find_map(|event| event.copy_metadata.as_ref());
-        match expected.map(|expected| storage.verify_copy_metadata(&op.destination, expected)) {
-            Some(Ok(true)) => CopyMetadataRecoveryStatus::Verified,
-            Some(Ok(false)) => CopyMetadataRecoveryStatus::Mismatch,
-            _ => CopyMetadataRecoveryStatus::Unverified,
-        }
-    }).collect::<Vec<_>>();
+    let metadata_evidence = binding
+        .operations()
+        .iter()
+        .map(|op| {
+            if !binding.data.metadata_required_for(op) {
+                return CopyMetadataRecoveryStatus::NotRequested;
+            }
+            let expected = journal
+                .events()
+                .iter()
+                .filter(|event| event.operation == op.id)
+                .find_map(|event| event.copy_metadata.as_ref());
+            match expected.map(|expected| storage.verify_copy_metadata(&op.destination, expected)) {
+                Some(Ok(true)) => CopyMetadataRecoveryStatus::Verified,
+                Some(Ok(false)) => CopyMetadataRecoveryStatus::Mismatch,
+                _ => CopyMetadataRecoveryStatus::Unverified,
+            }
+        })
+        .collect::<Vec<_>>();
     let mut observed_source_absent = vec![false; binding.operations().len()];
     for op in binding.operations() {
-        let history: Vec<_> = journal.events().iter().filter(|event| event.operation == op.id).collect();
+        let history: Vec<_> = journal
+            .events()
+            .iter()
+            .filter(|event| event.operation == op.id)
+            .collect();
         let copy_metadata = metadata_evidence[op.id];
         let source = storage.source(&op.source.observation.reference);
         let dest = storage.destination(&op.destination);
@@ -94,14 +109,23 @@ pub fn recover_job(
             && let (Ok(source), Ok(dest)) = (source, dest)
         {
             observed_source_absent[op.id] = source.is_none();
-            let auxiliary = binding.data.copied_move_sources.as_ref().and_then(|sources|
-                sources.iter().find(|source| source.source == op.source.observation.reference));
-            let source_streams_ok = auxiliary.is_none_or(|expected|
-                matches!(storage.verify_move_source_streams(expected), Ok(true)));
-            let source_ok = source_streams_ok && source.as_ref().is_some_and(|s| {
-                Some(&s.identity) == op.source.observation.identity.as_ref()
-                    && s.sha256 == op.source.sha256
+            let auxiliary = binding
+                .data
+                .copied_move_sources
+                .as_ref()
+                .and_then(|sources| {
+                    sources
+                        .iter()
+                        .find(|source| source.source == op.source.observation.reference)
+                });
+            let source_streams_ok = auxiliary.is_none_or(|expected| {
+                matches!(storage.verify_move_source_streams(expected), Ok(true))
             });
+            let source_ok = source_streams_ok
+                && source.as_ref().is_some_and(|s| {
+                    Some(&s.identity) == op.source.observation.identity.as_ref()
+                        && s.sha256 == op.source.sha256
+                });
             let atomic = history
                 .iter()
                 .any(|e| e.phase == Phase::AtomicRenamePrepared);
@@ -113,12 +137,22 @@ pub fn recover_job(
                     .find(|e| e.phase == Phase::DestinationPublishPrepared)
                     .and_then(|e| e.observed_identity.as_ref())
             };
-            let destination_streams_ok = auxiliary.is_none_or(|auxiliary|
-                expected.is_some_and(|identity| matches!(storage.verify_move_destination_streams(
-                    &op.destination, identity, auxiliary), Ok(true))));
-            let dest_ok = destination_streams_ok && dest
-                .as_ref()
-                .is_some_and(|d| Some(&d.identity) == expected && d.sha256 == op.source.sha256);
+            let destination_streams_ok = auxiliary.is_none_or(|auxiliary| {
+                expected.is_some_and(|identity| {
+                    matches!(
+                        storage.verify_move_destination_streams(
+                            &op.destination,
+                            identity,
+                            auxiliary
+                        ),
+                        Ok(true)
+                    )
+                })
+            });
+            let dest_ok = destination_streams_ok
+                && dest
+                    .as_ref()
+                    .is_some_and(|d| Some(&d.identity) == expected && d.sha256 == op.source.sha256);
             let terminal = history.iter().any(|e| {
                 matches!(
                     e.phase,
@@ -162,8 +196,18 @@ pub fn recover_job(
                         let observed = storage.destination(&required.destination);
                         all &= matches!((committed,observed),(Some(e),Ok(Some(d))) if Some(&d.identity)==e.observed_identity.as_ref() && d.sha256==required.source.sha256);
                         if let Some(auxiliary) = auxiliary {
-                            all &= committed.and_then(|event| event.observed_identity.as_ref()).is_some_and(|identity|
-                                matches!(storage.verify_move_destination_streams(&required.destination, identity, auxiliary), Ok(true)));
+                            all &= committed
+                                .and_then(|event| event.observed_identity.as_ref())
+                                .is_some_and(|identity| {
+                                    matches!(
+                                        storage.verify_move_destination_streams(
+                                            &required.destination,
+                                            identity,
+                                            auxiliary
+                                        ),
+                                        Ok(true)
+                                    )
+                                });
                         }
                     }
                     if all {
@@ -172,9 +216,17 @@ pub fn recover_job(
                 }
             }
         }
-        if binding.data.copied_move_sources.is_some() && !observed_source_absent[op.id]
-            && journal.events().iter().any(|event| event.phase == Phase::SourceRetired
-                && binding.operations()[event.operation].source.observation.reference == op.source.observation.reference) {
+        if binding.data.copied_move_sources.is_some()
+            && !observed_source_absent[op.id]
+            && journal.events().iter().any(|event| {
+                event.phase == Phase::SourceRetired
+                    && binding.operations()[event.operation]
+                        .source
+                        .observation
+                        .reference
+                        == op.source.observation.reference
+            })
+        {
             status = RecoveryStatus::NeedsRecovery;
         }
         if binding.data.metadata_required_for(op)
@@ -195,14 +247,31 @@ pub fn recover_job(
     // Copied Move retirement is a cohort fact: a bad stream or metadata receipt at
     // any required destination invalidates the whole retired-source assertion.
     if binding.data.copied_move_sources.is_some() {
-        let verified = report.operations.iter().map(|operation|
-            operation.status == RecoveryStatus::Committed
-                && operation.copy_metadata == CopyMetadataRecoveryStatus::Verified).collect::<Vec<_>>();
+        let verified = report
+            .operations
+            .iter()
+            .map(|operation| {
+                operation.status == RecoveryStatus::Committed
+                    && operation.copy_metadata == CopyMetadataRecoveryStatus::Verified
+            })
+            .collect::<Vec<_>>();
         for operation in &mut report.operations {
-            if binding.data.copied_move_operation(&binding.operations()[operation.operation])
-                && observed_source_absent[operation.operation] && binding.operations().iter().filter(|candidate|
-                candidate.source.observation.reference == binding.operations()[operation.operation].source.observation.reference
-            ).any(|candidate| !verified[candidate.id]) {
+            if binding
+                .data
+                .copied_move_operation(&binding.operations()[operation.operation])
+                && observed_source_absent[operation.operation]
+                && binding
+                    .operations()
+                    .iter()
+                    .filter(|candidate| {
+                        candidate.source.observation.reference
+                            == binding.operations()[operation.operation]
+                                .source
+                                .observation
+                                .reference
+                    })
+                    .any(|candidate| !verified[candidate.id])
+            {
                 operation.status = RecoveryStatus::NeedsRecovery;
             }
         }

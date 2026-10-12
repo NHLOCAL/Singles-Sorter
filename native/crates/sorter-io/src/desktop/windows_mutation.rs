@@ -1353,17 +1353,33 @@ impl WindowsOwnedTemp {
         }
         Ok(observed)
     }
-    pub(super) fn verify_content_controlled(&self, expected: &ContentDigest, cancel: &AtomicBool) -> Result<MutationObservation, MutationError> {
+    pub(super) fn verify_content_controlled(
+        &self,
+        expected: &ContentDigest,
+        cancel: &AtomicBool,
+    ) -> Result<MutationObservation, MutationError> {
         cancelled(cancel)?;
-        let file = self.file.as_ref().ok_or_else(|| err(MutationErrorKind::StalePlan, "temp consumed"))?;
+        let file = self
+            .file
+            .as_ref()
+            .ok_or_else(|| err(MutationErrorKind::StalePlan, "temp consumed"))?;
         ensure_regular(file)?;
-        if let Some(state) = &self.copy_metadata { state.check(file)?; }
-        let observed = observe(file, &self.parent)?;
-        if observed.identity != self.identity || observed.actual_name != self.observation.actual_name
-            || move_streams::stream_digest(file, expected.length, cancel)? != *expected {
-            return Err(err(MutationErrorKind::VerificationFailed, "temp identity/name/content changed"));
+        if let Some(state) = &self.copy_metadata {
+            state.check(file)?;
         }
-        if let Some(state) = &self.copy_metadata { state.check(file)?; }
+        let observed = observe(file, &self.parent)?;
+        if observed.identity != self.identity
+            || observed.actual_name != self.observation.actual_name
+            || move_streams::stream_digest(file, expected.length, cancel)? != *expected
+        {
+            return Err(err(
+                MutationErrorKind::VerificationFailed,
+                "temp identity/name/content changed",
+            ));
+        }
+        if let Some(state) = &self.copy_metadata {
+            state.check(file)?;
+        }
         cancelled(cancel)?;
         Ok(observed)
     }
@@ -1677,25 +1693,46 @@ impl WindowsMutationStorage {
             repair: None,
         })
     }
-    pub(super) fn validate_source_controlled(&self, source: &WindowsSourceLease, cancel: &AtomicBool) -> Result<(), MutationError> {
+    pub(super) fn validate_source_controlled(
+        &self,
+        source: &WindowsSourceLease,
+        cancel: &AtomicBool,
+    ) -> Result<(), MutationError> {
         cancelled(cancel)?;
         self.check_role(&source.parent, RootRole::Source)?;
-        let file = source.file.as_ref().ok_or_else(|| err(MutationErrorKind::StalePlan, "source lease consumed"))?;
+        let file = source
+            .file
+            .as_ref()
+            .ok_or_else(|| err(MutationErrorKind::StalePlan, "source lease consumed"))?;
         ensure_regular(file)?;
         let observation = observe(file, &source.parent)?;
-        if observation.identity != source.expected.identity || observation.actual_name != source.expected.name
-            || move_streams::stream_digest(file, source.expected.digest.length, cancel)? != source.expected.digest {
+        if observation.identity != source.expected.identity
+            || observation.actual_name != source.expected.name
+            || move_streams::stream_digest(file, source.expected.digest.length, cancel)?
+                != source.expected.digest
+        {
             return Err(err(MutationErrorKind::StalePlan, "leased source changed"));
         }
         cancelled(cancel)
     }
-    pub(super) fn verify_published_controlled(&mut self, published: &WindowsPublished, expected: &ContentDigest, cancel: &AtomicBool) -> Result<MutationObservation, MutationError> {
+    pub(super) fn verify_published_controlled(
+        &mut self,
+        published: &WindowsPublished,
+        expected: &ContentDigest,
+        cancel: &AtomicBool,
+    ) -> Result<MutationObservation, MutationError> {
         cancelled(cancel)?;
         let observation = self.inspect(published)?;
         if move_streams::stream_digest(&published.file, expected.length, cancel)? != *expected {
-            return Err(err(MutationErrorKind::VerificationFailed, "published digest/EOF mismatch").with_observation(observation));
+            return Err(err(
+                MutationErrorKind::VerificationFailed,
+                "published digest/EOF mismatch",
+            )
+            .with_observation(observation));
         }
-        if let Some(state) = &published.copy_metadata { state.check(&published.file)?; }
+        if let Some(state) = &published.copy_metadata {
+            state.check(&published.file)?;
+        }
         cancelled(cancel)?;
         Ok(observation)
     }
@@ -1807,36 +1844,84 @@ impl WindowsRenameStorage {
     }
 
     fn rename_no_replace_with(
-        &mut self, source: &mut WindowsSourceLease, parent: &WindowsParent,
-        name: &MutationName, cancel: &AtomicBool,
+        &mut self,
+        source: &mut WindowsSourceLease,
+        parent: &WindowsParent,
+        name: &MutationName,
+        cancel: &AtomicBool,
         checkpoint: impl FnMut(RenameCheckpoint) -> Result<(), MutationError>,
     ) -> MutationOutcome<WindowsPublished> {
-        self.owned.rename_write_through_inner(source, parent, name, cancel, false, checkpoint)
+        self.owned
+            .rename_write_through_inner(source, parent, name, cancel, false, checkpoint)
     }
 }
 
 impl WindowsMutationStorage {
     /// Scoped held write-through file lease for an explicitly bound mixed Move route.
-    pub fn acquire_selected_rename_source_controlled(&self, parent: &WindowsParent, expected: &ExpectedSource, cancel: &AtomicBool) -> Result<WindowsSourceLease, MutationError> {
+    pub fn acquire_selected_rename_source_controlled(
+        &self,
+        parent: &WindowsParent,
+        expected: &ExpectedSource,
+        cancel: &AtomicBool,
+    ) -> Result<WindowsSourceLease, MutationError> {
         cancelled(cancel)?;
-        if !matches!(self.domain, WindowsMutationDomain::SelectedRoots | WindowsMutationDomain::OwnedSyntheticTree) {
-            return Err(err(MutationErrorKind::Unsupported, "selected rename domain required"));
+        if !matches!(
+            self.domain,
+            WindowsMutationDomain::SelectedRoots | WindowsMutationDomain::OwnedSyntheticTree
+        ) {
+            return Err(err(
+                MutationErrorKind::Unsupported,
+                "selected rename domain required",
+            ));
         }
         self.check_role(parent, RootRole::Source)?;
-        if parent.identity != expected.parent_identity { return Err(err(MutationErrorKind::StalePlan, "rename source parent changed")); }
-        let file = open_relative_file_with_options(parent.handle(), units(&expected.name)?, false,
-            FILE_GENERIC_READ | FILE_GENERIC_WRITE | DELETE, FILE_WRITE_THROUGH)?;
+        if parent.identity != expected.parent_identity {
+            return Err(err(
+                MutationErrorKind::StalePlan,
+                "rename source parent changed",
+            ));
+        }
+        let file = open_relative_file_with_options(
+            parent.handle(),
+            units(&expected.name)?,
+            false,
+            FILE_GENERIC_READ | FILE_GENERIC_WRITE | DELETE,
+            FILE_WRITE_THROUGH,
+        )?;
         let observation = move_streams::verify_move_main(&file, parent, expected, cancel)?;
-        Ok(WindowsSourceLease { file: Some(file), parent: parent.clone(), expected: expected.clone(), observation,
-            mode: SourceLeaseMode::WriteThroughRename, repair: None })
+        Ok(WindowsSourceLease {
+            file: Some(file),
+            parent: parent.clone(),
+            expected: expected.clone(),
+            observation,
+            mode: SourceLeaseMode::WriteThroughRename,
+            repair: None,
+        })
     }
-    pub fn rename_selected_source_controlled(&mut self, source: &mut WindowsSourceLease, parent: &WindowsParent, name: &MutationName, cancel: &AtomicBool) -> MutationOutcome<WindowsPublished> {
-        if !matches!(self.domain, WindowsMutationDomain::SelectedRoots | WindowsMutationDomain::OwnedSyntheticTree) {
-            return MutationOutcome::NoEffect(err(MutationErrorKind::Unsupported, "selected rename domain required"));
+    pub fn rename_selected_source_controlled(
+        &mut self,
+        source: &mut WindowsSourceLease,
+        parent: &WindowsParent,
+        name: &MutationName,
+        cancel: &AtomicBool,
+    ) -> MutationOutcome<WindowsPublished> {
+        if !matches!(
+            self.domain,
+            WindowsMutationDomain::SelectedRoots | WindowsMutationDomain::OwnedSyntheticTree
+        ) {
+            return MutationOutcome::NoEffect(err(
+                MutationErrorKind::Unsupported,
+                "selected rename domain required",
+            ));
         }
         self.rename_write_through_inner(source, parent, name, cancel, true, |_| Ok(()))
     }
-    pub fn verify_selected_rename_controlled(&mut self, published: &WindowsPublished, expected: &ContentDigest, cancel: &AtomicBool) -> Result<MutationObservation, MutationError> {
+    pub fn verify_selected_rename_controlled(
+        &mut self,
+        published: &WindowsPublished,
+        expected: &ContentDigest,
+        cancel: &AtomicBool,
+    ) -> Result<MutationObservation, MutationError> {
         self.verify_published_controlled(published, expected, cancel)
     }
     fn rename_write_through_inner(
@@ -1862,8 +1947,11 @@ impl WindowsMutationStorage {
                 .file
                 .as_ref()
                 .ok_or_else(|| err(MutationErrorKind::StalePlan, "source lease consumed"))?;
-            if controlled { move_streams::verify_move_main(file, &source.parent, &source.expected, cancel)?; }
-            else { verify_expected_source(file, &source.parent, &source.expected)?; }
+            if controlled {
+                move_streams::verify_move_main(file, &source.parent, &source.expected, cancel)?;
+            } else {
+                verify_expected_source(file, &source.parent, &source.expected)?;
+            }
             units(name)?;
             ensure_same_volume(&source.expected.identity, &parent.identity)?;
             checkpoint(RenameCheckpoint::BeforePreflush)?;
@@ -1872,8 +1960,11 @@ impl WindowsMutationStorage {
             checkpoint(RenameCheckpoint::AfterPreflush)?;
             cancelled(cancel)?;
             // Recheck every supplied source precondition on the held handle.
-            if controlled { move_streams::verify_move_main(file, &source.parent, &source.expected, cancel)?; }
-            else { verify_expected_source(file, &source.parent, &source.expected)?; }
+            if controlled {
+                move_streams::verify_move_main(file, &source.parent, &source.expected, cancel)?;
+            } else {
+                verify_expected_source(file, &source.parent, &source.expected)?;
+            }
             checkpoint(RenameCheckpoint::BeforeRename)?;
             cancelled(cancel)?;
             rename(file, parent, name)
@@ -1902,11 +1993,13 @@ impl WindowsMutationStorage {
             if controlled {
                 self.verify_published_controlled(&published, &source.expected.digest, cancel)?;
                 published.sync_poisoned = true;
-                unsafe { FlushFileBuffers(HANDLE(published.file.as_raw_handle())) }.map_err(win_error)?;
+                unsafe { FlushFileBuffers(HANDLE(published.file.as_raw_handle())) }
+                    .map_err(win_error)?;
                 self.verify_published_controlled(&published, &source.expected.digest, cancel)?;
                 published.sync_poisoned = false;
             } else {
-                let _ack = self.sync_published_file(&mut published, &source.expected.digest, cancel)?;
+                let _ack =
+                    self.sync_published_file(&mut published, &source.expected.digest, cancel)?;
             }
             checkpoint(RenameCheckpoint::AfterPostflush)?;
             cancelled(cancel)?;
@@ -1916,8 +2009,11 @@ impl WindowsMutationStorage {
                 name: name.clone(),
                 ..source.expected.clone()
             };
-            if controlled { move_streams::verify_move_main(&published.file, parent, &renamed_expected, cancel)?; }
-            else { verify_expected_source(&published.file, parent, &renamed_expected)?; }
+            if controlled {
+                move_streams::verify_move_main(&published.file, parent, &renamed_expected, cancel)?;
+            } else {
+                verify_expected_source(&published.file, parent, &renamed_expected)?;
+            }
             cancelled(cancel)?;
             Ok(())
         })();
@@ -4670,4 +4766,7 @@ pub use diagnostic_log::WindowsDiagnosticLog;
 
 #[path = "windows_move_streams.rs"]
 mod move_streams;
-pub use move_streams::{WindowsCopiedMoveSource, WindowsCopiedMoveTemp, WindowsCopiedMovePublished, WindowsMoveSourceEvidence, WindowsMoveStreamEvidence};
+pub use move_streams::{
+    WindowsCopiedMovePublished, WindowsCopiedMoveSource, WindowsCopiedMoveTemp,
+    WindowsMoveSourceEvidence, WindowsMoveStreamEvidence,
+};

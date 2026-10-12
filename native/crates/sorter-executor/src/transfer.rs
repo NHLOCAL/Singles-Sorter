@@ -67,28 +67,56 @@ pub trait TransferStorage: MutationStorage {
     /// Scoped ordinary/quiescent NTFS copied Move only. Generic durability and
     /// retirement capabilities remain unknown; other adapters refuse.
     #[cfg(all(windows, feature = "selected-windows-execution"))]
-    fn selected_copied_move_contract(&self) -> bool { false }
+    fn selected_copied_move_contract(&self) -> bool {
+        false
+    }
     #[cfg(all(windows, feature = "selected-windows-execution"))]
     fn copy_selected_move_streams(
-        &mut self, _source: &Self::SourceLease, _temp: &mut Self::OwnedTemp,
+        &mut self,
+        _source: &Self::SourceLease,
+        _temp: &mut Self::OwnedTemp,
         _cancel: &AtomicBool,
     ) -> MutationOutcome<CopiedMoveSourceEvidence> {
-        MutationOutcome::NoEffect(error(MutationErrorKind::Unsupported, "copied Move stream staging unavailable"))
+        MutationOutcome::NoEffect(error(
+            MutationErrorKind::Unsupported,
+            "copied Move stream staging unavailable",
+        ))
     }
     #[cfg(all(windows, feature = "selected-windows-execution"))]
     fn retire_selected_copied_move(
-        &mut self, _source: &mut Self::SourceLease, _destinations: &[&Self::Published],
+        &mut self,
+        _source: &mut Self::SourceLease,
+        _destinations: &[&Self::Published],
         _cancel: &AtomicBool,
     ) -> MutationOutcome<RetirementOutcome> {
-        MutationOutcome::NoEffect(error(MutationErrorKind::Unsupported, "scoped copied Move retirement unavailable"))
+        MutationOutcome::NoEffect(error(
+            MutationErrorKind::Unsupported,
+            "scoped copied Move retirement unavailable",
+        ))
     }
     #[cfg(all(windows, feature = "selected-windows-execution"))]
-    fn verify_selected_copied_move(&mut self, _published: &Self::Published, _digest: &ContentDigest, _cancel: &AtomicBool) -> std::result::Result<MutationObservation, MutationError> {
-        Err(error(MutationErrorKind::Unsupported, "cancellable copied Move verification unavailable"))
+    fn verify_selected_copied_move(
+        &mut self,
+        _published: &Self::Published,
+        _digest: &ContentDigest,
+        _cancel: &AtomicBool,
+    ) -> std::result::Result<MutationObservation, MutationError> {
+        Err(error(
+            MutationErrorKind::Unsupported,
+            "cancellable copied Move verification unavailable",
+        ))
     }
     #[cfg(all(windows, feature = "selected-windows-execution"))]
-    fn verify_selected_copied_move_temp(&mut self, _temp: &Self::OwnedTemp, _digest: &ContentDigest, _cancel: &AtomicBool) -> std::result::Result<MutationObservation, MutationError> {
-        Err(error(MutationErrorKind::Unsupported, "cancellable copied Move temp verification unavailable"))
+    fn verify_selected_copied_move_temp(
+        &mut self,
+        _temp: &Self::OwnedTemp,
+        _digest: &ContentDigest,
+        _cancel: &AtomicBool,
+    ) -> std::result::Result<MutationObservation, MutationError> {
+        Err(error(
+            MutationErrorKind::Unsupported,
+            "cancellable copied Move temp verification unavailable",
+        ))
     }
     /// Positive, lease-derived same-volume evidence. False uses the copy path.
     fn rename_eligible(&self, source: &Self::SourceLease, parent: &Self::Parent) -> bool;
@@ -121,9 +149,17 @@ pub struct TransferProgress {
     pub source_length: u64,
 }
 
-fn verify_with_control<S: TransferStorage>(storage: &mut S, copied_move: bool, published: &S::Published, digest: &ContentDigest, cancel: &AtomicBool) -> std::result::Result<MutationObservation, MutationError> {
+fn verify_with_control<S: TransferStorage>(
+    storage: &mut S,
+    copied_move: bool,
+    published: &S::Published,
+    digest: &ContentDigest,
+    cancel: &AtomicBool,
+) -> std::result::Result<MutationObservation, MutationError> {
     #[cfg(all(windows, feature = "selected-windows-execution"))]
-    if copied_move { return storage.verify_selected_copied_move(published, digest, cancel); }
+    if copied_move {
+        return storage.verify_selected_copied_move(published, digest, cancel);
+    }
     let _ = (copied_move, cancel);
     storage.verify(published, digest)
 }
@@ -599,9 +635,9 @@ impl<S: TransferStorage> Runner<'_, S> {
         let scoped_copied_move = false;
         if (self.binding.data.copied_move_sources.is_some() && !scoped_copied_move)
             || (rename_only
-            && (!scoped_rename
-                || !caps.same_volume_no_replace_rename.is_supported()
-                || !caps.content_verification.is_supported()))
+                && (!scoped_rename
+                    || !caps.same_volume_no_replace_rename.is_supported()
+                    || !caps.content_verification.is_supported()))
             || (!rename_only
                 && (!caps.exclusive_create.is_supported()
                     || !caps.no_replace_publish.is_supported()
@@ -719,8 +755,14 @@ impl<S: TransferStorage> Runner<'_, S> {
                     .with_observation(observed),
                 ));
             }
-            let verified = verify_with_control(self.storage, self.binding.data.copied_move_sources.is_some(), &published, &expected.digest, self.flag)
-                .map_err(Failure::pending)?;
+            let verified = verify_with_control(
+                self.storage,
+                self.binding.data.copied_move_sources.is_some(),
+                &published,
+                &expected.digest,
+                self.flag,
+            )
+            .map_err(Failure::pending)?;
             check_observation(
                 &verified,
                 &expected.identity,
@@ -795,8 +837,11 @@ impl<S: TransferStorage> Runner<'_, S> {
         )?;
         #[cfg(all(windows, feature = "selected-windows-execution"))]
         let synced = if self.binding.data.copied_move_sources.is_some() {
-            self.storage.verify_selected_copied_move_temp(&temp, &expected.digest, self.flag)?
-        } else { self.storage.verify_temp(&temp, &expected.digest)? };
+            self.storage
+                .verify_selected_copied_move_temp(&temp, &expected.digest, self.flag)?
+        } else {
+            self.storage.verify_temp(&temp, &expected.digest)?
+        };
         #[cfg(not(all(windows, feature = "selected-windows-execution")))]
         let synced = self.storage.verify_temp(&temp, &expected.digest)?;
         check_observation(
@@ -809,18 +854,43 @@ impl<S: TransferStorage> Runner<'_, S> {
         self.append(op, Phase::BytesSynced, Some(temp_observed.identity.clone()))?;
         #[cfg(all(windows, feature = "selected-windows-execution"))]
         if let Some(sources) = &self.binding.data.copied_move_sources {
-            let expected_streams = sources.iter().find(|source| &source.source == reference)
-                .ok_or_else(|| Failure::pending(error(MutationErrorKind::StalePlan, "missing bound source stream inventory")))?.clone();
+            let expected_streams = sources
+                .iter()
+                .find(|source| &source.source == reference)
+                .ok_or_else(|| {
+                    Failure::pending(error(
+                        MutationErrorKind::StalePlan,
+                        "missing bound source stream inventory",
+                    ))
+                })?
+                .clone();
             self.check_cancel()?;
-            self.append(op, Phase::AuxiliaryStreamsPrepared, Some(temp_observed.identity.clone()))?;
+            self.append(
+                op,
+                Phase::AuxiliaryStreamsPrepared,
+                Some(temp_observed.identity.clone()),
+            )?;
             let evidence = outcome(self.storage.copy_selected_move_streams(
-                self.sources.get(reference).ok_or_else(|| Failure::pending(error(MutationErrorKind::StalePlan, "missing held stream source")))?,
-                &mut temp, self.flag,
+                self.sources.get(reference).ok_or_else(|| {
+                    Failure::pending(error(
+                        MutationErrorKind::StalePlan,
+                        "missing held stream source",
+                    ))
+                })?,
+                &mut temp,
+                self.flag,
             ))?;
             if evidence != expected_streams {
-                return Err(Failure::pending(error(MutationErrorKind::VerificationFailed, "copied streams differ from inspected binding")));
+                return Err(Failure::pending(error(
+                    MutationErrorKind::VerificationFailed,
+                    "copied streams differ from inspected binding",
+                )));
             }
-            self.append(op, Phase::AuxiliaryStreamsObserved, Some(temp_observed.identity.clone()))?;
+            self.append(
+                op,
+                Phase::AuxiliaryStreamsObserved,
+                Some(temp_observed.identity.clone()),
+            )?;
         }
         #[cfg(all(windows, feature = "selected-windows-execution"))]
         if self.binding.data.copy_metadata_version == Some(1) {
@@ -909,8 +979,14 @@ impl<S: TransferStorage> Runner<'_, S> {
                 )));
             }
         }
-        let verified = verify_with_control(self.storage, self.binding.data.copied_move_sources.is_some(), &published, &expected.digest, self.flag)
-            .map_err(Failure::pending)?;
+        let verified = verify_with_control(
+            self.storage,
+            self.binding.data.copied_move_sources.is_some(),
+            &published,
+            &expected.digest,
+            self.flag,
+        )
+        .map_err(Failure::pending)?;
         check_observation(
             &verified,
             &observed.identity,
@@ -945,8 +1021,14 @@ impl<S: TransferStorage> Runner<'_, S> {
         // source lease remain held. One failed verification preserves the source.
         for prior in required {
             let (published, observed) = &self.published[&prior.id];
-            let verified = verify_with_control(self.storage, self.binding.data.copied_move_sources.is_some(), published, &expected.digest, self.flag)
-                .map_err(Failure::pending)?;
+            let verified = verify_with_control(
+                self.storage,
+                self.binding.data.copied_move_sources.is_some(),
+                published,
+                &expected.digest,
+                self.flag,
+            )
+            .map_err(Failure::pending)?;
             check_observation(
                 &verified,
                 &observed.identity,
@@ -964,17 +1046,26 @@ impl<S: TransferStorage> Runner<'_, S> {
         )?;
         #[cfg(all(windows, feature = "selected-windows-execution"))]
         let retirement = if self.binding.data.copied_move_sources.is_some() {
-            let destinations = self.binding.operations().iter()
+            let destinations = self
+                .binding
+                .operations()
+                .iter()
                 .filter(|required| required.source.observation.reference == *reference)
-                .map(|required| &self.published[&required.id].0).collect::<Vec<_>>();
+                .map(|required| &self.published[&required.id].0)
+                .collect::<Vec<_>>();
             self.storage.retire_selected_copied_move(
-                self.sources.get_mut(reference).unwrap(), &destinations, self.flag,
+                self.sources.get_mut(reference).unwrap(),
+                &destinations,
+                self.flag,
             )
         } else {
-            self.storage.retire_source(self.sources.get_mut(reference).unwrap(), self.flag)
+            self.storage
+                .retire_source(self.sources.get_mut(reference).unwrap(), self.flag)
         };
         #[cfg(not(all(windows, feature = "selected-windows-execution")))]
-        let retirement = self.storage.retire_source(self.sources.get_mut(reference).unwrap(), self.flag);
+        let retirement = self
+            .storage
+            .retire_source(self.sources.get_mut(reference).unwrap(), self.flag);
         match outcome(retirement)? {
             RetirementOutcome::Retired(observed) => {
                 item.observations.push(observed.clone());

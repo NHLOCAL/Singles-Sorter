@@ -315,7 +315,12 @@ impl SelectedWindowsJob {
                 progress,
             ),
             Storage::CopiedMove(storage) => run_job(
-                &self.binding, storage, &mut journal, &mut sink, cancel, progress,
+                &self.binding,
+                storage,
+                &mut journal,
+                &mut sink,
+                cancel,
+                progress,
             ),
             Storage::Rename(storage) => run_job(
                 &self.binding,
@@ -466,7 +471,11 @@ impl DirectoryJournal {
     fn new(sink: WindowsJournalStore, binding: &ExecutionBinding, job_id: &str) -> Result<Self> {
         let mut value = Self {
             bytes_written: 0,
-            limit: if binding.data.copied_move_sources.is_some() { 64 * 1024 * 1024 } else { usize::MAX },
+            limit: if binding.data.copied_move_sources.is_some() {
+                64 * 1024 * 1024
+            } else {
+                usize::MAX
+            },
             sink,
             sequence: 0,
             previous: String::new(),
@@ -498,7 +507,11 @@ impl DirectoryJournal {
         })
         .map_err(|_| E::Io)?;
         bytes.push(b'\n');
-        let total = self.bytes_written.checked_add(bytes.len()).filter(|total| *total <= self.limit).ok_or(E::NeedsRecovery)?;
+        let total = self
+            .bytes_written
+            .checked_add(bytes.len())
+            .filter(|total| *total <= self.limit)
+            .ok_or(E::NeedsRecovery)?;
         self.sink
             .append(&bytes)
             .and_then(|()| self.sink.sync())
@@ -585,7 +598,9 @@ pub fn inspect_recovery(
                     || header.scope_evidence.resources != scope.original_scope.resources
                     || header.plan_sha256 != scope.original_scope.inspected_plan
                     || !header.valid_domain()
-                    || !(header.selected_windows_copy || header.selected_windows_rename || header.copied_move_sources.is_some())
+                    || !(header.selected_windows_copy
+                        || header.selected_windows_rename
+                        || header.copied_move_sources.is_some())
                     || target_root != scope.original_scope.target_root
                     || header.source_root.identity.as_ref()
                         != Some(&scope.original_scope.source_root)
