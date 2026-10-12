@@ -90,6 +90,9 @@ impl Fixture {
         Self::new_with_prefix(files, metadata, false)
     }
     fn new_with_prefix(files: &[(&str, Vec<u8>)], metadata: Metadata, verbatim: bool) -> Self {
+        Self::new_with_spelling(files, metadata, Some(verbatim))
+    }
+    fn new_with_spelling(files: &[(&str, Vec<u8>)], metadata: Metadata, verbatim: Option<bool>) -> Self {
         let tree = tempfile::tempdir().unwrap();
         let source = tree.path().join("source");
         let journal = tree.path().join("journal");
@@ -99,6 +102,9 @@ impl Fixture {
             std::fs::write(source.join(name), bytes).unwrap();
         }
         let spelling = |path: PathBuf| {
+            let Some(verbatim) = verbatim else {
+                return path;
+            };
             let canonical = std::fs::canonicalize(path).unwrap();
             if verbatim {
                 canonical
@@ -531,4 +537,24 @@ fn verbatim_selected_paths_reconcile_the_same_held_objects() {
             .iter()
             .all(|e| matches!(e.status, RepairEvidenceStatus::Verified))
     );
+}
+
+#[test]
+fn raw_selected_temp_root_recovery_uses_held_root_alias() {
+    // Unlike the prefix fixtures, preserve TEMP's original spelling, including
+    // any real short ancestor such as RUNNER~1 used by Windows CI/CLI callers.
+    let fixture = Fixture::new_with_spelling(
+        &[("song__demo.mp3", mp3())],
+        Metadata(Some("שלום")),
+        None,
+    );
+    let mut job = fixture.job();
+    let result = job.run(&AtomicBool::new(false), &mut |_| {}).unwrap();
+    assert_eq!(result.status, RepairJobStatus::Complete);
+    let report = job.inspect_recovery(&AtomicBool::new(false)).unwrap();
+    assert!(report.recorded_finished);
+    assert!(report.operations.iter().flat_map(|op| &op.evidence).any(|e|
+        e.role == "backup" && matches!(e.status, RepairEvidenceStatus::Verified)));
+    assert!(report.operations.iter().flat_map(|op| &op.evidence).any(|e|
+        e.role == "current" && matches!(e.status, RepairEvidenceStatus::Verified)));
 }

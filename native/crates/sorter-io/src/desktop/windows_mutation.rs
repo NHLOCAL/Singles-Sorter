@@ -419,6 +419,16 @@ impl WindowsMutationStorage {
     pub fn selected_repair_root(&self) -> Result<WindowsParent, MutationError> {
         self.parent_under(self.selected_root(RootRole::Repair)?, Path::new(""))
     }
+    /// Read-only normalized spelling from the already pinned, identity-checked
+    /// selected root. This does not canonicalize or grant a new input path.
+    pub fn selected_repair_observed_reference(&self) -> Result<StorageRef, MutationError> {
+        let root = self.selected_repair_root()?;
+        let observed = observe(root.handle(), &root)?;
+        if observed.identity != *root.identity() {
+            return Err(err(MutationErrorKind::StalePlan, "selected repair root changed"));
+        }
+        Ok(observed.reference)
+    }
     pub fn domain(&self) -> WindowsMutationDomain {
         self.domain
     }

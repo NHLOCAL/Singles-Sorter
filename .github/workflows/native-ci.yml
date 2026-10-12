@@ -222,12 +222,12 @@ jobs:
         run: |
           $repairBounds = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib journal_budget_tests -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (@($repairBounds | Where-Object { $_ -match ': test$' }).Count -ne 3) { throw "Expected 3 repair journal/classification/path boundary cases" }
+          if (@($repairBounds | Where-Object { $_ -match ': test$' }).Count -ne 4) { throw "Expected 4 repair journal/classification/path boundary cases" }
           cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib journal_budget_tests -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $repairJobs = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (@($repairJobs | Where-Object { $_ -match ': test$' }).Count -ne 12) { throw "Expected 12 product FixNames cases" }
+          if (@($repairJobs | Where-Object { $_ -match ': test$' }).Count -ne 13) { throw "Expected 13 product FixNames cases" }
           cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

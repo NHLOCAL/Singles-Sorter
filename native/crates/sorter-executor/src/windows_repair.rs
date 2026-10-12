@@ -75,6 +75,25 @@ fn aligned_read_reference(root: &StorageRef, reference: &StorageRef) -> Result<S
         utf16: aligned.as_os_str().encode_wide().collect(),
     })
 }
+// An alternate root spelling is accepted only when it came from the live
+// identity-checked root handle. Child components are never normalized or aliased.
+fn aligned_recovery_reference(
+    root: &StorageRef,
+    observed_root: Option<&StorageRef>,
+    reference: &StorageRef,
+) -> Result<StorageRef> {
+    if let Ok(reference) = aligned_read_reference(root, reference) {
+        return Ok(reference);
+    }
+    let observed_root = observed_root.ok_or(E::Scope)?;
+    let candidate = comparable_path(reference)?;
+    let observed_root = comparable_path(observed_root)?;
+    let relative = candidate.strip_prefix(observed_root).map_err(|_| E::Scope)?;
+    let aligned = path(root)?.join(relative);
+    Ok(StorageRef::WindowsPath {
+        utf16: aligned.as_os_str().encode_wide().collect(),
+    })
+}
 fn name(text: &str) -> MutationName {
     MutationName::Windows(text.encode_utf16().collect())
 }
@@ -407,6 +426,9 @@ struct Header {
     source_identity: ObjectIdentity,
     resources: Resources,
     operations: Vec<RepairOperation>,
+    /// Recovery-local evidence only; never read from or written to a journal.
+    #[serde(skip)]
+    observed_source: Option<StorageRef>,
 }
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 enum Phase {
@@ -594,6 +616,7 @@ impl SelectedWindowsRepairJob {
             source_identity: scope.source_root.clone(),
             resources: resources.clone(),
             operations,
+            observed_source: None,
         };
         let header_record = Record {
             sequence: 0,
@@ -1066,7 +1089,13 @@ fn check_observation(
 ) -> Result<()> {
     let source = comparable_path(&op.source.observation.reference)?;
     let expected = source.parent().ok_or(E::CorruptJournal)?.join(leaf);
-    if comparable_path(&observation.reference)? != expected
+    let aligned = aligned_recovery_reference(
+        &header.source,
+        header.observed_source.as_ref(),
+        &observation.reference,
+    )
+    .map_err(|_| E::CorruptJournal)?;
+    if comparable_path(&aligned)? != expected
         || !expected.starts_with(comparable_path(&header.source)?)
         || observation.actual_name != name(leaf)
         || identity.is_some_and(|id| id != &observation.identity)
@@ -1257,7 +1286,7 @@ pub fn recover_repair_journal(
             if sequence != 1 || record.operation.is_some() {
                 return Err(E::CorruptJournal);
             }
-            let value: Header = decode(&record.payload)?;
+            let mut value: Header = decode(&record.payload)?;
             if value.schema != 1
                 || value.job_id != record.job_id
                 || value.operations.is_empty()
@@ -1271,14 +1300,17 @@ pub fn recover_repair_journal(
             {
                 return Err(E::Scope);
             }
-            let root = path(&value.source)?;
+            value.observed_source = Some(
+                roots.selected_repair_observed_reference().map_err(|_| E::Scope)?,
+            );
+            let root = comparable_path(&value.source)?;
             let mut seen = HashSet::new();
             for (index, op) in value.operations.iter().enumerate() {
                 if op.id != index
                     || !valid_hash(&op.source.sha256)
                     || op.source.observation.size.is_none()
                     || op.source.observation.identity.is_none()
-                    || !path(&op.source.observation.reference)?.starts_with(&root)
+                    || !comparable_path(&op.source.observation.reference)?.starts_with(&root)
                     || !seen.insert(op.source.observation.reference.clone())
                     || op.depends_on.iter().any(|d| *d >= index)
                     || op.intended_name.is_empty()
@@ -1503,7 +1535,7 @@ pub fn recover_repair_journal(
             };
             evidence.push(inspect_evidence(
                 &mut reads,
-                &header.source,
+                &header,
                 "current",
                 current,
                 expected,
@@ -1513,7 +1545,7 @@ pub fn recover_repair_journal(
         if let Some(backup) = &state.backup {
             evidence.push(inspect_evidence(
                 &mut reads,
-                &header.source,
+                &header,
                 "backup",
                 backup,
                 Some(&op.source.sha256),
@@ -1523,7 +1555,7 @@ pub fn recover_repair_journal(
         if let Some(staged) = &state.staged {
             evidence.push(inspect_evidence(
                 &mut reads,
-                &header.source,
+                &header,
                 "staged",
                 staged,
                 state.staged_hash.as_deref(),
@@ -1541,7 +1573,7 @@ pub fn recover_repair_journal(
             };
             evidence.push(inspect_evidence(
                 &mut reads,
-                &header.source,
+                &header,
                 "original",
                 &original,
                 Some(&op.source.sha256),
@@ -1612,7 +1644,7 @@ pub fn recover_repair_journal(
                 }) {
                     evidence.push(inspect_evidence(
                         &mut reads,
-                        &header.source,
+                        &header,
                         role,
                         &expected,
                         hash,
@@ -1637,7 +1669,7 @@ pub fn recover_repair_journal(
 }
 fn inspect_evidence(
     reads: &mut dyn ReadStorage,
-    root: &StorageRef,
+    header: &Header,
     role: &str,
     expected: &MutationObservation,
     sha: Option<&str>,
@@ -1651,7 +1683,11 @@ fn inspect_evidence(
         observed_identity: None,
         status: RepairEvidenceStatus::Unverified,
     };
-    let read_reference = aligned_read_reference(root, &expected.reference)?;
+    let read_reference = aligned_recovery_reference(
+        &header.source,
+        header.observed_source.as_ref(),
+        &expected.reference,
+    )?;
     let observed = match reads.stat(&read_reference) {
         Ok(v) => v,
         Err(error) if error.kind == StorageErrorKind::NotFound => {
@@ -1728,6 +1764,35 @@ mod journal_budget_tests {
         ] {
             assert!(super::aligned_read_reference(&root, &reference(candidate)).is_err());
         }
+    }
+    #[test]
+    fn observed_root_alias_never_normalizes_child_components_or_other_roots() {
+        use sorter_core::discovery::StorageRef;
+        let reference = |value: &str| StorageRef::WindowsPath {
+            utf16: value.encode_utf16().collect(),
+        };
+        let selected = reference(r"C:\Users\RUNNER~1\music");
+        let observed = reference(r"\\?\C:\Users\runneradmin\music");
+        let child = reference(r"\\?\C:\Users\runneradmin\music\album\song.mp3");
+        assert_eq!(
+            super::aligned_recovery_reference(&selected, Some(&observed), &child).unwrap(),
+            reference(r"C:\Users\RUNNER~1\music\album\song.mp3")
+        );
+        assert!(super::aligned_recovery_reference(&selected, None, &child).is_err());
+        for wrong in [
+            r"\\?\C:\Users\another\music\album\song.mp3",
+            r"\\?\D:\Users\runneradmin\music\album\song.mp3",
+            r"\\?\C:\Users\runneradmin\music-other\album\song.mp3",
+            r"\\?\C:\Users\runneradmin\music\..\outside.mp3",
+        ] {
+            assert!(super::aligned_recovery_reference(&selected, Some(&observed), &reference(wrong)).is_err());
+        }
+        // Even under the valid root, an 8.3 child alias is left exact. It cannot
+        // match the planned long child path in check_observation.
+        assert_ne!(
+            super::aligned_recovery_reference(&selected, Some(&observed), &reference(r"\\?\C:\Users\runneradmin\music\ALBUM~1\song.mp3")).unwrap(),
+            reference(r"C:\Users\RUNNER~1\music\album-long\song.mp3")
+        );
     }
     #[test]
     fn metadata_staleness_and_io_failures_never_continue_as_format_limits() {

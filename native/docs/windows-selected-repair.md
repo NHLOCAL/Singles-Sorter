@@ -57,3 +57,15 @@ application build with native metadata. Source review or portable parsing alone
 is not runtime acceptance. Host and CLI must show filename/tag counts separately,
 partial unsupported outcomes and retained backup bytes. Packaging must refresh
 and review its measured dependency/feature notice graph.
+
+### Identity-bound selected-root spelling during recovery
+
+Recovery keeps the original selected path and its no-reparse ancestor pins. It
+also reads the normalized DOS path from that same held, identity-checked root
+handle. That live observation may align an ancestor spelling such as Windows
+TEMP's `RUNNER~1` with its long spelling. The alias is recovery-local and omitted
+from journal serialization; a journal cannot supply or change it. Only the root
+prefix is mapped. Relative child names, parent/file identities, sizes, phase
+bindings, and content digests still match exactly. Other roots, volumes, device
+aliases, traversal, and short-name aliases below the selected root are not
+normalized. Recovery remains read-only and never creates execution authority.
