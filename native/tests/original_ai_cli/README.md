@@ -1,15 +1,18 @@
-# Original-only AI CLI release gate
+# Original AI and selected Windows CLI release gate
 
 This gate builds the actual `singles-sorter` executable with the explicit
-`original-ai` feature and invokes its real `plan-files --json` transport. It also
+`original-ai` feature and invokes its real `plan-files --json` transport. Windows
+also enables `selected-windows-execution` and separately exercises the original
+positional frontend against owned files. It also
 builds the default-off executable and verifies that a configured profile cannot
 enable an uncompiled feature.
 
 The workflow `.github/workflows/original-ai-cli.yml` runs on Linux and Windows.
 It uses the workspace's application release profile, not the isolated NER
 probe's release profile. PCRE2, TagLib and zlib are static libraries; Windows
-uses the dynamic MSVC CRT consistently. This is a read-only preview proof, not
-a production package, portable static-CRT release, Android claim, or apply test.
+uses the dynamic MSVC CRT consistently. Read-only oracle proof and actual
+Windows execution proof are distinct required gates. Neither establishes an
+Android result or a clean-machine static-CRT claim.
 
 ## Independent original oracles
 
@@ -79,3 +82,23 @@ assets.
 No model assets, original pickle, private or sealed corpus, generated numeric
 arrays, audio recordings, or test outputs are committed or uploaded by this
 workflow. Python is an oracle/build dependency, not a CLI runtime dependency.
+
+## Actual selected Windows execution
+
+`check_execution.py` runs only on the owned Windows CI runner, with closed stdin
+and only System32 on PATH. It checks actual positional Copy, same-volume Move,
+automatically configured original-AI Copy, MP3 ID3v2.3/v2.4 five-field repair,
+unsupported-tag partial outcomes, exact retained backups/media/unknown frames,
+read-only dry-run, overlap rejection and original help/argument behavior.
+
+The same checks run on the release EXE, staged package and consumer-extracted ZIP.
+Reports bind the EXE hash and, for packaged trials, the complete package manifest.
+The packager refuses to archive without both its read-only PowerShell smoke and
+its distinct actual execution report. Package notice features must exactly match
+the selected CLI feature profile; activation awaits measured graph review.
+
+Fixtures are created under a fresh owned temporary directory and retained until
+runner disposal for diagnosis. The report is written only after all byte/layout
+checks pass. Optimized Python is refused because the independent MP3 parser uses
+assertions. The runtime application has no Python dependency. Positional Ctrl-C
+handler behavior still needs its own actual console-signal acceptance case.

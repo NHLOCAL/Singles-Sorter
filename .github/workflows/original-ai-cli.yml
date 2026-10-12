@@ -1,4 +1,4 @@
-name: Original-only AI CLI release proof
+name: Original AI and selected CLI release proof
 
 on:
   workflow_dispatch:
@@ -140,18 +140,20 @@ jobs:
         run: |
           cargo +1.99.0 fmt --all -- --check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo +1.99.0 clippy --locked --workspace --all-targets --features sorter-cli/original-ai -- -D warnings
+          $features = if ($IsWindows) { 'sorter-cli/original-ai,sorter-cli/selected-windows-execution' } else { 'sorter-cli/original-ai' }
+          cargo +1.99.0 clippy --locked --workspace --all-targets --features $features -- -D warnings
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo +1.99.0 test --locked --release --workspace --features sorter-cli/original-ai
+          cargo +1.99.0 test --locked --release --workspace --features $features
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Build default-off CLI and explicit original-only CLI in application release profile
+      - name: Build default-off CLI and original AI with Windows selected execution
         run: |
           cargo +1.99.0 build --locked --release -p sorter-cli
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $ext = if ($IsWindows) { '.exe' } else { '' }
           Copy-Item "target/release/singles-sorter$ext" "target/original-ai/default-cli$ext"
-          cargo +1.99.0 build --locked --release -p sorter-cli --features original-ai
+          $features = if ($IsWindows) { 'original-ai,selected-windows-execution' } else { 'original-ai' }
+          cargo +1.99.0 build --locked --release -p sorter-cli --features $features
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo +1.99.0 build --locked --release -p sorter-classifier --example parity
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -176,6 +178,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Get-Content target/original-ai/pcre2/build-receipt.json
 
+      - name: Exercise actual Windows positional execution with closed stdin
+        if: runner.os == 'Windows'
+        run: |
+          python tests/original_ai_cli/check_execution.py --binary target/release/singles-sorter.exe --bundle target/original-ai/bundle --report target/original-ai/execution-report.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Package only verified Windows original-AI runtime and complete notices
         if: runner.os == 'Windows'
         run: |
@@ -194,7 +202,7 @@ jobs:
           if (-not $dumpbin) { throw 'Official MSVC dumpbin not found' }
           & $dumpbin /dependents target/release/singles-sorter.exe | Set-Content -Encoding utf8 target/original-ai/dumpbin-dependents.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python packaging/windows-preview/package_preview.py build --binary target/release/singles-sorter.exe --bundle target/original-ai/bundle --cli-report target/original-ai/cli-report.json --pcre2-receipt target/original-ai/pcre2/build-receipt.json --build-info target/original-ai/native-build-info.txt --dumpbin-report target/original-ai/dumpbin-dependents.txt --ci-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" --output target/original-ai/windows-preview
+          python packaging/windows-preview/package_preview.py build --binary target/release/singles-sorter.exe --bundle target/original-ai/bundle --cli-report target/original-ai/cli-report.json --execution-report target/original-ai/execution-report.json --pcre2-receipt target/original-ai/pcre2/build-receipt.json --build-info target/original-ai/native-build-info.txt --dumpbin-report target/original-ai/dumpbin-dependents.txt --ci-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" --output target/original-ai/windows-preview
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Smoke the staged and ZIP-extracted preview in Windows PowerShell 5.1
@@ -202,11 +210,17 @@ jobs:
         run: |
           powershell.exe -NoProfile -NonInteractive -File packaging/windows-preview/smoke.ps1 -PackageRoot target/original-ai/windows-preview -ReportPath target/original-ai/windows-preview-stage-smoke.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python packaging/windows-preview/package_preview.py archive --package target/original-ai/windows-preview --smoke-report target/original-ai/windows-preview-stage-smoke.json --output target/original-ai/singles-sorter-original-ai-windows-x64-preview.zip
+          python tests/original_ai_cli/check_execution.py --binary target/original-ai/windows-preview/singles-sorter.exe --bundle target/original-ai/windows-preview/models/original --package target/original-ai/windows-preview --report target/original-ai/windows-preview-stage-execution.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python packaging/windows-preview/package_preview.py archive --package target/original-ai/windows-preview --smoke-report target/original-ai/windows-preview-stage-smoke.json --execution-report target/original-ai/windows-preview-stage-execution.json --output target/original-ai/singles-sorter-original-ai-windows-x64-selected-cli.zip
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # Exercise the consumer ZIP extraction too; a staging-only smoke is insufficient.
-          Expand-Archive -LiteralPath target/original-ai/singles-sorter-original-ai-windows-x64-preview.zip -DestinationPath target/original-ai/windows-preview-extracted
+          Expand-Archive -LiteralPath target/original-ai/singles-sorter-original-ai-windows-x64-selected-cli.zip -DestinationPath target/original-ai/windows-preview-extracted
           powershell.exe -NoProfile -NonInteractive -File packaging/windows-preview/smoke.ps1 -PackageRoot target/original-ai/windows-preview-extracted -ReportPath target/original-ai/windows-preview-smoke.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tests/original_ai_cli/check_execution.py --binary target/original-ai/windows-preview-extracted/singles-sorter.exe --bundle target/original-ai/windows-preview-extracted/models/original --package target/original-ai/windows-preview-extracted --report target/original-ai/windows-preview-execution.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python packaging/windows-preview/package_preview.py verify-execution --package target/original-ai/windows-preview-extracted --execution-report target/original-ai/windows-preview-execution.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Retain the smoke-tested Windows CLI preview for review, never a release
@@ -215,9 +229,11 @@ jobs:
         with:
           name: original-ai-windows-x64-cli-preview-${{ github.sha }}
           path: |
-            native/target/original-ai/singles-sorter-original-ai-windows-x64-preview.zip
-            native/target/original-ai/singles-sorter-original-ai-windows-x64-preview.zip.sha256
+            native/target/original-ai/singles-sorter-original-ai-windows-x64-selected-cli.zip
+            native/target/original-ai/singles-sorter-original-ai-windows-x64-selected-cli.zip.sha256
             native/target/original-ai/windows-preview-smoke.json
+            native/target/original-ai/windows-preview-execution.json
+            native/target/original-ai/windows-preview-stage-execution.json
           if-no-files-found: error
           retention-days: 7
           include-hidden-files: false
@@ -227,4 +243,5 @@ jobs:
       # newly authored silent examples enter the allowlisted preview. Source
       # pickle, oracle corpora, Python environments and candidate/private data
       # remain job-local. No release publication, model network at app runtime,
-      # signing/installer claim, clean-machine guarantee or physical apply.
+      # signing/installer claim or clean-machine guarantee. Actual selected execution
+      # is limited to the explicitly tested retained-plan Windows paths.

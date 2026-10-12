@@ -1,0 +1,57 @@
+"""Portable contract checks, never a substitute for the Windows subprocess gate."""
+import json
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import unittest
+
+import check_execution as execution
+
+
+class ExecutionContractTests(unittest.TestCase):
+    def test_required_checks_match_archive_gate(self):
+        self.assertEqual(execution.CHECKS, execution.package.EXECUTION_CHECKS)
+
+    def test_native_result_requires_one_actual_result_line(self):
+        result = {'status': 'complete', 'recovery_error': None}
+        line = 'INFO - MusicSorter - result: ' + json.dumps(result)
+        self.assertEqual(execution.result_record('INFO - MusicSorter - starting\n' + line), result)
+        for invalid in ['', 'INFO - MusicSorter - progress: {}', line + '\n' + line]:
+            with self.subTest(stderr=invalid), self.assertRaises(AssertionError):
+                execution.result_record(invalid)
+
+    def test_malformed_native_result_is_not_accepted(self):
+        with self.assertRaises(json.JSONDecodeError):
+            execution.result_record('INFO - MusicSorter - result: {')
+
+    def test_authored_audio_and_tree_digest_detect_effects(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / 'בדיקה.wav'
+            execution.write_wave(path)
+            self.assertEqual(path.read_bytes()[:4], b'RIFF')
+            before = execution.snapshot(root)
+            path.read_bytes()
+            self.assertEqual(execution.snapshot(root), before)
+            path.write_bytes(path.read_bytes() + b'changed')
+            self.assertNotEqual(execution.snapshot(root), before)
+
+    def test_gate_rejects_optimized_parser_and_emits_no_report(self):
+        with tempfile.TemporaryDirectory() as directory:
+            report = Path(directory) / 'report.json'
+            result = subprocess.run([
+                sys.executable, '-O', str(Path(execution.__file__)),
+                '--binary', 'unused', '--bundle', 'unused', '--report', str(report),
+            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('Python assertions enabled', result.stderr)
+            self.assertFalse(report.exists())
+
+    def test_unconditional_guard(self):
+        with self.assertRaisesRegex(ValueError, 'physical proof'):
+            execution.require(False, 'physical proof')
+
+
+if __name__ == '__main__':
+    unittest.main()

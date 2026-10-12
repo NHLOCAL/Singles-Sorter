@@ -29,6 +29,13 @@ ASSETS = {
  'classifier-v14.weights.bin': 'aa0da9a15f1ddbd62054c26fd4331b355b3e659c952ab3d71dfc8a138e561a33',
  'classifier-v14.vocab.txt': '35b743c5bb3c532222939fa3a421ef25b94c832032926b6d50707902bcd666e3',
 }
+EXECUTION_CHECKS = {'positional-copy', 'positional-move', 'positional-original-ai-copy',
+                    'positional-fix-id3v23', 'positional-fix-id3v24', 'positional-fix-partial',
+                    'retained-original-and-media', 'closed-stdin', 'no-developer-path',
+                    'explicit-dry-run-no-effects', 'overlap-rejected-no-effects', 'legacy-argument-exits'}
+CLI_FEATURES = ['original-ai', 'selected-windows-execution']
+CLI_NOTICE_FEATURES = ['sorter-cli/' + feature for feature in CLI_FEATURES]
+
 SYSTEM_DLLS = {'kernel32.dll', 'ntdll.dll', 'advapi32.dll', 'bcrypt.dll', 'userenv.dll',
  'ws2_32.dll', 'dbghelp.dll', 'ole32.dll', 'oleaut32.dll', 'shell32.dll', 'user32.dll',
  'bcryptprimitives.dll', 'secur32.dll', 'crypt32.dll', 'rpcrt4.dll', 'version.dll', 'winmm.dll', 'shlwapi.dll',
@@ -235,6 +242,39 @@ def gate_report(path, binary):
     return report
 
 
+
+def verify_cli_notices(root):
+    inventory = json.loads((root / 'licenses/inventory.json').read_text(encoding='utf-8'))
+    require(inventory.get('profile') == 'cli' and inventory.get('features') == CLI_NOTICE_FEATURES,
+            'selected CLI notice profile must match the executable features')
+    rows = inventory.get('files', [])
+    names = [row['path'] for row in rows]
+    actual = {p.relative_to(root / 'licenses').as_posix() for p in (root / 'licenses').rglob('*')
+              if p.is_file() and p.relative_to(root / 'licenses').as_posix() != 'inventory.json'}
+    require(names and len(names) == len(set(names)) and set(names) == actual,
+            'CLI notice inventory does not cover exact packaged files')
+    require('SOURCE-AVAILABILITY.md' in actual, 'CLI source availability notice is missing')
+    for row in rows:
+        name = row['path']
+        require(safe_name(name) and digest(root / 'licenses' / name) == row['sha256']
+                and (root / 'licenses' / name).stat().st_size == row['bytes'],
+                'CLI notice inventory hash or size mismatch')
+
+
+def execution_gate(path, binary, package_root=None):
+    report = json.loads(path.read_text(encoding='utf-8-sig'))
+    require(report.get('result') == 'PASS' and report.get('schema_version') == 1,
+            'successful actual CLI execution report required')
+    require(EXECUTION_CHECKS <= set(report.get('checks', [])), 'incomplete actual CLI execution coverage')
+    require(report.get('executable_sha256') == digest(binary), 'execution proof bound to a different executable')
+    require(all(report.get(key) is True for key in ('closed_stdin', 'developer_path_removed', 'real_subprocess')),
+            'real closed-stdin application process without developer PATH required')
+    if package_root is not None:
+        require(report.get('sha256sums_sha256') == digest(package_root / 'SHA256SUMS.txt'),
+                'execution proof bound to a different package')
+    return report
+
+
 def run_text(command):
     return subprocess.check_output(command, cwd=ROOT, text=True, encoding='utf-8').strip()
 
@@ -246,6 +286,7 @@ def build(args):
     require(not out.exists(), 'output must be new; refusing overwrite')
     asset_hashes = check_assets(bundle)
     gate = gate_report(args.cli_report, binary)
+    execution_gate(args.execution_report, binary)
     imports = pe_imports(binary)
     dumpbin = args.dumpbin_report.read_text(encoding='utf-8-sig')
     crosscheck_dumpbin(imports, dumpbin)
@@ -283,10 +324,11 @@ def build(args):
         subprocess.run([sys.executable, str(HERE.parent / 'licenses/collect_licenses.py'),
                         '--repo-root', str(ROOT), '--output-dir', str(stage / 'licenses'),
                         '--target', 'x86_64-pc-windows-msvc'], check=True)
+        verify_cli_notices(stage)
         provenance = {
-            'schema_version': 1, 'kind': 'original-ai-windows-x64-read-only-cli-preview',
+            'schema_version': 1, 'kind': 'original-ai-windows-x64-selected-cli',
             'source_commit': source_commit, 'source_tree': run_text(['git', 'rev-parse', 'HEAD^{tree}']),
-            'ci_url': args.ci_url, 'target': 'x86_64-pc-windows-msvc', 'features': ['original-ai'],
+            'ci_url': args.ci_url, 'target': 'x86_64-pc-windows-msvc', 'features': CLI_FEATURES,
             'rustc': run_text(['rustc', '+1.99.0', '-vV']),
             'cargo': run_text(['cargo', '+1.99.0', '--version']),
             'native_build': args.build_info.read_text(encoding='utf-8-sig'),
@@ -294,7 +336,10 @@ def build(args):
             'msvc_dumpbin_dependents': dumpbin,
             'crt_linkage': 'dynamic MSVC; official Microsoft Visual C++ x64 Redistributable prerequisite',
             'clean_machine_without_prerequisite_tested': False,
-            'offline_runtime': True, 'physical_apply': False,
+            'offline_runtime': True, 'physical_apply': True,
+            'execution_scope': ['selected singles Copy', 'same-volume Move', 'source-only FixNames'],
+            'unsupported_execution': ['albums', 'cross-volume Move', 'changed tags outside bounded MP3 ID3v2.3/v2.4'],
+            'automatic_replay': False, 'automatic_backup_cleanup': False,
             'baseline_commit': BASELINE, 'bundle_id': 'original-v14-ner-3.7.5',
             'ner_model': {'name': 'singer_ner_he', 'version': '2.0.0', 'spacy_compatibility': '>=3.7.5,<3.8.0'},
             'assets_sha256': asset_hashes,
@@ -305,6 +350,7 @@ def build(args):
                 'notices_and_source_bytes': sum(p.stat().st_size for p in (stage / 'licenses').rglob('*') if p.is_file())},
             'pcre2_build': receipt,
             'release_cli_proof': {'sha256': digest(args.cli_report), 'invocations': gate['cli_invocations']},
+            'execution_cli_proof': {'sha256': digest(args.execution_report), 'checks': sorted(EXECUTION_CHECKS)},
             'samples': 'Two authored silent WAVs; no copyrighted recording or external corpus.',
             'manifest': 'SHA256SUMS.txt covers every package file except itself.'}
         (stage / 'provenance.json').write_text(json.dumps(provenance, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
@@ -318,6 +364,7 @@ def build(args):
 def archive(args):
     root = args.package.resolve()
     files = verify_package(root)
+    verify_cli_notices(root)
     check_assets(root / 'models/original')
     require(set(p.name for p in (root / 'models/original').iterdir()) == set(ASSETS), 'extra model asset')
     pe_imports(root / 'singles-sorter.exe')
@@ -326,6 +373,7 @@ def archive(args):
             report.get('executable_sha256') == digest(root / 'singles-sorter.exe') and
             report.get('sha256sums_sha256') == digest(root / 'SHA256SUMS.txt'),
             'successful Windows smoke bound to this exact package is required')
+    execution_gate(args.execution_report, root / 'singles-sorter.exe', root)
     require(not args.output.resolve().is_relative_to(root), 'ZIP output must be outside package')
     require(not args.output.exists(), 'ZIP output already exists')
     with zipfile.ZipFile(args.output, 'x', compression=zipfile.ZIP_DEFLATED) as output:
@@ -345,14 +393,22 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='command', required=True)
     b = commands.add_parser('build')
-    for name in ('binary', 'bundle', 'cli-report', 'pcre2-receipt', 'build-info', 'dumpbin-report', 'output'):
+    for name in ('binary', 'bundle', 'cli-report', 'execution-report', 'pcre2-receipt', 'build-info', 'dumpbin-report', 'output'):
         b.add_argument('--' + name, type=Path, required=True)
     b.add_argument('--ci-url', required=True)
     a = commands.add_parser('archive')
-    for name in ('package', 'smoke-report', 'output'):
+    for name in ('package', 'smoke-report', 'execution-report', 'output'):
         a.add_argument('--' + name, type=Path, required=True)
+    check = commands.add_parser('verify-execution')
+    check.add_argument('--package', type=Path, required=True)
+    check.add_argument('--execution-report', type=Path, required=True)
     args = parser.parse_args()
-    (build if args.command == 'build' else archive)(args)
+    if args.command == 'verify-execution':
+        verify_package(args.package)
+        verify_cli_notices(args.package)
+        execution_gate(args.execution_report, args.package / 'singles-sorter.exe', args.package)
+    else:
+        (build if args.command == 'build' else archive)(args)
 
 if __name__ == '__main__':
     main()

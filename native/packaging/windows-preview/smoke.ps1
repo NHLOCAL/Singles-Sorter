@@ -1,4 +1,4 @@
-# Windows PowerShell 5.1-compatible, Python-free preview verification.
+﻿# Windows PowerShell 5.1-compatible, Python-free preview verification.
 # ASCII source avoids legacy Windows PowerShell script decoding ambiguity.
 [CmdletBinding()]
 param(
@@ -307,7 +307,11 @@ try {
     $caps = ConvertFrom-Json -InputObject $capsResponse.stdout
     Require ($caps.result.capabilities.native_inference -ceq $false) 'V1 must remain supplied-facts only'
     Require ($caps.result.capabilities.real_file_planning.native_inference -ceq $true) 'Wrong executable: original-ai feature is unavailable'
-    Require ($caps.result.capabilities.physical_apply -ceq $false) 'Physical apply must stay unavailable'
+    Require ($caps.result.capabilities.physical_apply -ceq $false) 'Supplied-facts V1 must remain non-executable'
+    Require ($null -ne $caps.result.capabilities.selected_execution) 'Selected native execution feature is missing'
+    foreach ($mode in @('Copy','same-volume Move','FixNames')) {
+        Require (@($caps.result.capabilities.selected_execution.modes) -ccontains $mode) ('Missing selected mode: ' + $mode)
+    }
     [void]$checks.Add('feature-capabilities')
 
     $configured = Plan-Check 'configured-original-plan' (Configured $model $bundleId $null) $true $true $null
@@ -361,7 +365,8 @@ try {
         windows = [Environment]::OSVersion.VersionString
         child_path = 'System32 only; developer tools removed'
         python_runtime_required = $false
-        physical_apply = $false
+        physical_apply_exercised_by_this_read_only_smoke = $false
+        selected_execution_capability = $true
         graceful_ctrl_c_verified = $false
         checks = @($checks.ToArray())
         utc = [DateTime]::UtcNow.ToString('o')

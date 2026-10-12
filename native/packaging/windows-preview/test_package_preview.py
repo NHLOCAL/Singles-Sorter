@@ -214,19 +214,42 @@ class PackageTests(unittest.TestCase):
             (self.root / 'model.bin').write_bytes(b'wrong')
             with self.assertRaisesRegex(ValueError, 'mismatch'): p.check_assets(self.root)
 
+    def notices(self, root):
+        folder = root / 'licenses'; folder.mkdir()
+        notice = folder / 'SOURCE-AVAILABILITY.md'; notice.write_text('owned test notice')
+        data = {'profile': 'cli', 'features': p.CLI_NOTICE_FEATURES, 'files': [
+            {'path': notice.name, 'sha256': p.digest(notice), 'bytes': notice.stat().st_size}]}
+        inventory = folder / 'inventory.json'; inventory.write_text(json.dumps(data))
+        return inventory, data
+
+    def test_selected_cli_notice_profile_and_exact_files_are_required(self):
+        inventory, data = self.notices(self.root)
+        p.verify_cli_notices(self.root)
+        for field, value in [('profile', 'desktop'), ('features', ['sorter-cli/original-ai']), ('files', [])]:
+            inventory.write_text(json.dumps(dict(data, **{field: value})))
+            with self.assertRaises(ValueError): p.verify_cli_notices(self.root)
+        inventory.write_text(json.dumps(data))
+        (inventory.parent / 'extra.txt').write_text('not inventoried')
+        with self.assertRaisesRegex(ValueError, 'exact'): p.verify_cli_notices(self.root)
+
     def test_archive_smoke_binding_and_entries(self):
         stage = self.root / 'package'; stage.mkdir()
         (stage / 'singles-sorter.exe').write_bytes(example_pe())
         models = stage / 'models/original'; models.mkdir(parents=True)
         (models / 'model.bin').write_bytes(b'owned test weights, not a model')
         (stage / 'examples/target').mkdir(parents=True)
+        self.notices(stage)
         files = sorted(f for f in stage.rglob('*') if f.is_file())
         (stage / 'SHA256SUMS.txt').write_text(''.join(p.digest(f) + '  ' + f.relative_to(stage).as_posix() + '\n' for f in files))
         report = self.root / 'smoke.json'
         receipt = {'result': 'PASS', 'executable_sha256': p.digest(stage / 'singles-sorter.exe'),
                    'sha256sums_sha256': '0' * 64}
         report.write_text(json.dumps(receipt))
-        args = types.SimpleNamespace(package=stage, smoke_report=report, output=self.root / 'synthetic-unit-test.zip')
+        execution_report = self.root / 'execution.json'
+        execution_report.write_text(json.dumps({'schema_version':1,'result':'PASS','checks':sorted(p.EXECUTION_CHECKS),
+            'executable_sha256':p.digest(stage/'singles-sorter.exe'),'sha256sums_sha256':p.digest(stage/'SHA256SUMS.txt'),
+            'closed_stdin':True,'developer_path_removed':True,'real_subprocess':True}))
+        args = types.SimpleNamespace(package=stage, smoke_report=report, execution_report=execution_report, output=self.root / 'synthetic-unit-test.zip')
         with patch.object(p, 'ASSETS', {'model.bin': p.digest(models / 'model.bin')}):
             with self.assertRaisesRegex(ValueError, 'smoke bound'): p.archive(args)
             self.assertFalse(args.output.exists())
@@ -234,8 +257,25 @@ class PackageTests(unittest.TestCase):
             report.write_text(json.dumps(receipt)); p.archive(args)
         with zipfile.ZipFile(args.output) as archive:
             self.assertEqual(set(archive.namelist()), {'singles-sorter.exe', 'models/original/model.bin',
-                                                     'SHA256SUMS.txt', 'examples/target/'})
+                                                     'SHA256SUMS.txt', 'examples/target/',
+                                                     'licenses/inventory.json', 'licenses/SOURCE-AVAILABILITY.md'})
         self.assertTrue(args.output.with_suffix('.zip.sha256').is_file())
+
+    def test_actual_execution_coverage_and_identity_are_required(self):
+        binary=self.binary();report=self.root/'execution.json'
+        valid={'schema_version':1,'result':'PASS','checks':sorted(p.EXECUTION_CHECKS),
+               'executable_sha256':p.digest(binary),'closed_stdin':True,
+               'developer_path_removed':True,'real_subprocess':True}
+        report.write_text(json.dumps(valid));p.execution_gate(report,binary)
+        for check in p.EXECUTION_CHECKS:
+            changed=dict(valid,checks=sorted(p.EXECUTION_CHECKS-{check}))
+            report.write_text(json.dumps(changed))
+            with self.assertRaisesRegex(ValueError,'coverage'):p.execution_gate(report,binary)
+        for key,value in [('executable_sha256','0'*64),('closed_stdin',False),('developer_path_removed',False),('real_subprocess',False),('result','FAIL')]:
+            report.write_text(json.dumps(dict(valid,**{key:value})))
+            with self.assertRaises(ValueError):p.execution_gate(report,binary)
+        report.write_text(json.dumps(valid));self.manifest()
+        with self.assertRaisesRegex(ValueError,'package'):p.execution_gate(report,binary,self.root)
 
     def test_gate_bound_to_executable(self):
         binary = self.binary()
