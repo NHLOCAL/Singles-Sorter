@@ -35,6 +35,7 @@ export function simpleStatus(row:PlanRow,items:ExecutionItem[],copy:boolean,cont
  }
  if(context.uncertain&&row.operation_ids?.length)return 'לא אומת';
  if(context.terminalResult&&row.operation_ids?.length)return 'לא בוצע';
+ if(row.included_in_album!==undefined)return row.no_action?'כלול באלבום':'נדרשת בדיקה';
  if(row.no_action)return row.kind==='FixNames'?'ללא שינוי':'ללא פעולה';
  if(row.blockers.includes('FIX_METADATA_READ_ERROR'))return context.repairEligible?'תיקון חלקי':'לא ניתן לבדוק';
  if(row.kind==='FixNames'&&context.repairEligible)return 'לתיקון';
@@ -55,6 +56,7 @@ export function simpleReason(row:PlanRow,repairEligible=false):string{
  if(row.kind==='FixNames'&&row.no_action)return 'לא נמצא שינוי נדרש בשם או בתגיות.';
  if(row.kind==='FixNames'&&repairEligible)return '';
  if(row.kind==='ItemError'||row.blockers.includes('ALBUM_READ_ERROR'))return 'לא ניתן לקרוא את הפריט. בדוק שהוא זמין ושהתוכנה מורשית לקרוא אותו.';
+ if(row.included_in_album!==undefined)return 'הפריט כלול בפעולת האלבום, ללא פעולה נפרדת.';
  if(row.kind==='Vanished')return 'הקובץ הועבר או אינו זמין כעת.';
  if(row.blockers.length)return 'הפעולה אינה זמינה לקובץ הזה בתוכנית הנוכחית.';
  if(row.kind==='Single'&&!row.artist)return 'לא זוהה אמן.';

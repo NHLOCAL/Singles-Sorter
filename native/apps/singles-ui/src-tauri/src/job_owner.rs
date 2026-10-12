@@ -164,6 +164,9 @@ pub struct DisplayRow {
     pub developer_only: bool,
     /// Display classification only; never consulted by execution.
     pub no_action: bool,
+    /// Display-only relationship; not an independent file operation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub included_in_album: Option<usize>,
 }
 #[derive(Serialize)]
 pub struct PlanPage {
@@ -635,7 +638,10 @@ impl Host {
 enum DisplayEffects {
     Preview,
     Unknown,
-    Observed(std::collections::HashMap<usize, bool>),
+    Observed {
+        inactive: std::collections::HashMap<usize, bool>,
+        complete: std::collections::HashMap<usize, bool>,
+    },
 }
 impl DisplayEffects {
     fn from_execution(execution: Option<&ExecutionSnapshot>) -> Self {
@@ -646,7 +652,14 @@ impl DisplayEffects {
             return Self::Unknown;
         };
         let mut operations = std::collections::HashMap::new();
+        let mut complete = std::collections::HashMap::new();
+        let verified = execution.recovery_error.is_none()
+            && !matches!(execution.status, "failed" | "needs_recovery" | "cancelled");
         for item in &result.items {
+            complete
+                .entry(item.operation)
+                .and_modify(|all: &mut bool| *all &= verified && item.status == "complete")
+                .or_insert(verified && item.status == "complete");
             let changed = item
                 .repair
                 .as_ref()
@@ -659,13 +672,22 @@ impl DisplayEffects {
                 .and_modify(|all: &mut bool| *all &= inactive)
                 .or_insert(inactive);
         }
-        Self::Observed(operations)
+        Self::Observed {
+            inactive: operations,
+            complete,
+        }
     }
     fn inactive(&self, row: &DisplayRow) -> bool {
         match self {
             Self::Preview => row.no_action,
             Self::Unknown => false,
-            Self::Observed(operations) => {
+            Self::Observed {
+                inactive: operations,
+                complete,
+            } => {
+                if let Some(album) = row.included_in_album {
+                    return row.no_action && complete.get(&album) == Some(&true);
+                }
                 if row.operation_ids.is_empty() {
                     return row.no_action;
                 }
@@ -956,6 +978,41 @@ fn operation_source(kind: &OperationKind) -> &EntryObservation {
         OperationKind::FixFile(f) => &f.source,
     }
 }
+// Exact planned removals only. This projection never grants an operation or
+// treats a predicted removal as an observed successful transfer.
+fn album_omissions(plan: &JobPlanV2) -> std::collections::HashMap<&StorageRef, usize> {
+    let albums = plan
+        .operations
+        .iter()
+        .filter(|operation| matches!(operation.kind, OperationKind::AlbumTransfer { .. }))
+        .map(|operation| operation.id)
+        .collect::<std::collections::HashSet<_>>();
+    plan.predicted_effects
+        .iter()
+        .filter_map(|effect| match effect {
+            sorter_core::job_plan::PredictedEffect::SourceUnavailable { operation, source }
+                if albums.contains(operation) =>
+            {
+                Some((source, *operation))
+            }
+            _ => None,
+        })
+        .collect()
+}
+fn included_album(
+    decision: &DecisionV2,
+    omissions: &std::collections::HashMap<&StorageRef, usize>,
+) -> Option<usize> {
+    let DecisionV2::Vanished { read } = decision else {
+        return None;
+    };
+    let operation = *omissions.get(&read.source.reference)?;
+    (!read.virtually_present
+        && operation < read.after_operations
+        && read.depends_on.contains(&operation))
+    .then_some(operation)
+}
+
 fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
     if plan.request.mode == JobMode::FixNames {
         return plan
@@ -987,6 +1044,7 @@ fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
                     operation_ids: vec![op.id],
                     artist: None,
                     developer_only: false,
+                    included_in_album: None,
                     no_action: !f.rename_intended && f.repairs.is_empty() && f.failure.is_none(),
                 },
                 _ => unreachable!("fix planner only emits fix operations"),
@@ -1001,10 +1059,12 @@ fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
             .or_default()
             .push(operation);
     }
+    let omissions = album_omissions(plan);
     plan.decisions
         .iter()
         .enumerate()
         .map(|(i, d)| {
+            let included_in_album = included_album(d, &omissions);
             let (read, kind, reason) = match d {
                 DecisionV2::Album { read, decision } => (
                     read,
@@ -1085,9 +1145,11 @@ fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
                 developer_only: matches!(d, DecisionV2::Album { decision, .. } if !decision.is_album)
                     && !operations_by_source.contains_key(&read.source.reference)
                     && !inspection_error,
-                no_action: matches!(d, DecisionV2::Single { .. } | DecisionV2::Album { .. })
+                no_action: (included_in_album.is_some()
+                    || matches!(d, DecisionV2::Single { .. } | DecisionV2::Album { .. }))
                     && !operations_by_source.contains_key(&read.source.reference)
                     && !inspection_error,
+                included_in_album,
                 source: entry_display(&read.source),
                 kind: kind.into(),
                 destination: (!destinations.is_empty()).then(|| destinations.join("; ")),
@@ -1211,6 +1273,7 @@ mod tests {
             artist: None,
             developer_only: false,
             no_action: false,
+            included_in_album: None,
         };
         let mut snapshot = ExecutionSnapshot {
             host_schema: 1,
@@ -1286,6 +1349,25 @@ mod tests {
         assert!(!inactive(&row, &snapshot));
         row.operation_ids.push(1);
         assert!(!inactive(&row, &snapshot));
+        row.kind = "Vanished".into();
+        row.operation_ids.clear();
+        row.included_in_album = Some(0);
+        row.no_action = true;
+        assert!(inactive(&row, &snapshot));
+        snapshot.recovery_error = Some("unverified album root".into());
+        assert!(!inactive(&row, &snapshot));
+        snapshot.recovery_error = None;
+        for status in ["failed", "partial", "cancelled", "needs_recovery", "blocked"] {
+            snapshot.result.as_mut().unwrap().items[0].status = status;
+            assert!(!inactive(&row, &snapshot), "{status}");
+        }
+        snapshot.result.as_mut().unwrap().items[0].status = "complete";
+        let mut partial = snapshot.result.as_ref().unwrap().items[0].clone();
+        partial.status = "partial";
+        snapshot.result.as_mut().unwrap().items.push(partial);
+        assert!(!inactive(&row, &snapshot));
+        snapshot.result.as_mut().unwrap().items.clear();
+        assert!(!inactive(&row, &snapshot));
         snapshot.result = None;
         row.no_action = true;
         assert!(!inactive(&row, &snapshot));
@@ -1320,6 +1402,7 @@ mod tests {
                     operation_ids: vec![],
                     artist: None,
                     developer_only: !matches!(index, 30 | 60 | 90),
+                    included_in_album: None,
                     no_action: !matches!(index, 60 | 90),
                 })
                 .collect();
@@ -1426,6 +1509,57 @@ mod tests {
                     _ => None,
                 })
                 .unwrap();
+            let mut omission_plan = plan.clone();
+            let mut album_source = read.source.clone();
+            album_source.reference = StorageRef::TestOpaque {
+                id: "album parent".into(),
+            };
+            omission_plan.operations[0].kind = OperationKind::AlbumTransfer {
+                source: album_source,
+                destination: sorter_core::job_plan::Destination {
+                    root: read.source.reference.clone(),
+                    components: vec!["owned album".into()],
+                },
+                children: vec![],
+                remove_empty_source: true,
+            };
+            omission_plan.predicted_effects = vec![
+                sorter_core::job_plan::PredictedEffect::SourceUnavailable {
+                    operation: 0,
+                    source: read.source.reference.clone(),
+                },
+            ];
+            let mut omitted = read.clone();
+            omitted.virtually_present = false;
+            omitted.after_operations = 1;
+            omitted.depends_on = vec![0];
+            let project = |read: sorter_core::job_plan::ReadPoint| {
+                let mut candidate = omission_plan.clone();
+                candidate.decisions = vec![DecisionV2::Vanished { read }];
+                project_rows(&candidate).remove(0)
+            };
+            let covered = project(omitted.clone());
+            assert!(covered.no_action);
+            assert_eq!(covered.included_in_album, Some(0));
+            assert_eq!(covered.kind, "Vanished");
+            assert!(covered.operation_ids.is_empty());
+            for variation in 0..4 {
+                let mut unexpected = omitted.clone();
+                match variation {
+                    0 => {
+                        unexpected.source.reference = StorageRef::TestOpaque { id: "other".into() }
+                    }
+                    1 => unexpected.after_operations = 0,
+                    2 => unexpected.depends_on.clear(),
+                    _ => unexpected.virtually_present = true,
+                }
+                let row = project(unexpected);
+                assert!(!row.no_action);
+                assert_eq!(row.included_in_album, None);
+            }
+            omission_plan.operations[0] = plan.operations[0].clone();
+            omission_plan.decisions = vec![DecisionV2::Vanished { read: omitted }];
+            assert!(!project_rows(&omission_plan)[0].no_action);
             let mut actionable = plan.clone();
             if let OperationKind::SingleTransfer { source, .. } = &mut actionable.operations[0].kind
             {

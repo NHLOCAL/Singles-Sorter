@@ -11,7 +11,7 @@ export interface RootSelection {token:string;display_name:string;capabilities:{r
 export interface PreviewRequest {mode:Mode;source_token:string;target_token:string|null;settings:Settings;ai_profile:'Disabled'|'Configured'}
 export interface ModelStatus {available:boolean;message:string;platform:Platform}
 export interface Snapshot {host_schema:1;job_id:string;status:'running'|'completed'|'failed'|'cancelled';plan_id:string|null;total_rows:number;blockers:string[];warnings:string[];error?:string|null;apply?:ApplyReadiness|null}
-export interface PlanRow {id:string;source:string;kind:string;destination:string|null;reason:string;blockers:string[];operation_ids?:number[];artist?:string|null;developer_only?:boolean;no_action?:boolean}
+export interface PlanRow {id:string;source:string;kind:string;destination:string|null;reason:string;blockers:string[];operation_ids?:number[];artist?:string|null;developer_only?:boolean;no_action?:boolean;included_in_album?:number}
 export interface PlanPage {rows:PlanRow[];total:number;skipped?:number}
 export interface Host {
   selectRoot(role:Role):Promise<RootSelection|null>;

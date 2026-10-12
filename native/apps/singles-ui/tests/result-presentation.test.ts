@@ -19,6 +19,13 @@ describe('ordinary result presentation',()=>{
   expect(simpleReason({...row,artist:null,operation_ids:[]})).toBe('לא זוהה אמן.');
   expect(simpleReason(row)).not.toContain(row.reason);
  });
+ it('distinguishes planned album inclusion from an unexplained missing source',()=>{
+  const included={...row,kind:'Vanished',operation_ids:[],included_in_album:0,no_action:true};
+  expect(simpleStatus(included,[],false)).toBe('כלול באלבום');
+  expect(simpleReason(included)).toBe('הפריט כלול בפעולת האלבום, ללא פעולה נפרדת.');
+  expect(simpleStatus({...included,no_action:false},[],false)).toBe('נדרשת בדיקה');
+  expect(simpleStatus({...included,included_in_album:undefined,no_action:false},[],false)).toBe('הקובץ לא נמצא');
+ });
  it('keeps failure, partial, cancellation and retained sources visible',()=>{
   expect(simpleStatus(row,[item('complete')],true)).toBe('הועתק');
   expect(simpleStatus(row,[item('complete'),item('failed')],true)).toBe('בוצע חלקית');

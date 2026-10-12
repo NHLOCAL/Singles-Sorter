@@ -16,6 +16,9 @@ pub struct DisplayRow {
     pub artist: Option<String>,
     pub developer_only: bool,
     pub no_action: bool,
+    /// Display-only relationship; not an independent file operation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub included_in_album: Option<usize>,
 }
 fn entry_display(entry: &EntryObservation) -> String {
     match &entry.reference {
@@ -59,6 +62,41 @@ fn inactive_decision(decision: &DecisionV2, operation_ids: &[usize]) -> bool {
         }
 }
 
+// Exact planned removals only. This projection never grants an operation or
+// treats a predicted removal as an observed successful transfer.
+fn album_omissions(plan: &JobPlanV2) -> std::collections::HashMap<&StorageRef, usize> {
+    let albums = plan
+        .operations
+        .iter()
+        .filter(|operation| matches!(operation.kind, OperationKind::AlbumTransfer { .. }))
+        .map(|operation| operation.id)
+        .collect::<std::collections::HashSet<_>>();
+    plan.predicted_effects
+        .iter()
+        .filter_map(|effect| match effect {
+            sorter_core::job_plan::PredictedEffect::SourceUnavailable { operation, source }
+                if albums.contains(operation) =>
+            {
+                Some((source, *operation))
+            }
+            _ => None,
+        })
+        .collect()
+}
+fn included_album(
+    decision: &DecisionV2,
+    omissions: &std::collections::HashMap<&StorageRef, usize>,
+) -> Option<usize> {
+    let DecisionV2::Vanished { read } = decision else {
+        return None;
+    };
+    let operation = *omissions.get(&read.source.reference)?;
+    (!read.virtually_present
+        && operation < read.after_operations
+        && read.depends_on.contains(&operation))
+    .then_some(operation)
+}
+
 pub fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
     if plan.request.mode == JobMode::FixNames {
         return plan
@@ -70,6 +108,7 @@ pub fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
                     operation_ids: vec![op.id],
                     artist: None,
                     developer_only: false,
+                    included_in_album: None,
                     no_action: !f.rename_intended && f.repairs.is_empty() && f.failure.is_none(),
                     source: entry_display(&f.source),
                     kind: "FixNames".into(),
@@ -95,10 +134,12 @@ pub fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
             .or_default()
             .push(operation);
     }
+    let omissions = album_omissions(plan);
     plan.decisions
         .iter()
         .enumerate()
         .map(|(i, d)| {
+            let included_in_album = included_album(d, &omissions);
             let (read, kind, reason) = match d {
                 DecisionV2::Album { read, decision } => (
                     read,
@@ -143,7 +184,8 @@ pub fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
                 .map(|op| op.id)
                 .collect();
             let developer_only = routine_inspection(d, &operation_ids);
-            let no_action = inactive_decision(d, &operation_ids);
+            let no_action = inactive_decision(d, &operation_ids)
+                || (included_in_album.is_some() && operation_ids.is_empty());
             let mut destinations = vec![];
             let mut blockers = vec![];
             if let DecisionV2::Album { decision, .. } = d
@@ -180,6 +222,7 @@ pub fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
                 artist,
                 developer_only,
                 no_action,
+                included_in_album,
                 source: entry_display(&read.source),
                 kind: kind.into(),
                 destination: (!destinations.is_empty()).then(|| destinations.join("; ")),
@@ -216,6 +259,40 @@ mod tests {
             depends_on: vec![],
             virtually_present: true,
         };
+        let mut omitted = read.clone();
+        omitted.virtually_present = false;
+        omitted.after_operations = 1;
+        omitted.depends_on = vec![0];
+        let omissions = std::collections::HashMap::from([(&read.source.reference, 0)]);
+        assert_eq!(
+            included_album(&DecisionV2::Vanished { read: omitted.clone() }, &omissions),
+            Some(0)
+        );
+        for variation in 0..4 {
+            let mut unexpected = omitted.clone();
+            match variation {
+                0 => {
+                    unexpected.source.reference = StorageRef::TestOpaque { id: "other".into() }
+                }
+                1 => unexpected.after_operations = 0,
+                2 => unexpected.depends_on.clear(),
+                _ => unexpected.virtually_present = true,
+            }
+            assert_eq!(
+                included_album(&DecisionV2::Vanished { read: unexpected }, &omissions),
+                None
+            );
+        }
+        assert_eq!(
+            included_album(
+                &DecisionV2::ItemError {
+                    read: omitted,
+                    error: "read failed".into(),
+                },
+                &omissions,
+            ),
+            None
+        );
         let mut album = AlbumDecision {
             is_album: false,
             should_process: false,

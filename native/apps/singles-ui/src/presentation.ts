@@ -4,6 +4,7 @@ export function kindLabel(kind:string):string{return kinds[kind]??'רשומת ת
 export function reasonLabel(row:PlanRow):string{
  if(row.kind==='FixNames')return 'נבדקו שם הקובץ והתגיות לתיקון.';
  if(row.kind==='ItemError')return 'לא ניתן היה להשלים את בדיקת הפריט. פרטי השגיאה זמינים במידע הטכני.';
+ if(row.included_in_album!==undefined)return 'הפריט כלול בפעולת האלבום, ללא פעולה נפרדת.';
  if(row.kind==='Vanished')return 'המקור אינו זמין בשלב זה של התכנון.';
  if(row.kind==='Single'&&row.destination)return `האמנים שנבחרו: ${row.reason}`;
  return row.reason;

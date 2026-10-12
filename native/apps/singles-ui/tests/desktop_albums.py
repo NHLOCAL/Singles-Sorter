@@ -123,6 +123,17 @@ def exercise_albums(script, click, fill, wait, capture, root, output, audio_path
         summary = script("return document.querySelector('#execution-summary').textContent")
         assert '1 אלבומים הושלמו' in summary
         assert script("return document.querySelectorAll('#rows tr').length") == (1 if root_album else 2)
+        assert 'הקובץ לא נמצא' not in script("return document.querySelector('#rows').textContent")
+        if not copying:
+            click('#show-inactive')
+            wait(lambda: script("return document.querySelector('#app').dataset.showInactive==='true' && !document.querySelector('#show-inactive').disabled"))
+            assert script("return document.querySelectorAll('#rows tr').length") == (3 if root_album else 4)
+            assert script("return document.querySelector('#rows').textContent").count('כלול באלבום') == 2
+            assert 'הקובץ לא נמצא' not in script("return document.querySelector('#rows').textContent")
+            capture('album-included-descendants-' + label)
+            click('#show-inactive')
+            wait(lambda: script("return document.querySelector('#app').dataset.showInactive==='false' && !document.querySelector('#show-inactive').disabled"))
+            assert script("return document.querySelectorAll('#rows tr').length") == (1 if root_album else 2)
         assert '\u2014' not in script("return document.querySelector('#rows').textContent")
         assert script("return document.querySelector('#review-apply').hidden")
         capture('album-complete-' + label)
