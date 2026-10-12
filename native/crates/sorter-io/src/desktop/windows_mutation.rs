@@ -4588,3 +4588,7 @@ pub use copy_metadata::{
 #[path = "windows_diagnostic_log.rs"]
 mod diagnostic_log;
 pub use diagnostic_log::WindowsDiagnosticLog;
+
+#[path = "windows_move_streams.rs"]
+mod move_streams;
+pub use move_streams::{WindowsCopiedMoveSource, WindowsMoveSourceEvidence, WindowsMoveStreamEvidence};

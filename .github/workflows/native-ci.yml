@@ -396,6 +396,16 @@ jobs:
           cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib directory_receipt_tests -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Test preview-bound copied Move stream evidence
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib move_stream_inventory_tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 5) { throw "Expected 5 copied Move stream inventory cases" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib move_stream_inventory_tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Test native album source guards
         if: ${{ !cancelled() && runner.os == 'Windows' }}
         shell: pwsh

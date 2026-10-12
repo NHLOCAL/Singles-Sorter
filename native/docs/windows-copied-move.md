@@ -1,0 +1,11 @@
+# Scoped copied Move completion
+
+This source checkpoint adds preview-bound NTFS stream evidence and held known-stream leases. It does not activate cross-volume Move or duet retirement. The ordinary local-NTFS copied-Move driver, auxiliary stream staging, complete destination verification, journal phases and checked retirement are being composed separately.
+
+The operation domain assumes no concurrent external writer changing the selected files during execution. Named streams have independent sharing: a lease on the unnamed stream does not universally exclude new named streams. Known streams deny write sharing; fresh full membership/content and representation checks detect observed changes before retirement. An extra stream observed at that boundary retains the source. This is not a claim of exclusion against a writer racing after the check.
+
+Evidence contains the exact held source identity, ordinary non-readonly representation, and every data-stream UTF-16 name, length and SHA256, including the unnamed stream. Inspection and Apply acquisition compare full evidence. NTFS EAs, nonordinary representations, hard links, reparses, readonly sources, malformed inventories and more than 256 streams refuse. Stream enumeration is bounded to 1 MiB; hashing uses 64 KiB buffers and named-stream cancellation checkpoints. No source deletion or destination write exists in this checkpoint.
+
+Microsoft documents [per-stream sharing and whole-file delete conflicts](https://learn.microsoft.com/en-us/windows/win32/fileio/file-streams), [stream enumeration](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-ntqueryinformationfile) and [FILE_STREAM_INFORMATION](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_stream_information). Native cases deliberately permit either documented observed late creation followed by refusal or an OS sharing refusal; neither outcome promotes a universal stream-lock guarantee.
+
+Five native cases are authored and mandatory in CI. Local Rust/Windows execution is unavailable; source review and actual CI acceptance are separate.
