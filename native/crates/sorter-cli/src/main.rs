@@ -344,17 +344,29 @@ fn emit(command: &str, response: Result<ResultPayload, Failure>) -> ExitCode {
 }
 
 fn uses_legacy_frontend(args: &[String]) -> bool {
-    let Some(first) = args.first() else { return false; };
-    if args.iter().take_while(|arg| arg.as_str() != "--")
+    let Some(first) = args.first() else {
+        return false;
+    };
+    if args
+        .iter()
+        .take_while(|arg| arg.as_str() != "--")
         .any(|arg| matches!(arg.as_str(), "--json" | "--ndjson"))
-    { return false; }
-    if matches!(first.as_str(), "classify" | "plan" | "plan-files" | "run-files" | "capabilities") {
+    {
+        return false;
+    }
+    if matches!(
+        first.as_str(),
+        "classify" | "plan" | "plan-files" | "run-files" | "capabilities"
+    ) {
         // Explicit positional target or source-only Fix distinguishes a directory
         // with this literal name from a bare machine command/help diagnostic.
-        args.get(1).is_some_and(|argument| !argument.starts_with('-'))
+        args.get(1)
+            .is_some_and(|argument| !argument.starts_with('-'))
             || matches!(legacy_args::parse(args), Ok(legacy_args::Parsed::Run(options))
                 if options.target.is_some() || options.fix_names)
-    } else { true }
+    } else {
+        true
+    }
 }
 
 fn main() -> ExitCode {
@@ -403,14 +415,21 @@ fn main() -> ExitCode {
     }
 }
 
-
 #[cfg(test)]
 mod frontend_selection_tests {
     use super::*;
     #[test]
     fn literal_command_named_directories_do_not_replace_explicit_machine_protocols() {
-        let choose = |args: &[&str]| uses_legacy_frontend(&args.iter().map(|arg| (*arg).to_owned()).collect::<Vec<_>>());
-        for name in ["classify", "plan", "plan-files", "run-files", "capabilities"] {
+        let choose = |args: &[&str]| {
+            uses_legacy_frontend(&args.iter().map(|arg| (*arg).to_owned()).collect::<Vec<_>>())
+        };
+        for name in [
+            "classify",
+            "plan",
+            "plan-files",
+            "run-files",
+            "capabilities",
+        ] {
             assert!(choose(&[name, "target", "-c"]));
             assert!(choose(&[name, "target", "--help"]));
             assert!(choose(&[name, "-f"]));

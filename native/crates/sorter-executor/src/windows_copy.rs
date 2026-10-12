@@ -1,6 +1,6 @@
 //! Experimental single-file Copy on a consumed, caller-owned NTFS fixture tree.
 //! No path constructor grants mutation ownership; no Move, albums or tag writes.
-use crate::inspection_control::{InspectionControl, checkpoint, probe, any as controlled_any};
+use crate::inspection_control::{InspectionControl, any as controlled_any, checkpoint, probe};
 use crate::{ExecutionError as E, Result, binding::*, transfer::TransferStorage};
 use sorter_core::{discovery::*, job_plan::*, metadata::MetadataProvider};
 use sorter_io::desktop::{DesktopStorage, WindowsDirectoryReadLimits, windows_mutation::*};
@@ -13,16 +13,24 @@ use std::{
     sync::atomic::{AtomicBool, Ordering},
 };
 
-pub(crate) fn inspection_event(control: &InspectionControl, event: WindowsInspectionEvent) -> std::result::Result<(), MutationError> {
+pub(crate) fn inspection_event(
+    control: &InspectionControl,
+    event: WindowsInspectionEvent,
+) -> std::result::Result<(), MutationError> {
     let result = match event {
         WindowsInspectionEvent::Probe => control.observation(),
         WindowsInspectionEvent::BytesRead(count) => control.bytes(count),
     };
-    result.map_err(|error| MutationError::new(match error {
-        E::Cancelled => MutationErrorKind::Cancelled,
-        E::Unsupported => MutationErrorKind::Unsupported,
-        _ => MutationErrorKind::Io,
-    }, "read-only inspection interrupted"))
+    result.map_err(|error| {
+        MutationError::new(
+            match error {
+                E::Cancelled => MutationErrorKind::Cancelled,
+                E::Unsupported => MutationErrorKind::Unsupported,
+                _ => MutationErrorKind::Io,
+            },
+            "read-only inspection interrupted",
+        )
+    })
 }
 pub(crate) fn inspection_error(error: MutationError) -> E {
     match error.kind {
@@ -371,12 +379,17 @@ pub(crate) fn open_owned_recovery_domain_with_control(
     {
         return Err(E::Scope);
     }
-    let journal = crate::physical_journal::PhysicalJournalV2::open_for_recovery_domain_with_control(
-        scope, job_id, bytes, domain, control,
-    )?;
+    let journal =
+        crate::physical_journal::PhysicalJournalV2::open_for_recovery_domain_with_control(
+            scope, job_id, bytes, domain, control,
+        )?;
     let binding = journal.binding();
     for observed in [&binding.data.source_root, &binding.data.target_root] {
-        let parent = probe(control, || owned.parent_reference(&observed.reference).map_err(|_| E::Scope))?;
+        let parent = probe(control, || {
+            owned
+                .parent_reference(&observed.reference)
+                .map_err(|_| E::Scope)
+        })?;
         if Some(parent.identity()) != observed.identity.as_ref() {
             return Err(E::Scope);
         }
@@ -434,10 +447,25 @@ impl<'a> WindowsCopyRecovery<'a> {
         {
             return Err(E::Scope);
         }
-        let source = probe(control, || owned.parent_reference(&binding.data.source_root.reference).map_err(|_| E::Scope))?;
-        let target = probe(control, || owned.parent_reference(&binding.data.target_root.reference).map_err(|_| E::Scope))?;
-        if probe(control, || source.contains_ancestor(target.identity()).map_err(|_| E::Scope))?
-            || probe(control, || target.contains_ancestor(source.identity()).map_err(|_| E::Scope))? {
+        let source = probe(control, || {
+            owned
+                .parent_reference(&binding.data.source_root.reference)
+                .map_err(|_| E::Scope)
+        })?;
+        let target = probe(control, || {
+            owned
+                .parent_reference(&binding.data.target_root.reference)
+                .map_err(|_| E::Scope)
+        })?;
+        if probe(control, || {
+            source
+                .contains_ancestor(target.identity())
+                .map_err(|_| E::Scope)
+        })? || probe(control, || {
+            target
+                .contains_ancestor(source.identity())
+                .map_err(|_| E::Scope)
+        })? {
             return Err(E::Scope);
         }
         if Some(source.identity()) != binding.data.source_root.identity.as_ref()
@@ -449,7 +477,9 @@ impl<'a> WindowsCopyRecovery<'a> {
             path(&binding.data.source_root.reference).map_err(|_| E::Scope)?,
             path(&binding.data.target_root.reference).map_err(|_| E::Scope)?,
         ];
-        let reads = probe(control, || DesktopStorage::new(&roots).map_err(|_| E::Scope))?;
+        let reads = probe(control, || {
+            DesktopStorage::new(&roots).map_err(|_| E::Scope)
+        })?;
         Ok(Self {
             control,
             read_budget: None,
@@ -467,7 +497,9 @@ impl<'a> WindowsCopyRecovery<'a> {
     #[cfg(feature = "selected-windows-execution")]
     pub(crate) fn limit_reads(&mut self, observations: usize, bytes: u64) -> Result<()> {
         // Legacy bounded diagnostics do not have a controlled ADS reader.
-        if self.binding.data.copied_move_sources.is_some() { return Err(E::Unsupported); }
+        if self.binding.data.copied_move_sources.is_some() {
+            return Err(E::Unsupported);
+        }
         self.read_budget = Some((observations, bytes));
         Ok(())
     }
@@ -518,13 +550,20 @@ impl<'a> WindowsCopyRecovery<'a> {
             Err(error) if error.kind == StorageErrorKind::NotFound => Ok(None),
             Err(_) => Err(E::Io),
         })?;
-        let Some(before) = before else { return Ok(None); };
+        let Some(before) = before else {
+            return Ok(None);
+        };
         self.check_content_length(before.size.ok_or(E::Stale)?)?;
-        let mut input = probe(control, || self.reads.open_read(reference).map_err(|_| E::Io))?;
+        let mut input = probe(control, || {
+            self.reads.open_read(reference).map_err(|_| E::Io)
+        })?;
         let bound = input.binding().ok_or(E::Stale)?;
         if Some(&bound.identity) != before.identity.as_ref()
             || Some(bound.size) != before.size
-            || Some(&bound.modified) != before.modified.as_ref() { return Err(E::Stale); }
+            || Some(&bound.modified) != before.modified.as_ref()
+        {
+            return Err(E::Stale);
+        }
         let expected_length = before.size.ok_or(E::Stale)?;
         use sha2::{Digest, Sha256};
         let mut hash = Sha256::new();
@@ -532,19 +571,35 @@ impl<'a> WindowsCopyRecovery<'a> {
         let mut length = 0u64;
         loop {
             checkpoint(control)?;
-            let amount = expected_length.saturating_sub(length).min(buffer.len() as u64).max(1) as usize;
+            let amount = expected_length
+                .saturating_sub(length)
+                .min(buffer.len() as u64)
+                .max(1) as usize;
             let result = input.read(&mut buffer[..amount]).map_err(|_| E::Io);
-            let count = match result { Ok(count) => count, Err(error) => { checkpoint(control)?; return Err(error); } };
-            if let Some(control) = control { control.bytes(count)?; }
+            let count = match result {
+                Ok(count) => count,
+                Err(error) => {
+                    checkpoint(control)?;
+                    return Err(error);
+                }
+            };
+            if let Some(control) = control {
+                control.bytes(count)?;
+            }
             self.charge_content(count as u64)?;
             checkpoint(control)?;
-            if count == 0 { break; }
+            if count == 0 {
+                break;
+            }
             length = length.checked_add(count as u64).ok_or(E::Unsupported)?;
-            if length > expected_length { return Err(E::Stale); }
+            if length > expected_length {
+                return Err(E::Stale);
+            }
             hash.update(&buffer[..count]);
         }
         if length != expected_length
-            || probe(control, || self.reads.stat(reference).map_err(|_| E::Stale))? != before {
+            || probe(control, || self.reads.stat(reference).map_err(|_| E::Stale))? != before
+        {
             return Err(E::Stale);
         }
         Ok(Some(crate::recovery::ObservedObject {
@@ -552,25 +607,45 @@ impl<'a> WindowsCopyRecovery<'a> {
             sha256: format!("{:x}", hash.finalize()),
         }))
     }
-    fn inspect_streams(&self, parent: &WindowsParent, name: &MutationName, identity: &ObjectIdentity) -> Result<WindowsMoveSourceEvidence> {
+    fn inspect_streams(
+        &self,
+        parent: &WindowsParent,
+        name: &MutationName,
+        identity: &ObjectIdentity,
+    ) -> Result<WindowsMoveSourceEvidence> {
         if let Some(control) = self.control {
-            self.owned.inspect_copied_move_streams_observed(parent, name, identity, control.cancellation_flag(),
-                &mut |event| inspection_event(control, event)).map_err(inspection_error)
+            self.owned
+                .inspect_copied_move_streams_observed(
+                    parent,
+                    name,
+                    identity,
+                    control.cancellation_flag(),
+                    &mut |event| inspection_event(control, event),
+                )
+                .map_err(inspection_error)
         } else {
-            self.owned.inspect_copied_move_streams(parent, name, identity, &AtomicBool::new(false)).map_err(inspection_error)
+            self.owned
+                .inspect_copied_move_streams(parent, name, identity, &AtomicBool::new(false))
+                .map_err(inspection_error)
         }
     }
-
 }
 impl crate::recovery::RecoveryStorage for WindowsCopyRecovery<'_> {
     fn verify_move_source_streams(&mut self, expected: &CopiedMoveSourceEvidence) -> Result<bool> {
         checkpoint(self.control)?;
-        if !controlled_any(self.binding.data.copied_move_sources.iter().flatten(), self.control, |source| source == expected)?
-        {
+        if !controlled_any(
+            self.binding.data.copied_move_sources.iter().flatten(),
+            self.control,
+            |source| source == expected,
+        )? {
             return Err(E::Scope);
         }
         let source_path = path(&expected.source).map_err(|_| E::Scope)?;
-        let parent = probe(self.control, || self.owned.parent_reference(&reference(source_path.parent().ok_or(E::Scope)?)).map_err(|_| E::Scope))?;
+        let parent = probe(self.control, || {
+            self.owned
+                .parent_reference(&reference(source_path.parent().ok_or(E::Scope)?))
+                .map_err(|_| E::Scope)
+        })?;
         let name = MutationName::Windows(
             source_path
                 .file_name()
@@ -588,25 +663,33 @@ impl crate::recovery::RecoveryStorage for WindowsCopyRecovery<'_> {
         expected: &CopiedMoveSourceEvidence,
     ) -> Result<bool> {
         checkpoint(self.control)?;
-        if !controlled_any(self.binding.data.copied_move_sources.iter().flatten(), self.control, |source| source == expected)?
-            || !controlled_any(self.binding.operations().iter(), self.control, |operation| {
+        if !controlled_any(
+            self.binding.data.copied_move_sources.iter().flatten(),
+            self.control,
+            |source| source == expected,
+        )? || !controlled_any(
+            self.binding.operations().iter(),
+            self.control,
+            |operation| {
                 operation.destination == *destination
                     && operation.source.observation.reference == expected.source
-            })?
-        {
+            },
+        )? {
             return Err(E::Scope);
         }
-        let parent = probe(self.control, || destination_parent(
-            self.owned,
-            destination,
-            self.binding
-                .data
-                .target_root
-                .identity
-                .as_ref()
-                .ok_or(E::Scope)?,
-        )
-        .map_err(|_| E::Scope))?;
+        let parent = probe(self.control, || {
+            destination_parent(
+                self.owned,
+                destination,
+                self.binding
+                    .data
+                    .target_root
+                    .identity
+                    .as_ref()
+                    .ok_or(E::Scope)?,
+            )
+            .map_err(|_| E::Scope)
+        })?;
         let name = MutationName::Windows(
             destination
                 .components
@@ -631,17 +714,19 @@ impl crate::recovery::RecoveryStorage for WindowsCopyRecovery<'_> {
         })? {
             return Err(E::Scope);
         }
-        let parent = probe(self.control, || destination_parent(
-            self.owned,
-            destination,
-            self.binding
-                .data
-                .target_root
-                .identity
-                .as_ref()
-                .ok_or(E::Scope)?,
-        )
-        .map_err(|_| E::Stale))?;
+        let parent = probe(self.control, || {
+            destination_parent(
+                self.owned,
+                destination,
+                self.binding
+                    .data
+                    .target_root
+                    .identity
+                    .as_ref()
+                    .ok_or(E::Scope)?,
+            )
+            .map_err(|_| E::Stale)
+        })?;
         let leaf = MutationName::Windows(
             destination
                 .components
@@ -650,13 +735,16 @@ impl crate::recovery::RecoveryStorage for WindowsCopyRecovery<'_> {
                 .encode_utf16()
                 .collect(),
         );
-        let actual = probe(self.control, || self.owned.inspect_selected_copy_metadata(
-                &parent,
-                &leaf,
-                &expected.destination_identity,
-                EntryKind::File,
-            )
-            .map_err(|_| E::Stale))?;
+        let actual = probe(self.control, || {
+            self.owned
+                .inspect_selected_copy_metadata(
+                    &parent,
+                    &leaf,
+                    &expected.destination_identity,
+                    EntryKind::File,
+                )
+                .map_err(|_| E::Stale)
+        })?;
         Ok(actual.is_some_and(|actual| {
             actual.creation_time == expected.retained_creation_time
                 && actual.access_time == expected.access_time
@@ -670,8 +758,9 @@ impl crate::recovery::RecoveryStorage for WindowsCopyRecovery<'_> {
         &mut self,
         reference: &StorageRef,
     ) -> Result<Option<crate::recovery::ObservedObject>> {
-        if !controlled_any(self.binding.operations().iter(), self.control, |op| op.source.observation.reference == *reference)?
-        {
+        if !controlled_any(self.binding.operations().iter(), self.control, |op| {
+            op.source.observation.reference == *reference
+        })? {
             return Err(E::Scope);
         }
         self.observe(reference)
@@ -680,8 +769,9 @@ impl crate::recovery::RecoveryStorage for WindowsCopyRecovery<'_> {
         &mut self,
         destination: &DestinationEvidence,
     ) -> Result<Option<crate::recovery::ObservedObject>> {
-        if !controlled_any(self.binding.operations().iter(), self.control, |op| op.destination == *destination)?
-        {
+        if !controlled_any(self.binding.operations().iter(), self.control, |op| {
+            op.destination == *destination
+        })? {
             return Err(E::Scope);
         }
         let mut destination_path = path(&destination.root).map_err(|_| E::Scope)?;

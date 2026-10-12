@@ -58,7 +58,13 @@ impl WindowsMutationStorage {
         expected_identity: &ObjectIdentity,
         cancel: &AtomicBool,
     ) -> Result<WindowsMoveSourceEvidence, MutationError> {
-        self.inspect_copied_move_streams_observed(parent, name, expected_identity, cancel, &mut |_| Ok(()))
+        self.inspect_copied_move_streams_observed(
+            parent,
+            name,
+            expected_identity,
+            cancel,
+            &mut |_| Ok(()),
+        )
     }
 
     /// Same exact read-only evidence, with cooperative probes and actual bytes.
@@ -71,14 +77,25 @@ impl WindowsMutationStorage {
         observe: &mut dyn FnMut(WindowsInspectionEvent) -> Result<(), MutationError>,
     ) -> Result<WindowsMoveSourceEvidence, MutationError> {
         inspection_probe(cancel, observe, || self.check_parent(parent))?;
-        if !matches!(parent.root.role, RootRole::Source | RootRole::Target | RootRole::Synthetic) {
-            return Err(err(MutationErrorKind::Unsupported, "stream inspection requires media root"));
+        if !matches!(
+            parent.root.role,
+            RootRole::Source | RootRole::Target | RootRole::Synthetic
+        ) {
+            return Err(err(
+                MutationErrorKind::Unsupported,
+                "stream inspection requires media root",
+            ));
         }
         let file = inspection_probe(cancel, observe, || {
             open_relative_file(parent.handle(), units(name)?, false, FILE_GENERIC_READ)
         })?;
-        if inspection_probe(cancel, observe, || identity(&file).map_err(read_error))? != *expected_identity {
-            return Err(err(MutationErrorKind::StalePlan, "stream inspection identity changed"));
+        if inspection_probe(cancel, observe, || identity(&file).map_err(read_error))?
+            != *expected_identity
+        {
+            return Err(err(
+                MutationErrorKind::StalePlan,
+                "stream inspection identity changed",
+            ));
         }
         let attributes = inspection_probe(cancel, observe, || move_representation(&file))?;
         let inventory = inspection_probe(cancel, observe, || stream_inventory(&file))?;
@@ -92,22 +109,39 @@ impl WindowsMutationStorage {
                 let stream = inspection_probe(cancel, observe, || {
                     open_named_stream(parent.handle(), units(name)?, suffix, false)
                 })?;
-                if inspection_probe(cancel, observe, || identity(&stream).map_err(read_error))? != *expected_identity {
-                    return Err(err(MutationErrorKind::StalePlan, "inspected named stream identity changed"));
+                if inspection_probe(cancel, observe, || identity(&stream).map_err(read_error))?
+                    != *expected_identity
+                {
+                    return Err(err(
+                        MutationErrorKind::StalePlan,
+                        "inspected named stream identity changed",
+                    ));
                 }
                 inspection_probe(cancel, observe, || move_representation(&stream))?;
                 let digest = stream_digest_observed(&stream, *length, cancel, observe)?;
                 held.push(stream);
                 digest
             };
-            streams.push(WindowsMoveStreamEvidence { name: suffix.clone(), length: *length, sha256: digest.sha256 });
+            streams.push(WindowsMoveStreamEvidence {
+                name: suffix.clone(),
+                length: *length,
+                sha256: digest.sha256,
+            });
         }
         if inspection_probe(cancel, observe, || stream_inventory(&file))? != inventory
-            || inspection_probe(cancel, observe, || move_representation(&file))? != attributes {
-            return Err(err(MutationErrorKind::StalePlan, "inspected stream inventory changed"));
+            || inspection_probe(cancel, observe, || move_representation(&file))? != attributes
+        {
+            return Err(err(
+                MutationErrorKind::StalePlan,
+                "inspected stream inventory changed",
+            ));
         }
         inspection_probe(cancel, observe, || self.check_parent(parent))?;
-        Ok(WindowsMoveSourceEvidence { identity: expected_identity.clone(), attributes, streams })
+        Ok(WindowsMoveSourceEvidence {
+            identity: expected_identity.clone(),
+            attributes,
+            streams,
+        })
     }
 
     /// Inspect under existing source-root authority. This never creates a file.
@@ -453,8 +487,15 @@ fn stream_digest_with(
     let mut total = 0u64;
     stream_digest_observed(file, length, cancel, &mut |event| {
         if let WindowsInspectionEvent::BytesRead(count) = event {
-            total = total.checked_add(count as u64).ok_or_else(|| err(MutationErrorKind::Unsupported, "inspection counter overflow"))?;
-            if count != 0 { checkpoint(total); }
+            total = total.checked_add(count as u64).ok_or_else(|| {
+                err(
+                    MutationErrorKind::Unsupported,
+                    "inspection counter overflow",
+                )
+            })?;
+            if count != 0 {
+                checkpoint(total);
+            }
         }
         Ok(())
     })
@@ -466,9 +507,13 @@ fn stream_digest_observed(
     observe: &mut dyn FnMut(WindowsInspectionEvent) -> Result<(), MutationError>,
 ) -> Result<ContentDigest, MutationError> {
     let mut reader = file;
-    let original_position = inspection_probe(cancel, observe, || reader.stream_position().map_err(io_error))?;
+    let original_position = inspection_probe(cancel, observe, || {
+        reader.stream_position().map_err(io_error)
+    })?;
     let result = (|| {
-        inspection_probe(cancel, observe, || reader.seek(SeekFrom::Start(0)).map_err(io_error))?;
+        inspection_probe(cancel, observe, || {
+            reader.seek(SeekFrom::Start(0)).map_err(io_error)
+        })?;
         let mut hash = Sha256::new();
         let mut total = 0u64;
         let mut buffer = [0u8; 64 * 1024];
@@ -477,19 +522,41 @@ fn stream_digest_observed(
             // Verify exact length and one-byte EOF, including growing streams.
             let amount = length.saturating_sub(total).min(buffer.len() as u64).max(1) as usize;
             let read = reader.read(&mut buffer[..amount]).map_err(io_error);
-            let count = match read { Ok(count) => count, Err(error) => { cancelled(cancel)?; return Err(error); } };
+            let count = match read {
+                Ok(count) => count,
+                Err(error) => {
+                    cancelled(cancel)?;
+                    return Err(error);
+                }
+            };
             observe(WindowsInspectionEvent::BytesRead(count))?;
             cancelled(cancel)?;
-            if count == 0 { break; }
-            total = total.checked_add(count as u64).filter(|total| *total <= length)
-                .ok_or_else(|| err(MutationErrorKind::StalePlan, "stream exceeds preview length"))?;
+            if count == 0 {
+                break;
+            }
+            total = total
+                .checked_add(count as u64)
+                .filter(|total| *total <= length)
+                .ok_or_else(|| {
+                    err(
+                        MutationErrorKind::StalePlan,
+                        "stream exceeds preview length",
+                    )
+                })?;
             hash.update(&buffer[..count]);
         }
-        if total != length { return Err(err(MutationErrorKind::StalePlan, "stream length changed")); }
-        Ok(ContentDigest { length, sha256: hash.finalize().into() })
+        if total != length {
+            return Err(err(MutationErrorKind::StalePlan, "stream length changed"));
+        }
+        Ok(ContentDigest {
+            length,
+            sha256: hash.finalize().into(),
+        })
     })();
     // Restore even when stopped; this is read-handle cleanup, never a file write.
-    let restored = reader.seek(SeekFrom::Start(original_position)).map_err(io_error);
+    let restored = reader
+        .seek(SeekFrom::Start(original_position))
+        .map_err(io_error);
     cancelled(cancel)?;
     match (result, restored) {
         (Ok(digest), Ok(_)) => Ok(digest),

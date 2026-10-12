@@ -542,23 +542,32 @@ mod selected {
     }
 }
 
-
 #[test]
 fn literal_command_named_sources_keep_sort_and_source_only_fix_frontends() {
-    for name in ["classify", "plan", "plan-files", "run-files", "capabilities"] {
+    for name in [
+        "classify",
+        "plan",
+        "plan-files",
+        "run-files",
+        "capabilities",
+    ] {
         let root = tree();
         fs::rename(root.path().join("source"), root.path().join(name)).unwrap();
         let file = root.path().join(name).join("זמר בדיקה - שיר.mp3");
         let before = fs::read(&file).unwrap();
-        for arguments in [vec![name, "target", "-c", "--dry-run", "--no-ai"],
-            vec![name, "-f", "--dry-run", "--no-ai"]]
-        {
+        for arguments in [
+            vec![name, "target", "-c", "--dry-run", "--no-ai"],
+            vec![name, "-f", "--dry-run", "--no-ai"],
+        ] {
             let result = run(root.path(), &arguments);
             assert!(result.status.success(), "{name}: {result:?}");
             assert!(String::from_utf8_lossy(&result.stdout).contains("predictions only"));
             assert_eq!(fs::read(&file).unwrap(), before);
             assert_eq!(fs::read_dir(root.path().join("target")).unwrap().count(), 0);
-            assert_eq!(fs::read_dir(root.path().join("journal")).unwrap().count(), 0);
+            assert_eq!(
+                fs::read_dir(root.path().join("journal")).unwrap().count(),
+                0
+            );
             assert!(!root.path().join("logs").exists());
         }
     }

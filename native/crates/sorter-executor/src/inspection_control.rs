@@ -2,7 +2,10 @@
 //! references, writable bindings, resume authority, or cached content evidence.
 use crate::{ExecutionError as E, Result};
 use serde::Serialize;
-use std::sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}};
+use std::sync::{
+    Arc, Mutex,
+    atomic::{AtomicBool, Ordering},
+};
 use std::time::{Duration, Instant};
 
 #[derive(Clone, Debug, Serialize)]
@@ -18,9 +21,16 @@ pub struct InspectionProgress {
 }
 impl Default for InspectionProgress {
     fn default() -> Self {
-        Self { stage: "queued", operation: None, total_operations: 0,
-            completed_operations: 0, records_checked: 0, observations: 0,
-            bytes_read: 0, elapsed_ms: 0 }
+        Self {
+            stage: "queued",
+            operation: None,
+            total_operations: 0,
+            completed_operations: 0,
+            records_checked: 0,
+            observations: 0,
+            bytes_read: 0,
+            elapsed_ms: 0,
+        }
     }
 }
 struct State {
@@ -34,7 +44,10 @@ enum CancellationFlag<'a> {
 }
 impl CancellationFlag<'_> {
     fn get(&self) -> &AtomicBool {
-        match self { Self::Owned(flag) => flag, Self::Borrowed(flag) => flag }
+        match self {
+            Self::Owned(flag) => flag,
+            Self::Borrowed(flag) => flag,
+        }
     }
 }
 pub struct InspectionControl<'a> {
@@ -44,76 +57,155 @@ pub struct InspectionControl<'a> {
     observer: Box<dyn Fn(InspectionProgress) + Send + Sync>,
 }
 impl<'a> InspectionControl<'a> {
-    pub fn new(cancel: Arc<AtomicBool>, observer: impl Fn(InspectionProgress) + Send + Sync + 'static) -> Self {
+    pub fn new(
+        cancel: Arc<AtomicBool>,
+        observer: impl Fn(InspectionProgress) + Send + Sync + 'static,
+    ) -> Self {
         Self::with_progress_interval(cancel, Duration::from_millis(100), observer)
     }
     /// Reporting cadence only; every read/probe still checks cancellation.
-    pub fn with_progress_interval(cancel: Arc<AtomicBool>, publish_every: Duration, observer: impl Fn(InspectionProgress) + Send + Sync + 'static) -> Self {
+    pub fn with_progress_interval(
+        cancel: Arc<AtomicBool>,
+        publish_every: Duration,
+        observer: impl Fn(InspectionProgress) + Send + Sync + 'static,
+    ) -> Self {
         Self::with_flag(CancellationFlag::Owned(cancel), publish_every, observer)
     }
     /// Borrow the CLI/host's actual flag for this synchronous inspection. Never
     /// mint an independent token or poll/reset another owner's cancellation.
-    pub fn borrowed(cancel: &'a AtomicBool, observer: impl Fn(InspectionProgress) + Send + Sync + 'static) -> Self {
-        Self::with_flag(CancellationFlag::Borrowed(cancel), Duration::from_millis(100), observer)
+    pub fn borrowed(
+        cancel: &'a AtomicBool,
+        observer: impl Fn(InspectionProgress) + Send + Sync + 'static,
+    ) -> Self {
+        Self::with_flag(
+            CancellationFlag::Borrowed(cancel),
+            Duration::from_millis(100),
+            observer,
+        )
     }
-    fn with_flag(cancel: CancellationFlag<'a>, publish_every: Duration, observer: impl Fn(InspectionProgress) + Send + Sync + 'static) -> Self {
+    fn with_flag(
+        cancel: CancellationFlag<'a>,
+        publish_every: Duration,
+        observer: impl Fn(InspectionProgress) + Send + Sync + 'static,
+    ) -> Self {
         let now = Instant::now();
-        Self { cancel, state: Mutex::new(State { progress: InspectionProgress::default(), started: now, emitted: now }),
-            publish_every, observer: Box::new(observer) }
+        Self {
+            cancel,
+            state: Mutex::new(State {
+                progress: InspectionProgress::default(),
+                started: now,
+                emitted: now,
+            }),
+            publish_every,
+            observer: Box::new(observer),
+        }
     }
     /// Native read adapters share the original owner's cooperative flag.
     #[cfg(all(windows, feature = "experimental-windows-copy"))]
-    pub(crate) fn cancellation_flag(&self) -> &AtomicBool { self.cancel.get() }
+    pub(crate) fn cancellation_flag(&self) -> &AtomicBool {
+        self.cancel.get()
+    }
     pub fn checkpoint(&self) -> Result<()> {
-        if self.cancel.get().load(Ordering::Acquire) { Err(E::Cancelled) } else { Ok(()) }
+        if self.cancel.get().load(Ordering::Acquire) {
+            Err(E::Cancelled)
+        } else {
+            Ok(())
+        }
     }
     pub fn snapshot(&self) -> Result<InspectionProgress> {
         let mut state = self.state.lock().map_err(|_| E::Io)?;
-        state.progress.elapsed_ms = u64::try_from(state.started.elapsed().as_millis()).map_err(|_| E::Unsupported)?;
+        state.progress.elapsed_ms =
+            u64::try_from(state.started.elapsed().as_millis()).map_err(|_| E::Unsupported)?;
         Ok(state.progress.clone())
     }
-    fn update(&self, force: bool, change: impl FnOnce(&mut InspectionProgress) -> Result<()>) -> Result<()> {
+    fn update(
+        &self,
+        force: bool,
+        change: impl FnOnce(&mut InspectionProgress) -> Result<()>,
+    ) -> Result<()> {
         self.update_inner(force, false, change)
     }
-    fn update_inner(&self, force: bool, consumed: bool, change: impl FnOnce(&mut InspectionProgress) -> Result<()>) -> Result<()> {
-        if !consumed { self.checkpoint()?; }
+    fn update_inner(
+        &self,
+        force: bool,
+        consumed: bool,
+        change: impl FnOnce(&mut InspectionProgress) -> Result<()>,
+    ) -> Result<()> {
+        if !consumed {
+            self.checkpoint()?;
+        }
         let next = {
             let mut state = self.state.lock().map_err(|_| E::Io)?;
             change(&mut state.progress)?;
-            state.progress.elapsed_ms = u64::try_from(state.started.elapsed().as_millis()).map_err(|_| E::Unsupported)?;
+            state.progress.elapsed_ms =
+                u64::try_from(state.started.elapsed().as_millis()).map_err(|_| E::Unsupported)?;
             if force || state.emitted.elapsed() >= self.publish_every {
                 state.emitted = Instant::now();
                 Some(state.progress.clone())
-            } else { None }
+            } else {
+                None
+            }
         };
-        if let Some(next) = next { (self.observer)(next); }
+        if let Some(next) = next {
+            (self.observer)(next);
+        }
         self.checkpoint()
     }
     pub fn stage(&self, stage: &'static str) -> Result<()> {
-        self.update(true, |progress| { progress.stage = stage; Ok(()) })
+        self.update(true, |progress| {
+            progress.stage = stage;
+            Ok(())
+        })
     }
     pub fn operations(&self, total: usize) -> Result<()> {
-        self.update(true, |progress| { progress.total_operations = total; Ok(()) })
+        self.update(true, |progress| {
+            progress.total_operations = total;
+            Ok(())
+        })
     }
     pub fn begin_operation(&self, operation: usize) -> Result<()> {
-        self.update(true, |progress| { progress.stage = "files"; progress.operation = Some(operation); Ok(()) })
+        self.update(true, |progress| {
+            progress.stage = "files";
+            progress.operation = Some(operation);
+            Ok(())
+        })
     }
     pub fn complete_operation(&self) -> Result<()> {
         self.update(true, |progress| {
-            let completed = progress.completed_operations.checked_add(1).ok_or(E::Unsupported)?;
-            if completed > progress.total_operations { return Err(E::InvalidBinding); }
+            let completed = progress
+                .completed_operations
+                .checked_add(1)
+                .ok_or(E::Unsupported)?;
+            if completed > progress.total_operations {
+                return Err(E::InvalidBinding);
+            }
             progress.completed_operations = completed;
             Ok(())
         })
     }
     pub fn record(&self) -> Result<()> {
-        self.update(false, |progress| { progress.records_checked = progress.records_checked.checked_add(1).ok_or(E::Unsupported)?; Ok(()) })
+        self.update(false, |progress| {
+            progress.records_checked = progress
+                .records_checked
+                .checked_add(1)
+                .ok_or(E::Unsupported)?;
+            Ok(())
+        })
     }
     pub fn observation(&self) -> Result<()> {
-        self.update(false, |progress| { progress.observations = progress.observations.checked_add(1).ok_or(E::Unsupported)?; Ok(()) })
+        self.update(false, |progress| {
+            progress.observations = progress.observations.checked_add(1).ok_or(E::Unsupported)?;
+            Ok(())
+        })
     }
     pub fn bytes(&self, count: usize) -> Result<()> {
-        self.update_inner(false, true, |progress| { progress.bytes_read = progress.bytes_read.checked_add(u64::try_from(count).map_err(|_| E::Unsupported)?).ok_or(E::Unsupported)?; Ok(()) })
+        self.update_inner(false, true, |progress| {
+            progress.bytes_read = progress
+                .bytes_read
+                .checked_add(u64::try_from(count).map_err(|_| E::Unsupported)?)
+                .ok_or(E::Unsupported)?;
+            Ok(())
+        })
     }
 }
 pub(crate) fn checkpoint(control: Option<&InspectionControl>) -> Result<()> {
@@ -122,26 +214,43 @@ pub(crate) fn checkpoint(control: Option<&InspectionControl>) -> Result<()> {
 /// A synchronous native call cannot be forcibly preempted here. Cancellation is
 /// tested both before and after, including before interpreting an error/absence.
 #[cfg(any(test, all(windows, feature = "experimental-windows-copy")))]
-pub(crate) fn probe<T>(control: Option<&InspectionControl>, read: impl FnOnce() -> Result<T>) -> Result<T> {
+pub(crate) fn probe<T>(
+    control: Option<&InspectionControl>,
+    read: impl FnOnce() -> Result<T>,
+) -> Result<T> {
     checkpoint(control)?;
-    if let Some(control) = control { control.observation()?; }
+    if let Some(control) = control {
+        control.observation()?;
+    }
     let result = read();
     checkpoint(control)?;
     result
 }
 
-pub(crate) fn any<T>(items: impl IntoIterator<Item = T>, control: Option<&InspectionControl>, mut predicate: impl FnMut(T) -> bool) -> Result<bool> {
+pub(crate) fn any<T>(
+    items: impl IntoIterator<Item = T>,
+    control: Option<&InspectionControl>,
+    mut predicate: impl FnMut(T) -> bool,
+) -> Result<bool> {
     for item in items {
         checkpoint(control)?;
-        if predicate(item) { return Ok(true); }
+        if predicate(item) {
+            return Ok(true);
+        }
     }
     Ok(false)
 }
 
-pub(crate) fn find<T>(items: impl IntoIterator<Item = T>, control: Option<&InspectionControl>, mut predicate: impl FnMut(&T) -> bool) -> Result<Option<T>> {
+pub(crate) fn find<T>(
+    items: impl IntoIterator<Item = T>,
+    control: Option<&InspectionControl>,
+    mut predicate: impl FnMut(&T) -> bool,
+) -> Result<Option<T>> {
     for item in items {
         checkpoint(control)?;
-        if predicate(&item) { return Ok(Some(item)); }
+        if predicate(&item) {
+            return Ok(Some(item));
+        }
     }
     Ok(None)
 }
@@ -163,7 +272,10 @@ mod tests {
         let cancel = Arc::new(AtomicBool::new(false));
         let control = InspectionControl::new(cancel.clone(), |_| {});
         cancel.store(true, Ordering::Release);
-        assert_eq!(probe(Some(&control), || panic!("cancelled probe ran")), Err::<(), _>(E::Cancelled));
+        assert_eq!(
+            probe(Some(&control), || panic!("cancelled probe ran")),
+            Err::<(), _>(E::Cancelled)
+        );
         assert_eq!(control.snapshot().unwrap().bytes_read, 0);
         // If a synchronous read returns bytes while cancellation was requested,
         // record those actual bytes before propagating cancellation.
@@ -174,13 +286,18 @@ mod tests {
     fn cancellation_after_probe_overrides_absence_or_error() {
         let cancel = Arc::new(AtomicBool::new(false));
         let control = InspectionControl::new(cancel.clone(), |_| {});
-        let result = probe(Some(&control), || { cancel.store(true, Ordering::Release); Ok(None::<usize>) });
+        let result = probe(Some(&control), || {
+            cancel.store(true, Ordering::Release);
+            Ok(None::<usize>)
+        });
         assert_eq!(result, Err(E::Cancelled));
     }
     #[test]
     fn progress_counts_actual_repeated_bytes_and_checks_overflow() {
         let control = InspectionControl::new(Arc::new(AtomicBool::new(false)), |_| {});
-        control.bytes(65536).unwrap(); control.bytes(65536).unwrap(); control.bytes(1).unwrap();
+        control.bytes(65536).unwrap();
+        control.bytes(65536).unwrap();
+        control.bytes(1).unwrap();
         assert_eq!(control.snapshot().unwrap().bytes_read, 131073);
         control.state.lock().unwrap().progress.bytes_read = u64::MAX;
         assert_eq!(control.bytes(1), Err(E::Unsupported));
@@ -188,10 +305,14 @@ mod tests {
     #[test]
     fn operation_progress_preserves_ids_and_checked_counts() {
         let control = InspectionControl::new(Arc::new(AtomicBool::new(false)), |_| {});
-        control.operations(2).unwrap(); control.begin_operation(1).unwrap(); control.complete_operation().unwrap();
-        control.begin_operation(0).unwrap(); control.complete_operation().unwrap();
+        control.operations(2).unwrap();
+        control.begin_operation(1).unwrap();
+        control.complete_operation().unwrap();
+        control.begin_operation(0).unwrap();
+        control.complete_operation().unwrap();
         let progress = control.snapshot().unwrap();
-        assert_eq!(progress.operation, Some(0)); assert_eq!(progress.completed_operations, 2);
+        assert_eq!(progress.operation, Some(0));
+        assert_eq!(progress.completed_operations, 2);
         assert_eq!(control.complete_operation(), Err(E::InvalidBinding));
     }
 }
@@ -201,27 +322,44 @@ pub(crate) const MAX_RECORD_BYTES: usize = 4 * 1024 * 1024;
 pub(crate) const MAX_RECORDS: usize = 65536;
 pub(crate) const MAX_OPERATIONS: usize = 4096;
 /// Writer and reader use identical limits, including JSON envelope and newline.
-pub(crate) fn check_recorded_write(line_bytes: usize, total_bytes: usize, records: usize) -> Result<()> {
+pub(crate) fn check_recorded_write(
+    line_bytes: usize,
+    total_bytes: usize,
+    records: usize,
+) -> Result<()> {
     if line_bytes > MAX_RECORD_BYTES || total_bytes > MAX_RECORDED_BYTES || records > MAX_RECORDS {
         Err(E::Unsupported)
-    } else { Ok(()) }
+    } else {
+        Ok(())
+    }
 }
 
 /// A controlled parser is bounded before expensive strict replay. These are
 /// recorded-input ceilings, not cumulative media-content limits.
-pub(crate) fn check_recorded_input(bytes: &[u8], control: Option<&InspectionControl>) -> Result<()> {
-    if control.is_none() { return Ok(()); }
-    if bytes.len() > MAX_RECORDED_BYTES { return Err(E::Unsupported); }
+pub(crate) fn check_recorded_input(
+    bytes: &[u8],
+    control: Option<&InspectionControl>,
+) -> Result<()> {
+    if control.is_none() {
+        return Ok(());
+    }
+    if bytes.len() > MAX_RECORDED_BYTES {
+        return Err(E::Unsupported);
+    }
     let mut records = 0usize;
     let mut length = 0usize;
     for chunk in bytes.chunks(65536) {
         checkpoint(control)?;
         for byte in chunk {
             length = length.checked_add(1).ok_or(E::Unsupported)?;
-            if length > MAX_RECORD_BYTES { return Err(E::Unsupported); }
+            if length > MAX_RECORD_BYTES {
+                return Err(E::Unsupported);
+            }
             if *byte == b'\n' {
                 records = records.checked_add(1).ok_or(E::Unsupported)?;
-                if records > MAX_RECORDS { return Err(E::Unsupported); }
+                if records > MAX_RECORDS {
+                    return Err(E::Unsupported);
+                }
                 length = 0;
             }
         }
@@ -234,12 +372,30 @@ mod controlled_writer_boundary_tests {
     use super::*;
     #[test]
     fn writer_record_line_and_total_limits_share_reader_boundaries() {
-        assert_eq!(check_recorded_write(MAX_RECORD_BYTES, MAX_RECORDED_BYTES, MAX_RECORDS), Ok(()));
-        assert_eq!(check_recorded_write(MAX_RECORD_BYTES + 1, MAX_RECORDED_BYTES, MAX_RECORDS), Err(E::Unsupported));
-        assert_eq!(check_recorded_write(1, MAX_RECORDED_BYTES + 1, 1), Err(E::Unsupported));
-        assert_eq!(check_recorded_write(1, 1, MAX_RECORDS + 1), Err(E::Unsupported));
+        assert_eq!(
+            check_recorded_write(MAX_RECORD_BYTES, MAX_RECORDED_BYTES, MAX_RECORDS),
+            Ok(())
+        );
+        assert_eq!(
+            check_recorded_write(MAX_RECORD_BYTES + 1, MAX_RECORDED_BYTES, MAX_RECORDS),
+            Err(E::Unsupported)
+        );
+        assert_eq!(
+            check_recorded_write(1, MAX_RECORDED_BYTES + 1, 1),
+            Err(E::Unsupported)
+        );
+        assert_eq!(
+            check_recorded_write(1, 1, MAX_RECORDS + 1),
+            Err(E::Unsupported)
+        );
         let control = InspectionControl::new(Arc::new(AtomicBool::new(false)), |_| {});
-        assert_eq!(check_recorded_input(&vec![b'\n'; MAX_RECORDS], Some(&control)), Ok(()));
-        assert_eq!(check_recorded_input(&vec![b'\n'; MAX_RECORDS + 1], Some(&control)), Err(E::Unsupported));
+        assert_eq!(
+            check_recorded_input(&vec![b'\n'; MAX_RECORDS], Some(&control)),
+            Ok(())
+        );
+        assert_eq!(
+            check_recorded_input(&vec![b'\n'; MAX_RECORDS + 1], Some(&control)),
+            Err(E::Unsupported)
+        );
     }
 }

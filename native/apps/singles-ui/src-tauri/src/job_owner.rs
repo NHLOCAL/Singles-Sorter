@@ -234,7 +234,8 @@ struct Shared {
     lifecycle: AtomicU64,
 }
 #[cfg(all(test, windows, feature = "selected-windows-execution"))]
-type VerificationObserver = Arc<dyn Fn(&sorter_executor::inspection_control::InspectionProgress) + Send + Sync>;
+type VerificationObserver =
+    Arc<dyn Fn(&sorter_executor::inspection_control::InspectionProgress) + Send + Sync>;
 #[derive(Clone, Default)]
 pub struct Host {
     shared: Arc<Shared>,
@@ -333,7 +334,9 @@ impl Host {
     pub fn cancel_active(&self) {
         if let Ok(mut inner) = self.lock() {
             self.shared.lifecycle.fetch_add(1, Ordering::AcqRel);
-            if let Some(run) = &mut inner.recovery.run { run.cancel(); }
+            if let Some(run) = &mut inner.recovery.run {
+                run.cancel();
+            }
             if let Some(probe) = &inner.model_probe {
                 probe.cancel();
             }
@@ -1190,12 +1193,25 @@ mod tests {
         let manifest = include_str!("../build.rs");
         let handlers = include_str!("lib.rs");
         let permissions = include_str!("../permissions/preview.toml");
-        for command in ["start_recovery_list", "recovery_snapshot", "cancel_recovery", "select_recovery_root", "start_recovery_inspection"] {
+        for command in [
+            "start_recovery_list",
+            "recovery_snapshot",
+            "cancel_recovery",
+            "select_recovery_root",
+            "start_recovery_inspection",
+        ] {
             assert!(manifest.contains(&format!("\"{command}\"")));
             assert!(handlers.contains(&format!("commands::{command},")));
             assert!(permissions.contains(&format!("\"{command}\"")));
         }
-        for forbidden in ["replay_recovery", "resume_recovery", "delete_journal", "opener:", "shell:", "fs:"] {
+        for forbidden in [
+            "replay_recovery",
+            "resume_recovery",
+            "delete_journal",
+            "opener:",
+            "shell:",
+            "fs:",
+        ] {
             assert!(!permissions.contains(forbidden));
         }
     }

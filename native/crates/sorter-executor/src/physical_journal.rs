@@ -1,5 +1,7 @@
 //! Append-only JSONL framing. Durability is a sink contract, not an fsync claim.
-use crate::inspection_control::{InspectionControl, checkpoint, any as controlled_any, find as controlled_find};
+use crate::inspection_control::{
+    InspectionControl, any as controlled_any, checkpoint, find as controlled_find,
+};
 use crate::{ExecutionError as E, Result, binding::*, hash};
 use serde::{Deserialize, Serialize};
 use sorter_core::discovery::ObjectIdentity;
@@ -106,14 +108,30 @@ fn line<T: Serialize>(body: T) -> Result<(Vec<u8>, String)> {
 }
 impl PhysicalJournalV2 {
     fn header_line(binding: &ExecutionBinding, job_id: &str) -> Result<(Vec<u8>, String)> {
-        line(Header { schema: 2, job_id: job_id.into(), binding: binding.data.clone(), binding_sha256: binding.sha256()? })
+        line(Header {
+            schema: 2,
+            job_id: job_id.into(),
+            binding: binding.data.clone(),
+            binding_sha256: binding.sha256()?,
+        })
     }
-    pub(crate) fn validate_controlled_creation(binding: &ExecutionBinding, job_id: &str) -> Result<()> {
+    pub(crate) fn validate_controlled_creation(
+        binding: &ExecutionBinding,
+        job_id: &str,
+    ) -> Result<()> {
         use crate::inspection_control::{MAX_OPERATIONS, MAX_RECORDS, check_recorded_write};
         // At most 15 physical records per copied operation, including retirement.
-        if job_id.is_empty() || binding.operations().len() > MAX_OPERATIONS
-            || binding.operations().len().checked_mul(15).and_then(|n| n.checked_add(1)).is_none_or(|n| n > MAX_RECORDS)
-        { return Err(E::Unsupported); }
+        if job_id.is_empty()
+            || binding.operations().len() > MAX_OPERATIONS
+            || binding
+                .operations()
+                .len()
+                .checked_mul(15)
+                .and_then(|n| n.checked_add(1))
+                .is_none_or(|n| n > MAX_RECORDS)
+        {
+            return Err(E::Unsupported);
+        }
         let (bytes, _) = Self::header_line(binding, job_id)?;
         check_recorded_write(bytes.len(), bytes.len(), 1)
     }
@@ -129,7 +147,9 @@ impl PhysicalJournalV2 {
             return Err(E::CorruptJournal);
         }
         let (bytes, previous) = Self::header_line(binding, job_id)?;
-        if binding.data.copied_move_sources.is_some() { Self::validate_controlled_creation(binding, job_id)?; }
+        if binding.data.copied_move_sources.is_some() {
+            Self::validate_controlled_creation(binding, job_id)?;
+        }
         sink.append(&bytes)?;
         sink.sync()?;
         Ok(Self {
@@ -149,13 +169,27 @@ impl PhysicalJournalV2 {
     pub fn open(binding: &ExecutionBinding, job_id: &str, bytes: &[u8]) -> Result<Self> {
         Self::open_with_control(binding, job_id, bytes, None)
     }
-    pub fn open_controlled(binding: &ExecutionBinding, job_id: &str, bytes: &[u8], control: &InspectionControl) -> Result<Self> {
+    pub fn open_controlled(
+        binding: &ExecutionBinding,
+        job_id: &str,
+        bytes: &[u8],
+        control: &InspectionControl,
+    ) -> Result<Self> {
         Self::open_with_control(binding, job_id, bytes, Some(control))
     }
-    pub(crate) fn open_with_control(binding: &ExecutionBinding, job_id: &str, bytes: &[u8], control: Option<&InspectionControl>) -> Result<Self> {
+    pub(crate) fn open_with_control(
+        binding: &ExecutionBinding,
+        job_id: &str,
+        bytes: &[u8],
+        control: Option<&InspectionControl>,
+    ) -> Result<Self> {
         crate::inspection_control::check_recorded_input(bytes, control)?;
         checkpoint(control)?;
-        if control.is_some() && binding.operations().len() > crate::inspection_control::MAX_OPERATIONS { return Err(E::Unsupported); }
+        if control.is_some()
+            && binding.operations().len() > crate::inspection_control::MAX_OPERATIONS
+        {
+            return Err(E::Unsupported);
+        }
         if !binding.data.valid_domain() {
             return Err(E::InvalidBinding);
         }
@@ -190,7 +224,9 @@ impl PhysicalJournalV2 {
         // second record vector and check cancellation while consuming each line.
         let mut records = lines.peekable();
         while let Some(raw) = records.next() {
-            if records.peek().is_none() { break; }
+            if records.peek().is_none() {
+                break;
+            }
             checkpoint(control)?;
             let record: Envelope<Record> =
                 serde_json::from_slice(raw).map_err(|_| E::CorruptJournal)?;
@@ -202,9 +238,18 @@ impl PhysicalJournalV2 {
             {
                 return Err(E::CorruptJournal);
             }
-            journal.validate_with_control(&record.body.event, control)
-                .map_err(|error| if error == E::Cancelled { error } else { E::CorruptJournal })?;
-            if let Some(control) = control { control.record()?; }
+            journal
+                .validate_with_control(&record.body.event, control)
+                .map_err(|error| {
+                    if error == E::Cancelled {
+                        error
+                    } else {
+                        E::CorruptJournal
+                    }
+                })?;
+            if let Some(control) = control {
+                control.record()?;
+            }
             journal.events.push(record.body.event);
             journal.previous = record.sha256;
         }
@@ -226,7 +271,10 @@ impl PhysicalJournalV2 {
         Self::open_for_recovery_domain_with_control(scope, job_id, bytes, domain, None)
     }
     pub(crate) fn open_for_recovery_domain_with_control(
-        scope: &RecoveryScope, job_id: &str, bytes: &[u8], domain: ExecutionDomain,
+        scope: &RecoveryScope,
+        job_id: &str,
+        bytes: &[u8],
+        domain: ExecutionDomain,
         control: Option<&InspectionControl>,
     ) -> Result<Self> {
         crate::inspection_control::check_recorded_input(bytes, control)?;
@@ -237,7 +285,11 @@ impl PhysicalJournalV2 {
             .ok_or(E::CorruptJournal)?;
         let head: Envelope<Header> =
             serde_json::from_slice(&bytes[..end]).map_err(|_| E::CorruptJournal)?;
-        if control.is_some() && head.body.binding.operations.len() > crate::inspection_control::MAX_OPERATIONS { return Err(E::Unsupported); }
+        if control.is_some()
+            && head.body.binding.operations.len() > crate::inspection_control::MAX_OPERATIONS
+        {
+            return Err(E::Unsupported);
+        }
         checkpoint(control)?;
         if hash(&head.body.binding)? != scope.inspected_binding_sha256
             || head.body.binding.scope_sha256 != scope_digest(&scope.original_scope)?
@@ -298,13 +350,21 @@ impl PhysicalJournalV2 {
         };
         let (bytes, next) = line(record)?;
         if self.binding.data.copied_move_sources.is_some() {
-            let total = self.bytes.len().checked_add(bytes.len()).ok_or(E::NeedsRecovery)?;
+            let total = self
+                .bytes
+                .len()
+                .checked_add(bytes.len())
+                .ok_or(E::NeedsRecovery)?;
             let records = self.events.len().checked_add(2).ok_or(E::NeedsRecovery)?;
             #[cfg(test)]
-            if self.test_record_budget.is_some_and(|(line, budget)| bytes.len() > line || total > budget) {
+            if self
+                .test_record_budget
+                .is_some_and(|(line, budget)| bytes.len() > line || total > budget)
+            {
                 return Err(E::NeedsRecovery);
             }
-            crate::inspection_control::check_recorded_write(bytes.len(), total, records).map_err(|_| E::NeedsRecovery)?;
+            crate::inspection_control::check_recorded_write(bytes.len(), total, records)
+                .map_err(|_| E::NeedsRecovery)?;
         }
 
         sink.append(&bytes)?;
@@ -318,15 +378,25 @@ impl PhysicalJournalV2 {
     fn validate(&self, event: &Event) -> Result<()> {
         self.validate_with_control(event, None)
     }
-    fn history_with_control(&self, operation: usize, control: Option<&InspectionControl>) -> Result<Vec<&Event>> {
+    fn history_with_control(
+        &self,
+        operation: usize,
+        control: Option<&InspectionControl>,
+    ) -> Result<Vec<&Event>> {
         let mut history = Vec::new();
         for event in &self.events {
             checkpoint(control)?;
-            if event.operation == operation { history.push(event); }
+            if event.operation == operation {
+                history.push(event);
+            }
         }
         Ok(history)
     }
-    fn validate_with_control(&self, event: &Event, control: Option<&InspectionControl>) -> Result<()> {
+    fn validate_with_control(
+        &self,
+        event: &Event,
+        control: Option<&InspectionControl>,
+    ) -> Result<()> {
         checkpoint(control)?;
         let op = self
             .binding
@@ -456,7 +526,9 @@ impl PhysicalJournalV2 {
                 required.push(operation.destination.id.as_str());
             }
         }
-        let atomic = controlled_any(history.iter(), control, |event| event.phase == AtomicRenamePrepared)?;
+        let atomic = controlled_any(history.iter(), control, |event| {
+            event.phase == AtomicRenamePrepared
+        })?;
         if event.phase == AtomicRenamePrepared
             && (op.mode != TransferMode::Move || required.len() != 1)
         {
@@ -479,9 +551,13 @@ impl PhysicalJournalV2 {
             let mut committed = HashSet::new();
             for prior in &self.events {
                 checkpoint(control)?;
-                if prior.phase == Committed { committed.insert(prior.destination_id.as_str()); }
+                if prior.phase == Committed {
+                    committed.insert(prior.destination_id.as_str());
+                }
             }
-            if required.is_empty() || controlled_any(required.iter(), control, |id| !committed.contains(id))? {
+            if required.is_empty()
+                || controlled_any(required.iter(), control, |id| !committed.contains(id))?
+            {
                 return Err(E::InvalidTransition);
             }
             // One retirement owner per source; another operation cannot retire it twice.
@@ -504,8 +580,10 @@ impl PhysicalJournalV2 {
         {
             Some(&event.expected_source)
         } else {
-            controlled_find(history.iter(), control, |event| event.phase == TempAllocated)?
-                .and_then(|event| event.observed_identity.as_ref())
+            controlled_find(history.iter(), control, |event| {
+                event.phase == TempAllocated
+            })?
+            .and_then(|event| event.observed_identity.as_ref())
         };
         if event.phase == TempAllocated {
             if !(matches!(event.observed_identity, Some(ObjectIdentity::Test { .. }))
@@ -517,7 +595,9 @@ impl PhysicalJournalV2 {
                     || self.binding.data.copied_move_sources.is_some()))
                 || event.observed_identity == self.binding.data.source_root.identity
                 || event.observed_identity == self.binding.data.target_root.identity
-                || controlled_any(self.binding.operations().iter(), control, |o| event.observed_identity == o.source.observation.identity)?
+                || controlled_any(self.binding.operations().iter(), control, |o| {
+                    event.observed_identity == o.source.observation.identity
+                })?
                 || event.observed_identity.as_ref() == Some(&event.expected_source)
                 || controlled_any(self.events.iter(), control, |e| {
                     e.phase == TempAllocated && e.observed_identity == event.observed_identity
@@ -538,31 +618,62 @@ impl PhysicalJournalV2 {
     }
     /// Destination commitment alone does not complete a move dependency.
     /// The sole pre-retirement exception is another copy of the same duet source.
-    pub(crate) fn dependency_ready_with_control(&self, dependency: usize, dependent: usize, control: Option<&InspectionControl>) -> Result<bool> {
+    pub(crate) fn dependency_ready_with_control(
+        &self,
+        dependency: usize,
+        dependent: usize,
+        control: Option<&InspectionControl>,
+    ) -> Result<bool> {
         checkpoint(control)?;
         let prior = &self.binding.operations()[dependency];
         let next = &self.binding.operations()[dependent];
         let history = self.history_with_control(dependency, control)?;
-        if !history.last().is_some_and(|event| matches!(event.phase, Phase::Committed | Phase::SourceRetired)) {
+        if !history
+            .last()
+            .is_some_and(|event| matches!(event.phase, Phase::Committed | Phase::SourceRetired))
+        {
             return Ok(false);
         }
         if controlled_any(self.events.iter(), control, |event| {
-            matches!(event.phase, Phase::Failed | Phase::Cancelled | Phase::NeedsRecovery)
-                && self.binding.operations()[event.operation].source.observation.reference == prior.source.observation.reference
-        })? { return Ok(false); }
-        if prior.mode == TransferMode::Copy || same_duet_cohort(prior, next) { return Ok(true); }
+            matches!(
+                event.phase,
+                Phase::Failed | Phase::Cancelled | Phase::NeedsRecovery
+            ) && self.binding.operations()[event.operation]
+                .source
+                .observation
+                .reference
+                == prior.source.observation.reference
+        })? {
+            return Ok(false);
+        }
+        if prior.mode == TransferMode::Copy || same_duet_cohort(prior, next) {
+            return Ok(true);
+        }
         Ok(controlled_any(self.events.iter(), control, |event| {
             event.phase == Phase::SourceRetired
-                && self.binding.operations()[event.operation].source.observation.reference == prior.source.observation.reference
-        })? || controlled_any(history.iter(), control, |event| event.phase == Phase::AtomicRenameObserved)?)
+                && self.binding.operations()[event.operation]
+                    .source
+                    .observation
+                    .reference
+                    == prior.source.observation.reference
+        })? || controlled_any(history.iter(), control, |event| {
+            event.phase == Phase::AtomicRenameObserved
+        })?)
     }
     pub(crate) fn dependencies_ready(&self, dependent: usize) -> bool {
-        self.dependencies_ready_with_control(dependent, None).unwrap_or(false)
+        self.dependencies_ready_with_control(dependent, None)
+            .unwrap_or(false)
     }
-    fn dependencies_ready_with_control(&self, dependent: usize, control: Option<&InspectionControl>) -> Result<bool> {
+    fn dependencies_ready_with_control(
+        &self,
+        dependent: usize,
+        control: Option<&InspectionControl>,
+    ) -> Result<bool> {
         for dependency in &self.binding.operations()[dependent].depends_on {
             checkpoint(control)?;
-            if !self.dependency_ready_with_control(*dependency, dependent, control)? { return Ok(false); }
+            if !self.dependency_ready_with_control(*dependency, dependent, control)? {
+                return Ok(false);
+            }
         }
         Ok(true)
     }
@@ -920,17 +1031,38 @@ mod copied_move_journal_tests {
     fn copied_move_record_budget_refusal_preserves_prefix_and_poison() {
         for line_budget in [true, false] {
             let (binding, mut journal, mut sink) = ready();
-            let prefix = sink.0.clone(); let events = journal.events().to_vec();
-            journal.test_record_budget = Some(if line_budget { (0, usize::MAX) } else { (usize::MAX, prefix.len()) });
+            let prefix = sink.0.clone();
+            let events = journal.events().to_vec();
+            journal.test_record_budget = Some(if line_budget {
+                (0, usize::MAX)
+            } else {
+                (usize::MAX, prefix.len())
+            });
             let next = event(&binding, Phase::AuxiliaryStreamsPrepared);
-            assert_eq!(journal.append(&mut sink, next.clone()), Err(E::NeedsRecovery));
-            assert_eq!(sink.0, prefix); assert_eq!(journal.events(), events); assert!(journal.poisoned);
-            let control = InspectionControl::new(std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)), |_| {});
-            let reopened = PhysicalJournalV2::open_controlled(&binding, "copied-move-phases", &prefix, &control).unwrap();
-            assert_eq!(reopened.events(), events); assert_eq!(reopened.events().last().unwrap().phase, Phase::BytesSynced);
+            assert_eq!(
+                journal.append(&mut sink, next.clone()),
+                Err(E::NeedsRecovery)
+            );
+            assert_eq!(sink.0, prefix);
+            assert_eq!(journal.events(), events);
+            assert!(journal.poisoned);
+            let control = InspectionControl::new(
+                std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+                |_| {},
+            );
+            let reopened = PhysicalJournalV2::open_controlled(
+                &binding,
+                "copied-move-phases",
+                &prefix,
+                &control,
+            )
+            .unwrap();
+            assert_eq!(reopened.events(), events);
+            assert_eq!(reopened.events().last().unwrap().phase, Phase::BytesSynced);
             journal.test_record_budget = None;
             assert_eq!(journal.append(&mut sink, next), Err(E::NeedsRecovery));
-            assert_eq!(sink.0, prefix); assert_eq!(journal.events(), events);
+            assert_eq!(sink.0, prefix);
+            assert_eq!(journal.events(), events);
         }
     }
     #[test]
@@ -1101,20 +1233,51 @@ mod controlled_writer_boundary_tests {
     use super::*;
     #[test]
     fn physical_exact_envelope_and_newline_match_reader_limit() {
-        let header: Envelope<Header> = serde_json::from_slice(include_bytes!("../tests/fixtures/physical-copy-v2-before-metadata.jsonl").split(|b| *b == b'\n').next().unwrap()).unwrap();
-        let mut binding = ExecutionBinding { data: header.body.binding, recovery_only: false };
+        let header: Envelope<Header> = serde_json::from_slice(
+            include_bytes!("../tests/fixtures/physical-copy-v2-before-metadata.jsonl")
+                .split(|b| *b == b'\n')
+                .next()
+                .unwrap(),
+        )
+        .unwrap();
+        let mut binding = ExecutionBinding {
+            data: header.body.binding,
+            recovery_only: false,
+        };
         binding.data.resources.resource_ids.push(String::new());
-        let initial = PhysicalJournalV2::header_line(&binding, "boundary").unwrap().0.len();
+        let initial = PhysicalJournalV2::header_line(&binding, "boundary")
+            .unwrap()
+            .0
+            .len();
         let padding = crate::inspection_control::MAX_RECORD_BYTES - initial;
         *binding.data.resources.resource_ids.last_mut().unwrap() = "x".repeat(padding);
-        let bytes = PhysicalJournalV2::header_line(&binding, "boundary").unwrap().0;
+        let bytes = PhysicalJournalV2::header_line(&binding, "boundary")
+            .unwrap()
+            .0;
         assert_eq!(bytes.len(), crate::inspection_control::MAX_RECORD_BYTES);
         assert!(serde_json::to_vec(&binding.data).unwrap().len() < bytes.len());
-        assert_eq!(PhysicalJournalV2::validate_controlled_creation(&binding, "boundary"), Ok(()));
-        assert_eq!(PhysicalJournalV2::validate_controlled_creation(&binding, "boundaryx"), Err(E::Unsupported));
-        let control = InspectionControl::new(std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)), |_| {});
-        assert_eq!(crate::inspection_control::check_recorded_input(&bytes, Some(&control)), Ok(()));
-        let larger = PhysicalJournalV2::header_line(&binding, "boundaryx").unwrap().0;
-        assert_eq!(crate::inspection_control::check_recorded_input(&larger, Some(&control)), Err(E::Unsupported));
+        assert_eq!(
+            PhysicalJournalV2::validate_controlled_creation(&binding, "boundary"),
+            Ok(())
+        );
+        assert_eq!(
+            PhysicalJournalV2::validate_controlled_creation(&binding, "boundaryx"),
+            Err(E::Unsupported)
+        );
+        let control = InspectionControl::new(
+            std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            |_| {},
+        );
+        assert_eq!(
+            crate::inspection_control::check_recorded_input(&bytes, Some(&control)),
+            Ok(())
+        );
+        let larger = PhysicalJournalV2::header_line(&binding, "boundaryx")
+            .unwrap()
+            .0;
+        assert_eq!(
+            crate::inspection_control::check_recorded_input(&larger, Some(&control)),
+            Err(E::Unsupported)
+        );
     }
 }

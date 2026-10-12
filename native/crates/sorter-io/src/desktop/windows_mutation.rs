@@ -828,22 +828,39 @@ impl WindowsMutationStorage {
         observe: &mut dyn FnMut(WindowsInspectionEvent) -> Result<(), MutationError>,
     ) -> Result<Vec<u8>, MutationError> {
         if !matches!(expected_identity, ObjectIdentity::Windows { .. }) {
-            return Err(err(MutationErrorKind::Unsupported, "full Windows journal identity required"));
+            return Err(err(
+                MutationErrorKind::Unsupported,
+                "full Windows journal identity required",
+            ));
         }
         let parent = inspection_probe(cancel, observe, || self.selected_journal_root())?;
-        inspection_probe(cancel, observe, || self.check_role(&parent, RootRole::Journal))?;
+        inspection_probe(cancel, observe, || {
+            self.check_role(&parent, RootRole::Journal)
+        })?;
         let mut file = inspection_probe(cancel, observe, || {
             open_relative_file(parent.handle(), units(name)?, false, FILE_GENERIC_READ)
         })?;
         inspection_probe(cancel, observe, || ensure_regular(&file))?;
-        if inspection_probe(cancel, observe, || identity(&file).map_err(read_error))? != *expected_identity {
-            return Err(err(MutationErrorKind::StalePlan, "journal identity changed"));
+        if inspection_probe(cancel, observe, || identity(&file).map_err(read_error))?
+            != *expected_identity
+        {
+            return Err(err(
+                MutationErrorKind::StalePlan,
+                "journal identity changed",
+            ));
         }
         let length = inspection_probe(cancel, observe, || file.metadata().map_err(io_error))?.len();
         const LIMIT: u64 = 64 * 1024 * 1024;
-        if length > LIMIT { return Err(err(MutationErrorKind::Unsupported, "selected journal exceeds read limit")); }
+        if length > LIMIT {
+            return Err(err(
+                MutationErrorKind::Unsupported,
+                "selected journal exceeds read limit",
+            ));
+        }
         let mut bytes = Vec::new();
-        bytes.try_reserve_exact(length as usize).map_err(|_| err(MutationErrorKind::Io, "journal allocation failed"))?;
+        bytes
+            .try_reserve_exact(length as usize)
+            .map_err(|_| err(MutationErrorKind::Io, "journal allocation failed"))?;
         let mut chunk = [0u8; 65536];
         loop {
             cancelled(cancel)?;
@@ -851,17 +868,36 @@ impl WindowsMutationStorage {
             let remaining = (length as usize).saturating_sub(bytes.len());
             let amount = remaining.min(chunk.len()).max(1);
             let read = file.read(&mut chunk[..amount]).map_err(io_error);
-            let count = match read { Ok(count) => count, Err(error) => { cancelled(cancel)?; return Err(error); } };
+            let count = match read {
+                Ok(count) => count,
+                Err(error) => {
+                    cancelled(cancel)?;
+                    return Err(error);
+                }
+            };
             observe(WindowsInspectionEvent::BytesRead(count))?;
             cancelled(cancel)?;
-            if count == 0 { break; }
-            if count > remaining { return Err(err(MutationErrorKind::StalePlan, "journal grew during inspection")); }
+            if count == 0 {
+                break;
+            }
+            if count > remaining {
+                return Err(err(
+                    MutationErrorKind::StalePlan,
+                    "journal grew during inspection",
+                ));
+            }
             bytes.extend_from_slice(&chunk[..count]);
         }
         if bytes.len() as u64 != length
-            || inspection_probe(cancel, observe, || file.metadata().map_err(io_error))?.len() != length
-            || inspection_probe(cancel, observe, || identity(&file).map_err(read_error))? != *expected_identity {
-            return Err(err(MutationErrorKind::StalePlan, "journal changed during inspection"));
+            || inspection_probe(cancel, observe, || file.metadata().map_err(io_error))?.len()
+                != length
+            || inspection_probe(cancel, observe, || identity(&file).map_err(read_error))?
+                != *expected_identity
+        {
+            return Err(err(
+                MutationErrorKind::StalePlan,
+                "journal changed during inspection",
+            ));
         }
         inspection_probe(cancel, observe, || self.check_parent(&parent))?;
         Ok(bytes)

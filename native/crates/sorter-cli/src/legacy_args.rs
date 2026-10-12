@@ -95,8 +95,13 @@ fn value(
 // Reuse the pinned CPython/Unicode decimal predicate rather than ASCII-only or
 // Rust's broader numeric predicate. This classifies tokens, never opens paths.
 fn negative_number(value: &str) -> bool {
-    let Some(value) = value.strip_prefix('-') else { return false; };
-    let digits = |part: &str| part.chars().all(|character| sorter_core::unicode15::decimal_digit(character).is_some());
+    let Some(value) = value.strip_prefix('-') else {
+        return false;
+    };
+    let digits = |part: &str| {
+        part.chars()
+            .all(|character| sorter_core::unicode15::decimal_digit(character).is_some())
+    };
     if let Some((whole, fraction)) = value.split_once('.') {
         !fraction.is_empty() && digits(whole) && digits(fraction)
     } else {
@@ -300,10 +305,14 @@ mod tests {
     }
     #[test]
     fn negative_path_grammar_is_the_frozen_decimal_class() {
-        for value in ["-1", "-.5", "-١", "-１２.５"] { assert!(negative_number(value), "{value}"); }
+        for value in ["-1", "-.5", "-١", "-１２.５"] {
+            assert!(negative_number(value), "{value}");
+        }
         for value in ["-", "-.", "-1.", "-1e2", "-²", "-1.2.3"] {
             assert!(!negative_number(value), "{value}");
-            if value != "-" { assert!(parse(&[value.into(), "target".into()]).is_err()); }
+            if value != "-" {
+                assert!(parse(&[value.into(), "target".into()]).is_err());
+            }
         }
     }
     #[test]

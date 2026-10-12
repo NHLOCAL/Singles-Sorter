@@ -426,7 +426,10 @@ fn cancellation_during_original_plan_revalidation_is_not_mislabeled_stale() {
         cancel.load(Ordering::Acquire),
         "fixture must reach original filename NER"
     );
-    assert_eq!(result.err(), Some(sorter_executor::ExecutionError::Cancelled));
+    assert_eq!(
+        result.err(),
+        Some(sorter_executor::ExecutionError::Cancelled)
+    );
     assert_eq!(std::fs::read_dir(&f.target).unwrap().count(), 0);
     assert_eq!(std::fs::read_dir(&f.journal).unwrap().count(), 0);
 }
@@ -578,17 +581,31 @@ fn incomplete_duet_is_refused_during_read_only_readiness() {
     let mut plan = f.plan.clone();
     plan.operations.pop();
     for effect in &mut plan.predicted_effects {
-        if let PredictedEffect::DuetDeleteIntention { after_operations, .. } = effect {
+        if let PredictedEffect::DuetDeleteIntention {
+            after_operations, ..
+        } = effect
+        {
             after_operations.pop();
         }
     }
     assert!(supported_copied_move_plan(&plan).is_err());
     let mut reads = WindowsPlanningStorage::for_preview(&f.source, &f.target).unwrap();
-    assert!(prepare_copied_move_scope(&plan, &mut reads, &grants(&f.source, &f.target, &f.journal),
-        &f.scope.execution_scope().resources, &AtomicBool::new(false)).is_err());
+    assert!(
+        prepare_copied_move_scope(
+            &plan,
+            &mut reads,
+            &grants(&f.source, &f.target, &f.journal),
+            &f.scope.execution_scope().resources,
+            &AtomicBool::new(false)
+        )
+        .is_err()
+    );
     assert_eq!(std::fs::read_dir(&f.target).unwrap().count(), 0);
     assert_eq!(std::fs::read_dir(&f.journal).unwrap().count(), 0);
-    assert_eq!(std::fs::read(f.source.join("song.mp3:notes")).unwrap(), b"owned-auxiliary");
+    assert_eq!(
+        std::fs::read(f.source.join("song.mp3:notes")).unwrap(),
+        b"owned-auxiliary"
+    );
 }
 
 // Include roots, directories, identities, kinds, sizes, attributes, creation and
@@ -613,55 +630,108 @@ fn inspection_tree(root: &std::path::Path) -> Vec<InspectionTreeEntry> {
         assert!(!metadata.file_type().is_symlink());
         let reference = reads.reference(&path).unwrap();
         let observation = reads.stat(&reference).unwrap();
-        let content = metadata.is_file().then(|| digest(&std::fs::read(&path).unwrap()));
+        let content = metadata
+            .is_file()
+            .then(|| digest(&std::fs::read(&path).unwrap()));
         let mut streams = Vec::new();
         if metadata.is_dir() {
-            pending.extend(std::fs::read_dir(&path).unwrap().map(|entry| entry.unwrap().path()));
+            pending.extend(
+                std::fs::read_dir(&path)
+                    .unwrap()
+                    .map(|entry| entry.unwrap().path()),
+            );
         } else if path.extension().is_some_and(|extension| extension == "mp3") {
-            let suffix = if path.file_name().unwrap() == "zzz-solo.mp3" { "extra" } else { "notes" };
+            let suffix = if path.file_name().unwrap() == "zzz-solo.mp3" {
+                "extra"
+            } else {
+                "notes"
+            };
             let bytes = std::fs::read(format!("{}:{suffix}", path.display())).unwrap();
             streams.push((suffix.into(), bytes.len() as u64, digest(&bytes)));
         }
-        entries.push(InspectionTreeEntry { path: path.strip_prefix(root).unwrap().to_path_buf(), observation,
-            attributes: metadata.file_attributes(), created: metadata.creation_time(), written: metadata.last_write_time(), content, streams });
+        entries.push(InspectionTreeEntry {
+            path: path.strip_prefix(root).unwrap().to_path_buf(),
+            observation,
+            attributes: metadata.file_attributes(),
+            created: metadata.creation_time(),
+            written: metadata.last_write_time(),
+            content,
+            streams,
+        });
     }
     entries.sort_by(|a, b| a.path.cmp(&b.path));
     entries
 }
-fn stopped_after_media_bytes(threshold: u64) -> (sorter_executor::inspection_control::InspectionControl<'static>, std::sync::Arc<std::sync::atomic::AtomicU64>) {
+fn stopped_after_media_bytes(
+    threshold: u64,
+) -> (
+    sorter_executor::inspection_control::InspectionControl<'static>,
+    std::sync::Arc<std::sync::atomic::AtomicU64>,
+) {
     use sorter_executor::inspection_control::InspectionControl;
     use std::sync::{Arc, atomic::AtomicU64};
     let cancel = Arc::new(AtomicBool::new(false));
     let flag = cancel.clone();
     let baseline = Arc::new(AtomicU64::new(0));
     let journal_bytes = baseline.clone();
-    let control = InspectionControl::with_progress_interval(cancel, std::time::Duration::ZERO, move |progress| {
-        if progress.stage == "metadata" { journal_bytes.store(progress.bytes_read, Ordering::Release); }
-        if progress.stage == "files" && progress.bytes_read > journal_bytes.load(Ordering::Acquire) + threshold {
-            flag.store(true, Ordering::Release);
-        }
-    });
+    let control = InspectionControl::with_progress_interval(
+        cancel,
+        std::time::Duration::ZERO,
+        move |progress| {
+            if progress.stage == "metadata" {
+                journal_bytes.store(progress.bytes_read, Ordering::Release);
+            }
+            if progress.stage == "files"
+                && progress.bytes_read > journal_bytes.load(Ordering::Acquire) + threshold
+            {
+                flag.store(true, Ordering::Release);
+            }
+        },
+    );
     (control, baseline)
 }
 fn fresh_inspection_control() -> sorter_executor::inspection_control::InspectionControl<'static> {
-    sorter_executor::inspection_control::InspectionControl::new(std::sync::Arc::new(AtomicBool::new(false)), |_| {})
+    sorter_executor::inspection_control::InspectionControl::new(
+        std::sync::Arc::new(AtomicBool::new(false)),
+        |_| {},
+    )
 }
 #[test]
 fn controlled_main_chunk_cancel_preserves_trees_and_fresh_reinspection() {
     let main = vec![7u8; 256 * 1024];
     let f = Fixture::with_contents(true, false, &main, b"owned-auxiliary");
     let mut job = f.job().unwrap();
-    assert_eq!(job.run(&AtomicBool::new(false), &mut |_| {}).unwrap().status, JobStatus::Complete);
+    assert_eq!(
+        job.run(&AtomicBool::new(false), &mut |_| {})
+            .unwrap()
+            .status,
+        JobStatus::Complete
+    );
     let before = inspection_tree(f._tree.path());
     let (control, baseline) = stopped_after_media_bytes(0);
-    assert!(matches!(job.inspect_recovery_controlled(&f.recovery(&job), &control), Err(sorter_executor::ExecutionError::Cancelled)));
+    assert!(matches!(
+        job.inspect_recovery_controlled(&f.recovery(&job), &control),
+        Err(sorter_executor::ExecutionError::Cancelled)
+    ));
     let progress = control.snapshot().unwrap();
-    assert_eq!(progress.bytes_read - baseline.load(Ordering::Acquire), 65536);
+    assert_eq!(
+        progress.bytes_read - baseline.load(Ordering::Acquire),
+        65536
+    );
     assert_eq!(progress.completed_operations, 0);
     assert_eq!(inspection_tree(f._tree.path()), before);
     let fresh = fresh_inspection_control();
-    let report = job.inspect_recovery_controlled(&f.recovery(&job), &fresh).unwrap();
-    assert!(report.transfers.unwrap().operations.iter().all(|operation| operation.status == RecoveryStatus::Committed));
+    let report = job
+        .inspect_recovery_controlled(&f.recovery(&job), &fresh)
+        .unwrap();
+    assert!(
+        report
+            .transfers
+            .unwrap()
+            .operations
+            .iter()
+            .all(|operation| operation.status == RecoveryStatus::Committed)
+    );
     assert_eq!(fresh.snapshot().unwrap().completed_operations, 2);
     assert_eq!(inspection_tree(f._tree.path()), before);
 }
@@ -671,14 +741,33 @@ fn controlled_destination_named_stream_chunk_cancel_is_explicit() {
     let named = vec![9u8; 256 * 1024];
     let f = Fixture::with_contents(true, false, main, &named);
     let mut job = f.job().unwrap();
-    assert_eq!(job.run(&AtomicBool::new(false), &mut |_| {}).unwrap().status, JobStatus::Complete);
+    assert_eq!(
+        job.run(&AtomicBool::new(false), &mut |_| {})
+            .unwrap()
+            .status,
+        JobStatus::Complete
+    );
     let before = inspection_tree(f._tree.path());
     // Initial destination main read, then the full-stream verifier's main read.
     let (control, baseline) = stopped_after_media_bytes(2 * main.len() as u64);
-    assert!(matches!(job.inspect_recovery_controlled(&f.recovery(&job), &control), Err(sorter_executor::ExecutionError::Cancelled)));
-    assert_eq!(control.snapshot().unwrap().bytes_read - baseline.load(Ordering::Acquire), 2 * main.len() as u64 + 65536);
+    assert!(matches!(
+        job.inspect_recovery_controlled(&f.recovery(&job), &control),
+        Err(sorter_executor::ExecutionError::Cancelled)
+    ));
+    assert_eq!(
+        control.snapshot().unwrap().bytes_read - baseline.load(Ordering::Acquire),
+        2 * main.len() as u64 + 65536
+    );
     assert_eq!(inspection_tree(f._tree.path()), before);
-    assert!(job.inspect_recovery_controlled(&f.recovery(&job), &fresh_inspection_control()).unwrap().transfers.unwrap().operations.iter().all(|operation| operation.status == RecoveryStatus::Committed));
+    assert!(
+        job.inspect_recovery_controlled(&f.recovery(&job), &fresh_inspection_control())
+            .unwrap()
+            .transfers
+            .unwrap()
+            .operations
+            .iter()
+            .all(|operation| operation.status == RecoveryStatus::Committed)
+    );
 }
 #[test]
 fn controlled_partial_source_named_stream_cancel_keeps_original_and_partial_evidence() {
@@ -687,18 +776,40 @@ fn controlled_partial_source_named_stream_cancel_keeps_original_and_partial_evid
     let f = Fixture::with_contents(true, false, main, &named);
     let mut job = f.job().unwrap();
     let cancel = AtomicBool::new(false);
-    let result = job.run(&cancel, &mut |progress| {
-        if progress.operation == 1 { cancel.store(true, Ordering::Release); }
-    }).unwrap();
-    assert_eq!((result.committed_destinations, result.moved_sources), (1, 0));
+    let result = job
+        .run(&cancel, &mut |progress| {
+            if progress.operation == 1 {
+                cancel.store(true, Ordering::Release);
+            }
+        })
+        .unwrap();
+    assert_eq!(
+        (result.committed_destinations, result.moved_sources),
+        (1, 0)
+    );
     let before = inspection_tree(f._tree.path());
     // Source and committed destination main reads, then source full-stream main.
     let (control, baseline) = stopped_after_media_bytes(3 * main.len() as u64);
-    assert!(matches!(job.inspect_recovery_controlled(&f.recovery(&job), &control), Err(sorter_executor::ExecutionError::Cancelled)));
-    assert_eq!(control.snapshot().unwrap().bytes_read - baseline.load(Ordering::Acquire), 3 * main.len() as u64 + 65536);
+    assert!(matches!(
+        job.inspect_recovery_controlled(&f.recovery(&job), &control),
+        Err(sorter_executor::ExecutionError::Cancelled)
+    ));
+    assert_eq!(
+        control.snapshot().unwrap().bytes_read - baseline.load(Ordering::Acquire),
+        3 * main.len() as u64 + 65536
+    );
     assert_eq!(inspection_tree(f._tree.path()), before);
-    let report = job.inspect_recovery_controlled(&f.recovery(&job), &fresh_inspection_control()).unwrap();
-    assert!(report.transfers.unwrap().operations.iter().any(|operation| operation.status != RecoveryStatus::Committed));
+    let report = job
+        .inspect_recovery_controlled(&f.recovery(&job), &fresh_inspection_control())
+        .unwrap();
+    assert!(
+        report
+            .transfers
+            .unwrap()
+            .operations
+            .iter()
+            .any(|operation| operation.status != RecoveryStatus::Committed)
+    );
     assert_eq!(inspection_tree(f._tree.path()), before);
 }
 #[test]
@@ -707,22 +818,41 @@ fn controlled_journal_read_and_strict_replay_stop_before_media_observation() {
     use std::sync::Arc;
     let f = Fixture::new(true);
     let mut job = f.job().unwrap();
-    assert_eq!(job.run(&AtomicBool::new(false), &mut |_| {}).unwrap().status, JobStatus::Complete);
+    assert_eq!(
+        job.run(&AtomicBool::new(false), &mut |_| {})
+            .unwrap()
+            .status,
+        JobStatus::Complete
+    );
     let before = inspection_tree(f._tree.path());
     for stage in ["journals", "directory_journal", "transfer_journal"] {
         let cancel = Arc::new(AtomicBool::new(false));
         let flag = cancel.clone();
         let first_record = std::sync::atomic::AtomicU64::new(u64::MAX);
-        let control = InspectionControl::with_progress_interval(cancel, std::time::Duration::ZERO, move |progress| {
-            if progress.stage == stage {
-                let _ = first_record.compare_exchange(u64::MAX, progress.records_checked, Ordering::AcqRel, Ordering::Acquire);
-                if stage == "journals" && progress.bytes_read > 0
-                    || stage != "journals" && progress.records_checked > first_record.load(Ordering::Acquire) {
-                    flag.store(true, Ordering::Release);
+        let control = InspectionControl::with_progress_interval(
+            cancel,
+            std::time::Duration::ZERO,
+            move |progress| {
+                if progress.stage == stage {
+                    let _ = first_record.compare_exchange(
+                        u64::MAX,
+                        progress.records_checked,
+                        Ordering::AcqRel,
+                        Ordering::Acquire,
+                    );
+                    if stage == "journals" && progress.bytes_read > 0
+                        || stage != "journals"
+                            && progress.records_checked > first_record.load(Ordering::Acquire)
+                    {
+                        flag.store(true, Ordering::Release);
+                    }
                 }
-            }
-        });
-        assert!(matches!(job.inspect_recovery_controlled(&f.recovery(&job), &control), Err(sorter_executor::ExecutionError::Cancelled)));
+            },
+        );
+        assert!(matches!(
+            job.inspect_recovery_controlled(&f.recovery(&job), &control),
+            Err(sorter_executor::ExecutionError::Cancelled)
+        ));
         assert_eq!(control.snapshot().unwrap().completed_operations, 0);
         assert_eq!(inspection_tree(f._tree.path()), before);
     }
@@ -733,37 +863,91 @@ fn controlled_mixed_routes_preserve_receipts_and_whole_cohort_metadata_prepass()
     use std::sync::{Arc, Mutex};
     let f = mixed_fixture();
     let mut job = f.job().unwrap();
-    assert_eq!(job.run(&AtomicBool::new(false), &mut |_| {}).unwrap().status, JobStatus::Complete);
+    assert_eq!(
+        job.run(&AtomicBool::new(false), &mut |_| {})
+            .unwrap()
+            .status,
+        JobStatus::Complete
+    );
     let before = inspection_tree(f._tree.path());
     let events = Arc::new(Mutex::new(Vec::new()));
     let observed = events.clone();
-    let control = InspectionControl::with_progress_interval(Arc::new(AtomicBool::new(false)), std::time::Duration::ZERO, move |progress| {
-        observed.lock().unwrap().push(progress);
-    });
-    let report = job.inspect_recovery_controlled(&f.recovery(&job), &control).unwrap().transfers.unwrap();
-    assert!(report.operations.iter().all(|operation| operation.status == RecoveryStatus::Committed));
-    assert_eq!(report.operations.iter().map(|operation| operation.copy_metadata).collect::<Vec<_>>(), vec![
-        sorter_executor::recovery::CopyMetadataRecoveryStatus::Verified,
-        sorter_executor::recovery::CopyMetadataRecoveryStatus::Verified,
-        sorter_executor::recovery::CopyMetadataRecoveryStatus::NotRequested,
-    ]);
+    let control = InspectionControl::with_progress_interval(
+        Arc::new(AtomicBool::new(false)),
+        std::time::Duration::ZERO,
+        move |progress| {
+            observed.lock().unwrap().push(progress);
+        },
+    );
+    let report = job
+        .inspect_recovery_controlled(&f.recovery(&job), &control)
+        .unwrap()
+        .transfers
+        .unwrap();
+    assert!(
+        report
+            .operations
+            .iter()
+            .all(|operation| operation.status == RecoveryStatus::Committed)
+    );
+    assert_eq!(
+        report
+            .operations
+            .iter()
+            .map(|operation| operation.copy_metadata)
+            .collect::<Vec<_>>(),
+        vec![
+            sorter_executor::recovery::CopyMetadataRecoveryStatus::Verified,
+            sorter_executor::recovery::CopyMetadataRecoveryStatus::Verified,
+            sorter_executor::recovery::CopyMetadataRecoveryStatus::NotRequested,
+        ]
+    );
     let events = events.lock().unwrap();
-    let metadata = events.iter().filter(|event| event.stage == "metadata").collect::<Vec<_>>();
+    let metadata = events
+        .iter()
+        .filter(|event| event.stage == "metadata")
+        .collect::<Vec<_>>();
     assert!(metadata.len() >= 5); // stage plus each parent/metadata probe
-    assert!(metadata.iter().all(|event| event.bytes_read == metadata[0].bytes_read));
-    let first_content = events.iter().position(|event| event.stage == "files" && event.bytes_read > metadata[0].bytes_read).unwrap();
-    assert!(events.iter().enumerate().filter(|(_, event)| event.stage == "metadata").all(|(index, _)| index < first_content));
+    assert!(
+        metadata
+            .iter()
+            .all(|event| event.bytes_read == metadata[0].bytes_read)
+    );
+    let first_content = events
+        .iter()
+        .position(|event| event.stage == "files" && event.bytes_read > metadata[0].bytes_read)
+        .unwrap();
+    assert!(
+        events
+            .iter()
+            .enumerate()
+            .filter(|(_, event)| event.stage == "metadata")
+            .all(|(index, _)| index < first_content)
+    );
     assert_eq!(inspection_tree(f._tree.path()), before);
 }
 #[test]
 fn controlled_directory_replacement_cannot_be_hidden_by_original_file_objects() {
     let f = Fixture::new(true);
     let mut job = f.job().unwrap();
-    assert_eq!(job.run(&AtomicBool::new(false), &mut |_| {}).unwrap().status, JobStatus::Complete);
+    assert_eq!(
+        job.run(&AtomicBool::new(false), &mut |_| {})
+            .unwrap()
+            .status,
+        JobStatus::Complete
+    );
     let scope = f.recovery(&job);
     let id = job.job_id().to_owned();
     let roots = grants(&f.source, &f.target, &f.journal);
-    let journals = job.journal_locations().iter().map(|location| roots.read_selected_journal(location.name(), location.identity()).unwrap()).collect::<Vec<_>>();
+    let journals = job
+        .journal_locations()
+        .iter()
+        .map(|location| {
+            roots
+                .read_selected_journal(location.name(), location.identity())
+                .unwrap()
+        })
+        .collect::<Vec<_>>();
     drop(roots);
     drop(job);
     let artist = f.target.join("אמן");
@@ -773,7 +957,17 @@ fn controlled_directory_replacement_cannot_be_hidden_by_original_file_objects() 
     std::fs::rename(saved.join("song.mp3"), artist.join("song.mp3")).unwrap();
     let before = inspection_tree(f._tree.path());
     let roots = grants(&f.source, &f.target, &f.journal);
-    assert!(matches!(inspect_recovery_controlled(&roots, &scope, &id, &journals[0], Some(&journals[1]), &fresh_inspection_control()), Err(sorter_executor::ExecutionError::Stale)));
+    assert!(matches!(
+        inspect_recovery_controlled(
+            &roots,
+            &scope,
+            &id,
+            &journals[0],
+            Some(&journals[1]),
+            &fresh_inspection_control()
+        ),
+        Err(sorter_executor::ExecutionError::Stale)
+    ));
     assert_eq!(inspection_tree(f._tree.path()), before);
 }
 #[test]
@@ -781,11 +975,25 @@ fn controlled_copied_inspection_streams_more_than_the_old_aggregate_limit() {
     let main = vec![11u8; 17 * 1024 * 1024];
     let f = Fixture::with_contents(true, false, &main, b"owned-auxiliary");
     let mut job = f.job().unwrap();
-    assert_eq!(job.run(&AtomicBool::new(false), &mut |_| {}).unwrap().status, JobStatus::Complete);
+    assert_eq!(
+        job.run(&AtomicBool::new(false), &mut |_| {})
+            .unwrap()
+            .status,
+        JobStatus::Complete
+    );
     let before = inspection_tree(f._tree.path());
     let control = fresh_inspection_control();
-    let report = job.inspect_recovery_controlled(&f.recovery(&job), &control).unwrap();
-    assert!(report.transfers.unwrap().operations.iter().all(|operation| operation.status == RecoveryStatus::Committed));
+    let report = job
+        .inspect_recovery_controlled(&f.recovery(&job), &control)
+        .unwrap();
+    assert!(
+        report
+            .transfers
+            .unwrap()
+            .operations
+            .iter()
+            .all(|operation| operation.status == RecoveryStatus::Committed)
+    );
     let progress = control.snapshot().unwrap();
     assert!(progress.bytes_read > 64 * 1024 * 1024);
     assert_eq!(progress.completed_operations, 2);
@@ -795,14 +1003,22 @@ fn controlled_copied_inspection_streams_more_than_the_old_aggregate_limit() {
 fn recorded_copied_job(f: &Fixture, partial: bool) -> (Vec<u8>, Vec<u8>) {
     let mut job = f.job().unwrap();
     let cancel = AtomicBool::new(false);
-    let result = job.run(&cancel, &mut |progress| {
-        if partial && progress.operation == 1 { cancel.store(true, Ordering::Release); }
-    }).unwrap();
+    let result = job
+        .run(&cancel, &mut |progress| {
+            if partial && progress.operation == 1 {
+                cancel.store(true, Ordering::Release);
+            }
+        })
+        .unwrap();
     assert_eq!(result.moved_sources, usize::from(!partial));
     let roots = grants(&f.source, &f.target, &f.journal);
     let locations = job.journal_locations();
-    let directories = roots.read_selected_journal(locations[0].name(), locations[0].identity()).unwrap();
-    let transfers = roots.read_selected_journal(locations[1].name(), locations[1].identity()).unwrap();
+    let directories = roots
+        .read_selected_journal(locations[0].name(), locations[0].identity())
+        .unwrap();
+    let transfers = roots
+        .read_selected_journal(locations[1].name(), locations[1].identity())
+        .unwrap();
     drop(roots);
     drop(job);
     (directories, transfers)
@@ -818,14 +1034,36 @@ fn restart_copied_descriptor_needs_fresh_exact_grants_and_full_current_evidence(
     assert!(serialized.get("scope").is_none());
     assert!(serialized.get("copied_move_sources").is_none());
     assert!(serialized.get("recorded_complete").is_none());
-    let summary = summarize_recorded_selected_job_with_control(&directories, Some(&transfers), Some(&fresh_inspection_control())).unwrap();
+    let summary = summarize_recorded_selected_job_with_control(
+        &directories,
+        Some(&transfers),
+        Some(&fresh_inspection_control()),
+    )
+    .unwrap();
     assert!(!summary.recorded_complete);
     let roots = grants(&f.source, &f.target, &f.journal);
-    assert!(matches!(recover_selected_journals(&roots, &directories, Some(&transfers)), Err(sorter_executor::ExecutionError::Unsupported)));
-    let report = recover_selected_journals_controlled(&roots, &directories, Some(&transfers), &fresh_inspection_control(), 0).unwrap();
+    assert!(matches!(
+        recover_selected_journals(&roots, &directories, Some(&transfers)),
+        Err(sorter_executor::ExecutionError::Unsupported)
+    ));
+    let report = recover_selected_journals_controlled(
+        &roots,
+        &directories,
+        Some(&transfers),
+        &fresh_inspection_control(),
+        0,
+    )
+    .unwrap();
     assert!(report.directories.unverified.is_empty());
     assert!(!report.observation_limit_reached);
-    assert!(report.transfers.unwrap().operations.iter().all(|operation| operation.status == RecoveryStatus::Committed));
+    assert!(
+        report
+            .transfers
+            .unwrap()
+            .operations
+            .iter()
+            .all(|operation| operation.status == RecoveryStatus::Committed)
+    );
     assert_eq!(inspection_tree(f._tree.path()), before);
 }
 #[test]
@@ -834,11 +1072,28 @@ fn restart_copied_foreign_selected_root_identity_is_refused() {
         let f = Fixture::new(true);
         let (directories, transfers) = recorded_copied_job(&f, false);
         let selected = if target { &f.target } else { &f.source };
-        std::fs::rename(selected, selected.with_file_name(if target { "owned-old-target" } else { "owned-old-source" })).unwrap();
+        std::fs::rename(
+            selected,
+            selected.with_file_name(if target {
+                "owned-old-target"
+            } else {
+                "owned-old-source"
+            }),
+        )
+        .unwrap();
         std::fs::create_dir(selected).unwrap();
         let before = inspection_tree(f._tree.path());
         let roots = grants(&f.source, &f.target, &f.journal);
-        assert!(matches!(recover_selected_journals_controlled(&roots, &directories, Some(&transfers), &fresh_inspection_control(), 0), Err(sorter_executor::ExecutionError::Scope)));
+        assert!(matches!(
+            recover_selected_journals_controlled(
+                &roots,
+                &directories,
+                Some(&transfers),
+                &fresh_inspection_control(),
+                0
+            ),
+            Err(sorter_executor::ExecutionError::Scope)
+        ));
         assert_eq!(inspection_tree(f._tree.path()), before);
     }
 }
@@ -848,19 +1103,44 @@ fn restart_copied_changed_stream_missing_destination_and_reappeared_source_stay_
         let f = Fixture::new(true);
         let (directories, transfers) = recorded_copied_job(&f, false);
         match change {
-            "stream" => std::fs::write(f.target.join("אמן/song.mp3:notes"), b"changed-owned-stream").unwrap(),
-            "missing" => std::fs::rename(f.target.join("אמן/song.mp3"), f.target.join("owned-saved-song.mp3")).unwrap(),
+            "stream" => {
+                std::fs::write(f.target.join("אמן/song.mp3:notes"), b"changed-owned-stream")
+                    .unwrap()
+            }
+            "missing" => std::fs::rename(
+                f.target.join("אמן/song.mp3"),
+                f.target.join("owned-saved-song.mp3"),
+            )
+            .unwrap(),
             "source" => {
                 std::fs::write(f.source.join("song.mp3"), b"foreign-reappeared-main").unwrap();
-                std::fs::write(f.source.join("song.mp3:notes"), b"foreign-reappeared-stream").unwrap();
+                std::fs::write(
+                    f.source.join("song.mp3:notes"),
+                    b"foreign-reappeared-stream",
+                )
+                .unwrap();
             }
             _ => unreachable!(),
         }
         // Deliberate owned changes become the new no-write baseline.
         let before = inspection_tree(f._tree.path());
         let roots = grants(&f.source, &f.target, &f.journal);
-        let report = recover_selected_journals_controlled(&roots, &directories, Some(&transfers), &fresh_inspection_control(), 0).unwrap();
-        assert!(report.transfers.unwrap().operations.iter().all(|operation| operation.status == RecoveryStatus::NeedsRecovery));
+        let report = recover_selected_journals_controlled(
+            &roots,
+            &directories,
+            Some(&transfers),
+            &fresh_inspection_control(),
+            0,
+        )
+        .unwrap();
+        assert!(
+            report
+                .transfers
+                .unwrap()
+                .operations
+                .iter()
+                .all(|operation| operation.status == RecoveryStatus::NeedsRecovery)
+        );
         assert_eq!(inspection_tree(f._tree.path()), before);
     }
 }
@@ -871,7 +1151,10 @@ fn restart_copied_cancelled_observation_cursor_never_reuses_hashes() {
     let before = inspection_tree(f._tree.path());
     let roots = grants(&f.source, &f.target, &f.journal);
     let (control, _) = stopped_after_media_bytes(0);
-    assert!(matches!(recover_selected_journals_controlled(&roots, &directories, Some(&transfers), &control, 1), Err(sorter_executor::ExecutionError::Cancelled)));
+    assert!(matches!(
+        recover_selected_journals_controlled(&roots, &directories, Some(&transfers), &control, 1),
+        Err(sorter_executor::ExecutionError::Cancelled)
+    ));
     assert_eq!(control.snapshot().unwrap().bytes_read, 65536);
     assert_eq!(inspection_tree(f._tree.path()), before);
     drop(roots);
@@ -879,9 +1162,25 @@ fn restart_copied_cancelled_observation_cursor_never_reuses_hashes() {
     let changed = inspection_tree(f._tree.path());
     let fresh = fresh_inspection_control();
     let roots = grants(&f.source, &f.target, &f.journal);
-    let report = recover_selected_journals_controlled(&roots, &directories, Some(&transfers), &fresh, 1).unwrap().transfers.unwrap();
-    assert_eq!(report.operations.iter().map(|operation| operation.operation).collect::<Vec<_>>(), vec![0, 1]);
-    assert!(report.operations.iter().all(|operation| operation.status == RecoveryStatus::NeedsRecovery));
+    let report =
+        recover_selected_journals_controlled(&roots, &directories, Some(&transfers), &fresh, 1)
+            .unwrap()
+            .transfers
+            .unwrap();
+    assert_eq!(
+        report
+            .operations
+            .iter()
+            .map(|operation| operation.operation)
+            .collect::<Vec<_>>(),
+        vec![0, 1]
+    );
+    assert!(
+        report
+            .operations
+            .iter()
+            .all(|operation| operation.status == RecoveryStatus::NeedsRecovery)
+    );
     assert_eq!(fresh.snapshot().unwrap().completed_operations, 2);
     assert_eq!(inspection_tree(f._tree.path()), changed);
 }
@@ -891,8 +1190,22 @@ fn restart_partial_copied_move_keeps_original_and_never_adopts_missing_retiremen
     let (directories, transfers) = recorded_copied_job(&f, true);
     let before = inspection_tree(f._tree.path());
     let roots = grants(&f.source, &f.target, &f.journal);
-    let report = recover_selected_journals_controlled(&roots, &directories, Some(&transfers), &fresh_inspection_control(), 0).unwrap().transfers.unwrap();
-    assert!(report.operations.iter().any(|operation| operation.status != RecoveryStatus::Committed));
+    let report = recover_selected_journals_controlled(
+        &roots,
+        &directories,
+        Some(&transfers),
+        &fresh_inspection_control(),
+        0,
+    )
+    .unwrap()
+    .transfers
+    .unwrap();
+    assert!(
+        report
+            .operations
+            .iter()
+            .any(|operation| operation.status != RecoveryStatus::Committed)
+    );
     assert!(f.source.join("song.mp3").exists());
     assert_eq!(inspection_tree(f._tree.path()), before);
 }
@@ -907,7 +1220,10 @@ fn restart_copied_strict_phase_parser_rejects_reframed_invalid_stream_history() 
         event: sorter_executor::physical_journal::Event,
     }
     #[derive(serde::Serialize, serde::Deserialize)]
-    struct Envelope { body: Record, sha256: String }
+    struct Envelope {
+        body: Record,
+        sha256: String,
+    }
     let f = Fixture::new(true);
     let (directories, transfers) = recorded_copied_job(&f, false);
     let before = inspection_tree(f._tree.path());
@@ -920,7 +1236,10 @@ fn restart_copied_strict_phase_parser_rejects_reframed_invalid_stream_history() 
     let mut altered = false;
     for line in lines.filter(|line| !line.is_empty()) {
         let mut envelope: Envelope = serde_json::from_slice(line).unwrap();
-        if !altered && envelope.body.event.phase == sorter_executor::physical_journal::Phase::AuxiliaryStreamsObserved {
+        if !altered
+            && envelope.body.event.phase
+                == sorter_executor::physical_journal::Phase::AuxiliaryStreamsObserved
+        {
             envelope.body.event.phase = sorter_executor::physical_journal::Phase::BytesSynced;
             altered = true;
         }
@@ -932,8 +1251,24 @@ fn restart_copied_strict_phase_parser_rejects_reframed_invalid_stream_history() 
     }
     assert!(altered);
     assert!(inspect_recorded_selected_job(&directories).is_ok());
-    assert!(matches!(summarize_recorded_selected_job_with_control(&directories, Some(&changed), Some(&fresh_inspection_control())), Err(sorter_executor::ExecutionError::CorruptJournal)));
+    assert!(matches!(
+        summarize_recorded_selected_job_with_control(
+            &directories,
+            Some(&changed),
+            Some(&fresh_inspection_control())
+        ),
+        Err(sorter_executor::ExecutionError::CorruptJournal)
+    ));
     let roots = grants(&f.source, &f.target, &f.journal);
-    assert!(matches!(recover_selected_journals_controlled(&roots, &directories, Some(&changed), &fresh_inspection_control(), 0), Err(sorter_executor::ExecutionError::CorruptJournal)));
+    assert!(matches!(
+        recover_selected_journals_controlled(
+            &roots,
+            &directories,
+            Some(&changed),
+            &fresh_inspection_control(),
+            0
+        ),
+        Err(sorter_executor::ExecutionError::CorruptJournal)
+    ));
     assert_eq!(inspection_tree(f._tree.path()), before);
 }

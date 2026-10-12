@@ -382,25 +382,38 @@ mod selected {
             if supported_plan(plan).is_err() {
                 supported_copied_move_plan(plan).map_err(storage_error)?;
                 let journal = journal_directory.ok_or_else(|| {
-                    HostError::new("JOURNAL_UNAVAILABLE", "Application journal directory is unavailable")
+                    HostError::new(
+                        "JOURNAL_UNAVAILABLE",
+                        "Application journal directory is unavailable",
+                    )
                 })?;
                 let journal_identity = inspect_root(journal)?.identity.ok_or_else(|| {
                     HostError::new("JOURNAL_UNAVAILABLE", "Journal root identity missing")
                 })?;
-                let grant = |path: &Path, identity: Option<sorter_core::discovery::ObjectIdentity>| {
-                    WindowsSelectedRootGrant::new(
-                        path.to_owned(),
-                        identity.ok_or_else(|| HostError::new("ROOT_CHANGED", "Selected root identity missing"))?,
-                    ).map_err(storage_error)
-                };
+                let grant =
+                    |path: &Path, identity: Option<sorter_core::discovery::ObjectIdentity>| {
+                        WindowsSelectedRootGrant::new(
+                            path.to_owned(),
+                            identity.ok_or_else(|| {
+                                HostError::new("ROOT_CHANGED", "Selected root identity missing")
+                            })?,
+                        )
+                        .map_err(storage_error)
+                    };
                 let roots = WindowsMutationStorage::for_selected_roots(
                     grant(&source.path, source.observed.identity.clone())?,
                     grant(&target.path, target.observed.identity.clone())?,
                     grant(journal, Some(journal_identity.clone()))?,
-                ).map_err(storage_error)?;
+                )
+                .map_err(storage_error)?;
                 let scope = prepare_copied_move_scope(
-                    plan, storage, &roots, &resources, &cancellation.cancelled,
-                ).map_err(storage_error)?;
+                    plan,
+                    storage,
+                    &roots,
+                    &resources,
+                    &cancellation.cancelled,
+                )
+                .map_err(storage_error)?;
                 return Ok(PreparedSelection {
                     source: source.path.clone(),
                     personal: personal.unwrap_or_default().to_vec(),
@@ -704,9 +717,19 @@ mod selected {
                     );
                 }
                 PreparedScope::Sort { target, scope } => (target, scope, None),
-                PreparedScope::CopiedMove { target, journal, journal_identity, scope } => {
-                    if directory != journal || inspect_root(&directory)?.identity.as_ref() != Some(&journal_identity) {
-                        return Err(HostError::new("JOURNAL_CHANGED", "Journal storage changed; inspect a fresh plan"));
+                PreparedScope::CopiedMove {
+                    target,
+                    journal,
+                    journal_identity,
+                    scope,
+                } => {
+                    if directory != journal
+                        || inspect_root(&directory)?.identity.as_ref() != Some(&journal_identity)
+                    {
+                        return Err(HostError::new(
+                            "JOURNAL_CHANGED",
+                            "Journal storage changed; inspect a fresh plan",
+                        ));
                     }
                     (target, scope.execution_scope().clone(), Some(scope))
                 }
@@ -739,12 +762,22 @@ mod selected {
             };
             let prepared_job = if let Some(copied) = &copied {
                 SelectedWindowsJob::prepare_copied_move(
-                    roots, plan, &mut metadata, recognition.as_mut(), &scope.resources,
-                    copied, &cancellation.cancelled,
+                    roots,
+                    plan,
+                    &mut metadata,
+                    recognition.as_mut(),
+                    &scope.resources,
+                    copied,
+                    &cancellation.cancelled,
                 )
             } else {
                 SelectedWindowsJob::prepare(
-                    roots, plan, &mut metadata, recognition.as_mut(), &scope.resources, &scope,
+                    roots,
+                    plan,
+                    &mut metadata,
+                    recognition.as_mut(),
+                    &scope.resources,
+                    &scope,
                 )
             };
             if cancellation.is_cancelled() {
@@ -792,19 +825,22 @@ mod selected {
                 #[cfg(test)]
                 let verification_observer = self.verification_observer.clone();
                 let control = sorter_executor::inspection_control::InspectionControl::new(
-                    cancellation.cancelled.clone(), move |progress| {
+                    cancellation.cancelled.clone(),
+                    move |progress| {
                         if let Ok(mut inner) = host.lock()
-                            && let Some(snapshot) = inner.job.as_mut()
+                            && let Some(snapshot) = inner
+                                .job
+                                .as_mut()
                                 .filter(|job| job.snapshot.job_id == job_id)
                                 .and_then(|job| job.execution.as_mut())
                         {
-                                snapshot.operation = None;
-                                snapshot.verification = Some(VerificationProgress {
-                                    completed_operations: progress.completed_operations,
-                                    total_operations: progress.total_operations,
-                                    bytes_read: progress.bytes_read,
-                                    elapsed_ms: progress.elapsed_ms,
-                                });
+                            snapshot.operation = None;
+                            snapshot.verification = Some(VerificationProgress {
+                                completed_operations: progress.completed_operations,
+                                total_operations: progress.total_operations,
+                                bytes_read: progress.bytes_read,
+                                elapsed_ms: progress.elapsed_ms,
+                            });
                         }
                         #[cfg(test)]
                         if let Some(observer) = &verification_observer {
@@ -822,7 +858,10 @@ mod selected {
                             || inspection.terminal_records_complete != Some(true)
                             || inspection.append_blocked == Some(true)
                             || inspection.metadata_issues.is_some_and(|count| count > 0);
-                        (Some(inspection), incomplete.then(|| "TRANSFER_RECONCILIATION_INCOMPLETE".into()))
+                        (
+                            Some(inspection),
+                            incomplete.then(|| "TRANSFER_RECONCILIATION_INCOMPLETE".into()),
+                        )
                     }
                     Err(error) => (None, Some(error.to_string())),
                 }
@@ -878,20 +917,41 @@ mod selected {
             Ok(())
         }
     }
-    fn project_recovery(report: sorter_executor::windows_job::SelectedRecoveryReport) -> RecoveryInspection {
+    fn project_recovery(
+        report: sorter_executor::windows_job::SelectedRecoveryReport,
+    ) -> RecoveryInspection {
         use sorter_executor::recovery::{CopyMetadataRecoveryStatus, RecoveryStatus};
-        let append_blocked = report.transfers.as_ref().is_none_or(|transfer| transfer.append_blocked);
+        let append_blocked = report
+            .transfers
+            .as_ref()
+            .is_none_or(|transfer| transfer.append_blocked);
         let mut pending_operations = vec![];
         let mut metadata_issues = 0;
-        let transfers = report.transfers.map(|transfer| transfer.operations.into_iter().map(|operation| {
-            if operation.status != RecoveryStatus::Committed {
-                pending_operations.push(operation.operation);
-            }
-            if !matches!(operation.copy_metadata, CopyMetadataRecoveryStatus::NotRequested | CopyMetadataRecoveryStatus::Verified) {
-                metadata_issues += 1;
-            }
-            RecoveryItem { operation: operation.operation, status: format!("{:?}", operation.status) }
-        }).collect()).unwrap_or_default();
+        let transfers = report
+            .transfers
+            .map(|transfer| {
+                transfer
+                    .operations
+                    .into_iter()
+                    .map(|operation| {
+                        if operation.status != RecoveryStatus::Committed {
+                            pending_operations.push(operation.operation);
+                        }
+                        if !matches!(
+                            operation.copy_metadata,
+                            CopyMetadataRecoveryStatus::NotRequested
+                                | CopyMetadataRecoveryStatus::Verified
+                        ) {
+                            metadata_issues += 1;
+                        }
+                        RecoveryItem {
+                            operation: operation.operation,
+                            status: format!("{:?}", operation.status),
+                        }
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
         RecoveryInspection {
             pending_operations,
             directory_evidence: vec![],

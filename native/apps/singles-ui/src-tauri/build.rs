@@ -3,7 +3,9 @@ fn main() {
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(
         #[cfg(feature = "desktop")]
         tauri_build::AppManifest::new().commands(&[
-            "start_recovery_list", "recovery_snapshot", "cancel_recovery",
+            "start_recovery_list",
+            "recovery_snapshot",
+            "cancel_recovery",
             "select_recovery_root",
             "start_recovery_inspection",
             "select_root",

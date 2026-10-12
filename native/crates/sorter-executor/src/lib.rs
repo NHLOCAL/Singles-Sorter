@@ -1,8 +1,8 @@
 //! Identity-bound experimental journal/recovery and transfer contracts.
 //! Native Copy and same-volume rename are owned Windows fixtures only; no CLI/UI apply.
 pub mod binding;
-pub mod physical_journal;
 pub mod inspection_control;
+pub mod physical_journal;
 pub mod recovery;
 use serde::Serialize;
 use sha2::{Digest, Sha256};

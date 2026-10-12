@@ -60,20 +60,37 @@ pub fn supported_copied_move_plan(plan: &JobPlanV2) -> Result<()> {
     let mut by_source: HashMap<&StorageRef, Vec<usize>> = HashMap::new();
     let mut by_id = HashMap::new();
     for operation in &plan.operations {
-        let OperationKind::SingleTransfer { source, .. } = &operation.kind else { return Err(E::Unsupported); };
-        by_source.entry(&source.reference).or_default().push(operation.id);
-        if by_id.insert(operation.id, operation).is_some() { return Err(E::Unsupported); }
+        let OperationKind::SingleTransfer { source, .. } = &operation.kind else {
+            return Err(E::Unsupported);
+        };
+        by_source
+            .entry(&source.reference)
+            .or_default()
+            .push(operation.id);
+        if by_id.insert(operation.id, operation).is_some() {
+            return Err(E::Unsupported);
+        }
     }
     let mut covered = std::collections::HashSet::new();
     for effect in &plan.predicted_effects {
-        if let PredictedEffect::DuetDeleteIntention { source, after_operations, .. } = effect {
+        if let PredictedEffect::DuetDeleteIntention {
+            source,
+            after_operations,
+            ..
+        } = effect
+        {
             let expected = by_source.get(&source.reference).ok_or(E::Unsupported)?;
-            if expected.len() < 2 || expected != after_operations { return Err(E::Unsupported); }
+            if expected.len() < 2 || expected != after_operations {
+                return Err(E::Unsupported);
+            }
             for &id in expected {
                 let operation = by_id.get(&id).ok_or(E::Unsupported)?;
                 if !matches!(&operation.kind, OperationKind::SingleTransfer { source: candidate, transfer, .. }
-                    if candidate == source && transfer.copy) || !covered.insert(id)
-                { return Err(E::Unsupported); }
+                    if candidate == source && transfer.copy)
+                    || !covered.insert(id)
+                {
+                    return Err(E::Unsupported);
+                }
             }
         }
     }
@@ -266,7 +283,11 @@ impl SelectedWindowsJob {
             .duration_since(std::time::UNIX_EPOCH)
             .map_err(|_| E::Io)?
             .as_nanos();
-        let job_id = format!("sorter-{}-{nanos}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed));
+        let job_id = format!(
+            "sorter-{}-{nanos}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        );
         PhysicalJournalV2::validate_controlled_creation(&binding, &job_id)?;
         DirectoryJournal::validate_controlled_creation(&binding, &job_id)?;
         drop(reads);
