@@ -82,6 +82,21 @@ fn whole_restart_fresh_parent_or_source_verifies_every_atomic_descendant_read_on
     for root in [false, true] {
         let (f, _) = completed(root, false);
         let d = descriptor(&f);
+        if root {
+            use std::os::windows::ffi::{OsStrExt, OsStringExt};
+            let original = &d.original_source.as_ref().unwrap().reference;
+            let StorageRef::WindowsPath { utf16 } = original else {
+                panic!("expected exact native Windows root");
+            };
+            let native = PathBuf::from(std::ffi::OsString::from_wide(utf16));
+            assert_eq!(d.albums[0].original.reference, *original);
+            // The old prefix check introduced this extra separator before any
+            // content read, even though the actual parent grant matched exactly.
+            let joined: Vec<u16> = native.join("").as_os_str().encode_wide().collect();
+            assert_ne!(&joined, utf16);
+            assert_eq!(&joined[..utf16.len()], utf16);
+            assert_eq!(&joined[utf16.len()..], &[b'\\' as u16]);
+        }
         let before = owned_tree_snapshot(f._tree.path());
         let journals = journal_bytes(&f);
         let c = control();

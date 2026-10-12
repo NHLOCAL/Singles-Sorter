@@ -278,7 +278,15 @@ pub fn recover_recorded_whole_album_job(
             let relative = album_path
                 .strip_prefix(&selected)
                 .map_err(|_| E::CorruptJournal)?;
-            if reference(&native.join(relative)) != observed.reference {
+            // Joining an empty suffix appends a separator. StorageRef deliberately
+            // compares the lossless native spelling, so a root album must retain
+            // the exact freshly bound root reference rather than synthesize one.
+            let expected = if relative.as_os_str().is_empty() {
+                source_native.reference.clone()
+            } else {
+                reference(&native.join(relative))
+            };
+            if expected != observed.reference {
                 return Err(E::Stale);
             }
         }
