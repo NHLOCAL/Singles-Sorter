@@ -454,8 +454,9 @@ failed counter assertion did not retain its actual value, so the correction is
 based on an independently reproduced frozen-oracle expectation, not a guessed
 native result.
 
-Optional cold-original telemetry failed at a confined temporary-file creation
-inside a SciPy import; package-size telemetry had no package to inspect because
+Optional cold-original telemetry failed because a SciPy import attempted to
+create a temporary file outside the owned trial and confinement refused it.
+Package-size telemetry had no package to inspect because
 the mandatory consumer gate had stopped. Functional reports were already saved.
 No comparable speed or memory advantage, nor a new package size, follows from
 these failed optional measurements. The exact earlier 041 package sizes above
