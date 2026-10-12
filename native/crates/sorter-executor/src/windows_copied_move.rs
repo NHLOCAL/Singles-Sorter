@@ -145,7 +145,7 @@ impl SelectedWindowsJob {
         Ok(Self {
             storage: Storage::CopiedMove(CopiedMoveStorage { roots, held, sources: scope.sources.clone() }),
             binding, job_id: format!("sorter-{}-{nanos}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)),
-            attempted: false, created_directories: Vec::new(), journal_locations: Vec::new(), directory_observations: Vec::new(),
+            attempted: false, created_directories: Vec::new(), created_directory_receipts: Vec::new(), journal_locations: Vec::new(), directory_observations: Vec::new(),
         })
     }
 }

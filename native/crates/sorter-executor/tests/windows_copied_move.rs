@@ -73,6 +73,8 @@ fn ordinary_copied_move_preserves_named_bytes_and_reconciles_retirement() {
     let result = job.run(&AtomicBool::new(false), &mut |_| {}).unwrap();
     assert_eq!(result.status, JobStatus::Complete, "{result:?}");
     assert_eq!((result.committed_destinations, result.moved_sources), (1, 1));
+    assert_eq!(result.committed_operations, vec![0]);
+    assert_eq!(result.effect_receipts.iter().map(|receipt| receipt.kind.as_str()).collect::<Vec<_>>(), vec!["file_published", "source_retired"]);
     assert!(!f.source.join("song.mp3").exists()); f.verify_destination("אמן");
     let report = job.inspect_recovery(&f.recovery(&job)).unwrap();
     assert!(report.transfers.unwrap().operations.iter().all(|operation| operation.status == RecoveryStatus::Committed));
@@ -216,6 +218,9 @@ fn mixed_same_volume_job_renames_single_object_and_retires_duet_in_original_orde
     let mut job = f.job().unwrap(); let result = job.run(&AtomicBool::new(false), &mut |_| {}).unwrap();
     assert_eq!(result.status, JobStatus::Complete, "{result:?}");
     assert_eq!((result.committed_destinations, result.moved_sources), (3, 2));
+    assert_eq!(result.committed_operations, vec![0, 1, 2]);
+    assert_eq!(result.effect_receipts.iter().map(|receipt| receipt.kind.as_str()).collect::<Vec<_>>(), vec!["file_published", "file_published", "source_retired", "file_renamed"]);
+    assert_eq!(job.created_directory_receipts().len(), 3);
     let report = job.inspect_recovery(&f.recovery(&job)).unwrap();
     assert!(report.transfers.unwrap().operations.iter().all(|operation| operation.status == RecoveryStatus::Committed));
     let bytes = std::fs::read(f.journal.join(format!("{}.transfers.jsonl", job.job_id()))).unwrap();
