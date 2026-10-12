@@ -279,6 +279,22 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "PCRE2_STATIC_DIR=$((Resolve-Path target/desktop-original/pcre2/install/lib).Path)" >> $env:GITHUB_ENV
 
+      - name: Verify bounded official zlib acquisition before native builds
+        working-directory: native
+        run: |
+          python tests/build/test_acquire_zlib.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tests/build/acquire_zlib.py --evidence test-results/zlib-acquisition
+
+      - name: Retain exact desktop zlib acquisition receipts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: zlib-acquisition-desktop-${{ github.run_attempt }}
+          path: native/test-results/zlib-acquisition
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Test renderer and native profile contracts
         run: |
           npm test

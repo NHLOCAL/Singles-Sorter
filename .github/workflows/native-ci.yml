@@ -75,6 +75,21 @@ jobs:
           path: native-formatting/
           if-no-files-found: error
 
+      - name: Verify bounded official zlib acquisition
+        run: |
+          python tests/build/test_acquire_zlib.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tests/build/acquire_zlib.py --evidence test-results/zlib-acquisition
+
+      - name: Retain exact zlib acquisition response receipts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: zlib-acquisition-native-${{ matrix.os }}-${{ github.run_attempt }}
+          path: native/test-results/zlib-acquisition
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Preflight exact native owned-Copy fixture binding
         if: runner.os == 'Windows'
         run: |
@@ -99,22 +114,6 @@ jobs:
 
       - name: Check formatting
         run: cargo +1.99.0 fmt --all -- --check
-
-      - name: Verify bounded official zlib acquisition
-        if: runner.os == 'Linux'
-        run: |
-          python tests/build/test_acquire_zlib.py
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python tests/build/acquire_zlib.py --evidence test-results/zlib-acquisition
-
-      - name: Retain exact zlib acquisition response receipts
-        if: always() && runner.os == 'Linux'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: zlib-acquisition-native-${{ matrix.os }}-${{ github.run_attempt }}
-          path: native/test-results/zlib-acquisition
-          if-no-files-found: ignore
-          retention-days: 7
 
       - name: Check all targets with Clippy
         run: cargo +1.99.0 clippy --locked --workspace --all-targets -- -D warnings

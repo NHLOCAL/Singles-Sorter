@@ -103,8 +103,8 @@ pub fn fast_start(bytes: &[u8]) -> Vec<u8> {
                 out.extend(atom(&kind, &offsets(&data[8..], delta)));
             } else if &kind == b"stco" {
                 let mut changed = data.to_vec();
-                for word in changed[16..].chunks_exact_mut(4) {
-                    let old = u32::from_be_bytes(word.try_into().unwrap());
+                for word in changed[16..].as_chunks_mut::<4>().0 {
+                    let old = u32::from_be_bytes(*word);
                     word.copy_from_slice(&old.checked_add(delta).unwrap().to_be_bytes());
                 }
                 out.extend(changed);

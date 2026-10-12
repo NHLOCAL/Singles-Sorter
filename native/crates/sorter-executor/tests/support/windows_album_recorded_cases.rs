@@ -281,7 +281,10 @@ fn forge_name_consistently(header: &mut serde_json::Value, file_index: usize) {
         .unwrap()
         .last_mut()
         .unwrap() = serde_json::json!("forged name.mp3");
-    let destination: Destination = serde_json::from_value(destination.clone()).unwrap();
+    let destination = Destination {
+        root: serde_json::from_value(destination["root"].clone()).unwrap(),
+        components: serde_json::from_value(destination["components"].clone()).unwrap(),
+    };
     let operation = &mut header["binding"]["operations"][file_index];
     operation["destination"]["components"] = serde_json::to_value(&destination.components).unwrap();
     operation["destination"]["id"] =

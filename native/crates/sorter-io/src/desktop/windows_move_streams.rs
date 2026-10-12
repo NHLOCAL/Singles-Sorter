@@ -56,7 +56,7 @@ pub(super) fn inspect_bound_streams_observed(
     expected_identity: &ObjectIdentity,
     cancel: &AtomicBool,
     observe: &mut dyn FnMut(WindowsInspectionEvent) -> Result<(), MutationError>,
-    mut check_parent: impl FnMut() -> Result<(), MutationError>,
+    check_parent: impl FnMut() -> Result<(), MutationError>,
 ) -> Result<WindowsMoveSourceEvidence, MutationError> {
     let file = inspection_probe(cancel, observe, || {
         open_relative_file(parent, units(name)?, false, FILE_GENERIC_READ)

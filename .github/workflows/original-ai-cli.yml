@@ -170,14 +170,13 @@ jobs:
           retention-days: 7
 
       - name: Verify bounded official zlib acquisition
-        if: runner.os == 'Linux'
         run: |
           python tests/build/test_acquire_zlib.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tests/build/acquire_zlib.py --evidence test-results/zlib-acquisition
 
       - name: Retain exact zlib acquisition response receipts
-        if: always() && runner.os == 'Linux'
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: zlib-acquisition-cli-${{ matrix.os }}-${{ github.run_attempt }}
