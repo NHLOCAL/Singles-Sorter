@@ -29,7 +29,8 @@ below require final-head CI results; the presence of a test is not a passing run
 | CLI supplied-facts v1 | Existing envelopes remain model-free and non-executable | No physical authorization granted |
 | CLI real-file v2 JSON | Same request fields and original planning policy | Read-only; optional selected planning adapter strengthens capability observations |
 | CLI NDJSON execution | One-process inspected-digest handshake | Same selected Windows backend; machine protocol remains explicit |
-| CLI positional source/target and flags | Frozen v14 declarations/probes pinned, including all eight flags and default Move | Separate frontend candidate reuses retained planner/executor without an interactive JSON prompt; all five original compatibility subprocess cases passed at b293/690; selected-feature standalone package activation awaits measured notice closure and actual extracted checks |
+| CLI positional source/target and flags | Frozen v14 declarations/probes pinned, including all eight flags and default Move | Separate frontend candidate reuses retained planner/executor without an interactive JSON prompt; all five original compatibility subprocess cases passed at b293/690; selected-feature standalone package profile and exact 46-node notice closure are reviewed; new real staged/extracted CLI checks are running, not yet accepted |
+| CLI log level and file diagnostics | Original five levels, local timestamp, UTF-8 CWD/logs filename and matching stderr/file filtering | Separately reviewed pinned/exclusive sink; candidate adds pre-create media/journal overlap refusal and honest log failure reporting. New 10-case positional and staged/extracted logging gates remain pending; explicit dry-run and machine protocols create no file log |
 | Android | Shared UI remains fail-closed without native apply eligibility | Separate Android workstream; Windows proof is not Android/provider/ARM64 proof |
 | Portable Windows artifact | Explicit original-AI + selected-execution feature profile | EXE-bound real Copy/Move/artist-folder plus source-only MP3 repair checks required on staged and extracted ZIP; package README and provenance identify supported mutations |
 
@@ -113,3 +114,21 @@ extracted UI fixtures. Whole-directory receipts count recursive physical files
 separately from the original album/artist counters. The confirmation states the
 no-concurrent-writer condition. Bounds and unsupported plans stay explicit;
 no automatic replay, journal deletion or guessed cleanup is introduced.
+
+## Paired actual-Windows audit
+
+The diagnostic lane compares the exact frozen v14 Python implementation against
+fresh selected EXE executions in separate authored trees. It records 32 settings
+combinations plus four original-model duet cases, raw paths/bytes, skip decisions,
+operation order and original counters. It runs after mandatory package gates and
+retains `OPEN` or `MISMATCH` rather than turning incomplete coverage into a pass.
+The source helpers and Linux original-method fixture characterization are not
+actual-Windows evidence; the first full Windows paired run remains pending.
+
+The selected CLI graph has been measured and reviewed: 46 resolved nodes,
+37 unchanged registry packages and nine local packages, including the local MIT
+executor. The desktop selected graph remains the reviewed 267-node graph.
+Neither completed graph review nor authored physical tests imply package runtime
+acceptance. The next candidate also restores file logging; the paired reader
+accepts its exact timestamp/level envelope without substituting predictions for
+missing execution-derived counters.
