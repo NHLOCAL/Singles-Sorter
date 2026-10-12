@@ -522,6 +522,9 @@ fn replaced_target_parent_cannot_be_hidden_by_preserving_the_file_object() {
 fn target_parent_relocation_during_content_is_refused_or_stale() {
     let fixture = Fixture::new();
     let owner = fixture.open();
+    let original = fixture.target.join("artist");
+    let moved = fixture.target.join("relocated artist");
+    let original_id = id(&original);
     let before = snapshot(fixture.tree.path());
     let mut relocation = None;
     let result = owner.inspect_main_observed(1, &AtomicBool::new(false), &mut |event| {
@@ -538,9 +541,16 @@ fn target_parent_relocation_during_content_is_refused_or_stale() {
     match relocation.expect("must reach content") {
         Ok(()) => stale_result(result),
         Err(error) => {
-            sharing_refusal(error);
+            assert!(
+                matches!(error.raw_os_error(), Some(5 | 32 | 33)),
+                "unexpected relocation refusal: {error}"
+            );
             assert!(result.is_ok());
             assert_eq!(snapshot(fixture.tree.path()), before);
+            assert!(!moved.exists());
+            drop(owner);
+            std::fs::rename(&original, &moved).unwrap();
+            assert_eq!(id(&moved), original_id);
         }
     }
 }
@@ -574,6 +584,9 @@ fn retained_directory_pin_revalidates_after_file_handles_close() {
 fn journal_root_relocation_during_read_never_returns_rebound_bytes() {
     let fixture = Fixture::new();
     let owner = fixture.open();
+    let original = fixture.journals.clone();
+    let moved = fixture.tree.path().join("relocated journals");
+    let original_id = id(&original);
     let before = snapshot(fixture.tree.path());
     let mut relocation = None;
     let result = owner.read_journal_observed(0, &AtomicBool::new(false), &mut |event| {
@@ -590,9 +603,16 @@ fn journal_root_relocation_during_read_never_returns_rebound_bytes() {
     match relocation.expect("must reach journal read") {
         Ok(()) => stale_result(result),
         Err(error) => {
-            sharing_refusal(error);
+            assert!(
+                matches!(error.raw_os_error(), Some(5 | 32 | 33)),
+                "unexpected relocation refusal: {error}"
+            );
             assert!(result.is_ok());
             assert_eq!(snapshot(fixture.tree.path()), before);
+            assert!(!moved.exists());
+            drop(owner);
+            std::fs::rename(&original, &moved).unwrap();
+            assert_eq!(id(&moved), original_id);
         }
     }
 }

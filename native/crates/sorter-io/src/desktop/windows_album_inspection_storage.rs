@@ -1035,7 +1035,7 @@ fn checked_ledger(
         cancelled(cancel)?;
         let full = path_of(&record.reference)?;
         let relative = full
-            .strip_prefix(&selected)
+            .strip_prefix(selected)
             .map_err(|_| stale("target ledger escapes the recorded root"))?
             .to_path_buf();
         if relative.as_os_str().is_empty()

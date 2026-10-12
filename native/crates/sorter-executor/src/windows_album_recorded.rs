@@ -47,7 +47,7 @@ struct RecordedSnapshot {
 struct RecordedCopiedDirectory {
     operation: usize,
     source: EntryObservation,
-    destination: Destination,
+    destination: RecordedDestinationValue,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -58,7 +58,7 @@ struct RecordedDirectory {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct RecordedDestination {
-    destination: Destination,
+    destination: RecordedDestinationValue,
     existing: Option<EntryObservation>,
 }
 #[derive(Deserialize)]
@@ -66,7 +66,7 @@ struct RecordedDestination {
 struct RecordedFile {
     original_operation: usize,
     source: EntryObservation,
-    destination: Destination,
+    destination: RecordedDestinationValue,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -81,9 +81,23 @@ struct RecordedAlbum {
     operation: usize,
     artist: String,
     source: EntryObservation,
-    destination: Destination,
+    destination: RecordedDestinationValue,
     files: Vec<usize>,
     cleanup: Vec<EntryObservation>,
+}
+
+// Journal values remain data-only until their root and components are checked.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RecordedDestinationValue {
+    root: StorageRef,
+    components: Vec<String>,
+}
+impl RecordedDestinationValue {
+    fn into_destination(self) -> Result<Destination> {
+        checked_path(&self.root)?;
+        child_destination(&self.root, &self.components).map_err(|_| E::CorruptJournal)
+    }
 }
 
 struct ValidatedHeader {
@@ -197,13 +211,13 @@ impl RecordedSnapshot {
             snapshot.copied_directories.push(CopiedDirectory {
                 operation: directory.operation,
                 source: directory.source,
-                destination: directory.destination,
+                destination: directory.destination.into_destination()?,
             });
         }
         for destination in self.destinations {
             control.checkpoint()?;
             snapshot.destinations.push(DirectoryRequirement {
-                destination: destination.destination,
+                destination: destination.destination.into_destination()?,
                 existing: destination.existing,
             });
         }
@@ -212,7 +226,7 @@ impl RecordedSnapshot {
             snapshot.files.push(FileIntent {
                 original_operation: file.original_operation,
                 source: file.source,
-                destination: file.destination,
+                destination: file.destination.into_destination()?,
             });
         }
         for album in self.albums {
@@ -236,7 +250,7 @@ impl RecordedSnapshot {
                 operation: album.operation,
                 artist: album.artist,
                 source: album.source,
-                destination: album.destination,
+                destination: album.destination.into_destination()?,
                 files: album.files,
                 cleanup: album.cleanup,
             });

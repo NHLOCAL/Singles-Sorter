@@ -387,6 +387,7 @@ fn last_parent_boundary_relocation_never_returns_rebound_absence_or_presence() {
         if absent {
             std::fs::rename(&fixture.source, fixture.parent.join("retired original")).unwrap();
         }
+        let parent_id = id(&fixture.parent);
         let before = snapshot(fixture.tree.path());
         let moved = fixture.tree.path().join("relocated at final boundary");
         let final_probe = reader.ancestors.len() + if absent { 4 } else { 7 };
@@ -405,11 +406,15 @@ fn last_parent_boundary_relocation_never_returns_rebound_absence_or_presence() {
             }
             Err(error) => {
                 assert!(
-                    matches!(error.raw_os_error(), Some(32 | 33)),
+                    matches!(error.raw_os_error(), Some(5 | 32 | 33)),
                     "unexpected relocation refusal: {error}"
                 );
                 assert!(result.is_ok());
                 assert_eq!(snapshot(fixture.tree.path()), before);
+                assert!(!moved.exists());
+                drop(reader);
+                std::fs::rename(&fixture.parent, &moved).unwrap();
+                assert_eq!(id(&moved), parent_id);
             }
         }
     }

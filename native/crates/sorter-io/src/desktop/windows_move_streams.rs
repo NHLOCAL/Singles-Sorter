@@ -108,7 +108,7 @@ pub(super) fn inspect_bound_streams_observed(
             "inspected stream inventory changed",
         ));
     }
-    inspection_probe(cancel, observe, || check_parent())?;
+    inspection_probe(cancel, observe, check_parent)?;
     Ok(WindowsMoveSourceEvidence {
         identity: expected_identity.clone(),
         attributes,

@@ -109,7 +109,7 @@ fn copied_root_descriptor_keeps_exact_native_original_after_source_disappears() 
 #[test]
 fn rewritten_snapshot_mapping_membership_cleanup_and_parent_forgery_are_rejected() {
     let (fixture, bytes) = completed_copy();
-    for change in 0..7 {
+    for change in 0..12 {
         let forged = header_only(&bytes, |header| {
             let snapshot = &mut header["snapshot"];
             match change {
@@ -130,8 +130,17 @@ fn rewritten_snapshot_mapping_membership_cleanup_and_parent_forgery_are_rejected
                     snapshot["files"][0]["destination"]["components"] =
                         serde_json::json!(["..", "outside"])
                 }
-                _ => {
+                6 => {
                     snapshot["directories"][0]["children"][0]["parent_identity"] = serde_json::json!({"Windows":{"volume":0,"file_id":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}})
+                }
+                7..=10 => {
+                    let family = ["copied_directories", "destinations", "files", "albums"]
+                        [change - 7];
+                    assert!(!snapshot[family].as_array().unwrap().is_empty());
+                    snapshot[family][0]["destination"]["unexpected"] = serde_json::json!(true);
+                }
+                _ => {
+                    snapshot["files"][0]["destination"]["components"] = serde_json::json!([]);
                 }
             }
         });
