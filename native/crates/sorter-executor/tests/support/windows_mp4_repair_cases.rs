@@ -352,7 +352,6 @@ fn real_preview_replan_repairs_later_duplicate_and_preserves_original() {
     );
     assert_eq!(result.retained_backup_bytes, before.len() as u64);
     drop(job);
-    drop(metadata);
     drop(metadata_reads);
     drop(reads);
     let after = std::fs::read(fixture.source.join(fixture.final_name(0))).unwrap();
@@ -423,7 +422,6 @@ fn real_native_preview_reads_tags_but_unknown_structural_uuid_blocks_tag_writes(
     );
     assert_eq!(result.retained_backup_bytes, 0);
     drop(job);
-    drop(metadata);
     drop(metadata_reads);
     drop(reads);
     assert_eq!(
