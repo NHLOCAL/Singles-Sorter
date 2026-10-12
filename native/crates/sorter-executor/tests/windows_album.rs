@@ -1133,76 +1133,153 @@ fn cross_volume_album(root_album: bool) -> (Fixture, tempfile::TempDir) {
     let target_tree = tempfile::tempdir_in(std::env::current_dir().unwrap()).unwrap();
     fixture.target = target_tree.path().canonicalize().unwrap().join("target");
     std::fs::create_dir(&fixture.target).unwrap();
-    std::fs::write(fixture.album.join("1-שיר.mp3:notes"), b"album auxiliary bytes").unwrap();
+    std::fs::write(
+        fixture.album.join("1-שיר.mp3:notes"),
+        b"album auxiliary bytes",
+    )
+    .unwrap();
     let reads = DesktopStorage::new(std::slice::from_ref(&fixture.target)).unwrap();
     fixture.plan.request.target = Some(reads.reference(&fixture.target).unwrap());
     drop(reads);
     fixture.replan();
     let (source, target, journal) = fixture.grants();
     let roots = WindowsMutationStorage::for_selected_roots(source, target, journal).unwrap();
-    let (ObjectIdentity::Windows { volume: a, .. }, ObjectIdentity::Windows { volume: b, .. }) =
-        (&fixture.scope.execution_scope().source_root, &fixture.scope.execution_scope().target_root) else { panic!("native Windows identities required") };
-    assert_ne!(a, b, "this gate requires genuine TEMP/check-out distinct volumes");
+    let (ObjectIdentity::Windows { volume: a, .. }, ObjectIdentity::Windows { volume: b, .. }) = (
+        &fixture.scope.execution_scope().source_root,
+        &fixture.scope.execution_scope().target_root,
+    ) else {
+        panic!("native Windows identities required")
+    };
+    assert_ne!(
+        a, b,
+        "this gate requires genuine TEMP/check-out distinct volumes"
+    );
     prepare_album_move_streams(&mut fixture.scope, &roots, &AtomicBool::new(false)).unwrap();
     drop(roots);
     (fixture, target_tree)
 }
 fn verify_cross_volume_album(fixture: &Fixture) {
     for n in 1..=3 {
-        assert_eq!(std::fs::read(fixture.destination().join(format!("{n}-שיר.mp3"))).unwrap(), format!("owned audio {n}").as_bytes());
+        assert_eq!(
+            std::fs::read(fixture.destination().join(format!("{n}-שיר.mp3"))).unwrap(),
+            format!("owned audio {n}").as_bytes()
+        );
     }
-    assert_eq!(std::fs::read(fixture.destination().join("1-שיר.mp3:notes")).unwrap(), b"album auxiliary bytes");
-    assert_eq!(std::fs::read(fixture.destination().join("cover.jpg")).unwrap(), b"owned sidecar");
-    assert_eq!(std::fs::read(fixture.destination().join("booklet/nested/readme.txt")).unwrap(), b"nested bytes");
+    assert_eq!(
+        std::fs::read(fixture.destination().join("1-שיר.mp3:notes")).unwrap(),
+        b"album auxiliary bytes"
+    );
+    assert_eq!(
+        std::fs::read(fixture.destination().join("cover.jpg")).unwrap(),
+        b"owned sidecar"
+    );
+    assert_eq!(
+        std::fs::read(fixture.destination().join("booklet/nested/readme.txt")).unwrap(),
+        b"nested bytes"
+    );
 }
 #[test]
 fn cross_volume_child_album_preserves_streams_and_completes_exact_cleanup() {
-    let (fixture, _target) = cross_volume_album(false); let mut job = fixture.job();
+    let (fixture, _target) = cross_volume_album(false);
+    let mut job = fixture.job();
     let result = job.run(&AtomicBool::new(false), &mut |_| {}).unwrap();
     assert_eq!(result.status, JobStatus::Complete, "{result:?}");
-    assert_eq!(result.albums_completed, 1); assert_eq!(result.artist_files, vec![("שלום עולם".into(), 4)]);
+    assert_eq!(result.albums_completed, 1);
+    assert_eq!(result.artist_files, vec![("שלום עולם".into(), 4)]);
     assert_eq!(result.transfers.as_ref().unwrap().committed_destinations, 5);
     assert_eq!(result.transfers.as_ref().unwrap().moved_sources, 5);
     assert!(result.retained_directories.is_empty());
-    assert!(!fixture.album.exists()); assert!(fixture.source.is_dir());
+    assert!(!fixture.album.exists());
+    assert!(fixture.source.is_dir());
     let recovery = job.inspect_recovery(&AtomicBool::new(false)).unwrap();
-    assert!(recovery.manifest_finished); assert!(recovery.pending_cleanup.is_empty());
+    assert!(recovery.manifest_finished);
+    assert!(recovery.pending_cleanup.is_empty());
     assert_eq!(recovery.recorded_status.as_deref(), Some("Complete"));
     assert_eq!(recovery.completed_albums, vec![0]);
-    drop(job); verify_cross_volume_album(&fixture);
+    drop(job);
+    verify_cross_volume_album(&fixture);
 }
 #[test]
 fn cross_volume_selected_root_album_uses_original_delete_handle() {
-    let (fixture, _target) = cross_volume_album(true); let mut job = fixture.job();
+    let (fixture, _target) = cross_volume_album(true);
+    let mut job = fixture.job();
     let result = job.run(&AtomicBool::new(false), &mut |_| {}).unwrap();
     assert_eq!(result.status, JobStatus::Complete, "{result:?}");
-    assert_eq!(result.albums_completed, 1); assert!(!fixture.source.exists());
-    let manifest_path = std::fs::read_dir(&fixture.journal).unwrap().map(|entry| entry.unwrap().path())
-        .find(|path| path.file_name().unwrap().to_string_lossy().ends_with(".album.jsonl")).unwrap();
+    assert_eq!(result.albums_completed, 1);
+    assert!(!fixture.source.exists());
+    let manifest_path = std::fs::read_dir(&fixture.journal)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .find(|path| {
+            path.file_name()
+                .unwrap()
+                .to_string_lossy()
+                .ends_with(".album.jsonl")
+        })
+        .unwrap();
     let raw = std::fs::read_to_string(manifest_path).unwrap();
     let header: serde_json::Value = serde_json::from_str(raw.lines().next().unwrap()).unwrap();
     let payload = &header["body"]["payload"];
     assert_eq!(payload["schema"], 2);
-    assert_eq!(payload["original_source"]["identity"], payload["binding"]["source_root"]["identity"]);
-    assert_eq!(payload["original_source"]["parent_identity"], payload["binding"]["source_root"]["parent_identity"]);
-    assert_eq!(payload["original_source"]["actual_name"], serde_json::to_value(MutationName::Windows("source".encode_utf16().collect())).unwrap());
+    assert_eq!(
+        payload["original_source"]["identity"],
+        payload["binding"]["source_root"]["identity"]
+    );
+    assert_eq!(
+        payload["original_source"]["parent_identity"],
+        payload["binding"]["source_root"]["parent_identity"]
+    );
+    assert_eq!(
+        payload["original_source"]["actual_name"],
+        serde_json::to_value(MutationName::Windows("source".encode_utf16().collect())).unwrap()
+    );
     assert!(payload["original_source"]["size"].is_null());
-    assert!(result.removed_directories.iter().any(|directory| directory.identity == fixture.scope.execution_scope().source_root));
+    assert!(
+        result
+            .removed_directories
+            .iter()
+            .any(|directory| directory.identity == fixture.scope.execution_scope().source_root)
+    );
     let recovery = job.inspect_recovery(&AtomicBool::new(false)).unwrap();
-    assert!(recovery.manifest_finished); assert!(recovery.pending_cleanup.is_empty());
-    assert!(recovery.transfers.unwrap().operations.iter().all(|operation| operation.status == sorter_executor::recovery::RecoveryStatus::Committed));
+    assert!(recovery.manifest_finished);
+    assert!(recovery.pending_cleanup.is_empty());
+    assert!(
+        recovery
+            .transfers
+            .unwrap()
+            .operations
+            .iter()
+            .all(|operation| operation.status
+                == sorter_executor::recovery::RecoveryStatus::Committed)
+    );
     std::fs::create_dir(&fixture.source).unwrap();
     std::fs::write(fixture.source.join("foreign.txt"), b"replacement root").unwrap();
     let recovery = job.inspect_recovery(&AtomicBool::new(false)).unwrap();
     assert!(!recovery.pending_cleanup.is_empty());
-    assert!(recovery.transfers.unwrap().operations.iter().all(|operation| operation.status == sorter_executor::recovery::RecoveryStatus::NeedsRecovery));
-    assert_eq!(std::fs::read(fixture.source.join("foreign.txt")).unwrap(), b"replacement root");
-    drop(job); verify_cross_volume_album(&fixture);
+    assert!(
+        recovery
+            .transfers
+            .unwrap()
+            .operations
+            .iter()
+            .all(|operation| operation.status
+                == sorter_executor::recovery::RecoveryStatus::NeedsRecovery)
+    );
+    assert_eq!(
+        std::fs::read(fixture.source.join("foreign.txt")).unwrap(),
+        b"replacement root"
+    );
+    drop(job);
+    verify_cross_volume_album(&fixture);
 }
 #[test]
 fn changed_album_auxiliary_stream_refuses_before_any_effect() {
     let (fixture, _target) = cross_volume_album(false);
-    std::fs::write(fixture.album.join("1-שיר.mp3:notes"), b"changed before apply").unwrap();
+    std::fs::write(
+        fixture.album.join("1-שיר.mp3:notes"),
+        b"changed before apply",
+    )
+    .unwrap();
     assert!(fixture.prepare().is_err());
     assert_eq!(std::fs::read_dir(&fixture.target).unwrap().count(), 0);
     assert_eq!(std::fs::read_dir(&fixture.journal).unwrap().count(), 0);
@@ -1210,74 +1287,165 @@ fn changed_album_auxiliary_stream_refuses_before_any_effect() {
 }
 #[test]
 fn cross_volume_album_cancel_keeps_unretired_sources_and_reports_partial() {
-    let (fixture, _target) = cross_volume_album(false); let mut job = fixture.job();
+    let (fixture, _target) = cross_volume_album(false);
+    let mut job = fixture.job();
     let cancel = AtomicBool::new(false);
-    let result = job.run(&cancel, &mut |_| { cancel.store(true, Ordering::Release); }).unwrap();
-    assert_ne!(result.status, JobStatus::Complete); assert_eq!(result.albums_completed, 0);
+    let result = job
+        .run(&cancel, &mut |_| {
+            cancel.store(true, Ordering::Release);
+        })
+        .unwrap();
+    assert_ne!(result.status, JobStatus::Complete);
+    assert_eq!(result.albums_completed, 0);
     assert!(fixture.album.is_dir());
     assert!(fixture.album.join("1-שיר.mp3").exists());
 }
 #[test]
 fn cross_volume_album_late_child_is_never_recursively_removed() {
-    let (fixture, _target) = cross_volume_album(false); let mut job = fixture.job();
-    std::fs::write(fixture.album.join("foreign.txt"), b"unplanned retained bytes").unwrap();
+    let (fixture, _target) = cross_volume_album(false);
+    let mut job = fixture.job();
+    std::fs::write(
+        fixture.album.join("foreign.txt"),
+        b"unplanned retained bytes",
+    )
+    .unwrap();
     let result = job.run(&AtomicBool::new(false), &mut |_| {});
-    assert!(result.is_err() || result.as_ref().is_ok_and(|value| value.status != JobStatus::Complete));
-    assert_eq!(std::fs::read(fixture.album.join("foreign.txt")).unwrap(), b"unplanned retained bytes");
+    assert!(
+        result.is_err()
+            || result
+                .as_ref()
+                .is_ok_and(|value| value.status != JobStatus::Complete)
+    );
+    assert_eq!(
+        std::fs::read(fixture.album.join("foreign.txt")).unwrap(),
+        b"unplanned retained bytes"
+    );
     assert!(fixture.album.join("1-שיר.mp3").exists());
 }
 #[test]
 fn cross_volume_album_destination_collision_preserves_both_objects() {
-    let (fixture, _target) = cross_volume_album(false); let mut job = fixture.job();
+    let (fixture, _target) = cross_volume_album(false);
+    let mut job = fixture.job();
     std::fs::create_dir_all(fixture.destination()).unwrap();
-    std::fs::write(fixture.destination().join("foreign.txt"), b"foreign destination").unwrap();
+    std::fs::write(
+        fixture.destination().join("foreign.txt"),
+        b"foreign destination",
+    )
+    .unwrap();
     let result = job.run(&AtomicBool::new(false), &mut |_| {}).unwrap();
-    assert_ne!(result.status, JobStatus::Complete); assert_eq!(result.albums_completed, 0);
-    assert_eq!(std::fs::read(fixture.destination().join("foreign.txt")).unwrap(), b"foreign destination");
+    assert_ne!(result.status, JobStatus::Complete);
+    assert_eq!(result.albums_completed, 0);
+    assert_eq!(
+        std::fs::read(fixture.destination().join("foreign.txt")).unwrap(),
+        b"foreign destination"
+    );
     assert!(fixture.album.join("1-שיר.mp3").exists());
 }
 
 #[test]
 fn copied_album_cleanup_rejects_hash_valid_missing_metadata_or_wrong_location() {
     #[derive(serde::Serialize, serde::Deserialize)]
-    struct Body { sequence: u64, previous: String, job_id: String, phase: String, payload: serde_json::Value }
+    struct Body {
+        sequence: u64,
+        previous: String,
+        job_id: String,
+        phase: String,
+        payload: serde_json::Value,
+    }
     #[derive(serde::Serialize, serde::Deserialize)]
-    struct Envelope { body: Body, sha256: String }
-    let (fixture, _target) = cross_volume_album(false); let mut job = fixture.job();
-    assert_eq!(job.run(&AtomicBool::new(false), &mut |_| {}).unwrap().status, JobStatus::Complete);
-    assert!(job.inspect_recovery(&AtomicBool::new(false)).unwrap().manifest_finished);
-    let journal = std::fs::read_dir(&fixture.journal).unwrap().map(|entry| entry.unwrap().path())
-        .find(|path| path.file_name().unwrap().to_string_lossy().ends_with(".album.jsonl")).unwrap();
+    struct Envelope {
+        body: Body,
+        sha256: String,
+    }
+    let (fixture, _target) = cross_volume_album(false);
+    let mut job = fixture.job();
+    assert_eq!(
+        job.run(&AtomicBool::new(false), &mut |_| {})
+            .unwrap()
+            .status,
+        JobStatus::Complete
+    );
+    assert!(
+        job.inspect_recovery(&AtomicBool::new(false))
+            .unwrap()
+            .manifest_finished
+    );
+    let journal = std::fs::read_dir(&fixture.journal)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .find(|path| {
+            path.file_name()
+                .unwrap()
+                .to_string_lossy()
+                .ends_with(".album.jsonl")
+        })
+        .unwrap();
     let original = std::fs::read(&journal).unwrap();
     for variant in 0..5 {
-        let mut rewritten = Vec::new(); let mut previous = String::new(); let mut sequence = 0;
+        let mut rewritten = Vec::new();
+        let mut previous = String::new();
+        let mut sequence = 0;
         let mut reached = false;
-        for line in original.split(|byte| *byte == b'\n').filter(|line| !line.is_empty()) {
+        for line in original
+            .split(|byte| *byte == b'\n')
+            .filter(|line| !line.is_empty())
+        {
             let mut envelope: Envelope = serde_json::from_slice(line).unwrap();
-            if variant == 0 && matches!(envelope.body.phase.as_str(), "DirectoryMetadataPrepared" | "DirectoryMetadataObserved") { continue; }
-            if variant == 3 && envelope.body.phase == "AlbumTransfersObserved" { continue; }
+            if variant == 0
+                && matches!(
+                    envelope.body.phase.as_str(),
+                    "DirectoryMetadataPrepared" | "DirectoryMetadataObserved"
+                )
+            {
+                continue;
+            }
+            if variant == 3 && envelope.body.phase == "AlbumTransfersObserved" {
+                continue;
+            }
             if variant == 4 && envelope.body.phase == "AlbumTransfersObserved" {
-                envelope.body.payload["events"][0]["observed_identity"] = serde_json::to_value(&fixture.scope.execution_scope().source_root).unwrap();
+                envelope.body.payload["events"][0]["observed_identity"] =
+                    serde_json::to_value(&fixture.scope.execution_scope().source_root).unwrap();
             }
             if matches!(variant, 1 | 2) && envelope.body.phase == "CleanupObserved" {
                 if variant == 1 {
                     envelope.body.payload["size"] = serde_json::json!(17);
                 } else {
-                    envelope.body.payload["reference"] = serde_json::to_value(&fixture.plan.request.target).unwrap();
+                    envelope.body.payload["reference"] =
+                        serde_json::to_value(&fixture.plan.request.target).unwrap();
                 }
             }
-            let stop = envelope.body.phase == match variant { 0 => "CleanupPrepared", 3 => "DirectoryMetadataPrepared", 4 => "AlbumTransfersObserved", _ => "CleanupObserved" };
-            envelope.body.sequence = sequence; sequence += 1; envelope.body.previous = previous;
-            envelope.sha256 = digest(&serde_json::to_vec(&envelope.body).unwrap()); previous = envelope.sha256.clone();
-            rewritten.extend(serde_json::to_vec(&envelope).unwrap()); rewritten.push(b'\n');
-            if stop { reached = true; break; }
+            let stop = envelope.body.phase
+                == match variant {
+                    0 => "CleanupPrepared",
+                    3 => "DirectoryMetadataPrepared",
+                    4 => "AlbumTransfersObserved",
+                    _ => "CleanupObserved",
+                };
+            envelope.body.sequence = sequence;
+            sequence += 1;
+            envelope.body.previous = previous;
+            envelope.sha256 = digest(&serde_json::to_vec(&envelope.body).unwrap());
+            previous = envelope.sha256.clone();
+            rewritten.extend(serde_json::to_vec(&envelope).unwrap());
+            rewritten.push(b'\n');
+            if stop {
+                reached = true;
+                break;
+            }
         }
         assert!(reached);
         std::fs::write(&journal, rewritten).unwrap();
-        assert!(matches!(job.inspect_recovery(&AtomicBool::new(false)), Err(E::CorruptJournal)));
+        assert!(matches!(
+            job.inspect_recovery(&AtomicBool::new(false)),
+            Err(E::CorruptJournal)
+        ));
     }
     std::fs::write(&journal, original).unwrap();
-    assert!(job.inspect_recovery(&AtomicBool::new(false)).unwrap().manifest_finished);
+    assert!(
+        job.inspect_recovery(&AtomicBool::new(false))
+            .unwrap()
+            .manifest_finished
+    );
 }
 
 #[test]
@@ -1285,30 +1453,46 @@ fn later_cross_volume_cancellation_keeps_earlier_album_cleanup_and_credit() {
     let (mut fixture, _target) = cross_volume_album(false);
     let second = fixture.source.join("second-album");
     std::fs::create_dir(&second).unwrap();
-    for n in 1..=3 { std::fs::write(second.join(format!("{n}-second.mp3")), format!("second {n}")).unwrap(); }
+    for n in 1..=3 {
+        std::fs::write(
+            second.join(format!("{n}-second.mp3")),
+            format!("second {n}"),
+        )
+        .unwrap();
+    }
     fixture.replan();
     assert_eq!(fixture.plan.operations.len(), 2);
     let (source, target, journal) = fixture.grants();
     let roots = WindowsMutationStorage::for_selected_roots(source, target, journal).unwrap();
     prepare_album_move_streams(&mut fixture.scope, &roots, &AtomicBool::new(false)).unwrap();
     drop(roots);
-    let mut job = fixture.job(); let cancel = AtomicBool::new(false); let mut saw_second = false;
-    let result = job.run(&cancel, &mut |progress| {
-        if progress.operation == 1 {
-            // Completion and source-directory cleanup must precede the next album.
-            assert!(!fixture.album.exists());
-            saw_second = true; cancel.store(true, Ordering::Release);
-        }
-    }).unwrap();
-    assert!(saw_second); assert_eq!(result.status, JobStatus::Cancelled, "{result:?}");
+    let mut job = fixture.job();
+    let cancel = AtomicBool::new(false);
+    let mut saw_second = false;
+    let result = job
+        .run(&cancel, &mut |progress| {
+            if progress.operation == 1 {
+                // Completion and source-directory cleanup must precede the next album.
+                assert!(!fixture.album.exists());
+                saw_second = true;
+                cancel.store(true, Ordering::Release);
+            }
+        })
+        .unwrap();
+    assert!(saw_second);
+    assert_eq!(result.status, JobStatus::Cancelled, "{result:?}");
     assert_eq!(result.completed_album_operations, vec![0]);
-    assert_eq!(result.albums_completed, 1); assert_eq!(result.artist_files, vec![("שלום עולם".into(), 4)]);
-    assert!(!fixture.album.exists()); assert!(second.join("1-second.mp3").is_file());
+    assert_eq!(result.albums_completed, 1);
+    assert_eq!(result.artist_files, vec![("שלום עולם".into(), 4)]);
+    assert!(!fixture.album.exists());
+    assert!(second.join("1-second.mp3").is_file());
     let recovery = job.inspect_recovery(&AtomicBool::new(false)).unwrap();
-    assert!(recovery.manifest_finished); assert!(recovery.pending_cleanup.is_empty());
+    assert!(recovery.manifest_finished);
+    assert!(recovery.pending_cleanup.is_empty());
     assert_eq!(recovery.recorded_status.as_deref(), Some("Cancelled"));
     assert_eq!(recovery.completed_albums, vec![0]);
-    drop(job); verify_cross_volume_album(&fixture);
+    drop(job);
+    verify_cross_volume_album(&fixture);
 }
 
 #[test]
@@ -1321,80 +1505,183 @@ fn copied_album_controlled_recovery_cancels_chunks_with_or_without_source_root()
         fixture.replan();
         let (source, target, journal) = fixture.grants();
         let roots = WindowsMutationStorage::for_selected_roots(source, target, journal).unwrap();
-        prepare_album_move_streams(&mut fixture.scope, &roots, &AtomicBool::new(false)).unwrap(); drop(roots);
+        prepare_album_move_streams(&mut fixture.scope, &roots, &AtomicBool::new(false)).unwrap();
+        drop(roots);
         let mut job = fixture.job();
-        assert_eq!(job.run(&AtomicBool::new(false), &mut |_| {}).unwrap().status, JobStatus::Complete);
-        let before = std::fs::read_dir(&fixture.journal).unwrap().map(|entry| {
-            let path = entry.unwrap().path(); let bytes = std::fs::read(&path).unwrap(); (path, bytes)
-        }).collect::<Vec<_>>();
-        let journal_cancel = Arc::new(AtomicBool::new(false)); let flag = journal_cancel.clone();
-        let journal_control = InspectionControl::with_progress_interval(journal_cancel, std::time::Duration::ZERO, move |progress| {
-            if progress.stage == "album_journals" && progress.bytes_read > 0 { flag.store(true, Ordering::Release); }
-        });
-        assert!(matches!(job.inspect_file_recovery_controlled(&journal_control), Err(E::Cancelled)));
+        assert_eq!(
+            job.run(&AtomicBool::new(false), &mut |_| {})
+                .unwrap()
+                .status,
+            JobStatus::Complete
+        );
+        let before = std::fs::read_dir(&fixture.journal)
+            .unwrap()
+            .map(|entry| {
+                let path = entry.unwrap().path();
+                let bytes = std::fs::read(&path).unwrap();
+                (path, bytes)
+            })
+            .collect::<Vec<_>>();
+        let journal_cancel = Arc::new(AtomicBool::new(false));
+        let flag = journal_cancel.clone();
+        let journal_control = InspectionControl::with_progress_interval(
+            journal_cancel,
+            std::time::Duration::ZERO,
+            move |progress| {
+                if progress.stage == "album_journals" && progress.bytes_read > 0 {
+                    flag.store(true, Ordering::Release);
+                }
+            },
+        );
+        assert!(matches!(
+            job.inspect_file_recovery_controlled(&journal_control),
+            Err(E::Cancelled)
+        ));
         assert!(journal_control.snapshot().unwrap().bytes_read > 0);
-        let cancel = Arc::new(AtomicBool::new(false)); let flag = cancel.clone();
-        let baseline = Arc::new(AtomicU64::new(0)); let observed = baseline.clone();
-        let control = InspectionControl::with_progress_interval(cancel, std::time::Duration::ZERO, move |progress| {
-            if progress.stage == "metadata" { observed.store(progress.bytes_read, Ordering::Release); }
-            if progress.stage == "files" && progress.bytes_read > observed.load(Ordering::Acquire) { flag.store(true, Ordering::Release); }
-        });
-        assert!(matches!(job.inspect_file_recovery_controlled(&control), Err(E::Cancelled)));
+        let cancel = Arc::new(AtomicBool::new(false));
+        let flag = cancel.clone();
+        let baseline = Arc::new(AtomicU64::new(0));
+        let observed = baseline.clone();
+        let control = InspectionControl::with_progress_interval(
+            cancel,
+            std::time::Duration::ZERO,
+            move |progress| {
+                if progress.stage == "metadata" {
+                    observed.store(progress.bytes_read, Ordering::Release);
+                }
+                if progress.stage == "files"
+                    && progress.bytes_read > observed.load(Ordering::Acquire)
+                {
+                    flag.store(true, Ordering::Release);
+                }
+            },
+        );
+        assert!(matches!(
+            job.inspect_file_recovery_controlled(&control),
+            Err(E::Cancelled)
+        ));
         let count = control.snapshot().unwrap().bytes_read;
         assert!(count > baseline.load(Ordering::Acquire));
         assert!(count <= baseline.load(Ordering::Acquire) + 65536);
-        for (path, bytes) in &before { assert_eq!(std::fs::read(path).unwrap(), *bytes); }
+        for (path, bytes) in &before {
+            assert_eq!(std::fs::read(path).unwrap(), *bytes);
+        }
         let control = InspectionControl::new(Arc::new(AtomicBool::new(false)), |_| {});
         let report = job.inspect_file_recovery_controlled(&control).unwrap();
-        assert!(report.manifest_finished); assert!(report.transfers.unwrap().operations.iter().all(|operation|
-            operation.status == sorter_executor::recovery::RecoveryStatus::Committed));
-        assert_eq!(std::fs::read(fixture.destination().join("1-שיר.mp3")).unwrap(), vec![7u8; 256 * 1024]);
-        for (path, bytes) in before { assert_eq!(std::fs::read(path).unwrap(), bytes); }
+        assert!(report.manifest_finished);
+        assert!(
+            report
+                .transfers
+                .unwrap()
+                .operations
+                .iter()
+                .all(|operation| operation.status
+                    == sorter_executor::recovery::RecoveryStatus::Committed)
+        );
+        assert_eq!(
+            std::fs::read(fixture.destination().join("1-שיר.mp3")).unwrap(),
+            vec![7u8; 256 * 1024]
+        );
+        for (path, bytes) in before {
+            assert_eq!(std::fs::read(path).unwrap(), bytes);
+        }
     }
 }
 
 #[test]
 fn cancellation_after_last_retirement_stops_album_without_rewriting_file_terminal() {
-    let (fixture, _target) = cross_volume_album(false); let mut job = fixture.job();
-    let cancel = AtomicBool::new(false); let mut progress_events = 0;
-    let result = job.run(&cancel, &mut |_| {
-        progress_events += 1;
-        // Five one-chunk files each report copied bytes and the acknowledged
-        // retirement handoff. Stop at the last handoff, before directory metadata.
-        if progress_events == 10 { cancel.store(true, Ordering::Release); }
-    }).unwrap();
+    let (fixture, _target) = cross_volume_album(false);
+    let mut job = fixture.job();
+    let cancel = AtomicBool::new(false);
+    let mut progress_events = 0;
+    let result = job
+        .run(&cancel, &mut |_| {
+            progress_events += 1;
+            // Five one-chunk files each report copied bytes and the acknowledged
+            // retirement handoff. Stop at the last handoff, before directory metadata.
+            if progress_events == 10 {
+                cancel.store(true, Ordering::Release);
+            }
+        })
+        .unwrap();
     assert_eq!(progress_events, 10);
     assert_eq!(result.status, JobStatus::Cancelled, "{result:?}");
-    assert_eq!(result.albums_completed, 0); assert!(result.completed_album_operations.is_empty()); assert!(fixture.album.is_dir());
+    assert_eq!(result.albums_completed, 0);
+    assert!(result.completed_album_operations.is_empty());
+    assert!(fixture.album.is_dir());
     let transfers = result.transfers.as_ref().unwrap();
-    assert_eq!(transfers.committed_destinations, 5); assert_eq!(transfers.moved_sources, 5);
-    let journals = std::fs::read_dir(&fixture.journal).unwrap().map(|entry| entry.unwrap().path()).collect::<Vec<_>>();
-    let physical = journals.iter().find(|path| path.file_name().unwrap().to_string_lossy().ends_with(".transfers.jsonl")).unwrap();
+    assert_eq!(transfers.committed_destinations, 5);
+    assert_eq!(transfers.moved_sources, 5);
+    let journals = std::fs::read_dir(&fixture.journal)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .collect::<Vec<_>>();
+    let physical = journals
+        .iter()
+        .find(|path| {
+            path.file_name()
+                .unwrap()
+                .to_string_lossy()
+                .ends_with(".transfers.jsonl")
+        })
+        .unwrap();
     let lines = std::fs::read_to_string(physical).unwrap();
     let last: serde_json::Value = serde_json::from_str(lines.lines().last().unwrap()).unwrap();
     assert_eq!(last["body"]["event"]["phase"], "SourceRetired");
-    let manifest = journals.iter().find(|path| path.file_name().unwrap().to_string_lossy().ends_with(".album.jsonl")).unwrap();
-    assert!(std::fs::read_to_string(manifest).unwrap().contains("AlbumCompletionStopped"));
+    let manifest = journals
+        .iter()
+        .find(|path| {
+            path.file_name()
+                .unwrap()
+                .to_string_lossy()
+                .ends_with(".album.jsonl")
+        })
+        .unwrap();
+    assert!(
+        std::fs::read_to_string(manifest)
+            .unwrap()
+            .contains("AlbumCompletionStopped")
+    );
     let report = job.inspect_recovery(&AtomicBool::new(false)).unwrap();
-    assert!(report.manifest_finished); assert!(!report.incomplete_tail);
+    assert!(report.manifest_finished);
+    assert!(!report.incomplete_tail);
     assert_eq!(report.recorded_status.as_deref(), Some("Cancelled"));
     assert!(report.completed_albums.is_empty());
-    assert!(report.transfers.unwrap().operations.iter().all(|operation| operation.status == sorter_executor::recovery::RecoveryStatus::Committed));
+    assert!(
+        report
+            .transfers
+            .unwrap()
+            .operations
+            .iter()
+            .all(|operation| operation.status
+                == sorter_executor::recovery::RecoveryStatus::Committed)
+    );
 }
 
 #[test]
 fn copied_album_original_plan_revalidation_preserves_cancellation() {
     struct CancellingMetadata<'a>(&'a AtomicBool);
     impl MetadataProvider for CancellingMetadata<'_> {
-        fn open(&mut self, entry: &EntryObservation) -> Result<Box<dyn MetadataFields>, MetadataError> {
+        fn open(
+            &mut self,
+            entry: &EntryObservation,
+        ) -> Result<Box<dyn MetadataFields>, MetadataError> {
             self.0.store(true, Ordering::Release);
             Ok(Box::new(Fields(entry.name.clone())))
         }
     }
-    let (fixture, _target) = cross_volume_album(false); let cancel = AtomicBool::new(false);
-    let result = validate_album_execution(&fixture.plan, &mut CancellingMetadata(&cancel),
-        &mut DisabledRecognition, fixture.scope.resources(), &fixture.scope, &cancel);
-    assert!(cancel.load(Ordering::Acquire)); assert_eq!(result.err(), Some(E::Cancelled));
+    let (fixture, _target) = cross_volume_album(false);
+    let cancel = AtomicBool::new(false);
+    let result = validate_album_execution(
+        &fixture.plan,
+        &mut CancellingMetadata(&cancel),
+        &mut DisabledRecognition,
+        fixture.scope.resources(),
+        &fixture.scope,
+        &cancel,
+    );
+    assert!(cancel.load(Ordering::Acquire));
+    assert_eq!(result.err(), Some(E::Cancelled));
     assert_eq!(std::fs::read_dir(&fixture.target).unwrap().count(), 0);
     assert_eq!(std::fs::read_dir(&fixture.journal).unwrap().count(), 0);
     assert!(fixture.album.join("1-שיר.mp3").is_file());
@@ -1402,20 +1689,45 @@ fn copied_album_original_plan_revalidation_preserves_cancellation() {
 
 #[test]
 fn late_child_after_one_copied_retirement_stops_remaining_album_effects() {
-    let (fixture, _target) = cross_volume_album(false); let mut job = fixture.job();
-    let mut progress_events = 0; let foreign = fixture.album.join("late-foreign.txt");
-    let result = job.run(&AtomicBool::new(false), &mut |_| {
-        progress_events += 1;
-        if progress_events == 2 { std::fs::write(&foreign, b"late external child").unwrap(); }
-    }).unwrap();
-    assert_eq!(progress_events, 2); assert_eq!(result.status, JobStatus::Partial, "{result:?}");
-    assert_eq!(result.albums_completed, 0); assert!(result.removed_directories.is_empty());
+    let (fixture, _target) = cross_volume_album(false);
+    let mut job = fixture.job();
+    let mut progress_events = 0;
+    let foreign = fixture.album.join("late-foreign.txt");
+    let result = job
+        .run(&AtomicBool::new(false), &mut |_| {
+            progress_events += 1;
+            if progress_events == 2 {
+                std::fs::write(&foreign, b"late external child").unwrap();
+            }
+        })
+        .unwrap();
+    assert_eq!(progress_events, 2);
+    assert_eq!(result.status, JobStatus::Partial, "{result:?}");
+    assert_eq!(result.albums_completed, 0);
+    assert!(result.removed_directories.is_empty());
     let transfers = result.transfers.as_ref().unwrap();
-    assert_eq!(transfers.committed_destinations, 1); assert_eq!(transfers.moved_sources, 1);
-    let original = ["1-שיר.mp3", "2-שיר.mp3", "3-שיר.mp3", "cover.jpg", "booklet/nested/readme.txt"];
-    assert_eq!(original.iter().filter(|name| fixture.album.join(name).is_file()).count(), 4);
+    assert_eq!(transfers.committed_destinations, 1);
+    assert_eq!(transfers.moved_sources, 1);
+    let original = [
+        "1-שיר.mp3",
+        "2-שיר.mp3",
+        "3-שיר.mp3",
+        "cover.jpg",
+        "booklet/nested/readme.txt",
+    ];
+    assert_eq!(
+        original
+            .iter()
+            .filter(|name| fixture.album.join(name).is_file())
+            .count(),
+        4
+    );
     assert_eq!(std::fs::read(&foreign).unwrap(), b"late external child");
-    assert!(job.inspect_recovery(&AtomicBool::new(false)).unwrap().manifest_finished);
+    assert!(
+        job.inspect_recovery(&AtomicBool::new(false))
+            .unwrap()
+            .manifest_finished
+    );
     assert_eq!(std::fs::read(&foreign).unwrap(), b"late external child");
 }
 
@@ -1428,29 +1740,75 @@ fn selected_root_short_leaf_alias_recovers_against_native_long_leaf() {
         fn get_short_path_name(input: *const u16, output: *mut u16, capacity: u32) -> u32;
     }
     let (mut fixture, _target) = cross_volume_album(true);
-    let long = fixture.source.parent().unwrap().join("Owned Album Source With Long Leaf");
+    let long = fixture
+        .source
+        .parent()
+        .unwrap()
+        .join("Owned Album Source With Long Leaf");
     std::fs::rename(&fixture.source, &long).unwrap();
-    let input = long.as_os_str().encode_wide().chain(std::iter::once(0)).collect::<Vec<_>>();
+    let input = long
+        .as_os_str()
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect::<Vec<_>>();
     let mut output = vec![0u16; 32768];
     // SAFETY: input is NUL-terminated; output is a writable buffer of capacity
     // passed in UTF-16 units, as documented by GetShortPathNameW.
-    let length = unsafe { get_short_path_name(input.as_ptr(), output.as_mut_ptr(), output.len() as u32) } as usize;
-    assert!(length > 0 && length < output.len(), "GetShortPathNameW: {}", std::io::Error::last_os_error());
+    let length =
+        unsafe { get_short_path_name(input.as_ptr(), output.as_mut_ptr(), output.len() as u32) }
+            as usize;
+    assert!(
+        length > 0 && length < output.len(),
+        "GetShortPathNameW: {}",
+        std::io::Error::last_os_error()
+    );
     let short = PathBuf::from(std::ffi::OsString::from_wide(&output[..length]));
-    assert_ne!(short.file_name(), long.file_name(), "this fixture requires a genuine NTFS short leaf alias");
-    fixture.source = short.clone(); fixture.album = short.clone();
-    fixture.plan.request.source = StorageRef::WindowsPath { utf16: short.as_os_str().encode_wide().collect() };
+    assert_ne!(
+        short.file_name(),
+        long.file_name(),
+        "this fixture requires a genuine NTFS short leaf alias"
+    );
+    fixture.source = short.clone();
+    fixture.album = short.clone();
+    fixture.plan.request.source = StorageRef::WindowsPath {
+        utf16: short.as_os_str().encode_wide().collect(),
+    };
     fixture.replan();
     let (source, target, journal) = fixture.grants();
     let roots = WindowsMutationStorage::for_selected_roots(source, target, journal).unwrap();
-    prepare_album_move_streams(&mut fixture.scope, &roots, &AtomicBool::new(false)).unwrap(); drop(roots);
+    prepare_album_move_streams(&mut fixture.scope, &roots, &AtomicBool::new(false)).unwrap();
+    drop(roots);
     let mut job = fixture.job();
-    assert_eq!(job.run(&AtomicBool::new(false), &mut |_| {}).unwrap().status, JobStatus::Complete);
-    assert!(!long.exists()); assert!(!short.exists());
+    assert_eq!(
+        job.run(&AtomicBool::new(false), &mut |_| {})
+            .unwrap()
+            .status,
+        JobStatus::Complete
+    );
+    assert!(!long.exists());
+    assert!(!short.exists());
     let report = job.inspect_recovery(&AtomicBool::new(false)).unwrap();
     assert_eq!(report.recorded_status.as_deref(), Some("Complete"));
-    assert!(report.removed_directory_references.iter().any(|(reference, identity)| reference == &fixture.plan.request.source && identity == &fixture.scope.execution_scope().source_root));
-    assert!(report.manifest_finished); assert!(report.pending_cleanup.is_empty());
-    assert!(report.transfers.unwrap().operations.iter().all(|operation| operation.status == sorter_executor::recovery::RecoveryStatus::Committed));
-    drop(job); verify_cross_volume_album(&fixture);
+    assert!(
+        report
+            .removed_directory_references
+            .iter()
+            .any(
+                |(reference, identity)| reference == &fixture.plan.request.source
+                    && identity == &fixture.scope.execution_scope().source_root
+            )
+    );
+    assert!(report.manifest_finished);
+    assert!(report.pending_cleanup.is_empty());
+    assert!(
+        report
+            .transfers
+            .unwrap()
+            .operations
+            .iter()
+            .all(|operation| operation.status
+                == sorter_executor::recovery::RecoveryStatus::Committed)
+    );
+    drop(job);
+    verify_cross_volume_album(&fixture);
 }

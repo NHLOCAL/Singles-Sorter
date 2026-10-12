@@ -216,8 +216,8 @@ pub(super) fn execute_request(
         binding::{ExecutionScope, Resources, prepare_scope},
         results::{ItemStatus, JobStatus},
         windows_album::{
-            AlbumScope, SelectedWindowsAlbumJob, prepare_album_scope, prepare_album_move_streams, supported_album_plan,
-            validate_album_execution,
+            AlbumScope, SelectedWindowsAlbumJob, prepare_album_move_streams, prepare_album_scope,
+            supported_album_plan, validate_album_execution,
         },
         windows_copy::WindowsPlanningStorage,
         windows_job::{
@@ -363,24 +363,45 @@ pub(super) fn execute_request(
                 .map_err(|e| fail(&e))?,
         )
     } else if album {
-        let mut scope = prepare_album_scope(&plan, reads.as_mut(), &resources, cancel).map_err(|e| fail(&e))?;
+        let mut scope =
+            prepare_album_scope(&plan, reads.as_mut(), &resources, cancel).map_err(|e| fail(&e))?;
         let copied = !plan.request.settings.copy_mode
             && !matches!((&scope.execution_scope().source_root, &scope.execution_scope().target_root),
                 (ObjectIdentity::Windows { volume: a, .. }, ObjectIdentity::Windows { volume: b, .. }) if a == b);
         let journal_identity = if copied {
-            let mut journal_reads = DesktopStorage::new(std::slice::from_ref(&request.journal_directory)).map_err(|e| fail(&e))?;
-            let reference = journal_reads.reference(&request.journal_directory).map_err(|e| fail(&e))?;
-            let identity = journal_reads.stat(&reference).map_err(|e| fail(&e))?.identity
-                .ok_or_else(|| Failure::new(1, "JOURNAL_UNAVAILABLE", "Journal identity missing"))?;
-            let grant = |path, identity| WindowsSelectedRootGrant::new(path, identity).map_err(|e| fail(&e));
+            let mut journal_reads =
+                DesktopStorage::new(std::slice::from_ref(&request.journal_directory))
+                    .map_err(|e| fail(&e))?;
+            let reference = journal_reads
+                .reference(&request.journal_directory)
+                .map_err(|e| fail(&e))?;
+            let identity = journal_reads
+                .stat(&reference)
+                .map_err(|e| fail(&e))?
+                .identity
+                .ok_or_else(|| {
+                    Failure::new(1, "JOURNAL_UNAVAILABLE", "Journal identity missing")
+                })?;
+            let grant = |path, identity| {
+                WindowsSelectedRootGrant::new(path, identity).map_err(|e| fail(&e))
+            };
             let roots = WindowsMutationStorage::for_selected_roots(
-                grant(request.preview.source.clone(), scope.execution_scope().source_root.clone())?,
-                grant(target.expect("album target checked").clone(), scope.execution_scope().target_root.clone())?,
+                grant(
+                    request.preview.source.clone(),
+                    scope.execution_scope().source_root.clone(),
+                )?,
+                grant(
+                    target.expect("album target checked").clone(),
+                    scope.execution_scope().target_root.clone(),
+                )?,
                 grant(request.journal_directory.clone(), identity.clone())?,
-            ).map_err(|e| fail(&e))?;
+            )
+            .map_err(|e| fail(&e))?;
             prepare_album_move_streams(&mut scope, &roots, cancel).map_err(|e| fail(&e))?;
             Some(identity)
-        } else { None };
+        } else {
+            None
+        };
         Scope::Album(Box::new(scope), journal_identity)
     } else if copied_move {
         // Preview only: every root is independently pinned, but no journal/file
@@ -477,8 +498,15 @@ pub(super) fn execute_request(
     let mut reads = plan_files::ReadAdapter(reads);
     let (scope, copied) = match scope {
         Scope::Album(scope, retained_journal) => {
-            if retained_journal.as_ref().is_some_and(|expected| expected != &journal_identity) {
-                return Err(Failure::new(1, "JOURNAL_CHANGED", "Journal root changed after inspection"));
+            if retained_journal
+                .as_ref()
+                .is_some_and(|expected| expected != &journal_identity)
+            {
+                return Err(Failure::new(
+                    1,
+                    "JOURNAL_CHANGED",
+                    "Journal root changed after inspection",
+                ));
             }
             let validated = {
                 let mut metadata = StorageMetadataProvider {

@@ -440,7 +440,12 @@ impl WindowsMutationStorage {
         let root = self.selected_source_root()?;
         self.check_role(&root, RootRole::Source)?;
         let observed = observe(root.handle(), &root)?;
-        if observed.identity != *root.identity() { return Err(err(MutationErrorKind::StalePlan, "selected source root identity changed")); }
+        if observed.identity != *root.identity() {
+            return Err(err(
+                MutationErrorKind::StalePlan,
+                "selected source root identity changed",
+            ));
+        }
         Ok(observed.reference)
     }
     pub fn selected_repair_reference(&self) -> Result<StorageRef, MutationError> {
@@ -4875,7 +4880,8 @@ pub use album_rename::{
 #[path = "windows_copy_metadata.rs"]
 mod copy_metadata;
 pub use copy_metadata::{
-    WindowsCopyMetadataEvidence, WindowsCopyMetadataObservation, WindowsCreatedCopyDirectory, WindowsAlbumMoveDirectoryMetadata,
+    WindowsAlbumMoveDirectoryMetadata, WindowsCopyMetadataEvidence, WindowsCopyMetadataObservation,
+    WindowsCreatedCopyDirectory,
 };
 
 #[path = "windows_diagnostic_log.rs"]

@@ -44,34 +44,68 @@ fn recovery(report: SelectedAlbumRecovery) -> Value {
             "singles":whole.singles.map(|singles|recovery(*singles))}))})
 }
 fn reconciliation_complete(report: &SelectedAlbumRecovery) -> bool {
-    use sorter_executor::{recovery::{CopyMetadataRecoveryStatus, RecoveryStatus}, windows_album::AlbumDirectoryEvidenceStatus};
-    let removed = report.removed_directory_references.iter().map(|(reference, identity)| (reference, identity)).collect::<std::collections::HashSet<_>>();
+    use sorter_executor::{
+        recovery::{CopyMetadataRecoveryStatus, RecoveryStatus},
+        windows_album::AlbumDirectoryEvidenceStatus,
+    };
+    let removed = report
+        .removed_directory_references
+        .iter()
+        .map(|(reference, identity)| (reference, identity))
+        .collect::<std::collections::HashSet<_>>();
     report.manifest_finished
-        && report.recorded_status.as_deref().is_none_or(|status| status == "Complete")
+        && report
+            .recorded_status
+            .as_deref()
+            .is_none_or(|status| status == "Complete")
         && !report.incomplete_tail
         && report.pending_directories.is_empty()
         && report.pending_cleanup.is_empty()
         && report.pending_metadata.is_empty()
-        && report.directory_metadata_status.iter().all(|(_, status)| status == "verified")
+        && report
+            .directory_metadata_status
+            .iter()
+            .all(|(_, status)| status == "verified")
         && report.directories.iter().all(|entry| {
             if removed.contains(&(&entry.reference, &entry.expected_identity)) {
                 matches!(entry.status, AlbumDirectoryEvidenceStatus::Absent)
-            } else { matches!(entry.status, AlbumDirectoryEvidenceStatus::SameIdentity) }
+            } else {
+                matches!(entry.status, AlbumDirectoryEvidenceStatus::SameIdentity)
+            }
         })
         && report.transfers.as_ref().is_none_or(|transfers| {
-            !transfers.append_blocked && transfers.operations.iter().all(|operation| {
-                operation.status == RecoveryStatus::Committed
-                    && matches!(operation.copy_metadata, CopyMetadataRecoveryStatus::Verified | CopyMetadataRecoveryStatus::NotRequested)
-            })
+            !transfers.append_blocked
+                && transfers.operations.iter().all(|operation| {
+                    operation.status == RecoveryStatus::Committed
+                        && matches!(
+                            operation.copy_metadata,
+                            CopyMetadataRecoveryStatus::Verified
+                                | CopyMetadataRecoveryStatus::NotRequested
+                        )
+                })
         })
         && report.whole.as_ref().is_none_or(|whole| {
-            whole.recorded_finished && !whole.incomplete_tail
-                && whole.pending_albums.is_empty() && whole.pending_directories.is_empty()
-                && whole.source_evidence.iter().all(|entry| matches!(entry.status, AlbumDirectoryEvidenceStatus::Absent))
-                && whole.destination_evidence.iter().all(|entry| matches!(entry.status, AlbumDirectoryEvidenceStatus::SameIdentity))
+            whole.recorded_finished
+                && !whole.incomplete_tail
+                && whole.pending_albums.is_empty()
+                && whole.pending_directories.is_empty()
+                && whole
+                    .source_evidence
+                    .iter()
+                    .all(|entry| matches!(entry.status, AlbumDirectoryEvidenceStatus::Absent))
+                && whole
+                    .destination_evidence
+                    .iter()
+                    .all(|entry| matches!(entry.status, AlbumDirectoryEvidenceStatus::SameIdentity))
                 && whole.files.iter().all(|entry| entry.status == "verified")
-                && whole.child_locations.iter().all(|entry| entry.error.is_none())
-                && whole.singles.as_ref().is_none_or(|singles| reconciliation_complete(singles))
+                && whole
+                    .child_locations
+                    .iter()
+                    .all(|entry| entry.error.is_none())
+                && whole
+                    .singles
+                    .as_ref()
+                    .is_none_or(|singles| reconciliation_complete(singles))
         })
 }
 
@@ -104,24 +138,34 @@ pub(super) fn execute(
         (None, Some("VERIFICATION_CANCELLED".to_owned()))
     } else {
         let inspected = if copied_album {
-            let control = sorter_executor::inspection_control::InspectionControl::borrowed(cancel, |_| {});
+            let control =
+                sorter_executor::inspection_control::InspectionControl::borrowed(cancel, |_| {});
             if event("verification_started", json!({"job_id":id})).is_err() {
                 output_failed = true;
                 cancel.store(true, Ordering::Release);
             }
             let inspected = job.inspect_file_recovery_controlled(&control);
             if let Ok(progress) = control.snapshot()
-                && event("verification_progress", json!({"job_id":id,"progress":progress})).is_err()
+                && event(
+                    "verification_progress",
+                    json!({"job_id":id,"progress":progress}),
+                )
+                .is_err()
             {
                 output_failed = true;
                 cancel.store(true, Ordering::Release);
             }
             inspected
-        } else { job.inspect_recovery(cancel) };
+        } else {
+            job.inspect_recovery(cancel)
+        };
         match inspected {
             Ok(report) => {
                 let verified = reconciliation_complete(&report);
-                (Some(recovery(report)), (!verified).then(|| "ALBUM_RECONCILIATION_INCOMPLETE".to_owned()))
+                (
+                    Some(recovery(report)),
+                    (!verified).then(|| "ALBUM_RECONCILIATION_INCOMPLETE".to_owned()),
+                )
             }
             Err(error) => (None, Some(error.to_string())),
         }
@@ -172,7 +216,11 @@ pub(super) fn execute(
                 "detail":result.detail,"recovery":inspection,"recovery_error":recovery_error,
                 "journal_directory":directory,"invalid_control":invalid_control.load(Ordering::Acquire)}),
             )?;
-            if output_failed || invalid_control.load(Ordering::Acquire) || actual != "complete" || verification_failed {
+            if output_failed
+                || invalid_control.load(Ordering::Acquire)
+                || actual != "complete"
+                || verification_failed
+            {
                 return Err(Failure::new(
                     1,
                     "EXECUTION_INCOMPLETE",

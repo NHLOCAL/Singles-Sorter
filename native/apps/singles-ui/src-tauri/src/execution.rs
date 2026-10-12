@@ -216,7 +216,9 @@ mod selected {
     use sorter_executor::{
         binding::{ExecutionScope, Resources, prepare_scope},
         results::{ItemStatus, JobResult, JobStatus},
-        windows_album::{AlbumScope, prepare_album_scope, prepare_album_move_streams, supported_album_plan},
+        windows_album::{
+            AlbumScope, prepare_album_move_streams, prepare_album_scope, supported_album_plan,
+        },
         windows_job::{
             CopiedMoveScope, SelectedWindowsJob, prepare_copied_move_scope,
             supported_copied_move_plan, supported_plan,
@@ -356,26 +358,32 @@ mod selected {
                 )
             }) {
                 supported_album_plan(plan).map_err(storage_error)?;
-                let mut scope = prepare_album_scope(plan, storage, &resources, &cancellation.cancelled)
-                    .map_err(storage_error)?;
+                let mut scope =
+                    prepare_album_scope(plan, storage, &resources, &cancellation.cancelled)
+                        .map_err(storage_error)?;
                 let mut retained_journal = None;
                 if !plan.request.settings.copy_mode
                     && !matches!((&scope.execution_scope().source_root, &scope.execution_scope().target_root), (sorter_core::discovery::ObjectIdentity::Windows {volume:a,..},sorter_core::discovery::ObjectIdentity::Windows {volume:b,..}) if a == b)
                 {
                     let journal = journal_directory.ok_or_else(|| {
-                        HostError::new("JOURNAL_UNAVAILABLE", "Application journal directory is unavailable")
+                        HostError::new(
+                            "JOURNAL_UNAVAILABLE",
+                            "Application journal directory is unavailable",
+                        )
                     })?;
                     let identity = inspect_root(journal)?.identity.ok_or_else(|| {
                         HostError::new("JOURNAL_UNAVAILABLE", "Journal root identity missing")
                     })?;
                     let grant = |path: &Path, identity| {
-                        WindowsSelectedRootGrant::new(path.to_owned(), identity).map_err(storage_error)
+                        WindowsSelectedRootGrant::new(path.to_owned(), identity)
+                            .map_err(storage_error)
                     };
                     let roots = WindowsMutationStorage::for_selected_roots(
                         grant(&source.path, scope.execution_scope().source_root.clone())?,
                         grant(&target.path, scope.execution_scope().target_root.clone())?,
                         grant(journal, identity.clone())?,
-                    ).map_err(storage_error)?;
+                    )
+                    .map_err(storage_error)?;
                     prepare_album_move_streams(&mut scope, &roots, &cancellation.cancelled)
                         .map_err(storage_error)?;
                     // The preview grants never escape or create a journal. Apply
@@ -779,11 +787,19 @@ mod selected {
                         cancellation,
                     );
                 }
-                PreparedScope::Album { target, journal, scope } => {
+                PreparedScope::Album {
+                    target,
+                    journal,
+                    scope,
+                } => {
                     if let Some((path, identity)) = &journal
-                        && (path != &directory || inspect_root(&directory)?.identity.as_ref() != Some(identity))
+                        && (path != &directory
+                            || inspect_root(&directory)?.identity.as_ref() != Some(identity))
                     {
-                        return Err(HostError::new("JOURNAL_CHANGED", "Journal storage changed; inspect a fresh plan"));
+                        return Err(HostError::new(
+                            "JOURNAL_CHANGED",
+                            "Journal storage changed; inspect a fresh plan",
+                        ));
                     }
                     return self.execute_album(
                         id,

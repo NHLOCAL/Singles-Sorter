@@ -514,24 +514,30 @@ fn run_job_inner<S: TransferStorage>(
                     // Only this private selected-album callback may release a
                     // consumed copied source. Generic jobs retain all guards.
                     if runner.binding.data.copied_move_sources.is_some()
-                        && runner.journal.events().last().is_some_and(|event|
-                            event.operation == op.id && event.phase == Phase::SourceRetired)
+                        && runner.journal.events().last().is_some_and(|event| {
+                            event.operation == op.id && event.phase == Phase::SourceRetired
+                        })
                     {
                         runner.sources.remove(&op.source.observation.reference);
-                        (runner.progress)(TransferProgress { operation: op.id,
+                        (runner.progress)(TransferProgress {
+                            operation: op.id,
                             bytes_written: op.source.observation.size.unwrap_or(0),
-                            source_length: op.source.observation.size.unwrap_or(0) });
+                            source_length: op.source.observation.size.unwrap_or(0),
+                        });
                     }
                     outcome(hook(op.id, runner.storage, runner.journal))
-                },
+                }
                 None => Ok(()),
             });
         if let Err(failure) = executed {
             let album_after_retirement = after_commit.is_some()
                 && runner.binding.data.copied_move_sources.is_some()
-                && runner.journal.events().last().is_some_and(|event|
-                    event.operation == op.id && event.phase == Phase::SourceRetired);
-            if album_after_retirement { runner.stop = true; }
+                && runner.journal.events().last().is_some_and(|event| {
+                    event.operation == op.id && event.phase == Phase::SourceRetired
+                });
+            if album_after_retirement {
+                runner.stop = true;
+            }
             if let Some(observation) = failure.error.observed.as_deref() {
                 item.observations.push(observation.clone())
             }
@@ -551,7 +557,9 @@ fn run_job_inner<S: TransferStorage>(
             };
             // Directory finalization belongs to the outer album journal. A
             // synced retired file must never acquire a fictitious failure phase.
-            if !album_after_retirement && record(runner.journal, runner.sink, op, phase, None).is_err() {
+            if !album_after_retirement
+                && record(runner.journal, runner.sink, op, phase, None).is_err()
+            {
                 item.status = ItemStatus::NeedsRecovery;
                 runner.stop = true;
             }

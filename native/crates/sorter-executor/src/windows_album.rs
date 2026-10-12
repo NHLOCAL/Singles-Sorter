@@ -1,7 +1,7 @@
 //! Selected Windows album jobs consume the unchanged planner's operations.
 //! Membership is a checked planned-content snapshot, never an exclusion claim.
 use crate::inspection_control::{InspectionControl, probe};
-use crate::windows_job::copied_move::{CopiedMoveStorage, MoveSource, MovePublished};
+use crate::windows_job::copied_move::{CopiedMoveStorage, MovePublished, MoveSource};
 use crate::{
     ExecutionError as E, Result,
     binding::*,
@@ -552,33 +552,69 @@ pub fn prepare_album_scope(
 
 /// Bind complete source streams during preview, before confirmation. Existing
 /// verified roots are read-only here; no journal or destination is created.
-pub fn prepare_album_move_streams(scope: &mut AlbumScope, roots: &WindowsMutationStorage, cancel: &AtomicBool) -> Result<()> {
+pub fn prepare_album_move_streams(
+    scope: &mut AlbumScope,
+    roots: &WindowsMutationStorage,
+    cancel: &AtomicBool,
+) -> Result<()> {
     cancelled(cancel)?;
     if scope.execution.allowed_modes != [TransferMode::Move]
-        || roots.selected_source_root().map_err(|_| E::Scope)?.identity() != &scope.execution.source_root
-        || roots.selected_target_root().map_err(|_| E::Scope)?.identity() != &scope.execution.target_root
-    { return Err(E::Scope); }
+        || roots
+            .selected_source_root()
+            .map_err(|_| E::Scope)?
+            .identity()
+            != &scope.execution.source_root
+        || roots
+            .selected_target_root()
+            .map_err(|_| E::Scope)?
+            .identity()
+            != &scope.execution.target_root
+    {
+        return Err(E::Scope);
+    }
     let copied = !matches!((&scope.execution.source_root, &scope.execution.target_root),
         (ObjectIdentity::Windows { volume: a, .. }, ObjectIdentity::Windows { volume: b, .. }) if a == b);
     check_copied_album_operation_count(copied, scope.snapshot.files.len())?;
-    if copied { check_album_record_count(&scope.snapshot)?; }
-    if !copied { return Ok(()); }
+    if copied {
+        check_album_record_count(&scope.snapshot)?;
+    }
+    if !copied {
+        return Ok(());
+    }
     for directory in &scope.snapshot.directories {
         cancelled(cancel)?;
-        let parent = roots.parent_reference(&directory.source.reference).map_err(|_| E::Stale)?;
-        if Some(parent.identity()) != directory.source.identity.as_ref() { return Err(E::Stale); }
-        roots.inspect_album_cleanup_directory(&parent, cancel).map_err(album_native_error)?;
+        let parent = roots
+            .parent_reference(&directory.source.reference)
+            .map_err(|_| E::Stale)?;
+        if Some(parent.identity()) != directory.source.identity.as_ref() {
+            return Err(E::Stale);
+        }
+        roots
+            .inspect_album_cleanup_directory(&parent, cancel)
+            .map_err(album_native_error)?;
     }
     let mut sources = Vec::new();
     for source in &scope.execution.inspected_sources {
         cancelled(cancel)?;
-        let parent = roots.parent_reference(&parent_reference(&source.observation)?).map_err(|_| E::Stale)?;
-        let evidence = roots.inspect_copied_move_source(&parent, &expected(source)?, cancel).map_err(album_native_error)?;
+        let parent = roots
+            .parent_reference(&parent_reference(&source.observation)?)
+            .map_err(|_| E::Stale)?;
+        let evidence = roots
+            .inspect_copied_move_source(&parent, &expected(source)?, cancel)
+            .map_err(album_native_error)?;
         sources.push(CopiedMoveSourceEvidence {
-            source: source.observation.reference.clone(), identity: evidence.identity,
-            attributes: evidence.attributes, streams: evidence.streams.into_iter().map(|stream| CopiedMoveStreamEvidence {
-                name: stream.name, length: stream.length, sha256: stream.sha256,
-            }).collect(),
+            source: source.observation.reference.clone(),
+            identity: evidence.identity,
+            attributes: evidence.attributes,
+            streams: evidence
+                .streams
+                .into_iter()
+                .map(|stream| CopiedMoveStreamEvidence {
+                    name: stream.name,
+                    length: stream.length,
+                    sha256: stream.sha256,
+                })
+                .collect(),
         });
     }
     scope.move_sources = Some(sources);
@@ -587,24 +623,55 @@ pub fn prepare_album_move_streams(scope: &mut AlbumScope, roots: &WindowsMutatio
 fn check_copied_album_operation_count(copied: bool, count: usize) -> Result<()> {
     // Matches the current controlled physical-journal parser's explicit ceiling.
     // Refuse before authority can produce effects that its reader cannot inspect.
-    if copied && count > crate::inspection_control::MAX_OPERATIONS { Err(E::Unsupported) } else { Ok(()) }
+    if copied && count > crate::inspection_control::MAX_OPERATIONS {
+        Err(E::Unsupported)
+    } else {
+        Ok(())
+    }
 }
 fn check_album_record_count(snapshot: &Snapshot) -> Result<()> {
-    let cleanup = snapshot.albums.iter().try_fold(0usize, |n, album| n.checked_add(album.cleanup.len()).ok_or(E::Unsupported))?;
-    let records = snapshot.destinations.len().checked_add(snapshot.copied_directories.len())
-        .and_then(|n| n.checked_add(cleanup)).and_then(|n| n.checked_mul(2))
-        .and_then(|n| snapshot.albums.len().checked_mul(3).and_then(|a| n.checked_add(a)))
-        .and_then(|n| n.checked_add(6)).ok_or(E::Unsupported)?;
-    if records > crate::inspection_control::MAX_RECORDS { Err(E::Unsupported) } else { Ok(()) }
+    let cleanup = snapshot.albums.iter().try_fold(0usize, |n, album| {
+        n.checked_add(album.cleanup.len()).ok_or(E::Unsupported)
+    })?;
+    let records = snapshot
+        .destinations
+        .len()
+        .checked_add(snapshot.copied_directories.len())
+        .and_then(|n| n.checked_add(cleanup))
+        .and_then(|n| n.checked_mul(2))
+        .and_then(|n| {
+            snapshot
+                .albums
+                .len()
+                .checked_mul(3)
+                .and_then(|a| n.checked_add(a))
+        })
+        .and_then(|n| n.checked_add(6))
+        .ok_or(E::Unsupported)?;
+    if records > crate::inspection_control::MAX_RECORDS {
+        Err(E::Unsupported)
+    } else {
+        Ok(())
+    }
 }
-fn album_header(binding: &ExecutionBinding, snapshot: &Snapshot, source: Option<&MutationObservation>) -> serde_json::Value {
+fn album_header(
+    binding: &ExecutionBinding,
+    snapshot: &Snapshot,
+    source: Option<&MutationObservation>,
+) -> serde_json::Value {
     match source {
-        Some(source) => serde_json::json!({"schema":2,"binding":binding.data,"snapshot":snapshot,"original_source":source}),
+        Some(source) => {
+            serde_json::json!({"schema":2,"binding":binding.data,"snapshot":snapshot,"original_source":source})
+        }
         None => serde_json::json!({"schema":1,"binding":binding.data,"snapshot":snapshot}),
     }
 }
 fn album_native_error(error: MutationError) -> E {
-    match error.kind { MutationErrorKind::Cancelled => E::Cancelled, MutationErrorKind::Unsupported => E::Unsupported, _ => E::Stale }
+    match error.kind {
+        MutationErrorKind::Cancelled => E::Cancelled,
+        MutationErrorKind::Unsupported => E::Unsupported,
+        _ => E::Stale,
+    }
 }
 
 enum Inner {
@@ -614,7 +681,11 @@ enum Inner {
 }
 impl Inner {
     fn roots_mut(&mut self) -> &mut WindowsMutationStorage {
-        match self { Self::Copy(storage) => storage, Self::Rename(storage) => storage.owned_mut(), Self::Copied(storage) => &mut storage.roots }
+        match self {
+            Self::Copy(storage) => storage,
+            Self::Rename(storage) => storage.owned_mut(),
+            Self::Copied(storage) => &mut storage.roots,
+        }
     }
     fn roots(&self) -> &WindowsMutationStorage {
         match self {
@@ -624,22 +695,52 @@ impl Inner {
         }
     }
 }
-enum AlbumSource { Native(WindowsSourceLease), Copied(MoveSource) }
+enum AlbumSource {
+    Native(WindowsSourceLease),
+    Copied(MoveSource),
+}
 impl AlbumSource {
-    fn observation(&self) -> &MutationObservation { match self { Self::Native(value) => value.observation(), Self::Copied(value) => value.observation() } }
+    fn observation(&self) -> &MutationObservation {
+        match self {
+            Self::Native(value) => value.observation(),
+            Self::Copied(value) => value.observation(),
+        }
+    }
 }
-enum AlbumTemp { Native(WindowsOwnedTemp), Copied(WindowsCopiedMoveTemp) }
+enum AlbumTemp {
+    Native(WindowsOwnedTemp),
+    Copied(WindowsCopiedMoveTemp),
+}
 impl AlbumTemp {
-    fn observation(&self) -> &MutationObservation { match self { Self::Native(value) => value.observation(), Self::Copied(value) => value.observation() } }
+    fn observation(&self) -> &MutationObservation {
+        match self {
+            Self::Native(value) => value.observation(),
+            Self::Copied(value) => value.observation(),
+        }
+    }
 }
-enum AlbumPublished { Native(WindowsPublished), Copied(MovePublished) }
+enum AlbumPublished {
+    Native(WindowsPublished),
+    Copied(MovePublished),
+}
 impl AlbumPublished {
-    fn observation(&self) -> &MutationObservation { match self { Self::Native(value) => value.observation(), Self::Copied(value) => value.observation() } }
+    fn observation(&self) -> &MutationObservation {
+        match self {
+            Self::Native(value) => value.observation(),
+            Self::Copied(value) => value.observation(),
+        }
+    }
 }
 fn map_album<T, U>(outcome: MutationOutcome<T>, map: impl FnOnce(T) -> U) -> MutationOutcome<U> {
-    match outcome { MutationOutcome::Applied(value) => MutationOutcome::Applied(map(value)), MutationOutcome::NoEffect(error) => MutationOutcome::NoEffect(error), MutationOutcome::PendingUnknown(error) => MutationOutcome::PendingUnknown(error) }
+    match outcome {
+        MutationOutcome::Applied(value) => MutationOutcome::Applied(map(value)),
+        MutationOutcome::NoEffect(error) => MutationOutcome::NoEffect(error),
+        MutationOutcome::PendingUnknown(error) => MutationOutcome::PendingUnknown(error),
+    }
 }
-fn wrong_album_route() -> MutationError { failure("album operation differs from retained transfer route") }
+fn wrong_album_route() -> MutationError {
+    failure("album operation differs from retained transfer route")
+}
 macro_rules! native_mut {($s:expr,$method:ident $(,$arg:expr)*)=>{match &mut $s.inner{Inner::Copy(storage)=>storage.$method($($arg),*),Inner::Rename(storage)=>storage.$method($($arg),*),Inner::Copied(storage)=>storage.$method($($arg),*)}};}
 macro_rules! native_ref {($s:expr,$method:ident $(,$arg:expr)*)=>{match &$s.inner{Inner::Copy(storage)=>storage.$method($($arg),*),Inner::Rename(storage)=>storage.$method($($arg),*),Inner::Copied(storage)=>storage.$method($($arg),*)}};}
 fn same_members(
@@ -684,11 +785,19 @@ impl AlbumStorage {
     fn check_all_controlled(&self, cancel: &AtomicBool) -> std::result::Result<(), MutationError> {
         self.check_all_with(Some(cancel))
     }
-    fn check_all_with(&self, cancel: Option<&AtomicBool>) -> std::result::Result<(), MutationError> {
+    fn check_all_with(
+        &self,
+        cancel: Option<&AtomicBool>,
+    ) -> std::result::Result<(), MutationError> {
         let legacy = AtomicBool::new(false);
         let cancel = cancel.unwrap_or(&legacy);
         for watch in &self.watches {
-            if cancel.load(Ordering::Acquire) { return Err(MutationError::new(MutationErrorKind::Cancelled, "album membership inspection cancelled")); }
+            if cancel.load(Ordering::Acquire) {
+                return Err(MutationError::new(
+                    MutationErrorKind::Cancelled,
+                    "album membership inspection cancelled",
+                ));
+            }
             let expected = watch
                 .expected
                 .iter()
@@ -696,7 +805,8 @@ impl AlbumStorage {
                 .cloned()
                 .collect::<Vec<_>>();
             if !same_members(
-                self.roots().source_directory_members_with_cancel(&watch.parent, cancel)?,
+                self.roots()
+                    .source_directory_members_with_cancel(&watch.parent, cancel)?,
                 expected,
             ) {
                 return Err(failure("planned album membership changed; stop and replan"));
@@ -704,7 +814,12 @@ impl AlbumStorage {
         }
         Ok(())
     }
-    fn prepare_sources(&mut self, snapshot: &Snapshot, binding: &ExecutionBinding, cancel: &AtomicBool) -> Result<()> {
+    fn prepare_sources(
+        &mut self,
+        snapshot: &Snapshot,
+        binding: &ExecutionBinding,
+        cancel: &AtomicBool,
+    ) -> Result<()> {
         for directory in &snapshot.directories {
             cancelled(cancel)?;
             let parent = self
@@ -726,12 +841,17 @@ impl AlbumStorage {
                 })
                 .collect::<Result<Vec<_>>>()?;
             if matches!(self.inner, Inner::Copied(_)) {
-                let captured = self.roots().capture_album_move_directory_metadata(&parent, cancel).map_err(album_native_error)?;
-                self.source_metadata.insert(parent.identity().clone(), captured);
+                let captured = self
+                    .roots()
+                    .capture_album_move_directory_metadata(&parent, cancel)
+                    .map_err(album_native_error)?;
+                self.source_metadata
+                    .insert(parent.identity().clone(), captured);
             }
             self.watches.push(Watch { parent, expected });
         }
-        self.check_all_controlled(cancel).map_err(album_native_error)?;
+        self.check_all_controlled(cancel)
+            .map_err(album_native_error)?;
         for source in &binding.data.scope_evidence.inspected_sources {
             cancelled(cancel)?;
             let parent = self
@@ -740,15 +860,23 @@ impl AlbumStorage {
                 .map_err(|_| E::Stale)?;
             let expected = expected(source)?;
             let lease = match &mut self.inner {
-                Inner::Copy(storage) => storage.acquire_source(&parent, &expected).map(AlbumSource::Native),
-                Inner::Rename(storage) => storage.acquire_source(&parent, &expected).map(AlbumSource::Native),
-                Inner::Copied(storage) => storage.acquire_source(&parent, &expected).map(AlbumSource::Copied),
-            }.map_err(album_native_error)?;
+                Inner::Copy(storage) => storage
+                    .acquire_source(&parent, &expected)
+                    .map(AlbumSource::Native),
+                Inner::Rename(storage) => storage
+                    .acquire_source(&parent, &expected)
+                    .map(AlbumSource::Native),
+                Inner::Copied(storage) => storage
+                    .acquire_source(&parent, &expected)
+                    .map(AlbumSource::Copied),
+            }
+            .map_err(album_native_error)?;
             if self.pool.insert(expected.identity, lease).is_some() {
                 return Err(E::Scope);
             }
         }
-        self.check_all_controlled(cancel).map_err(album_native_error)
+        self.check_all_controlled(cancel)
+            .map_err(album_native_error)
     }
     fn after_publication(
         &self,
@@ -771,82 +899,210 @@ impl MutationStorage for AlbumStorage {
     type SourceLease = AlbumSource;
     type OwnedTemp = AlbumTemp;
     type Published = AlbumPublished;
-    fn capabilities(&self) -> MutationCapabilities { native_ref!(self, capabilities) }
-    fn acquire_source(&mut self, parent: &WindowsParent, expected: &ExpectedSource) -> std::result::Result<AlbumSource, MutationError> {
-        if !matches!(self.inner, Inner::Copied(_)) { self.check_all()?; }
-        if parent.identity() != &expected.parent_identity { return Err(wrong_album_route()); }
-        let lease = self.pool.remove(&expected.identity).ok_or_else(wrong_album_route)?;
-        if lease.observation().actual_name != expected.name || lease.observation().parent_identity != expected.parent_identity { return Err(wrong_album_route()); }
+    fn capabilities(&self) -> MutationCapabilities {
+        native_ref!(self, capabilities)
+    }
+    fn acquire_source(
+        &mut self,
+        parent: &WindowsParent,
+        expected: &ExpectedSource,
+    ) -> std::result::Result<AlbumSource, MutationError> {
+        if !matches!(self.inner, Inner::Copied(_)) {
+            self.check_all()?;
+        }
+        if parent.identity() != &expected.parent_identity {
+            return Err(wrong_album_route());
+        }
+        let lease = self
+            .pool
+            .remove(&expected.identity)
+            .ok_or_else(wrong_album_route)?;
+        if lease.observation().actual_name != expected.name
+            || lease.observation().parent_identity != expected.parent_identity
+        {
+            return Err(wrong_album_route());
+        }
         Ok(lease)
     }
-    fn create_temp(&mut self, parent: &WindowsParent, job_id: &str, cancel: &AtomicBool) -> MutationOutcome<AlbumTemp> {
-        if let Err(error) = self.check_all_controlled(cancel) { return MutationOutcome::NoEffect(error); }
+    fn create_temp(
+        &mut self,
+        parent: &WindowsParent,
+        job_id: &str,
+        cancel: &AtomicBool,
+    ) -> MutationOutcome<AlbumTemp> {
+        if let Err(error) = self.check_all_controlled(cancel) {
+            return MutationOutcome::NoEffect(error);
+        }
         match &mut self.inner {
-            Inner::Copy(storage) => map_album(storage.create_temp(parent, job_id, cancel), AlbumTemp::Native),
-            Inner::Rename(storage) => map_album(storage.create_temp(parent, job_id, cancel), AlbumTemp::Native),
-            Inner::Copied(storage) => map_album(storage.create_temp(parent, job_id, cancel), AlbumTemp::Copied),
+            Inner::Copy(storage) => map_album(
+                storage.create_temp(parent, job_id, cancel),
+                AlbumTemp::Native,
+            ),
+            Inner::Rename(storage) => map_album(
+                storage.create_temp(parent, job_id, cancel),
+                AlbumTemp::Native,
+            ),
+            Inner::Copied(storage) => map_album(
+                storage.create_temp(parent, job_id, cancel),
+                AlbumTemp::Copied,
+            ),
         }
     }
-    fn publish_no_replace(&mut self, temp: &mut AlbumTemp, parent: &WindowsParent, name: &MutationName, cancel: &AtomicBool) -> MutationOutcome<AlbumPublished> {
-        if let Err(error) = self.check_all_controlled(cancel) { return MutationOutcome::NoEffect(error); }
+    fn publish_no_replace(
+        &mut self,
+        temp: &mut AlbumTemp,
+        parent: &WindowsParent,
+        name: &MutationName,
+        cancel: &AtomicBool,
+    ) -> MutationOutcome<AlbumPublished> {
+        if let Err(error) = self.check_all_controlled(cancel) {
+            return MutationOutcome::NoEffect(error);
+        }
         let value = match (&mut self.inner, temp) {
-            (Inner::Copy(storage), AlbumTemp::Native(temp)) => map_album(storage.publish_no_replace(temp, parent, name, cancel), AlbumPublished::Native),
-            (Inner::Rename(storage), AlbumTemp::Native(temp)) => map_album(storage.publish_no_replace(temp, parent, name, cancel), AlbumPublished::Native),
-            (Inner::Copied(storage), AlbumTemp::Copied(temp)) => map_album(storage.publish_no_replace(temp, parent, name, cancel), AlbumPublished::Copied),
+            (Inner::Copy(storage), AlbumTemp::Native(temp)) => map_album(
+                storage.publish_no_replace(temp, parent, name, cancel),
+                AlbumPublished::Native,
+            ),
+            (Inner::Rename(storage), AlbumTemp::Native(temp)) => map_album(
+                storage.publish_no_replace(temp, parent, name, cancel),
+                AlbumPublished::Native,
+            ),
+            (Inner::Copied(storage), AlbumTemp::Copied(temp)) => map_album(
+                storage.publish_no_replace(temp, parent, name, cancel),
+                AlbumPublished::Copied,
+            ),
             _ => MutationOutcome::NoEffect(wrong_album_route()),
         };
         self.after_publication(value, cancel)
     }
-    fn rename_no_replace(&mut self, source: &mut AlbumSource, parent: &WindowsParent, name: &MutationName, cancel: &AtomicBool) -> MutationOutcome<AlbumPublished> {
-        if let Err(error) = self.check_all_controlled(cancel) { return MutationOutcome::NoEffect(error); }
+    fn rename_no_replace(
+        &mut self,
+        source: &mut AlbumSource,
+        parent: &WindowsParent,
+        name: &MutationName,
+        cancel: &AtomicBool,
+    ) -> MutationOutcome<AlbumPublished> {
+        if let Err(error) = self.check_all_controlled(cancel) {
+            return MutationOutcome::NoEffect(error);
+        }
         let id = source.observation().identity.clone();
         let value = match (&mut self.inner, source) {
-            (Inner::Copy(storage), AlbumSource::Native(source)) => map_album(storage.rename_no_replace(source, parent, name, cancel), AlbumPublished::Native),
-            (Inner::Rename(storage), AlbumSource::Native(source)) => map_album(storage.rename_no_replace(source, parent, name, cancel), AlbumPublished::Native),
-            (Inner::Copied(storage), AlbumSource::Copied(source)) => map_album(storage.rename_no_replace(source, parent, name, cancel), AlbumPublished::Copied),
+            (Inner::Copy(storage), AlbumSource::Native(source)) => map_album(
+                storage.rename_no_replace(source, parent, name, cancel),
+                AlbumPublished::Native,
+            ),
+            (Inner::Rename(storage), AlbumSource::Native(source)) => map_album(
+                storage.rename_no_replace(source, parent, name, cancel),
+                AlbumPublished::Native,
+            ),
+            (Inner::Copied(storage), AlbumSource::Copied(source)) => map_album(
+                storage.rename_no_replace(source, parent, name, cancel),
+                AlbumPublished::Copied,
+            ),
             _ => MutationOutcome::NoEffect(wrong_album_route()),
         };
-        if matches!(&value, MutationOutcome::Applied(_)) { self.removed.insert(id); }
+        if matches!(&value, MutationOutcome::Applied(_)) {
+            self.removed.insert(id);
+        }
         self.after_publication(value, cancel)
     }
-    fn verify(&mut self, published: &AlbumPublished, digest: &ContentDigest) -> std::result::Result<MutationObservation, MutationError> {
-        if !matches!(self.inner, Inner::Copied(_)) { self.check_all()?; }
+    fn verify(
+        &mut self,
+        published: &AlbumPublished,
+        digest: &ContentDigest,
+    ) -> std::result::Result<MutationObservation, MutationError> {
+        if !matches!(self.inner, Inner::Copied(_)) {
+            self.check_all()?;
+        }
         let value = match (&mut self.inner, published) {
-            (Inner::Copy(storage), AlbumPublished::Native(published)) => storage.verify(published, digest),
-            (Inner::Rename(storage), AlbumPublished::Native(published)) => storage.verify(published, digest),
-            (Inner::Copied(storage), AlbumPublished::Copied(published)) => storage.verify(published, digest),
+            (Inner::Copy(storage), AlbumPublished::Native(published)) => {
+                storage.verify(published, digest)
+            }
+            (Inner::Rename(storage), AlbumPublished::Native(published)) => {
+                storage.verify(published, digest)
+            }
+            (Inner::Copied(storage), AlbumPublished::Copied(published)) => {
+                storage.verify(published, digest)
+            }
             _ => Err(wrong_album_route()),
         };
         value
     }
-    fn retire_source(&mut self, _: &mut AlbumSource, _: &AtomicBool) -> MutationOutcome<RetirementOutcome> { MutationOutcome::NoEffect(wrong_album_route()) }
-    fn inspect(&mut self, published: &AlbumPublished) -> std::result::Result<MutationObservation, MutationError> {
-        if !matches!(self.inner, Inner::Copied(_)) { self.check_all()?; }
+    fn retire_source(
+        &mut self,
+        _: &mut AlbumSource,
+        _: &AtomicBool,
+    ) -> MutationOutcome<RetirementOutcome> {
+        MutationOutcome::NoEffect(wrong_album_route())
+    }
+    fn inspect(
+        &mut self,
+        published: &AlbumPublished,
+    ) -> std::result::Result<MutationObservation, MutationError> {
+        if !matches!(self.inner, Inner::Copied(_)) {
+            self.check_all()?;
+        }
         let value = match (&mut self.inner, published) {
             (Inner::Copy(storage), AlbumPublished::Native(published)) => storage.inspect(published),
-            (Inner::Rename(storage), AlbumPublished::Native(published)) => storage.inspect(published),
-            (Inner::Copied(storage), AlbumPublished::Copied(published)) => storage.inspect(published),
+            (Inner::Rename(storage), AlbumPublished::Native(published)) => {
+                storage.inspect(published)
+            }
+            (Inner::Copied(storage), AlbumPublished::Copied(published)) => {
+                storage.inspect(published)
+            }
             _ => Err(wrong_album_route()),
         };
         value
     }
 }
 impl TransferStorage for AlbumStorage {
-    fn finalize_selected_copy_metadata(&mut self, source: &AlbumSource, temp: &mut AlbumTemp, cancel: &AtomicBool) -> MutationOutcome<crate::physical_journal::CopyMetadataEvidence> {
-        if let Err(error) = self.check_all_controlled(cancel) { return MutationOutcome::NoEffect(error); }
+    fn finalize_selected_copy_metadata(
+        &mut self,
+        source: &AlbumSource,
+        temp: &mut AlbumTemp,
+        cancel: &AtomicBool,
+    ) -> MutationOutcome<crate::physical_journal::CopyMetadataEvidence> {
+        if let Err(error) = self.check_all_controlled(cancel) {
+            return MutationOutcome::NoEffect(error);
+        }
         let value = match (&mut self.inner, source, temp) {
-            (Inner::Copy(storage), AlbumSource::Native(source), AlbumTemp::Native(temp)) => storage.finalize_selected_copy_metadata(source, temp, cancel),
-            (Inner::Rename(storage), AlbumSource::Native(source), AlbumTemp::Native(temp)) => storage.finalize_selected_copy_metadata(source, temp, cancel),
-            (Inner::Copied(storage), AlbumSource::Copied(source), AlbumTemp::Copied(temp)) => storage.finalize_selected_copy_metadata(source, temp, cancel),
+            (Inner::Copy(storage), AlbumSource::Native(source), AlbumTemp::Native(temp)) => {
+                storage.finalize_selected_copy_metadata(source, temp, cancel)
+            }
+            (Inner::Rename(storage), AlbumSource::Native(source), AlbumTemp::Native(temp)) => {
+                storage.finalize_selected_copy_metadata(source, temp, cancel)
+            }
+            (Inner::Copied(storage), AlbumSource::Copied(source), AlbumTemp::Copied(temp)) => {
+                storage.finalize_selected_copy_metadata(source, temp, cancel)
+            }
             _ => MutationOutcome::NoEffect(wrong_album_route()),
         };
         value
     }
-    fn source_parent(&mut self, source: &SourceEvidence, root: &ObjectIdentity) -> std::result::Result<WindowsParent, MutationError> { native_mut!(self, source_parent, source, root) }
-    fn destination_parent(&mut self, destination: &DestinationEvidence, root: &ObjectIdentity) -> std::result::Result<WindowsParent, MutationError> { native_mut!(self, destination_parent, destination, root) }
-    fn parent_identity(&self, parent: &WindowsParent) -> ObjectIdentity { parent.identity().clone() }
-    fn temp_observation(&self, temp: &AlbumTemp) -> MutationObservation { temp.observation().clone() }
-    fn rewind_source(&mut self, source: &mut AlbumSource) -> std::result::Result<(), MutationError> {
+    fn source_parent(
+        &mut self,
+        source: &SourceEvidence,
+        root: &ObjectIdentity,
+    ) -> std::result::Result<WindowsParent, MutationError> {
+        native_mut!(self, source_parent, source, root)
+    }
+    fn destination_parent(
+        &mut self,
+        destination: &DestinationEvidence,
+        root: &ObjectIdentity,
+    ) -> std::result::Result<WindowsParent, MutationError> {
+        native_mut!(self, destination_parent, destination, root)
+    }
+    fn parent_identity(&self, parent: &WindowsParent) -> ObjectIdentity {
+        parent.identity().clone()
+    }
+    fn temp_observation(&self, temp: &AlbumTemp) -> MutationObservation {
+        temp.observation().clone()
+    }
+    fn rewind_source(
+        &mut self,
+        source: &mut AlbumSource,
+    ) -> std::result::Result<(), MutationError> {
         let value = match (&mut self.inner, source) {
             (Inner::Copy(storage), AlbumSource::Native(source)) => storage.rewind_source(source),
             (Inner::Rename(storage), AlbumSource::Native(source)) => storage.rewind_source(source),
@@ -857,9 +1113,15 @@ impl TransferStorage for AlbumStorage {
     }
     fn read_source(&mut self, source: &mut AlbumSource, buffer: &mut [u8]) -> io::Result<usize> {
         let value = match (&mut self.inner, source) {
-            (Inner::Copy(storage), AlbumSource::Native(source)) => storage.read_source(source, buffer),
-            (Inner::Rename(storage), AlbumSource::Native(source)) => storage.read_source(source, buffer),
-            (Inner::Copied(storage), AlbumSource::Copied(source)) => storage.read_source(source, buffer),
+            (Inner::Copy(storage), AlbumSource::Native(source)) => {
+                storage.read_source(source, buffer)
+            }
+            (Inner::Rename(storage), AlbumSource::Native(source)) => {
+                storage.read_source(source, buffer)
+            }
+            (Inner::Copied(storage), AlbumSource::Copied(source)) => {
+                storage.read_source(source, buffer)
+            }
             _ => Err(io::Error::other("album route mismatch")),
         };
         value
@@ -882,7 +1144,11 @@ impl TransferStorage for AlbumStorage {
         };
         value
     }
-    fn verify_temp(&mut self, temp: &AlbumTemp, digest: &ContentDigest) -> std::result::Result<MutationObservation, MutationError> {
+    fn verify_temp(
+        &mut self,
+        temp: &AlbumTemp,
+        digest: &ContentDigest,
+    ) -> std::result::Result<MutationObservation, MutationError> {
         let value = match (&mut self.inner, temp) {
             (Inner::Copy(storage), AlbumTemp::Native(temp)) => storage.verify_temp(temp, digest),
             (Inner::Rename(storage), AlbumTemp::Native(temp)) => storage.verify_temp(temp, digest),
@@ -891,64 +1157,145 @@ impl TransferStorage for AlbumStorage {
         };
         value
     }
-    fn verify_selected_copied_move_temp(&mut self, temp: &AlbumTemp, digest: &ContentDigest, cancel: &AtomicBool) -> std::result::Result<MutationObservation, MutationError> {
+    fn verify_selected_copied_move_temp(
+        &mut self,
+        temp: &AlbumTemp,
+        digest: &ContentDigest,
+        cancel: &AtomicBool,
+    ) -> std::result::Result<MutationObservation, MutationError> {
         self.check_all_controlled(cancel)?;
         let value = match (&mut self.inner, temp) {
-            (Inner::Copy(storage), AlbumTemp::Native(temp)) => storage.verify_selected_copied_move_temp(temp, digest, cancel),
-            (Inner::Rename(storage), AlbumTemp::Native(temp)) => storage.verify_selected_copied_move_temp(temp, digest, cancel),
-            (Inner::Copied(storage), AlbumTemp::Copied(temp)) => storage.verify_selected_copied_move_temp(temp, digest, cancel),
+            (Inner::Copy(storage), AlbumTemp::Native(temp)) => {
+                storage.verify_selected_copied_move_temp(temp, digest, cancel)
+            }
+            (Inner::Rename(storage), AlbumTemp::Native(temp)) => {
+                storage.verify_selected_copied_move_temp(temp, digest, cancel)
+            }
+            (Inner::Copied(storage), AlbumTemp::Copied(temp)) => {
+                storage.verify_selected_copied_move_temp(temp, digest, cancel)
+            }
             _ => Err(wrong_album_route()),
         };
         value
     }
-    fn verify_selected_copied_move(&mut self, published: &AlbumPublished, digest: &ContentDigest, cancel: &AtomicBool) -> std::result::Result<MutationObservation, MutationError> {
+    fn verify_selected_copied_move(
+        &mut self,
+        published: &AlbumPublished,
+        digest: &ContentDigest,
+        cancel: &AtomicBool,
+    ) -> std::result::Result<MutationObservation, MutationError> {
         self.check_all_controlled(cancel)?;
         let value = match (&mut self.inner, published) {
-            (Inner::Copy(storage), AlbumPublished::Native(published)) => storage.verify_selected_copied_move(published, digest, cancel),
-            (Inner::Rename(storage), AlbumPublished::Native(published)) => storage.verify_selected_copied_move(published, digest, cancel),
-            (Inner::Copied(storage), AlbumPublished::Copied(published)) => storage.verify_selected_copied_move(published, digest, cancel),
+            (Inner::Copy(storage), AlbumPublished::Native(published)) => {
+                storage.verify_selected_copied_move(published, digest, cancel)
+            }
+            (Inner::Rename(storage), AlbumPublished::Native(published)) => {
+                storage.verify_selected_copied_move(published, digest, cancel)
+            }
+            (Inner::Copied(storage), AlbumPublished::Copied(published)) => {
+                storage.verify_selected_copied_move(published, digest, cancel)
+            }
             _ => Err(wrong_album_route()),
         };
         value
     }
     fn rename_eligible(&self, source: &AlbumSource, parent: &WindowsParent) -> bool {
         match (&self.inner, source) {
-            (Inner::Copy(storage), AlbumSource::Native(source)) => storage.rename_eligible(source, parent),
-            (Inner::Rename(storage), AlbumSource::Native(source)) => storage.rename_eligible(source, parent),
-            (Inner::Copied(storage), AlbumSource::Copied(source)) => storage.rename_eligible(source, parent),
+            (Inner::Copy(storage), AlbumSource::Native(source)) => {
+                storage.rename_eligible(source, parent)
+            }
+            (Inner::Rename(storage), AlbumSource::Native(source)) => {
+                storage.rename_eligible(source, parent)
+            }
+            (Inner::Copied(storage), AlbumSource::Copied(source)) => {
+                storage.rename_eligible(source, parent)
+            }
             _ => false,
         }
     }
-    fn owned_windows_rename_contract(&self) -> bool { matches!(self.inner, Inner::Rename(_)) }
-    fn selected_copied_move_contract(&self) -> bool { matches!(self.inner, Inner::Copied(_)) }
-    fn sync_owned_windows_publication(&mut self, published: &mut AlbumPublished, digest: &ContentDigest, cancel: &AtomicBool) -> std::result::Result<MutationObservation, MutationError> {
+    fn owned_windows_rename_contract(&self) -> bool {
+        matches!(self.inner, Inner::Rename(_))
+    }
+    fn selected_copied_move_contract(&self) -> bool {
+        matches!(self.inner, Inner::Copied(_))
+    }
+    fn sync_owned_windows_publication(
+        &mut self,
+        published: &mut AlbumPublished,
+        digest: &ContentDigest,
+        cancel: &AtomicBool,
+    ) -> std::result::Result<MutationObservation, MutationError> {
         self.check_all_controlled(cancel)?;
-        if !matches!(self.inner, Inner::Copied(_)) { self.check_all()?; }
+        if !matches!(self.inner, Inner::Copied(_)) {
+            self.check_all()?;
+        }
         let value = match (&mut self.inner, published) {
-            (Inner::Copy(storage), AlbumPublished::Native(published)) => storage.sync_owned_windows_publication(published, digest, cancel),
-            (Inner::Rename(storage), AlbumPublished::Native(published)) => storage.sync_owned_windows_publication(published, digest, cancel),
-            (Inner::Copied(storage), AlbumPublished::Copied(published)) => storage.sync_owned_windows_publication(published, digest, cancel),
+            (Inner::Copy(storage), AlbumPublished::Native(published)) => {
+                storage.sync_owned_windows_publication(published, digest, cancel)
+            }
+            (Inner::Rename(storage), AlbumPublished::Native(published)) => {
+                storage.sync_owned_windows_publication(published, digest, cancel)
+            }
+            (Inner::Copied(storage), AlbumPublished::Copied(published)) => {
+                storage.sync_owned_windows_publication(published, digest, cancel)
+            }
             _ => Err(wrong_album_route()),
         };
-        let observed = value?; self.check_all_controlled(cancel)?; Ok(observed)
+        let observed = value?;
+        self.check_all_controlled(cancel)?;
+        Ok(observed)
     }
-    fn copy_selected_move_streams(&mut self, source: &AlbumSource, temp: &mut AlbumTemp, cancel: &AtomicBool) -> MutationOutcome<CopiedMoveSourceEvidence> {
-        if let Err(error) = self.check_all_controlled(cancel) { return MutationOutcome::NoEffect(error); }
+    fn copy_selected_move_streams(
+        &mut self,
+        source: &AlbumSource,
+        temp: &mut AlbumTemp,
+        cancel: &AtomicBool,
+    ) -> MutationOutcome<CopiedMoveSourceEvidence> {
+        if let Err(error) = self.check_all_controlled(cancel) {
+            return MutationOutcome::NoEffect(error);
+        }
         let value = match (&mut self.inner, source, temp) {
-            (Inner::Copy(storage), AlbumSource::Native(source), AlbumTemp::Native(temp)) => storage.copy_selected_move_streams(source, temp, cancel),
-            (Inner::Rename(storage), AlbumSource::Native(source), AlbumTemp::Native(temp)) => storage.copy_selected_move_streams(source, temp, cancel),
-            (Inner::Copied(storage), AlbumSource::Copied(source), AlbumTemp::Copied(temp)) => storage.copy_selected_move_streams(source, temp, cancel),
+            (Inner::Copy(storage), AlbumSource::Native(source), AlbumTemp::Native(temp)) => {
+                storage.copy_selected_move_streams(source, temp, cancel)
+            }
+            (Inner::Rename(storage), AlbumSource::Native(source), AlbumTemp::Native(temp)) => {
+                storage.copy_selected_move_streams(source, temp, cancel)
+            }
+            (Inner::Copied(storage), AlbumSource::Copied(source), AlbumTemp::Copied(temp)) => {
+                storage.copy_selected_move_streams(source, temp, cancel)
+            }
             _ => MutationOutcome::NoEffect(wrong_album_route()),
         };
         value
     }
-    fn retire_selected_copied_move(&mut self, source: &mut AlbumSource, destinations: &[&AlbumPublished], cancel: &AtomicBool) -> MutationOutcome<RetirementOutcome> {
-        if let Err(error) = self.check_all_controlled(cancel) { return MutationOutcome::NoEffect(error); }
+    fn retire_selected_copied_move(
+        &mut self,
+        source: &mut AlbumSource,
+        destinations: &[&AlbumPublished],
+        cancel: &AtomicBool,
+    ) -> MutationOutcome<RetirementOutcome> {
+        if let Err(error) = self.check_all_controlled(cancel) {
+            return MutationOutcome::NoEffect(error);
+        }
         let id = source.observation().identity.clone();
-        let (Inner::Copied(storage), AlbumSource::Copied(source)) = (&mut self.inner, source) else { return MutationOutcome::NoEffect(wrong_album_route()); };
-        let Some(destinations) = destinations.iter().map(|published| match published { AlbumPublished::Copied(value) => Some(value), _ => None }).collect::<Option<Vec<_>>>() else { return MutationOutcome::NoEffect(wrong_album_route()); };
+        let (Inner::Copied(storage), AlbumSource::Copied(source)) = (&mut self.inner, source)
+        else {
+            return MutationOutcome::NoEffect(wrong_album_route());
+        };
+        let Some(destinations) = destinations
+            .iter()
+            .map(|published| match published {
+                AlbumPublished::Copied(value) => Some(value),
+                _ => None,
+            })
+            .collect::<Option<Vec<_>>>()
+        else {
+            return MutationOutcome::NoEffect(wrong_album_route());
+        };
         let result = storage.retire_selected_copied_move(source, &destinations, cancel);
-        if matches!(&result, MutationOutcome::Applied(_)) { self.removed.insert(id); }
+        if matches!(&result, MutationOutcome::Applied(_)) {
+            self.removed.insert(id);
+        }
         result
     }
 }
@@ -977,11 +1324,26 @@ struct Manifest {
     controlled: bool,
 }
 impl Manifest {
-    fn encode(job_id: &str, sequence: u64, previous: &str, phase: &str, payload: &impl Serialize) -> Result<(Vec<u8>, String)> {
-        let body = ManifestRecord { sequence, previous: previous.into(), job_id: job_id.into(),
-            phase: phase.into(), payload: serde_json::to_value(payload).map_err(|_| E::Io)? };
+    fn encode(
+        job_id: &str,
+        sequence: u64,
+        previous: &str,
+        phase: &str,
+        payload: &impl Serialize,
+    ) -> Result<(Vec<u8>, String)> {
+        let body = ManifestRecord {
+            sequence,
+            previous: previous.into(),
+            job_id: job_id.into(),
+            phase: phase.into(),
+            payload: serde_json::to_value(payload).map_err(|_| E::Io)?,
+        };
         let sha256 = crate::hash(&body)?;
-        let mut bytes = serde_json::to_vec(&ManifestEnvelope { body, sha256: sha256.clone() }).map_err(|_| E::Io)?;
+        let mut bytes = serde_json::to_vec(&ManifestEnvelope {
+            body,
+            sha256: sha256.clone(),
+        })
+        .map_err(|_| E::Io)?;
         bytes.push(b'\n');
         Ok((bytes, sha256))
     }
@@ -990,15 +1352,20 @@ impl Manifest {
             return Err(E::NeedsRecovery);
         }
         self.poisoned = true;
-        let (bytes, sha256) = Self::encode(&self.job_id, self.sequence, &self.previous, phase, payload)?;
+        let (bytes, sha256) =
+            Self::encode(&self.job_id, self.sequence, &self.previous, phase, payload)?;
         self.bytes = self
             .bytes
             .checked_add(bytes.len())
             .filter(|total| *total <= MAX_MANIFEST)
             .ok_or(E::NeedsRecovery)?;
         if self.controlled {
-            let records = usize::try_from(self.sequence).ok().and_then(|n| n.checked_add(1)).ok_or(E::NeedsRecovery)?;
-            crate::inspection_control::check_recorded_write(bytes.len(), self.bytes, records).map_err(|_| E::NeedsRecovery)?;
+            let records = usize::try_from(self.sequence)
+                .ok()
+                .and_then(|n| n.checked_add(1))
+                .ok_or(E::NeedsRecovery)?;
+            crate::inspection_control::check_recorded_write(bytes.len(), self.bytes, records)
+                .map_err(|_| E::NeedsRecovery)?;
         }
         self.sink
             .append(&bytes)
@@ -1105,9 +1472,12 @@ impl SelectedAlbumFileJob {
                 return Err(E::Unsupported);
             }
         }
-        let copied_move = !copy && !matches!((source.identity(),target.identity()),(ObjectIdentity::Windows{volume:a,..},ObjectIdentity::Windows{volume:b,..})if a==b);
+        let copied_move = !copy
+            && !matches!((source.identity(),target.identity()),(ObjectIdentity::Windows{volume:a,..},ObjectIdentity::Windows{volume:b,..})if a==b);
         check_copied_album_operation_count(copied_move, scope.snapshot.files.len())?;
-        if copied_move && scope.move_sources.is_none() { return Err(E::Unsupported); }
+        if copied_move && scope.move_sources.is_none() {
+            return Err(E::Unsupported);
+        }
         let root = validated.source.clone();
         let target = validated.target.clone();
         let mut operations = Vec::new();
@@ -1143,7 +1513,11 @@ impl SelectedAlbumFileJob {
                 schema: 2,
                 album_context: None,
                 copy_metadata_version: if copy || copied_move { Some(1) } else { None },
-                copied_move_sources: if copied_move { scope.move_sources.clone() } else { None },
+                copied_move_sources: if copied_move {
+                    scope.move_sources.clone()
+                } else {
+                    None
+                },
                 plan_sha256: plan.binding_sha256.clone(),
                 source_root: root,
                 target_root: target,
@@ -1186,32 +1560,58 @@ impl SelectedAlbumFileJob {
             NEXT.fetch_add(1, Ordering::Relaxed)
         );
         let original_source = if copied_move {
-            let observed = roots.inspect_album_cleanup_directory(&source, cancel).map_err(album_native_error)?;
+            let observed = roots
+                .inspect_album_cleanup_directory(&source, cancel)
+                .map_err(album_native_error)?;
             if binding.data.source_root.identity.as_ref() != Some(&observed.identity)
-                || binding.data.source_root.parent_identity.as_ref() != Some(&observed.parent_identity)
-                || observed.size.is_some() { return Err(E::Stale); }
+                || binding.data.source_root.parent_identity.as_ref()
+                    != Some(&observed.parent_identity)
+                || observed.size.is_some()
+            {
+                return Err(E::Stale);
+            }
             Some(observed)
-        } else { None };
-        let observed_source_root = original_source.as_ref().map(|source| Ok(source.reference.clone()))
-            .unwrap_or_else(|| roots.selected_source_observed_reference().map_err(album_native_error))?;
+        } else {
+            None
+        };
+        let observed_source_root = original_source
+            .as_ref()
+            .map(|source| Ok(source.reference.clone()))
+            .unwrap_or_else(|| {
+                roots
+                    .selected_source_observed_reference()
+                    .map_err(album_native_error)
+            })?;
         let header = album_header(&binding, &scope.snapshot, original_source.as_ref());
         let (header_bytes, _) = Manifest::encode(&job_id, 0, "", "Header", &header)?;
-        if header_bytes.len() > MAX_MANIFEST { return Err(E::Unsupported); }
+        if header_bytes.len() > MAX_MANIFEST {
+            return Err(E::Unsupported);
+        }
         if copied_move {
             PhysicalJournalV2::validate_controlled_creation(&binding, &job_id)?;
             check_album_record_count(&scope.snapshot)?;
-            crate::inspection_control::check_recorded_write(header_bytes.len(), header_bytes.len(), 1)?;
+            crate::inspection_control::check_recorded_write(
+                header_bytes.len(),
+                header_bytes.len(),
+                1,
+            )?;
             validate_album_ack_sizes(&scope.snapshot, &binding, &job_id)?;
         }
         Ok(Self {
-            observed_source_root, original_source,
+            observed_source_root,
+            original_source,
             copy_directories: vec![],
             completed_albums: vec![],
             storage: AlbumStorage {
                 inner: if copy {
                     Inner::Copy(roots)
                 } else if copied_move {
-                    Inner::Copied(CopiedMoveStorage::from_binding(roots, &binding, scope.move_sources.clone().ok_or(E::Scope)?, cancel)?)
+                    Inner::Copied(CopiedMoveStorage::from_binding(
+                        roots,
+                        &binding,
+                        scope.move_sources.clone().ok_or(E::Scope)?,
+                        cancel,
+                    )?)
                 } else {
                     Inner::Rename(WindowsRenameStorage::new(roots))
                 },
@@ -1332,7 +1732,9 @@ impl SelectedAlbumFileJob {
         let removed = &mut self.removed;
         let retained = &mut self.retained;
         let root_cleanup = &mut self.root_cleanup;
-        let mut after_commit = |operation, storage: &mut AlbumStorage, journal: &PhysicalJournalV2| {
+        let mut after_commit = |operation,
+                                storage: &mut AlbumStorage,
+                                journal: &PhysicalJournalV2| {
             if !copy && !copied_move {
                 return MutationOutcome::Applied(());
             }
@@ -1345,9 +1747,13 @@ impl SelectedAlbumFileJob {
             };
             if copied_move {
                 let ack = AlbumTransferAcknowledgment::from_journal(album, binding, journal);
-                let acknowledged = ack.and_then(|ack| manifest.append("AlbumTransfersObserved", &ack));
+                let acknowledged =
+                    ack.and_then(|ack| manifest.append("AlbumTransfersObserved", &ack));
                 if let Err(error) = acknowledged {
-                    return MutationOutcome::PendingUnknown(MutationError::new(MutationErrorKind::UnknownOutcome, format!("album transfer acknowledgment: {error}")));
+                    return MutationOutcome::PendingUnknown(MutationError::new(
+                        MutationErrorKind::UnknownOutcome,
+                        format!("album transfer acknowledgment: {error}"),
+                    ));
                 }
             }
             match complete_copy_album(
@@ -1360,25 +1766,59 @@ impl SelectedAlbumFileJob {
                 cancel,
             ) {
                 MutationOutcome::Applied(()) => {
-                    if copy { completed.push(album.operation); }
+                    if copy {
+                        completed.push(album.operation);
+                    }
                     if copied_move {
                         // The transfer runner released only journal-acknowledged
                         // retired source guards. Drop this album's empty watch pins;
                         // other albums remain fully leased and checked.
-                        let ids = album.cleanup.iter().filter_map(|entry| entry.identity.as_ref()).collect::<HashSet<_>>();
-                        storage.watches.retain(|watch| !ids.contains(watch.parent.identity()));
-                        let result = AlbumCleanup { snapshot, binding, storage, removed: &mut *removed,
-                            retained: &mut *retained, completed_albums: &mut *completed, root_cleanup: &mut *root_cleanup }
-                            .cleanup_directories(Some(album.operation), &mut manifest, cancel);
+                        let ids = album
+                            .cleanup
+                            .iter()
+                            .filter_map(|entry| entry.identity.as_ref())
+                            .collect::<HashSet<_>>();
+                        storage
+                            .watches
+                            .retain(|watch| !ids.contains(watch.parent.identity()));
+                        let result = AlbumCleanup {
+                            snapshot,
+                            binding,
+                            storage,
+                            removed: &mut *removed,
+                            retained: &mut *retained,
+                            completed_albums: &mut *completed,
+                            root_cleanup: &mut *root_cleanup,
+                        }
+                        .cleanup_directories(
+                            Some(album.operation),
+                            &mut manifest,
+                            cancel,
+                        );
                         if let Err(error) = result {
-                            let native = MutationError::new(if error == E::Cancelled { MutationErrorKind::Cancelled } else if error == E::NeedsRecovery { MutationErrorKind::UnknownOutcome } else { MutationErrorKind::StalePlan }, format!("album cleanup: {error}"));
-                            let outcome = if error == E::NeedsRecovery { MutationOutcome::PendingUnknown(native) } else { MutationOutcome::NoEffect(native) };
+                            let native = MutationError::new(
+                                if error == E::Cancelled {
+                                    MutationErrorKind::Cancelled
+                                } else if error == E::NeedsRecovery {
+                                    MutationErrorKind::UnknownOutcome
+                                } else {
+                                    MutationErrorKind::StalePlan
+                                },
+                                format!("album cleanup: {error}"),
+                            );
+                            let outcome = if error == E::NeedsRecovery {
+                                MutationOutcome::PendingUnknown(native)
+                            } else {
+                                MutationOutcome::NoEffect(native)
+                            };
                             return stop_album_completion(&mut manifest, album.operation, outcome);
                         }
                     }
                     MutationOutcome::Applied(())
                 }
-                other if copied_move => stop_album_completion(&mut manifest, album.operation, other),
+                other if copied_move => {
+                    stop_album_completion(&mut manifest, album.operation, other)
+                }
                 other => other,
             }
         };
@@ -1399,7 +1839,11 @@ impl SelectedAlbumFileJob {
             && self.root_cleanup.is_none()
             && let Err(error) = self.storage.check_all_controlled(cancel)
         {
-            status = if error.kind == MutationErrorKind::Cancelled { JobStatus::Cancelled } else { JobStatus::Partial };
+            status = if error.kind == MutationErrorKind::Cancelled {
+                JobStatus::Cancelled
+            } else {
+                JobStatus::Partial
+            };
             detail = error.detail;
             manifest.append(
                 "ExecutionStopped",
@@ -1443,7 +1887,9 @@ impl SelectedAlbumFileJob {
     fn create_directories(&mut self, manifest: &mut Manifest, cancel: &AtomicBool) -> Result<()> {
         for requirement in &self.snapshot.destinations {
             cancelled(cancel)?;
-            self.storage.check_all_controlled(cancel).map_err(album_native_error)?;
+            self.storage
+                .check_all_controlled(cancel)
+                .map_err(album_native_error)?;
             let full = destination_path(&requirement.destination)?;
             let root = path(&requirement.destination.root)?;
             let parent_ref = reference(full.parent().ok_or(E::Scope)?);
@@ -1470,8 +1916,12 @@ impl SelectedAlbumFileJob {
             let leaf = requirement.destination.components.last().ok_or(E::Scope)?;
             manifest.append("DirectoryPrepared",&serde_json::json!({"reference":reference(&full),"parent":parent.identity(),"name":leaf}))?;
             cancelled(cancel)?;
-            self.storage.check_all_controlled(cancel).map_err(album_native_error)?;
-            let created = if self.binding.data.selected_windows_copy || self.binding.data.copied_move_sources.is_some() {
+            self.storage
+                .check_all_controlled(cancel)
+                .map_err(album_native_error)?;
+            let created = if self.binding.data.selected_windows_copy
+                || self.binding.data.copied_move_sources.is_some()
+            {
                 match self.storage.roots().create_selected_copy_directory(
                     &parent,
                     &name(leaf),
@@ -1522,10 +1972,16 @@ impl SelectedAlbumFileJob {
         Ok(())
     }
     fn cleanup_directories(&mut self, manifest: &mut Manifest, cancel: &AtomicBool) -> Result<()> {
-        AlbumCleanup { snapshot: &self.snapshot, binding: &self.binding,
-            storage: &mut self.storage, removed: &mut self.removed,
-            retained: &mut self.retained, completed_albums: &mut self.completed_albums,
-            root_cleanup: &mut self.root_cleanup }.cleanup_directories(None, manifest, cancel)
+        AlbumCleanup {
+            snapshot: &self.snapshot,
+            binding: &self.binding,
+            storage: &mut self.storage,
+            removed: &mut self.removed,
+            retained: &mut self.retained,
+            completed_albums: &mut self.completed_albums,
+            root_cleanup: &mut self.root_cleanup,
+        }
+        .cleanup_directories(None, manifest, cancel)
     }
     fn finish(
         &mut self,
@@ -1578,37 +2034,77 @@ fn copy_metadata_evidence(
         retained_attributes: value.retained_attributes,
     }
 }
-fn validate_album_ack_sizes(snapshot: &Snapshot, binding: &ExecutionBinding, job_id: &str) -> Result<()> {
+fn validate_album_ack_sizes(
+    snapshot: &Snapshot,
+    binding: &ExecutionBinding,
+    job_id: &str,
+) -> Result<()> {
     use crate::physical_journal::{Event, Phase};
-    let ObjectIdentity::Windows { volume, .. } = &binding.data.scope_evidence.target_root else { return Err(E::Scope); };
+    let ObjectIdentity::Windows { volume, .. } = &binding.data.scope_evidence.target_root else {
+        return Err(E::Scope);
+    };
     // File IDs are fixed 16-byte arrays. 255 occupies the largest JSON width;
     // the target volume is already fixed by the held root identity.
-    let destination = ObjectIdentity::Windows { volume: *volume, file_id: [255; 16] };
+    let destination = ObjectIdentity::Windows {
+        volume: *volume,
+        file_id: [255; 16],
+    };
     for album in &snapshot.albums {
         let mut events = Vec::new();
         for id in &album.files {
             let op = binding.operations().get(*id).ok_or(E::Scope)?;
             let source = op.source.observation.identity.clone().ok_or(E::Scope)?;
-            for (phase, observed) in [(Phase::Committed, destination.clone()), (Phase::SourceRetired, source.clone())] {
-                events.push(Event { copy_metadata: None, operation: *id, destination_id: op.destination.id.clone(),
-                    expected_source: source.clone(), observed_identity: Some(observed), sha256: op.source.sha256.clone(), phase });
+            for (phase, observed) in [
+                (Phase::Committed, destination.clone()),
+                (Phase::SourceRetired, source.clone()),
+            ] {
+                events.push(Event {
+                    copy_metadata: None,
+                    operation: *id,
+                    destination_id: op.destination.id.clone(),
+                    expected_source: source.clone(),
+                    observed_identity: Some(observed),
+                    sha256: op.source.sha256.clone(),
+                    phase,
+                });
             }
         }
-        let ack = AlbumTransferAcknowledgment { operation: album.operation, events };
-        let (bytes, _) = Manifest::encode(job_id, u64::MAX, &"f".repeat(64), "AlbumTransfersObserved", &ack)?;
+        let ack = AlbumTransferAcknowledgment {
+            operation: album.operation,
+            events,
+        };
+        let (bytes, _) = Manifest::encode(
+            job_id,
+            u64::MAX,
+            &"f".repeat(64),
+            "AlbumTransfersObserved",
+            &ack,
+        )?;
         crate::inspection_control::check_recorded_write(bytes.len(), bytes.len(), 1)?;
     }
     Ok(())
 }
-fn stop_album_completion(manifest: &mut Manifest, operation: usize, outcome: MutationOutcome<()>) -> MutationOutcome<()> {
+fn stop_album_completion(
+    manifest: &mut Manifest,
+    operation: usize,
+    outcome: MutationOutcome<()>,
+) -> MutationOutcome<()> {
     let status = match &outcome {
         MutationOutcome::Applied(()) => return outcome,
-        MutationOutcome::NoEffect(error) if error.kind == MutationErrorKind::Cancelled => "Cancelled",
+        MutationOutcome::NoEffect(error) if error.kind == MutationErrorKind::Cancelled => {
+            "Cancelled"
+        }
         MutationOutcome::NoEffect(_) => "Partial",
         MutationOutcome::PendingUnknown(_) => "NeedsRecovery",
     };
-    if let Err(error) = manifest.append("AlbumCompletionStopped", &serde_json::json!({"operation":operation,"status":status})) {
-        return MutationOutcome::PendingUnknown(MutationError::new(MutationErrorKind::UnknownOutcome, format!("album stop acknowledgment: {error}")));
+    if let Err(error) = manifest.append(
+        "AlbumCompletionStopped",
+        &serde_json::json!({"operation":operation,"status":status}),
+    ) {
+        return MutationOutcome::PendingUnknown(MutationError::new(
+            MutationErrorKind::UnknownOutcome,
+            format!("album stop acknowledgment: {error}"),
+        ));
     }
     outcome
 }
@@ -1619,32 +2115,65 @@ struct AlbumTransferAcknowledgment {
     events: Vec<crate::physical_journal::Event>,
 }
 impl AlbumTransferAcknowledgment {
-    fn from_journal(album: &AlbumGroup, binding: &ExecutionBinding, journal: &PhysicalJournalV2) -> Result<Self> {
+    fn from_journal(
+        album: &AlbumGroup,
+        binding: &ExecutionBinding,
+        journal: &PhysicalJournalV2,
+    ) -> Result<Self> {
         use crate::physical_journal::Phase;
         let ids = album.files.iter().copied().collect::<HashSet<_>>();
-        let ack = Self { operation: album.operation, events: journal.events().iter()
-            .filter(|event| ids.contains(&event.operation) && matches!(event.phase, Phase::Committed | Phase::SourceRetired))
-            .cloned().collect() };
+        let ack = Self {
+            operation: album.operation,
+            events: journal
+                .events()
+                .iter()
+                .filter(|event| {
+                    ids.contains(&event.operation)
+                        && matches!(event.phase, Phase::Committed | Phase::SourceRetired)
+                })
+                .cloned()
+                .collect(),
+        };
         ack.validate(album, binding)?;
         Ok(ack)
     }
     fn validate(&self, album: &AlbumGroup, binding: &ExecutionBinding) -> Result<()> {
         use crate::physical_journal::Phase;
-        if binding.data.copied_move_sources.is_none() || self.operation != album.operation
+        if binding.data.copied_move_sources.is_none()
+            || self.operation != album.operation
             || self.events.len() != album.files.len().checked_mul(2).ok_or(E::CorruptJournal)?
-        { return Err(E::CorruptJournal); }
+        {
+            return Err(E::CorruptJournal);
+        }
         for (id, pair) in album.files.iter().zip(self.events.chunks_exact(2)) {
-            let operation = binding.operations().get(*id).filter(|operation| operation.id == *id).ok_or(E::CorruptJournal)?;
-            let source = operation.source.observation.identity.as_ref().ok_or(E::CorruptJournal)?;
+            let operation = binding
+                .operations()
+                .get(*id)
+                .filter(|operation| operation.id == *id)
+                .ok_or(E::CorruptJournal)?;
+            let source = operation
+                .source
+                .observation
+                .identity
+                .as_ref()
+                .ok_or(E::CorruptJournal)?;
             for event in pair {
-                if event.operation != *id || event.destination_id != operation.destination.id
-                    || &event.expected_source != source || event.sha256 != operation.source.sha256
-                    || event.copy_metadata.is_some() || event.observed_identity.is_none()
-                { return Err(E::CorruptJournal); }
+                if event.operation != *id
+                    || event.destination_id != operation.destination.id
+                    || &event.expected_source != source
+                    || event.sha256 != operation.source.sha256
+                    || event.copy_metadata.is_some()
+                    || event.observed_identity.is_none()
+                {
+                    return Err(E::CorruptJournal);
+                }
             }
-            if pair[0].phase != Phase::Committed || pair[1].phase != Phase::SourceRetired
+            if pair[0].phase != Phase::Committed
+                || pair[1].phase != Phase::SourceRetired
                 || pair[1].observed_identity.as_ref() != Some(source)
-            { return Err(E::CorruptJournal); }
+            {
+                return Err(E::CorruptJournal);
+            }
         }
         Ok(())
     }
@@ -1706,7 +2235,12 @@ impl AlbumCleanup<'_> {
         }
         Ok(())
     }
-    fn cleanup_directories(&mut self, only: Option<usize>, manifest: &mut Manifest, cancel: &AtomicBool) -> Result<()> {
+    fn cleanup_directories(
+        &mut self,
+        only: Option<usize>,
+        manifest: &mut Manifest,
+        cancel: &AtomicBool,
+    ) -> Result<()> {
         let mut directories = self
             .snapshot
             .albums
@@ -1731,7 +2265,12 @@ impl AlbumCleanup<'_> {
             self.check_remaining_directories(cancel)?;
             manifest.append("CleanupPrepared", &directory)?;
             let outcome = if id == self.binding.data.scope_evidence.source_root {
-                match self.storage.inner.roots_mut().take_empty_album_source_root(&id, cancel) {
+                match self
+                    .storage
+                    .inner
+                    .roots_mut()
+                    .take_empty_album_source_root(&id, cancel)
+                {
                     Ok(mut cleanup) => {
                         let outcome = cleanup.remove_empty(cancel);
                         *self.root_cleanup = Some(cleanup);
@@ -1740,17 +2279,35 @@ impl AlbumCleanup<'_> {
                     Err(error) => MutationOutcome::NoEffect(error),
                 }
             } else {
-                let parent = self.storage.roots().parent_reference(&parent_reference(&directory)?).map_err(|_| E::Stale)?;
-                self.storage.roots().remove_empty_album_directory(&parent, &leaf(&directory)?, &id, cancel)
+                let parent = self
+                    .storage
+                    .roots()
+                    .parent_reference(&parent_reference(&directory)?)
+                    .map_err(|_| E::Stale)?;
+                self.storage.roots().remove_empty_album_directory(
+                    &parent,
+                    &leaf(&directory)?,
+                    &id,
+                    cancel,
+                )
             };
             match outcome {
                 MutationOutcome::Applied(observation) => {
                     self.storage.removed.insert(id);
                     self.removed.push(observation.clone());
                     manifest.append("CleanupObserved", &observation)?;
-                    for album in self.snapshot.albums.iter().filter(|album| only.is_none_or(|operation| operation == album.operation)) {
+                    for album in
+                        self.snapshot.albums.iter().filter(|album| {
+                            only.is_none_or(|operation| operation == album.operation)
+                        })
+                    {
                         if !self.completed_albums.contains(&album.operation)
-                            && album.cleanup.iter().all(|entry| entry.identity.as_ref().is_some_and(|id| self.storage.removed.contains(id)))
+                            && album.cleanup.iter().all(|entry| {
+                                entry
+                                    .identity
+                                    .as_ref()
+                                    .is_some_and(|id| self.storage.removed.contains(id))
+                            })
                         {
                             manifest.append("AlbumCompleted", &serde_json::json!({"operation":album.operation,"files":album.files}))?;
                             self.completed_albums.push(album.operation);
@@ -1793,7 +2350,9 @@ fn complete_copy_album(
 ) -> MutationOutcome<()> {
     let before = || -> Result<()> {
         cancelled(cancel)?;
-        storage.check_all_controlled(cancel).map_err(album_native_error)
+        storage
+            .check_all_controlled(cancel)
+            .map_err(album_native_error)
     };
     if let Err(error) = before() {
         return MutationOutcome::NoEffect(MutationError::new(
@@ -1832,9 +2391,13 @@ fn complete_copy_album(
             }
             manifest.append("DirectoryMetadataPrepared",&serde_json::json!({"source":directory.source,"destination":directory.destination,"created":observed}))?;
             let finalized = if let Some(captured) = storage.source_metadata.get(source.identity()) {
-                storage.roots().finalize_album_move_directory_metadata(&source, captured, token, cancel)
+                storage
+                    .roots()
+                    .finalize_album_move_directory_metadata(&source, captured, token, cancel)
             } else {
-                storage.roots().finalize_selected_copy_directory_metadata(&source, token, cancel)
+                storage
+                    .roots()
+                    .finalize_selected_copy_directory_metadata(&source, token, cancel)
             };
             let evidence = match finalized {
                 MutationOutcome::Applied(evidence) => evidence,
@@ -1862,9 +2425,14 @@ fn complete_copy_album(
                 },
             )?;
         }
-        storage.check_all_controlled(cancel).map_err(album_native_error)?;
+        storage
+            .check_all_controlled(cancel)
+            .map_err(album_native_error)?;
         if !matches!(storage.inner, Inner::Copied(_)) {
-            manifest.append("AlbumCompleted", &serde_json::json!({"operation":album.operation,"files":album.files}))?;
+            manifest.append(
+                "AlbumCompleted",
+                &serde_json::json!({"operation":album.operation,"files":album.files}),
+            )?;
         }
         Ok(())
     })();
@@ -1975,14 +2543,24 @@ impl SelectedAlbumFileJob {
         // Preserve the preexisting large Copy/rename reader contract. Its media
         // reads are not described as chunk-cancellable. New copied Move is capped
         // before effects until the shared indexed parser removes that ceiling.
-        let full_control = self.binding.data.copied_move_sources.is_some() || self.binding.operations().len() <= crate::inspection_control::MAX_OPERATIONS;
+        let full_control = self.binding.data.copied_move_sources.is_some()
+            || self.binding.operations().len() <= crate::inspection_control::MAX_OPERATIONS;
         self.inspect_recovery_inner(&control, full_control)
     }
-    pub fn inspect_recovery_controlled(&mut self, control: &InspectionControl) -> Result<SelectedAlbumRecovery> {
-        if self.binding.operations().len() > crate::inspection_control::MAX_OPERATIONS { return Err(E::Unsupported); }
+    pub fn inspect_recovery_controlled(
+        &mut self,
+        control: &InspectionControl,
+    ) -> Result<SelectedAlbumRecovery> {
+        if self.binding.operations().len() > crate::inspection_control::MAX_OPERATIONS {
+            return Err(E::Unsupported);
+        }
         self.inspect_recovery_inner(control, true)
     }
-    fn inspect_recovery_inner(&mut self, control: &InspectionControl, full_control: bool) -> Result<SelectedAlbumRecovery> {
+    fn inspect_recovery_inner(
+        &mut self,
+        control: &InspectionControl,
+        full_control: bool,
+    ) -> Result<SelectedAlbumRecovery> {
         let file_control = full_control.then_some(control);
         let cancel = control.cancellation_flag();
         control.stage("album_journals")?;
@@ -1999,14 +2577,24 @@ impl SelectedAlbumFileJob {
         let bytes = self
             .storage
             .roots()
-            .read_selected_journal_observed(location.name(), location.identity(), cancel, &mut |event| crate::windows_copy::inspection_event(control, event))
+            .read_selected_journal_observed(
+                location.name(),
+                location.identity(),
+                cancel,
+                &mut |event| crate::windows_copy::inspection_event(control, event),
+            )
             .map_err(crate::windows_copy::inspection_error)?;
         let (mut report, observed) = self.read_manifest(&bytes, control)?;
         for receipt in &report.directory_metadata {
             cancelled(cancel)?;
             let full = path(&receipt.destination)?;
             let parent_ref = reference(full.parent().ok_or(E::CorruptJournal)?);
-            let parent = probe(Some(control), || self.storage.roots().parent_reference(&parent_ref).map_err(|_| E::Stale))?;
+            let parent = probe(Some(control), || {
+                self.storage
+                    .roots()
+                    .parent_reference(&parent_ref)
+                    .map_err(|_| E::Stale)
+            })?;
             let leaf = MutationName::Windows(
                 full.file_name()
                     .ok_or(E::CorruptJournal)?
@@ -2042,10 +2630,22 @@ impl SelectedAlbumFileJob {
                 .directory_metadata_status
                 .push((receipt.destination.clone(), status.into()));
         }
-        let original_root = self.root_cleanup.as_ref().map(|cleanup| probe(Some(control), || cleanup.inspect_original(cancel).map_err(album_native_error))).transpose()?;
+        let original_root = self
+            .root_cleanup
+            .as_ref()
+            .map(|cleanup| {
+                probe(Some(control), || {
+                    cleanup.inspect_original(cancel).map_err(album_native_error)
+                })
+            })
+            .transpose()?;
         let mut read_roots = vec![path(&self.binding.data.target_root.reference)?];
-        if self.root_cleanup.is_none() { read_roots.push(path(&self.binding.data.source_root.reference)?); }
-        let mut reads = probe(Some(control), || sorter_io::desktop::DesktopStorage::new(&read_roots).map_err(|_| E::Scope))?;
+        if self.root_cleanup.is_none() {
+            read_roots.push(path(&self.binding.data.source_root.reference)?);
+        }
+        let mut reads = probe(Some(control), || {
+            sorter_io::desktop::DesktopStorage::new(&read_roots).map_err(|_| E::Scope)
+        })?;
         let mut target_pins = Vec::new();
         for (reference, expected_identity) in observed {
             cancelled(cancel)?;
@@ -2055,12 +2655,18 @@ impl SelectedAlbumFileJob {
                 observed_identity: None,
                 status: AlbumDirectoryEvidenceStatus::Unverified,
             };
-            if self.root_cleanup.is_some() && path(&reference)?.starts_with(path(&self.binding.data.source_root.reference)?) {
+            if self.root_cleanup.is_some()
+                && path(&reference)?.starts_with(path(&self.binding.data.source_root.reference)?)
+            {
                 match &original_root {
                     Some(None) => evidence.status = AlbumDirectoryEvidenceStatus::Absent,
                     Some(Some(root)) if reference == self.binding.data.source_root.reference => {
                         evidence.observed_identity = Some(root.identity.clone());
-                        evidence.status = if root.identity == expected_identity { AlbumDirectoryEvidenceStatus::SameIdentity } else { AlbumDirectoryEvidenceStatus::Replaced };
+                        evidence.status = if root.identity == expected_identity {
+                            AlbumDirectoryEvidenceStatus::SameIdentity
+                        } else {
+                            AlbumDirectoryEvidenceStatus::Replaced
+                        };
                     }
                     _ => {}
                 }
@@ -2089,9 +2695,18 @@ impl SelectedAlbumFileJob {
             if path(&reference)?.starts_with(path(&self.binding.data.target_root.reference)?) {
                 // Keep each recorded created target directory identity pinned while
                 // all descendant content is re-read, not only during its stat.
-                if !matches!(evidence.status, AlbumDirectoryEvidenceStatus::SameIdentity) { return Err(E::Stale); }
-                let pin = probe(Some(control), || self.storage.roots().parent_reference(&reference).map_err(|_| E::Stale))?;
-                if pin.identity() != &expected_identity { return Err(E::Stale); }
+                if !matches!(evidence.status, AlbumDirectoryEvidenceStatus::SameIdentity) {
+                    return Err(E::Stale);
+                }
+                let pin = probe(Some(control), || {
+                    self.storage
+                        .roots()
+                        .parent_reference(&reference)
+                        .map_err(|_| E::Stale)
+                })?;
+                if pin.identity() != &expected_identity {
+                    return Err(E::Stale);
+                }
                 target_pins.push(pin);
             }
             report.directories.push(evidence);
@@ -2100,13 +2715,19 @@ impl SelectedAlbumFileJob {
             let bytes = self
                 .storage
                 .roots()
-                .read_selected_journal_observed(location.name(), location.identity(), cancel, &mut |event| crate::windows_copy::inspection_event(control, event))
+                .read_selected_journal_observed(
+                    location.name(),
+                    location.identity(),
+                    cancel,
+                    &mut |event| crate::windows_copy::inspection_event(control, event),
+                )
                 .map_err(crate::windows_copy::inspection_error)?;
             let binding = ExecutionBinding {
                 data: self.binding.data.clone(),
                 recovery_only: true,
             };
-            let journal = PhysicalJournalV2::open_with_control(&binding, &self.job_id, &bytes, file_control)?;
+            let journal =
+                PhysicalJournalV2::open_with_control(&binding, &self.job_id, &bytes, file_control)?;
             if let Some((status, committed, moved)) = &report.recorded_transfers {
                 let counts = JobResult::from_journal(&journal, vec![], false);
                 if *committed != counts.committed_destinations
@@ -2119,8 +2740,15 @@ impl SelectedAlbumFileJob {
             }
             for ack in &report.album_transfers {
                 control.checkpoint()?;
-                let album = self.snapshot.albums.iter().find(|album| album.operation == ack.operation).ok_or(E::CorruptJournal)?;
-                if *ack != AlbumTransferAcknowledgment::from_journal(album, &binding, &journal)? { return Err(E::CorruptJournal); }
+                let album = self
+                    .snapshot
+                    .albums
+                    .iter()
+                    .find(|album| album.operation == ack.operation)
+                    .ok_or(E::CorruptJournal)?;
+                if *ack != AlbumTransferAcknowledgment::from_journal(album, &binding, &journal)? {
+                    return Err(E::CorruptJournal);
+                }
             }
             for operation in &report.completed_albums {
                 let album = self
@@ -2141,20 +2769,56 @@ impl SelectedAlbumFileJob {
             let domain = self.binding.data.domain();
             let mut transfers = if let Some(cleanup) = &self.root_cleanup {
                 if original_root.as_ref().is_some_and(|value| value.is_some()) {
-                    report.pending_cleanup.push(self.binding.data.source_root.reference.clone());
+                    report
+                        .pending_cleanup
+                        .push(self.binding.data.source_root.reference.clone());
                     crate::recovery::RecoveryReport {
-                        operations: binding.operations().iter().map(|operation| crate::recovery::OperationRecovery {
-                            operation: operation.id, status: crate::recovery::RecoveryStatus::NeedsRecovery,
-                            copy_metadata: if binding.data.metadata_required_for(operation) { crate::recovery::CopyMetadataRecoveryStatus::Unverified } else { crate::recovery::CopyMetadataRecoveryStatus::NotRequested },
-                        }).collect(), append_blocked: true,
+                        operations: binding
+                            .operations()
+                            .iter()
+                            .map(|operation| crate::recovery::OperationRecovery {
+                                operation: operation.id,
+                                status: crate::recovery::RecoveryStatus::NeedsRecovery,
+                                copy_metadata: if binding.data.metadata_required_for(operation) {
+                                    crate::recovery::CopyMetadataRecoveryStatus::Unverified
+                                } else {
+                                    crate::recovery::CopyMetadataRecoveryStatus::NotRequested
+                                },
+                            })
+                            .collect(),
+                        append_blocked: true,
                     }
                 } else {
-                    let mut storage = removed_root_recovery::RemovedRootRecovery::new(self.storage.roots(), cleanup, &binding, &self.observed_source_root, control)?;
-                    crate::recovery::recover_job_inner(&binding, &journal, &mut storage, file_control, 0)?
+                    let mut storage = removed_root_recovery::RemovedRootRecovery::new(
+                        self.storage.roots(),
+                        cleanup,
+                        &binding,
+                        &self.observed_source_root,
+                        control,
+                    )?;
+                    crate::recovery::recover_job_inner(
+                        &binding,
+                        &journal,
+                        &mut storage,
+                        file_control,
+                        0,
+                    )?
                 }
             } else {
-                let mut storage = crate::windows_copy::WindowsCopyRecovery::new_domain_with_control(self.storage.roots(), &binding, domain, file_control)?;
-                crate::recovery::recover_job_inner(&binding, &journal, &mut storage, file_control, 0)?
+                let mut storage =
+                    crate::windows_copy::WindowsCopyRecovery::new_domain_with_control(
+                        self.storage.roots(),
+                        &binding,
+                        domain,
+                        file_control,
+                    )?;
+                crate::recovery::recover_job_inner(
+                    &binding,
+                    &journal,
+                    &mut storage,
+                    file_control,
+                    0,
+                )?
             };
             for operation in &mut transfers.operations {
                 operation.operation = self.snapshot.files[operation.operation].original_operation;
@@ -2173,7 +2837,14 @@ impl SelectedAlbumFileJob {
         control: &InspectionControl,
     ) -> Result<(SelectedAlbumRecovery, Vec<(StorageRef, ObjectIdentity)>)> {
         let cancel = control.cancellation_flag();
-        crate::inspection_control::check_recorded_input(bytes, self.binding.data.copied_move_sources.is_some().then_some(control))?;
+        crate::inspection_control::check_recorded_input(
+            bytes,
+            self.binding
+                .data
+                .copied_move_sources
+                .is_some()
+                .then_some(control),
+        )?;
         if bytes.len() > MAX_MANIFEST {
             return Err(E::Unsupported);
         }
@@ -2237,13 +2908,21 @@ impl SelectedAlbumFileJob {
             if stopped_status.is_some() && record.phase != "Finished" {
                 return Err(E::CorruptJournal);
             }
-            if album_completion_stopped.is_some() && !matches!(record.phase.as_str(), "TransfersObserved" | "Finished") { return Err(E::CorruptJournal); }
+            if album_completion_stopped.is_some()
+                && !matches!(record.phase.as_str(), "TransfersObserved" | "Finished")
+            {
+                return Err(E::CorruptJournal);
+            }
             match record.phase.as_str() {
                 "Header" => {
                     if header
                         || sequence != 1
                         || record.payload
-                            != album_header(&self.binding, &self.snapshot, self.original_source.as_ref())
+                            != album_header(
+                                &self.binding,
+                                &self.snapshot,
+                                self.original_source.as_ref(),
+                            )
                     {
                         return Err(E::CorruptJournal);
                     }
@@ -2355,7 +3034,12 @@ impl SelectedAlbumFileJob {
                     {
                         return Err(E::CorruptJournal);
                     }
-                    if album_completion_stopped.as_deref().is_some_and(|expected| expected != status) { return Err(E::CorruptJournal); }
+                    if album_completion_stopped
+                        .as_deref()
+                        .is_some_and(|expected| expected != status)
+                    {
+                        return Err(E::CorruptJournal);
+                    }
                     if metadata_stopped
                         .as_deref()
                         .is_some_and(|expected| expected != status)
@@ -2377,7 +3061,8 @@ impl SelectedAlbumFileJob {
                 "DirectoryMetadataPrepared" => {
                     if !transfers_prepared
                         || transfers_observed
-                        || !(self.binding.data.selected_windows_copy || self.binding.data.copied_move_sources.is_some())
+                        || !(self.binding.data.selected_windows_copy
+                            || self.binding.data.copied_move_sources.is_some())
                         || pending_metadata.is_some()
                         || metadata_stopped.is_some()
                     {
@@ -2396,7 +3081,14 @@ impl SelectedAlbumFileJob {
                         })
                         .ok_or(E::CorruptJournal)?;
                     let directory = &self.snapshot.copied_directories[index];
-                    if self.binding.data.copied_move_sources.is_some() && !report.album_transfers.iter().any(|ack| ack.operation == directory.operation) { return Err(E::CorruptJournal); }
+                    if self.binding.data.copied_move_sources.is_some()
+                        && !report
+                            .album_transfers
+                            .iter()
+                            .any(|ack| ack.operation == directory.operation)
+                    {
+                        return Err(E::CorruptJournal);
+                    }
                     let destination = reference(&destination_path(&directory.destination)?);
                     let created = created_evidence
                         .iter()
@@ -2459,26 +3151,53 @@ impl SelectedAlbumFileJob {
                     metadata_stopped = Some(status.to_owned());
                 }
                 "AlbumCompletionStopped" => {
-                    let operation = record.payload["operation"].as_u64().and_then(|value| usize::try_from(value).ok()).ok_or(E::CorruptJournal)?;
+                    let operation = record.payload["operation"]
+                        .as_u64()
+                        .and_then(|value| usize::try_from(value).ok())
+                        .ok_or(E::CorruptJournal)?;
                     let status = record.payload["status"].as_str().ok_or(E::CorruptJournal)?;
-                    if self.binding.data.copied_move_sources.is_none() || transfers_observed
-                        || !report.album_transfers.last().is_some_and(|ack| ack.operation == operation)
+                    if self.binding.data.copied_move_sources.is_none()
+                        || transfers_observed
+                        || !report
+                            .album_transfers
+                            .last()
+                            .is_some_and(|ack| ack.operation == operation)
                         || report.completed_albums.contains(&operation)
                         || !matches!(status, "Partial" | "Cancelled" | "NeedsRecovery")
-                        || metadata_stopped.as_deref().is_some_and(|prior| prior != status)
-                        || (pending_metadata.is_some() || pending_cleanup.is_some() || !report.pending_cleanup.is_empty()) && status != "NeedsRecovery"
-                        || record.payload != serde_json::json!({"operation":operation,"status":status})
-                    { return Err(E::CorruptJournal); }
+                        || metadata_stopped
+                            .as_deref()
+                            .is_some_and(|prior| prior != status)
+                        || (pending_metadata.is_some()
+                            || pending_cleanup.is_some()
+                            || !report.pending_cleanup.is_empty())
+                            && status != "NeedsRecovery"
+                        || record.payload
+                            != serde_json::json!({"operation":operation,"status":status})
+                    {
+                        return Err(E::CorruptJournal);
+                    }
                     album_completion_stopped = Some(status.to_owned());
                 }
                 "AlbumTransfersObserved" => {
-                    if !transfers_prepared || transfers_observed || pending_cleanup.is_some()
-                        || pending_metadata.is_some() || metadata_stopped.is_some()
+                    if !transfers_prepared
+                        || transfers_observed
+                        || pending_cleanup.is_some()
+                        || pending_metadata.is_some()
+                        || metadata_stopped.is_some()
                         || self.binding.data.copied_move_sources.is_none()
-                    { return Err(E::CorruptJournal); }
-                    let ack: AlbumTransferAcknowledgment = serde_json::from_value(record.payload).map_err(|_| E::CorruptJournal)?;
-                    let album = self.snapshot.albums.get(report.album_transfers.len()).ok_or(E::CorruptJournal)?;
-                    if report.album_transfers.len() != report.completed_albums.len() { return Err(E::CorruptJournal); }
+                    {
+                        return Err(E::CorruptJournal);
+                    }
+                    let ack: AlbumTransferAcknowledgment =
+                        serde_json::from_value(record.payload).map_err(|_| E::CorruptJournal)?;
+                    let album = self
+                        .snapshot
+                        .albums
+                        .get(report.album_transfers.len())
+                        .ok_or(E::CorruptJournal)?;
+                    if report.album_transfers.len() != report.completed_albums.len() {
+                        return Err(E::CorruptJournal);
+                    }
                     ack.validate(album, &self.binding)?;
                     report.album_transfers.push(ack);
                 }
@@ -2487,8 +3206,12 @@ impl SelectedAlbumFileJob {
                         || pending_metadata.is_some()
                         || metadata_stopped.is_some()
                         || (self.binding.data.selected_windows_copy && transfers_observed)
-                        || (!self.binding.data.selected_windows_copy && self.binding.data.copied_move_sources.is_none() && transfer_status.as_deref() != Some("Complete"))
-                    { return Err(E::CorruptJournal); }
+                        || (!self.binding.data.selected_windows_copy
+                            && self.binding.data.copied_move_sources.is_none()
+                            && transfer_status.as_deref() != Some("Complete"))
+                    {
+                        return Err(E::CorruptJournal);
+                    }
                     let operation = record.payload["operation"]
                         .as_u64()
                         .and_then(|id| usize::try_from(id).ok())
@@ -2499,37 +3222,52 @@ impl SelectedAlbumFileJob {
                         .iter()
                         .find(|album| album.operation == operation)
                         .ok_or(E::CorruptJournal)?;
-                    if self.binding.data.copied_move_sources.is_some() && (transfers_observed
-                        || !report.album_transfers.iter().any(|ack| ack.operation == operation)) { return Err(E::CorruptJournal); }
+                    if self.binding.data.copied_move_sources.is_some()
+                        && (transfers_observed
+                            || !report
+                                .album_transfers
+                                .iter()
+                                .any(|ack| ack.operation == operation))
+                    {
+                        return Err(E::CorruptJournal);
+                    }
                     if report.completed_albums.contains(&operation)
                         || record.payload
                             != serde_json::json!({"operation":operation,"files":album.files})
                     {
                         return Err(E::CorruptJournal);
                     }
-                    if (self.binding.data.selected_windows_copy || self.binding.data.copied_move_sources.is_some()) && self
-                        .snapshot
-                        .copied_directories
-                        .iter()
-                        .filter(|directory| directory.operation == operation)
-                        .any(|directory| {
-                            destination_path(&directory.destination).map_or(true, |p| {
-                                !report
-                                    .directory_metadata
-                                    .iter()
-                                    .any(|receipt| receipt.destination == reference(&p))
+                    if (self.binding.data.selected_windows_copy
+                        || self.binding.data.copied_move_sources.is_some())
+                        && self
+                            .snapshot
+                            .copied_directories
+                            .iter()
+                            .filter(|directory| directory.operation == operation)
+                            .any(|directory| {
+                                destination_path(&directory.destination).map_or(true, |p| {
+                                    !report
+                                        .directory_metadata
+                                        .iter()
+                                        .any(|receipt| receipt.destination == reference(&p))
+                                })
                             })
-                        })
                     {
                         return Err(E::CorruptJournal);
                     }
-                    if !self.binding.data.selected_windows_copy && album.cleanup.iter().any(|entry| !cleaned.contains(&entry.reference)) {
+                    if !self.binding.data.selected_windows_copy
+                        && album
+                            .cleanup
+                            .iter()
+                            .any(|entry| !cleaned.contains(&entry.reference))
+                    {
                         return Err(E::CorruptJournal);
                     }
                     report.completed_albums.push(operation);
                 }
                 "CleanupPrepared" => {
-                    if (self.binding.data.copied_move_sources.is_none() && transfer_status.as_deref() != Some("Complete"))
+                    if (self.binding.data.copied_move_sources.is_none()
+                        && transfer_status.as_deref() != Some("Complete"))
                         || (self.binding.data.copied_move_sources.is_some() && transfers_observed)
                         || self.binding.data.selected_windows_copy
                         || pending_cleanup.is_some()
@@ -2548,11 +3286,33 @@ impl SelectedAlbumFileJob {
                         return Err(E::CorruptJournal);
                     }
                     if self.binding.data.copied_move_sources.is_some() {
-                        let album = self.snapshot.albums.iter().find(|album| album.cleanup.contains(&directory)).ok_or(E::CorruptJournal)?;
-                        if !report.album_transfers.iter().any(|ack| ack.operation == album.operation) { return Err(E::CorruptJournal); }
-                        for required in self.snapshot.copied_directories.iter().filter(|required| required.operation == album.operation) {
+                        let album = self
+                            .snapshot
+                            .albums
+                            .iter()
+                            .find(|album| album.cleanup.contains(&directory))
+                            .ok_or(E::CorruptJournal)?;
+                        if !report
+                            .album_transfers
+                            .iter()
+                            .any(|ack| ack.operation == album.operation)
+                        {
+                            return Err(E::CorruptJournal);
+                        }
+                        for required in self
+                            .snapshot
+                            .copied_directories
+                            .iter()
+                            .filter(|required| required.operation == album.operation)
+                        {
                             let target = reference(&destination_path(&required.destination)?);
-                            if !report.directory_metadata.iter().any(|receipt| receipt.destination == target) { return Err(E::CorruptJournal); }
+                            if !report
+                                .directory_metadata
+                                .iter()
+                                .any(|receipt| receipt.destination == target)
+                            {
+                                return Err(E::CorruptJournal);
+                            }
                         }
                     }
                     pending_cleanup = Some(directory);
@@ -2561,11 +3321,21 @@ impl SelectedAlbumFileJob {
                     let observation: MutationObservation =
                         serde_json::from_value(record.payload).map_err(|_| E::CorruptJournal)?;
                     let directory = pending_cleanup.take().ok_or(E::CorruptJournal)?;
-                    let relative = path(&directory.reference)?.strip_prefix(path(&self.binding.data.source_root.reference)?).map_err(|_| E::CorruptJournal)?.to_path_buf();
-                    let expected_name = if directory.reference == self.binding.data.source_root.reference {
-                        self.original_source.as_ref().map(|source| source.actual_name.clone()).unwrap_or(leaf(&directory)?)
-                    } else { leaf(&directory)? };
-                    if path(&observation.reference)? != path(&self.observed_source_root)?.join(relative)
+                    let relative = path(&directory.reference)?
+                        .strip_prefix(path(&self.binding.data.source_root.reference)?)
+                        .map_err(|_| E::CorruptJournal)?
+                        .to_path_buf();
+                    let expected_name =
+                        if directory.reference == self.binding.data.source_root.reference {
+                            self.original_source
+                                .as_ref()
+                                .map(|source| source.actual_name.clone())
+                                .unwrap_or(leaf(&directory)?)
+                        } else {
+                            leaf(&directory)?
+                        };
+                    if path(&observation.reference)?
+                        != path(&self.observed_source_root)?.join(relative)
                         || observation.size.is_some()
                         || Some(&observation.identity) != directory.identity.as_ref()
                         || Some(&observation.parent_identity) != directory.parent_identity.as_ref()
@@ -2576,14 +3346,19 @@ impl SelectedAlbumFileJob {
                     if record.phase == "CleanupObserved" {
                         cleaned.insert(directory.reference.clone());
                         removed_evidence.push(observation.clone());
-                        report.removed_directory_references.push((directory.reference.clone(), observation.identity.clone()));
+                        report
+                            .removed_directory_references
+                            .push((directory.reference.clone(), observation.identity.clone()));
                     } else {
                         report.pending_cleanup.push(directory.reference.clone());
                     }
                     observed.push((directory.reference, observation.identity));
                 }
                 "DirectoryRetained" => {
-                    if !transfers_observed && (self.binding.data.copied_move_sources.is_none() || pending_cleanup.is_none()) {
+                    if !transfers_observed
+                        && (self.binding.data.copied_move_sources.is_none()
+                            || pending_cleanup.is_none())
+                    {
                         return Err(E::CorruptJournal);
                     }
                     let retained: RetainedDirectory =
@@ -2630,7 +3405,8 @@ impl SelectedAlbumFileJob {
                                 && status == "NeedsRecovery"
                         }
                         Some("membership") => {
-                            transfer_status.as_deref() == Some("Complete") && matches!(status, "Partial" | "Cancelled")
+                            transfer_status.as_deref() == Some("Complete")
+                                && matches!(status, "Partial" | "Cancelled")
                         }
                         Some("cleanup") => {
                             transfer_status.as_deref() == Some("Complete")
@@ -2752,8 +3528,11 @@ impl SelectedWindowsAlbumJob {
             let roots = if validated.plan.request.settings.copy_mode {
                 WindowsMutationStorage::for_selected_roots(source, target, journal)
             } else {
-                WindowsMutationStorage::for_selected_album_move_roots(source, target, journal, cancel)
-            }.map_err(album_native_error)?;
+                WindowsMutationStorage::for_selected_album_move_roots(
+                    source, target, journal, cancel,
+                )
+            }
+            .map_err(album_native_error)?;
             AlbumJobKind::Files(Box::new(SelectedAlbumFileJob::prepare(
                 roots, &validated, cancel,
             )?))
@@ -2790,7 +3569,10 @@ impl SelectedWindowsAlbumJob {
     }
     /// Measured, cancellable inspection for the file-path album domain. Whole-
     /// object rename retains its existing separately scoped inspection API.
-    pub fn inspect_file_recovery_controlled(&mut self, control: &InspectionControl) -> Result<SelectedAlbumRecovery> {
+    pub fn inspect_file_recovery_controlled(
+        &mut self,
+        control: &InspectionControl,
+    ) -> Result<SelectedAlbumRecovery> {
         match &mut self.inner {
             AlbumJobKind::Files(job) => job.inspect_recovery_controlled(control),
             AlbumJobKind::Whole(_) => Err(E::Unsupported),
@@ -2968,29 +3750,58 @@ mod directory_receipt_tests {
         std::fs::create_dir(root.path().join("journal")).unwrap();
         let storage = WindowsMutationStorage::for_owned_synthetic_tree(root).unwrap();
         let parent = storage.parent(Path::new("journal")).unwrap();
-        let file = storage.create_journal(&parent, &name("manifest-boundary.jsonl")).unwrap();
-        let mut manifest = Manifest { sink: WindowsJournalStore::new(file), job_id: "boundary".into(),
-            sequence: 0, previous: String::new(), bytes: 0, poisoned: false, controlled: true };
+        let file = storage
+            .create_journal(&parent, &name("manifest-boundary.jsonl"))
+            .unwrap();
+        let mut manifest = Manifest {
+            sink: WindowsJournalStore::new(file),
+            job_id: "boundary".into(),
+            sequence: 0,
+            previous: String::new(),
+            bytes: 0,
+            poisoned: false,
+            controlled: true,
+        };
         let mut payload = serde_json::json!({"padding":""});
-        let base = Manifest::encode("boundary", 0, "", "Header", &payload).unwrap().0.len();
-        payload["padding"] = serde_json::json!("x".repeat(crate::inspection_control::MAX_RECORD_BYTES - base));
-        assert_eq!(Manifest::encode("boundary", 0, "", "Header", &payload).unwrap().0.len(), crate::inspection_control::MAX_RECORD_BYTES);
+        let base = Manifest::encode("boundary", 0, "", "Header", &payload)
+            .unwrap()
+            .0
+            .len();
+        payload["padding"] =
+            serde_json::json!("x".repeat(crate::inspection_control::MAX_RECORD_BYTES - base));
+        assert_eq!(
+            Manifest::encode("boundary", 0, "", "Header", &payload)
+                .unwrap()
+                .0
+                .len(),
+            crate::inspection_control::MAX_RECORD_BYTES
+        );
         manifest.append("Header", &payload).unwrap();
         let prefix = manifest.sink.read_all().unwrap();
         // The next record adds a previous hash and therefore exceeds the exact
         // envelope budget, although its payload is unchanged.
         assert_eq!(manifest.append("Header", &payload), Err(E::NeedsRecovery));
-        assert!(manifest.poisoned); assert_eq!(manifest.sequence, 1);
+        assert!(manifest.poisoned);
+        assert_eq!(manifest.sequence, 1);
         assert_eq!(manifest.sink.read_all().unwrap(), prefix);
-        assert_eq!(manifest.append("Finished", &serde_json::json!({})), Err(E::NeedsRecovery));
+        assert_eq!(
+            manifest.append("Finished", &serde_json::json!({})),
+            Err(E::NeedsRecovery)
+        );
         let cancel = AtomicBool::new(false);
         let control = InspectionControl::borrowed(&cancel, |_| {});
-        assert_eq!(crate::inspection_control::check_recorded_input(&prefix, Some(&control)), Ok(()));
+        assert_eq!(
+            crate::inspection_control::check_recorded_input(&prefix, Some(&control)),
+            Ok(())
+        );
     }
     #[test]
     fn copied_album_ceiling_matches_reader_without_changing_legacy_admission() {
         assert_eq!(check_copied_album_operation_count(true, 4096), Ok(()));
-        assert_eq!(check_copied_album_operation_count(true, 4097), Err(E::Unsupported));
+        assert_eq!(
+            check_copied_album_operation_count(true, 4097),
+            Err(E::Unsupported)
+        );
         assert_eq!(check_copied_album_operation_count(false, 4097), Ok(()));
     }
     #[test]

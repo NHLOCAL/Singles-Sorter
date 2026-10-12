@@ -373,9 +373,13 @@ impl MetadataReader {
                             detail: "MP4 metadata exceeds the bounded raw duplicate-field representation".into(),
                         },
                     })?;
-                input.seek(SeekFrom::Start(0)).map_err(|e| MetadataError::Storage(e.into()))?;
+                input
+                    .seek(SeekFrom::Start(0))
+                    .map_err(|e| MetadataError::Storage(e.into()))?;
                 fields
-            } else { Vec::new() };
+            } else {
+                Vec::new()
+            };
             let mut context = Box::new(Context { input, error: None });
             let mut handle = std::ptr::null_mut();
             let abi = ffi::Input {

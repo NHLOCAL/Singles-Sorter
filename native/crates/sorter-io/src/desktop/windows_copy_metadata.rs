@@ -608,25 +608,56 @@ impl WindowsMutationStorage {
         })
     }
 
-    pub fn capture_album_move_directory_metadata(&self, source: &WindowsParent, cancel: &AtomicBool) -> Result<WindowsAlbumMoveDirectoryMetadata, MutationError> {
+    pub fn capture_album_move_directory_metadata(
+        &self,
+        source: &WindowsParent,
+        cancel: &AtomicBool,
+    ) -> Result<WindowsAlbumMoveDirectoryMetadata, MutationError> {
         cancelled(cancel)?;
         self.check_role(source, RootRole::Source)?;
-        if !source.root.album_cleanup { return Err(err(MutationErrorKind::Unsupported, "album metadata capture requires explicit Move scope")); }
+        if !source.root.album_cleanup {
+            return Err(err(
+                MutationErrorKind::Unsupported,
+                "album metadata capture requires explicit Move scope",
+            ));
+        }
         ensure_directory(source.handle())?;
         let basic = repair_basic(source.handle())?;
-        if basic.LastAccessTime <= 0 || basic.LastWriteTime <= 0 { return Err(err(MutationErrorKind::Unsupported, "album directory timestamps require explicit positive FILETIME")); }
-        let value = WindowsAlbumMoveDirectoryMetadata { source_identity: source.identity.clone(),
-            access_time: basic.LastAccessTime, write_time: basic.LastWriteTime,
-            readonly: basic.FileAttributes & FILE_ATTRIBUTE_READONLY.0 != 0 };
-        cancelled(cancel)?; Ok(value)
-    }
-    pub fn finalize_album_move_directory_metadata(&self, source: &WindowsParent,
-        captured: &WindowsAlbumMoveDirectoryMetadata, created: &mut WindowsCreatedCopyDirectory,
-        cancel: &AtomicBool) -> MutationOutcome<WindowsCopyMetadataEvidence> {
-        if !source.root.album_cleanup || captured.source_identity != source.identity {
-            return MutationOutcome::NoEffect(err(MutationErrorKind::StalePlan, "album metadata source capture differs"));
+        if basic.LastAccessTime <= 0 || basic.LastWriteTime <= 0 {
+            return Err(err(
+                MutationErrorKind::Unsupported,
+                "album directory timestamps require explicit positive FILETIME",
+            ));
         }
-        self.finalize_copy_directory_metadata_inner(source, created, cancel, |_| Ok(()), Some(captured))
+        let value = WindowsAlbumMoveDirectoryMetadata {
+            source_identity: source.identity.clone(),
+            access_time: basic.LastAccessTime,
+            write_time: basic.LastWriteTime,
+            readonly: basic.FileAttributes & FILE_ATTRIBUTE_READONLY.0 != 0,
+        };
+        cancelled(cancel)?;
+        Ok(value)
+    }
+    pub fn finalize_album_move_directory_metadata(
+        &self,
+        source: &WindowsParent,
+        captured: &WindowsAlbumMoveDirectoryMetadata,
+        created: &mut WindowsCreatedCopyDirectory,
+        cancel: &AtomicBool,
+    ) -> MutationOutcome<WindowsCopyMetadataEvidence> {
+        if !source.root.album_cleanup || captured.source_identity != source.identity {
+            return MutationOutcome::NoEffect(err(
+                MutationErrorKind::StalePlan,
+                "album metadata source capture differs",
+            ));
+        }
+        self.finalize_copy_directory_metadata_inner(
+            source,
+            created,
+            cancel,
+            |_| Ok(()),
+            Some(captured),
+        )
     }
 
     /// Postorder only: every child namespace/content operation must already be
@@ -649,8 +680,11 @@ impl WindowsMutationStorage {
         self.finalize_copy_directory_metadata_inner(source, created, cancel, &mut checkpoint, None)
     }
     fn finalize_copy_directory_metadata_inner(
-        &self, source: &WindowsParent, created: &mut WindowsCreatedCopyDirectory,
-        cancel: &AtomicBool, mut checkpoint: impl FnMut(CopyMetadataCheckpoint) -> Result<(), MutationError>,
+        &self,
+        source: &WindowsParent,
+        created: &mut WindowsCreatedCopyDirectory,
+        cancel: &AtomicBool,
+        mut checkpoint: impl FnMut(CopyMetadataCheckpoint) -> Result<(), MutationError>,
         captured: Option<&WindowsAlbumMoveDirectoryMetadata>,
     ) -> MutationOutcome<WindowsCopyMetadataEvidence> {
         let preflight = (|| {
@@ -686,7 +720,12 @@ impl WindowsMutationStorage {
             }
             let mut evidence = capture_copy_metadata(source.handle(), created.directory.handle())?;
             if let Some(captured) = captured {
-                if captured.source_identity != evidence.source_identity { return Err(err(MutationErrorKind::StalePlan, "captured album directory changed")); }
+                if captured.source_identity != evidence.source_identity {
+                    return Err(err(
+                        MutationErrorKind::StalePlan,
+                        "captured album directory changed",
+                    ));
+                }
                 evidence.access_time = captured.access_time;
                 evidence.write_time = captured.write_time;
                 evidence.readonly = captured.readonly;
