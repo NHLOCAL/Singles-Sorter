@@ -207,6 +207,151 @@
         "fix_names": false,
         "log_level": "INFO"
       }
+    },
+    {
+      "argv": [
+        "-1",
+        "target"
+      ],
+      "parsed": {
+        "source_dir": "-1",
+        "target_dir": "target",
+        "copy_mode": false,
+        "abc_sort": false,
+        "exist_only": false,
+        "singles_folder": true,
+        "main_folder_only": false,
+        "duet_mode": false,
+        "fix_names": false,
+        "log_level": "INFO"
+      }
+    },
+    {
+      "argv": [
+        "-.5",
+        "target"
+      ],
+      "parsed": {
+        "source_dir": "-.5",
+        "target_dir": "target",
+        "copy_mode": false,
+        "abc_sort": false,
+        "exist_only": false,
+        "singles_folder": true,
+        "main_folder_only": false,
+        "duet_mode": false,
+        "fix_names": false,
+        "log_level": "INFO"
+      }
+    },
+    {
+      "argv": [
+        "-١",
+        "target"
+      ],
+      "parsed": {
+        "source_dir": "-١",
+        "target_dir": "target",
+        "copy_mode": false,
+        "abc_sort": false,
+        "exist_only": false,
+        "singles_folder": true,
+        "main_folder_only": false,
+        "duet_mode": false,
+        "fix_names": false,
+        "log_level": "INFO"
+      }
+    },
+    {
+      "argv": [
+        "-１２.５",
+        "target"
+      ],
+      "parsed": {
+        "source_dir": "-１２.５",
+        "target_dir": "target",
+        "copy_mode": false,
+        "abc_sort": false,
+        "exist_only": false,
+        "singles_folder": true,
+        "main_folder_only": false,
+        "duet_mode": false,
+        "fix_names": false,
+        "log_level": "INFO"
+      }
+    },
+    {
+      "argv": [
+        "plan",
+        "target"
+      ],
+      "parsed": {
+        "source_dir": "plan",
+        "target_dir": "target",
+        "copy_mode": false,
+        "abc_sort": false,
+        "exist_only": false,
+        "singles_folder": true,
+        "main_folder_only": false,
+        "duet_mode": false,
+        "fix_names": false,
+        "log_level": "INFO"
+      }
+    },
+    {
+      "argv": [
+        "classify",
+        "-f"
+      ],
+      "parsed": {
+        "source_dir": "classify",
+        "target_dir": null,
+        "copy_mode": false,
+        "abc_sort": false,
+        "exist_only": false,
+        "singles_folder": true,
+        "main_folder_only": false,
+        "duet_mode": false,
+        "fix_names": true,
+        "log_level": "INFO"
+      }
+    },
+    {
+      "argv": [
+        "run-files",
+        "target"
+      ],
+      "parsed": {
+        "source_dir": "run-files",
+        "target_dir": "target",
+        "copy_mode": false,
+        "abc_sort": false,
+        "exist_only": false,
+        "singles_folder": true,
+        "main_folder_only": false,
+        "duet_mode": false,
+        "fix_names": false,
+        "log_level": "INFO"
+      }
+    },
+    {
+      "argv": [
+        "source",
+        "--",
+        "--json"
+      ],
+      "parsed": {
+        "source_dir": "source",
+        "target_dir": "--json",
+        "copy_mode": false,
+        "abc_sort": false,
+        "exist_only": false,
+        "singles_folder": true,
+        "main_folder_only": false,
+        "duet_mode": false,
+        "fix_names": false,
+        "log_level": "INFO"
+      }
     }
   ]
 }

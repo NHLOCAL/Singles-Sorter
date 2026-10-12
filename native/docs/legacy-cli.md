@@ -23,7 +23,12 @@ Unavailable physical execution fails rather than silently becoming a dry run.
 The eight released flags, their long underscore spellings, boolean defaults,
 short bundles, long-prefix abbreviations and uppercase logging choices are
 preserved. New options need exact names so `--d` still means `--duet_mode`.
-`--` terminates option interpretation. Relative paths are resolved against CWD,
+`--` terminates option interpretation. Negative decimal path tokens retain the
+frozen argparse grammar and Unicode 15 decimal class. Directories literally named
+`plan`, `classify`, `plan-files`, `run-files` or `capabilities` use the legacy
+frontend when given an explicit target or source-only Fix request. Explicit
+`--json` / `--ndjson` before `--`, bare command names and command help retain
+machine-protocol behavior. Relative paths are resolved against CWD,
 without following symlinks to canonicalize selected roots; the native root walk
 still rejects reparse ancestors and pins exact identities.
 

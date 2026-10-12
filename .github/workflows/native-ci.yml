@@ -225,7 +225,7 @@ jobs:
           $legacy = cargo +1.99.0 test --locked -p sorter-cli --features selected-windows-execution --test legacy -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $legacyCases = @($legacy | Where-Object { $_ -match ': test$' })
-          if ($legacyCases.Count -ne 10) { throw "Expected all 10 legacy CLI product cases; found $($legacyCases.Count)" }
+          if ($legacyCases.Count -ne 12) { throw "Expected all 12 legacy CLI product cases; found $($legacyCases.Count)" }
           cargo +1.99.0 test --locked -p sorter-cli --features selected-windows-execution --test legacy -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

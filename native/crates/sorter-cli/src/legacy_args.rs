@@ -91,6 +91,18 @@ fn value(
         .cloned()
         .ok_or_else(|| format!("option {name} requires a value"))
 }
+// The frozen argparse negative-number matcher is ^-\d+$|^-\d*\.\d+$.
+// Reuse the pinned CPython/Unicode decimal predicate rather than ASCII-only or
+// Rust's broader numeric predicate. This classifies tokens, never opens paths.
+fn negative_number(value: &str) -> bool {
+    let Some(value) = value.strip_prefix('-') else { return false; };
+    let digits = |part: &str| part.chars().all(|character| sorter_core::unicode15::decimal_digit(character).is_some());
+    if let Some((whole, fraction)) = value.split_once('.') {
+        !fraction.is_empty() && digits(whole) && digits(fraction)
+    } else {
+        !value.is_empty() && digits(value)
+    }
+}
 pub(super) fn parse(args: &[String]) -> Result<Parsed, String> {
     let mut options = Options {
         source: PathBuf::new(),
@@ -110,7 +122,7 @@ pub(super) fn parse(args: &[String]) -> Result<Parsed, String> {
     let mut index = 0;
     while index < args.len() {
         let arg = &args[index];
-        if literal || !arg.starts_with('-') || arg == "-" {
+        if literal || !arg.starts_with('-') || arg == "-" || negative_number(arg) {
             positional.push(PathBuf::from(arg));
         } else if arg == "--" {
             literal = true;
@@ -285,6 +297,14 @@ mod tests {
         assert_eq!(literal.source, PathBuf::from("-source"));
         assert!(parsed(&["source", "target", "--d"]).settings.duet_mode);
         assert!(parsed(&["source", "--decision-only"]).dry_run);
+    }
+    #[test]
+    fn negative_path_grammar_is_the_frozen_decimal_class() {
+        for value in ["-1", "-.5", "-١", "-１２.５"] { assert!(negative_number(value), "{value}"); }
+        for value in ["-", "-.", "-1.", "-1e2", "-²", "-1.2.3"] {
+            assert!(!negative_number(value), "{value}");
+            if value != "-" { assert!(parse(&[value.into(), "target".into()]).is_err()); }
+        }
     }
     #[test]
     fn parser_errors_do_not_authorize_or_default_to_execution() {

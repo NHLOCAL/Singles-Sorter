@@ -343,6 +343,20 @@ fn emit(command: &str, response: Result<ResultPayload, Failure>) -> ExitCode {
     ExitCode::from(exit)
 }
 
+fn uses_legacy_frontend(args: &[String]) -> bool {
+    let Some(first) = args.first() else { return false; };
+    if args.iter().take_while(|arg| arg.as_str() != "--")
+        .any(|arg| matches!(arg.as_str(), "--json" | "--ndjson"))
+    { return false; }
+    if matches!(first.as_str(), "classify" | "plan" | "plan-files" | "run-files" | "capabilities") {
+        // Explicit positional target or source-only Fix distinguishes a directory
+        // with this literal name from a bare machine command/help diagnostic.
+        args.get(1).is_some_and(|argument| !argument.starts_with('-'))
+            || matches!(legacy_args::parse(args), Ok(legacy_args::Parsed::Run(options))
+                if options.target.is_some() || options.fix_names)
+    } else { true }
+}
+
 fn main() -> ExitCode {
     let args: Result<Vec<String>, _> = std::env::args_os()
         .skip(1)
@@ -361,16 +375,7 @@ fn main() -> ExitCode {
             );
         }
     };
-    if args.first().is_some_and(|arg| {
-        !matches!(
-            arg.as_str(),
-            "classify" | "plan" | "plan-files" | "run-files" | "capabilities"
-        )
-    }) && !args
-        .iter()
-        .take_while(|arg| arg.as_str() != "--")
-        .any(|arg| matches!(arg.as_str(), "--json" | "--ndjson"))
-    {
+    if uses_legacy_frontend(&args) {
         return legacy::run(&args);
     }
     match dispatch(&args) {
@@ -395,5 +400,28 @@ fn main() -> ExitCode {
             plan_files::emit(Err(failure))
         }
         Err(failure) => emit(args.first().map_or("unknown", String::as_str), Err(failure)),
+    }
+}
+
+
+#[cfg(test)]
+mod frontend_selection_tests {
+    use super::*;
+    #[test]
+    fn literal_command_named_directories_do_not_replace_explicit_machine_protocols() {
+        let choose = |args: &[&str]| uses_legacy_frontend(&args.iter().map(|arg| (*arg).to_owned()).collect::<Vec<_>>());
+        for name in ["classify", "plan", "plan-files", "run-files", "capabilities"] {
+            assert!(choose(&[name, "target", "-c"]));
+            assert!(choose(&[name, "target", "--help"]));
+            assert!(choose(&[name, "-f"]));
+            assert!(choose(&[name, "--", "--json"]));
+            assert!(!choose(&[name]));
+            assert!(!choose(&[name, "--help"]));
+            assert!(!choose(&[name, "--json"]));
+            assert!(!choose(&[name, "--ndjson"]));
+        }
+        assert!(!choose(&["classify", "--copy_mode"]));
+        assert!(!choose(&["unknown", "--json"]));
+        assert!(choose(&["-1", "target"]));
     }
 }
