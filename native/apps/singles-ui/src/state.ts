@@ -214,6 +214,7 @@ export class PreviewController {
     const preview=this.state.snapshot!,planId=preview.plan_id!;
     const run={jobId:preview.job_id,started:false,cancelSent:false,terminal:false};
     this.activeApply=run;this.state.busy=true;this.state.activity='apply';this.state.cancelRequested=false;this.state.error=null;this.emit();
+    let lastSnapshotJson:string|undefined;
     try{
       try{
         const started=await this.host.startApply!(run.jobId,planId);
@@ -239,8 +240,15 @@ export class PreviewController {
         }
         run.started=true;
         if(this.state.cancelRequested&&['running','preparing'].includes(snapshot.status))this.sendApplyCancellation(run);
-        this.state.execution=snapshot;this.state.error=null;this.emit();
-        if(snapshot.status!=='running'&&snapshot.status!=='preparing'){
+        const active=snapshot.status==='running'||snapshot.status==='preparing';
+        // Compare the entire validated IPC JSON, including clocks and future fields.
+        // Polling and cancellation still run every time; terminal delivery and error
+        // clearing must notify even when the execution data itself is unchanged.
+        const snapshotJson=JSON.stringify(snapshot);
+        const notify=!active||snapshotJson!==lastSnapshotJson||this.state.error!==null;
+        lastSnapshotJson=snapshotJson;
+        this.state.execution=snapshot;this.state.error=null;if(notify)this.emit();
+        if(!active){
           run.terminal=true;
           if(snapshot.error)this.state.error=snapshot.error;
           // Reconcile display filtering against the actual terminal outcomes.
