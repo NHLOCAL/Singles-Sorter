@@ -41,6 +41,7 @@ impl AlbumBinding {
     }
     pub(super) fn transfers(&self) -> ExecutionBinding {
         ExecutionBinding {
+            execution_decisions: None,
             data: self.data.transfers.clone(),
             recovery_only: self.recovery_only,
         }

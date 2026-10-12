@@ -128,6 +128,9 @@ pub struct SelectedWindowsJob {
     created_directory_receipts: Vec<(StorageRef, ObjectIdentity)>,
 }
 impl SelectedWindowsJob {
+    pub fn execution_decisions(&self) -> Option<&crate::execution_decisions::ExecutionDecisions> {
+        self.binding.execution_decisions()
+    }
     #[allow(clippy::too_many_arguments)]
     pub fn prepare(
         roots: WindowsMutationStorage,
@@ -1256,6 +1259,7 @@ mod controlled_writer_boundary_tests {
         )
         .unwrap();
         let mut binding = ExecutionBinding {
+            execution_decisions: None,
             data: serde_json::from_value(value["body"]["binding"].clone()).unwrap(),
             recovery_only: false,
         };

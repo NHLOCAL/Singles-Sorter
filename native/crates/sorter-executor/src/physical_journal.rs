@@ -305,6 +305,7 @@ impl PhysicalJournalV2 {
             return Err(E::Scope);
         }
         let binding = ExecutionBinding {
+            execution_decisions: None,
             data: head.body.binding,
             recovery_only: true,
         };
@@ -690,6 +691,7 @@ mod copy_metadata_compatibility_tests {
         let first = OLD.split(|byte| *byte == b'\n').next().unwrap();
         let header: Envelope<Header> = serde_json::from_slice(first).unwrap();
         ExecutionBinding {
+            execution_decisions: None,
             data: header.body.binding,
             recovery_only: true,
         }
@@ -828,6 +830,7 @@ mod selected_copy_metadata_transition_tests {
         let data: BindingData = serde_json::from_value(data).unwrap();
         assert!(data.valid_domain());
         ExecutionBinding {
+            execution_decisions: None,
             data,
             recovery_only: false,
         }
@@ -1241,6 +1244,7 @@ mod controlled_writer_boundary_tests {
         )
         .unwrap();
         let mut binding = ExecutionBinding {
+            execution_decisions: None,
             data: header.body.binding,
             recovery_only: false,
         };

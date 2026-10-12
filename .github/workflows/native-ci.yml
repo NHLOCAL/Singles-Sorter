@@ -207,6 +207,15 @@ jobs:
           cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-rename
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Exercise fresh Apply-preflight decision receipt boundaries
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test journal_faults execution_decisions_ -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ': test$' }).Count -ne 3) { throw "Expected 3 fresh decision receipt boundary cases" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test journal_faults execution_decisions_ -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Lint inspected CLI execution protocol
         if: ${{ !cancelled() && runner.os == 'Windows' }}
         run: |

@@ -1877,3 +1877,77 @@ fn controlled_resume_reorders_reads_but_rechecks_every_dependency_in_original_or
         assert_eq!(control.snapshot().unwrap().completed_operations, 2);
     }
 }
+
+#[test]
+fn execution_decisions_are_fresh_ordered_and_not_recovered_from_journals() {
+    for duet in [false, true] {
+        let (plan, mut storage, resources, scope) = fixture(duet);
+        let binding = validate_execution(&plan, &mut storage, &mut Metadata, &mut Ai { duet, fail: false }, &resources, &scope).unwrap();
+        let receipt = serde_json::to_value(binding.execution_decisions().unwrap()).unwrap();
+        assert_eq!(receipt["basis"], "fresh_apply_preflight");
+        assert_eq!(receipt["plan_binding_sha256"], plan.binding_sha256);
+        assert_eq!(receipt["decisions"], serde_json::to_value(&plan.decisions).unwrap());
+        let routes = receipt["single_routes"].as_array().unwrap();
+        assert_eq!(routes.len(), if duet { 2 } else { 1 });
+        for (index, route) in routes.iter().enumerate() {
+            assert_eq!(route["source"], serde_json::to_value(reference("song")).unwrap());
+            assert_eq!(route["artist"], "אמן");
+            assert_eq!(route["operation_ids"], serde_json::json!([index]));
+        }
+        let mut sink = Sink::default();
+        PhysicalJournalV2::create(&binding, "fresh", &mut sink).unwrap();
+        let recovery = RecoveryScope { original_scope: scope, inspected_binding_sha256: binding.sha256().unwrap() };
+        let recovered = PhysicalJournalV2::open_for_recovery(&recovery, "fresh", &sink.bytes).unwrap();
+        assert!(recovered.binding().execution_decisions().is_none());
+        assert!(!String::from_utf8(sink.bytes).unwrap().contains("fresh_apply_preflight"));
+    }
+}
+
+#[test]
+fn execution_decisions_noop_requires_fresh_roots_resources_and_cancellation() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    let (old, mut storage, resources, _) = fixture(false);
+    storage.entries.truncate(2);
+    let plan = plan_job(&old.request, &mut storage, &mut Metadata, &mut Ai { duet: false, fail: false }).unwrap();
+    assert!(sorter_executor::no_op::is_clean_sort_noop(&plan));
+    let cancel = AtomicBool::new(false);
+    let receipt = validate_noop_execution_decisions(&plan, &mut storage, &mut Metadata, &mut Ai { duet: false, fail: false }, &resources, &resources, &cancel).unwrap();
+    let json = serde_json::to_value(receipt).unwrap();
+    assert_eq!(json["basis"], "fresh_noop_preflight");
+    assert_eq!(json["single_routes"], serde_json::json!([]));
+    let mut changed = resources.clone();
+    changed.adapter_hashes[0] = digest(b"changed");
+    assert!(matches!(validate_noop_execution_decisions(&plan, &mut storage, &mut Metadata, &mut Ai { duet: false, fail: false }, &changed, &resources, &cancel), Err(E::InvalidBinding)));
+    cancel.store(true, Ordering::Release);
+    assert!(matches!(validate_noop_execution_decisions(&plan, &mut storage, &mut Metadata, &mut Ai { duet: false, fail: false }, &resources, &resources, &cancel), Err(E::Cancelled)));
+    cancel.store(false, Ordering::Release);
+    storage.entries[0].identity = Some(identity("foreign"));
+    assert!(validate_noop_execution_decisions(&plan, &mut storage, &mut Metadata, &mut Ai { duet: false, fail: false }, &resources, &resources, &cancel).is_err());
+}
+
+#[test]
+fn execution_decisions_policy_skips_have_no_admitted_operation_or_invented_reason() {
+    struct EmptyMetadata;
+    struct EmptyFields;
+    impl MetadataProvider for EmptyMetadata {
+        fn open(&mut self, _: &EntryObservation) -> std::result::Result<Box<dyn MetadataFields>, MetadataError> { Ok(Box::new(EmptyFields)) }
+    }
+    impl MetadataFields for EmptyFields {
+        fn get(&mut self, _: LegacyField) -> std::result::Result<LegacyItem, FieldError> {
+            Ok(LegacyItem { values: vec![], truthy: false, value: Ok(LegacyScalar::Null) })
+        }
+    }
+    let (old, mut storage, resources, _) = fixture(false);
+    let mut request = old.request;
+    request.settings.exist_only = true;
+    let plan = plan_job(&request, &mut storage, &mut EmptyMetadata, &mut Ai { duet: false, fail: false }).unwrap();
+    assert!(sorter_executor::no_op::is_clean_sort_noop(&plan));
+    let receipt = validate_noop_execution_decisions(&plan, &mut storage, &mut EmptyMetadata, &mut Ai { duet: false, fail: false }, &resources, &resources, &std::sync::atomic::AtomicBool::new(false)).unwrap();
+    let value = serde_json::to_value(receipt).unwrap();
+    assert_eq!(value["single_routes"], serde_json::json!([{
+        "source": reference("song"), "artist": "אמן", "operation_ids": []
+    }]));
+    assert_eq!(value["decisions"], serde_json::to_value(&plan.decisions).unwrap());
+    assert!(value.get("effects").is_none());
+    assert!(value["single_routes"][0].get("skip_reason").is_none());
+}

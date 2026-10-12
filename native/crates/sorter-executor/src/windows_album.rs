@@ -1508,6 +1508,7 @@ impl SelectedAlbumFileJob {
             });
         }
         let binding = ExecutionBinding {
+            execution_decisions: None,
             recovery_only: false,
             data: BindingData {
                 schema: 2,
@@ -2723,6 +2724,7 @@ impl SelectedAlbumFileJob {
                 )
                 .map_err(crate::windows_copy::inspection_error)?;
             let binding = ExecutionBinding {
+                execution_decisions: None,
                 data: self.binding.data.clone(),
                 recovery_only: true,
             };
@@ -3507,12 +3509,16 @@ pub use whole::{
 /// authority before any generic source pin is constructed.
 pub struct SelectedWindowsAlbumJob {
     inner: AlbumJobKind,
+    execution_decisions: crate::execution_decisions::ExecutionDecisions,
 }
 enum AlbumJobKind {
     Files(Box<SelectedAlbumFileJob>),
     Whole(Box<whole::WholeAlbumJob>),
 }
 impl SelectedWindowsAlbumJob {
+    pub fn execution_decisions(&self) -> &crate::execution_decisions::ExecutionDecisions {
+        &self.execution_decisions
+    }
     pub fn prepare(
         source: WindowsSelectedRootGrant,
         target: WindowsSelectedRootGrant,
@@ -3520,6 +3526,7 @@ impl SelectedWindowsAlbumJob {
         validated: ValidatedAlbumExecution,
         cancel: &AtomicBool,
     ) -> Result<Self> {
+        let execution_decisions = validated.execution_decisions.clone();
         let inner = if whole::eligible(&validated.plan, &validated.scope) {
             AlbumJobKind::Whole(Box::new(whole::WholeAlbumJob::prepare(
                 source, target, journal, validated, cancel,
@@ -3537,7 +3544,7 @@ impl SelectedWindowsAlbumJob {
                 roots, &validated, cancel,
             )?))
         };
-        Ok(Self { inner })
+        Ok(Self { inner, execution_decisions })
     }
     pub fn job_id(&self) -> &str {
         match &self.inner {
@@ -3638,6 +3645,7 @@ fn album_artist_counts(
 /// from a renderer, journal, or external request. Native acquisition rechecks
 /// the exact granted identities and planned content before any effect.
 pub struct ValidatedAlbumExecution {
+    execution_decisions: crate::execution_decisions::ExecutionDecisions,
     plan: JobPlanV2,
     scope: AlbumScope,
     source: EntryObservation,
@@ -3667,7 +3675,7 @@ pub fn validate_album_execution(
     } else {
         ExecutionDomain::SelectedWindowsRename
     };
-    let (source, target) = validate_plan_scope_inner(
+    let (source, target, execution_decisions) = validate_plan_scope_inner(
         plan,
         &mut reads,
         metadata,
@@ -3684,6 +3692,7 @@ pub fn validate_album_execution(
     }
     cancelled(cancel)?;
     Ok(ValidatedAlbumExecution {
+        execution_decisions,
         plan: plan.clone(),
         scope: scope.clone(),
         source,
