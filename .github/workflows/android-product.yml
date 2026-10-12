@@ -104,6 +104,7 @@ jobs:
           cargo +1.99.0 clippy --locked --manifest-path native/plugins/original-inference/Cargo.toml --features product --all-targets -- -D warnings
           python3 -m unittest discover -s native/packaging/windows-preview -p 'test_package_preview.py'
           python3 -m unittest discover -s native/apps/singles-android -p 'test_android_elf.py'
+          python3 -m unittest discover -s native/packaging/licenses -p 'test_android_licenses.py'
           bash -n native/apps/singles-android/build-native.sh native/apps/singles-android/build-preview.sh
           ANDROID_JAR="$ANDROID_HOME/platforms/android-35/android.jar" bash native/plugins/singles-platform/android/check-sdk.sh
           ANDROID_JAR="$ANDROID_HOME/platforms/android-35/android.jar" bash native/apps/singles-android/check-java.sh
@@ -120,12 +121,21 @@ jobs:
           PCRE2_SOURCE: ${{ runner.temp }}/android-pcre/pcre2-10.46
           NATIVE_OUT: ${{ runner.temp }}/android-native
         run: bash native/apps/singles-android/build-native.sh
+      - name: Collect complete measured Android notices and corresponding sources
+        run: |
+          python3 native/packaging/licenses/collect_android_licenses.py \
+            --repo-root "$GITHUB_WORKSPACE" \
+            --metadata-dir "$RUNNER_TEMP/android-dependency-review" \
+            --ndk "$ANDROID_NDK_HOME" --npm-cache "$(npm config get cache)" \
+            --dependency-cache "$HOME/.cache/singles-sorter/sources" \
+            --output-dir "$RUNNER_TEMP/android-licenses"
       - name: Package development preview without Python or runtime downloads
         env:
           MODEL_BUNDLE: ${{ runner.temp }}/original-bundle
           NATIVE_LIB_X86_64: ${{ runner.temp }}/android-native/x86_64/libsingles_android_inference.so
           NATIVE_LIB_ARM64: ${{ runner.temp }}/android-native/arm64-v8a/libsingles_android_inference.so
           UI_DIST: ${{ github.workspace }}/native/apps/singles-ui/dist
+          LICENSES_DIR: ${{ runner.temp }}/android-licenses
           OUT: ${{ runner.temp }}/android-preview
         run: |
           bash native/apps/singles-android/build-preview.sh
@@ -139,6 +149,7 @@ jobs:
             ${{ runner.temp }}/android-preview/source-commit.txt
             ${{ runner.temp }}/android-preview/apk.sha256
             ${{ runner.temp }}/android-preview/inputs.json
+            ${{ runner.temp }}/android-licenses/inventory.json
             ${{ runner.temp }}/android-native/*/elf-program-headers.txt
             ${{ runner.temp }}/android-native/*/elf-linkage.json
             ${{ runner.temp }}/android-native/*/native-load-probe

@@ -97,13 +97,13 @@ def run(args: list[str], cwd: Path) -> str:
     return result.stdout.strip()
 
 
-def closure(metadata: dict, root_name: str = "sorter-cli") -> tuple[list[dict], dict]:
+def closure(metadata: dict, root_name: str = "sorter-cli", required_feature: str = "original-ai") -> tuple[list[dict], dict]:
     packages = {p["id"]: p for p in metadata["packages"]}
     nodes = {n["id"]: n for n in metadata["resolve"]["nodes"]}
     roots = [p for p in packages.values() if p["name"] == root_name and p["source"] is None]
     require(len(roots) == 1, f"Expected exactly one local {root_name} package")
     root = roots[0]
-    require("original-ai" in nodes[root["id"]]["features"], f"Cargo metadata lacks {root_name}/original-ai")
+    require(required_feature in nodes[root["id"]]["features"], f"Cargo metadata lacks {root_name}/{required_feature}")
     seen, pending = set(), [root["id"]]
     while pending:
         pkg = pending.pop()
@@ -181,8 +181,8 @@ def cargo_graph(packages: list[dict], nodes: dict) -> list[dict]:
             for p in packages]
 
 
-def collect_cargo(c: Collector, repo: Path, metadata: dict, policy: dict) -> list[dict]:
-    packages, nodes = closure(metadata, policy.get("root_package", "sorter-cli"))
+def collect_cargo(c: Collector, repo: Path, metadata: dict, policy: dict, required_feature: str = "original-ai") -> list[dict]:
+    packages, nodes = closure(metadata, policy.get("root_package", "sorter-cli"), required_feature)
     expected = {(p["name"], p["version"]): p for p in policy["packages"]}
     local = {(p["name"], p["version"]): p for p in policy["local_packages"]}
     found = {(p["name"], p["version"]) for p in packages}

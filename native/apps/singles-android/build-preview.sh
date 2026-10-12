@@ -13,6 +13,7 @@ fail() { printf 'build-preview: %s\n' "$*" >&2; exit 1; }
 : "${MODEL_BUNDLE:?Set MODEL_BUNDLE to the verified original five-file bundle}"
 : "${NATIVE_LIB_X86_64:?Set NATIVE_LIB_X86_64 to the built x86_64 JNI library}"
 : "${UI_DIST:?Set UI_DIST to the Android-mode built shared frontend}"
+: "${LICENSES_DIR:?Set LICENSES_DIR to the reviewed complete Android notice assets}"
 : "${OUT:?Set OUT to a fresh absolute directory outside the repository}"
 NATIVE_LIB_ARM64=${NATIVE_LIB_ARM64:-}
 export JAVA_HOME
@@ -107,11 +108,14 @@ printf 'Android platform: %s\nOutput: %s\n' "$ANDROID_JAR" "$OUT"
 "$BUILD_TOOLS/aapt2" link --manifest "$SCRIPT_DIR/AndroidManifest.xml" \
     -I "$ANDROID_JAR" -o "$OUT/build/resources.apk"
 
-python3 - "$OUT" "$MODEL_BUNDLE" "$NATIVE_LIB_X86_64" "$NATIVE_LIB_ARM64" "$ANDROID_JAR" "$UI_DIST" <<'PY'
+python3 - "$OUT" "$MODEL_BUNDLE" "$NATIVE_LIB_X86_64" "$NATIVE_LIB_ARM64" "$ANDROID_JAR" "$UI_DIST" "$LICENSES_DIR" "$REPO_ROOT" <<'PY'
 from pathlib import Path
-from zipfile import ZipFile, ZIP_STORED
+from zipfile import ZipFile, ZIP_STORED, ZIP_DEFLATED
 import hashlib, json, shutil, sys
-out, bundle, x86, arm, platform, ui = sys.argv[1:]
+out, bundle, x86, arm, platform, ui, licenses, repo = sys.argv[1:]
+sys.path.insert(0, str(Path(repo) / "native/packaging/licenses"))
+from collect_android_licenses import verified_snapshot
+license_snapshot = verified_snapshot(Path(licenses))
 out, bundle = Path(out), Path(bundle)
 shutil.copyfile(out / "build/resources.apk", out / "build/unsigned.apk")
 entries = [(p, p.name) for p in sorted((out / "build/dex").glob("*.dex"))]
@@ -129,6 +133,10 @@ with ZipFile(out / "build/unsigned.apk", "a") as apk:
         data = source.read_bytes()
         apk.writestr(name, data, compress_type=ZIP_STORED)
         receipt["entries"].append({"entry": name, "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()})
+    for name, data in license_snapshot:
+        entry = "assets/licenses/" + name
+        apk.writestr(entry, data, compress_type=ZIP_DEFLATED)
+        receipt["entries"].append({"entry": entry, "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()})
 (out / "inputs.json").write_text(json.dumps(receipt, indent=2) + "\n")
 PY
 
