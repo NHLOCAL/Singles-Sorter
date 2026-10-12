@@ -67,6 +67,22 @@ pub struct DestinationEvidence {
     pub root: StorageRef,
     pub components: Vec<String>,
 }
+/// Persisted copied-Move stream facts, never a filesystem capability.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CopiedMoveStreamEvidence {
+    pub name: Vec<u16>,
+    pub length: u64,
+    pub sha256: [u8; 32],
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CopiedMoveSourceEvidence {
+    pub source: StorageRef,
+    pub identity: ObjectIdentity,
+    pub attributes: u32,
+    pub streams: Vec<CopiedMoveStreamEvidence>,
+}
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct BindingData {
@@ -75,6 +91,8 @@ pub(crate) struct BindingData {
     pub album_context: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub copy_metadata_version: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub copied_move_sources: Option<Vec<CopiedMoveSourceEvidence>>,
     pub plan_sha256: String,
     pub source_root: EntryObservation,
     pub target_root: EntryObservation,
@@ -100,6 +118,7 @@ pub(crate) enum ExecutionDomain {
     OwnedWindowsRename,
     SelectedWindowsCopy,
     SelectedWindowsRename,
+    SelectedWindowsCopiedMove,
 }
 /// Only validation constructs a usable binding. A serialized header is evidence,
 /// never an ExecutionBinding or authorization token.
@@ -339,7 +358,8 @@ pub(crate) fn validate_execution_domain(
         data: BindingData {
             schema: 2,
             album_context: None,
-            copy_metadata_version: if domain == ExecutionDomain::SelectedWindowsCopy {
+            copied_move_sources: (domain == ExecutionDomain::SelectedWindowsCopiedMove).then(Vec::new),
+            copy_metadata_version: if matches!(domain, ExecutionDomain::SelectedWindowsCopy | ExecutionDomain::SelectedWindowsCopiedMove) {
                 Some(1)
             } else {
                 None
@@ -492,7 +512,7 @@ pub(crate) fn validate_plan_scope_domain(
                 true,
                 TransferMode::Copy,
             ),
-            ExecutionDomain::SelectedWindowsRename => (
+            ExecutionDomain::SelectedWindowsRename | ExecutionDomain::SelectedWindowsCopiedMove => (
                 cfg!(all(windows, feature = "selected-windows-execution")),
                 false,
                 TransferMode::Move,
@@ -503,7 +523,7 @@ pub(crate) fn validate_plan_scope_domain(
             || plan.request.settings.copy_mode != copy_mode
             || (!matches!(
                 domain,
-                ExecutionDomain::SelectedWindowsCopy | ExecutionDomain::SelectedWindowsRename
+                ExecutionDomain::SelectedWindowsCopy | ExecutionDomain::SelectedWindowsRename | ExecutionDomain::SelectedWindowsCopiedMove
             ) && plan.operations.len() != 1)
             || scope.allowed_modes != [mode]
             || plan.observations.iter().any(|e| !windows(e))
@@ -551,9 +571,12 @@ impl BindingData {
     pub(crate) fn valid_domain(&self) -> bool {
         if self
             .copy_metadata_version
-            .is_some_and(|version| version != 1 || !self.selected_windows_copy)
+            .is_some_and(|version| version != 1 || !(self.selected_windows_copy || self.copied_move_sources.is_some()))
         {
             return false;
+        }
+        if let Some(sources) = &self.copied_move_sources {
+            return self.valid_copied_move_domain(sources);
         }
         if self.synthetic_only
             && !self.owned_windows_copy
@@ -613,8 +636,57 @@ impl BindingData {
                     && o.destination.root == self.target_root.reference
             })
     }
+    fn valid_copied_move_domain(&self, sources: &[CopiedMoveSourceEvidence]) -> bool {
+        if !cfg!(all(windows, feature = "selected-windows-execution"))
+            || self.synthetic_only || self.owned_windows_copy || self.owned_windows_rename
+            || self.selected_windows_copy || self.selected_windows_rename
+            || self.copy_metadata_version != Some(1) || self.album_context.is_some()
+            || !windows(&self.source_root) || !windows(&self.target_root)
+            || self.scope_evidence.allowed_modes != [TransferMode::Move]
+            || self.operations.is_empty() || sources.is_empty()
+        { return false; }
+        let unique = self.operations.iter().map(|op| &op.source.observation.reference).collect::<HashSet<_>>();
+        if unique.len() != sources.len() { return false; }
+        let mut seen = HashSet::new();
+        for source in sources {
+            let Some(op) = self.operations.iter().find(|op| op.source.observation.reference == source.source) else { return false; };
+            if !seen.insert(&source.source) || Some(&source.identity) != op.source.observation.identity.as_ref()
+                || source.attributes & !0x20 != 0 || source.streams.is_empty() || source.streams.len() > 256
+            { return false; }
+            let mut names = HashSet::new();
+            for stream in &source.streams {
+                let suffix = ":$DATA".encode_utf16().collect::<Vec<_>>();
+                if !names.insert(&stream.name) || stream.name.first() != Some(&58)
+                    || !stream.name.ends_with(&suffix) || stream.name.len() < suffix.len() + 1
+                    || stream.name.len() > 32767
+                    || stream.name[1..stream.name.len() - suffix.len()].iter().any(|u| matches!(*u, 0 | 47 | 58 | 92))
+                { return false; }
+            }
+            let main = &source.streams[0];
+            if main.name != "::$DATA".encode_utf16().collect::<Vec<_>>()
+                || Some(main.length) != op.source.observation.size
+                || main.sha256.iter().map(|byte| format!("{byte:02x}")).collect::<String>() != op.source.sha256
+                || source.streams[1..].windows(2).any(|pair| pair[0].name >= pair[1].name)
+            { return false; }
+        }
+        self.operations.iter().all(|op| {
+            op.mode == TransferMode::Move && windows(&op.source.observation)
+                && op.destination.root == self.target_root.reference
+                && match &op.duet_cohort {
+                    None => !op.copy_effect,
+                    Some(cohort) => op.copy_effect && cohort.len() >= 2 && cohort.contains(&op.id)
+                        && cohort.iter().copied().collect::<HashSet<_>>().len() == cohort.len()
+                        && cohort.iter().all(|id| self.operations.get(*id).is_some_and(|other| {
+                            other.source == op.source && other.copy_effect && other.mode == TransferMode::Move
+                                && other.duet_cohort.as_ref() == Some(cohort)
+                        })),
+                }
+        })
+    }
     pub(crate) fn domain(&self) -> ExecutionDomain {
-        if self.selected_windows_rename {
+        if self.copied_move_sources.is_some() {
+            ExecutionDomain::SelectedWindowsCopiedMove
+        } else if self.selected_windows_rename {
             ExecutionDomain::SelectedWindowsRename
         } else if self.selected_windows_copy {
             ExecutionDomain::SelectedWindowsCopy
@@ -649,8 +721,9 @@ pub fn prepare_scope(
         if cancel.load(Ordering::Acquire) {
             return Err(E::Cancelled);
         }
-        let OperationKind::SingleTransfer { source, .. } = &operation.kind else {
-            return Err(E::Unsupported);
+        let source = match &operation.kind {
+            OperationKind::SingleTransfer { source, .. } => source,
+            _ => return Err(E::Unsupported),
         };
         if !seen.insert(source.reference.clone()) {
             continue;

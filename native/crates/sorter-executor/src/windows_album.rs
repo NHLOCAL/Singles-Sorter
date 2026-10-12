@@ -1040,6 +1040,7 @@ impl SelectedAlbumFileJob {
                 schema: 2,
                 album_context: None,
                 copy_metadata_version: if copy { Some(1) } else { None },
+                copied_move_sources: None,
                 plan_sha256: plan.binding_sha256.clone(),
                 source_root: root,
                 target_root: target,

@@ -51,6 +51,49 @@ impl Seek for WindowsCopiedMoveSource {
 }
 
 impl WindowsMutationStorage {
+    /// Read-only full-stream observation of one exact file under a retained root.
+    /// No deletion access or mutation-capable source lease is acquired. The caller
+    /// must bind the returned identity and complete inventory to its own record.
+    pub fn inspect_copied_move_streams(
+        &self, parent: &WindowsParent, name: &MutationName,
+        expected_identity: &ObjectIdentity, cancel: &AtomicBool,
+    ) -> Result<WindowsMoveSourceEvidence, MutationError> {
+        cancelled(cancel)?;
+        self.check_parent(parent)?;
+        if !matches!(parent.root.role, RootRole::Source | RootRole::Target | RootRole::Synthetic) {
+            return Err(err(MutationErrorKind::Unsupported, "stream inspection requires media root"));
+        }
+        let file = open_relative_file(parent.handle(), units(name)?, false, FILE_GENERIC_READ)?;
+        if identity(&file).map_err(read_error)? != *expected_identity {
+            return Err(err(MutationErrorKind::StalePlan, "stream inspection identity changed"));
+        }
+        let attributes = move_representation(&file)?;
+        let inventory = stream_inventory(&file)?;
+        let mut streams = Vec::with_capacity(inventory.len());
+        let mut held = Vec::new();
+        for (suffix, length) in &inventory {
+            cancelled(cancel)?;
+            let digest = if suffix == &unnamed() {
+                stream_digest(&file, *length, cancel)?
+            } else {
+                let stream = open_named_stream(parent.handle(), units(name)?, suffix, false)?;
+                if identity(&stream).map_err(read_error)? != *expected_identity {
+                    return Err(err(MutationErrorKind::StalePlan, "inspected named stream identity changed"));
+                }
+                move_representation(&stream)?;
+                let digest = stream_digest(&stream, *length, cancel)?;
+                held.push(stream);
+                digest
+            };
+            streams.push(WindowsMoveStreamEvidence { name: suffix.clone(), length: *length, sha256: digest.sha256 });
+        }
+        if stream_inventory(&file)? != inventory || move_representation(&file)? != attributes {
+            return Err(err(MutationErrorKind::StalePlan, "inspected stream inventory changed"));
+        }
+        self.check_parent(parent)?;
+        Ok(WindowsMoveSourceEvidence { identity: expected_identity.clone(), attributes, streams })
+    }
+
     /// Inspect under existing source-root authority. This never creates a file.
     pub fn inspect_copied_move_source(
         &self,
@@ -352,6 +395,19 @@ mod move_stream_inventory_tests {
     }
 
     #[test]
+    fn readonly_full_stream_probe_binds_identity_and_does_not_change_bytes() {
+        let f = Fixture::new();
+        std::fs::write(f.ads("notes"), b"retained notes").unwrap();
+        let preview = f.inspect();
+        let observed = f.storage.inspect_copied_move_streams(&f.parent, &f.expected.name, &f.expected.identity, &AtomicBool::new(false)).unwrap();
+        assert_eq!(observed, preview);
+        let foreign = ObjectIdentity::Windows { volume: 0, file_id: [0; 16] };
+        assert!(f.storage.inspect_copied_move_streams(&f.parent, &f.expected.name, &foreign, &AtomicBool::new(false)).is_err());
+        assert!(f.storage.inspect_copied_move_streams(&f.parent, &f.expected.name, &f.expected.identity, &AtomicBool::new(true)).is_err());
+        assert_eq!(std::fs::read(f.ads("notes")).unwrap(), b"retained notes");
+    }
+
+    #[test]
     fn changed_extra_missing_and_same_length_changed_streams_refuse_preview() {
         for change in 0..3 {
             let f = Fixture::new();
@@ -500,6 +556,10 @@ impl WindowsCopiedMoveTemp {
 }
 impl WindowsCopiedMovePublished {
     pub fn observation(&self) -> &MutationObservation { self.main.observation() }
+    pub fn main_digest(&self) -> ContentDigest {
+        let stream = &self.evidence.streams[0];
+        ContentDigest { length: stream.length, sha256: stream.sha256 }
+    }
 }
 
 impl WindowsMutationStorage {

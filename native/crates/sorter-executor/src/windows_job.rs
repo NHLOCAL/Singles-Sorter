@@ -102,12 +102,14 @@ pub fn supported_plan(plan: &JobPlanV2) -> Result<()> {
 enum Storage {
     Copy(WindowsMutationStorage),
     Rename(WindowsRenameStorage),
+    CopiedMove(copied_move::CopiedMoveStorage),
 }
 impl Storage {
     fn roots(&self) -> &WindowsMutationStorage {
         match self {
             Self::Copy(s) => s,
             Self::Rename(s) => s.owned(),
+            Self::CopiedMove(s) => &s.roots,
         }
     }
 }
@@ -312,6 +314,9 @@ impl SelectedWindowsJob {
                 cancel,
                 progress,
             ),
+            Storage::CopiedMove(storage) => run_job(
+                &self.binding, storage, &mut journal, &mut sink, cancel, progress,
+            ),
             Storage::Rename(storage) => run_job(
                 &self.binding,
                 storage,
@@ -450,6 +455,8 @@ struct DirectoryEnvelope {
     sha256: String,
 }
 struct DirectoryJournal {
+    bytes_written: usize,
+    limit: usize,
     sink: WindowsJournalStore,
     sequence: u64,
     previous: String,
@@ -458,6 +465,8 @@ struct DirectoryJournal {
 impl DirectoryJournal {
     fn new(sink: WindowsJournalStore, binding: &ExecutionBinding, job_id: &str) -> Result<Self> {
         let mut value = Self {
+            bytes_written: 0,
+            limit: if binding.data.copied_move_sources.is_some() { 64 * 1024 * 1024 } else { usize::MAX },
             sink,
             sequence: 0,
             previous: String::new(),
@@ -489,10 +498,12 @@ impl DirectoryJournal {
         })
         .map_err(|_| E::Io)?;
         bytes.push(b'\n');
+        let total = self.bytes_written.checked_add(bytes.len()).filter(|total| *total <= self.limit).ok_or(E::NeedsRecovery)?;
         self.sink
             .append(&bytes)
             .and_then(|()| self.sink.sync())
             .map_err(|_| E::NeedsRecovery)?;
+        self.bytes_written = total;
         self.sequence += 1;
         self.previous = sha256;
         self.poisoned = false;
@@ -574,7 +585,7 @@ pub fn inspect_recovery(
                     || header.scope_evidence.resources != scope.original_scope.resources
                     || header.plan_sha256 != scope.original_scope.inspected_plan
                     || !header.valid_domain()
-                    || !(header.selected_windows_copy || header.selected_windows_rename)
+                    || !(header.selected_windows_copy || header.selected_windows_rename || header.copied_move_sources.is_some())
                     || target_root != scope.original_scope.target_root
                     || header.source_root.identity.as_ref()
                         != Some(&scope.original_scope.source_root)
@@ -686,3 +697,7 @@ pub fn inspect_recovery(
         transfers: transfer_report,
     })
 }
+
+#[path = "windows_copied_move.rs"]
+mod copied_move;
+pub use copied_move::{CopiedMoveScope, prepare_copied_move_scope, supported_copied_move_plan};

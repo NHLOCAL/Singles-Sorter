@@ -315,6 +315,7 @@ pub fn validate_album_copy(
                 owned_windows_rename: false,
                 selected_windows_copy: false,
                 selected_windows_rename: false,
+                copied_move_sources: None,
             },
         },
     })

@@ -9,3 +9,41 @@ Evidence contains the exact held source identity, ordinary non-readonly represen
 Microsoft documents [per-stream sharing and whole-file delete conflicts](https://learn.microsoft.com/en-us/windows/win32/fileio/file-streams), [stream enumeration](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/nf-ntifs-ntqueryinformationfile) and [FILE_STREAM_INFORMATION](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_stream_information). Native cases deliberately permit either documented observed late creation followed by refusal or an OS sharing refusal; neither outcome promotes a universal stream-lock guarantee.
 
 Sixteen native cases are authored and mandatory in CI. Local Rust/Windows execution is unavailable; source review and actual CI acceptance are separate.
+
+## Preview-bound job composition (source candidate, runtime pending)
+
+`windows_job::CopiedMoveScope` retains the read-only preview's exact source/root
+identities, ordinary representation and complete stream names, sizes and hashes.
+`prepare_copied_move_scope` uses already granted selected roots; journal storage
+must be an existing explicitly bound application directory. No serialized scope
+can mint these grants. `SelectedWindowsJob::prepare_copied_move` reruns the
+original planner and acquires every source's stream leases before creating any
+journal or artist directory. It retains original single/duet destination order.
+The ordinary same-volume rename constructor is unchanged.
+
+The distinct `SelectedWindowsCopiedMove` binding has required auxiliary-stream
+and Copy metadata phases. Each destination is staged, stream-verified, metadata
+finalized, published without replacement and flushed before its committed
+receipt. Retirement takes exactly the retained original plan cohort; generic
+byte-only adapters cannot satisfy its hooks. Failure or cancellation retains
+sources until the whole cohort is verified. No backup-transfer substitution is
+used. Binding headers above 8 MiB refuse before effects; the new domain stops
+before either journal exceeds the reader's 64 MiB limit and preserves its prefix.
+
+Read-only reconciliation verifies every current destination identity, unnamed and
+named stream hash, complete stream inventory and metadata. Metadata observations
+are captured for the whole cohort before content reads. A missing/changed stream
+or bad metadata at any required destination invalidates the retired-source
+cohort. A source link present after a retirement receipt is a recovery condition,
+including a foreign replacement which is never deleted. Reconciliation supplies
+no automatic retry, resume, cleanup or deletion authority.
+
+The candidate adds one native read-only inventory test (17 primitive cases total),
+five journal phase/marker cases and nine actual Windows job cases. The latter
+include real duet routing, stale auxiliary preview, cancellation during the second
+destination, no-overwrite collision, source reappearance, changed destination ADS,
+one-shot execution and a strict distinct-volume case. That case uses owned TEMP
+and checkout subdirectories, asserts their volume identities differ and never
+substitutes same-volume evidence. All are authored and unrun locally. Product
+host/CLI selection, independent composition review and actual Windows acceptance
+remain required before activating this path for users.
