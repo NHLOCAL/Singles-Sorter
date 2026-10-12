@@ -2,7 +2,8 @@
 
 `sorter_io::staged_ogg::OggStagedPlan` inspects and transforms owned byte streams.
 It cannot open a path, replace a source, publish a file, or acquire storage rights.
-This checkpoint does not activate the product dispatcher or a platform driver.
+The separate [Windows product integration](windows-ogg-repair.md) now dispatches
+`.ogg`/`.opus` to this transformer; the stream API itself grants no platform rights.
 The unchanged `StagedTagEvidence` is returned only after full input length, SHA256,
 and EOF match. Staging failure can leave untrusted partial output, which the
 caller must discard. Flush, independent readback/hash, native metadata recheck,

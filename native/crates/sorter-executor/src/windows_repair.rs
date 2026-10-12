@@ -818,7 +818,7 @@ impl SelectedWindowsRepairJob {
             .map(RepairField::native)
             .collect::<Vec<_>>();
         let extension = op.intended_name.to_ascii_lowercase();
-        if !extension.ends_with(".mp3") && !extension.ends_with(".flac") {
+        if ![".mp3", ".flac", ".ogg", ".opus"].iter().any(|suffix| extension.ends_with(suffix)) {
             item.status = RepairStatus::UnsupportedTags;
             item.detail="Physical tag writing for this format is not yet supported; filename outcome is retained".into();
             return journal.append(Some(op.id), Phase::Stopped, item);
@@ -1491,13 +1491,17 @@ pub fn recover_repair_journal(
                         return Err(E::CorruptJournal);
                     }
                     let extension = op.intended_name.to_ascii_lowercase();
-                    // Existing policy can only preserve length or shrink FLAC
-                    // duplicate comments. MP3 must retain its original length.
+                    // MP3 is fixed-length; FLAC may collapse duplicate comments.
+                    // Ogg can add at most one 27-byte header page when separating
+                    // Vorbis comment/setup. The exact planned length and hashes
+                    // are independently bound to every later replacement record.
                     if serde_json::to_value(&intent.source).map_err(|_| E::Io)? != original || length == 0
                         || if extension.ends_with(".mp3") {
                             length != original_length(op)?
                         } else if extension.ends_with(".flac") {
                             length > original_length(op)?
+                        } else if extension.ends_with(".ogg") || extension.ends_with(".opus") {
+                            original_length(op)?.checked_add(27).is_none_or(|maximum| length > maximum)
                         } else { true }
                     {
                         return Err(E::CorruptJournal);

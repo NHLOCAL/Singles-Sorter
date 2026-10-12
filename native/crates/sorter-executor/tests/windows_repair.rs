@@ -572,3 +572,6 @@ fn raw_selected_temp_root_recovery_uses_held_root_alias() {
 
 #[path = "support/windows_flac_repair_cases.rs"]
 mod flac;
+
+#[path = "support/windows_ogg_repair_cases.rs"]
+mod ogg;

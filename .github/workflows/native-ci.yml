@@ -266,7 +266,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $repairJobs = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (@($repairJobs | Where-Object { $_ -match ': test$' }).Count -ne 26) { throw "Expected 13 original and 13 FLAC product FixNames cases" }
+          if (@($repairJobs | Where-Object { $_ -match ': test$' }).Count -ne 37) { throw "Expected 13 original, 13 FLAC and 11 Ogg product FixNames cases" }
           cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
@@ -286,6 +286,38 @@ jobs:
           }
           cargo +1.99.0 test --locked -p sorter-io --test staged_ogg -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require exact Ogg product dispatch and Windows preservation cases
+        if: ${{ !cancelled() }}
+        run: |
+          $dispatch = cargo +1.99.0 test --locked -p sorter-io --test staged_ogg_dispatch -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($dispatch | Where-Object { $_ -match ': test$' }).Count -ne 3) { throw "Expected all 3 Ogg dispatch cases" }
+          cargo +1.99.0 test --locked -p sorter-io --test staged_ogg_dispatch -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($IsWindows) {
+            $cases = @(
+              'real_taglib_provider_plans_rebinds_and_publishes_vorbis_growth',
+              'real_taglib_provider_plans_rebinds_and_publishes_opus_duplicate_shrink',
+              'duplicate_five_field_ogg_repairs_preserve_artwork_and_exact_backup',
+              'unchanged_ogg_tags_keep_identity_without_stage_or_backup',
+              'corrupt_crc_truncation_chaining_and_multiplexing_retain_filename_only',
+              'cancellation_during_ogg_stage_preserves_original_and_forbids_replay',
+              'cancellation_and_lost_backup_response_keep_grown_stage_and_original_lengths',
+              'lost_publication_response_reopens_grown_and_shorter_replacements',
+              'rehashed_oversize_inconsistent_lengths_hashes_and_v1_downgrade_are_rejected',
+              'coherent_rehashed_wrong_replacement_size_never_verifies_current_artifact',
+              'foreign_collision_after_backup_preserves_grown_stage_and_exact_original'
+            )
+            foreach ($case in $cases) {
+              $exact = "ogg::$case"
+              $listing = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair $exact -- --exact --list
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              if (@($listing | Where-Object { $_ -eq "${exact}: test" }).Count -ne 1) { throw "Missing exact Ogg product case: $exact" }
+              cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair $exact -- --exact --test-threads=1 --nocapture
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            }
+          }
 
       - name: Require FLAC stream dispatch and native metadata roundtrip
         if: ${{ !cancelled() }}
