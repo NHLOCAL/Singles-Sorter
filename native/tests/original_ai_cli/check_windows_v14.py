@@ -251,8 +251,10 @@ def acknowledged_transfer_order(root, result, plan, streams):
         return None
     commits = [entry for stream in streams for entry in stream['ordered_commits']]
     operations = {operation['id']: operation for operation in (plan or {}).get('operations', [])}
-    completed_roots = [album['root']['identity'] for album in result.get('whole_albums', [])
-                       if album['status'] == 'complete' and album.get('root')]
+    complete_albums = [album for album in result.get('whole_albums', []) if album['status'] == 'complete']
+    require(all(album.get('root') and album['root'].get('identity') is not None for album in complete_albums),
+            'Completed whole album lacks returned root identity')
+    completed_roots = [album['root']['identity'] for album in complete_albums]
     key = lambda identity: json.dumps(identity, sort_keys=True, separators=(',', ':'))
     require(all(entry.get('observed_identity') is not None for entry in commits), 'Committed transfer lacks observed identity')
     expected_files = {key(entry['observed_identity']) for entry in commits}

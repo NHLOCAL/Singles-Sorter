@@ -103,6 +103,8 @@ class PairedWindowsContract(unittest.TestCase):
         self.assertEqual([(r['kind'],r['source'],r['destination']) for r in order],[('move','source/album','target/album')])
         omitted=copy.deepcopy(result);omitted['effect_receipts']=[]
         with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(Path('/owned'),omitted,plan,[])
+        omitted['whole_albums'][0]['root']=None
+        with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(Path('/owned'),omitted,plan,[])
         result['whole_albums'][0]['status']='partial'
         with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(Path('/owned'),result,plan,[])
         result['whole_albums'][0]['status']='complete'; plan['operations'][0]['kind']['AlbumTransfer']['source']['identity']={'Test':{'id':'other'}}
