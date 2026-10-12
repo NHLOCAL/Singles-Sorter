@@ -113,6 +113,33 @@ class PairedWindowsContract(unittest.TestCase):
         after[0]['sha256'] = 'tampered'
         self.assertFalse(gate.map_committed_destinations(Path('/owned'), before, after, streams, None)[0]['verified_bytes'])
 
+    def test_whole_album_mapping_requires_unambiguous_source_and_full_hash(self):
+        root = Path('/owned')
+        destination = 'target'+os.sep+'a.wav'
+        source = 'source'+os.sep+'a.wav'
+        raw = (str(root)+os.sep+destination).encode('utf-16-le')
+        reference = {'WindowsPath': {'utf16': [int.from_bytes(raw[i:i+2], 'little') for i in range(0, len(raw), 2)]}}
+        before = [{'kind': 'file', 'path': source, 'sha256': 'original', 'bytes': 8}]
+        after = [{'kind': 'file', 'path': destination, 'sha256': 'original', 'bytes': 8}]
+        operations = [{'kind': 'move', 'source': source, 'destination': destination}]
+        result = {'whole_albums': [{'operation': 0, 'status': 'complete', 'descendants': [
+            [[{'Windows': [97]}], {'reference': reference, 'size': 8}]]}]}
+        def verify(relations):
+            rows = gate.map_committed_destinations(root, before, after, [], result, relations)
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]['operation_kind'], 'whole_directory_rename')
+            return rows[0]['verified_bytes']
+        self.assertTrue(verify(operations))
+        after[0]['sha256'] = 'tampered'
+        self.assertFalse(verify(operations), 'Equal size is not byte verification')
+        after[0]['sha256'] = 'original'
+        self.assertFalse(verify([]), 'A missing source relationship is not verified')
+        self.assertFalse(verify(operations + operations), 'An ambiguous source relationship is not verified')
+        missing = [dict(operations[0], source='source'+os.sep+'missing.wav')]
+        self.assertFalse(verify(missing))
+        after[0]['bytes'] = 7
+        self.assertFalse(verify(operations))
+
     def test_observed_windows_extended_root_has_only_one_narrow_alias(self):
         root = PureWindowsPath(r'C:\owned\case\native')
         def reference(path):
