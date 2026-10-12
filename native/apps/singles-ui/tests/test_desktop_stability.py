@@ -1,6 +1,6 @@
 import copy
 import unittest
-from desktop_stability import assert_shell
+from desktop_stability import assert_shell, notification_snapshot
 
 
 def valid():
@@ -10,6 +10,23 @@ def valid():
 
 
 class StableShellTests(unittest.TestCase):
+    def test_notification_snapshot_avoids_reserved_webdriver_error_key(self):
+        def script(source):
+            self.assertIn("notification:{text:document.querySelector('#error')", source)
+            self.assertNotIn(',error:{', source)
+            response = {'font':'', 'connection':{'text':'ready','hidden':False},
+                        'notification':{'text':'','hidden':True}}
+            if response.get('error'):
+                raise RuntimeError('WebDriver transport error')
+            return response
+        saved = notification_snapshot(script)
+        self.assertEqual(saved['notification'], {'text':'','hidden':True})
+        self.assertEqual(saved['connection']['text'], 'ready')
+        def failed_script(_):
+            raise RuntimeError('Actual WebDriver transport failure')
+        with self.assertRaisesRegex(RuntimeError, 'Actual WebDriver'):
+            notification_snapshot(failed_script)
+
     def test_bounded_shell_accepts_stable_footer(self):
         assert_shell(valid(),valid())
 

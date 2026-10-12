@@ -35,9 +35,14 @@ def assert_shell(metrics, baseline=None):
         assert metrics['footer']['y'] <= control['y'] and control['bottom'] <= metrics['height'] + 1, control
 
 
+def notification_snapshot(script):
+    # Top-level "error" is reserved by the unchanged WebDriver transport.
+    return script("return {font:document.documentElement.style.fontSize,connection:{text:document.querySelector('#connection').textContent,hidden:document.querySelector('#connection').hidden},notification:{text:document.querySelector('#error').textContent,hidden:document.querySelector('#error').hidden}}")
+
+
 def exercise_shell(command, script, capture, output, label, results=False):
     original = command('GET', '/window/rect')
-    saved = script("return {font:document.documentElement.style.fontSize,connection:{text:document.querySelector('#connection').textContent,hidden:document.querySelector('#connection').hidden},error:{text:document.querySelector('#error').textContent,hidden:document.querySelector('#error').hidden}}")
+    saved = notification_snapshot(script)
     receipts = []
     try:
         for width, height, font in [(1000, 650, ''), (360, 800, ''), (390, 800, ''), (1000, 650, '200%')]:
@@ -81,7 +86,7 @@ def exercise_shell(command, script, capture, output, label, results=False):
                 vertical = script("const m=document.querySelector('main'),r=document.querySelector('#results-body');const e=m.scrollHeight>m.clientHeight+1?m:r;e.scrollTop=10000;const moved=e.scrollTop>0;e.scrollTop=0;return moved")
                 assert vertical, 'Long real result lists must retain vertical scrolling'
     finally:
-        script('const saved=' + json.dumps(saved, ensure_ascii=False) + ';document.documentElement.style.fontSize=saved.font;["connection","error"].forEach(id=>{document.getElementById(id).textContent=saved[id].text;document.getElementById(id).hidden=saved[id].hidden});getSelection().removeAllRanges();window.dispatchEvent(new Event("resize"))')
+        script('const saved=' + json.dumps(saved, ensure_ascii=False) + ';document.documentElement.style.fontSize=saved.font;["connection","error"].forEach(id=>{const value=saved[id==="error"?"notification":id];document.getElementById(id).textContent=value.text;document.getElementById(id).hidden=value.hidden});getSelection().removeAllRanges();window.dispatchEvent(new Event("resize"))')
         command('POST', '/window/rect', original)
         (Path(output) / f'{label}-stability.json').write_text(json.dumps({'kind':'actual_native_presentation_stress','ipc_mocked':False,'measurements':receipts},ensure_ascii=False,indent=2),encoding='utf-8')
 
