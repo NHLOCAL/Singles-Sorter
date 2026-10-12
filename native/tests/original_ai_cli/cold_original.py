@@ -3,7 +3,18 @@ from pathlib import Path
 import os
 import runpy
 import sys
+import tempfile
 from windows_v14_trace import confine_mutations
+
+
+def prepare_runtime_temp(root):
+    """Keep import-time SciPy temporary files inside this owned process trial."""
+    directory = root / 'runtime-temporary'
+    directory.mkdir()  # A fresh literal child; never adopt a preexisting location.
+    tempfile.tempdir = str(directory)
+    for variable in ('TMP', 'TEMP', 'TMPDIR'):
+        os.environ[variable] = str(directory)
+    return directory
 
 
 def main():
@@ -17,6 +28,7 @@ def main():
     # Source code/model hashes were verified before process launch. All reachable
     # original filesystem mutation remains confined to this fresh authored tree.
     with confine_mutations(root):
+        prepare_runtime_temp(root)
         runpy.run_path(str(script), run_name='__main__')
 
 

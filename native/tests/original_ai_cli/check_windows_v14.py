@@ -710,6 +710,7 @@ def fresh_process_trial(binary, bundle, baseline, scratch, sources, deadline):
             'original_media':actual_original,'native_media':actual_native,
             'measurement_conditions':['Fresh processes; both load their actual original models during measured startup.',
                 'Original uses the pinned CPython runtime and a mutation-confinement wrapper; native uses the shipped executable.',
+                'Original import-time temporary files are confined to a fresh child of its owned trial directory.',
                 'OS disk cache is uncontrolled and may be warm from setup; this is not a cold-disk test.',
                 'One small authored duet is not a full-library benchmark; no speedup ratio or original package-size claim is produced.']}
 
