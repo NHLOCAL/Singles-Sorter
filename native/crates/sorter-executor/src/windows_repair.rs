@@ -18,7 +18,8 @@ use sorter_core::{
 };
 use sorter_io::{
     desktop::windows_mutation::*,
-    staged_tags::{Id3StagedPlan, TagWriteError},
+    staged_repair::StagedRepairPlan,
+    staged_tags::TagWriteError,
 };
 use sorter_storage_contracts::{
     ContentDigest, ExpectedSource, MutationError, MutationErrorKind, MutationName,
@@ -419,6 +420,14 @@ struct RepairOperation {
     repairs: Vec<RepairField>,
     metadata_failure: Option<String>,
 }
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct TempPreparedV2 {
+    source: SourceEvidence,
+    replacement_length: u64,
+    replacement_sha256: String,
+    media_sha256: String,
+}
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct Header {
     schema: u16,
@@ -611,7 +620,7 @@ impl SelectedWindowsRepairJob {
             NEXT.fetch_add(1, Ordering::Relaxed)
         );
         let header = Header {
-            schema: 1,
+            schema: 2,
             job_id,
             plan_sha256: plan.binding_sha256.clone(),
             source: plan.request.source.clone(),
@@ -808,7 +817,8 @@ impl SelectedWindowsRepairJob {
             .iter()
             .map(RepairField::native)
             .collect::<Vec<_>>();
-        if !op.intended_name.to_ascii_lowercase().ends_with(".mp3") {
+        let extension = op.intended_name.to_ascii_lowercase();
+        if !extension.ends_with(".mp3") && !extension.ends_with(".flac") {
             item.status = RepairStatus::UnsupportedTags;
             item.detail="Physical tag writing for this format is not yet supported; filename outcome is retained".into();
             return journal.append(Some(op.id), Phase::Stopped, item);
@@ -822,7 +832,13 @@ impl SelectedWindowsRepairJob {
             return journal.append(Some(op.id), Phase::Stopped, item);
         }
         let staged_plan =
-            match Id3StagedPlan::inspect(&mut source, expected.digest.length, &repairs, cancel) {
+            match StagedRepairPlan::inspect(
+                &op.intended_name,
+                &mut source,
+                expected.digest.length,
+                &repairs,
+                cancel,
+            ) {
                 Ok(v) => v,
                 Err(TagWriteError::Unsupported(reason)) => {
                     item.status = RepairStatus::UnsupportedTags;
@@ -832,7 +848,28 @@ impl SelectedWindowsRepairJob {
                 Err(TagWriteError::Cancelled) => return Err(E::Cancelled),
                 Err(_) => return Err(E::Stale),
             };
-        journal.append(Some(op.id), Phase::TempPrepared, &op.source)?;
+        // Compute immutable replacement evidence without creating any file.
+        // This also rechecks the complete original before the staging intent.
+        let planned = match staged_plan.write_staged(
+            &mut source,
+            &mut std::io::sink(),
+            &op.source.sha256,
+            cancel,
+        ) {
+            Ok(value) if value.staged_length == staged_plan.staged_length() => value,
+            Err(TagWriteError::Cancelled) => return Err(E::Cancelled),
+            _ => return Err(E::Stale),
+        };
+        journal.append(
+            Some(op.id),
+            Phase::TempPrepared,
+            &TempPreparedV2 {
+                source: op.source.clone(),
+                replacement_length: planned.staged_length,
+                replacement_sha256: planned.staged_sha256.clone(),
+                media_sha256: planned.media_sha256.clone(),
+            },
+        )?;
         let mut temp = match self.storage.create_staged(
             &source,
             &format!("{}-{}", self.job_id(), op.id),
@@ -854,7 +891,11 @@ impl SelectedWindowsRepairJob {
         });
         let staged =
             match staged_plan.write_staged(&mut source, &mut temp, &op.source.sha256, cancel) {
-                Ok(v) => v,
+                Ok(v) if v == planned => v,
+                Ok(_) => {
+                    self.temps.push(temp);
+                    return Err(E::Stale);
+                }
                 Err(error) => {
                     item.staged = self
                         .storage
@@ -890,7 +931,7 @@ impl SelectedWindowsRepairJob {
         if let Err(error)=journal.append(Some(op.id),Phase::StagedVerified,&serde_json::json!({"observation":item.staged,"sha256":staged.staged_sha256,"length":staged.staged_length,"media_sha256":staged.media_sha256})){self.temps.push(temp);return Err(error)}
         checked(cancel)?;
         let backup_name = format!(".sorter-{}-{}.backup", self.job_id(), op.id);
-        if let Err(error)=journal.append(Some(op.id),Phase::BackupPrepared,&serde_json::json!({"name":backup_name,"source":item.current,"sha256":op.source.sha256})){self.temps.push(temp);return Err(error)}
+        if let Err(error)=journal.append(Some(op.id),Phase::BackupPrepared,&serde_json::json!({"name":backup_name,"source":item.current,"sha256":op.source.sha256,"original_length":expected.digest.length})){self.temps.push(temp);return Err(error)}
         let backup = match self
             .storage
             .preserve_original(&mut source, &name(&backup_name), cancel)
@@ -925,7 +966,7 @@ impl SelectedWindowsRepairJob {
                 "Cancelled after original was retained as backup; no automatic replay".into();
             return journal.append(Some(op.id), Phase::Stopped, item);
         }
-        if let Err(error)=journal.append(Some(op.id),Phase::PublishPrepared,&serde_json::json!({"name":op.intended_name,"staged":item.staged,"sha256":staged.staged_sha256})){self.retained.push(backup);self.temps.push(temp);return Err(error)}
+        if let Err(error)=journal.append(Some(op.id),Phase::PublishPrepared,&serde_json::json!({"name":op.intended_name,"staged":item.staged,"sha256":staged.staged_sha256,"replacement_length":planned.staged_length})){self.retained.push(backup);self.temps.push(temp);return Err(error)}
         let mut published = match self.storage.publish_staged(
             &mut temp,
             &backup,
@@ -1048,6 +1089,9 @@ struct RecoveryState {
     backup: Option<MutationObservation>,
     staged: Option<MutationObservation>,
     staged_hash: Option<String>,
+    replacement_length: Option<u64>,
+    planned_hash: Option<String>,
+    planned_media_hash: Option<String>,
     replacement_identity: Option<ObjectIdentity>,
     recorded: Option<RepairItem>,
 }
@@ -1082,12 +1126,32 @@ fn allowed_transition(previous: Option<Phase>, next: Phase) -> bool {
         _ => false,
     }
 }
+#[derive(Clone, Copy)]
+enum ObservationLength {
+    Exact(u64),
+    Partial(u64),
+}
+impl ObservationLength {
+    fn matches(self, observed: Option<u64>) -> bool {
+        match self {
+            Self::Exact(expected) => observed == Some(expected),
+            Self::Partial(limit) => observed.is_some_and(|size| size <= limit),
+        }
+    }
+}
+fn original_length(op: &RepairOperation) -> Result<u64> {
+    op.source.observation.size.ok_or(E::CorruptJournal)
+}
+fn replacement_length(state: &RecoveryState) -> Result<u64> {
+    state.replacement_length.ok_or(E::CorruptJournal)
+}
 fn check_observation(
     header: &Header,
     op: &RepairOperation,
     observation: &MutationObservation,
     leaf: &str,
     identity: Option<&ObjectIdentity>,
+    length: ObservationLength,
 ) -> Result<()> {
     let source = comparable_path(&op.source.observation.reference)?;
     let expected = source.parent().ok_or(E::CorruptJournal)?.join(leaf);
@@ -1102,8 +1166,7 @@ fn check_observation(
         || observation.actual_name != name(leaf)
         || identity.is_some_and(|id| id != &observation.identity)
         || Some(&observation.parent_identity) != op.source.observation.parent_identity.as_ref()
-        || ((identity == op.source.observation.identity.as_ref() || leaf == op.intended_name)
-            && observation.size != op.source.observation.size)
+        || !length.matches(observation.size)
     {
         return Err(E::CorruptJournal);
     }
@@ -1151,7 +1214,10 @@ fn validate_terminal(
             } else {
                 &op.source.observation.name
             };
-            check_observation(header, op, current, leaf, Some(source_id))?;
+            check_observation(
+                header, op, current, leaf, Some(source_id),
+                ObservationLength::Exact(original_length(op)?),
+            )?;
         } else if after_publish && state.replacement_identity.as_ref() == Some(&current.identity) {
             check_observation(
                 header,
@@ -1159,6 +1225,7 @@ fn validate_terminal(
                 current,
                 &op.intended_name,
                 state.replacement_identity.as_ref(),
+                ObservationLength::Exact(replacement_length(state)?),
             )?;
         } else {
             return Err(E::CorruptJournal);
@@ -1174,6 +1241,7 @@ fn validate_terminal(
             backup,
             &format!(".sorter-{}-{}.backup", header.job_id, op.id),
             Some(source_id),
+            ObservationLength::Exact(original_length(op)?),
         )?;
     }
     if let Some(staged) = &item.staged {
@@ -1196,6 +1264,11 @@ fn validate_terminal(
             staged,
             &format!(".sorter-{}-{}.tmp", header.job_id, op.id),
             state.staged.as_ref().map(|s| &s.identity),
+            if state.staged_hash.is_some() {
+                ObservationLength::Exact(replacement_length(state)?)
+            } else {
+                ObservationLength::Partial(replacement_length(state)?)
+            },
         )?;
         if &staged.identity == source_id {
             return Err(E::CorruptJournal);
@@ -1289,7 +1362,7 @@ pub fn recover_repair_journal(
                 return Err(E::CorruptJournal);
             }
             let mut value: Header = decode(&record.payload)?;
-            if value.schema != 1
+            if !matches!(value.schema, 1 | 2)
                 || value.job_id != record.job_id
                 || value.operations.is_empty()
                 || !valid_hash(&value.plan_sha256)
@@ -1397,15 +1470,41 @@ pub fn recover_repair_journal(
                     &observation,
                     &op.intended_name,
                     op.source.observation.identity.as_ref(),
+                    ObservationLength::Exact(original_length(op)?),
                 )?;
                 state.current = Some(observation)
             }
             Phase::TempPrepared => {
-                if !op.save
-                    || op.repairs.is_empty()
-                    || serde_json::to_value(&op.source).map_err(|_| E::Io)? != record.payload
-                {
+                if !op.save || op.repairs.is_empty() {
                     return Err(E::CorruptJournal);
+                }
+                let original = serde_json::to_value(&op.source).map_err(|_| E::Io)?;
+                if header.schema == 1 {
+                    if original != record.payload {
+                        return Err(E::CorruptJournal);
+                    }
+                    state.replacement_length = Some(original_length(op)?);
+                } else {
+                    let intent: TempPreparedV2 = decode(&record.payload)?;
+                    let length = intent.replacement_length;
+                    if !valid_hash(&intent.replacement_sha256) || !valid_hash(&intent.media_sha256) {
+                        return Err(E::CorruptJournal);
+                    }
+                    let extension = op.intended_name.to_ascii_lowercase();
+                    // Existing policy can only preserve length or shrink FLAC
+                    // duplicate comments. MP3 must retain its original length.
+                    if serde_json::to_value(&intent.source).map_err(|_| E::Io)? != original || length == 0
+                        || if extension.ends_with(".mp3") {
+                            length != original_length(op)?
+                        } else if extension.ends_with(".flac") {
+                            length > original_length(op)?
+                        } else { true }
+                    {
+                        return Err(E::CorruptJournal);
+                    }
+                    state.replacement_length = Some(length);
+                    state.planned_hash = Some(intent.replacement_sha256);
+                    state.planned_media_hash = Some(intent.media_sha256);
                 }
             }
             Phase::TempObserved => {
@@ -1416,6 +1515,7 @@ pub fn recover_repair_journal(
                     &observation,
                     &format!(".sorter-{}-{}.tmp", header.job_id, index),
                     None,
+                    ObservationLength::Exact(0),
                 )?;
                 if Some(&observation.identity) == op.source.observation.identity.as_ref() {
                     return Err(E::CorruptJournal);
@@ -1431,7 +1531,11 @@ pub fn recover_repair_journal(
                         .is_some_and(valid_hash)
                     || Some(&observation.identity) != state.staged.as_ref().map(|o| &o.identity)
                     || observation.size != record.payload["length"].as_u64()
-                    || observation.size != op.source.observation.size
+                    || observation.size != state.replacement_length
+                    || state.planned_hash.as_deref().is_some_and(|planned| planned != sha)
+                    || state.planned_media_hash.as_deref().is_some_and(|planned| {
+                        record.payload["media_sha256"].as_str() != Some(planned)
+                    })
                 {
                     return Err(E::CorruptJournal);
                 }
@@ -1441,6 +1545,7 @@ pub fn recover_repair_journal(
                     &observation,
                     &format!(".sorter-{}-{}.tmp", header.job_id, index),
                     None,
+                    ObservationLength::Exact(replacement_length(state)?),
                 )?;
                 state.replacement_identity = Some(observation.identity.clone());
                 state.staged = Some(observation);
@@ -1449,8 +1554,18 @@ pub fn recover_repair_journal(
             Phase::BackupPrepared => {
                 if record.payload["name"] != format!(".sorter-{}-{}.backup", header.job_id, index)
                     || record.payload["sha256"] != op.source.sha256
+                    || header.schema == 2
+                        && record.payload["original_length"].as_u64() != op.source.observation.size
                 {
                     return Err(E::CorruptJournal);
+                }
+                if header.schema == 2 {
+                    let source = observed(&record.payload["source"])?;
+                    check_observation(
+                        header, op, &source, &op.intended_name,
+                        op.source.observation.identity.as_ref(),
+                        ObservationLength::Exact(original_length(op)?),
+                    )?;
                 }
             }
             Phase::BackupObserved => {
@@ -1461,6 +1576,7 @@ pub fn recover_repair_journal(
                     &observation,
                     &format!(".sorter-{}-{}.backup", header.job_id, index),
                     op.source.observation.identity.as_ref(),
+                    ObservationLength::Exact(original_length(op)?),
                 )?;
                 state.backup = Some(observation);
                 state.current = None
@@ -1468,6 +1584,10 @@ pub fn recover_repair_journal(
             Phase::PublishPrepared => {
                 if record.payload["name"] != op.intended_name
                     || record.payload["sha256"].as_str() != state.staged_hash.as_deref()
+                    || header.schema == 2
+                        && record.payload["replacement_length"].as_u64() != state.replacement_length
+                    || header.schema == 2
+                        && record.payload["staged"] != serde_json::to_value(&state.staged).map_err(|_| E::Io)?
                 {
                     return Err(E::CorruptJournal);
                 }
@@ -1480,9 +1600,12 @@ pub fn recover_repair_journal(
                     &observation,
                     &op.intended_name,
                     state.staged.as_ref().map(|o| &o.identity),
+                    ObservationLength::Exact(replacement_length(state)?),
                 )?;
                 if record.payload["sha256"].as_str() != state.staged_hash.as_deref()
                     || record.payload["original_sha256"] != op.source.sha256
+                    || header.schema == 2
+                        && record.payload["backup"] != serde_json::to_value(&state.backup).map_err(|_| E::Io)?
                 {
                     return Err(E::CorruptJournal);
                 }
@@ -1596,6 +1719,7 @@ pub fn recover_repair_journal(
                     op.intended_name.clone(),
                     source_identity.clone(),
                     Some(op.source.sha256.as_str()),
+                    original_length(op)?,
                 ));
             }
             if matches!(
@@ -1612,6 +1736,7 @@ pub fn recover_repair_journal(
                     format!(".sorter-{}-{}.backup", header.job_id, op.id),
                     source_identity,
                     Some(op.source.sha256.as_str()),
+                    original_length(op)?,
                 ));
             }
             if effective_phase == Some(Phase::PublishPrepared)
@@ -1622,9 +1747,10 @@ pub fn recover_repair_journal(
                     op.intended_name.clone(),
                     identity.clone(),
                     state.staged_hash.as_deref(),
+                    replacement_length(&state)?,
                 ));
             }
-            for (role, leaf, identity, hash) in candidates {
+            for (role, leaf, identity, hash, length) in candidates {
                 let candidate = path(&original.reference)?
                     .parent()
                     .ok_or(E::CorruptJournal)?
@@ -1636,7 +1762,7 @@ pub fn recover_repair_journal(
                     identity,
                     parent_identity: original.parent_identity.clone().ok_or(E::CorruptJournal)?,
                     actual_name: name(&leaf),
-                    size: original.size,
+                    size: Some(length),
                 };
                 if !evidence.iter().any(|e| {
                     e.reference == expected.reference && e.expected_identity == expected.identity
@@ -1691,7 +1817,11 @@ fn inspect_evidence(
         Err(_) => return Ok(value),
     };
     value.observed_identity = observed.identity.clone();
-    if observed.identity.as_ref() != Some(&expected.identity) || observed.kind != EntryKind::File {
+    if observed.identity.as_ref() != Some(&expected.identity)
+        || observed.kind != EntryKind::File
+        || observed.size != expected.size
+        || observed.parent_identity.as_ref() != Some(&expected.parent_identity)
+    {
         value.status = RepairEvidenceStatus::Changed;
         return Ok(value);
     }
@@ -1702,7 +1832,7 @@ fn inspect_evidence(
     };
     if input
         .binding()
-        .is_none_or(|b| b.identity != expected.identity)
+        .is_none_or(|b| b.identity != expected.identity || Some(b.size) != expected.size)
     {
         return Ok(value);
     }

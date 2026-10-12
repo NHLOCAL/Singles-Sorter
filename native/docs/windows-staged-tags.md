@@ -18,8 +18,9 @@ media tail, checks exact source length and supports bounded-memory cancellation.
 This module accepts streams only. It cannot open or publish a path, delete a
 source or clean up a backup. Native publication must retain the original by an
 identity-bound no-replace backup rename before installing the verified staged
-file, with journal-before-effects and read-only recovery. That native integration
-is a separate pending stage; the transformer alone does not enable product Fix.
+file, with journal-before-effects and read-only recovery. The selected Windows driver supplies that native integration. The transformer
+alone cannot enable product Fix or acquire filesystem authority.
 
-Other formats remain unsupported for physical tag repair. Local compilation and
+Native FLAC uses the separate sealed FLAC transformer through shared product
+dispatch. Other formats remain unsupported for physical tag repair. Local compilation and
 native metadata tests are unrun until exact-source CI, due to unavailable tooling.

@@ -569,3 +569,6 @@ fn raw_selected_temp_root_recovery_uses_held_root_alias() {
             .any(|e| e.role == "current" && matches!(e.status, RepairEvidenceStatus::Verified))
     );
 }
+
+#[path = "support/windows_flac_repair_cases.rs"]
+mod flac;
