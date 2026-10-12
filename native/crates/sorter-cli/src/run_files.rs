@@ -312,46 +312,48 @@ pub(super) fn execute_request(
                 "No-op confirmation was cancelled",
             ));
         }
-        let fresh_plan = fresh.plan.as_ref().expect("matching fresh plan checked");
-        let target = request.preview.target.as_ref().ok_or_else(|| {
-            Failure::new(2, "TARGET_REQUIRED", "Sort requires an existing target")
-        })?;
-        let reads = WindowsPlanningStorage::for_album_preview(
-            &request.preview.source,
-            target,
-            sorter_io::desktop::WindowsDirectoryReadLimits::ALBUM_DEFAULT,
-            cancel,
-        )
-        .map_err(|error| Failure::new(1, "EXECUTION_REFUSED", error.to_string()))?;
-        let mut reads = sorter_io::storage::SharedReadStorage::new(plan_files::ReadAdapter(
-            Box::new(reads),
-        ));
-        let mut metadata_reads = reads.clone();
-        let mut metadata = StorageMetadataProvider {
-            storage: &mut metadata_reads,
-            reader: MetadataReader,
-        };
-        let (mut recognition, _, recognition_resources, recognition_adapters) =
-            plan_files::recognition(&request.preview.ai_profile)?;
-        if !fresh_plan.request.resource_ids.ends_with(&recognition_resources)
-            || !fresh_plan.request.adapter_versions.ends_with(&recognition_adapters)
-        {
-            return Err(Failure::new(
-                1,
-                "PLAN_CHANGED",
-                "Recognition resources changed; inspect a fresh plan",
+        let prepared = (|| {
+            let fresh_plan = fresh.plan.as_ref().expect("matching fresh plan checked");
+            let target = request.preview.target.as_ref().ok_or_else(|| {
+                Failure::new(2, "TARGET_REQUIRED", "Sort requires an existing target")
+            })?;
+            let reads = WindowsPlanningStorage::for_album_preview(
+                &request.preview.source,
+                target,
+                sorter_io::desktop::WindowsDirectoryReadLimits::ALBUM_DEFAULT,
+                cancel,
+            )
+            .map_err(|error| Failure::new(1, "EXECUTION_REFUSED", error.to_string()))?;
+            let mut reads = sorter_io::storage::SharedReadStorage::new(plan_files::ReadAdapter(
+                Box::new(reads),
             ));
-        }
-        let execution_decisions = sorter_executor::binding::validate_noop_execution_decisions(
-            &plan,
-            &mut reads,
-            &mut metadata,
-            recognition.as_mut(),
-            &execution_resources(fresh_plan)?,
-            &execution_resources(&plan)?,
-            cancel,
-        )
-        .map_err(|error| Failure::new(1, "EXECUTION_REFUSED", error.to_string()))?;
+            let mut metadata_reads = reads.clone();
+            let mut metadata = StorageMetadataProvider {
+                storage: &mut metadata_reads,
+                reader: MetadataReader,
+            };
+            let (mut recognition, _, recognition_resources, recognition_adapters) =
+                plan_files::recognition(&request.preview.ai_profile)?;
+            if !fresh_plan.request.resource_ids.ends_with(&recognition_resources)
+                || !fresh_plan.request.adapter_versions.ends_with(&recognition_adapters)
+            {
+                return Err(Failure::new(
+                    1,
+                    "PLAN_CHANGED",
+                    "Recognition resources changed; inspect a fresh plan",
+                ));
+            }
+            sorter_executor::binding::validate_noop_execution_decisions(
+                &plan,
+                &mut reads,
+                &mut metadata,
+                recognition.as_mut(),
+                &execution_resources(fresh_plan)?,
+                &execution_resources(&plan)?,
+                cancel,
+            )
+            .map_err(|error| Failure::new(1, "EXECUTION_REFUSED", error.to_string()))
+        })();
         if cancel.load(Ordering::Acquire) || invalid_control.load(Ordering::Acquire) {
             event("cancelled", json!({"before_apply":true}))?;
             return Err(Failure::new(
@@ -360,6 +362,7 @@ pub(super) fn execute_request(
                 "No-op confirmation was cancelled",
             ));
         }
+        let execution_decisions = prepared?;
         // No mutation grant or journal is needed: the revalidated job has no
         // effects to perform. Never use this branch for an error/blocked plan.
         event(

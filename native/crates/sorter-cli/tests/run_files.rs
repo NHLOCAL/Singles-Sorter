@@ -354,9 +354,9 @@ mod selected {
                 assert_eq!(decisions["basis"], "fresh_noop_preflight");
                 assert_eq!(decisions["plan_binding_sha256"], result["plan_id"]);
                 assert_eq!(
-            decisions["decisions"],
-            planned["data"]["plan"]["decisions"]
-        );
+                    decisions["decisions"],
+                    planned["data"]["plan"]["decisions"]
+                );
                 assert_eq!(decisions["single_routes"], json!([]));
                 assert_eq!(
                     result["legacy_summary"],
