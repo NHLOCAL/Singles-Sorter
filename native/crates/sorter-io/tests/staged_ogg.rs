@@ -409,10 +409,10 @@ impl Read for ShortRead<'_> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let len = buf.len().min(7);
         let read = self.cursor.read(&mut buf[..len])?;
-        if self.cursor.position() >= self.after {
-            if let Some(flag) = self.flag {
-                flag.store(true, Ordering::Release);
-            }
+        if self.cursor.position() >= self.after
+            && let Some(flag) = self.flag
+        {
+            flag.store(true, Ordering::Release);
         }
         Ok(read)
     }
