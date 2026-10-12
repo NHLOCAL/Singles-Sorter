@@ -41,6 +41,7 @@ from desktop_cross_albums import exercise_cross_albums
 from desktop_polish import exercise_information, set_developer_mode
 from driver_readiness import wait_driver_ready
 from desktop_stability import exercise_shell, exercise_result_stability
+from desktop_settings import SETTINGS_CHECKS, read_main_settings, set_main_settings, editor_rows, verify_export
 
 ROOT = Path(__file__).resolve().parents[1]
 if os.name != 'nt' or os.environ.get('GITHUB_ACTIONS') != 'true':
@@ -85,6 +86,7 @@ wavpack_checks = []
 album_checks = []
 cross_album_checks = []
 copied_move_checks = []
+settings_checks = []
 
 def call(method, path, body=None, *, timeout=30):
     data = None if body is None else json.dumps(body).encode('utf-8')
@@ -257,21 +259,29 @@ try:
         click('#tab-mode-sort')
         wait(lambda: script("return document.querySelector('#app').dataset.workMode === 'sort' && document.querySelector('#copy_mode').getClientRects().length > 0"))
         assert script("return !!document.querySelector('#save-settings')"), "Task 2 preferences UI is missing; stale binary cannot pass"
-        click('#copy_mode'); click('#save-settings')
+        settings_baseline = read_main_settings(script)
+        expected_settings = {key: not value for key, value in settings_baseline.items()}
+        set_main_settings(script, click, wait, expected_settings)
+        click('#save-settings')
         wait(lambda: text('#settings-notice') == 'נשמר')
-        expected_copy = script("return document.querySelector('#copy_mode').checked")
+        # A different unsaved main draft must survive the immediate duet write
+        # in this session, but must not be persisted by that unrelated action.
+        set_main_settings(script, click, wait, settings_baseline)
+        assert text('#settings-label') == 'שינויים שלא נשמרו'
         click('#advanced')
         expected_duet = not script("return document.querySelector('#duet-all').checked")
         click('#duet-all' if expected_duet else '#duet-first')
         wait(lambda: script("return !document.querySelector('#duet-all').disabled"))
         assert script("return document.querySelector('#duet-all').checked") == expected_duet
+        assert read_main_settings(script) == settings_baseline
+        assert script("return document.querySelector('#settings-label').textContent") == 'שינויים שלא נשמרו'
         capture('04-native-settings')
         check_phone_layout(command,script,capture,OUTPUT,'04-native-settings')
         click('#edit-list')
         wait(lambda: script("return document.querySelector('#list-dialog').open"))
         # The same owned CI profile survives off/on/extracted package lanes.
         # Check this import's exact +2 duplicates without deleting prior results.
-        imported_baseline = script("return Array.from(document.querySelectorAll('[id^=list-alias-]')).filter(x=>x.value==='אמן מיובא').length")
+        personal_baseline = editor_rows(script, click, wait)
         click('#list-add')
         alias_id = script("return Array.from(document.querySelectorAll('[id^=list-alias-]')).at(-1).id")
         folder_id = alias_id.replace('alias','folder')
@@ -298,27 +308,55 @@ try:
         click('#confirm-import')
         wait(lambda: script("return !document.querySelector('#import-dialog').open"))
         click('#edit-list')
-        wait(lambda: script("return Array.from(document.querySelectorAll('[id^=list-alias-]')).filter(x=>x.value==='אמן מיובא').length") == imported_baseline + 2)
-        assert script("return Array.from(document.querySelectorAll('[id^=list-alias-]')).some(x=>x.value==='אמן שנערך לפני אישור')")
-        assert not script("return Array.from(document.querySelectorAll('[id^=list-alias-]')).some(x=>x.value==='אמן למחיקה')")
+        wait(lambda: script("return document.querySelector('#list-dialog').open"))
+        expected_personal = personal_baseline + [
+            ['אמן בדיקת ממשק', 'תיקיית בדיקה'],
+            ['אמן מיובא', 'תיקייה מיובאת'], ['אמן מיובא', 'תיקייה שנייה'],
+            ['אמן שנערך לפני אישור', 'תיקייה ערוכה']]
+        assert editor_rows(script, click, wait) == expected_personal
         fixture_guard.verify('after-settings-and-import')
         checks.append('Actual CSV draft edits/deletion applied only on confirm; original duplicate aliases remained ordered')
         click('#list-cancel'); click('#advanced-dialog .close-dialog')
-        command('DELETE',''); session = None
-        restarted = call('POST','/session',{'capabilities':{'alwaysMatch':{'browserName':'wry','tauri:options':{'application':str(BINARY)}}}})
-        session = restarted['sessionId']
-        verify_app_security('restarted-app')
-        wait(lambda: script("return document.documentElement.dataset.startupState === 'ready' && !document.querySelector('#sort').disabled"))
-        assert script("return document.querySelector('#copy_mode').checked") == expected_copy
+        restart_app(BINARY, 'restarted-app')
+        observed_settings = read_main_settings(script)
+        assert observed_settings == expected_settings
         assert script("return document.querySelector('#source').value") == ''
+        assert script("return document.querySelector('#target').value") == ''
         click('#advanced')
-        assert script("return document.querySelector('#duet-all').checked") == expected_duet
+        observed_duet = script("return document.querySelector('#duet-all').checked")
+        assert observed_duet == expected_duet
         click('#edit-list')
-        wait(lambda: 'אמן בדיקת ממשק' in script("return Array.from(document.querySelectorAll('[id^=list-alias-]')).map(x=>x.value).join('|')"))
+        wait(lambda: script("return document.querySelector('#list-dialog').open"))
+        reopened_personal = editor_rows(script, click, wait)
+        assert reopened_personal == expected_personal
         capture('07-native-profile-after-reopen')
-        checks.append('Native explicit preference Save, immediate duet and personal list persisted after app restart; source authority not persisted')
-        click('#list-cancel'); click('#advanced-dialog .close-dialog')
-        fixture_guard.verify('after-app-restart')
+        checks.append('All five explicitly saved main preferences, immediate duet and exact ordered personal rows persisted; unsaved main draft and source/target authority did not persist')
+        click('#list-cancel')
+        export_root = scratch / 'native-profile-export'
+        export_root.mkdir()
+        exported_csv = export_root / 'רשימת אמנים.csv'
+        assert not exported_csv.exists() and not list(export_root.iterdir())
+        pick_owned_path('#export-list', exported_csv)
+        wait(lambda: script("return !document.querySelector('#export-list').disabled && document.querySelector('#profile-error').hidden"))
+        export_receipt = verify_export(exported_csv, reopened_personal)
+        capture('08-native-personal-export')
+        click('#advanced-dialog .close-dialog')
+        # All three lanes share only this runner's owned profile. Restore its
+        # baseline so e.g. exist_only cannot alter the next empty-target fixture.
+        set_main_settings(script, click, wait, settings_baseline)
+        click('#save-settings')
+        wait(lambda: text('#settings-notice') == 'נשמר')
+        assert read_main_settings(script) == settings_baseline
+        fixture_guard.verify('after-app-restart-and-export')
+        settings_checks = list(SETTINGS_CHECKS)
+        (OUTPUT / 'settings-profile.json').write_text(json.dumps({
+            'status': 'passed', 'binary_sha256': hashlib.sha256(BINARY.read_bytes()).hexdigest(),
+            'ai_mode': AI_MODE, 'checks': settings_checks, 'stored_baseline': settings_baseline,
+            'explicitly_saved': expected_settings, 'discarded_unsaved_draft': settings_baseline,
+            'observed_after_restart': observed_settings,
+            'expected_immediate_duet': expected_duet, 'observed_immediate_duet': observed_duet, 'restored_baseline': read_main_settings(script),
+            'personal_baseline': personal_baseline, 'export_path': str(exported_csv),
+            'export': export_receipt}, ensure_ascii=False, indent=2), encoding='utf-8')
         checks.extend(exercise_result_stability(command,script,click,fill,wait,capture,scratch/'stability-cases',OUTPUT))
         ai_scratch = scratch / 'ai-cases'
         ai_scratch.mkdir()
@@ -367,7 +405,7 @@ try:
         package_guard.verify()
         assert verify_package(BINARY.parent) == PACKAGE_MANIFEST_SHA256
         assert set(REQUIRED_CHECKS).issubset(original_ai_checks)
-    (OUTPUT / 'acceptance.json').write_text(json.dumps({'status':'passed','platform':'windows-native-tauri','binary_sha256':hashlib.sha256(BINARY.read_bytes()).hexdigest(),'ipc_mocked':False,'medium_integrity_verified':True,'ai_mode':AI_MODE,'package_sha256sums_sha256':PACKAGE_MANIFEST_SHA256,'original_ai_checks':original_ai_checks,'apply_mode':os.environ.get('SINGLES_DESKTOP_APPLY_EXPECTED','off'),'apply_checks':apply_checks,'recovery_checks':recovery_checks,'album_recovery_checks':album_recovery_checks,'whole_album_recovery_checks':whole_album_recovery_checks,'repair_checks':repair_checks,'flac_checks':flac_checks,'ogg_checks':ogg_checks,'mp4_checks':mp4_checks,'id3_container_checks':id3_container_checks,'wavpack_checks':wavpack_checks,'album_checks':album_checks,'cross_album_checks':cross_album_checks,'copied_move_checks':copied_move_checks,'checks':checks,'remaining':['Narrator','200 percent DPI','Android SAF and physical ARM64','unsupported apply modes, automatic replay, and unrecorded historical whole-Album named-stream baselines']},ensure_ascii=False,indent=2),encoding='utf-8')
+    (OUTPUT / 'acceptance.json').write_text(json.dumps({'status':'passed','platform':'windows-native-tauri','binary_sha256':hashlib.sha256(BINARY.read_bytes()).hexdigest(),'ipc_mocked':False,'medium_integrity_verified':True,'ai_mode':AI_MODE,'package_sha256sums_sha256':PACKAGE_MANIFEST_SHA256,'original_ai_checks':original_ai_checks,'settings_checks':settings_checks,'apply_mode':os.environ.get('SINGLES_DESKTOP_APPLY_EXPECTED','off'),'apply_checks':apply_checks,'recovery_checks':recovery_checks,'album_recovery_checks':album_recovery_checks,'whole_album_recovery_checks':whole_album_recovery_checks,'repair_checks':repair_checks,'flac_checks':flac_checks,'ogg_checks':ogg_checks,'mp4_checks':mp4_checks,'id3_container_checks':id3_container_checks,'wavpack_checks':wavpack_checks,'album_checks':album_checks,'cross_album_checks':cross_album_checks,'copied_move_checks':copied_move_checks,'checks':checks,'remaining':['Narrator','200 percent DPI','Android SAF and physical ARM64','unsupported apply modes, automatic replay, and unrecorded historical whole-Album named-stream baselines']},ensure_ascii=False,indent=2),encoding='utf-8')
 except Exception as error:
     snapshot(active_binary, OUTPUT, 'webdriver-failure')
     if session:

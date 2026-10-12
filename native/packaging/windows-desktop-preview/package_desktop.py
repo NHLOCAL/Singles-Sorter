@@ -87,6 +87,9 @@ WHOLE_ALBUM_RECOVERY_CHECKS = {'whole-album-root-restarted-with-fresh-parent', '
                                 'whole-album-single-atomic-receipt-retained', 'whole-album-deferred-single-covered',
                                 'whole-album-parent-refusal', 'whole-album-restart-no-effects',
                                 'whole-album-main-content-change-detected', 'whole-album-extra-member-detected'}
+SETTINGS_CHECKS = {'all-main-settings-explicit-save-and-restart',
+                   'unsaved-main-draft-not-persisted-by-immediate-duet',
+                   'personal-csv-export-exact-ordered-rows', 'settings-baseline-restored'}
 DESKTOP_FEATURES = ['desktop', 'original-ai', 'selected-windows-execution', 'tauri/custom-protocol']
 require, digest = cli.require, cli.digest
 
@@ -97,6 +100,7 @@ def report_gate(path, binary, mode, package=None):
     require(report.get('medium_integrity_verified') is True, 'verified Medium-integrity acceptance required')
     require(report.get('ipc_mocked') is False and report.get('ai_mode') == mode, 'wrong AI mode or mocked IPC')
     require(report.get('binary_sha256') == digest(binary), 'acceptance not bound to executable')
+    require(SETTINGS_CHECKS <= set(report.get('settings_checks', [])), 'incomplete actual settings/CSV export acceptance')
     if mode == 'on':
         require(REQUIRED_CHECKS <= set(report.get('original_ai_checks', [])), 'incomplete original-AI acceptance')
         require(report.get('apply_mode') == 'on' and APPLY_CHECKS <= set(report.get('apply_checks', [])), 'incomplete actual selected Copy/Move acceptance')
