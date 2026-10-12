@@ -2553,7 +2553,7 @@ impl SelectedAlbumFileJob {
     ) -> Result<SelectedAlbumRecovery> {
         let file_control = full_control.then_some(control);
         let cancel = control.cancellation_flag();
-        control.stage("album_journals")?;
+        control.checkpoint()?;
         if !self.attempted {
             return Err(E::Unsupported);
         }
@@ -2563,6 +2563,10 @@ impl SelectedAlbumFileJob {
         self.storage.watches.clear();
         self.copy_directories.clear();
         self.directories.clear();
+        // Report the read-only inspection boundary only after mutation file
+        // leases are released. Observers may independently read owned files
+        // here; this event still precedes the first journal/content read.
+        control.stage("album_journals")?;
         let location = self.locations.first().ok_or(E::Unsupported)?;
         let bytes = self
             .storage
