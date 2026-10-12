@@ -17,12 +17,33 @@ def unique_folder_edit(records, pid):
     return matches[0]
 
 
-def interact_with_owned_picker(binary, path, output, label):
+def unique_save_edit(records, pid):
+    # Actual f183 Save As UIA evidence exposes FileNameControlHost/Edit1001,
+    # unlike the import dialog's cmb13/1148. Do not match localized labels.
+    def matching(kind, identity):
+        return [index for index, item in enumerate(records)
+                if item['pid'] == pid and item['control_type'] == kind
+                and item['automation_id'] == identity and item['visible'] and item['enabled']]
+    hosts = matching('ComboBox', 'FileNameControlHost')
+    edits = matching('Edit', '1001')
+    if len(hosts) != 1 or len(edits) != 1:
+        raise RuntimeError(f'Expected one observed owned Save filename host/Edit, found {len(hosts)}/{len(edits)}')
+    return edits[0]
+
+
+def require_new_save_path(path):
+    if path.exists() or path.is_symlink() or not path.parent.is_dir():
+        raise RuntimeError('Save acceptance requires a new CSV in an existing owned directory')
+
+
+def interact_with_owned_picker(binary, path, output, label, *, save=False):
     # UIA calls can block inside COM; contain the entire interaction in an owned
     # helper process rather than letting a stalled control query hang the suite.
+    if save:
+        require_new_save_path(path)
     try:
         result = subprocess.run([sys.executable, str(Path(__file__).resolve()),
-                                 str(binary), str(path), str(output), label],
+                                 str(binary), str(path), str(output), label] + (['--save'] if save else []),
                                 capture_output=True, text=True, encoding='utf-8',
                                 errors='replace', timeout=75)
         if result.returncode:
@@ -34,7 +55,9 @@ def interact_with_owned_picker(binary, path, output, label):
         raise
 
 
-def _interact_with_owned_picker(binary, path, output, label):
+def _interact_with_owned_picker(binary, path, output, label, *, save=False):
+    if save:
+        require_new_save_path(path)
     from pywinauto import Application
     app = Application(backend='uia').connect(path=str(binary), timeout=10)
     dialog = app.window(class_name='#32770')
@@ -45,7 +68,7 @@ def _interact_with_owned_picker(binary, path, output, label):
     records, controls = [], []
     evidence = {'kind': 'actual-owned-native-dialog', 'pid': app.process,
                 'hwnd': owned.handle, 'title': owned.window_text(),
-                'selection_kind': 'folder' if path.is_dir() else 'file'}
+                'selection_kind': 'save' if save else 'folder' if path.is_dir() else 'file'}
     try:
         # Include control metadata, not file-list contents or values. This is the
         # actual dialog's UIA tree, not a guessed screen-wide control selector.
@@ -72,7 +95,9 @@ def _interact_with_owned_picker(binary, path, output, label):
             json.dumps(evidence, ensure_ascii=False, indent=2), encoding='utf-8')
         if evidence['controls_truncated']:
             raise RuntimeError('Owned dialog has too many controls to establish unique path input safely')
-        if path.is_dir():
+        if save:
+            filename = controls[unique_save_edit(records, app.process)]
+        elif path.is_dir():
             filename = controls[unique_folder_edit(records, app.process)]
         else:
             # Preserve the existing file-import dialog contract; its actual UIA
@@ -104,4 +129,7 @@ def _interact_with_owned_picker(binary, path, output, label):
 if __name__ == '__main__':
     if os.name != 'nt' or os.environ.get('GITHUB_ACTIONS') != 'true':
         raise SystemExit('Native picker interaction is restricted to owned Windows CI')
-    _interact_with_owned_picker(Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3]), sys.argv[4])
+    if sys.argv[5:] not in ([], ['--save']):
+        raise SystemExit('Unknown owned picker interaction mode')
+    _interact_with_owned_picker(Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3]), sys.argv[4],
+                                save=sys.argv[5:] == ['--save'])

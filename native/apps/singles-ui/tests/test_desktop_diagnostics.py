@@ -14,7 +14,7 @@ import desktop_diagnostics as diagnostics
 from owned_window_capture import png_from_bgra
 from windows_integrity import require_medium
 import run_desktop_medium as launcher
-from native_picker import unique_folder_edit, interact_with_owned_picker
+from native_picker import unique_folder_edit, unique_save_edit, interact_with_owned_picker
 from native_fixtures import write_import_csv
 
 
@@ -46,6 +46,36 @@ class DiagnosticContracts(unittest.TestCase):
              patch.object(Path, 'write_text'):
             with self.assertRaisesRegex(RuntimeError, 'actual UIA failure'):
                 interact_with_owned_picker(Path('owned.exe'), Path('fixture'), Path('evidence'), 'source')
+
+    def test_save_picker_uses_observed_owned_filename_edit(self):
+        combo = {'pid': 42, 'control_type': 'ComboBox', 'automation_id': 'FileNameControlHost',
+                 'visible': True, 'enabled': True, 'name': 'File name:'}
+        edit = dict(combo, control_type='Edit', automation_id='1001')
+        search = dict(edit, automation_id='SearchEditBox')
+        self.assertEqual(unique_save_edit([search, combo, edit], 42), 2)
+        self.assertEqual(unique_save_edit([dict(combo, name='שם קובץ:'), dict(edit, name='שם קובץ:')], 42), 1)
+        for records in [[combo], [edit], [combo, edit, dict(edit)], [combo, dict(combo), edit],
+                        [combo, dict(edit, pid=99)], [combo, dict(edit, visible=False)],
+                        [combo, dict(edit, enabled=False)], [dict(combo, pid=99), edit],
+                        [dict(combo, automation_id='1148'), edit], [combo, search]]:
+            with self.assertRaises(RuntimeError):
+                unique_save_edit(records, 42)
+
+    def test_save_route_is_explicit_and_refuses_existing_or_missing_parent(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            destination = root / 'new.csv'
+            with patch('native_picker.subprocess.run', return_value=Mock(returncode=0)) as run:
+                interact_with_owned_picker(Path('owned.exe'), destination, root, 'export', save=True)
+                self.assertEqual(run.call_args.args[0][-1], '--save')
+                self.assertEqual(run.call_args.kwargs['timeout'], 75)
+                destination.write_bytes(b'owned original')
+                with self.assertRaisesRegex(RuntimeError, 'new CSV'):
+                    interact_with_owned_picker(Path('owned.exe'), destination, root, 'export', save=True)
+                with self.assertRaisesRegex(RuntimeError, 'new CSV'):
+                    interact_with_owned_picker(Path('owned.exe'), root / 'missing' / 'new.csv', root, 'export', save=True)
+                self.assertEqual(run.call_count, 1)
+                self.assertEqual(destination.read_bytes(), b'owned original')
 
     def test_folder_picker_uses_observed_direct_edit_without_combo_parent(self):
         edit = {'pid': 42, 'control_type': 'Edit', 'automation_id': '1152',

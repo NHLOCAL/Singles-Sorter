@@ -146,11 +146,11 @@ def script(source):
 def capture(name):
     (OUTPUT / f'{name}.png').write_bytes(base64.b64decode(command('GET','/screenshot')))
 
-def pick_owned_path(selector, path):
+def pick_owned_path(selector, path, *, save=False):
     # Native dialog controls belong to this exact owned preview executable.
     # Never interact with a generic desktop window or another user's app.
     click(selector)
-    interact_with_owned_picker(BINARY, path, OUTPUT, selector.removeprefix('#'))
+    interact_with_owned_picker(BINARY, path, OUTPUT, selector.removeprefix('#'), save=save)
 
 def restart_app(binary, label):
     global session, active_binary
@@ -336,7 +336,7 @@ try:
         export_root.mkdir()
         exported_csv = export_root / 'רשימת אמנים.csv'
         assert not exported_csv.exists() and not list(export_root.iterdir())
-        pick_owned_path('#export-list', exported_csv)
+        pick_owned_path('#export-list', exported_csv, save=True)
         wait(lambda: script("return !document.querySelector('#export-list').disabled && document.querySelector('#profile-error').hidden"))
         export_receipt = verify_export(exported_csv, reopened_personal)
         capture('08-native-personal-export')

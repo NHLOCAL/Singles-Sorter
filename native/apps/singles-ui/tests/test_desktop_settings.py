@@ -67,7 +67,7 @@ class SettingsHelpers(unittest.TestCase):
                  "click('#save-settings')", "set_main_settings(script, click, wait, settings_baseline)",
                  "click('#duet-all' if expected_duet else '#duet-first')",
                  "restart_app(BINARY, 'restarted-app')", 'assert observed_settings == expected_settings',
-                 "pick_owned_path('#export-list', exported_csv)", 'verify_export(exported_csv, reopened_personal)',
+                 "pick_owned_path('#export-list', exported_csv, save=True)", 'verify_export(exported_csv, reopened_personal)',
                  'set_main_settings(script, click, wait, settings_baseline)', "click('#save-settings')",
                  'settings_checks = list(SETTINGS_CHECKS)']
         for step in order:
