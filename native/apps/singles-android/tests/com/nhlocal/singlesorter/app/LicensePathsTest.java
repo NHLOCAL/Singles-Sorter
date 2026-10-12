@@ -5,6 +5,7 @@ public final class LicensePathsTest {
         String[] bad={"","/index.html","../private","a/../b","a/./b","a//b","a/","a\\b","%2e%2e/a","https://evil","a?x","a#x","\u0000","é"};
         for(String s:good)if(!LicensePaths.safe(s))throw new AssertionError(s);
         for(String s:bad)if(LicensePaths.safe(s))throw new AssertionError(s);
-        System.out.println("18 license path checks passed");
+        for(int bits=0;bits<16;bits++)if(LicensePaths.exportGrant((bits&1)!=0,(bits&2)!=0,(bits&4)!=0,(bits&8)!=0)!=(bits==15))throw new AssertionError("grant "+bits);
+        System.out.println("34 license path/grant checks passed");
     }
 }

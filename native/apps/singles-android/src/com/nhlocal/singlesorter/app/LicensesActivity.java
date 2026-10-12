@@ -65,14 +65,14 @@ public final class LicensesActivity extends Activity {
     private static WebResourceResponse denied(){return new WebResourceResponse("text/plain","UTF-8",403,"Forbidden",new HashMap<>(),new ByteArrayInputStream(new byte[0]));}
     private void chooseExport(){
         if(pending)return;pending=true;export.setEnabled(false);status.setText("");
-        try{startActivityForResult(new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("application/zip").putExtra(Intent.EXTRA_TITLE,"singles-android-licenses-and-sources.zip"),1);}
+        try{startActivityForResult(new Intent(Intent.ACTION_CREATE_DOCUMENT).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_WRITE_URI_PERMISSION).addCategory(Intent.CATEGORY_OPENABLE).setType("application/zip").putExtra(Intent.EXTRA_TITLE,"singles-android-licenses-and-sources.zip"),1);}
         catch(RuntimeException error){pending=false;export.setEnabled(true);status.setText("לא ניתן לפתוח את בחירת הקובץ.");}
     }
     @Override protected void onActivityResult(int request,int result,Intent data){
         super.onActivityResult(request,result,data);if(request!=1||!pending)return;
         if(result!=RESULT_OK||data==null||data.getData()==null){pending=false;export.setEnabled(true);return;}
         final Uri destination=data.getData();
-        if(!"content".equals(destination.getScheme())){pending=false;export.setEnabled(true);status.setText("יעד השמירה אינו נתמך.");return;}
+        if(!LicensePaths.exportGrant("content".equals(destination.getScheme()),android.provider.DocumentsContract.isDocumentUri(this,destination),(data.getFlags()&Intent.FLAG_GRANT_READ_URI_PERMISSION)!=0,(data.getFlags()&Intent.FLAG_GRANT_WRITE_URI_PERMISSION)!=0)){pending=false;export.setEnabled(true);status.setText("יעד השמירה אינו נתמך.");return;}
         worker.execute(()->{
             String message;
             try{exportBundle(destination);message="הודעות הרישוי וקוד המקור נשמרו ואומתו.";}

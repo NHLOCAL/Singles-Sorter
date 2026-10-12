@@ -3,6 +3,9 @@ package com.nhlocal.singlesorter.app;
 /** One local notice subtree, never a caller-selected filesystem path. */
 final class LicensePaths {
     private LicensePaths() {}
+    static boolean exportGrant(boolean content,boolean document,boolean read,boolean write) {
+        return content&&document&&read&&write;
+    }
     static boolean safe(String path) {
         if(path==null||path.length()==0||path.length()>512)return false;
         for(String part:path.split("/",-1)) {
