@@ -1907,7 +1907,7 @@ fn execution_decisions_are_fresh_ordered_and_not_recovered_from_journals() {
 fn execution_decisions_noop_requires_fresh_roots_resources_and_cancellation() {
     use std::sync::atomic::{AtomicBool, Ordering};
     let (old, mut storage, resources, _) = fixture(false);
-    storage.entries.truncate(2);
+    storage.entries[2].name = "readme.txt".into();
     let plan = plan_job(&old.request, &mut storage, &mut Metadata, &mut Ai { duet: false, fail: false }).unwrap();
     assert!(sorter_executor::no_op::is_clean_sort_noop(&plan));
     let cancel = AtomicBool::new(false);
