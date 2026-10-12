@@ -201,6 +201,7 @@ fn project(
         .transfers
         .map(selected::project)
         .unwrap_or(ExecutionResult {
+            no_op: false,
             source_items,
             committed_destinations: 0,
             moved_sources: 0,

@@ -7,14 +7,14 @@ below require final-head CI results; the presence of a test is not a passing run
 
 | Released behavior / flow | Planning and compatibility | Physical/product boundary |
 | --- | --- | --- |
-| Copy / Move toggle | Exact boolean and v14 virtual effects retained | Delivered selected Windows multi-file Copy / same-volume rename; new copied-Move host candidate binds ordinary NTFS main and named streams at preview for cross-volume singles and complete duet cohorts. Actual new host/package gates pending |
+| Copy / Move toggle | Exact boolean and v14 virtual effects retained | Delivered selected Windows multi-file Copy / same-volume rename; new copied-Move host candidate binds ordinary NTFS main and named streams at preview for cross-volume singles and exact nonempty eligible duet cohorts. The one-eligible/zero-eligible follow-up remains native/package-test pending |
 | Copy file attributes/timestamps | v14 uses `copy2` / `copytree` | Native Copy metadata preserves timestamps/readonly attributes; actual staged and extracted album-Copy fixtures passed at the desktop checkpoint below |
 | Main folder only / full tree | Original traversal/order retained | Selected plans validated whole; actual multi-file Windows gate required |
 | Create singles folders | Original `סינגלים` destination component retained | Journaled directory creation; actual staged/extracted singles tests assert artist and `סינגלים` layout |
 | Alphabetic sort | Original letter hierarchy retained | Backend directories supported; requires expanded native UI acceptance matrix |
 | Existing folders only | Original skip/target policy retained | No fabricated missing artist destinations; explicit feature-specific runtime coverage still required |
 | Duets, first artist | Original matching order retained | Ordinary single destination candidate supported |
-| Duets, every artist | Original ordered destinations and deletion intention retained | Copy supported where backend preflight accepts; new Move candidate verifies every destination before retiring the source once. Fewer than two eligible duet destinations remain refused; ordinary same-volume singles in mixed jobs retain rename identity |
+| Duets, every artist | Original ordered destinations and deletion intention retained | Copy supported where backend preflight accepts; new Move candidate verifies every destination before retiring the source once. One eligible original duet destination is a separate reviewed candidate; zero eligible destinations retain the source as an explicitly revalidated no-op. Failed required publication still retains the source. Ordinary same-volume singles in mixed jobs retain rename identity |
 | Original alias list + personal CSV | Ordered rows, duplicates, malformed-row diagnostics preserved | UI edit/import/delete/save/export and persistence baseline covered; no silent normalization |
 | Original NER + secondary classifier | Both exact original assets validated; no fallback | Actual staged/extracted Windows UI runs both original assets and original-AI selected Copy; unavailable/corrupt assets still fail closed |
 | Disabled AI | Explicit choice; no inference | Never silently substituted for configured unavailable models |
@@ -146,7 +146,8 @@ stream evidence before effects. It does not collect a newly trusted inventory at
 confirmation. Ordinary same-volume single transfers keep write-through rename;
 only cross-volume singles and actual multi-target duet sources use copied Move.
 The domain is ordinary local NTFS with no concurrent source/target writers.
-Cross-volume albums and incomplete eligible duet cohorts remain unavailable.
+That initial activation excluded cross-volume albums and partially eligible
+duet cohorts; the separately reviewed follow-ups below extend those boundaries.
 
 Mandatory new staged and extracted UI/CLI checks use two actual existing CI
 volumes, real original-model duets, mixed ordinary/duet jobs, named streams,
@@ -304,3 +305,30 @@ Primary format references: [Mutagen WAVE](https://mutagen.readthedocs.io/en/late
 [DSF](https://mutagen.readthedocs.io/en/latest/api/dsf.html) explicitly use ID3 tags.
 Historical packaged versions remain separately unverified; the transformer’s
 pinned reader evidence and narrower admission are documented in its own scope.
+
+
+## Intentionally skipped duet destinations
+
+The one-eligible follow-up retains the original ordered duet cohort instead of
+requiring two successful targets when `exist_only` intentionally omitted the
+other destination. It still requires every admitted destination to complete
+before source retirement. Failed required writes do not become successful skips.
+
+When every destination was skipped, the old blocked `DuetDeleteIntention` is
+retained only as historical decision evidence. The frontend admits a zero-effect
+completion only for a fresh matching Sort plan with no operations, zero predicted
+credits, no read/recognition errors, Move + duet + existing-only settings, and a
+one-to-one exact match between empty blocked intentions and present duet source
+observations. It creates no mutation grant, destination or journal. The ordinary
+UI explicitly states that no changes were made and the original files remain;
+its optional inactive list retains the original skipped row. This is the stated
+safe departure from the frozen all-skipped deletion, not a fabricated successful
+move or a suppression of the historical evidence.
+
+Actual staged/extracted UI and positional CLI gates now require a configured
+original-model one-eligible transfer and a zero-eligible retained-source case,
+including exact source identity, main/named-stream bytes, unchanged target and
+journal trees, actual zero/nonzero counters, and original summary credits. New
+Rust admission tests and these Windows consumer cases remain unrun at this
+source checkpoint. The 36 actually executed paired cases stay unchanged; broader
+duet settings vectors and decision/skip trace parity are a separate active lane.

@@ -66,6 +66,7 @@ export function simpleReason(row:PlanRow,repairEligible=false):string{
 export function simpleExecutionSummary(execution:Pick<ExecutionSnapshot,'status'|'result'>,copy:boolean):string{
  const result=execution.result;
  if(!result)return execution.status==='failed'?'לא התקבל אישור להשלמת הפעולה. בדוק את הקבצים לפני ניסיון נוסף.':execution.status==='needs_recovery'?'יש לבדוק את הקבצים לפני המשך העבודה.':'';
+ if(execution.status==='complete'&&result.no_op===true&&result.committed_destinations===0&&result.moved_sources===0&&result.items.length===0&&!result.repair&&!result.albums&&!result.failed_operations&&!result.blocked_operations&&!result.cancelled_operations&&!result.recovery_operations)return 'לא בוצעו שינויים. קובצי המקור נשמרו.';
  const parts:string[]=[];
  if(result.repair){
   const repair=result.repair;

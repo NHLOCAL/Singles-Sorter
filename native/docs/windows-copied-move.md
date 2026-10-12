@@ -91,6 +91,39 @@ This follow-on replaces the earlier mixed-plan safe refusal. Mandatory candidate
 counts are now 21 native, six journal and 13 product cases, including a mixed job
 whose ordinary source identity and ADS survive rename, exact committed operation
 order, and a later ordinary collision retaining an earlier completed duet. These
-new cases remain unrun locally. A duet with fewer than two eligible planned
-destinations remains refused: historical source deletion after a failed/skipped
-destination is intentionally not reproduced.
+new cases were unrun locally at that checkpoint. Its fewer-than-two destination
+restriction was interim and is superseded by the exact partial-eligibility
+follow-up below. Unsafe source deletion after zero eligible or failed required
+destinations remains excluded.
+
+## Intentional partial-eligibility duet follow-up
+
+The earlier two-destination minimum was an interim admission restriction. This
+follow-up admits one or more destinations only when the retained original plan
+explicitly binds them to its DuetDeleteIntention. It does not turn an ordinary
+same-volume single into a copied Move. Existing generic/synthetic binding rules
+retain their prior minimum; this relaxation is confined to the selected copied
+Move domain and its strict read-only validator.
+
+The exact frozen v14 blob `0b67726e72e527556f47a8eeffeb44778c62809b` checks
+exist_only at lines 606–609, copies each eligible duet destination at 629–631,
+credits successful copies at 642–643, and removes the original at 648–652.
+Therefore a duet with one intentionally eligible existing artist directory has
+one required copy and can safely retire after that exact destination is fully
+verified. A policy-skipped artist is not a failed required copy and is not added
+as a destination by this implementation. Original settings, routing, order and
+counters are unchanged.
+
+The historical unconditional deletion also ran after zero eligible destinations
+or a failed required copy. Those source-loss cases remain intentionally excluded:
+zero-eligible plans acquire no mutation authority and leave the source intact;
+any failed required destination prevents retirement. No predicted success can
+substitute for acknowledged publication and full stream/metadata verification.
+
+[Exact released loop](https://github.com/NHLOCAL/Singles-Sorter/blob/78d001aee5ce49628bdffebd34540fa83ba32c12/src/core/singles_sorter_v5.py#L603-L653)
+
+Three new owned native cases cover genuine one-eligible success with one
+publication/retirement, zero-eligible source preservation, and a late foreign
+collision at the sole required destination. The strict product/restart count is
+30; actual Windows execution and paired original-oracle consumer evidence remain
+required before acceptance.

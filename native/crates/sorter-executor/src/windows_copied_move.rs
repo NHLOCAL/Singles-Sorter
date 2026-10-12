@@ -56,7 +56,8 @@ pub fn supported_copied_move_plan(plan: &JobPlanV2) -> Result<()> {
         }
     }
     // Mirror the binding's exact retained duet cohort before offering Apply.
-    // A skipped destination never becomes permission to retire the source.
+    // Intentional policy skips are absent from this exact nonempty cohort.
+    // Failed required writes never become permission to retire the source.
     let mut by_source: HashMap<&StorageRef, Vec<usize>> = HashMap::new();
     let mut by_id = HashMap::new();
     for operation in &plan.operations {
@@ -80,7 +81,7 @@ pub fn supported_copied_move_plan(plan: &JobPlanV2) -> Result<()> {
         } = effect
         {
             let expected = by_source.get(&source.reference).ok_or(E::Unsupported)?;
-            if expected.len() < 2 || expected != after_operations {
+            if expected.is_empty() || expected != after_operations {
                 return Err(E::Unsupported);
             }
             for &id in expected {

@@ -370,7 +370,7 @@ fn validate_execution_domain_inner(
                 .map(|o| o.id)
                 .collect();
             if expected != *after_operations
-                || expected.len() < 2
+                || expected.len() < if domain == ExecutionDomain::SelectedWindowsCopiedMove { 1 } else { 2 }
                 || expected.iter().any(|i| {
                     let o = &operations[*i];
                     o.source.observation != *source
@@ -848,7 +848,7 @@ impl BindingData {
                     None => !op.copy_effect,
                     Some(cohort) => {
                         op.copy_effect
-                            && cohort.len() >= 2
+                            && !cohort.is_empty()
                             && cohort.contains(&op.id)
                             && cohort.iter().copied().collect::<HashSet<_>>().len() == cohort.len()
                             && cohort.iter().all(|id| {

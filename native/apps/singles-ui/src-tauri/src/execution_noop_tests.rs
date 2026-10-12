@@ -66,6 +66,7 @@ fn retained_clean_noop_revalidates_without_writing_any_journal_or_destination() 
             assert_eq!(outcome.status, "complete", "{outcome:?}");
             assert!(outcome.journal_path.is_none());
             let result = outcome.result.unwrap();
+            assert!(result.no_op);
             assert_eq!(result.committed_destinations, 0);
             assert!(result.items.is_empty());
             assert_eq!(

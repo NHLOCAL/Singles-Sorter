@@ -80,6 +80,8 @@ pub struct AlbumSummary {
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct ExecutionResult {
+    /// True only after a freshly revalidated plan with no admitted effects.
+    pub no_op: bool,
     #[cfg(feature = "selected-windows-execution")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub legacy_summary: Option<sorter_executor::legacy_summary::LegacySummary>,
@@ -759,6 +761,7 @@ mod selected {
                         snapshot.journal_path = None;
                         snapshot.operation = None;
                         snapshot.result = Some(ExecutionResult {
+                            no_op: true,
                             legacy_summary: Some(
                                 sorter_executor::legacy_summary::LegacySummary::default(),
                             ),
@@ -1045,6 +1048,7 @@ mod selected {
     }
     pub(super) fn project(result: JobResult) -> ExecutionResult {
         ExecutionResult {
+            no_op: false,
             legacy_summary: None,
             source_items: result.source_items,
             committed_destinations: result.committed_destinations,

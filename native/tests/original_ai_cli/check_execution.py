@@ -31,7 +31,7 @@ from desktop_repair import generated_mp3, inspect_mp3, FIELDS  # Independent fix
 
 spec = importlib.util.spec_from_file_location('execution_package_contract', ROOT / 'native/packaging/windows-preview/package_preview.py')
 package = importlib.util.module_from_spec(spec); spec.loader.exec_module(package)
-CHECKS = {'positional-wave-id3-five-fields', 'positional-aiff-id3-five-fields', 'positional-dsf-id3-five-fields',
+CHECKS = {'positional-one-eligible-duet-move', 'positional-zero-eligible-duet-source-retained', 'positional-wave-id3-five-fields', 'positional-aiff-id3-five-fields', 'positional-dsf-id3-five-fields',
           'positional-container-id3-exact-extent-decoded-audio', 'positional-container-id3-insufficient-padding-partial', 'positional-m4a-five-fields', 'positional-alac-five-fields', 'positional-mp4-fast-start-values',
           'positional-mp4-exact-extent-decoded-audio', 'positional-mp4-duplicate-outer-consolidation', 'positional-mp4-structural-partial',
           'positional-cross-volume-move', 'positional-original-ai-duet-move', 'positional-mixed-duet-and-rename',
@@ -260,6 +260,31 @@ def run(binary, bundle, report, package_root=None):
         require(sum(effect['kind'] == 'source_retired' for effect in effects) == 1, 'Copied source retirement was not acknowledged exactly once')
         require(sum(effect['kind'] == 'file_renamed' for effect in effects) == (1 if label == 'mixed-duet-move' else 0), 'Ordinary same-volume rename receipt is missing or fabricated')
         receipts[-1].update(case=label, source_sha256=before, source_items=len(names), destinations=len(expected), named_streams_verified=True)
+
+    for eligible in (1, 0):
+        label='one-eligible-duet' if eligible else 'zero-eligible-duet'
+        case=roots(label); source=case/'source'; target=case/'target'; journal=case/'journal'
+        original=source/DUET; write_wave(original); auxiliary(original).write_bytes(AUXILIARY)
+        before=digest(original); identity=original.stat().st_ino
+        if eligible: (target/ARTISTS[0]).mkdir()
+        source_before,target_before,journal_before=snapshot(source),snapshot(target),snapshot(journal)
+        args=['source','target','-nde','--journal-directory','journal']
+        if not package_root: args += ['--model-directory',str(bundle)]
+        actual=result_record(invoke(case,args).stderr)
+        require(actual['status']=='complete' and actual.get('recovery_error') is None,'Eligible duet did not complete')
+        require(actual['committed_destinations']==eligible and actual['moved_sources']==eligible,'Eligible duet physical counters differ')
+        require(actual['legacy_summary']=={'songs_sorted':eligible,'artist_folders_created':0,'albums_processed':0,'top_artists':[[ARTISTS[0],1]] if eligible else []},'Eligible duet original summary differs')
+        if eligible:
+            require_copied_recovery(actual['recovery'])
+            destination=target/ARTISTS[0]/DUET
+            require(not original.exists() and digest(destination)==before and auxiliary(destination).read_bytes()==AUXILIARY,'Single eligible destination/source retirement differs')
+            require({path.relative_to(target).as_posix() for path in target.rglob('*')}=={ARTISTS[0],ARTISTS[0]+'/'+DUET},'Skipped duet destination was created')
+            require(sum(effect['kind']=='source_retired' for effect in actual['effect_receipts'])==1,'Eligible source retirement receipt differs')
+        else:
+            require(actual['no_op'] is True and actual['items']==[] and actual['effect_receipts']==[] and actual['journal_directory'] is None,'Zero-eligible duet fabricated execution evidence')
+            require(snapshot(source)==source_before and snapshot(target)==target_before and snapshot(journal)==journal_before,'Zero-eligible duet changed media or journal namespace')
+            require(original.stat().st_ino==identity and auxiliary(original).read_bytes()==AUXILIARY,'Zero-eligible duet source identity or named stream changed')
+        receipts[-1].update(case=label,observed_result=actual,source_sha256=before,source_retained=not eligible)
 
     audio=(ROOT/'native/tests/fixtures/media/blank.mp3').read_bytes()
     exercise_cross_albums(invoke, result_record, require_album_recovery, scratch, other, audio, receipts)

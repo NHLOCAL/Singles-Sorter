@@ -10,12 +10,13 @@ import wave
 from desktop_ai import write_wave
 from desktop_albums import snapshot
 from desktop_polish import set_developer_mode
+from desktop_recovery import journal_snapshot
 
 DUET = 'ישראל כהן וחיים לוי - שיר חדש.wav'
 SINGLE = 'אברהם פריד - שיר בודד.wav'
 ARTISTS = ('ישראל כהן', 'חיים לוי')
 AUXILIARY = b'owned auxiliary'
-CHECKS = {'actual-cross-volume-move', 'actual-original-ai-duet-move', 'actual-mixed-duet-and-rename',
+CHECKS = {'actual-one-eligible-duet-move', 'actual-zero-eligible-duet-source-retained', 'actual-cross-volume-move', 'actual-original-ai-duet-move', 'actual-mixed-duet-and-rename',
           'copied-move-main-and-named-streams', 'copied-move-final-source-absence',
           'copied-move-preview-and-review-no-effects', 'copied-move-stale-stream-no-effects',
           'copied-move-stale-target-no-effects', 'copied-move-cancel-before-effects'}
@@ -47,16 +48,21 @@ def exercise_copied_move(script, click, fill, wait, capture, root, output, secon
     if not __debug__:
         raise RuntimeError('Physical acceptance requires Python assertions enabled')
     root = Path(root); root.mkdir(); receipts = []
+    selected = json.loads((Path(output) / 'selected-execution.json').read_text(encoding='utf-8'))
+    journals = {case['journal_path'] for case in selected['cases'] if case.get('journal_path')}
+    assert selected['status'] == 'passed' and len(journals) == 1
+    journal_root = Path(journals.pop()); assert journal_root.is_dir()
     # The second volume is the existing CI checkout volume; never mount a drive
     # or change filesystem/security settings to manufacture the capability.
     with tempfile.TemporaryDirectory(prefix='singles-ui-copied-target-', dir=second_volume_parent) as other:
         other = Path(other)
         assert root.stat().st_dev != other.stat().st_dev, 'CI must supply two actual volumes'
-        for label in ('cross-volume', 'duet', 'mixed', 'stale-stream', 'stale-target', 'cancel'):
+        for label in ('cross-volume', 'duet', 'mixed', 'one-eligible', 'zero-eligible', 'stale-stream', 'stale-target', 'cancel'):
             case = root / label; source = case / 'source'; source.mkdir(parents=True)
             cross_volume = label in ('cross-volume', 'stale-stream', 'cancel')
             target = (other / label) if cross_volume else case / 'target'; target.mkdir()
-            configured = label in ('duet', 'mixed', 'stale-target')
+            configured = label in ('duet', 'mixed', 'one-eligible', 'zero-eligible', 'stale-target')
+            if label == 'one-eligible': (target / ARTISTS[0]).mkdir()
             paths = [source / DUET] if configured else [source / SINGLE]
             if label == 'mixed': paths.append(source / SINGLE)
             for path in paths:
@@ -69,20 +75,25 @@ def exercise_copied_move(script, click, fill, wait, capture, root, output, secon
             if script("return document.querySelector('#app').dataset.view==='results'"):
                 click('#back-setup'); wait(lambda: script("return document.querySelector('#app').dataset.view==='setup'"))
             fill('#source', str(source)); fill('#target', str(target))
-            for key, value in dict(copy_mode=False, main_folder_only=True, singles_folder=False, abc_sort=False, exist_only=False).items():
+            for key, value in dict(copy_mode=False, main_folder_only=True, singles_folder=False, abc_sort=False, exist_only=label in ('one-eligible', 'zero-eligible')).items():
                 if script(f"return document.querySelector('#{key}').checked") != value: click('#'+key)
             click('#advanced'); click('#duet-all' if configured else '#duet-first')
             wait(lambda: script("return !document.querySelector('#duet-first').disabled"))
             profile = 'Configured' if configured else 'Disabled'
             script(f"document.querySelector('#ai-profile').value='{profile}';document.querySelector('#ai-profile').dispatchEvent(new Event('change',{{bubbles:true}}));")
             click('#advanced-dialog .close-dialog'); set_developer_mode(script, click, wait, False)
+            journal_before = journal_snapshot(journal_root)
             click('#sort')
             wait(lambda: script("return document.querySelector('#app').dataset.view==='results' && !document.querySelector('#back-setup').disabled"), timeout=120)
             assert script("return !document.querySelector('#review-apply').hidden && !document.querySelector('#review-apply').disabled"), label
             assert snapshot(source) == source_before and snapshot(target) == target_before
             assert all(auxiliary(path).read_bytes() == AUXILIARY for path in paths)
+            assert journal_snapshot(journal_root) == journal_before
             click('#review-apply')
-            assert 'המקור יוסר רק לאחר אימות כל היעדים' in script("return document.querySelector('#apply-description').textContent")
+            if label == 'zero-eligible':
+                assert 'קובצי המקור יישארו במקומם' in script("return document.querySelector('#apply-description').textContent")
+            else:
+                assert 'המקור יוסר רק לאחר אימות כל היעדים' in script("return document.querySelector('#apply-description').textContent")
             capture('copied-move-review-'+label); click('#apply-back')
             assert snapshot(source) == source_before and snapshot(target) == target_before
             if label == 'stale-stream':
@@ -112,7 +123,29 @@ def exercise_copied_move(script, click, fill, wait, capture, root, output, secon
                                      observed_file_effects=dict(new_destinations=0, retired_sources=0),
                                      native_result_counters=None, displayed_summary=summary, ipc_mocked=False))
                 continue
+            if label == 'zero-eligible':
+                assert snapshot(source) == source_before and snapshot(target) == target_before
+                assert journal_snapshot(journal_root) == journal_before
+                assert all(auxiliary(path).read_bytes() == AUXILIARY and path.stat().st_ino == identities[path.name] for path in paths)
+                assert script("return document.querySelector('#execution-summary').textContent") == 'לא בוצעו שינויים. קובצי המקור נשמרו.'
+                assert script("return document.querySelector('#execution-recovery').hidden")
+                assert script("return document.querySelectorAll('#rows tr').length") == 0
+                click('#show-inactive'); wait(lambda: script("return document.querySelector('#app').dataset.showInactive==='true' && !document.querySelector('#show-inactive').disabled"))
+                assert script("return document.querySelectorAll('#rows tr').length") == 1
+                assert 'ללא פעולה' in script("return document.querySelector('#rows').textContent")
+                capture('copied-move-zero-eligible-retained')
+                click('#show-inactive'); wait(lambda: script("return document.querySelector('#app').dataset.showInactive==='false' && !document.querySelector('#show-inactive').disabled"))
+                set_developer_mode(script, click, wait, True)
+                details = script("return document.querySelector('#execution-summary').textContent")
+                assert details == '0 יעדים נכתבו · 0 קבצי מקור הועברו · 0 נכשלו · 0 לא בוצעו'
+                set_developer_mode(script, click, wait, False)
+                receipts.append(dict(case=label, source=str(source), target=str(target), source_and_target_unchanged=True,
+                                     journal_unchanged=True, auxiliary_unchanged=True, source_identity_retained=True,
+                                     observed_displayed_counts=dict(committed_destinations=0, moved_sources=0, failed_operations=0, blocked_operations=0),
+                                     displayed_details=details, original_sha256=before, ipc_mocked=False))
+                continue
             expected = {(artist, DUET) for artist in ARTISTS} if configured else {('אברהם פריד', SINGLE)}
+            if label == 'one-eligible': expected = {(ARTISTS[0], DUET)}
             if label == 'mixed': expected.add(('אברהם פריד', SINGLE))
             found = {(path.parent.name, path.name) for path in target.rglob('*.wav')}
             assert found == expected, (found, expected)

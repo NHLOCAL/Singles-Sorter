@@ -43,6 +43,14 @@ describe('ordinary result presentation',()=>{
   expect(simpleExecutionSummary(execution,true)).toBe('נוצרו 2 עותקים · 1 לא הושלמו');
   expect(simpleExecutionSummary(execution,false)).toContain('0 קבצים הועברו · חלק מקובצי המקור נשמרו');
  });
+ it('shows retained originals only for an explicitly verified zero-effect completion',()=>{
+  const result={no_op:true,source_items:0,committed_destinations:0,moved_sources:0,failed_operations:0,blocked_operations:0,cancelled_operations:0,recovery_operations:0,items:[]};
+  for(const copy of [true,false])expect(simpleExecutionSummary({status:'complete',result},copy)).toBe('לא בוצעו שינויים. קובצי המקור נשמרו.');
+  expect(simpleExecutionSummary({status:'failed',result},false)).not.toContain('קובצי המקור נשמרו');
+  expect(simpleExecutionSummary({status:'complete',result:{...result,no_op:undefined}},false)).not.toContain('קובצי המקור נשמרו');
+  expect(simpleExecutionSummary({status:'complete',result:{...result,committed_destinations:1}},true)).not.toContain('לא בוצעו שינויים');
+  expect(simpleExecutionSummary({status:'complete',result:{...result,failed_operations:1}},false)).not.toContain('לא בוצעו שינויים');
+ });
  it('reports actual Fix outcomes without copy or move claims',()=>{
   const fix={...row,kind:'FixNames'};
   expect(simpleStatus({...fix,blockers:['Observation(PhysicalApplyUnavailable)']},[],false,{repairEligible:true})).toBe('לתיקון');

@@ -150,6 +150,7 @@ fn project(result: RepairResult) -> ExecutionResult {
         retained_backup_bytes: result.retained_backup_bytes,
     };
     ExecutionResult {
+        no_op: false,
         legacy_summary: None,
         source_items: result.total_files,
         // FixNames neither sorts destinations nor moves a source out of its tree.

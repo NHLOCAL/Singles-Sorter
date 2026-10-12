@@ -160,7 +160,7 @@ $('review-apply').addEventListener('click',()=>{
  const repairing=readiness.mode==='FixNames';
  $('apply-title').textContent=repairing?'תיקון שמות ותגיות':'ביצוע התוכנית';
  $('apply-target-label').hidden=repairing;
- $('apply-description').textContent=repairing?'תיקון שמות ותגיות בקבצים שברשימה. לפני החלפת תגיות נשמר עותק מקורי לצד הקובץ.':controller.state.developerMode?`${readiness.copy_mode?'העתקת':'העברת'} ${readiness.operation_count.toLocaleString('he-IL')} פעולות לפי התוכנית שהוצגה.`:readiness.copy_mode?'העתקת הקבצים שברשימה. קובצי המקור יישארו במקומם.':'העברת הקבצים שברשימה אל תיקיית היעד.';
+ $('apply-description').textContent=repairing?'תיקון שמות ותגיות בקבצים שברשימה. לפני החלפת תגיות נשמר עותק מקורי לצד הקובץ.':readiness.operation_count===0?'לא בוצעו שינויים. קובצי המקור יישארו במקומם; הבדיקה החוזרת תאמת שאין פעולות לביצוע.':controller.state.developerMode?`${readiness.copy_mode?'העתקת':'העברת'} ${readiness.operation_count.toLocaleString('he-IL')} פעולות לפי התוכנית שהוצגה.`:readiness.copy_mode?'העתקת הקבצים שברשימה. קובצי המקור יישארו במקומם.':'העברת הקבצים שברשימה אל תיקיית היעד.';
  if(readiness.notice)$('apply-description').append(document.createTextNode(' '+readiness.notice));
  $<HTMLInputElement>('apply-source').value=readiness.source;$<HTMLInputElement>('apply-target').value=readiness.target??'';
  openDialog('apply-dialog');$('apply-back').focus();
