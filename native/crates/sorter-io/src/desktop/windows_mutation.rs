@@ -425,7 +425,10 @@ impl WindowsMutationStorage {
         let root = self.selected_repair_root()?;
         let observed = observe(root.handle(), &root)?;
         if observed.identity != *root.identity() {
-            return Err(err(MutationErrorKind::StalePlan, "selected repair root changed"));
+            return Err(err(
+                MutationErrorKind::StalePlan,
+                "selected repair root changed",
+            ));
         }
         Ok(observed.reference)
     }

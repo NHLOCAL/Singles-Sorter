@@ -88,7 +88,9 @@ fn aligned_recovery_reference(
     let observed_root = observed_root.ok_or(E::Scope)?;
     let candidate = comparable_path(reference)?;
     let observed_root = comparable_path(observed_root)?;
-    let relative = candidate.strip_prefix(observed_root).map_err(|_| E::Scope)?;
+    let relative = candidate
+        .strip_prefix(observed_root)
+        .map_err(|_| E::Scope)?;
     let aligned = path(root)?.join(relative);
     Ok(StorageRef::WindowsPath {
         utf16: aligned.as_os_str().encode_wide().collect(),
@@ -1301,7 +1303,9 @@ pub fn recover_repair_journal(
                 return Err(E::Scope);
             }
             value.observed_source = Some(
-                roots.selected_repair_observed_reference().map_err(|_| E::Scope)?,
+                roots
+                    .selected_repair_observed_reference()
+                    .map_err(|_| E::Scope)?,
             );
             let root = comparable_path(&value.source)?;
             let mut seen = HashSet::new();
@@ -1534,12 +1538,7 @@ pub fn recover_repair_journal(
                 Some(op.source.sha256.as_str())
             };
             evidence.push(inspect_evidence(
-                &mut reads,
-                &header,
-                "current",
-                current,
-                expected,
-                cancel,
+                &mut reads, &header, "current", current, expected, cancel,
             )?)
         }
         if let Some(backup) = &state.backup {
@@ -1643,12 +1642,7 @@ pub fn recover_repair_journal(
                     e.reference == expected.reference && e.expected_identity == expected.identity
                 }) {
                     evidence.push(inspect_evidence(
-                        &mut reads,
-                        &header,
-                        role,
-                        &expected,
-                        hash,
-                        cancel,
+                        &mut reads, &header, role, &expected, hash, cancel,
                     )?);
                 }
             }
@@ -1785,12 +1779,20 @@ mod journal_budget_tests {
             r"\\?\C:\Users\runneradmin\music-other\album\song.mp3",
             r"\\?\C:\Users\runneradmin\music\..\outside.mp3",
         ] {
-            assert!(super::aligned_recovery_reference(&selected, Some(&observed), &reference(wrong)).is_err());
+            assert!(
+                super::aligned_recovery_reference(&selected, Some(&observed), &reference(wrong))
+                    .is_err()
+            );
         }
         // Even under the valid root, an 8.3 child alias is left exact. It cannot
         // match the planned long child path in check_observation.
         assert_ne!(
-            super::aligned_recovery_reference(&selected, Some(&observed), &reference(r"\\?\C:\Users\runneradmin\music\ALBUM~1\song.mp3")).unwrap(),
+            super::aligned_recovery_reference(
+                &selected,
+                Some(&observed),
+                &reference(r"\\?\C:\Users\runneradmin\music\ALBUM~1\song.mp3")
+            )
+            .unwrap(),
             reference(r"C:\Users\RUNNER~1\music\album-long\song.mp3")
         );
     }
