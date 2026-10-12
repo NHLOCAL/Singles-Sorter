@@ -1043,6 +1043,8 @@ fn copied_files_and_nested_directories_preserve_write_time_and_readonly() {
                 .set_modified(stamp),
         )
         .unwrap();
+    let original_file_permissions = std::fs::metadata(&file).unwrap().permissions();
+    let original_directory_permissions = std::fs::metadata(&directory).unwrap().permissions();
     for path in [&file, &directory] {
         let mut permissions = std::fs::metadata(path).unwrap().permissions();
         permissions.set_readonly(true);
@@ -1085,11 +1087,14 @@ fn copied_files_and_nested_directories_preserve_write_time_and_readonly() {
             .last_write_time(),
         expected_directory
     );
-    for path in [&file, &directory, &copied_file, &copied_directory] {
+    for (path, permissions) in [
+        (&file, &original_file_permissions),
+        (&directory, &original_directory_permissions),
+        (&copied_file, &original_file_permissions),
+        (&copied_directory, &original_directory_permissions),
+    ] {
         assert!(std::fs::metadata(path).unwrap().permissions().readonly());
-        let mut permissions = std::fs::metadata(path).unwrap().permissions();
-        permissions.set_readonly(false);
-        std::fs::set_permissions(path, permissions).unwrap();
+        std::fs::set_permissions(path, permissions.clone()).unwrap();
     }
     let journal = std::fs::read_dir(&f.journal)
         .unwrap()

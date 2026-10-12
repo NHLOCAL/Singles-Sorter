@@ -31,6 +31,23 @@ impl RecognitionProvider for Ai {
         panic!("disabled")
     }
 }
+// The released alias path intentionally returns only its first match. A real
+// duet decision requires multiple NER artists, supplied deterministically here.
+struct DuetAi;
+impl RecognitionProvider for DuetAi {
+    fn profile(&self) -> AiProfile {
+        AiProfile::Configured {
+            bundle_id: "fixture-duet-ner".into(),
+            available: true,
+        }
+    }
+    fn classify(&mut self, _: &str) -> Result<sorter_core::ClassifierFact, RecognitionError> {
+        Ok(sorter_core::ClassifierFact::Accept)
+    }
+    fn ner(&mut self, _: &str) -> Result<Vec<String>, RecognitionError> {
+        Ok(vec!["אמן".into(), "זמר".into()])
+    }
+}
 struct Fixture {
     tree: tempfile::TempDir,
     source: PathBuf,
@@ -291,13 +308,13 @@ fn selected_duet_copy_requires_metadata_at_every_distinct_destination() {
         .unwrap();
     }
     f.plan.request.settings.duet_mode = true;
-    f.plan.request.alias_rows = vec![
-        vec!["song".into(), "אמן".into()],
-        vec!["other".into(), "זמר".into()],
-    ];
+    f.plan.request.alias_rows.clear();
+    f.plan.request.ai_profile = DuetAi.profile();
+    f.scope.resources.ai_profile = DuetAi.profile();
+    f.scope.resources.model_hash = Some(digest(b"deterministic fixture duet provider"));
     {
         let mut reads = WindowsPlanningStorage::for_preview(&f.source, &f.target).unwrap();
-        f.plan = plan_job(&f.plan.request, &mut reads, &mut Metadata, &mut Ai).unwrap();
+        f.plan = plan_job(&f.plan.request, &mut reads, &mut Metadata, &mut DuetAi).unwrap();
         f.scope = prepare_scope(
             &f.plan,
             &mut reads,
@@ -307,7 +324,15 @@ fn selected_duet_copy_requires_metadata_at_every_distinct_destination() {
         .unwrap();
     }
     assert_eq!(f.plan.operations.len(), 4);
-    let mut job = f.job();
+    let mut job = SelectedWindowsJob::prepare(
+        f.roots(),
+        &f.plan,
+        &mut Metadata,
+        &mut DuetAi,
+        &f.scope.resources,
+        &f.scope,
+    )
+    .unwrap();
     let result = job.run(&AtomicBool::new(false), &mut |_| {}).unwrap();
     assert_eq!(result.status, JobStatus::Complete);
     assert_eq!(result.committed_destinations, 4);
