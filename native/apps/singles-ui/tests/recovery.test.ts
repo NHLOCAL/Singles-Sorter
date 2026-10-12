@@ -98,3 +98,68 @@ it('Fix consistency requires verified current and retained original evidence',as
  const evidence=[{role:'current',path:'C:\\source\\song.mp3',status:'Verified'},{role:'backup',path:'C:\\source\\original.backup',status:'Verified'}];
  h.inspectRecovery=async()=>({...report,state:'consistent',operations:[{...report.operations[0],evidence}]});const c=await chosen(h);await c.selectRoot('Source');await c.inspect();expect(c.report?.operations[0].evidence).toEqual(evidence);
 });
+
+function albumHost(){
+ const h=host();h.listRecovery=async()=>({...page,records:[{...page.records[0],family:'album',original_parent:'C:\\music'}]});
+ h.selectRecoveryParent=vi.fn(async()=>({token:'fresh-parent',display_name:'C:\\music',platform:'windows' as const,capabilities:{read:true,list:true}}));
+ return h;
+}
+it('requires an explicit Album parent choice and binds the picker to the retained record',async()=>{
+ const h=albumHost(),c=await chosen(h);expect(c.sourceMode).toBe('present');expect(c.canSelectParent).toBe(true);
+ await c.selectRoot('Source');await c.selectRoot('Target');expect(c.canInspect).toBe(true);
+ c.setSourceMode('removed');expect(c.source).toBeNull();expect(c.canInspect).toBe(false);expect(c.target?.token).toBe('Target');
+ await c.selectRoot('Source');expect(h.selectRecoveryParent).toHaveBeenCalledExactlyOnceWith('record');expect(c.source?.token).toBe('fresh-parent');
+ await c.inspect();expect(h.inspectRecovery).toHaveBeenCalledWith('record','fresh-parent','Target');
+ c.setSourceMode('present');expect(c.source).toBeNull();expect(c.report).toBeNull();expect(c.canResume).toBe(false);
+});
+it('does not infer original-parent support from the Album family or recorded completion',async()=>{
+ for(const record of [{...page.records[0],family:'album' as const,state:'recorded_complete' as const},{...page.records[0],original_parent:'C:\\music'}]){
+  const h=albumHost();h.listRecovery=async()=>({...page,records:[record]});const c=await chosen(h);
+  c.setSourceMode('removed');expect(c.sourceMode).toBe('present');expect(c.canSelectParent).toBe(false);await c.selectRoot('Source');expect(h.selectRecoveryParent).not.toHaveBeenCalled();
+ }
+});
+it('keeps parent choice unavailable on hosts without the exact picker capability',async()=>{
+ const h=albumHost();delete h.selectRecoveryParent;const c=await chosen(h);c.setSourceMode('removed');expect(c.sourceMode).toBe('present');expect(c.canSelectParent).toBe(false);
+});
+it('drops an original-parent selection when its dialog closes during the picker',async()=>{
+ const h=albumHost(),c=await chosen(h);c.setSourceMode('removed');const selected=pending<Awaited<ReturnType<NonNullable<RecoveryHost['selectRecoveryParent']>>>>();
+ h.selectRecoveryParent=vi.fn(()=>selected.promise);const pick=c.selectRoot('Source');c.close();selected.resolve({token:'late-parent',display_name:'C:\\music',platform:'windows',capabilities:{read:true,list:true}});await pick;
+ expect(c.source).toBeNull();expect(c.selected).toBeNull();expect(c.sourceMode).toBe('present');
+});
+it('never acquires parent authority for an invalid or unsupported Album record',async()=>{
+ for(const state of ['invalid','unsupported'] as const){const h=albumHost();h.listRecovery=async()=>({...page,records:[{...page.records[0],family:'album',original_parent:'C:\\music',state}]});const c=await chosen(h);c.setSourceMode('removed');await c.selectRoot('Source');await c.inspect();expect(h.selectRecoveryParent).not.toHaveBeenCalled();expect(h.inspectRecovery).not.toHaveBeenCalled();}
+});
+
+it('rejects clean-completion claims with unresolved Album root or journal evidence',async()=>{
+ for(const status of ['Missing','Changed','Unverified','unknown']){
+  const h=albumHost(),c=await chosen(h);await c.selectRoot('Source');await c.selectRoot('Target');
+  h.inspectRecovery=async()=>({...report,state:'consistent',operations:report.operations.map(item=>({...item,status:'Committed'})),evidence:[{role:'source_root',path:'C:\\source',status}]});
+  await c.inspect();expect(c.report).toBeNull();expect(c.error).toContain('לא הושלמה');
+ }
+});
+it('accepts explicitly verified recorded absence and bounds optional scope evidence pages',async()=>{
+ const h=albumHost(),c=await chosen(h);await c.selectRoot('Source');await c.selectRoot('Target');
+ h.inspectRecovery=async()=>({...report,state:'consistent',operations:report.operations.map(item=>({...item,status:'Committed'})),evidence:[{role:'source_root',path:'source',status:'Verified'},{role:'target_root',path:'target',status:'Verified'},{role:'journal_completion',path:'journal',status:'Verified'},...Array.from({length:122},(_,index)=>({role:'removed_directory',path:`C:\\album\\${index}`,status:'AbsentExpected'}))]});
+ await c.inspect();expect(c.report?.state).toBe('consistent');expect(c.visibleEvidence).toHaveLength(50);c.setEvidencePage(100);expect(c.visibleEvidence).toHaveLength(25);c.setEvidencePage(125);expect(c.evidenceOffset).toBe(100);
+ c.setSourceMode('removed');expect(c.report).toBeNull();expect(c.evidenceOffset).toBe(0);
+});
+
+it('refuses omitted or truncated Album evidence and contradictory file metadata',async()=>{
+ const complete:RecoveryReport={...report,state:'consistent',operations:report.operations.map(item=>({...item,status:'Committed',evidence:[{role:'file_metadata',path:item.destination,status:'Verified'}]})),evidence:[{role:'source_root',path:'source',status:'Verified'},{role:'target_root',path:'target',status:'Verified'},{role:'journal_completion',path:'journal',status:'Verified'}]};
+ for(const change of ['scope','source','target','journal','missing-file','duplicate-file','wrong-id','metadata','source-state']){
+  const h=albumHost(),c=await chosen(h);await c.selectRoot('Source');await c.selectRoot('Target');const value=structuredClone(complete);
+  if(change==='scope')delete value.evidence;
+  else if(['source','target','journal'].includes(change))value.evidence=value.evidence!.filter(entry=>entry.role!==({source:'source_root',target:'target_root',journal:'journal_completion'}[change]));
+  else if(change==='missing-file')value.operations.pop();
+  else if(change==='duplicate-file')value.operations[1].operation=0;
+  else if(change==='wrong-id')value.operations[1].operation=99;
+  else if(change==='metadata')value.operations[0].evidence![0].status='Changed';
+  else value.evidence![0].status='AbsentExpected';
+  h.inspectRecovery=async()=>value;await c.inspect();expect(c.report,change).toBeNull();expect(c.error,change).toBeTruthy();
+ }
+});
+it('requires the explicit missing-source selection before accepting expected root absence',async()=>{
+ const h=albumHost(),c=await chosen(h);c.setSourceMode('removed');await c.selectRoot('Source');await c.selectRoot('Target');
+ h.inspectRecovery=async()=>({...report,state:'consistent',operations:report.operations.map(item=>({...item,status:'Committed'})),evidence:[{role:'source_root',path:'source',status:'AbsentExpected'},{role:'target_root',path:'target',status:'Verified'},{role:'journal_completion',path:'journal',status:'Verified'}]});
+ await c.inspect();expect(c.report?.state).toBe('consistent');
+});

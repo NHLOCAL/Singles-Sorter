@@ -74,7 +74,7 @@ fn check_copy_metadata(
     }
     Ok(())
 }
-fn retained_attributes(attributes: u32) -> u32 {
+pub(super) fn retained_attributes(attributes: u32) -> u32 {
     attributes & !(FILE_ATTRIBUTE_NORMAL.0 | FILE_ATTRIBUTE_READONLY.0)
 }
 fn capture_copy_metadata(

@@ -4877,6 +4877,16 @@ pub use album_rename::{
     WindowsAlbumRootRenameSession, WindowsAlbumTreeEntry, WindowsAlbumTreeObservation,
 };
 
+#[path = "windows_album_inspection.rs"]
+mod album_inspection;
+pub use album_inspection::{
+    WindowsAlbumInspectionDirectory, WindowsAlbumInspectionJournal, WindowsAlbumInspectionTarget,
+    WindowsAlbumJournalInspection, WindowsAlbumJournalInspectionInputs, WindowsAlbumPresentJournalInspectionInputs,
+    WindowsAlbumReadInspection, WindowsAlbumReadInspectionInputs,
+    WindowsAlbumInspectionParentGrant, WindowsAlbumOriginalLocation,
+    WindowsAlbumOriginalLocationInspection,
+};
+
 #[path = "windows_copy_metadata.rs"]
 mod copy_metadata;
 pub use copy_metadata::{

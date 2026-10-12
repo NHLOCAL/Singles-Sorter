@@ -1072,7 +1072,7 @@ impl ReadStorage for WindowsAlbumPlanningStorage<'_> {
     }
 }
 
-fn move_streams_match(
+pub(crate) fn move_streams_match(
     actual: &WindowsMoveSourceEvidence,
     expected: &CopiedMoveSourceEvidence,
 ) -> bool {

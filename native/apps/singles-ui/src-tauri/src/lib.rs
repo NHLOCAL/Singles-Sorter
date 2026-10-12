@@ -79,6 +79,7 @@ pub fn run() {
             commands::recovery_snapshot,
             commands::cancel_recovery,
             commands::select_recovery_root,
+            commands::select_recovery_parent,
             commands::start_recovery_inspection,
             commands::cancel_apply,
             commands::cancel_preview,

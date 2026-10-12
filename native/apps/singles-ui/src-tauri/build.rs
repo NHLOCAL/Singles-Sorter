@@ -7,6 +7,7 @@ fn main() {
             "recovery_snapshot",
             "cancel_recovery",
             "select_recovery_root",
+            "select_recovery_parent",
             "start_recovery_inspection",
             "select_root",
             "resolve_typed_root",

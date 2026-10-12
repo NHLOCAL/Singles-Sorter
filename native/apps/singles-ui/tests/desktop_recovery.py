@@ -13,7 +13,11 @@ from desktop_ai import tree_snapshot
 
 
 def file_hash(path):
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    digest = hashlib.sha256()
+    with Path(path).open('rb') as stream:
+        for chunk in iter(lambda: stream.read(64 * 1024), b''):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def journal_snapshot(root, permissions=None):
@@ -88,11 +92,13 @@ def exercise_recovery(script, click, wait, capture, pick, restart, binary, outpu
     assert script("return document.querySelector('#source').value==='' && document.querySelector('#target').value===''")
     inspected = []
     families = set()
+    unsupported_whole_seen = False
 
     def idle():
         wait(lambda: script("return document.querySelector('#recovery-dialog').open && document.querySelector('#recovery-busy').hidden"))
 
     def choose(source):
+        nonlocal unsupported_whole_seen
         click('#menu'); click('#recovery-menu'); idle()
         for _ in range(26):  # At most 256 retained records, ten per page.
             count = script("return document.querySelectorAll('#recovery-list button').length")
@@ -101,7 +107,10 @@ def exercise_recovery(script, click, wait, capture, pick, restart, binary, outpu
                 click(selector)
                 family = script("return document.querySelector('#recovery-list button[aria-pressed=true]').dataset.recoveryFamily")
                 families.add(family)
-                if family in ('album', 'orphan'):
+                state = script("return document.querySelector('#recovery-list button[aria-pressed=true]').dataset.recoveryState")
+                if family == 'album' and state == 'unsupported':
+                    unsupported_whole_seen = True
+                if family == 'orphan' or (family == 'album' and state == 'unsupported'):
                     assert script("return document.querySelector('#recovery-selection').hidden && document.querySelector('#recovery-inspect').disabled")
                     assert not script("return document.querySelector('#recovery-error').hidden")
                 if script("return document.querySelector('#recovery-recorded-source').value") == str(source):
@@ -227,11 +236,11 @@ def exercise_recovery(script, click, wait, capture, pick, restart, binary, outpu
         inspected.append({'job_id': job_id, 'family': 'repair', 'case': case['case'], 'source_before': before_source,
                           'journals_before': before_journals, 'owned_changed_source': changed_source})
         click('#recovery-close')
-    # Album needs its own reviewed grant/parser path and stays explicitly visible.
-    assert {'album', 'repair'} <= families
+    # Whole-object Album journals remain explicitly visible; file-Album has a separate gate.
+    assert {'album', 'repair'} <= families and unsupported_whole_seen
     checks = ['actual-process-restart', 'fresh-native-role-selections', 'wrong-roots-rejected',
               'historical-vs-current-state', 'per-file-reconciliation', 'recovery-no-file-or-journal-writes',
-              'completed-copy-and-move-reconciled', 'copied-duet-and-mixed-restart-reconciled', 'copied-restart-named-stream-change-detected', 'unsupported-album-visible',
+              'completed-copy-and-move-reconciled', 'copied-duet-and-mixed-restart-reconciled', 'copied-restart-named-stream-change-detected', 'unsupported-whole-album-visible',
               'completed-fix-reconciled', 'partial-fix-stays-unresolved', 'fix-source-only-fresh-grant', 'fix-retained-backup-change-detected',
               'measured-streaming-progress', 'close-reopen-requires-fresh-roots']
     (output / 'restart-recovery.json').write_text(json.dumps({'status': 'passed', 'ipc_mocked': False,

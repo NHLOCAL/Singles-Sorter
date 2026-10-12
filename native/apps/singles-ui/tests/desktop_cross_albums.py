@@ -34,7 +34,7 @@ def displayed_counts(details):
 
 
 def exercise_cross_albums(script, click, fill, wait, capture, root, output, audio_path,
-                          second_volume_parent):
+                          second_volume_parent, recovery=None):
     if not __debug__:
         raise RuntimeError('Physical acceptance requires Python assertions enabled')
     root = Path(root); root.mkdir(); audio = Path(audio_path).read_bytes(); receipts = []
@@ -150,6 +150,9 @@ def exercise_cross_albums(script, click, fill, wait, capture, root, output, audi
                                  expected_counts=dict(committed_destinations=len(before_files), moved_sources=len(before_files)),
                                  observed_displayed_counts=counters, displayed_summary=summary, displayed_details=details,
                                  original_album_absent=True, descendant_metadata_preserved=True, ipc_mocked=False))
+            receipts[-1]['file_count'] = len(before_files)
+            if recovery is not None:
+                recovery(receipts[-1])  # Still inside the owned second-volume lifetime.
     (Path(output) / 'cross-album-execution.json').write_text(json.dumps(
         dict(status='passed', checks=sorted(CHECKS), cases=receipts), ensure_ascii=False, indent=2), encoding='utf-8')
     return sorted(CHECKS)

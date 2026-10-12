@@ -10,6 +10,8 @@ pub struct RecoveryRecord {
     family: &'static str,
     source: Option<String>,
     target: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    original_parent: Option<String>,
     state: &'static str,
     detail: String,
     operation_count: usize,
@@ -47,6 +49,8 @@ pub struct RecoveryReport {
     unverified_directories: usize,
     observation_limit_reached: bool,
     operations: Vec<RecoveryOperation>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    evidence: Vec<RecoveryEvidence>,
 }
 #[path = "recovery_run.rs"]
 mod run;
@@ -60,6 +64,8 @@ pub(super) struct RecoveryState {
     records: Vec<selected::RetainedRecord>,
     #[cfg(all(windows, feature = "selected-windows-execution"))]
     roots: Vec<Root>,
+    #[cfg(all(windows, feature = "selected-windows-execution"))]
+    parents: Vec<selected::ParentRoot>,
 }
 #[cfg(not(all(windows, feature = "selected-windows-execution")))]
 impl Host {
@@ -82,6 +88,9 @@ impl Host {
             "בדיקת יומני ביצוע אינה זמינה בבנייה זו.",
         ))
     }
+    pub fn select_recovery_parent_path(&self, _: &str, _: PathBuf) -> Result<RootSelection> {
+        Err(HostError::new("RECOVERY_UNAVAILABLE", "בדיקת יומני ביצוע אינה זמינה בבנייה זו."))
+    }
     pub fn select_recovery_path(&self, _: Role, _: PathBuf) -> Result<RootSelection> {
         Err(HostError::new(
             "RECOVERY_UNAVAILABLE",
@@ -94,6 +103,7 @@ mod selected {
     use super::*;
     use sorter_core::discovery::StorageErrorKind;
     use sorter_executor::inspection_control::InspectionControl;
+    use sorter_executor::windows_album::{RecordedAlbumFileJob, inspect_recorded_album_file_job};
     use sorter_executor::windows_job::{
         MAX_RESTART_JOURNAL_BYTES, MAX_STREAMING_JOURNAL_BYTES, recover_selected_journals,
         recover_selected_journals_controlled, summarize_recorded_selected_job_with_control,
@@ -122,7 +132,25 @@ mod selected {
         journal: RetainedJournal,
     }
     #[derive(Clone)]
+    pub(super) struct ParentRoot {
+        record_token: String,
+        selection: RootSelection,
+        path: PathBuf,
+        observed: EntryObservation,
+    }
+    #[derive(Clone)]
+    enum SelectedSource {
+        Present(Root),
+        Missing(ParentRoot),
+    }
+    #[derive(Clone)]
     enum RetainedJournal {
+        Album {
+            manifest: JournalEvidence,
+            transfers: Option<JournalEvidence>,
+            transfer_path: PathBuf,
+            descriptor: RecordedAlbumFileJob,
+        },
         Single {
             directories: JournalEvidence,
             transfers: Option<JournalEvidence>,
@@ -327,6 +355,8 @@ mod selected {
             (".directories.jsonl", "sorter-", "single"),
             (".transfers.jsonl", "sorter-", "orphan"),
             (".album.jsonl", "album-", "album"),
+            (".album-move.jsonl", "album-", "album"),
+            (".transfers.jsonl", "album-", "orphan"),
             (".repair.jsonl", "repair-", "repair"),
         ] {
             if let Some(stem) = name.strip_suffix(suffix) {
@@ -401,6 +431,39 @@ mod selected {
                 },
             )
         }
+        pub fn select_recovery_parent_path(&self, token: &str, path: PathBuf) -> Result<RootSelection> {
+            let expected = {
+                let inner = self.lock()?;
+                let record = inner.recovery.records.iter().find(|record| record.token == token).ok_or_else(changed)?;
+                let RetainedJournal::Album { descriptor, .. } = &record.journal else {
+                    return Err(HostError::new("UNSUPPORTED_RECOVERY_PARENT", "לפעולה זו יש לבחור את תיקיית המקור עצמה."));
+                };
+                descriptor.original_source.as_ref().ok_or_else(|| HostError::new(
+                    "UNSUPPORTED_RECOVERY_PARENT", "היומן אינו כולל ראיה למיקום המקור שהוסר. יש לבחור מקור קיים."
+                ))?.parent_identity.clone()
+            };
+            validate_path(&path)?;
+            let observed = inspect_root(&path)?;
+            if observed.identity.as_ref() != Some(&expected) {
+                return Err(HostError::new("RECOVERY_PARENT_CHANGED", "התיקייה שנבחרה אינה התיקייה שהכילה את המקור המתועד."));
+            }
+            // The identity supplied to native open is the fresh picker observation,
+            // not the data-only expected identity read from the saved journal.
+            sorter_io::desktop::windows_mutation::WindowsAlbumInspectionParentGrant::new(
+                path.clone(), observed.identity.clone().ok_or_else(changed)?
+            ).map_err(storage_error)?;
+            let selection = RootSelection {
+                token: self.next("recovery-parent"),
+                display_name: path.to_string_lossy().into_owned(),
+                capabilities: RootCapabilities { read: observed.capabilities.read == Some(true), list: observed.capabilities.list == Some(true) },
+                platform: platform(),
+            };
+            let mut inner = self.lock()?;
+            if !inner.recovery.records.iter().any(|record| record.token == token) { return Err(changed()); }
+            inner.recovery.parents.retain(|root| root.record_token != token);
+            inner.recovery.parents.push(ParentRoot { record_token: token.to_owned(), selection: selection.clone(), path, observed });
+            Ok(selection)
+        }
         pub fn select_recovery_path(&self, role: Role, path: PathBuf) -> Result<RootSelection> {
             validate_path(&path)?;
             let observed = inspect_root(&path)?;
@@ -444,6 +507,7 @@ mod selected {
                 let mut inner = self.lock()?;
                 inner.recovery.records.clear();
                 inner.recovery.roots.clear();
+                inner.recovery.parents.clear();
                 inner.journal_directory.clone().ok_or_else(|| {
                     HostError::new("JOURNAL_UNAVAILABLE", "תיקיית היומנים אינה זמינה.")
                 })?
@@ -493,7 +557,8 @@ mod selected {
             names.retain(|name| {
                 let (stem, family) = journal_descriptor(name).expect("filtered journal name");
                 family != "orphan"
-                    || !directory_names.contains(&format!("{stem}.directories.jsonl"))
+                    || (!directory_names.contains(&format!("{stem}.directories.jsonl"))
+                        && !directory_names.contains(&format!("{stem}.album.jsonl")))
             });
             names.sort_by(|a, b| journal_order(b).cmp(&journal_order(a)));
             if names.len() > MAX_RECORDS {
@@ -514,7 +579,7 @@ mod selected {
                 checkpoint(control)?;
                 let token = self.next("recovery-record");
                 let (stem, family) = journal_descriptor(&name).expect("filtered safe journal name");
-                if family == "album" || family == "orphan" {
+                if name.ends_with(".album-move.jsonl") || family == "orphan" {
                     let regular = match observation(&mut storage, &directory.join(&name), control) {
                         Ok(observed) => observed.is_some_and(|entry| entry.kind == EntryKind::File),
                         Err(error) if error.code == "CANCELLED" => return Err(error),
@@ -538,6 +603,7 @@ mod selected {
                         family,
                         source: None,
                         target: None,
+                        original_parent: None,
                         state: if regular { "unsupported" } else { "invalid" },
                         detail: if regular {
                             detail.into()
@@ -563,7 +629,7 @@ mod selected {
                             return Err(changed());
                         }
                         let record = RecoveryRecord { token: token.clone(), job_id: Some(descriptor.job_id), journal_name: name.clone(), family,
-                            source: Some(display(&descriptor.source)), target: None, state: "inspection_needed",
+                            source: Some(display(&descriptor.source)), target: None, original_parent: None, state: "inspection_needed",
                             detail: "נמצא יומן תיקון שמות ותגיות. יש לבחור מחדש את תיקיית המקור כדי לבדוק את הקבצים והעותקים המקוריים. היומן לבדו אינו מאמת את מצבם.".into(), operation_count: descriptor.operations.len() };
                         retained.push(RetainedRecord {
                             token: token.clone(),
@@ -572,6 +638,30 @@ mod selected {
                             journal: RetainedJournal::Repair {
                                 journal: directory_evidence,
                             },
+                        });
+                        return Ok(record);
+                    }
+                    if family == "album" {
+                        let fallback = InspectionControl::new(Arc::new(AtomicBool::new(false)), |_| {});
+                        let descriptor = inspect_recorded_album_file_job(&directories, control.unwrap_or(&fallback)).map_err(recorded_error)?;
+                        if descriptor.job_id != stem { return Err(changed()); }
+                        let transfer_path = directory.join(format!("{stem}.transfers.jsonl"));
+                        let transfers = observation(&mut storage, &transfer_path, control)?
+                            .map(|observed| read_bound(&mut storage, &observed, &mut budget, control))
+                            .transpose()?;
+                        let original_parent = descriptor.original_source.as_ref().and_then(|source| {
+                            PathBuf::from(display(&source.reference)).parent().map(|path| path.to_string_lossy().into_owned())
+                        });
+                        let record = RecoveryRecord {
+                            token: token.clone(), job_id: Some(descriptor.job_id.clone()), journal_name: name.clone(), family,
+                            source: Some(display(&descriptor.source.reference)), target: Some(display(&descriptor.target.reference)),
+                            original_parent, state: "inspection_needed",
+                            detail: "נמצא יומן מיון אלבומים. יש לבחור מחדש את מיקום המקור והיעד כדי לבדוק את הקבצים. היומן לבדו אינו מאמת את מצבם.".into(),
+                            operation_count: descriptor.file_count,
+                        };
+                        retained.push(RetainedRecord {
+                            token: token.clone(), directory: directory.clone(), root: root.clone(),
+                            journal: RetainedJournal::Album { manifest: directory_evidence, transfers: transfers.map(|(_, evidence)| evidence), transfer_path, descriptor },
                         });
                         return Ok(record);
                     }
@@ -595,6 +685,7 @@ mod selected {
                         family,
                         source: Some(display(&summary.job.source)),
                         target: Some(display(&summary.job.target)),
+                        original_parent: None,
                         state: if summary.recorded_complete {
                             "recorded_complete"
                         } else {
@@ -627,6 +718,7 @@ mod selected {
                     family,
                     source: None,
                     target: None,
+                    original_parent: None,
                     state: "invalid",
                     detail: format!("לא ניתן לאמת את היומן. {}", error.message),
                     operation_count: 0,
@@ -694,8 +786,22 @@ mod selected {
                         ));
                     }
                 };
-                (record, find(source_token, Role::Source)?, target)
+                let source = if matches!(&record.journal, RetainedJournal::Album { .. }) {
+                    match find(source_token, Role::Source) {
+                        Ok(root) => SelectedSource::Present(root),
+                        Err(_) => SelectedSource::Missing(inner.recovery.parents.iter()
+                            .find(|parent| parent.record_token == record.token && parent.selection.token == source_token)
+                            .cloned().ok_or_else(changed)?),
+                    }
+                } else {
+                    SelectedSource::Present(find(source_token, Role::Source)?)
+                };
+                (record, source, target)
             };
+            if matches!(&record.journal, RetainedJournal::Album { .. }) {
+                return inspect_album_record(record, source, target.ok_or_else(changed)?, control, cursor);
+            }
+            let SelectedSource::Present(source) = source else { return Err(changed()); };
             if matches!(&record.journal, RetainedJournal::Repair { .. }) {
                 return inspect_repair_record(record, source, control, cursor)
                     .map_err(repair_inspection_error);
@@ -808,9 +914,180 @@ mod selected {
                 unverified_directories: report.directories.unverified.len(),
                 observation_limit_reached: report.observation_limit_reached,
                 operations,
+                evidence: vec![],
             })
         }
     }
+    fn inspect_album_record(
+        record: RetainedRecord,
+        source: SelectedSource,
+        target: Root,
+        control: Option<&InspectionControl>,
+        cursor: usize,
+    ) -> Result<RecoveryReport> {
+        project_album_inspection(read_album_inspection(record, source, target, control, cursor)?)
+    }
+
+    fn read_album_inspection(
+        record: RetainedRecord,
+        source: SelectedSource,
+        target: Root,
+        control: Option<&InspectionControl>,
+        cursor: usize,
+    ) -> Result<sorter_executor::windows_album::RecordedAlbumFileInspection> {
+        use sorter_executor::windows_album::{
+            AlbumFileInspectionGrants, AlbumFileInspectionJournal, AlbumFileInspectionSource,
+            recover_recorded_album_file_job,
+        };
+        use sorter_io::desktop::windows_mutation::WindowsAlbumInspectionParentGrant;
+        use sorter_io::mutation::MutationName;
+        let fallback = InspectionControl::new(Arc::new(AtomicBool::new(false)), |_| {});
+        let control = control.unwrap_or(&fallback);
+        let RetainedJournal::Album { manifest, transfers, transfer_path, descriptor } = &record.journal else {
+            return Err(changed());
+        };
+        let mut storage = probe(Some(control), || Desktop::new(std::slice::from_ref(&record.directory)).map_err(storage_error))?;
+        let reference = storage.reference(&record.directory).map_err(storage_error)?;
+        let observed = probe(Some(control), || storage.stat(&reference).map_err(storage_error))?;
+        if observed.identity != record.root.identity || observed.kind != EntryKind::Directory { return Err(changed()); }
+        let mut budget = PAGE_BYTE_BUDGET;
+        // Preserve discovery's exact metadata/digest evidence before native open.
+        // The executor repeats the digest check through its own held read handles.
+        read_retained(&mut storage, manifest, &mut budget, Some(control))?;
+        if let Some(evidence) = transfers {
+            read_retained(&mut storage, evidence, &mut budget, Some(control))?;
+        } else if observation(&mut storage, transfer_path, Some(control))?.is_some() {
+            return Err(changed());
+        }
+        drop(storage);
+        let journal = |evidence: &JournalEvidence| -> Result<AlbumFileInspectionJournal> {
+            Ok(AlbumFileInspectionJournal {
+                name: MutationName::Windows(evidence.observed.name.encode_utf16().collect()),
+                identity: evidence.observed.identity.clone().ok_or_else(changed)?,
+                length: evidence.observed.size.ok_or_else(changed)?,
+                sha256: evidence.sha256.clone(),
+            })
+        };
+        let mut journals = vec![journal(manifest)?];
+        if let Some(evidence) = transfers { journals.push(journal(evidence)?); }
+        let grant = |root: Root| WindowsSelectedRootGrant::new(root.path, root.observed.identity.ok_or_else(changed)?).map_err(storage_error);
+        let source = match source {
+            SelectedSource::Present(root) => AlbumFileInspectionSource::Present(grant(root)?),
+            SelectedSource::Missing(parent) => AlbumFileInspectionSource::Missing(
+                WindowsAlbumInspectionParentGrant::new(parent.path, parent.observed.identity.ok_or_else(changed)?).map_err(storage_error)?
+            ),
+        };
+        let grants = AlbumFileInspectionGrants {
+            source, target: grant(target)?,
+            journal: WindowsSelectedRootGrant::new(record.directory, record.root.identity.ok_or_else(changed)?).map_err(storage_error)?,
+        };
+        recover_recorded_album_file_job(descriptor, grants, journals, control, cursor).map_err(recorded_error)
+    }
+
+    fn project_album_inspection(
+        inspected: sorter_executor::windows_album::RecordedAlbumFileInspection,
+    ) -> Result<RecoveryReport> {
+        use sorter_executor::recovery::{CopyMetadataRecoveryStatus, RecoveryStatus};
+        use sorter_executor::windows_album::{AlbumDirectoryEvidenceStatus, AlbumInspectionSourceState};
+        use std::collections::HashSet;
+        let recorded = inspected.recorded;
+        let report = inspected.recovery;
+        if report.whole.is_some() || recorded.files.len() != recorded.file_count
+            || inspected.files.len() != recorded.files.len()
+        { return Err(changed()); }
+        let mut operations = Vec::with_capacity(inspected.files.len());
+        for (index, item) in inspected.files.into_iter().enumerate() {
+            if item.file != recorded.files[index] || item.file.physical_operation != index
+                || item.recovery.as_ref().is_some_and(|entry| entry.operation != index)
+            { return Err(changed()); }
+            let status = item.recovery.as_ref().map(|entry| {
+                if matches!(entry.copy_metadata, CopyMetadataRecoveryStatus::Verified | CopyMetadataRecoveryStatus::NotRequested) {
+                    format!("{:?}", entry.status)
+                } else { "NeedsRecovery".into() }
+            }).unwrap_or_else(|| "NeedsRecovery".into());
+            let evidence = item.recovery.as_ref().filter(|entry| entry.copy_metadata != CopyMetadataRecoveryStatus::NotRequested)
+                .map(|entry| RecoveryEvidence {
+                    role: "file_metadata".into(), path: display(&item.file.destination),
+                    status: match entry.copy_metadata {
+                        CopyMetadataRecoveryStatus::Verified => "Verified",
+                        CopyMetadataRecoveryStatus::Mismatch => "Changed",
+                        _ => "Unverified",
+                    }.into(),
+                }).into_iter().collect();
+            operations.push(RecoveryOperation { operation: index, source: display(&item.file.source),
+                destination: display(&item.file.destination), status, evidence });
+        }
+        let removed = report.removed_directory_references.iter().map(|(reference, identity)| (reference, identity)).collect::<HashSet<_>>();
+        if removed.len() != report.removed_directory_references.len() { return Err(changed()); }
+        let root_removed = removed.contains(&(&recorded.source.reference, recorded.source.identity.as_ref().ok_or_else(changed)?));
+        let mut evidence = vec![match inspected.source_state {
+            AlbumInspectionSourceState::Present { observed } => RecoveryEvidence {
+                role: "source_root".into(), path: display(&observed.reference),
+                status: if root_removed { "Changed" } else { "Verified" }.into(),
+            },
+            AlbumInspectionSourceState::Absent { recorded: original } => RecoveryEvidence {
+                role: "source_root".into(), path: display(&original.reference),
+                status: if root_removed { "AbsentExpected" } else { "Missing" }.into(),
+            },
+        }];
+        evidence.push(RecoveryEvidence { role: "target_root".into(), path: display(&recorded.target.reference), status: "Verified".into() });
+        let mut observed_directories = 0;
+        let mut rejected_directories = 0;
+        let mut unverified_directories = 0;
+        let mut observed_removed = HashSet::new();
+        for directory in &report.directories {
+            let was_removed = removed.contains(&(&directory.reference, &directory.expected_identity));
+            let status = match directory.status {
+                AlbumDirectoryEvidenceStatus::Absent if was_removed => {
+                    observed_removed.insert((&directory.reference, &directory.expected_identity));
+                    observed_directories += 1; "AbsentExpected"
+                }
+                AlbumDirectoryEvidenceStatus::SameIdentity if !was_removed
+                    && directory.observed_identity.as_ref() == Some(&directory.expected_identity) => {
+                    observed_directories += 1; "Verified"
+                }
+                AlbumDirectoryEvidenceStatus::Unverified => { unverified_directories += 1; "Unverified" }
+                AlbumDirectoryEvidenceStatus::Absent => { rejected_directories += 1; "Missing" }
+                _ => { rejected_directories += 1; "Changed" }
+            };
+            evidence.push(RecoveryEvidence { role: if was_removed { "removed_directory" } else { "directory" }.into(), path: display(&directory.reference), status: status.into() });
+        }
+        for (reference, identity) in &report.removed_directory_references {
+            if !observed_removed.contains(&(reference, identity)) {
+                evidence.push(RecoveryEvidence { role: "removed_directory".into(), path: display(reference), status: "Unverified".into() });
+            }
+        }
+        let completed = report.completed_albums.iter().copied().collect::<HashSet<_>>();
+        let expected = recorded.album_operations.iter().copied().collect::<HashSet<_>>();
+        let transfer_complete = report.transfers.as_ref().is_some_and(|transfers| {
+            !transfers.append_blocked && transfers.operations.len() == recorded.files.len()
+                && transfers.operations.iter().all(|entry| entry.status == RecoveryStatus::Committed
+                    && matches!(entry.copy_metadata, CopyMetadataRecoveryStatus::Verified | CopyMetadataRecoveryStatus::NotRequested))
+        });
+        let terminal_complete = report.manifest_finished && report.recorded_status.as_deref() == Some("Complete")
+            && !report.incomplete_tail && transfer_complete && completed == expected
+            && completed.len() == report.completed_albums.len();
+        evidence.push(RecoveryEvidence { role: "journal_completion".into(), path: format!("{}.album.jsonl", recorded.job_id), status: if terminal_complete { "Verified" } else { "Unverified" }.into() });
+        let pending = report.pending_directories.iter().chain(&report.pending_cleanup).chain(&report.pending_metadata).collect::<HashSet<_>>();
+        for reference in &pending {
+            evidence.push(RecoveryEvidence { role: "pending_directory".into(), path: display(reference), status: "Unverified".into() });
+        }
+        for (reference, status) in &report.directory_metadata_status {
+            evidence.push(RecoveryEvidence { role: "directory_metadata".into(), path: display(reference), status: match status.as_str() { "verified" => "Verified", "changed" | "mismatch" => "Changed", _ => "Unverified" }.into() });
+        }
+        let consistent = terminal_complete && pending.is_empty() && !operations.is_empty()
+            && report.directory_metadata_status.len() == report.directory_metadata.len()
+            && observed_removed.len() == removed.len()
+            && evidence.iter().all(|entry| matches!(entry.status.as_str(), "Verified" | "AbsentExpected"))
+            && operations.iter().all(|entry| entry.status == "Committed");
+        Ok(RecoveryReport {
+            job_id: recorded.job_id, state: if consistent { "consistent" } else { "needs_attention" },
+            observed_directories, pending_directories: pending.len(), rejected_directories,
+            incomplete_tail: report.incomplete_tail, unverified_directories, observation_limit_reached: false,
+            operations, evidence,
+        })
+    }
+
     fn repair_inspection_error(error: HostError) -> HostError {
         if matches!(
             error.code.as_str(),
@@ -934,8 +1211,12 @@ mod selected {
             unverified_directories: 0,
             observation_limit_reached: false,
             operations,
+            evidence: vec![],
         })
     }
+    #[cfg(test)]
+    include!("recovery_album_tests.rs");
+
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -959,6 +1240,14 @@ mod selected {
             assert_eq!(
                 journal_descriptor("album-1-2-3.album.jsonl"),
                 Some(("album-1-2-3", "album"))
+            );
+            assert_eq!(
+                journal_descriptor("album-1-2-3.album-move.jsonl"),
+                Some(("album-1-2-3", "album"))
+            );
+            assert_eq!(
+                journal_descriptor("album-1-2-3.transfers.jsonl"),
+                Some(("album-1-2-3", "orphan"))
             );
             assert_eq!(
                 journal_descriptor("repair-1-2-3.repair.jsonl"),
@@ -1116,7 +1405,7 @@ mod selected {
                 assert_eq!(std::fs::read(path).unwrap(), bytes);
             }
         }
-        fn wait_for_recovery(host: &Host, id: &str) -> RecoverySnapshot {
+        pub(super) fn wait_for_recovery(host: &Host, id: &str) -> RecoverySnapshot {
             let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
             loop {
                 let snapshot = host.recovery_snapshot(id).unwrap();
@@ -1127,7 +1416,7 @@ mod selected {
                 std::thread::sleep(std::time::Duration::from_millis(1));
             }
         }
-        fn owned_tree_state(
+        pub(super) fn owned_tree_state(
             root: &Path,
         ) -> Vec<(PathBuf, EntryObservation, u32, u64, u64, Option<String>)> {
             use std::os::windows::fs::MetadataExt;
@@ -1139,9 +1428,17 @@ mod selected {
                 assert!(!metadata.file_type().is_symlink());
                 let reference = reads.reference(&path).unwrap();
                 let observed = reads.stat(&reference).unwrap();
-                let content = metadata
-                    .is_file()
-                    .then(|| format!("{:x}", Sha256::digest(std::fs::read(&path).unwrap())));
+                let content = metadata.is_file().then(|| {
+                    let mut file = std::fs::File::open(&path).unwrap();
+                    let mut hash = Sha256::new();
+                    let mut chunk = [0u8; 64 * 1024];
+                    loop {
+                        let count = file.read(&mut chunk).unwrap();
+                        if count == 0 { break; }
+                        hash.update(&chunk[..count]);
+                    }
+                    format!("{:x}", hash.finalize())
+                });
                 if metadata.is_dir() {
                     pending.extend(
                         std::fs::read_dir(&path)
@@ -1505,6 +1802,8 @@ mod selected {
             let directory = tempfile::tempdir().unwrap();
             for name in [
                 "album-1-20-1.album.jsonl",
+                "album-1-21-1.album-move.jsonl",
+                "album-1-22-1.transfers.jsonl",
                 "repair-1-30-1.repair.jsonl",
                 "sorter-1-40-1.transfers.jsonl",
             ] {
@@ -1513,12 +1812,12 @@ mod selected {
             let host = Host::default();
             host.set_journal_directory(directory.path().into()).unwrap();
             let page = host.list_recovery(0, 10).unwrap();
-            assert_eq!(page.records.len(), 3);
+            assert_eq!(page.records.len(), 5);
             assert!(page.records.iter().all(|record| record.state
-                == if record.family == "repair" {
-                    "invalid"
-                } else {
+                == if record.family == "orphan" || record.journal_name.ends_with(".album-move.jsonl") {
                     "unsupported"
+                } else {
+                    "invalid"
                 }));
             assert!(host.lock().unwrap().recovery.records.is_empty());
             for record in page.records {
@@ -1531,6 +1830,14 @@ mod selected {
                     b"untrusted journal bytes"
                 );
             }
+        }
+        #[test]
+        fn parent_picker_requires_a_retained_schema_two_album_record() {
+            let directory = tempfile::tempdir().unwrap();
+            let host = Host::default();
+            assert!(host.select_recovery_parent_path("unretained", directory.path().into()).is_err());
+            assert!(host.lock().unwrap().recovery.parents.is_empty());
+            assert!(std::fs::read_dir(directory.path()).unwrap().next().is_none());
         }
         #[test]
         fn recovery_root_tokens_never_replace_preview_selection() {

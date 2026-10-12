@@ -1842,3 +1842,8 @@ fn album_dispatch_preserves_same_volume_rename_and_cross_volume_copy_retire() {
         verify_cross_volume_album(&cross);
     }
 }
+#[path = "support/windows_album_recorded_cases.rs"]
+mod recorded_descriptor;
+
+#[path = "support/windows_album_restart_cases.rs"]
+mod recorded_restart;

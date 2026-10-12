@@ -418,6 +418,7 @@ mod tests {
                         unverified_directories: 0,
                         observation_limit_reached: false,
                         operations: vec![],
+                        evidence: vec![],
                     }))
                 },
             )

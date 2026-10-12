@@ -133,7 +133,9 @@ def exercise_albums(script, click, fill, wait, capture, root, output, audio_path
         assert '\u2014' not in script("return document.querySelector('#rows').textContent")
         assert script("return document.querySelector('#review-apply').hidden")
         capture('album-complete-' + label)
-        receipts.append(dict(case=label, source_sha256=before, destination_sha256=files(destination),
+        receipts.append(dict(case=label, source=str(source), target=str(target),
+                             journal_path=script("return document.querySelector('#journal-path').value"),
+                             file_count=len(source_before), source_sha256=before, destination_sha256=files(destination),
                              source_retained=copying, descendant_metadata_preserved=copying, fresh_copy_container=copying, ipc_mocked=False))
 
     source, target, album = fixture(root / 'stale-membership', audio, True)

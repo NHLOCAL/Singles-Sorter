@@ -30,8 +30,7 @@ retained execution result within the same running host. After process exit, the
 [current read-only restart candidate](current-restart-product.md) discovers single
 Copy/Move (including copied routes) and Fix journals. Inspection requires fresh
 exact native source/target choices, or source-only choices for Fix, and offers
-measured progress and cancellation. Album and orphan journals remain visibly
-unsupported. No execution replay or cleanup is exposed; inspection writes no
+measured progress and cancellation. The [file-Album restart candidate](windows-file-album-restart-host.md) additionally requires fresh source/target selection, or an explicitly chosen original parent for schema-2 absent sources. Whole-object Album and orphan journals remain visibly unsupported. No execution replay or cleanup is exposed; inspection writes no
 files or journals. Actual composed Windows acceptance is still required.
 
 ## CLI flow

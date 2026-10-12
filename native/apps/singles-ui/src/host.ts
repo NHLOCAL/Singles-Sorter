@@ -44,6 +44,7 @@ export const nativeRecoveryHost:RecoveryHost = {
   recoverySnapshot: runId => invoke('recovery_snapshot',{runId}),
   cancelRecovery: runId => invoke('cancel_recovery',{runId}),
   selectRecoveryRoot: role => invoke('select_recovery_root',{role}),
+  selectRecoveryParent: token => invoke('select_recovery_parent',{token}),
   startRecoveryInspection: (token,sourceToken,targetToken,resumeRunId) => invoke('start_recovery_inspection',{token,sourceToken,targetToken,resumeRunId}),
 };
 /** Fixed app-owned diagnostic viewer; no private path supplied by JavaScript. */

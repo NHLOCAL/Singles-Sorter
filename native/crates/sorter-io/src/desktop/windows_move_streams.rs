@@ -47,6 +47,75 @@ impl Seek for WindowsCopiedMoveSource {
     }
 }
 
+/// Internal read-only core shared with the restart inspection owner. The caller
+/// validates its parent capability before entry; it remains held and is checked
+/// again after every main/named stream has been read.
+pub(super) fn inspect_bound_streams_observed(
+    parent: &File,
+    name: &MutationName,
+    expected_identity: &ObjectIdentity,
+    cancel: &AtomicBool,
+    observe: &mut dyn FnMut(WindowsInspectionEvent) -> Result<(), MutationError>,
+    mut check_parent: impl FnMut() -> Result<(), MutationError>,
+) -> Result<WindowsMoveSourceEvidence, MutationError> {
+    let file = inspection_probe(cancel, observe, || {
+        open_relative_file(parent, units(name)?, false, FILE_GENERIC_READ)
+    })?;
+    if inspection_probe(cancel, observe, || identity(&file).map_err(read_error))?
+        != *expected_identity
+    {
+        return Err(err(
+            MutationErrorKind::StalePlan,
+            "stream inspection identity changed",
+        ));
+    }
+    let attributes = inspection_probe(cancel, observe, || move_representation(&file))?;
+    let inventory = inspection_probe(cancel, observe, || stream_inventory(&file))?;
+    let mut streams = Vec::with_capacity(inventory.len());
+    let mut held = Vec::new();
+    for (suffix, length) in &inventory {
+        cancelled(cancel)?;
+        let digest = if suffix == &unnamed() {
+            stream_digest_observed(&file, *length, cancel, observe)?
+        } else {
+            let stream = inspection_probe(cancel, observe, || {
+                open_named_stream(parent, units(name)?, suffix, false)
+            })?;
+            if inspection_probe(cancel, observe, || identity(&stream).map_err(read_error))?
+                != *expected_identity
+            {
+                return Err(err(
+                    MutationErrorKind::StalePlan,
+                    "inspected named stream identity changed",
+                ));
+            }
+            inspection_probe(cancel, observe, || move_representation(&stream))?;
+            let digest = stream_digest_observed(&stream, *length, cancel, observe)?;
+            held.push(stream);
+            digest
+        };
+        streams.push(WindowsMoveStreamEvidence {
+            name: suffix.clone(),
+            length: *length,
+            sha256: digest.sha256,
+        });
+    }
+    if inspection_probe(cancel, observe, || stream_inventory(&file))? != inventory
+        || inspection_probe(cancel, observe, || move_representation(&file))? != attributes
+    {
+        return Err(err(
+            MutationErrorKind::StalePlan,
+            "inspected stream inventory changed",
+        ));
+    }
+    inspection_probe(cancel, observe, || check_parent())?;
+    Ok(WindowsMoveSourceEvidence {
+        identity: expected_identity.clone(),
+        attributes,
+        streams,
+    })
+}
+
 impl WindowsMutationStorage {
     /// Read-only full-stream observation of one exact file under a retained root.
     /// No deletion access or mutation-capable source lease is acquired. The caller
@@ -86,62 +155,8 @@ impl WindowsMutationStorage {
                 "stream inspection requires media root",
             ));
         }
-        let file = inspection_probe(cancel, observe, || {
-            open_relative_file(parent.handle(), units(name)?, false, FILE_GENERIC_READ)
-        })?;
-        if inspection_probe(cancel, observe, || identity(&file).map_err(read_error))?
-            != *expected_identity
-        {
-            return Err(err(
-                MutationErrorKind::StalePlan,
-                "stream inspection identity changed",
-            ));
-        }
-        let attributes = inspection_probe(cancel, observe, || move_representation(&file))?;
-        let inventory = inspection_probe(cancel, observe, || stream_inventory(&file))?;
-        let mut streams = Vec::with_capacity(inventory.len());
-        let mut held = Vec::new();
-        for (suffix, length) in &inventory {
-            cancelled(cancel)?;
-            let digest = if suffix == &unnamed() {
-                stream_digest_observed(&file, *length, cancel, observe)?
-            } else {
-                let stream = inspection_probe(cancel, observe, || {
-                    open_named_stream(parent.handle(), units(name)?, suffix, false)
-                })?;
-                if inspection_probe(cancel, observe, || identity(&stream).map_err(read_error))?
-                    != *expected_identity
-                {
-                    return Err(err(
-                        MutationErrorKind::StalePlan,
-                        "inspected named stream identity changed",
-                    ));
-                }
-                inspection_probe(cancel, observe, || move_representation(&stream))?;
-                let digest = stream_digest_observed(&stream, *length, cancel, observe)?;
-                held.push(stream);
-                digest
-            };
-            streams.push(WindowsMoveStreamEvidence {
-                name: suffix.clone(),
-                length: *length,
-                sha256: digest.sha256,
-            });
-        }
-        if inspection_probe(cancel, observe, || stream_inventory(&file))? != inventory
-            || inspection_probe(cancel, observe, || move_representation(&file))? != attributes
-        {
-            return Err(err(
-                MutationErrorKind::StalePlan,
-                "inspected stream inventory changed",
-            ));
-        }
-        inspection_probe(cancel, observe, || self.check_parent(parent))?;
-        Ok(WindowsMoveSourceEvidence {
-            identity: expected_identity.clone(),
-            attributes,
-            streams,
-        })
+        inspect_bound_streams_observed(parent.handle(), name, expected_identity, cancel, observe,
+            || self.check_parent(parent))
     }
 
     /// Inspect under existing source-root authority. This never creates a file.
@@ -500,7 +515,7 @@ fn stream_digest_with(
         Ok(())
     })
 }
-fn stream_digest_observed(
+pub(super) fn stream_digest_observed(
     file: &File,
     length: u64,
     cancel: &AtomicBool,

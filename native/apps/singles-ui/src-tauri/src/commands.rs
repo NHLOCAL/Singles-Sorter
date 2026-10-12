@@ -451,6 +451,35 @@ pub async fn select_recovery_root(
     }
 }
 #[tauri::command]
+pub async fn select_recovery_parent(
+    app: tauri::AppHandle,
+    state: State<'_, Host>,
+    token: String,
+) -> Result<Option<RootSelection>, HostError> {
+    let host = state.inner().clone();
+    let guard = host.claim()?;
+    #[cfg(any(windows, target_os = "linux"))]
+    return blocking(move || {
+        let _guard = guard;
+        let Some(file) = app.dialog().file().blocking_pick_folder() else {
+            return Ok(None);
+        };
+        let path = file.into_path().map_err(|_| {
+            HostError::new("UNSUPPORTED_ROOT", "A desktop directory path is required")
+        })?;
+        host.select_recovery_parent_path(&token, path).map(Some)
+    })
+    .await;
+    #[cfg(not(any(windows, target_os = "linux")))]
+    {
+        let _ = (app, host, guard, token);
+        Err(HostError::new(
+            "RECOVERY_UNAVAILABLE",
+            "Desktop recovery requires Windows",
+        ))
+    }
+}
+#[tauri::command]
 pub fn start_recovery_inspection(
     state: State<'_, Host>,
     token: String,

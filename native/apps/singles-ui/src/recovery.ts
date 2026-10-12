@@ -9,10 +9,12 @@ export class RecoveryController {
   page:RecoveryPage|null=null;
   selected:RecoveryRecord|null=null;
   source:RootSelection|null=null;
+  sourceMode:'present'|'removed'='present';
   target:RootSelection|null=null;
   report:RecoveryReport|null=null;
   progress:RecoveryProgress|null=null;
   operationOffset=0;
+  evidenceOffset=0;
   busy=false;
   cancelling=false;
   error:string|null=null;
@@ -25,6 +27,11 @@ export class RecoveryController {
   private emit(){for(const listener of this.listeners)listener();}
   get inspectable(){return !!this.selected&&['recorded_complete','inspection_needed'].includes(this.selected.state);}
   get requiresTarget(){return this.selected?.family!=='repair';}
+  get canSelectParent(){return this.selected?.family==='album'&&!!this.selected.original_parent&&typeof this.host.selectRecoveryParent==='function';}
+  setSourceMode(mode:'present'|'removed'){
+    if(this.busy||(mode==='removed'&&!this.canSelectParent)||this.sourceMode===mode)return;
+    this.sourceMode=mode;this.source=null;this.report=null;this.stoppedRunId=null;this.operationOffset=0;this.evidenceOffset=0;this.error=null;this.emit();
+  }
   get canInspect(){return !this.busy&&this.inspectable&&!!this.selected&&!!this.source&&(!this.requiresTarget||!!this.target);}
   get canResume(){return this.canInspect&&this.stoppedRunId!==null;}
   private async sendCancel(run:Run){
@@ -38,7 +45,7 @@ export class RecoveryController {
     run.cancelRequested=true;this.cancelling=true;this.emit();await this.sendCancel(run);
   }
   close(){
-    this.epoch++;this.page=null;this.selected=null;this.source=null;this.target=null;this.report=null;this.error=null;this.stoppedRunId=null;
+    this.epoch++;this.page=null;this.selected=null;this.sourceMode='present';this.source=null;this.target=null;this.report=null;this.error=null;this.stoppedRunId=null;
     void this.cancel();this.emit();
   }
   private async run(kind:'list'|'inspect',start:()=>Promise<RecoveryRunId>,accept:(snapshot:RecoverySnapshot)=>void){
@@ -71,7 +78,7 @@ export class RecoveryController {
   }
   async load(offset=0){
     if(this.busy||!Number.isSafeInteger(offset)||offset<0)return;
-    this.page=null;this.selected=null;this.report=null;this.operationOffset=0;this.source=null;this.target=null;this.stoppedRunId=null;
+    this.page=null;this.selected=null;this.sourceMode='present';this.report=null;this.operationOffset=0;this.evidenceOffset=0;this.source=null;this.target=null;this.stoppedRunId=null;
     await this.run('list',()=>this.host.startRecoveryList(offset,RECOVERY_PAGE_SIZE),snapshot=>{
       const page=snapshot.page;
       if(!page||page.offset!==offset||!Number.isSafeInteger(page.total)||page.total<0||page.records.length>RECOVERY_PAGE_SIZE)throw new Error('רשימת היומנים לא אומתה.');
@@ -82,19 +89,26 @@ export class RecoveryController {
     if(this.busy)return;
     const record=this.page?.records.find(row=>row.token===token);
     if(!record)return;
-    this.selected=record;this.source=null;this.target=null;this.report=null;this.progress=null;this.stoppedRunId=null;this.operationOffset=0;this.error=null;this.emit();
+    this.selected=record;this.sourceMode='present';this.source=null;this.target=null;this.report=null;this.progress=null;this.stoppedRunId=null;this.operationOffset=0;this.evidenceOffset=0;this.error=null;this.emit();
   }
   async selectRoot(role:Role){
-    if(this.busy||!this.selected||!this.inspectable||(role==='Target'&&!this.requiresTarget))return;
+    if(this.busy||!this.selected||!this.inspectable||(role==='Target'&&!this.requiresTarget)||(role==='Source'&&this.sourceMode==='removed'&&!this.canSelectParent))return;
     const epoch=this.epoch;
     this.busy=true;this.error=null;this.emit();
     try{
-      const root=await this.host.selectRecoveryRoot(role);
-      if(root&&this.epoch===epoch){if(role==='Source')this.source=root;else this.target=root;this.report=null;this.stoppedRunId=null;this.operationOffset=0;}
+      const root=role==='Source'&&this.sourceMode==='removed'
+        ?await this.host.selectRecoveryParent!(this.selected.token)
+        :await this.host.selectRecoveryRoot(role);
+      if(root&&this.epoch===epoch){if(role==='Source')this.source=root;else this.target=root;this.report=null;this.stoppedRunId=null;this.operationOffset=0;this.evidenceOffset=0;}
     }catch(error){if(this.epoch===epoch)this.error=errorText(error);}
     finally{this.busy=false;this.emit();}
   }
   get visibleOperations(){return this.report?.operations.slice(this.operationOffset,this.operationOffset+RECOVERY_OPERATION_PAGE_SIZE)??[];}
+  get visibleEvidence(){return this.report?.evidence?.slice(this.evidenceOffset,this.evidenceOffset+RECOVERY_OPERATION_PAGE_SIZE)??[];}
+  setEvidencePage(offset:number){
+    if(this.busy||!this.report||!Number.isSafeInteger(offset)||offset<0||offset>=(this.report.evidence?.length??0))return;
+    this.evidenceOffset=offset;this.emit();
+  }
   setOperationPage(offset:number){
     if(this.busy||!this.report||!Number.isSafeInteger(offset)||offset<0||offset>=this.report.operations.length)return;
     this.operationOffset=offset;this.emit();
@@ -102,11 +116,14 @@ export class RecoveryController {
   async inspect(resume=false){
     if(!this.canInspect||(resume&&!this.canResume))return;
     const record=this.selected!,source=this.source!.token,target=this.requiresTarget?this.target!.token:null,resumeId=resume?this.stoppedRunId:null;
-    this.report=null;this.operationOffset=0;
+    this.report=null;this.operationOffset=0;this.evidenceOffset=0;
     await this.run('inspect',()=>this.host.startRecoveryInspection(record.token,source,target,resumeId),snapshot=>{
       const report=snapshot.report;
       if(!report||report.job_id!==record.job_id||!['consistent','needs_attention'].includes(report.state))throw new Error('התקבלה תשובה שאינה שייכת ליומן שנבחר.');
-      if(report.state==='consistent'&&(report.unverified_directories>0||report.observation_limit_reached||report.pending_directories>0||report.rejected_directories>0||report.incomplete_tail||!report.operations.length||report.operations.some(operation=>operation.status!=='Committed'||(record.family==='repair'&&(!operation.evidence?.length||operation.evidence.some(evidence=>evidence.status!=='Verified'))))))throw new Error('הבדיקה לא הושלמה; יש לבדוק את הקבצים והתיקיות לפני ביצוע נוסף.');
+      const album=record.family==='album';
+      if(album&&(report.operations.length!==record.operation_count||new Set(report.operations.map(item=>item.operation)).size!==record.operation_count||report.operations.some(item=>!Number.isSafeInteger(item.operation)||item.operation<0||item.operation>=record.operation_count)))throw new Error('תשובת הבדיקה אינה כוללת את כל הקבצים שתועדו.');
+      const albumScopeComplete=!album||[['source_root',this.sourceMode==='removed'?'AbsentExpected':'Verified'],['target_root','Verified'],['journal_completion','Verified']].every(([role,status])=>report.evidence?.filter(entry=>entry.role===role).length===1&&report.evidence.some(entry=>entry.role===role&&entry.status===status));
+      if(report.state==='consistent'&&(!albumScopeComplete||report.unverified_directories>0||report.observation_limit_reached||report.pending_directories>0||report.rejected_directories>0||report.incomplete_tail||report.evidence?.some(entry=>!['Verified','AbsentExpected'].includes(entry.status))||!report.operations.length||report.operations.some(operation=>operation.status!=='Committed'||(album&&operation.evidence?.some(entry=>entry.status!=='Verified'))||(record.family==='repair'&&(!operation.evidence?.length||operation.evidence.some(evidence=>evidence.status!=='Verified'))))))throw new Error('הבדיקה לא הושלמה; יש לבדוק את הקבצים והתיקיות לפני ביצוע נוסף.');
       this.report=report;
     });
   }
@@ -118,7 +135,7 @@ function validProgress(progress:RecoveryProgress):boolean{
 }
 export function recoveryProgressText(progress:RecoveryProgress|null):string{
   if(!progress)return 'מתחיל בדיקה לקריאה בלבד…';
-  const stage=({queued:'ממתין לבדיקה',discovery:'מחפש יומנים',journals:'מאמת יומנים',directories:'בודק תיקיות',files:'בודק קבצים'} as Record<string,string>)[progress.stage]??'בודק';
+  const stage=({queued:'ממתין לבדיקה',discovery:'מחפש יומנים',journals:'מאמת יומנים',directories:'בודק תיקיות',files:'בודק קבצים',metadata:'בודק מאפייני קבצים',album_restart_journals:'מאמת יומני אלבומים'} as Record<string,string>)[progress.stage]??'בודק';
   return `${stage} · ${progress.completed_operations} מתוך ${progress.total_operations} פעולות · ${(progress.bytes_read/(1024*1024)).toFixed(1)} MiB נקראו · ${(progress.elapsed_ms/1000).toFixed(1)} שניות`;
 }
 export function recoveryStateLabel(state:RecoveryRecord['state']):string {
@@ -143,8 +160,8 @@ export function recoveryNextStep(report:RecoveryReport):string {
 }
 
 export function recoveryEvidenceRole(role:string):string{
- return ({current:'קובץ נוכחי לפי התיעוד',backup:'עותק מקורי שנשמר',staged:'קובץ ביניים',original:'קובץ מקור',planned_name:'שם מתוכנן לבדיקה',backup_candidate:'עותק מקורי מתוכנן לבדיקה',published_candidate:'יעד פרסום לבדיקה'} as Record<string,string>)[role]??'ראיית קובץ לבדיקה';
+ return ({source_root:'מיקום המקור',target_root:'תיקיית היעד',journal_completion:'תיעוד סיום הפעולה',directory:'תיקייה שנבדקה',removed_directory:'תיקייה שהסרתה תועדה',pending_directory:'תיקייה הדורשת בדיקה נוספת',directory_metadata:'מאפייני תיקייה',file_metadata:'מאפייני קובץ',current:'קובץ נוכחי לפי התיעוד',backup:'עותק מקורי שנשמר',staged:'קובץ ביניים',original:'קובץ מקור',planned_name:'שם מתוכנן לבדיקה',backup_candidate:'עותק מקורי מתוכנן לבדיקה',published_candidate:'יעד פרסום לבדיקה'} as Record<string,string>)[role]??'ראיית קובץ לבדיקה';
 }
 export function recoveryEvidenceStatus(status:string):string{
- return ({Verified:'אומת',Missing:'לא נמצא',Changed:'השתנה',Unverified:'לא אומת'} as Record<string,string>)[status]??'מצב לא מוכר';
+ return ({Verified:'אומת',AbsentExpected:'ההיעדרות תואמת לתיעוד',Missing:'לא נמצא',Changed:'השתנה',Unverified:'לא אומת'} as Record<string,string>)[status]??'מצב לא מוכר';
 }

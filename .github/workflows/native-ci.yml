@@ -519,6 +519,26 @@ jobs:
           cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib child_rename::tests -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Test read-only Album original-parent grants
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib album_inspection::tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 13) { throw "Expected 13 cases for --lib album_inspection::tests" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib album_inspection::tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test read-only Album target and journal owner
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib album_inspection::storage::tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 33) { throw "Expected 33 cases for --lib album_inspection::storage::tests" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib album_inspection::storage::tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Test selected Copy metadata and old journal compatibility
         if: ${{ !cancelled() && runner.os == 'Windows' }}
         shell: pwsh
@@ -540,7 +560,7 @@ jobs:
         run: |
           $cases = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_album -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 39) { throw "Expected 39 cases for --test windows_album" }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 57) { throw "Expected 57 cases for --test windows_album" }
           cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_album -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
