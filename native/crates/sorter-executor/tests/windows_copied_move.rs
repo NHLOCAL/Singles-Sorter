@@ -192,3 +192,58 @@ fn cancellation_during_original_plan_revalidation_is_not_mislabeled_stale() {
     assert_eq!(std::fs::read_dir(&f.target).unwrap().count(), 0);
     assert_eq!(std::fs::read_dir(&f.journal).unwrap().count(), 0);
 }
+
+fn mixed_fixture() -> Fixture {
+    let mut fixture = Fixture::new(true);
+    std::fs::write(fixture.source.join("zzz-solo.mp3"), b"ordinary-main").unwrap();
+    std::fs::write(fixture.source.join("zzz-solo.mp3:extra"), b"whole-object-extra").unwrap();
+    let mut reads = WindowsPlanningStorage::for_preview(&fixture.source, &fixture.target).unwrap();
+    let mut request = fixture.plan.request.clone();
+    request.alias_rows = vec![vec!["solo".into(), "יחיד".into()]];
+    fixture.plan = plan_job(&request, &mut reads, &mut Metadata, &mut Ai(true)).unwrap();
+    assert_eq!(fixture.plan.operations.len(), 3);
+    fixture.scope = prepare_copied_move_scope(&fixture.plan, &mut reads,
+        &grants(&fixture.source, &fixture.target, &fixture.journal), &fixture.scope.execution_scope().resources,
+        &AtomicBool::new(false)).unwrap();
+    assert_eq!(fixture.scope.sources().len(), 1);
+    assert_eq!(fixture.scope.execution_scope().inspected_sources.len(), 2);
+    fixture
+}
+#[test]
+fn mixed_same_volume_job_renames_single_object_and_retires_duet_in_original_order() {
+    let f = mixed_fixture();
+    let original = f.scope.execution_scope().inspected_sources.iter().find(|source| source.observation.name == "zzz-solo.mp3").unwrap().observation.identity.clone().unwrap();
+    let mut job = f.job().unwrap(); let result = job.run(&AtomicBool::new(false), &mut |_| {}).unwrap();
+    assert_eq!(result.status, JobStatus::Complete, "{result:?}");
+    assert_eq!((result.committed_destinations, result.moved_sources), (3, 2));
+    let report = job.inspect_recovery(&f.recovery(&job)).unwrap();
+    assert!(report.transfers.unwrap().operations.iter().all(|operation| operation.status == RecoveryStatus::Committed));
+    let bytes = std::fs::read(f.journal.join(format!("{}.transfers.jsonl", job.job_id()))).unwrap();
+    let events = bytes.split(|byte| *byte == b'\n').filter(|line| !line.is_empty()).skip(1)
+        .map(|line| serde_json::from_slice::<serde_json::Value>(line).unwrap()["body"]["event"].clone()).collect::<Vec<_>>();
+    let committed = events.iter().filter(|event| event["phase"] == "Committed").map(|event| event["operation"].as_u64().unwrap()).collect::<Vec<_>>();
+    assert_eq!(committed, vec![0, 1, 2]);
+    assert_eq!(events.iter().filter(|event| event["phase"] == "AtomicRenameObserved").count(), 1);
+    assert_eq!(events.iter().filter(|event| event["phase"] == "SourceRetired").count(), 1);
+    let mut reads = DesktopStorage::new(std::slice::from_ref(&f.target)).unwrap();
+    let renamed = reads.reference(&f.target.join("יחיד/zzz-solo.mp3")).unwrap();
+    assert_eq!(reads.stat(&renamed).unwrap().identity, Some(original));
+    assert_eq!(std::fs::read(f.target.join("יחיד/zzz-solo.mp3:extra")).unwrap(), b"whole-object-extra");
+    assert!(!f.source.join("zzz-solo.mp3").exists());
+    f.verify_destination("אמן"); f.verify_destination("זמר");
+}
+#[test]
+fn late_ordinary_collision_keeps_prior_completed_duet_and_never_overwrites() {
+    let f = mixed_fixture();
+    let OperationKind::SingleTransfer { source, .. } = &f.plan.operations.last().unwrap().kind else { panic!("single fixture") };
+    assert_eq!(source.name, "zzz-solo.mp3");
+    let mut job = f.job().unwrap();
+    std::fs::create_dir(f.target.join("יחיד")).unwrap();
+    std::fs::write(f.target.join("יחיד/zzz-solo.mp3"), b"foreign").unwrap();
+    let result = job.run(&AtomicBool::new(false), &mut |_| {}).unwrap();
+    assert_ne!(result.status, JobStatus::Complete);
+    assert_eq!((result.committed_destinations, result.moved_sources), (2, 1));
+    assert_eq!(std::fs::read(f.target.join("יחיד/zzz-solo.mp3")).unwrap(), b"foreign");
+    assert_eq!(std::fs::read(f.source.join("zzz-solo.mp3:extra")).unwrap(), b"whole-object-extra");
+    f.verify_destination("אמן"); f.verify_destination("זמר");
+}

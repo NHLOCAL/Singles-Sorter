@@ -72,7 +72,7 @@ pub fn recover_job(
     // Capture every metadata receipt before any file-content/stream reads. A
     // retirement cohort can inspect a later destination during the first item.
     let metadata_evidence = binding.operations().iter().map(|op| {
-        if binding.data.copy_metadata_version != Some(1) {
+        if !binding.data.metadata_required_for(op) {
             return CopyMetadataRecoveryStatus::NotRequested;
         }
         let expected = journal.events().iter().filter(|event| event.operation == op.id)
@@ -177,7 +177,7 @@ pub fn recover_job(
                 && binding.operations()[event.operation].source.observation.reference == op.source.observation.reference) {
             status = RecoveryStatus::NeedsRecovery;
         }
-        if binding.data.copy_metadata_version == Some(1)
+        if binding.data.metadata_required_for(op)
             && matches!(
                 status,
                 RecoveryStatus::Committed | RecoveryStatus::EffectProvenAwaitingJournal
@@ -199,7 +199,8 @@ pub fn recover_job(
             operation.status == RecoveryStatus::Committed
                 && operation.copy_metadata == CopyMetadataRecoveryStatus::Verified).collect::<Vec<_>>();
         for operation in &mut report.operations {
-            if observed_source_absent[operation.operation] && binding.operations().iter().filter(|candidate|
+            if binding.data.copied_move_operation(&binding.operations()[operation.operation])
+                && observed_source_absent[operation.operation] && binding.operations().iter().filter(|candidate|
                 candidate.source.observation.reference == binding.operations()[operation.operation].source.observation.reference
             ).any(|candidate| !verified[candidate.id]) {
                 operation.status = RecoveryStatus::NeedsRecovery;

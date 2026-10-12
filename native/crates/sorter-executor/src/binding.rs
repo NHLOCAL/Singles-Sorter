@@ -596,6 +596,9 @@ fn validate_plan_scope_inner(
     Ok((root, target))
 }
 
+pub(crate) fn copied_move_route_required(source: Option<&ObjectIdentity>, target: Option<&ObjectIdentity>, copy_effect: bool) -> bool {
+    copy_effect || matches!((source, target), (Some(ObjectIdentity::Windows { volume: source, .. }), Some(ObjectIdentity::Windows { volume: target, .. })) if source != target)
+}
 fn windows(e: &EntryObservation) -> bool {
     matches!(e.reference, StorageRef::WindowsPath { .. })
         && matches!(e.identity, Some(ObjectIdentity::Windows { .. }))
@@ -676,6 +679,14 @@ impl BindingData {
                     && o.destination.root == self.target_root.reference
             })
     }
+    pub(crate) fn copied_move_operation(&self, operation: &BoundOperation) -> bool {
+        self.copied_move_sources.as_ref().is_some_and(|sources| sources.iter().any(|source|
+            source.source == operation.source.observation.reference))
+    }
+    pub(crate) fn metadata_required_for(&self, operation: &BoundOperation) -> bool {
+        self.copy_metadata_version == Some(1)
+            && (self.copied_move_sources.is_none() || self.copied_move_operation(operation))
+    }
     fn valid_copied_move_domain(&self, sources: &[CopiedMoveSourceEvidence]) -> bool {
         if !cfg!(all(windows, feature = "selected-windows-execution"))
             || self.synthetic_only || self.owned_windows_copy || self.owned_windows_rename
@@ -685,12 +696,13 @@ impl BindingData {
             || self.scope_evidence.allowed_modes != [TransferMode::Move]
             || self.operations.is_empty() || sources.is_empty()
         { return false; }
-        let unique = self.operations.iter().map(|op| &op.source.observation.reference).collect::<HashSet<_>>();
+        let unique = self.operations.iter().filter(|op| copied_move_route_required(op.source.observation.identity.as_ref(), self.target_root.identity.as_ref(), op.copy_effect))
+            .map(|op| &op.source.observation.reference).collect::<HashSet<_>>();
         if unique.len() != sources.len() { return false; }
         let mut seen = HashSet::new();
         for source in sources {
             let Some(op) = self.operations.iter().find(|op| op.source.observation.reference == source.source) else { return false; };
-            if !seen.insert(&source.source) || Some(&source.identity) != op.source.observation.identity.as_ref()
+            if !unique.contains(&source.source) || !seen.insert(&source.source) || Some(&source.identity) != op.source.observation.identity.as_ref()
                 || source.attributes & !0x20 != 0 || source.streams.is_empty() || source.streams.len() > 256
             { return false; }
             let mut names = HashSet::new();
@@ -711,6 +723,7 @@ impl BindingData {
         }
         self.operations.iter().all(|op| {
             op.mode == TransferMode::Move && windows(&op.source.observation)
+                && self.copied_move_operation(op) == copied_move_route_required(op.source.observation.identity.as_ref(), self.target_root.identity.as_ref(), op.copy_effect)
                 && op.destination.root == self.target_root.reference
                 && match &op.duet_cohort {
                     None => !op.copy_effect,

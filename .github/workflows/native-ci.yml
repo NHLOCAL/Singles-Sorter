@@ -402,7 +402,7 @@ jobs:
         run: |
           $cases = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib move_stream_ -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 19) { throw "Expected 19 copied Move stream inventory/copy/retirement/read-only cases" }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 21) { throw "Expected 21 copied Move stream inventory/copy/retirement/read-only cases" }
           cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib move_stream_ -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
@@ -412,12 +412,12 @@ jobs:
         run: |
           $cases = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib copied_move_journal_tests -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 5) { throw "Expected five copied Move journal cases" }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 6) { throw "Expected six copied Move journal cases" }
           cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib copied_move_journal_tests -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $cases = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_copied_move -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 11) { throw "Expected eleven copied Move job cases including distinct-volume NTFS" }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 13) { throw "Expected thirteen copied Move job cases including distinct-volume NTFS" }
           cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_copied_move -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

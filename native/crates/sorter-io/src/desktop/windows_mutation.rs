@@ -1807,17 +1807,51 @@ impl WindowsRenameStorage {
     }
 
     fn rename_no_replace_with(
+        &mut self, source: &mut WindowsSourceLease, parent: &WindowsParent,
+        name: &MutationName, cancel: &AtomicBool,
+        checkpoint: impl FnMut(RenameCheckpoint) -> Result<(), MutationError>,
+    ) -> MutationOutcome<WindowsPublished> {
+        self.owned.rename_write_through_inner(source, parent, name, cancel, false, checkpoint)
+    }
+}
+
+impl WindowsMutationStorage {
+    /// Scoped held write-through file lease for an explicitly bound mixed Move route.
+    pub fn acquire_selected_rename_source_controlled(&self, parent: &WindowsParent, expected: &ExpectedSource, cancel: &AtomicBool) -> Result<WindowsSourceLease, MutationError> {
+        cancelled(cancel)?;
+        if !matches!(self.domain, WindowsMutationDomain::SelectedRoots | WindowsMutationDomain::OwnedSyntheticTree) {
+            return Err(err(MutationErrorKind::Unsupported, "selected rename domain required"));
+        }
+        self.check_role(parent, RootRole::Source)?;
+        if parent.identity != expected.parent_identity { return Err(err(MutationErrorKind::StalePlan, "rename source parent changed")); }
+        let file = open_relative_file_with_options(parent.handle(), units(&expected.name)?, false,
+            FILE_GENERIC_READ | FILE_GENERIC_WRITE | DELETE, FILE_WRITE_THROUGH)?;
+        let observation = move_streams::verify_move_main(&file, parent, expected, cancel)?;
+        Ok(WindowsSourceLease { file: Some(file), parent: parent.clone(), expected: expected.clone(), observation,
+            mode: SourceLeaseMode::WriteThroughRename, repair: None })
+    }
+    pub fn rename_selected_source_controlled(&mut self, source: &mut WindowsSourceLease, parent: &WindowsParent, name: &MutationName, cancel: &AtomicBool) -> MutationOutcome<WindowsPublished> {
+        if !matches!(self.domain, WindowsMutationDomain::SelectedRoots | WindowsMutationDomain::OwnedSyntheticTree) {
+            return MutationOutcome::NoEffect(err(MutationErrorKind::Unsupported, "selected rename domain required"));
+        }
+        self.rename_write_through_inner(source, parent, name, cancel, true, |_| Ok(()))
+    }
+    pub fn verify_selected_rename_controlled(&mut self, published: &WindowsPublished, expected: &ContentDigest, cancel: &AtomicBool) -> Result<MutationObservation, MutationError> {
+        self.verify_published_controlled(published, expected, cancel)
+    }
+    fn rename_write_through_inner(
         &mut self,
         source: &mut WindowsSourceLease,
         parent: &WindowsParent,
         name: &MutationName,
         cancel: &AtomicBool,
+        controlled: bool,
         mut checkpoint: impl FnMut(RenameCheckpoint) -> Result<(), MutationError>,
     ) -> MutationOutcome<WindowsPublished> {
         let before_dispatch = (|| {
             cancelled(cancel)?;
-            self.owned.check_role(&source.parent, RootRole::Source)?;
-            self.owned.check_role(parent, RootRole::Target)?;
+            self.check_role(&source.parent, RootRole::Source)?;
+            self.check_role(parent, RootRole::Target)?;
             if source.mode != SourceLeaseMode::WriteThroughRename {
                 return Err(err(
                     MutationErrorKind::Unsupported,
@@ -1828,7 +1862,8 @@ impl WindowsRenameStorage {
                 .file
                 .as_ref()
                 .ok_or_else(|| err(MutationErrorKind::StalePlan, "source lease consumed"))?;
-            verify_expected_source(file, &source.parent, &source.expected)?;
+            if controlled { move_streams::verify_move_main(file, &source.parent, &source.expected, cancel)?; }
+            else { verify_expected_source(file, &source.parent, &source.expected)?; }
             units(name)?;
             ensure_same_volume(&source.expected.identity, &parent.identity)?;
             checkpoint(RenameCheckpoint::BeforePreflush)?;
@@ -1837,7 +1872,8 @@ impl WindowsRenameStorage {
             checkpoint(RenameCheckpoint::AfterPreflush)?;
             cancelled(cancel)?;
             // Recheck every supplied source precondition on the held handle.
-            verify_expected_source(file, &source.parent, &source.expected)?;
+            if controlled { move_streams::verify_move_main(file, &source.parent, &source.expected, cancel)?; }
+            else { verify_expected_source(file, &source.parent, &source.expected)?; }
             checkpoint(RenameCheckpoint::BeforeRename)?;
             cancelled(cancel)?;
             rename(file, parent, name)
@@ -1863,18 +1899,25 @@ impl WindowsRenameStorage {
             cancelled(cancel)?;
             // This method checks the exact held publication before and after
             // its real FlushFileBuffers call, without closing/reopening by name.
-            let _ack =
-                self.owned
-                    .sync_published_file(&mut published, &source.expected.digest, cancel)?;
+            if controlled {
+                self.verify_published_controlled(&published, &source.expected.digest, cancel)?;
+                published.sync_poisoned = true;
+                unsafe { FlushFileBuffers(HANDLE(published.file.as_raw_handle())) }.map_err(win_error)?;
+                self.verify_published_controlled(&published, &source.expected.digest, cancel)?;
+                published.sync_poisoned = false;
+            } else {
+                let _ack = self.sync_published_file(&mut published, &source.expected.digest, cancel)?;
+            }
             checkpoint(RenameCheckpoint::AfterPostflush)?;
             cancelled(cancel)?;
-            self.owned.check_role(parent, RootRole::Target)?;
+            self.check_role(parent, RootRole::Target)?;
             let renamed_expected = ExpectedSource {
                 parent_identity: parent.identity.clone(),
                 name: name.clone(),
                 ..source.expected.clone()
             };
-            verify_expected_source(&published.file, parent, &renamed_expected)?;
+            if controlled { move_streams::verify_move_main(&published.file, parent, &renamed_expected, cancel)?; }
+            else { verify_expected_source(&published.file, parent, &renamed_expected)?; }
             cancelled(cancel)?;
             Ok(())
         })();

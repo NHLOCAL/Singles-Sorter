@@ -206,7 +206,7 @@ impl WindowsMutationStorage {
     }
 }
 
-fn verify_move_main(
+pub(super) fn verify_move_main(
     file: &File, parent: &WindowsParent, expected: &ExpectedSource, cancel: &AtomicBool,
 ) -> Result<MutationObservation, MutationError> {
     cancelled(cancel)?;
@@ -856,6 +856,41 @@ mod move_stream_copy_tests {
         assert!(matches!(f.storage.publish_copied_move_no_replace(&mut temp, &f.target, &MutationName::Windows("song.mp3".encode_utf16().collect()), &cancelled), MutationOutcome::NoEffect(error) if error.kind == MutationErrorKind::Cancelled));
         assert!(!f.path.join("target/song.mp3").exists());
         assert!(f.path.join("source/song.mp3").exists());
+    }
+
+    #[test]
+    fn controlled_mixed_route_renames_entire_original_with_auxiliary_streams() {
+        let mut f = Fixture::new(); let expected = f.source.main.expected.clone();
+        drop(f.source);
+        let parent = f.storage.parent(Path::new("source")).unwrap();
+        let mut source = f.storage.acquire_selected_rename_source_controlled(&parent, &expected, &AtomicBool::new(false)).unwrap();
+        let published = applied(f.storage.rename_selected_source_controlled(&mut source, &f.target, &MutationName::Windows("renamed.mp3".encode_utf16().collect()), &AtomicBool::new(false)));
+        assert_eq!(published.observation.identity, expected.identity);
+        f.storage.verify_selected_rename_controlled(&published, &expected.digest, &AtomicBool::new(false)).unwrap();
+        drop(published);
+        assert!(!f.path.join("source/song.mp3").exists());
+        assert_eq!(std::fs::read(f.path.join("target/renamed.mp3:notes")).unwrap(), b"notes");
+        assert_eq!(std::fs::read(f.path.join("target/renamed.mp3:Zone.Identifier")).unwrap(), b"zone");
+        assert_eq!(f.storage.capabilities().durable_flush, Capability::Unknown);
+    }
+    #[test]
+    fn controlled_mixed_rename_faults_keep_dispatch_uncertainty_and_identity() {
+        for boundary in [RenameCheckpoint::BeforePreflush, RenameCheckpoint::AfterPreflush, RenameCheckpoint::BeforeRename,
+            RenameCheckpoint::AfterRename, RenameCheckpoint::BeforePostflush, RenameCheckpoint::AfterPostflush] {
+            let mut f = Fixture::new(); let expected = f.source.main.expected.clone(); drop(f.source);
+            let parent = f.storage.parent(Path::new("source")).unwrap();
+            let mut source = f.storage.acquire_selected_rename_source_controlled(&parent, &expected, &AtomicBool::new(false)).unwrap();
+            let outcome = f.storage.rename_write_through_inner(&mut source, &f.target, &MutationName::Windows("renamed.mp3".encode_utf16().collect()), &AtomicBool::new(false), true, |checkpoint| {
+                if checkpoint == boundary { Err(err(MutationErrorKind::UnknownOutcome, "lost controlled rename response")) } else { Ok(()) }
+            });
+            if matches!(boundary, RenameCheckpoint::BeforePreflush | RenameCheckpoint::AfterPreflush | RenameCheckpoint::BeforeRename) {
+                assert!(matches!(outcome, MutationOutcome::NoEffect(_))); assert!(f.path.join("source/song.mp3").exists());
+            } else {
+                assert!(matches!(outcome, MutationOutcome::PendingUnknown(_))); assert!(!f.path.join("source/song.mp3").exists());
+                assert_eq!(std::fs::read(f.path.join("target/renamed.mp3:notes")).unwrap(), b"notes");
+                assert!(source.file.is_none());
+            }
+        }
     }
 
     #[test]

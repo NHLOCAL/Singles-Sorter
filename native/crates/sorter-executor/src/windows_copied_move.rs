@@ -40,8 +40,8 @@ fn admission(roots: &WindowsMutationStorage, plan: &JobPlanV2) -> Result<()> {
     let target = roots.selected_target_root().map_err(|_| E::Scope)?;
     let (ObjectIdentity::Windows { volume: source_volume, .. }, ObjectIdentity::Windows { volume: target_volume, .. }) =
         (source.identity(), target.identity()) else { return Err(E::Scope); };
-    if source_volume == target_volume && plan.operations.iter().any(|operation|
-        !matches!(&operation.kind, OperationKind::SingleTransfer { transfer, .. } if transfer.copy)) {
+    if source_volume == target_volume && !plan.operations.iter().any(|operation|
+        matches!(&operation.kind, OperationKind::SingleTransfer { transfer, .. } if transfer.copy)) {
         return Err(E::Unsupported);
     }
     Ok(())
@@ -92,6 +92,9 @@ pub fn prepare_copied_move_scope(
     { return Err(E::Scope); }
     let mut sources = Vec::new();
     for source in &execution.inspected_sources {
+        let copy_effect = plan.operations.iter().any(|operation| matches!(&operation.kind,
+            OperationKind::SingleTransfer { source: planned, transfer, .. } if planned.reference == source.observation.reference && transfer.copy));
+        if !copied_move_route_required(source.observation.identity.as_ref(), Some(&execution.target_root), copy_effect) { continue; }
         if cancel.load(Ordering::Acquire) { return Err(E::Cancelled); }
         let source_path = path(&source.observation.reference)?;
         let parent = roots.parent_reference(&reference(source_path.parent().ok_or(E::Scope)?)).map_err(|_| E::Stale)?;
@@ -124,14 +127,18 @@ impl SelectedWindowsJob {
         }
         drop(reads);
         let mut held = Vec::new();
-        for source in &scope.sources {
+        for source in &scope.execution.inspected_sources {
             if cancel.load(Ordering::Acquire) { return Err(E::Cancelled); }
-            let operation = binding.operations().iter().find(|op| op.source.observation.reference == source.source).ok_or(E::Scope)?;
-            let source_path = path(&source.source)?;
+            let operation = binding.operations().iter().find(|op| op.source.observation.reference == source.observation.reference).ok_or(E::Scope)?;
+            let source_path = path(&source.observation.reference)?;
             let parent = roots.parent_reference(&reference(source_path.parent().ok_or(E::Scope)?)).map_err(|_| E::Stale)?;
-            let required = binding.required_destinations(&source.source).len();
-            let lease = roots.acquire_copied_move_source(&parent, &source_expected(operation)?, &native_evidence(source), required, cancel).map_err(preparation_error)?;
-            held.push((source.source.clone(), lease));
+            let lease = if let Some(auxiliary) = scope.sources.iter().find(|auxiliary| auxiliary.source == source.observation.reference) {
+                let required = binding.required_destinations(&auxiliary.source).len();
+                MoveSource::Copy(roots.acquire_copied_move_source(&parent, &source_expected(operation)?, &native_evidence(auxiliary), required, cancel).map_err(preparation_error)?)
+            } else {
+                MoveSource::Rename(roots.acquire_selected_rename_source_controlled(&parent, &source_expected(operation)?, cancel).map_err(preparation_error)?)
+            };
+            held.push((source.observation.reference.clone(), lease));
         }
         static NEXT: AtomicU64 = AtomicU64::new(0);
         let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_err(|_| E::Io)?.as_nanos();
@@ -143,21 +150,26 @@ impl SelectedWindowsJob {
     }
 }
 
+pub(super) enum MoveSource { Copy(WindowsCopiedMoveSource), Rename(WindowsSourceLease) }
+impl MoveSource {
+    fn observation(&self) -> &MutationObservation { match self { Self::Copy(source) => source.observation(), Self::Rename(source) => source.observation() } }
+}
+pub(super) enum MovePublished { Copy(WindowsCopiedMovePublished), Rename(WindowsPublished) }
 pub(super) struct CopiedMoveStorage {
     pub(super) roots: WindowsMutationStorage,
-    held: Vec<(StorageRef, WindowsCopiedMoveSource)>,
+    held: Vec<(StorageRef, MoveSource)>,
     sources: Vec<CopiedMoveSourceEvidence>,
 }
 impl MutationStorage for CopiedMoveStorage {
     type Parent = WindowsParent;
-    type SourceLease = WindowsCopiedMoveSource;
+    type SourceLease = MoveSource;
     type OwnedTemp = WindowsCopiedMoveTemp;
-    type Published = WindowsCopiedMovePublished;
+    type Published = MovePublished;
     fn capabilities(&self) -> MutationCapabilities {
         MutationCapabilities {
             seek: Capability::Supported, exclusive_create: Capability::Supported,
             no_replace_publish: Capability::Supported, content_verification: Capability::Supported,
-            same_volume_no_replace_rename: Capability::Unsupported,
+            same_volume_no_replace_rename: Capability::Supported,
             durable_flush: Capability::Unknown, leased_source_retirement: Capability::Unknown,
             staged_replacement: Capability::Unsupported,
         }
@@ -173,10 +185,11 @@ impl MutationStorage for CopiedMoveStorage {
         self.roots.create_copied_move_temp(parent, job_id, cancel)
     }
     fn publish_no_replace(&mut self, temp: &mut Self::OwnedTemp, parent: &WindowsParent, name: &MutationName, cancel: &AtomicBool) -> MutationOutcome<Self::Published> {
-        self.roots.publish_copied_move_no_replace(temp, parent, name, cancel)
+        map_publication(self.roots.publish_copied_move_no_replace(temp, parent, name, cancel), MovePublished::Copy)
     }
-    fn rename_no_replace(&mut self, _: &mut Self::SourceLease, _: &WindowsParent, _: &MutationName, _: &AtomicBool) -> MutationOutcome<Self::Published> {
-        MutationOutcome::NoEffect(MutationError::new(MutationErrorKind::Unsupported, "copied Move never selects rename fallback"))
+    fn rename_no_replace(&mut self, source: &mut Self::SourceLease, parent: &WindowsParent, name: &MutationName, cancel: &AtomicBool) -> MutationOutcome<Self::Published> {
+        let MoveSource::Rename(source) = source else { return wrong_route(); };
+        map_publication(self.roots.rename_selected_source_controlled(source, parent, name, cancel), MovePublished::Rename)
     }
     fn verify(&mut self, published: &Self::Published, digest: &ContentDigest) -> std::result::Result<MutationObservation, MutationError> {
         let _ = (published, digest);
@@ -186,7 +199,10 @@ impl MutationStorage for CopiedMoveStorage {
         MutationOutcome::NoEffect(MutationError::new(MutationErrorKind::Unsupported, "copied Move requires complete bound cohort hook"))
     }
     fn inspect(&mut self, published: &Self::Published) -> std::result::Result<MutationObservation, MutationError> {
-        self.roots.inspect_copied_move_publication(published)
+        match published {
+            MovePublished::Copy(published) => self.roots.inspect_copied_move_publication(published),
+            MovePublished::Rename(published) => self.roots.inspect(published),
+        }
     }
 }
 impl TransferStorage for CopiedMoveStorage {
@@ -199,9 +215,12 @@ impl TransferStorage for CopiedMoveStorage {
     fn parent_identity(&self, parent: &WindowsParent) -> ObjectIdentity { parent.identity().clone() }
     fn temp_observation(&self, temp: &Self::OwnedTemp) -> MutationObservation { temp.observation().clone() }
     fn rewind_source(&mut self, source: &mut Self::SourceLease) -> std::result::Result<(), MutationError> {
+        let MoveSource::Copy(source) = source else { return Err(MutationError::new(MutationErrorKind::Unsupported, "rename route cannot copy bytes")); };
         source.seek(SeekFrom::Start(0)).map(|_| ()).map_err(|error| MutationError::new(MutationErrorKind::Io, error.to_string()))
     }
-    fn read_source(&mut self, source: &mut Self::SourceLease, bytes: &mut [u8]) -> io::Result<usize> { source.read(bytes) }
+    fn read_source(&mut self, source: &mut Self::SourceLease, bytes: &mut [u8]) -> io::Result<usize> {
+        match source { MoveSource::Copy(source) => source.read(bytes), MoveSource::Rename(_) => Err(io::Error::other("rename route cannot copy bytes")) }
+    }
     fn write_temp(&mut self, temp: &mut Self::OwnedTemp, bytes: &[u8]) -> io::Result<usize> { temp.write(bytes) }
     fn sync_temp(&mut self, temp: &mut Self::OwnedTemp) -> std::result::Result<(), MutationError> { temp.sync_data() }
     fn verify_temp(&mut self, _temp: &Self::OwnedTemp, _digest: &ContentDigest) -> std::result::Result<MutationObservation, MutationError> {
@@ -210,13 +229,20 @@ impl TransferStorage for CopiedMoveStorage {
     fn verify_selected_copied_move_temp(&mut self, temp: &Self::OwnedTemp, digest: &ContentDigest, cancel: &AtomicBool) -> std::result::Result<MutationObservation, MutationError> {
         temp.verify_content_controlled(digest, cancel)
     }
-    fn rename_eligible(&self, _: &Self::SourceLease, _: &WindowsParent) -> bool { false }
+    fn rename_eligible(&self, source: &Self::SourceLease, parent: &WindowsParent) -> bool {
+        matches!(source, MoveSource::Rename(_)) && matches!((&source.observation().identity, parent.identity()),
+            (ObjectIdentity::Windows { volume: source, .. }, ObjectIdentity::Windows { volume: target, .. }) if source == target)
+    }
     fn selected_copied_move_contract(&self) -> bool { true }
     fn verify_selected_copied_move(&mut self, published: &Self::Published, digest: &ContentDigest, cancel: &AtomicBool) -> std::result::Result<MutationObservation, MutationError> {
-        self.roots.verify_copied_move_publication(published, digest, cancel)
+        match published {
+            MovePublished::Copy(published) => self.roots.verify_copied_move_publication(published, digest, cancel),
+            MovePublished::Rename(published) => self.roots.verify_selected_rename_controlled(published, digest, cancel),
+        }
     }
 
     fn copy_selected_move_streams(&mut self, source: &Self::SourceLease, temp: &mut Self::OwnedTemp, cancel: &AtomicBool) -> MutationOutcome<CopiedMoveSourceEvidence> {
+        let MoveSource::Copy(source) = source else { return wrong_route(); };
         let Some(expected) = self.sources.iter().find(|bound| bound.identity == source.evidence().identity) else {
             return MutationOutcome::NoEffect(MutationError::new(MutationErrorKind::StalePlan, "copied source not in binding"));
         };
@@ -227,6 +253,7 @@ impl TransferStorage for CopiedMoveStorage {
         }
     }
     fn finalize_selected_copy_metadata(&mut self, source: &Self::SourceLease, temp: &mut Self::OwnedTemp, cancel: &AtomicBool) -> MutationOutcome<crate::physical_journal::CopyMetadataEvidence> {
+        let MoveSource::Copy(source) = source else { return wrong_route(); };
         match self.roots.finalize_copied_move_metadata(source, temp, cancel) {
             MutationOutcome::Applied(evidence) => MutationOutcome::Applied(crate::physical_journal::CopyMetadataEvidence {
                 source_identity: evidence.source_identity, destination_identity: evidence.destination_identity,
@@ -238,9 +265,25 @@ impl TransferStorage for CopiedMoveStorage {
         }
     }
     fn sync_owned_windows_publication(&mut self, published: &mut Self::Published, digest: &ContentDigest, cancel: &AtomicBool) -> std::result::Result<MutationObservation, MutationError> {
+        let MovePublished::Copy(published) = published else { return Err(MutationError::new(MutationErrorKind::Unsupported, "rename route already owns its held sync")); };
         self.roots.sync_copied_move_publication(published, digest, cancel)
     }
     fn retire_selected_copied_move(&mut self, source: &mut Self::SourceLease, destinations: &[&Self::Published], cancel: &AtomicBool) -> MutationOutcome<RetirementOutcome> {
-        self.roots.retire_copied_move_source(source, destinations, cancel)
+        let MoveSource::Copy(source) = source else { return wrong_route(); };
+        let Some(destinations) = destinations.iter().map(|published| match published {
+            MovePublished::Copy(published) => Some(published), MovePublished::Rename(_) => None,
+        }).collect::<Option<Vec<_>>>() else { return wrong_route(); };
+        self.roots.retire_copied_move_source(source, &destinations, cancel)
+    }
+}
+
+fn wrong_route<T>() -> MutationOutcome<T> {
+    MutationOutcome::NoEffect(MutationError::new(MutationErrorKind::Unsupported, "operation differs from retained Move route"))
+}
+fn map_publication<T>(outcome: MutationOutcome<T>, map: impl FnOnce(T) -> MovePublished) -> MutationOutcome<MovePublished> {
+    match outcome {
+        MutationOutcome::Applied(published) => MutationOutcome::Applied(map(published)),
+        MutationOutcome::NoEffect(error) => MutationOutcome::NoEffect(error),
+        MutationOutcome::PendingUnknown(error) => MutationOutcome::PendingUnknown(error),
     }
 }

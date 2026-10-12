@@ -67,3 +67,30 @@ provider call returns before its surrounding checkpoint can observe cancellation
 The added preparation fixture retains `Cancelled` classification and proves no
 journal/artist-directory effect; native temp/metadata/publication cancellation
 checks retain both source bytes and the unpublished owned temp.
+
+
+## Mixed ordinary/duet routing (separate composition candidate)
+
+One retained plan may contain both routes. The route is derived from its original
+per-transfer copy effect and freshly verified source/target volume identities:
+ordinary same-volume non-duet sources retain exact-object write-through rename;
+duet cohorts and cross-volume sources use full-stream copy/retirement. Only the
+latter carry `copied_move_sources` evidence. The binding rejects moving a source
+between routes, and the journal refuses temp/retirement phases for a rename route
+or atomic rename for a copied route. Metadata receipts apply only to copied
+operations; ordinary rename recovery verifies the same original object.
+
+All sources for both routes are leased before any effects. The shared runner
+retains original operation IDs, order and dependencies; it does not split or
+reorder independent jobs. Physical publications and source retirements remain
+separate receipts, and a rename remains one real exact-object effect. The native
+rename implementation is shared with the established rename guard; its controlled
+entry uses cancellable hashes and preserves post-dispatch uncertainty.
+
+This follow-on replaces the earlier mixed-plan safe refusal. Mandatory candidate
+counts are now 21 native, six journal and 13 product cases, including a mixed job
+whose ordinary source identity and ADS survive rename, exact committed operation
+order, and a later ordinary collision retaining an earlier completed duet. These
+new cases remain unrun locally. A duet with fewer than two eligible planned
+destinations remains refused: historical source deletion after a failed/skipped
+destination is intentionally not reproduced.
