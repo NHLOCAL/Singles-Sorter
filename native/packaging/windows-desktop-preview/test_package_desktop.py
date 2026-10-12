@@ -27,7 +27,7 @@ class DesktopPackageTests(unittest.TestCase):
         self.report=self.root/'report.json'
         self.data={'medium_integrity_verified':True,'status':'passed','platform':'windows-native-tauri','ipc_mocked':False,'ai_mode':'on',
                    'binary_sha256':p.digest(self.binary),'package_sha256sums_sha256':p.digest(self.pkg/'SHA256SUMS.txt'),
-                   'original_ai_checks':sorted(p.REQUIRED_CHECKS),'copied_move_checks':sorted(p.COPIED_MOVE_CHECKS),'apply_mode':'on','apply_checks':sorted(p.APPLY_CHECKS),'repair_checks':sorted(p.REPAIR_CHECKS),'flac_checks':sorted(p.FLAC_CHECKS),'ogg_checks':sorted(p.OGG_CHECKS),'album_checks':sorted(p.ALBUM_CHECKS)}
+                   'original_ai_checks':sorted(p.REQUIRED_CHECKS),'copied_move_checks':sorted(p.COPIED_MOVE_CHECKS),'apply_mode':'on','apply_checks':sorted(p.APPLY_CHECKS),'recovery_checks':sorted(p.RECOVERY_CHECKS),'repair_checks':sorted(p.REPAIR_CHECKS),'flac_checks':sorted(p.FLAC_CHECKS),'ogg_checks':sorted(p.OGG_CHECKS),'album_checks':sorted(p.ALBUM_CHECKS)}
         self.save()
     def save(self): self.report.write_text(json.dumps(self.data),encoding='utf-8')
     def test_each_copied_move_check_is_mandatory(self):
@@ -79,6 +79,10 @@ class DesktopPackageTests(unittest.TestCase):
     def test_read_only_binary_report_cannot_publish_selected_package(self):
         self.data['apply_mode']='off';self.save()
         with self.assertRaisesRegex(ValueError,'actual selected Copy/Move'): p.report_gate(self.report,self.binary,'on',self.pkg)
+    def test_every_restart_recovery_case_required(self):
+        for missing in p.RECOVERY_CHECKS:
+            self.data['recovery_checks']=sorted(p.RECOVERY_CHECKS-{missing});self.save()
+            with self.assertRaisesRegex(ValueError,'restart recovery'): p.report_gate(self.report,self.binary,'on',self.pkg)
     def test_changed_package_rejected(self):
         (self.pkg/'SHA256SUMS.txt').write_text('different')
         with self.assertRaisesRegex(ValueError,'exact package'): p.report_gate(self.report,self.binary,'on',self.pkg)

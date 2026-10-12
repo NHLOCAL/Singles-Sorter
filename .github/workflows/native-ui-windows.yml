@@ -320,6 +320,18 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai,selected-windows-execution
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $restartCase = 'job_owner::recovery_owner::selected::tests::actual_content_chunk_close_cancels_and_fresh_host_reopens_read_only'
+          $restartListing = cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai,selected-windows-execution --lib $restartCase -- --exact --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($restartListing | Where-Object { $_ -eq "${restartCase}: test" }).Count -ne 1) { throw "Actual native chunk-cancel restart case must not be compiled out" }
+          cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai,selected-windows-execution --lib $restartCase -- --exact --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $fixRestartCase = 'job_owner::recovery_owner::selected::tests::fresh_fix_restart_requires_source_only_and_verifies_retained_backups'
+          $fixRestartListing = cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai,selected-windows-execution --lib $fixRestartCase -- --exact --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($fixRestartListing | Where-Object { $_ -eq "${fixRestartCase}: test" }).Count -ne 1) { throw "Actual source-only Fix restart case must not be compiled out" }
+          cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai,selected-windows-execution --lib $fixRestartCase -- --exact --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:ORIGINAL_AI_BUNDLE = (Resolve-Path ../../target/desktop-original/bundle).Path
           cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai,selected-windows-execution --release --lib -- --ignored
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -347,6 +359,7 @@ jobs:
         env:
           SINGLES_DESKTOP_AI_EXPECTED: 'on'
           SINGLES_DESKTOP_APPLY_EXPECTED: 'on'
+          SINGLES_DESKTOP_RECOVERY_EXPECTED: 'on'
           SINGLES_DESKTOP_BIN: ${{ github.workspace }}/native/target/desktop-original/windows-desktop-preview/singles-sorter-preview.exe
           SINGLES_UI_OUTPUT: ${{ github.workspace }}/native/apps/singles-ui/test-results/native-windows/original-staged
         run: |
@@ -363,6 +376,7 @@ jobs:
         env:
           SINGLES_DESKTOP_AI_EXPECTED: 'on'
           SINGLES_DESKTOP_APPLY_EXPECTED: 'on'
+          SINGLES_DESKTOP_RECOVERY_EXPECTED: 'on'
           SINGLES_DESKTOP_BIN: ${{ github.workspace }}/native/target/desktop-original/תצוגה חדשה extracted/singles-sorter-preview.exe
           SINGLES_UI_OUTPUT: ${{ github.workspace }}/native/apps/singles-ui/test-results/native-windows/original-extracted
         run: |

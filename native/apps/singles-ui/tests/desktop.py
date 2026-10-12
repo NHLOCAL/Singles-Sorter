@@ -26,6 +26,7 @@ from native_fixtures import write_import_csv
 from desktop_layout import check_native_layout, capture_platform_fonts, check_phone_layout, assert_editor_actions, METRICS
 from desktop_ai import DesktopAI, ProtectedTrees, ai_mode, verify_package, REQUIRED_CHECKS
 from desktop_apply import exercise_apply
+from desktop_recovery import exercise_recovery
 from desktop_repair import exercise_repair
 from desktop_flac import exercise_flac
 from desktop_ogg import exercise_ogg
@@ -66,6 +67,7 @@ active_binary = BINARY
 checks = []
 original_ai_checks = []
 apply_checks = []
+recovery_checks = []
 repair_checks = []
 flac_checks = []
 ogg_checks = []
@@ -319,12 +321,15 @@ try:
             checks.append('Real Ogg repair: ' + ', '.join(ogg_checks))
             album_checks = exercise_albums(script, click, fill, wait, capture, scratch / 'album-cases', OUTPUT, ROOT.parents[1] / 'tests/fixtures/media/blank.mp3')
             checks.append('Real album execution: ' + ', '.join(album_checks))
+            if os.environ.get('SINGLES_DESKTOP_RECOVERY_EXPECTED') == 'on':
+                recovery_checks = exercise_recovery(script, click, wait, capture, pick_owned_path, restart_app, BINARY, OUTPUT)
+                checks.append('Actual read-only process-restart inspection: ' + ', '.join(recovery_checks))
     assert not script("return !!document.querySelector('vite-error-overlay')")
     if package_guard:
         package_guard.verify()
         assert verify_package(BINARY.parent) == PACKAGE_MANIFEST_SHA256
         assert set(REQUIRED_CHECKS).issubset(original_ai_checks)
-    (OUTPUT / 'acceptance.json').write_text(json.dumps({'status':'passed','platform':'windows-native-tauri','binary_sha256':hashlib.sha256(BINARY.read_bytes()).hexdigest(),'ipc_mocked':False,'medium_integrity_verified':True,'ai_mode':AI_MODE,'package_sha256sums_sha256':PACKAGE_MANIFEST_SHA256,'original_ai_checks':original_ai_checks,'apply_mode':os.environ.get('SINGLES_DESKTOP_APPLY_EXPECTED','off'),'apply_checks':apply_checks,'repair_checks':repair_checks,'flac_checks':flac_checks,'ogg_checks':ogg_checks,'album_checks':album_checks,'copied_move_checks':copied_move_checks,'checks':checks,'remaining':['Narrator','200 percent DPI','Android SAF and physical ARM64','unsupported apply modes and process-restart recovery']},ensure_ascii=False,indent=2),encoding='utf-8')
+    (OUTPUT / 'acceptance.json').write_text(json.dumps({'status':'passed','platform':'windows-native-tauri','binary_sha256':hashlib.sha256(BINARY.read_bytes()).hexdigest(),'ipc_mocked':False,'medium_integrity_verified':True,'ai_mode':AI_MODE,'package_sha256sums_sha256':PACKAGE_MANIFEST_SHA256,'original_ai_checks':original_ai_checks,'apply_mode':os.environ.get('SINGLES_DESKTOP_APPLY_EXPECTED','off'),'apply_checks':apply_checks,'recovery_checks':recovery_checks,'repair_checks':repair_checks,'flac_checks':flac_checks,'ogg_checks':ogg_checks,'album_checks':album_checks,'copied_move_checks':copied_move_checks,'checks':checks,'remaining':['Narrator','200 percent DPI','Android SAF and physical ARM64','unsupported apply modes, automatic replay, and Album restart inspection']},ensure_ascii=False,indent=2),encoding='utf-8')
 except Exception as error:
     snapshot(active_binary, OUTPUT, 'webdriver-failure')
     if session:

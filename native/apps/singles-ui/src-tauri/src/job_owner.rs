@@ -31,6 +31,9 @@ use std::{
 #[path = "execution.rs"]
 mod execution;
 pub use execution::{ApplyReadiness, ExecutionSnapshot, RetainedExecution};
+#[path = "recovery_owner.rs"]
+mod recovery_owner;
+pub use recovery_owner::{RecoveryPage, RecoveryReport, RecoveryRunId, RecoverySnapshot};
 
 const BUNDLED: &[u8] =
     include_bytes!("../../../../tests/fixtures/full_contract/released-singer-list.csv");
@@ -221,6 +224,7 @@ struct Inner {
     job: Option<CompletedJob>,
     model_probe: Option<Cancellation>,
     journal_directory: Option<PathBuf>,
+    recovery: recovery_owner::RecoveryState,
 }
 #[derive(Default)]
 struct Shared {
@@ -327,8 +331,9 @@ impl Host {
         Ok(())
     }
     pub fn cancel_active(&self) {
-        if let Ok(inner) = self.lock() {
+        if let Ok(mut inner) = self.lock() {
             self.shared.lifecycle.fetch_add(1, Ordering::AcqRel);
+            if let Some(run) = &mut inner.recovery.run { run.cancel(); }
             if let Some(probe) = &inner.model_probe {
                 probe.cancel();
             }
@@ -1180,6 +1185,21 @@ fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn recovery_commands_have_matching_manifest_handlers_and_exact_grants() {
+        let manifest = include_str!("../build.rs");
+        let handlers = include_str!("lib.rs");
+        let permissions = include_str!("../permissions/preview.toml");
+        for command in ["start_recovery_list", "recovery_snapshot", "cancel_recovery", "select_recovery_root", "start_recovery_inspection"] {
+            assert!(manifest.contains(&format!("\"{command}\"")));
+            assert!(handlers.contains(&format!("commands::{command},")));
+            assert!(permissions.contains(&format!("\"{command}\"")));
+        }
+        for forbidden in ["replay_recovery", "resume_recovery", "delete_journal", "opener:", "shell:", "fs:"] {
+            assert!(!permissions.contains(forbidden));
+        }
+    }
+
     use super::*;
     fn settings() -> JobSettings {
         serde_json::from_value(serde_json::to_value(Settings::default()).unwrap()).unwrap()

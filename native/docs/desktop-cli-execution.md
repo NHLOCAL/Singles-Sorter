@@ -26,10 +26,13 @@ Copy/Move acceptance on both staged and consumer-extracted bytes. A plan documen
    no automatic replay, rollback or source deletion is inferred from a receipt.
 
 The host owns the job through reload/close cancellation. A reload can restore the
-retained execution result within the same running host. Persisted journals remain
-available after process exit, but a process-restart recovery UI/import flow is
-not implemented in this candidate; its absence must not be described as recovery
-completion. The results expose the journal directory for inspection.
+retained execution result within the same running host. After process exit, the
+[current read-only restart candidate](current-restart-product.md) discovers single
+Copy/Move (including copied routes) and Fix journals. Inspection requires fresh
+exact native source/target choices, or source-only choices for Fix, and offers
+measured progress and cancellation. Album and orphan journals remain visibly
+unsupported. No execution replay or cleanup is exposed; inspection writes no
+files or journals. Actual composed Windows acceptance is still required.
 
 ## CLI flow
 

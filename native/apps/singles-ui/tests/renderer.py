@@ -452,6 +452,92 @@ try:
         assert touch_badge.bounding_box()['height'] >= 48
         touch.close()
         checks.append('Touch badge toggles and retains a 48px target')
+        recovery_page=browser.new_page(viewport={'width':1000,'height':650})
+        recovery_page.on('pageerror', lambda error: errors.append(str(error)))
+        recovery_mock=MOCK.replace("platform:'linux_test'", "platform:'windows'")
+        recovery_page.add_init_script('window.__realHostFixture='+json.dumps(REAL_PAGE,ensure_ascii=False)+';'+recovery_mock+r"""
+        const original=window.__TAURI_INTERNALS__.invoke;
+        let serial=0;const runs=new Map();
+        const progress={stage:'files',operation:0,total_operations:51,completed_operations:1,records_checked:30,observations:10,bytes_read:80*1024*1024,elapsed_ms:1200};
+        window.__TAURI_INTERNALS__.invoke=async(command,args={})=>{
+          if(!['start_recovery_list','select_recovery_root','start_recovery_inspection','recovery_snapshot','cancel_recovery'].includes(command))return original(command,args);
+          window.__calls.push({command,args});
+          if(command==='start_recovery_list'){
+            const run_id='recovery-'+serial++;runs.set(run_id,{run_id,kind:'list',status:'completed',progress,page:{offset:args.offset,total:3,truncated:false,records:[
+              {token:'single',job_id:'sorter-1-2-3',journal_name:'sorter-1-2-3.directories.jsonl',family:'single',source:'C:\\מקור',target:'C:\\יעד',state:'recorded_complete',detail:'היומן מתעד סיום; יש לבדוק את מצב הקבצים.',operation_count:51},
+              {token:'album',job_id:'album-1-2-3',journal_name:'album.jsonl',family:'album',source:null,target:null,state:'unsupported',detail:'בדיקה לאחר פתיחה מחדש עדיין אינה נתמכת. שמור את היומן.',operation_count:0},
+              {token:'repair',job_id:'repair-1-2-3',journal_name:'repair.jsonl',family:'repair',source:'C:\\תיקון',target:null,state:'inspection_needed',detail:'יש לבחור תיקיית מקור ולבדוק את העותקים המקוריים.',operation_count:1}]},report:null,error:null});return {run_id};
+          }
+          if(command==='select_recovery_root')return window.__recoveryPickerCancelled?null:{token:args.role,display_name:args.role,capabilities:{read:true,list:true},platform:'windows'};
+          if(command==='start_recovery_inspection'){
+            const run_id='recovery-'+serial++,run={run_id,kind:'inspect',status:'running',progress,page:null,report:null,error:null};runs.set(run_id,run);
+            if(args.token==='repair'){run.status='completed';run.progress={...progress,total_operations:1,completed_operations:1};run.report={job_id:'repair-1-2-3',state:'consistent',observed_directories:0,pending_directories:0,rejected_directories:0,incomplete_tail:false,unverified_directories:0,observation_limit_reached:false,operations:[{operation:0,source:'C:\\תיקון\\song__demo.mp3',destination:'C:\\תיקון\\song demo.mp3',status:'Committed',evidence:[{role:'current',path:'C:\\תיקון\\song demo.mp3',status:'Verified'},{role:'backup',path:'C:\\תיקון\\.sorter-original.backup',status:'Verified'}]}]};return {run_id};}
+            window.__finishRecovery=()=>{run.status='completed';run.progress={...progress,completed_operations:51};run.report={job_id:'sorter-1-2-3',state:'needs_attention',observed_directories:1,pending_directories:0,rejected_directories:0,incomplete_tail:false,unverified_directories:0,observation_limit_reached:false,operations:Array.from({length:51},(_,operation)=>({operation,source:'C:\\מקור\\שיר.wav',destination:'C:\\יעד\\שיר.wav',status:operation===0?'NeedsRecovery':'Committed'}))};};return {run_id};
+          }
+          if(command==='cancel_recovery'){const run=runs.get(args.runId);run.status='cancelled';run.error={code:'CANCELLED',message:'הבדיקה בוטלה'};return;}
+          if(command==='recovery_snapshot'){const run=runs.get(args.runId);if(run.status==='cancelled')window.__cancelObserved=true;return structuredClone(run);}
+        };
+        """)
+        recovery_page.goto(f'http://127.0.0.1:{server.server_port}/')
+        expect(recovery_page.locator('#sort')).to_be_enabled()
+        recovery_page.locator('#menu').click();recovery_page.locator('#recovery-menu').click()
+        expect(recovery_page.locator('#recovery-list button')).to_have_count(3)
+        recovery_page.locator('[data-recovery-family="album"]').click()
+        expect(recovery_page.locator('#recovery-selection')).to_be_hidden()
+        expect(recovery_page.locator('#recovery-error')).to_contain_text('אינה נתמכת')
+        recovery_page.locator('[data-recovery-family="single"]').click()
+        expect(recovery_page.locator('#recovery-inspect')).to_be_disabled()
+        recovery_page.locator('#recovery-source-picker').click()
+        expect(recovery_page.locator('#recovery-inspect')).to_be_disabled()
+        recovery_page.evaluate('window.__recoveryPickerCancelled=true')
+        recovery_page.locator('#recovery-source-picker').click()
+        expect(recovery_page.locator('#recovery-selected-source')).to_have_text('Source')
+        recovery_page.evaluate('window.__recoveryPickerCancelled=false')
+        recovery_page.locator('#recovery-target-picker').click()
+        recovery_page.locator('#recovery-inspect').click()
+        expect(recovery_page.locator('#recovery-inspect')).to_be_disabled()
+        expect(recovery_page.locator('#recovery-close')).to_be_enabled()
+        expect(recovery_page.locator('#recovery-busy')).to_contain_text('80.0 MiB')
+        recovery_page.keyboard.press('Escape')
+        expect(recovery_page.locator('#recovery-dialog')).to_be_hidden()
+        recovery_page.wait_for_function('window.__cancelObserved===true')
+        assert len(recovery_page.evaluate("window.__calls.filter(call=>call.command==='cancel_recovery')"))==1
+        recovery_page.locator('#menu').click();recovery_page.locator('#recovery-menu').click()
+        expect(recovery_page.locator('#recovery-list button')).to_have_count(3)
+        recovery_page.locator('[data-recovery-family="single"]').click()
+        expect(recovery_page.locator('#recovery-inspect')).to_be_disabled()
+        recovery_page.locator('#recovery-source-picker').click();recovery_page.locator('#recovery-target-picker').click()
+        recovery_page.locator('#recovery-inspect').click()
+        recovery_page.wait_for_function("window.__calls.filter(call=>call.command==='start_recovery_inspection').length===2")
+        recovery_page.evaluate('window.__finishRecovery()')
+        expect(recovery_page.locator('#recovery-result-title')).to_have_text('נדרשת בדיקה נוספת')
+        expect(recovery_page.locator('#recovery-next-step')).to_contain_text('לפני ביצוע נוסף')
+        expect(recovery_page.locator('#recovery-operation-list article')).to_have_count(50)
+        recovery_page.locator('#recovery-operation-next').click()
+        expect(recovery_page.locator('#recovery-operation-list article')).to_have_count(1)
+        for width,height in [(1000,650),(360,800)]:
+            recovery_page.set_viewport_size({'width':width,'height':height})
+            assert recovery_page.locator('#recovery-dialog').evaluate('el=>el.scrollWidth<=el.clientWidth+1')
+            recovery_page.screenshot(path=str(OUTPUT/f'renderer-recovery-{width}.png'),full_page=True)
+        recovery_page.keyboard.press('Escape')
+        expect(recovery_page.locator('#recovery-dialog')).to_be_hidden()
+        expect(recovery_page.locator('#menu')).to_be_focused()
+        recovery_page.locator('#menu').click();recovery_page.locator('#recovery-menu').click()
+        expect(recovery_page.locator('#recovery-list button')).to_have_count(3)
+        recovery_page.locator('[data-recovery-family="repair"]').click()
+        expect(recovery_page.locator('#recovery-target-picker')).to_be_hidden()
+        expect(recovery_page.locator('#recovery-inspect')).to_be_disabled()
+        recovery_page.locator('#recovery-source-picker').click();recovery_page.locator('#recovery-inspect').click()
+        expect(recovery_page.locator('#recovery-result-title')).to_have_text('הקבצים שנבדקו תואמים ליומן')
+        expect(recovery_page.locator('.recovery-evidence')).to_have_count(2)
+        expect(recovery_page.locator('[data-recovery-evidence-role="backup"]')).to_contain_text('עותק מקורי שנשמר: אומת')
+        assert recovery_page.evaluate("window.__calls.filter(call=>call.command==='start_recovery_inspection').at(-1).args.targetToken") is None
+        recovery_page.screenshot(path=str(OUTPUT/'renderer-recovery-fix-source-only.png'),full_page=True)
+        recovery_page.keyboard.press('Escape')
+        assert len(recovery_page.evaluate("window.__calls.filter(call=>call.command==='start_recovery_inspection')"))==3
+        assert not errors, errors
+        recovery_page.close()
+        checks.append('Mocked restart flow: unsupported Album, source-only Fix backup evidence, fresh roles, picker cancel, measured progress, active cancel/close and fresh-reopen guards, bounded results and narrow layout; no native runtime claim')
         browser.close()
 finally:
     server.shutdown()

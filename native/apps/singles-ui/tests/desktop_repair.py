@@ -166,7 +166,7 @@ def exercise_repair(command, script, click, fill, wait, capture, root, output, a
         if version == 4:
             exercise_shell(command, script, capture, output, 'fix-terminal-' + label)
         capture('fix-result-' + label)
-        receipts.append(dict(case=label, original_sha256=digest(before), current_sha256=digest(after),
+        receipts.append(dict(case=label, source=str(source), journal_path=script("return document.querySelector('#journal-path').value"), original_sha256=digest(before), current_sha256=digest(after),
                              backup_sha256=[digest(backup.read_bytes()) for backup in backups],
                              displayed_filename=fixed.name, renamed=True, tags_repaired=not unsupported, media_sha256=digest(payload),
                              unchanged_sha256=digest(unchanged_bytes), inactive_hidden_by_default=True,

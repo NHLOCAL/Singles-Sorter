@@ -139,6 +139,8 @@ def exercise_copied_move(script, click, fill, wait, capture, root, output, secon
             assert (committed, moved, failed, blocked) == (len(expected), len(paths), 0, 0)
             set_developer_mode(script, click, wait, False)
             receipts.append(dict(case=label, ai_profile=profile, cross_volume=cross_volume,
+                                 source=str(source), target=str(target),
+                                 journal_path=script("return document.querySelector('#journal-path').value"),
                                  expected_counts=dict(source_items=len(paths), committed_destinations=len(expected), moved_sources=len(paths)),
                                  observed_displayed_counts=dict(committed_destinations=committed, moved_sources=moved, failed_operations=failed, blocked_operations=blocked),
                                  displayed_summary=summary, displayed_details=details,

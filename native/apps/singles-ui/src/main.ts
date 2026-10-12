@@ -1,7 +1,7 @@
 import {hasAndroidHost} from './android-transport';
 import './styles.css';
 import {installViewport} from './viewport';
-import {nativeHost,openFooterLink,openProjectLink,openLocalLicenses} from './host';
+import {nativeHost,nativeRecoveryHost,openFooterLink,openProjectLink,openLocalLicenses} from './host';
 import {installAbout} from './about';
 import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,verificationWarning,verificationProgressText,resultFilename} from './result-presentation';
 import {kindLabel,reasonLabel,blockerLabel,warningPresentation,noticeLabel} from './presentation';
@@ -9,6 +9,7 @@ import {PAGE_SIZE,PreviewController} from './state';
 import type {Settings,ImportEncoding,Mode,PlanRow,ExecutionItem} from './contracts';
 import {PersonalListController} from './lists';
 import {installHelpBadges} from './help';
+import {RecoveryController,RECOVERY_PAGE_SIZE,RECOVERY_OPERATION_PAGE_SIZE,recoveryStateLabel,recoveryFamilyLabel,recoveryNextStep,recoveryOperationLabel,displayRecoveryPath,recoveryProgressText,recoveryEvidenceRole,recoveryEvidenceStatus} from './recovery';
 import {WorkspaceNavigation} from './navigation';
 import {installIcons,iconElement,setButtonLabel} from './icons';
 const controller=new PreviewController(nativeHost,nativeHost);
@@ -16,6 +17,7 @@ try{controller.state.developerMode=readDeveloperMode(localStorage);}catch{/* Fre
 const personal=new PersonalListController(nativeHost,()=>controller.resourcesChanged());
 let listOffset=0,importOffset=0;
 const navigation=new WorkspaceNavigation();
+const recovery=new RecoveryController(nativeRecoveryHost);
 let detailTrigger:HTMLButtonElement|null=null;
 let resultsScroll=0;
 
@@ -53,9 +55,11 @@ app.innerHTML=`
 </section>
 </main>
 <footer>להורדת סינגלים חינם · <button id="footer-link" class="footer-link">שיר בוט</button></footer>
+<dialog id="recovery-dialog" class="wide-dialog recovery-dialog" aria-labelledby="recovery-title"><div class="dialog-heading"><h2 id="recovery-title">בדיקת פעולות קודמות</h2><button id="recovery-close" class="icon-button" aria-label="סגור יומנים">×</button></div><p class="hint">בחר פעולה ובחר מחדש את תיקיית המקור, וגם תיקיית יעד כשנדרשת, כדי לבדוק את הקבצים. הבדיקה אינה משנה קבצים ואינה מפעילה שוב פעולות.</p><p id="recovery-error" class="error" role="alert" hidden></p><p id="recovery-busy" role="status" aria-live="polite" hidden>בודק את היומן והקבצים…</p><div class="dialog-actions"><button id="recovery-cancel" class="secondary" hidden>עצור בדיקה</button><button id="recovery-refresh" class="secondary">רענן יומנים</button></div><div id="recovery-list" class="recovery-list" aria-label="יומני פעולות"></div><nav id="recovery-pagination" class="list-pagination" aria-label="עמודי יומנים" hidden><button id="recovery-prev" class="secondary">הקודם</button><span id="recovery-range"></span><button id="recovery-next" class="secondary">הבא</button></nav><p id="recovery-truncated" class="warning" hidden>הרשימה מוגבלת למספר קבוע של יומנים. יומנים נוספים נשמרו בתיקיית נתוני התוכנה.</p><section id="recovery-selection" hidden><p id="recovery-record-detail" class="hint"></p><h3>התיקיות שתועדו ביומן</h3><label class="detail-path-label">מקור<input id="recovery-recorded-source" class="source-path" dir="ltr" readonly></label><label class="detail-path-label">יעד<input id="recovery-recorded-target" class="source-path" dir="ltr" readonly></label><div class="recovery-roots"><button id="recovery-source-picker" class="secondary">בחר תיקית מקור</button><bdi id="recovery-selected-source"></bdi><button id="recovery-target-picker" class="secondary">בחר תיקית יעד</button><bdi id="recovery-selected-target"></bdi></div><button id="recovery-inspect" class="primary">בדוק את הקבצים מול היומן</button><button id="recovery-resume" class="secondary" hidden>המשך בדיקה עם אימות מחדש</button></section><section id="recovery-report" hidden><h3 id="recovery-result-title" tabindex="-1"></h3><p id="recovery-result-summary" role="status"></p><p id="recovery-next-step" class="hint"></p><div id="recovery-operation-list"></div><nav id="recovery-operation-pagination" class="list-pagination" aria-label="עמודי בדיקת קבצים" hidden><button id="recovery-operation-prev" class="secondary">הקודם</button><span id="recovery-operation-range"></span><button id="recovery-operation-next" class="secondary">הבא</button></nav></section></dialog>
 <dialog id="apply-dialog" aria-labelledby="apply-title"><div class="dialog-heading"><h2 id="apply-title">ביצוע התוכנית</h2><button id="apply-dismiss" class="icon-button" aria-label="חזור לתוכנית">×</button></div><p id="apply-description"></p><label class="detail-path-label">תיקית מקור<input id="apply-source" class="source-path" dir="ltr" readonly></label><label id="apply-target-label" class="detail-path-label">תיקית יעד<input id="apply-target" class="source-path" dir="ltr" readonly></label><p class="hint">הקבצים והתוכנית ייבדקו מחדש לפני הביצוע. עצירה עשויה להשאיר פעולות שכבר הושלמו; התוצאה תציג מה בוצע בפועל.</p><div class="dialog-actions"><button id="confirm-apply" class="primary">אשר ביצוע</button><button id="apply-back" class="secondary">חזור לתוכנית</button></div></dialog>
 <dialog id="row-dialog" class="wide-dialog" aria-labelledby="row-title"><div class="dialog-heading"><h2 id="row-title"></h2><button id="row-close" class="icon-button" aria-label="סגור פרטים">×</button></div><div id="row-content"></div></dialog>
 <dialog id="menu-dialog" aria-labelledby="menu-title"><div class="dialog-heading"><h2 id="menu-title">עזרה ומידע</h2><button class="close-dialog icon-button" aria-label="סגור">×</button></div><div class="menu-items" role="group" aria-label="נושאי מידע"><button data-help="help" aria-pressed="true" aria-controls="usage-content">איך משתמשים?</button><button data-help="about" aria-pressed="false" aria-controls="about-content">אודות התוכנה</button></div>
+<button id="recovery-menu" class="secondary" hidden>פעולות קודמות</button>
 <div id="help-content" class="help-content">
 <section id="usage-content" data-info-page="help" aria-labelledby="usage-title"><h3 id="usage-title">מהתיקייה לתוכנית המיון</h3><ol class="usage-steps"><li>בחר תיקית מקור, ובמיון גם תיקית יעד.</li><li>התאם את האפשרויות ולחץ על <strong>מיין שירים</strong> או <strong>תקן שמות</strong>. במצב תיקון אין צורך ביעד.</li><li>עיין בהצעות ובסיבות לחסימה. כשאפשר לבצע את התוכנית, יופיע כפתור ביצוע ואישור נוסף לפני שינוי הקבצים.</li></ol><p class="hint">רשימת האמנים האישית ומיון דואטים נמצאים בהגדרות מתקדמות. ההסבר ליד כל אפשרות זמין גם במקלדת ובמגע.</p></section>
 <section id="about-content" data-info-page="about" aria-labelledby="about-name" hidden><div class="about-brand"><img src="/icon.png" width="44" height="44" alt=""><div><h3 id="about-name">מסדר הסינגלים</h3><p class="hint">סידור המוזיקה שלך בתיקיות לפי אמנים</p></div></div><dl class="about-facts"><div><dt>גרסת התוכנה</dt><dd id="about-version" dir="ltr"></dd></div><div><dt>כללי המיון</dt><dd>מבוססים על גרסה 14.0</dd></div><div><dt>פרויקט המקור</dt><dd><bdi>NHLOCAL / Singles-Sorter</bdi></dd></div></dl><p>מיון לפי רשימת אמנים, אפשרויות המיון והרשימה האישית שלך. זיהוי בעזרת המודלים המקוריים פועל מקומית כאשר הם זמינים.</p><p class="hint about-capability">הזמינות לביצוע מוצגת בכל תוכנית לפי המכשיר והפעולות הנדרשות. פעולות שאינן נתמכות נשארות לתצוגה בלבד.</p><div class="about-links"><button class="secondary" data-project-link="Source">קוד המקור ב־GitHub</button><button class="secondary" data-project-link="License">רישיון MIT</button></div><p class="hint about-browser-note">הקישורים נפתחים בדפדפן שלך.</p><p id="about-link-error" class="error" role="alert" hidden></p><button class="secondary" data-local-notices hidden>הודעות רישוי וקוד מקור לרכיבים</button><details class="about-credits"><summary>רכיבים ותודות</summary><p>הפרויקט מבוסס על מסדר הסינגלים המקורי של NHLOCAL, רשימת האמנים והמודלים המקוריים לזיהוי שמות אמנים.</p><p><bdi>Rust</bdi> למנוע המיון, <bdi>Tauri</bdi> למארח שולחן העבודה, <bdi>TagLib</bdi> לקריאת מאפייני קבצים, וסמלים מתוך <bdi>Microsoft Fluent UI System Icons</bdi>.</p><p class="hint">קוד הפרויקט מופץ ברישיון MIT. לרכיבי צד שלישי ולמודלים יש תנאי רישוי נפרדים; הודעות הרישוי הנלוות לחבילה הן המקור המלא.</p></details></section></div></dialog>
@@ -68,6 +72,61 @@ app.innerHTML=`
 // Keep the historical footer destination, verified from the released source.
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 const source=$<HTMLInputElement>('source'),target=$<HTMLInputElement>('target');
+$('recovery-menu').addEventListener('click',async()=>{
+ if(controller.state.busy)return;
+ $<HTMLDialogElement>('menu-dialog').close();openDialog('recovery-dialog');await recovery.load();
+});
+$('recovery-close').addEventListener('click',()=>$<HTMLDialogElement>('recovery-dialog').close());
+$('recovery-dialog').addEventListener('close',()=>{recovery.close();$('menu').focus();});
+$('recovery-cancel').addEventListener('click',()=>void recovery.cancel());
+$('recovery-refresh').addEventListener('click',()=>void recovery.load());
+$('recovery-resume').addEventListener('click',()=>void recovery.inspect(true));
+$('recovery-source-picker').addEventListener('click',()=>void recovery.selectRoot('Source'));
+$('recovery-target-picker').addEventListener('click',()=>void recovery.selectRoot('Target'));
+$('recovery-inspect').addEventListener('click',async()=>{await recovery.inspect();if(recovery.report)$('recovery-result-title').focus();});
+$('recovery-prev').addEventListener('click',()=>void recovery.load(Math.max(0,(recovery.page?.offset??0)-RECOVERY_PAGE_SIZE)));
+$('recovery-next').addEventListener('click',()=>void recovery.load((recovery.page?.offset??0)+RECOVERY_PAGE_SIZE));
+$('recovery-operation-prev').addEventListener('click',()=>recovery.setOperationPage(Math.max(0,recovery.operationOffset-RECOVERY_OPERATION_PAGE_SIZE)));
+$('recovery-operation-next').addEventListener('click',()=>recovery.setOperationPage(recovery.operationOffset+RECOVERY_OPERATION_PAGE_SIZE));
+function renderRecovery(){
+ const page=recovery.page,record=recovery.selected,report=recovery.report;
+ $('recovery-list').replaceChildren();
+ if(page&&!page.records.length)$('recovery-list').append(text('p','לא נמצאו יומני פעולות קודמות.','hint'));
+ for(const item of page?.records??[]){
+  const button=document.createElement('button');button.className='recovery-record secondary';button.disabled=recovery.busy;
+  button.setAttribute('aria-pressed',String(record?.token===item.token));button.dataset.recoveryJob=item.job_id??'';button.dataset.recoveryFamily=item.family;button.dataset.recoveryState=item.state;
+  button.append(text('bdi',controller.state.developerMode?item.job_id??item.journal_name:recoveryFamilyLabel(item.family)),text('span',recoveryStateLabel(item.state),'hint'));
+  button.addEventListener('click',()=>recovery.choose(item.token));$('recovery-list').append(button);
+ }
+ $('recovery-error').hidden=!recovery.error;$('recovery-error').textContent=recovery.error??'';
+ $('recovery-busy').hidden=!recovery.busy;
+ $('recovery-busy').textContent=recovery.cancelling?'עוצר את הבדיקה ומשחרר את הקבצים…':recoveryProgressText(recovery.progress);
+ $('recovery-cancel').hidden=!recovery.busy;$<HTMLButtonElement>('recovery-cancel').disabled=recovery.cancelling;
+ $<HTMLButtonElement>('recovery-refresh').disabled=recovery.busy;
+ $('recovery-resume').hidden=!recovery.canResume;
+ $('recovery-selection').hidden=!recovery.inspectable;$('recovery-record-detail').textContent=record?.detail??'';
+ $('recovery-recorded-target').parentElement!.hidden=!recovery.requiresTarget;
+ $('recovery-target-picker').hidden=!recovery.requiresTarget;$('recovery-selected-target').hidden=!recovery.requiresTarget;
+ $<HTMLInputElement>('recovery-recorded-source').value=displayRecoveryPath(record?.source??'');$<HTMLInputElement>('recovery-recorded-target').value=displayRecoveryPath(record?.target??'');
+ $('recovery-selected-source').textContent=displayRecoveryPath(recovery.source?.display_name??'לא נבחרה תיקייה');$('recovery-selected-target').textContent=displayRecoveryPath(recovery.target?.display_name??'לא נבחרה תיקייה');
+ for(const id of ['recovery-source-picker','recovery-target-picker'])$<HTMLButtonElement>(id).disabled=recovery.busy;
+ $<HTMLButtonElement>('recovery-inspect').disabled=!recovery.canInspect;
+ $('recovery-pagination').hidden=!page||page.total<=RECOVERY_PAGE_SIZE;
+ $('recovery-range').textContent=page&&page.total?`${page.offset+1}–${Math.min(page.offset+page.records.length,page.total)} מתוך ${page.total}`:'';
+ $<HTMLButtonElement>('recovery-prev').disabled=recovery.busy||!page||page.offset===0;$<HTMLButtonElement>('recovery-next').disabled=recovery.busy||!page||page.offset+RECOVERY_PAGE_SIZE>=page.total;
+ $('recovery-truncated').hidden=!page?.truncated;$('recovery-report').hidden=!report;
+ $('recovery-result-title').textContent=report?.state==='consistent'?'הקבצים שנבדקו תואמים ליומן':'נדרשת בדיקה נוספת';
+ $('recovery-result-summary').textContent=report?(record?.family==='repair'?`${report.operations.length} פעולות תיקון נבדקו · הבדיקה כוללת עותקים מקוריים כשאלה תועדו${report.incomplete_tail?' · היומן מסתיים ברשומה חלקית':''}`:`${report.operations.length} פעולות נבדקו · ${report.pending_directories} יצירות תיקייה ממתינות לבירור · ${report.unverified_directories} תיקיות לא אומתו${report.incomplete_tail?' · היומן מסתיים ברשומה חלקית':''}`):'';
+ $('recovery-next-step').textContent=report?recoveryNextStep(report):record?.detail??'';
+ $('recovery-operation-list').replaceChildren();
+ for(const operation of recovery.visibleOperations){const item=text('article','', 'recovery-operation');item.append(text('h4',`פעולה ${operation.operation+1}: ${recoveryOperationLabel(operation.status)}`));for(const [label,path] of [['מקור',operation.source],['יעד',operation.destination]]){const block=text('label',label,'detail-path-label');const input=document.createElement('input');input.className='source-path';input.readOnly=true;input.dir='ltr';input.value=displayRecoveryPath(path);block.append(input);item.append(block);}for(const evidence of operation.evidence??[]){const block=text('label',`${recoveryEvidenceRole(evidence.role)}: ${recoveryEvidenceStatus(evidence.status)}`,'detail-path-label recovery-evidence');block.dataset.recoveryEvidenceRole=evidence.role;block.dataset.recoveryEvidenceStatus=evidence.status;const input=document.createElement('input');input.className='source-path';input.readOnly=true;input.dir='ltr';input.value=displayRecoveryPath(evidence.path);block.append(input);item.append(block);}$('recovery-operation-list').append(item);}
+ $('recovery-operation-pagination').hidden=!report||report.operations.length<=RECOVERY_OPERATION_PAGE_SIZE;
+ $('recovery-operation-range').textContent=report?.operations.length?`${recovery.operationOffset+1}–${Math.min(recovery.operationOffset+RECOVERY_OPERATION_PAGE_SIZE,report.operations.length)} מתוך ${report.operations.length}`:'';
+ $<HTMLButtonElement>('recovery-operation-prev').disabled=recovery.busy||recovery.operationOffset===0;
+ $<HTMLButtonElement>('recovery-operation-next').disabled=recovery.busy||!report||recovery.operationOffset+RECOVERY_OPERATION_PAGE_SIZE>=report.operations.length;
+ if(record&&!recovery.inspectable){$('recovery-error').hidden=false;$('recovery-error').textContent=record.detail;}
+}
+recovery.subscribe(renderRecovery);
 $('footer-link').addEventListener('click',async()=>{try{await openFooterLink();}catch{ $('error').textContent='לא ניתן לפתוח כעת את הקישור בדפדפן. כתובת האתר: https://nhlocal.github.io/shir-bot';$('error').hidden=false; }});
 source.addEventListener('input',()=>controller.editRoot('Source',source.value));
 target.addEventListener('input',()=>controller.editRoot('Target',target.value));
@@ -207,6 +266,7 @@ function renderExecution(){
  $('journal-label').hidden=!developer||!e?.journal_path;$<HTMLInputElement>('journal-path').value=e?.journal_path??'';
 }
 function render(){
+ $('recovery-menu').hidden=controller.state.model?.platform!=='windows';$<HTMLButtonElement>('recovery-menu').disabled=controller.state.busy;
  const s=controller.state;const blocked=s.busy||!s.hostAvailable;
  const developer=s.developerMode;app.dataset.developerMode=String(developer);app.dataset.showInactive=String(s.showInactive);
  $<HTMLInputElement>('developer-mode').checked=developer;$<HTMLInputElement>('developer-mode').disabled=s.busy;

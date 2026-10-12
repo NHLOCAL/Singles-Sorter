@@ -2,7 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { androidInvoke,hasAndroidHost } from './android-transport';
 const invokeHost = <T>(command:string,args:Record<string,unknown>={}):Promise<T> => hasAndroidHost()?androidInvoke<T>(command,args):invoke<T>(command,args);
 import type {ProjectLinkTarget} from './about';
-import type { Host,ProfileHost } from './contracts';
+import type { Host,ProfileHost,RecoveryHost } from './contracts';
 /** No generic shell, filesystem or arbitrary URL command is exposed here.
  * Apply accepts only a retained job and its inspected plan digest. */
 export const nativeHost: Host & ProfileHost = {
@@ -38,3 +38,11 @@ export const openProjectLink = (target:ProjectLinkTarget):Promise<void> => invok
 
 /** Fixed offline Android notice viewer, no caller-supplied path. */
 export const openLocalLicenses=():Promise<void>=>invokeHost('open_local_licenses');
+
+export const nativeRecoveryHost:RecoveryHost = {
+  startRecoveryList: (offset,limit) => invoke('start_recovery_list',{offset,limit}),
+  recoverySnapshot: runId => invoke('recovery_snapshot',{runId}),
+  cancelRecovery: runId => invoke('cancel_recovery',{runId}),
+  selectRecoveryRoot: role => invoke('select_recovery_root',{role}),
+  startRecoveryInspection: (token,sourceToken,targetToken,resumeRunId) => invoke('start_recovery_inspection',{token,sourceToken,targetToken,resumeRunId}),
+};

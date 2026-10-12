@@ -401,3 +401,33 @@ pub fn cancel_apply(state: State<'_, Host>, job_id: String) -> Result<(), HostEr
 pub fn latest_execution(state: State<'_, Host>) -> Result<Option<RetainedExecution>, HostError> {
     state.latest_execution()
 }
+
+#[tauri::command]
+pub fn start_recovery_list(state: State<'_, Host>, offset: usize, limit: usize) -> Result<RecoveryRunId, HostError> {
+    state.start_recovery_list(offset, limit, state.claim()?)
+}
+#[tauri::command]
+pub fn recovery_snapshot(state: State<'_, Host>, run_id: String) -> Result<RecoverySnapshot, HostError> {
+    state.recovery_snapshot(&run_id)
+}
+#[tauri::command]
+pub fn cancel_recovery(state: State<'_, Host>, run_id: String) -> Result<(), HostError> {
+    state.cancel_recovery(&run_id)
+}
+#[tauri::command]
+pub async fn select_recovery_root(app: tauri::AppHandle, state: State<'_, Host>, role: Role) -> Result<Option<RootSelection>, HostError> {
+    let host = state.inner().clone(); let guard = host.claim()?;
+    #[cfg(any(windows, target_os = "linux"))]
+    return blocking(move || {
+        let _guard = guard;
+        let Some(file) = app.dialog().file().blocking_pick_folder() else { return Ok(None); };
+        let path = file.into_path().map_err(|_| HostError::new("UNSUPPORTED_ROOT", "A desktop directory path is required"))?;
+        host.select_recovery_path(role, path).map(Some)
+    }).await;
+    #[cfg(not(any(windows, target_os = "linux")))]
+    { let _ = (app, host, guard, role); Err(HostError::new("RECOVERY_UNAVAILABLE", "Desktop recovery requires Windows")) }
+}
+#[tauri::command]
+pub fn start_recovery_inspection(state: State<'_, Host>, token: String, source_token: String, target_token: Option<String>, resume_run_id: Option<String>) -> Result<RecoveryRunId, HostError> {
+    state.start_recovery_inspection(token, source_token, target_token, resume_run_id, state.claim()?)
+}

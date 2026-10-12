@@ -53,6 +53,11 @@ COPIED_MOVE_CHECKS = {'actual-cross-volume-move', 'actual-original-ai-duet-move'
                       'copied-move-main-and-named-streams', 'copied-move-final-source-absence',
                       'copied-move-preview-and-review-no-effects', 'copied-move-stale-stream-no-effects',
                       'copied-move-stale-target-no-effects', 'copied-move-cancel-before-effects'}
+RECOVERY_CHECKS = {'actual-process-restart', 'fresh-native-role-selections', 'wrong-roots-rejected',
+                   'historical-vs-current-state', 'per-file-reconciliation', 'recovery-no-file-or-journal-writes',
+                   'completed-copy-and-move-reconciled', 'copied-duet-and-mixed-restart-reconciled', 'copied-restart-named-stream-change-detected', 'unsupported-album-visible',
+                   'completed-fix-reconciled', 'partial-fix-stays-unresolved', 'fix-source-only-fresh-grant', 'fix-retained-backup-change-detected',
+                   'measured-streaming-progress', 'close-reopen-requires-fresh-roots'}
 DESKTOP_FEATURES = ['desktop', 'original-ai', 'selected-windows-execution', 'tauri/custom-protocol']
 require, digest = cli.require, cli.digest
 
@@ -71,6 +76,7 @@ def report_gate(path, binary, mode, package=None):
         require(OGG_CHECKS <= set(report.get('ogg_checks', [])), 'incomplete actual Ogg FixNames acceptance')
         require(ALBUM_CHECKS <= set(report.get('album_checks', [])), 'incomplete actual album acceptance')
         require(COPIED_MOVE_CHECKS <= set(report.get('copied_move_checks', [])), 'incomplete actual copied-Move acceptance')
+        require(RECOVERY_CHECKS <= set(report.get('recovery_checks', [])), 'incomplete actual restart recovery acceptance')
         require(package is not None and report.get('package_sha256sums_sha256') == digest(package / 'SHA256SUMS.txt'), 'acceptance not bound to exact package')
     return report
 
