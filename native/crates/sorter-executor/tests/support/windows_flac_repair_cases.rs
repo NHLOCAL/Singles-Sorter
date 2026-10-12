@@ -408,3 +408,41 @@ fn foreign_collision_after_backup_never_overwrites_or_loses_shorter_stage() {
     assert_eq!(std::fs::read(destination).unwrap(), b"foreign owner");
     assert_eq!(std::fs::read(backup(&fixture)).unwrap(), before);
 }
+
+#[test]
+fn real_taglib_provider_plans_rebinds_and_publishes_five_flac_fields() {
+    use sorter_io::metadata::{MetadataReader, StorageMetadataProvider};
+    assert!(MetadataReader::is_available(), "actual native metadata bridge is mandatory");
+    let before = flac(true, None, false);
+    let fixture = Fixture::new(&[("song__demo.flac", before.clone())], Metadata(Some("à, á")));
+    let mut reads = WindowsPlanningStorage::for_repair_preview(&fixture.source).unwrap();
+    let mut metadata_reads = WindowsPlanningStorage::for_repair_preview(&fixture.source).unwrap();
+    let mut metadata = StorageMetadataProvider { storage: &mut metadata_reads, reader: MetadataReader };
+    // Both preview and prepare's fresh replan use the real parser; the synthetic
+    // fixture provider is used only to share the owned-root setup above.
+    let plan = plan_job(&fixture.plan.request, &mut reads, &mut metadata, &mut Ai).unwrap();
+    assert_eq!(plan.operations.len(), 1);
+    let OperationKind::FixFile(fix) = &plan.operations[0].kind else { panic!("fix"); };
+    assert_eq!(fix.repairs.len(), 5);
+    for (repair, field) in fix.repairs.iter().zip(sorter_core::fix_plan::FIX_FIELDS) {
+        assert_eq!(repair.field, field);
+        assert_eq!(repair.original, "à, á");
+        assert_eq!(repair.replacement, "א, ב");
+    }
+    let final_name = fix.intended_name.clone().unwrap();
+    let scope = prepare_repair_scope(&plan, &mut reads, fixture.scope.resources(), &AtomicBool::new(false)).unwrap();
+    let mut job = SelectedWindowsRepairJob::prepare(
+        fixture.roots(), &plan, &mut metadata, &mut Ai, scope.resources(), &scope, &AtomicBool::new(false),
+    ).unwrap();
+    let result = job.run(&AtomicBool::new(false), &mut |_| {}).unwrap();
+    assert_eq!(result.status, RepairJobStatus::Complete, "{result:?}");
+    assert_eq!((result.renamed_files, result.repaired_files), (1, 1));
+    let report = job.inspect_recovery(&AtomicBool::new(false)).unwrap();
+    verify_role(&report, "current");
+    verify_role(&report, "backup");
+    drop(job);
+    let after = std::fs::read(fixture.source.join(final_name)).unwrap();
+    assert!(after.len() < before.len());
+    assert_eq!(split(&after).1, split(&before).1);
+    assert_eq!(std::fs::read(backup(&fixture)).unwrap(), before);
+}
