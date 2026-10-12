@@ -68,6 +68,31 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
+REPAIR_PARTIAL_CAUTION = 'בדוק את הקבצים והגיבויים בתיקיית המקור לפני ניסיון נוסף.'
+
+
+def assert_repair_terminal_notice(script, partial):
+    """Expected unsupported tags require the ordinary caution, not an all-clear."""
+    actual = script("""return (() => {
+      const notice=document.querySelector('#execution-recovery');
+      let visible=!notice.hidden&&notice.getClientRects().length>0;
+      for(let node=notice;node;node=node.parentElement){
+        const style=getComputedStyle(node);
+        if(style.visibility!=='visible'||Number(style.opacity)===0)visible=false;
+      }
+      return {hidden:notice.hidden,visible,text:notice.textContent,
+        title:document.querySelector('#execution-title').textContent};
+    })();""")
+    expected_title = 'הביצוע הושלם חלקית' if partial else 'הביצוע הושלם'
+    if (not isinstance(actual, dict) or type(actual.get('hidden')) is not bool
+            or type(actual.get('visible')) is not bool or not isinstance(actual.get('text'), str)
+            or actual.get('title') != expected_title or actual['hidden'] != (not partial)
+            or actual['visible'] != partial
+            or (partial and actual['text'] != REPAIR_PARTIAL_CAUTION)):
+        raise ValueError(f'Repair terminal caution differs: partial={partial!r}, actual={actual!r}')
+    return actual
+
+
 def assert_observed_filename(script, fixed):
     """Actual ordinary result must match the independently verified current file."""
     assert Path(fixed).is_file()

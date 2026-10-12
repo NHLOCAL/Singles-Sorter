@@ -13,7 +13,7 @@ import tempfile
 from desktop_modes import select_sort_setup
 from desktop_ai import tree_snapshot, write_wave
 from desktop_polish import set_developer_mode
-from desktop_repair import assert_observed_filename, digest
+from desktop_repair import assert_observed_filename, assert_repair_terminal_notice, digest
 from desktop_recovery import journal_snapshot
 
 CHECKS = {'actual-fix-m4a-five-fields', 'actual-fix-alac-five-fields',
@@ -152,7 +152,7 @@ def exercise_mp4(script, click, fill, wait, capture, root, output):
             assert len(backups) == 1 and backups[0].read_bytes() == before
             media = verify_repaired(before, after, multiple)
         assert set(source.iterdir()) == {fixed, unchanged, *backups}
-        assert script("return document.querySelector('#execution-recovery').hidden")
+        terminal_notice = assert_repair_terminal_notice(script, opaque)
         assert script("return document.querySelectorAll('#rows tr').length") == 1
         assert_observed_filename(script, fixed)
         assert 'unchanged.wav' not in script("return document.querySelector('#rows').textContent")
@@ -166,7 +166,7 @@ def exercise_mp4(script, click, fill, wait, capture, root, output):
         receipts.append(dict(case=label, original_sha256=digest(before), current_sha256=digest(after),
                              backup_sha256=[digest(path.read_bytes()) for path in backups], media=media,
                              unchanged_sha256=digest(unchanged_bytes), displayed_filename=fixed.name,
-                             tags_repaired=not opaque, inactive_hidden_by_default=True, ipc_mocked=False))
+                             tags_repaired=not opaque, terminal_notice=terminal_notice, inactive_hidden_by_default=True, ipc_mocked=False))
     source = root / 'stale'; source.mkdir(); path = source / 'stale_input.m4a'
     path.write_bytes(generated_mp4()); before_journal = setup(source)
     changed_bytes = path.read_bytes().replace(b'opaque unrecognized atom', b'opaque UNRECOGNIZED atom')

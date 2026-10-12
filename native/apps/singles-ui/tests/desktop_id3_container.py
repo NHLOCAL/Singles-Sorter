@@ -12,7 +12,7 @@ import tempfile
 from desktop_modes import select_sort_setup
 from desktop_ai import tree_snapshot, write_wave
 from desktop_polish import set_developer_mode
-from desktop_repair import FIELDS, PRIVATE, assert_observed_filename, digest, inspect_mp3, sync_size
+from desktop_repair import FIELDS, PRIVATE, assert_observed_filename, digest, inspect_mp3, sync_size, assert_repair_terminal_notice
 from desktop_recovery import journal_snapshot
 
 ARTWORK = b'\x00image/png\x00\x03\x00owned-retained-artwork'
@@ -172,7 +172,7 @@ def exercise_id3_containers(script, click, fill, wait, capture, root, output):
             assert len(backups) == 1 and backups[0].read_bytes() == before
             media = verify_repaired(before, after, kind)
         assert set(source.iterdir()) == {fixed, unchanged, *backups}
-        assert script("return document.querySelector('#execution-recovery').hidden")
+        terminal_notice = assert_repair_terminal_notice(script, unsupported)
         assert script("return document.querySelectorAll('#rows tr').length") == 1
         assert_observed_filename(script, fixed)
         capture('container-result-' + label)
@@ -185,7 +185,7 @@ def exercise_id3_containers(script, click, fill, wait, capture, root, output):
         receipts.append(dict(case=label, original_sha256=digest(before), current_sha256=digest(after),
                              backup_sha256=[digest(path.read_bytes()) for path in backups], media=media,
                              unchanged_sha256=digest(unchanged_bytes), displayed_filename=fixed.name,
-                             tags_repaired=not unsupported, inactive_hidden_by_default=True, ipc_mocked=False))
+                             tags_repaired=not unsupported, terminal_notice=terminal_notice, inactive_hidden_by_default=True, ipc_mocked=False))
     source = root / 'stale'; source.mkdir(); path = source / 'stale_input.dsf'
     path.write_bytes(generated_container('dsf')); before_journal = setup(source)
     changed_bytes = path.read_bytes().replace(b'owned-fixture-owner', b'OWNED-fixture-owner')

@@ -11,7 +11,7 @@ import tempfile
 from desktop_modes import select_sort_setup
 from desktop_ai import tree_snapshot, write_wave
 from desktop_polish import set_developer_mode
-from desktop_repair import FIELDS, assert_observed_filename, digest
+from desktop_repair import FIELDS, assert_observed_filename, digest, assert_repair_terminal_notice
 from desktop_recovery import journal_snapshot
 
 KEYS = ('Artist', 'Album Artist', 'Title', 'Album', 'Genre')
@@ -155,7 +155,7 @@ def exercise_wavpack(script, click, fill, wait, capture, root, output):
             assert len(backups) == 1 and backups[0].read_bytes() == before
             media = verify_repaired(before, after)
         assert set(source.iterdir()) == {fixed, unchanged, *backups}
-        assert script("return document.querySelector('#execution-recovery').hidden")
+        terminal_notice = assert_repair_terminal_notice(script, readonly)
         assert script("return document.querySelectorAll('#rows tr').length") == 1
         assert_observed_filename(script, fixed)
         assert 'unchanged.wav' not in script("return document.querySelector('#rows').textContent")
@@ -169,7 +169,7 @@ def exercise_wavpack(script, click, fill, wait, capture, root, output):
         receipts.append(dict(case=label, original_sha256=digest(before), current_sha256=digest(after),
                              backup_sha256=[digest(path.read_bytes()) for path in backups], media=media,
                              unchanged_sha256=digest(unchanged_bytes), displayed_filename=fixed.name,
-                             tags_repaired=not readonly, inactive_hidden_by_default=True, ipc_mocked=False))
+                             tags_repaired=not readonly, terminal_notice=terminal_notice, inactive_hidden_by_default=True, ipc_mocked=False))
     source = root / 'stale'; source.mkdir(); path = source / 'stale_input.wv'
     path.write_bytes(generated_wavpack()); before_journal = setup(source)
     changed_bytes = path.read_bytes().replace(b'owned unknown item', b'OWNED unknown item')
