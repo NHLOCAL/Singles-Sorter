@@ -135,6 +135,16 @@ jobs:
           if ($cases.Count -ne 12) { throw "Expected all 12 native Windows fixture cases; found $($cases.Count)" }
           cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --test windows_storage -- --test-threads=1
 
+      - name: Test pinned legacy diagnostic log sink
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib diagnostic_log_tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 6) { throw "Expected 6 diagnostic log cases" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib diagnostic_log_tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Check experimental Windows journal bridge
         if: runner.os == 'Windows'
         run: cargo +1.99.0 clippy --locked -p sorter-executor --features experimental-windows-journal --all-targets -- -D warnings

@@ -4584,3 +4584,7 @@ mod copy_metadata;
 pub use copy_metadata::{
     WindowsCopyMetadataEvidence, WindowsCopyMetadataObservation, WindowsCreatedCopyDirectory,
 };
+
+#[path = "windows_diagnostic_log.rs"]
+mod diagnostic_log;
+pub use diagnostic_log::WindowsDiagnosticLog;
