@@ -76,11 +76,24 @@ class ExecutionContractTests(unittest.TestCase):
             root=Path(directory);(root/'source').mkdir();(root/'source/track').write_bytes(b'owned')
             before=execution.snapshot(root)
             (root/'logs').mkdir();log=root/'logs/music_sorter_20261012_020000_123.log'
-            text='2026-10-12 02:00:00 - MusicSorter - ERROR - refused\n';log.write_text(text,encoding='utf-8')
+            text='2026-10-12 02:00:00 - MusicSorter - ERROR - refused\n';log.write_bytes(text.encode('utf-8'))
             receipt=execution.verify_new_log(root,{},text)
             execution.no_effect_except_observed_log(before,execution.snapshot(root),receipt)
             (root/'source/extra').mkdir()
             with self.assertRaises(ValueError): execution.no_effect_except_observed_log(before,execution.snapshot(root),receipt)
+
+    def test_log_fixture_uses_raw_utf8_not_platform_text_newline_translation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'logs').mkdir();log=root/'logs/music_sorter_20261012_020000_123.log'
+            text='2026-10-12 02:00:00 - MusicSorter - INFO - שלום\n'
+            # Reproduce Windows Path.write_text's default translation on every OS.
+            # The native sink uses write_all on UTF-8 bytes, not TextIOWrapper.
+            with log.open('w',encoding='utf-8',newline='\r\n') as stream: stream.write(text)
+            self.assertEqual(log.read_bytes(),text.replace('\n','\r\n').encode('utf-8'))
+            with self.assertRaisesRegex(ValueError,'UTF-8 file and stderr'):
+                execution.verify_new_log(root,{},text)
+            log.write_bytes(text.encode('utf-8'))
+            self.assertEqual(execution.verify_new_log(root,{},text)['bytes'],len(text.encode('utf-8')))
 
     def test_diagnostic_log_never_exempts_changes_to_existing_logs(self):
         with tempfile.TemporaryDirectory() as directory:
