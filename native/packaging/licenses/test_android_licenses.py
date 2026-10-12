@@ -105,6 +105,16 @@ class AndroidNoticeTests(unittest.TestCase):
         self.assertEqual(len(common.closure(metadata)[0]), 1)
         with self.assertRaises(common.CollectionError): common.closure(metadata, required_feature="product")
 
+    def test_local_policy_manifests_are_repository_relative(self):
+        repo = android.HERE.parents[2]
+        for target in android.TARGETS:
+            policy = json.loads((android.HERE / f"android-cargo-{target}.json").read_bytes())
+            for package in policy["local_packages"]:
+                with self.subTest(target=target, package=package["name"]):
+                    manifest = common.checked_under(repo, package["manifest_path"])
+                    self.assertTrue(manifest.is_file(), f"Missing local manifest: {manifest}")
+                    self.assertTrue(package["manifest_path"].startswith("native/"))
+
     def test_policy_targets_and_supplement_pins(self):
         for target in android.TARGETS:
             policy = json.loads((android.HERE / f"android-cargo-{target}.json").read_bytes())

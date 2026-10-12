@@ -556,49 +556,49 @@
       "name": "released-ner-probe",
       "version": "0.1.0",
       "license": null,
-      "manifest_path": "Singles-Sorter/native/probes/released-ner/released-ner-math/Cargo.toml"
+      "manifest_path": "native/probes/released-ner/released-ner-math/Cargo.toml"
     },
     {
       "name": "released-ner-text",
       "version": "0.1.0",
       "license": null,
-      "manifest_path": "Singles-Sorter/native/probes/released-ner/released-ner-text/Cargo.toml"
+      "manifest_path": "native/probes/released-ner/released-ner-text/Cargo.toml"
     },
     {
       "name": "singles-android-inference",
       "version": "0.1.0",
       "license": "MIT",
-      "manifest_path": "Singles-Sorter/native/plugins/original-inference/Cargo.toml"
+      "manifest_path": "native/plugins/original-inference/Cargo.toml"
     },
     {
       "name": "sorter-classifier",
       "version": "0.1.0",
       "license": "MIT",
-      "manifest_path": "Singles-Sorter/native/crates/sorter-classifier/Cargo.toml"
+      "manifest_path": "native/crates/sorter-classifier/Cargo.toml"
     },
     {
       "name": "sorter-core",
       "version": "0.1.0",
       "license": "MIT",
-      "manifest_path": "Singles-Sorter/native/crates/sorter-core/Cargo.toml"
+      "manifest_path": "native/crates/sorter-core/Cargo.toml"
     },
     {
       "name": "sorter-io",
       "version": "0.1.0",
       "license": "MIT",
-      "manifest_path": "Singles-Sorter/native/crates/sorter-io/Cargo.toml"
+      "manifest_path": "native/crates/sorter-io/Cargo.toml"
     },
     {
       "name": "sorter-recognition",
       "version": "0.1.0",
       "license": "MIT",
-      "manifest_path": "Singles-Sorter/native/crates/sorter-recognition/Cargo.toml"
+      "manifest_path": "native/crates/sorter-recognition/Cargo.toml"
     },
     {
       "name": "sorter-storage-contracts",
       "version": "0.1.0",
       "license": "MIT",
-      "manifest_path": "Singles-Sorter/native/crates/sorter-storage-contracts/Cargo.toml"
+      "manifest_path": "native/crates/sorter-storage-contracts/Cargo.toml"
     }
   ],
   "graph": [
