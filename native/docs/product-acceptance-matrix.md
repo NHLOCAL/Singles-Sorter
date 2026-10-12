@@ -356,3 +356,52 @@ are authored reference bytes, not execution of the Rust writer. Ten native/
 stream and five Windows product cases (65 full repair cases), plus the actual
 Windows staged/extracted consumers, remain mandatory. No general APE, ID3v1
 mirror or tag-at-start support is claimed.
+
+## Actual Windows CLI consumer checkpoint: 2026-10-12, public 041f7039
+
+[Windows CLI run 38209034534](https://github.com/NHLOCAL/Singles-Sorter/actions/runs/38209034534)
+passed the release, staged-package and consumer-extracted execution lanes.
+The package provenance records the PR build commit
+`b690ae6b7b8833bfdd326b9c77acfb008db7ffe9` and tree
+`24ed2f060b9e11c57f8253be94f0b0f93755bf1a`, corresponding to the public
+`041f7039` source checkpoint. It is not the newer cross-volume Album/MP4/
+container-ID3/WavPack/partial-eligibility candidate.
+
+| Measured artifact | Exact value |
+| --- | --- |
+| Inner ZIP | `singles-sorter-original-ai-windows-x64-selected-cli.zip`, 12,258,071 bytes |
+| ZIP SHA-256 | `47ba53ea1c78eca63694489c43f1ef0a9482afce4d266289527fc568295dc388` |
+| Inventory | 144 files and one explicit empty directory; all 143 non-manifest files independently rehashed |
+| Unpacked logical file bytes | 34,456,300; not allocated filesystem space |
+| `singles-sorter.exe` | 5,733,888 bytes; SHA-256 `84c72f45b85d9574cc7053b5fd05cc508b9a5c6700f5a646f36ba694e45c7b71` |
+| Manifest SHA-256 | `1ff066ee540369be7790c32082882cc81480814b595141db11dfd5ec059a7225` |
+
+Both `windows-preview-stage-execution.json` and
+`windows-preview-execution.json` contain 38 actual subprocess cases, bind those
+exact EXE/manifest hashes, and require closed stdin and removal of developer
+tools from the child PATH. The exact source's package, notice-inventory and
+execution gates were independently rerun against the downloaded bytes. Physical
+coverage includes single Copy/Move, actual cross-volume Move, genuine original-
+model duet and mixed Move with named streams, album Copy/root/mixed Move,
+MP3/FLAC/Ogg repairs with retained originals and honest unsupported partials,
+primary CSV precedence, logging levels/files, and no-effect dry-run/overlap
+refusals. This is practical positional CLI acceptance, not only JSON protocol
+unit coverage. The read-only smoke receipt separately reports its own narrower
+scope; it does not claim to have exercised mutation or Ctrl-C.
+
+The same run produced the first 36 actual frozen-v14 paired reports. Independent
+audit found matching final trees, observed original summary counters, committed
+byte coverage and physical counters in all 36 cases. Actual operation order is
+exact in 28; eight retain the explicitly allowed atomic whole-album grouping
+difference, with no invented child effects. Overall paired status remains
+**OPEN** because execution-derived decision/skip trace is still missing.
+There are 34 distinct boolean setting vectors, not 36: all 32 duet-disabled
+vectors and two duet-enabled vectors. The other 30 duet-enabled vectors remain
+a separate authored follow-up. These results do not establish full v14 feature
+or settings regression parity.
+
+Optional fresh-process/package telemetry had path-boundary failures and does
+not establish a speed or memory advantage. The package sizes above were measured
+directly from the authenticated ZIP. Keep functional evidence separate from
+pending comparable timing/peak-memory measurements and from the independently
+accepted earlier desktop checkpoint.
