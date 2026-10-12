@@ -51,7 +51,7 @@ pub(super) struct Options {
 #[derive(Debug)]
 pub(super) enum Parsed {
     Help,
-    Run(Options),
+    Run(Box<Options>),
 }
 const RELEASED: [(&str, char); 8] = [
     ("copy_mode", 'c'),
@@ -198,14 +198,14 @@ pub(super) fn parse(args: &[String]) -> Result<Parsed, String> {
     if options.no_ai && options.model_directory.is_some() {
         return Err("--no-ai and --model-directory cannot be combined".into());
     }
-    Ok(Parsed::Run(options))
+    Ok(Parsed::Run(Box::new(options)))
 }
 #[cfg(test)]
 mod tests {
     use super::*;
     fn parsed(args: &[&str]) -> Options {
         match parse(&args.iter().map(|x| x.to_string()).collect::<Vec<_>>()).unwrap() {
-            Parsed::Run(options) => options,
+            Parsed::Run(options) => *options,
             Parsed::Help => panic!("unexpected help"),
         }
     }
