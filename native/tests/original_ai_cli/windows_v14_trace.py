@@ -133,8 +133,20 @@ def execute_original(root, settings, template, *, ai):
                 stack.enter_context(patch.object(sorter.ai_models, name, model))
             target_path = sorter.get_target_path
             def destination(artist):
+                # Bind this observation to the actual frozen scan loop's source,
+                # including routes which produce no filesystem call. The exact
+                # source blob is pinned by the caller; do not infer source/order
+                # from a preview or from a later successful transfer.
+                caller = sys._getframe(1)
+                if (caller.f_code is not released.MusicSorter.scan_dir.__code__
+                        or caller.f_locals.get('self') is not sorter
+                        or 'file_path' not in caller.f_locals):
+                    raise MutationConfinementError('Destination observation is not from the frozen scan loop')
+                source = relative(root, caller.f_locals['file_path'])
+                del caller
                 path = target_path(artist)
                 trace.append({'kind': 'destination_decision', 'artist': artist,
+                              'source': source,
                               'destination': relative(root, path), 'is_directory': path.is_dir(),
                               'exist_only': sorter.exist_only})
                 return path

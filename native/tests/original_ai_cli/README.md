@@ -173,6 +173,29 @@ retirement and child-name receipts remain in the raw stream, outside the narrowl
 named original copy/move-call comparison. Missing ordered evidence remains OPEN.
 All traces remain in encounter order, including ties and skips.
 
+The additive `execution_decisions` receipt is produced from the native policy's
+fresh Apply-preflight validation, after exact retained-plan/resource/root checks.
+It contains the complete ordered typed decisions and ordered selected-source /
+artist routes with their admitted operation IDs. It is never populated from the
+separate `plan-files` subprocess. The harness binds its plan digest to the actual
+`started` event and its job ID to the final result. The separately revalidated
+zero-effect path instead uses `fresh_noop_preflight`, the final plan ID, explicit
+`no_op: true`, and empty physical receipts and counters. Missing live producer
+data, unfinished results or missing acknowledged effects remain OPEN; malformed,
+duplicated or unmatched identities/operations fail the harness.
+
+Original destination observations include `file_path` read from the exact frozen
+`scan_dir` caller frame, including calls that skip an absent destination. Route
+outcomes use those real calls and returned copy/move outcomes. Native route
+outcomes require exact source-to-committed-operation matches in the independently
+acknowledged effect stream, plus complete album operation coverage. Empty admitted
+IDs mean only `no_admitted_transfer`; they do not invent a native execution-time
+exists-only check. The paired claim is exact ordered accepted policy values and
+physical outcomes. Python interleaves policy and mutation; native admission
+precedes execution. That interval/scheduling distinction is recorded explicitly
+and is not normalized into equal runtime timing. Previously retained reports
+without these fresh receipts remain OPEN.
+
 Only each exact owned root prefix is stripped for comparison, accepting the
 known local-drive `\\?\` prefix returned by `GetFinalPathNameByHandleW` for that
 exact owned root. Raw UTF-16 references remain in the evidence. No names, case,

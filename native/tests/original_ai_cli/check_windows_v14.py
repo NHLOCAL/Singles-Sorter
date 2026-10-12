@@ -26,6 +26,7 @@ from windows_runtime_metrics import measured_call, measured_process
 
 from check_cli import ASSETS, BASELINE, BUNDLE_ID, NATIVE, authored_wav, digest, original_oracle, require
 from windows_v14_trace import execute_original, relative
+from windows_v14_decisions import SCOPE as DECISION_SCOPE, accepted_decision_outcomes, original_route_outcomes
 
 SOURCE_SHA256 = 'ec4a98ce29c431b5d46b59f11a531eaf8fb4f3c8c16248372771de630086fffa'
 SETTING_NAMES = ('copy_mode', 'main_folder_only', 'abc_sort', 'singles_folder', 'exist_only')
@@ -42,6 +43,7 @@ NORMALIZATION = {
     'ordering': 'Directory encounter lists, decisions, operation traces and top artists retain engine order. No sorting to force equality.',
     'serialization': 'Original tuples use JSON arrays, exactly as persisted by the report; no values or sequence positions change.',
     'counters': 'Only final native legacy_summary is actual v14 summary evidence. Predictions and independently observed physical counts are separate.',
+    'decision_timing': DECISION_SCOPE,
 }
 
 
@@ -200,9 +202,14 @@ def native_args(bundle, case):
 
 
 def result_record(stderr):
+    return execution_event(stderr, 'result')
+
+
+def execution_event(stderr, event):
     rows = [json.loads(match.group(1)) for line in stderr.splitlines()
-            if (match := re.fullmatch(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} - MusicSorter - INFO - result: (.*)', line))]
-    require(len(rows) <= 1, 'Native emitted duplicate result records')
+            if (match := re.fullmatch(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} - MusicSorter - INFO - '
+                                     + re.escape(event) + r': (.*)', line))]
+    require(len(rows) <= 1, 'Native emitted duplicate ' + event + ' records')
     return rows[0] if rows else None
 
 
@@ -400,8 +407,13 @@ def map_committed_destinations(root, before, after, streams, result, original_op
 
 def planning_decisions(root, plan):
     """Lossless transport projection, kept explicitly separate from execution."""
+    return project_decisions(root, plan['decisions'])
+
+
+def project_decisions(root, decisions):
+    """Exact typed-value projection; the caller must identify the evidence basis."""
     rows = []
-    for value in plan['decisions']:
+    for value in decisions:
         if 'Album' in value:
             item = value['Album']; decision = item['decision']
             rows.append({'kind': 'album', 'source': reference_path(root, item['read']['source']['reference']),
@@ -527,11 +539,18 @@ def compare_case(case, original, native):
     if native['observed_physical']['changed_existing_files']:
         comparisons.append(comparison('existing_file_bytes', [], native['observed_physical']['changed_existing_files']))
     # Actual skip receipts are distinct from read-only planner decisions.
-    actual_decisions = (native.get('result') or {}).get('legacy_decisions')
+    accepted = native.get('accepted_decision_outcomes')
+    available = bool(accepted and accepted['available'])
+    actual_decisions = accepted['decisions'] if accepted else None
     comparisons.append(comparison('actual_decision_trace', original['ordered_decisions'],
-                                  actual_decisions, available=actual_decisions is not None))
-    if actual_decisions is None:
-        comparisons[-1]['gap'] = 'Original actual decisions/destination eligibility and native raw preview decisions are retained. Native final result has no execution-derived skip-decision trace.'
+                                  actual_decisions, available=available))
+    comparisons[-1]['scope'] = DECISION_SCOPE
+    if not available:
+        comparisons[-1]['gap'] = (accepted or {}).get('gap', 'Native final result has no fresh Apply-preflight decision receipt; preview decisions are not a substitute.')
+    comparisons.append(comparison('actual_source_artist_route_outcomes', original.get('route_outcomes'),
+                                  accepted['single_routes'] if accepted else None,
+                                  available=available and 'route_outcomes' in original))
+    comparisons[-1]['scope'] = DECISION_SCOPE
     statuses = {row['field']: row['status'] for row in comparisons}
     required = ('post_execution_tree_in_encounter_order', 'actual_legacy_summary',
                 'physical_committed_destinations', 'physical_moved_sources',
@@ -755,6 +774,7 @@ def run(binary, bundle, baseline, report, package=None, archive=None):
                     original = json.loads(json.dumps(original, ensure_ascii=False))
                     original['performance'] = timing
                     original.update(before=original_before, after=snapshot(original_root))
+                    original['route_outcomes'] = original_route_outcomes(original)
                     data['original'] = original
                     write_json(evidence, data)
                     verify_original_fixture_coverage(case, original)
@@ -766,6 +786,7 @@ def run(binary, bundle, baseline, report, package=None, archive=None):
                     require(snapshot(native_root) == native_before, 'Read-only preview changed owned input')
                     native['execution'] = subprocess_record(binary, native_root, native_args(bundle, case))
                     native['result'] = result_record(native['execution']['stderr'])
+                    native['started'] = execution_event(native['execution']['stderr'], 'started')
                     native['after'] = snapshot(native_root)
                     native['journals'] = read_journals(native_root)
                     native['physical_commit_streams'] = physical_commit_streams(native_root, native['journals'])
@@ -774,6 +795,8 @@ def run(binary, bundle, baseline, report, package=None, archive=None):
                     plan = native['preview_response'].get('result', {}).get('plan')
                     native['acknowledged_transfer_order'] = acknowledged_transfer_order(
                         native_root, native['result'], plan, native['physical_commit_streams'])
+                    native['accepted_decision_outcomes'] = accepted_decision_outcomes(
+                        native_root, case, native, reference_path, project_decisions)
                     if plan is not None:
                         native['planning_decisions'] = planning_decisions(native_root, plan)
                     data['comparisons'] = compare_case(case, original, native)
