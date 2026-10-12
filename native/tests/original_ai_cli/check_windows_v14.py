@@ -30,7 +30,7 @@ MISSING_ARTIST = 'מוטי שטיינמץ'
 DUET = 'ישראל כהן וחיים לוי - שיר חדש.wav'
 FIXED_MTIME_NS = 1_700_000_000_000_000_000
 NORMALIZATION = {
-    'root': 'Strip only the exact absolute original/native owned-root prefix for comparison; raw paths retained.',
+    'root': 'Strip only the exact owned-root prefix, including its known Windows local-drive \\\\?\\ spelling from handle observations; raw UTF-16 references retained. No child spelling changes.',
     'names': 'No filename, case, Unicode, separator, artist, destination or order normalization.',
     'timestamps': 'Authored file mtimes use a fixed epoch and are compared exactly. Directory mtimes are recorded but excluded because creation/transfer wall times differ. Access times are not sampled.',
     'runtime': 'Wall-clock duration, PID, journal/job IDs, OS object IDs and plan hashes are retained where emitted but are not compared as business semantics.',
@@ -195,6 +195,16 @@ def read_journals(root):
 def reference_path(root, reference):
     values = reference['WindowsPath']['utf16']
     path = b''.join(value.to_bytes(2, 'little') for value in values).decode('utf-16-le', errors='strict')
+    owned_root = str(root)
+    if len(owned_root) >= 3 and owned_root[0].isalpha() and owned_root[1:3] == ':\\':
+        # GetFinalPathNameByHandleW(VOLUME_NAME_DOS) adds this exact local-drive
+        # root spelling. Do not canonicalize any case, name, child or separator.
+        for spelling in (owned_root, '\\\\?\\' + owned_root):
+            if path == spelling:
+                return '.'
+            if path.startswith(spelling + '\\'):
+                return path[len(spelling) + 1:]
+        raise ValueError(f'Observed reference does not have an exact owned local-drive root: {path}')
     return relative(root, path)
 
 
@@ -413,7 +423,7 @@ def run(binary, bundle, baseline, report):
     scratch = Path(tempfile.mkdtemp(prefix='singles-v14-paired-')).resolve()
     bundle_before = {name: digest(bundle/name) for name in ASSETS}
     binary_before = digest(binary)
-    result = {'schema_version': 1, 'result': 'RUNNING', 'actual_windows': True,
+    result = {'schema_version': 1, 'result': 'OPEN', 'incomplete': True, 'actual_windows': True,
               'baseline': BASELINE, 'binary_sha256': binary_before,
               'runner': {'platform': platform.platform(), 'python': platform.python_version(),
                          'ci_run_id': os.environ.get('GITHUB_RUN_ID'), 'source_revision': os.environ.get('GITHUB_SHA')},
@@ -429,10 +439,13 @@ def run(binary, bundle, baseline, report):
             require(sources['singles_sorter_v5.py'] == SOURCE_SHA256, 'Wrong frozen v14 sorter source')
             result['original_source_sha256'] = sources
             for case in cases():
-                row = {**case, 'status': 'RUNNING'}
+                row = {**case, 'status': 'OPEN', 'phase': 'running'}
                 result['cases'].append(row)
                 evidence = report.parent/(case['id']+'.json')
-                data = {'case': case}
+                data = {'case': case, 'incomplete': True}
+                row['evidence'] = {'filename': evidence.name, 'sha256': None}
+                write_json(evidence, data)
+                write_json(report, result)
                 try:
                     paired = scratch/case['id']
                     original_root, native_root = paired/'original', paired/'native'
@@ -444,16 +457,19 @@ def run(binary, bundle, baseline, report):
                     original_before, native_before = snapshot(original_root), snapshot(native_root)
                     data['paired_inputs'] = {'original': original_before, 'native': native_before,
                                              'encounter_order_equal': comparable_snapshot(original_before) == comparable_snapshot(native_before)}
+                    write_json(evidence, data)
                     require(data['paired_inputs']['encounter_order_equal'],
                             'Fresh paired input trees or encounter order differ; this is input evidence, not an engine-policy mismatch')
                     original = json.loads(json.dumps(execute_original(original_root, case['settings'], template, ai=case['ai']), ensure_ascii=False))
                     original.update(before=original_before, after=snapshot(original_root))
                     data['original'] = original
+                    write_json(evidence, data)
                     verify_original_fixture_coverage(case, original)
                     native = {'before': native_before}
                     data['native'] = native
                     native['preview'] = subprocess_record(binary, native_root, ['plan-files', '--json'], payload=native_request(native_root, bundle, case))
                     native['preview_response'] = json.loads(native['preview']['stdout'])
+                    write_json(evidence, data)
                     require(snapshot(native_root) == native_before, 'Read-only preview changed owned input')
                     native['execution'] = subprocess_record(binary, native_root, native_args(bundle, case))
                     native['result'] = result_record(native['execution']['stderr'])
@@ -474,6 +490,8 @@ def run(binary, bundle, baseline, report):
                     row['status'] = 'ERROR'
                     data['error'] = {'type': type(error).__name__, 'message': str(error), 'traceback': traceback.format_exc()}
                 finally:
+                    row['phase'] = 'finished'
+                    data['incomplete'] = False
                     write_json(evidence, data)
                     row['evidence'] = {'filename': evidence.name, 'sha256': digest(evidence)}
                     write_json(report, result)
@@ -481,6 +499,7 @@ def run(binary, bundle, baseline, report):
         require(digest(binary) == binary_before, 'Selected executable changed')
         require({name: digest(bundle/name) for name in ASSETS} == bundle_before, 'Original model bundle changed')
         require(len(result['cases']) == 36, 'Incomplete paired matrix')
+        result['incomplete'] = False
         statuses = [row['status'] for row in result['cases']]
         result['result'] = 'ERROR' if 'ERROR' in statuses else 'MISMATCH' if 'MISMATCH' in statuses else 'OPEN' if 'OPEN' in statuses else 'MATCH'
         result['totals'] = {status: statuses.count(status) for status in ('MATCH', 'OPEN', 'MISMATCH', 'ERROR')}

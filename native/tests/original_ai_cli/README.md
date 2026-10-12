@@ -108,8 +108,8 @@ handler behavior still needs its own actual console-signal acceptance case.
 
 ## Paired actual-Windows v14 diagnostics (not a parity approval)
 
-`check_windows_v14.py` is an additive diagnostic lane after the actual release
-build. It refuses non-Windows/non-CI execution. Its 36 cases use two fresh owned
+`check_windows_v14.py` is an additive diagnostic lane after all mandatory
+release proof, package and artifact steps. It refuses non-Windows/non-CI execution. Its 36 cases use two fresh owned
 trees each, never the user's music or the reference checkout:
 
 - All 32 combinations of Copy/Move, main-only/recursive, abc, singles directory,
@@ -157,7 +157,9 @@ renames do not establish a global per-file transfer order and remain explicit
 evidence gaps. Whole-directory receipts are never expanded into fictional file
 transfer events. All traces remain in encounter order, including ties and skips.
 
-Only each exact owned root prefix is stripped for comparison. No names, case,
+Only each exact owned root prefix is stripped for comparison, accepting the
+known local-drive `\\?\` prefix returned by `GetFinalPathNameByHandleW` for that
+exact owned root. Raw UTF-16 references remain in the evidence. No names, case,
 Unicode, separators, artists, counters or order are normalized. Original tuples
 serialize as JSON arrays without changing values/order. Authored file mtimes use
 one fixed epoch and are compared exactly. Raw directory mtimes are retained but
@@ -175,10 +177,13 @@ mismatches and never requirements to reproduce data loss or false physical
 success.
 
 Every attempted case writes a separate JSON record, including errors; subsequent
-cases continue. The summary binds each evidence file's SHA-256 and records all
+cases continue. The initial OPEN/incomplete report is persisted before each
+case, and completed phases are checkpointed. An interrupted diagnostic remains
+explicitly incomplete; it cannot starve the preceding mandatory proof/package
+steps or change their already-uploaded artifacts. The summary binds each evidence file's SHA-256 and records all
 36 outcomes. Nonzero exit codes distinguish OPEN (2) and mismatch/harness error
 (1) from complete MATCH (0). The workflow deliberately marks this diagnostic
-step `continue-on-error` and always uploads its evidence separately, including
+step `continue-on-error`, limits it to eight minutes, and always uploads its evidence separately, including
 when other gates fail. A green enclosing workflow therefore does NOT establish
 v14 parity. No preview package is relabeled as parity-approved by this lane.
 No authored media, model pickle or original model assets are uploaded; only

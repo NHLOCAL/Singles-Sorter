@@ -4,7 +4,7 @@ import importlib.util
 import itertools
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import subprocess
 import sys
 import tempfile
@@ -112,6 +112,20 @@ class PairedWindowsContract(unittest.TestCase):
         self.assertEqual(rows[0]['sequence'], 7)
         after[0]['sha256'] = 'tampered'
         self.assertFalse(gate.map_committed_destinations(Path('/owned'), before, after, streams, None)[0]['verified_bytes'])
+
+    def test_observed_windows_extended_root_has_only_one_narrow_alias(self):
+        root = PureWindowsPath(r'C:\owned\case\native')
+        def reference(path):
+            data = path.encode('utf-16-le')
+            return {'WindowsPath': {'utf16': [int.from_bytes(data[i:i+2], 'little') for i in range(0, len(data), 2)]}}
+        self.assertEqual(gate.reference_path(root, reference(r'\\?\C:\owned\case\native\target\Album\Song.WAV')),
+                         r'target\Album\Song.WAV')
+        for path in [r'\\?\c:\owned\case\native\target\Song.WAV',
+                     r'\\?\C:\owned\case\native2\target\Song.WAV',
+                     r'\\?\C:\Owned\case\native\target\Song.WAV',
+                     r'\\server\share\case\native\target\Song.WAV']:
+            with self.subTest(path=path), self.assertRaises(ValueError):
+                gate.reference_path(root, reference(path))
 
     def test_native_planning_projection_retains_artist_and_decision_order(self):
         root = Path('/owned')
