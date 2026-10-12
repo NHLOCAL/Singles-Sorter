@@ -3822,9 +3822,10 @@ mod repair_backup_tests {
             sha256: Sha256::digest(b"repaired").into(),
             length: 8,
         };
-        storage
+        let acknowledgment = storage
             .sync_published(&mut published, &expected, &AtomicBool::new(false))
             .unwrap();
+        assert_eq!(acknowledgment.observation(), &published.observation);
         storage.verify_published(&mut published, &expected).unwrap();
         assert_eq!(repair_security(&published.file).unwrap(), snapshot.security);
         let basic = repair_basic(&published.file).unwrap();
