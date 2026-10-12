@@ -16,23 +16,41 @@ pub fn is_clean_sort_noop(plan: &JobPlanV2) -> bool {
         && verify_job_plan_binding(plan).is_ok()
         && plan.operations.is_empty()
         && plan.predicted_effects.is_empty()
-        && plan.blockers.iter().all(|blocker| blocker == "PHYSICAL_APPLY_UNAVAILABLE")
-        && plan.warnings.iter().all(|warning| matches!(warning.as_str(),
-            "Effects and counters are predicted; no files or tags were changed"
-            | "AI intentionally disabled; no native inference bundle is used"))
+        && plan
+            .blockers
+            .iter()
+            .all(|blocker| blocker == "PHYSICAL_APPLY_UNAVAILABLE")
+        && plan.warnings.iter().all(|warning| {
+            matches!(
+                warning.as_str(),
+                "Effects and counters are predicted; no files or tags were changed"
+                    | "AI intentionally disabled; no native inference bundle is used"
+            )
+        })
         && plan.decisions.iter().all(|decision| match decision {
             DecisionV2::ItemError { .. } | DecisionV2::Vanished { .. } => false,
             DecisionV2::Single { read, .. } => read.virtually_present,
-            DecisionV2::Album { read, decision } => read.virtually_present
-                && decision.trace.iter().all(|event| !matches!(event,
-                    AlbumTraceEvent::Open { result: Err(_), .. }
-                    | AlbumTraceEvent::Get { result: Err(_), .. }
-                    | AlbumTraceEvent::Value { result: Err(_), .. }
-                    | AlbumTraceEvent::FileError { .. }
-                    | AlbumTraceEvent::ProtectedError { .. })),
+            DecisionV2::Album { read, decision } => {
+                read.virtually_present
+                    && decision.trace.iter().all(|event| {
+                        !matches!(
+                            event,
+                            AlbumTraceEvent::Open { result: Err(_), .. }
+                                | AlbumTraceEvent::Get { result: Err(_), .. }
+                                | AlbumTraceEvent::Value { result: Err(_), .. }
+                                | AlbumTraceEvent::FileError { .. }
+                                | AlbumTraceEvent::ProtectedError { .. }
+                        )
+                    })
+            }
         })
-        && plan.metadata_observations.iter().all(|observation| match observation {
-            MetadataObservation::Open { result, .. } => result.is_ok(),
-            MetadataObservation::Get { result, .. } => result.as_ref().is_ok_and(|item| item.value.is_ok()),
-        })
+        && plan
+            .metadata_observations
+            .iter()
+            .all(|observation| match observation {
+                MetadataObservation::Open { result, .. } => result.is_ok(),
+                MetadataObservation::Get { result, .. } => {
+                    result.as_ref().is_ok_and(|item| item.value.is_ok())
+                }
+            })
 }

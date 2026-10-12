@@ -3,9 +3,9 @@ use crate::{
     binding::TransferMode,
     physical_journal::{Phase, PhysicalJournalV2},
 };
-use sorter_storage_contracts::{MutationError, MutationObservation};
-use sorter_core::discovery::ObjectIdentity;
 use serde::Serialize;
+use sorter_core::discovery::ObjectIdentity;
+use sorter_storage_contracts::{MutationError, MutationObservation};
 use std::collections::HashSet;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -103,21 +103,27 @@ impl JobResult {
                 .collect::<HashSet<_>>()
                 .len(),
             committed_destinations: committed.len(),
-            committed_operations: events.iter().filter(|event| event.phase == Phase::Committed)
-                .map(|event| event.operation).collect(),
-            effect_receipts: events.iter().filter_map(|event| {
-                let kind = match event.phase {
-                    Phase::DestinationPublished => "file_published",
-                    Phase::AtomicRenameObserved => "file_renamed",
-                    Phase::SourceRetired => "source_retired",
-                    _ => return None,
-                };
-                Some(ObservedEffectReceipt {
-                    operation: event.operation,
-                    kind: kind.into(),
-                    identity: event.observed_identity.clone()?,
+            committed_operations: events
+                .iter()
+                .filter(|event| event.phase == Phase::Committed)
+                .map(|event| event.operation)
+                .collect(),
+            effect_receipts: events
+                .iter()
+                .filter_map(|event| {
+                    let kind = match event.phase {
+                        Phase::DestinationPublished => "file_published",
+                        Phase::AtomicRenameObserved => "file_renamed",
+                        Phase::SourceRetired => "source_retired",
+                        _ => return None,
+                    };
+                    Some(ObservedEffectReceipt {
+                        operation: event.operation,
+                        kind: kind.into(),
+                        identity: event.observed_identity.clone()?,
+                    })
                 })
-            }).collect(),
+                .collect(),
             moved_sources: moved.len(),
             failed_operations: items
                 .iter()

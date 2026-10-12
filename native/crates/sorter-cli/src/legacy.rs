@@ -2,8 +2,8 @@
 use super::{
     Failure,
     legacy_args::{self, LogLevel, Options, Parsed},
-    plan_files,
     legacy_log::Logger,
+    plan_files,
 };
 use sorter_core::job_plan::{JobMode, JobPlanV2, OperationKind};
 use std::{
@@ -239,16 +239,16 @@ fn describe(plan: &JobPlanV2, output: &mut impl Write) -> Result<(), Failure> {
 #[cfg(all(windows, feature = "selected-windows-execution"))]
 fn journal_directory(options: &Options) -> Result<PathBuf, Failure> {
     match &options.journal_directory {
-            Some(path) => absolute(path),
-            None => absolute(&PathBuf::from(
-                std::env::var_os("LOCALAPPDATA").ok_or_else(|| {
-                    Failure::new(
-                        2,
-                        "JOURNAL_REQUIRED",
-                        "LOCALAPPDATA is unavailable; provide an existing --journal-directory",
-                    )
-                })?,
-            )),
+        Some(path) => absolute(path),
+        None => absolute(&PathBuf::from(
+            std::env::var_os("LOCALAPPDATA").ok_or_else(|| {
+                Failure::new(
+                    2,
+                    "JOURNAL_REQUIRED",
+                    "LOCALAPPDATA is unavailable; provide an existing --journal-directory",
+                )
+            })?,
+        )),
     }
 }
 fn log_exclusions(options: &Options) -> Result<Vec<PathBuf>, Failure> {
@@ -256,7 +256,9 @@ fn log_exclusions(options: &Options) -> Result<Vec<PathBuf>, Failure> {
     if !options.dry_run {
         let request = request(options)?;
         let mut roots = vec![request.source, journal_directory(options)?];
-        if let Some(target) = request.target { roots.push(target); }
+        if let Some(target) = request.target {
+            roots.push(target);
+        }
         return Ok(roots);
     }
     let _ = options;
@@ -270,10 +272,7 @@ fn execute(options: &Options, logger: &Logger) -> Result<(), Failure> {
     }
     let request = request(options)?;
     if options.dry_run && options.journal_directory.is_some() {
-        logger.emit(
-            LogLevel::Debug,
-            "Dry run does not open or create journals",
-        )?;
+        logger.emit(LogLevel::Debug, "Dry run does not open or create journals")?;
     }
     logger.emit(
         LogLevel::Info,
@@ -295,10 +294,7 @@ fn execute(options: &Options, logger: &Logger) -> Result<(), Failure> {
             .plan
             .ok_or_else(|| Failure::new(1, "PLAN_MISSING", "No complete plan was produced"))?;
         describe(&plan, &mut io::stdout().lock())?;
-        logger.emit(
-            LogLevel::Info,
-            "Dry run complete; no files changed",
-        )?;
+        logger.emit(LogLevel::Info, "Dry run complete; no files changed")?;
         return Ok(());
     }
     #[cfg(all(windows, feature = "selected-windows-execution"))]
@@ -327,10 +323,7 @@ fn execute(options: &Options, logger: &Logger) -> Result<(), Failure> {
                         sorter_core::job_plan::OperationKind::AlbumTransfer { .. }
                     )
                 }) {
-                    logger.emit(
-                        LogLevel::Warning,
-                        super::run_files::ALBUM_CONDITION,
-                    )?;
+                    logger.emit(LogLevel::Warning, super::run_files::ALBUM_CONDITION)?;
                 }
                 if options.log_level == LogLevel::Debug {
                     let mut description = Vec::new();
@@ -386,29 +379,56 @@ pub(super) fn run(args: &[String]) -> ExitCode {
     let exclusions = match log_exclusions(&options) {
         Ok(roots) => roots,
         Err(failure) => {
-            let _ = writeln!(io::stderr().lock(), "singles-sorter: {}: {}", failure.error.code, failure.error.message);
+            let _ = writeln!(
+                io::stderr().lock(),
+                "singles-sorter: {}: {}",
+                failure.error.code,
+                failure.error.message
+            );
             return ExitCode::from(failure.exit);
         }
     };
     let logger = match Logger::new(options.log_level, options.dry_run, &exclusions) {
         Ok(logger) => logger,
         Err(failure) => {
-            let _ = writeln!(io::stderr().lock(), "singles-sorter: {}: {}", failure.error.code, failure.error.message);
+            let _ = writeln!(
+                io::stderr().lock(),
+                "singles-sorter: {}: {}",
+                failure.error.code,
+                failure.error.message
+            );
             return ExitCode::from(failure.exit);
         }
     };
     let result = logger.announce().and_then(|()| execute(&options, &logger));
     if let Err(failure) = &result
-        && let Err(log_failure) = logger.emit(LogLevel::Error, &format!("{}: {}", failure.error.code, failure.error.message))
+        && let Err(log_failure) = logger.emit(
+            LogLevel::Error,
+            &format!("{}: {}", failure.error.code, failure.error.message),
+        )
     {
-        let _ = writeln!(io::stderr().lock(), "singles-sorter: {}: {}; original failure: {}: {}", log_failure.error.code, log_failure.error.message, failure.error.code, failure.error.message);
+        let _ = writeln!(
+            io::stderr().lock(),
+            "singles-sorter: {}: {}; original failure: {}: {}",
+            log_failure.error.code,
+            log_failure.error.message,
+            failure.error.code,
+            failure.error.message
+        );
     }
     if let Err(failure) = logger.finish() {
-        let _ = writeln!(io::stderr().lock(), "singles-sorter: {}: {}", failure.error.code, failure.error.message);
+        let _ = writeln!(
+            io::stderr().lock(),
+            "singles-sorter: {}: {}",
+            failure.error.code,
+            failure.error.message
+        );
         return ExitCode::from(failure.exit);
     }
-    match result { Ok(()) => ExitCode::SUCCESS, Err(failure) => ExitCode::from(failure.exit) }
-
+    match result {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(failure) => ExitCode::from(failure.exit),
+    }
 }
 
 #[cfg(all(windows, feature = "selected-windows-execution"))]

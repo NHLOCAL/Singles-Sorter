@@ -419,8 +419,13 @@ fn copies_short_writes_and_verifies_before_retirement() {
     assert_eq!(r.status, JobStatus::Complete);
     assert_eq!(r.committed_destinations, 1);
     assert_eq!(r.committed_operations, vec![0]);
-    assert_eq!(r.effect_receipts.iter().map(|receipt| (receipt.operation, receipt.kind.as_str())).collect::<Vec<_>>(),
-        vec![(0, "file_published"), (0, "source_retired")]);
+    assert_eq!(
+        r.effect_receipts
+            .iter()
+            .map(|receipt| (receipt.operation, receipt.kind.as_str()))
+            .collect::<Vec<_>>(),
+        vec![(0, "file_published"), (0, "source_retired")]
+    );
     assert_eq!(r.moved_sources, 1);
     assert_eq!(f.retirements, 1);
     assert!(f.source.is_none());
@@ -434,8 +439,17 @@ fn duplicate_artists_require_two_distinct_suffixed_destinations() {
     assert_eq!(r.status, JobStatus::Complete);
     assert_eq!(r.committed_destinations, 2);
     assert_eq!(r.committed_operations, vec![0, 1]);
-    assert_eq!(r.effect_receipts.iter().map(|receipt| (receipt.operation, receipt.kind.as_str())).collect::<Vec<_>>(),
-        vec![(0, "file_published"), (1, "file_published"), (1, "source_retired")]);
+    assert_eq!(
+        r.effect_receipts
+            .iter()
+            .map(|receipt| (receipt.operation, receipt.kind.as_str()))
+            .collect::<Vec<_>>(),
+        vec![
+            (0, "file_published"),
+            (1, "file_published"),
+            (1, "source_retired")
+        ]
+    );
     assert_eq!(r.moved_sources, 1);
     assert_eq!(f.retirements, 1);
     assert_eq!(f.published.len(), 2);

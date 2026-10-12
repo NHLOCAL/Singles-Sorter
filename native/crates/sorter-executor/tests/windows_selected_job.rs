@@ -159,7 +159,12 @@ fn selected_copy_creates_artist_folder_and_runs_full_job() {
     assert_eq!(result.committed_operations, vec![0, 1]);
     assert_eq!(job.created_directory_receipts().len(), 1);
     assert_eq!(result.effect_receipts.len(), 2);
-    assert!(result.effect_receipts.iter().all(|receipt| receipt.kind == "file_published"));
+    assert!(
+        result
+            .effect_receipts
+            .iter()
+            .all(|receipt| receipt.kind == "file_published")
+    );
     assert_eq!(result.moved_sources, 0);
     assert_eq!(job.journal_locations().len(), 2);
     let recovery = RecoveryScope {

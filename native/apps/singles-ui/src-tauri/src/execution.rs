@@ -221,7 +221,10 @@ mod selected {
     }
     #[derive(Clone)]
     enum PreparedScope {
-        Noop { target: PathBuf, resources: Resources },
+        Noop {
+            target: PathBuf,
+            resources: Resources,
+        },
         Sort {
             target: PathBuf,
             scope: ExecutionScope,
@@ -345,8 +348,13 @@ mod selected {
             }
             if sorter_executor::no_op::is_clean_sort_noop(plan) {
                 return Ok(PreparedSelection {
-                    source: source.path.clone(), personal: personal.unwrap_or_default().to_vec(), ai,
-                    scope: PreparedScope::Noop { target: target.path.clone(), resources },
+                    source: source.path.clone(),
+                    personal: personal.unwrap_or_default().to_vec(),
+                    ai,
+                    scope: PreparedScope::Noop {
+                        target: target.path.clone(),
+                        resources,
+                    },
                 });
             }
             supported_plan(plan).map_err(storage_error)?;
@@ -546,33 +554,64 @@ mod selected {
             }
             let (target, scope) = match selected.scope {
                 PreparedScope::Noop { target, .. } => {
-                    let reads = sorter_executor::windows_copy::WindowsPlanningStorage::for_album_preview(
-                        &selected.source, &target,
-                        sorter_io::desktop::WindowsDirectoryReadLimits::ALBUM_DEFAULT, &cancellation.cancelled,
-                    ).map_err(storage_error)?;
+                    let reads =
+                        sorter_executor::windows_copy::WindowsPlanningStorage::for_album_preview(
+                            &selected.source,
+                            &target,
+                            sorter_io::desktop::WindowsDirectoryReadLimits::ALBUM_DEFAULT,
+                            &cancellation.cancelled,
+                        )
+                        .map_err(storage_error)?;
                     let mut storage = SharedReadStorage::new(reads);
                     let mut metadata_storage = storage.clone();
-                    let mut metadata = StorageMetadataProvider { storage: &mut metadata_storage, reader: MetadataReader };
-                    let fresh = plan_job_controlled(&plan.request, &mut storage, &mut metadata, recognition.as_mut(), cancellation);
+                    let mut metadata = StorageMetadataProvider {
+                        storage: &mut metadata_storage,
+                        reader: MetadataReader,
+                    };
+                    let fresh = plan_job_controlled(
+                        &plan.request,
+                        &mut storage,
+                        &mut metadata,
+                        recognition.as_mut(),
+                        cancellation,
+                    );
                     if cancellation.is_cancelled() {
                         self.execution_error(id, "cancelled", "הבדיקה בוטלה. לא בוצעו שינויים.");
                         return Ok(());
                     }
                     let fresh = fresh.map_err(|error| HostError::new(&error.code, error.detail))?;
-                    if fresh.binding_sha256 != plan.binding_sha256 || !sorter_executor::no_op::is_clean_sort_noop(&fresh) {
-                        return Err(HostError::new("PLAN_CHANGED", "Files or resources changed; inspect a fresh plan"));
+                    if fresh.binding_sha256 != plan.binding_sha256
+                        || !sorter_executor::no_op::is_clean_sort_noop(&fresh)
+                    {
+                        return Err(HostError::new(
+                            "PLAN_CHANGED",
+                            "Files or resources changed; inspect a fresh plan",
+                        ));
                     }
                     let mut inner = self.lock()?;
-                    if let Some(snapshot) = inner.job.as_mut().filter(|job| job.snapshot.job_id == id)
-                        .and_then(|job| job.execution.as_mut()) {
+                    if let Some(snapshot) = inner
+                        .job
+                        .as_mut()
+                        .filter(|job| job.snapshot.job_id == id)
+                        .and_then(|job| job.execution.as_mut())
+                    {
                         snapshot.status = "complete";
                         snapshot.journal_path = None;
                         snapshot.operation = None;
                         snapshot.result = Some(ExecutionResult {
-                            legacy_summary: Some(sorter_executor::legacy_summary::LegacySummary::default()),
-                            source_items: 0, committed_destinations: 0, moved_sources: 0,
-                            failed_operations: 0, blocked_operations: 0, recovery_operations: 0,
-                            cancelled_operations: 0, items: vec![], repair: None, albums: None,
+                            legacy_summary: Some(
+                                sorter_executor::legacy_summary::LegacySummary::default(),
+                            ),
+                            source_items: 0,
+                            committed_destinations: 0,
+                            moved_sources: 0,
+                            failed_operations: 0,
+                            blocked_operations: 0,
+                            recovery_operations: 0,
+                            cancelled_operations: 0,
+                            items: vec![],
+                            repair: None,
+                            albums: None,
                         });
                     }
                     return Ok(());
@@ -717,11 +756,17 @@ mod selected {
                         .and_then(|j| j.execution.as_mut())
                     {
                         e.status = status(&result);
-                        let legacy_summary = sorter_executor::legacy_summary::LegacySummary::from_receipts(
-                            &plan.operations, &result.committed_operations,
-                            &job.created_directory_receipts().iter().map(|(reference, _)| reference.clone()).collect::<Vec<_>>(),
-                            0, &[],
-                        );
+                        let legacy_summary =
+                            sorter_executor::legacy_summary::LegacySummary::from_receipts(
+                                &plan.operations,
+                                &result.committed_operations,
+                                &job.created_directory_receipts()
+                                    .iter()
+                                    .map(|(reference, _)| reference.clone())
+                                    .collect::<Vec<_>>(),
+                                0,
+                                &[],
+                            );
                         let mut projected = project(result);
                         projected.legacy_summary = Some(legacy_summary);
                         e.result = Some(projected);

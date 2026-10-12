@@ -4,7 +4,8 @@ use super::*;
 use sorter_executor::{
     windows_copy::WindowsPlanningStorage,
     windows_repair::{
-        RepairItem, RepairJobStatus, RepairResult, RepairScope, RepairStatus, SelectedWindowsRepairJob,
+        RepairItem, RepairJobStatus, RepairResult, RepairScope, RepairStatus,
+        SelectedWindowsRepairJob,
     },
 };
 use sorter_io::{
@@ -374,7 +375,10 @@ mod tests {
             Some("שם מתוקן.mp3")
         );
         let wire = serde_json::to_value(&projected).unwrap();
-        assert_eq!(wire["items"][0]["repair"]["observed_filename"], "שם מתוקן.mp3");
+        assert_eq!(
+            wire["items"][0]["repair"]["observed_filename"],
+            "שם מתוקן.mp3"
+        );
         assert_eq!(projected.repair.unwrap().renamed_files, 1);
     }
 
@@ -421,7 +425,11 @@ mod tests {
                 .is_none()
         );
         let wire = serde_json::to_value(&projected).unwrap();
-        assert!(wire["items"][0]["repair"].get("observed_filename").is_none());
+        assert!(
+            wire["items"][0]["repair"]
+                .get("observed_filename")
+                .is_none()
+        );
         let summary = projected.repair.unwrap();
         assert_eq!(summary.renamed_files, 1);
         assert_eq!(summary.repaired_files, 0);

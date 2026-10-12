@@ -151,47 +151,124 @@ mod selected {
     fn utf8_file_and_stderr_logging_share_the_released_level_filter() {
         for level in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] {
             let root = tree();
-            let output = run(root.path(), &["source", "target", "-cn", "--no-ai", "--journal-directory", "journal", "-l", level]);
+            let output = run(
+                root.path(),
+                &[
+                    "source",
+                    "target",
+                    "-cn",
+                    "--no-ai",
+                    "--journal-directory",
+                    "journal",
+                    "-l",
+                    level,
+                ],
+            );
             assert!(output.status.success(), "{output:?}");
-            let entries = fs::read_dir(root.path().join("logs")).unwrap().map(|entry| entry.unwrap().path()).collect::<Vec<_>>();
+            let entries = fs::read_dir(root.path().join("logs"))
+                .unwrap()
+                .map(|entry| entry.unwrap().path())
+                .collect::<Vec<_>>();
             assert_eq!(entries.len(), 1);
             let name = entries[0].file_name().unwrap().to_str().unwrap();
-            assert!(name.starts_with("music_sorter_") && name.ends_with(".log"), "{name}");
+            assert!(
+                name.starts_with("music_sorter_") && name.ends_with(".log"),
+                "{name}"
+            );
             assert_eq!(fs::read(&entries[0]).unwrap(), output.stderr);
             let text = String::from_utf8(output.stderr).unwrap();
             if matches!(level, "DEBUG" | "INFO") {
                 assert!(text.contains(" - MusicSorter - INFO - result: "), "{text}");
-                assert_eq!(text.contains(" - MusicSorter - DEBUG - "), level == "DEBUG", "{text}");
-                assert!(text.contains("אמן בדיקה"), "UTF-8 artist was not retained: {text}");
+                assert_eq!(
+                    text.contains(" - MusicSorter - DEBUG - "),
+                    level == "DEBUG",
+                    "{text}"
+                );
+                assert!(
+                    text.contains("אמן בדיקה"),
+                    "UTF-8 artist was not retained: {text}"
+                );
             } else {
                 assert!(text.is_empty(), "{level}: {text}");
             }
-            assert!(root.path().join("target/אמן בדיקה/זמר בדיקה - שיר.mp3").is_file());
+            assert!(
+                root.path()
+                    .join("target/אמן בדיקה/זמר בדיקה - שיר.mp3")
+                    .is_file()
+            );
         }
     }
     #[test]
     fn diagnostic_overlap_and_missing_roots_refuse_before_creating_any_log() {
-        type ManifestEntry = (std::path::PathBuf, bool, u64, std::time::SystemTime, bool, Vec<u8>);
+        type ManifestEntry = (
+            std::path::PathBuf,
+            bool,
+            u64,
+            std::time::SystemTime,
+            bool,
+            Vec<u8>,
+        );
         fn manifest(root: &Path) -> Vec<ManifestEntry> {
             fn visit(root: &Path, path: &Path, rows: &mut Vec<ManifestEntry>) {
                 let metadata = fs::symlink_metadata(path).unwrap();
-                rows.push((path.strip_prefix(root).unwrap().to_owned(), metadata.is_dir(), metadata.len(), metadata.modified().unwrap(), metadata.permissions().readonly(), if metadata.is_file() { fs::read(path).unwrap() } else { vec![] }));
+                rows.push((
+                    path.strip_prefix(root).unwrap().to_owned(),
+                    metadata.is_dir(),
+                    metadata.len(),
+                    metadata.modified().unwrap(),
+                    metadata.permissions().readonly(),
+                    if metadata.is_file() {
+                        fs::read(path).unwrap()
+                    } else {
+                        vec![]
+                    },
+                ));
                 if metadata.is_dir() {
-                    for entry in fs::read_dir(path).unwrap() { visit(root, &entry.unwrap().path(), rows); }
+                    for entry in fs::read_dir(path).unwrap() {
+                        visit(root, &entry.unwrap().path(), rows);
+                    }
                 }
             }
-            let mut rows = vec![]; visit(root, root, &mut rows); rows.sort(); rows
+            let mut rows = vec![];
+            visit(root, root, &mut rows);
+            rows.sort();
+            rows
         }
-        for cwd in ["source", "source/nested", "target/nested", "journal/nested", ""] {
+        for cwd in [
+            "source",
+            "source/nested",
+            "target/nested",
+            "journal/nested",
+            "",
+        ] {
             let root = tree();
-            for directory in ["source/nested", "target/nested", "journal/nested"] { fs::create_dir(root.path().join(directory)).unwrap(); }
+            for directory in ["source/nested", "target/nested", "journal/nested"] {
+                fs::create_dir(root.path().join(directory)).unwrap();
+            }
             let source = root.path().join("source");
-            let target = root.path().join(if cwd.is_empty() { "missing-target" } else { "target" });
+            let target = root.path().join(if cwd.is_empty() {
+                "missing-target"
+            } else {
+                "target"
+            });
             let journal = root.path().join("journal");
             let before = manifest(root.path());
-            let output = run(&root.path().join(cwd), &[source.to_str().unwrap(), target.to_str().unwrap(), "-cn", "--no-ai", "--journal-directory", journal.to_str().unwrap()]);
+            let output = run(
+                &root.path().join(cwd),
+                &[
+                    source.to_str().unwrap(),
+                    target.to_str().unwrap(),
+                    "-cn",
+                    "--no-ai",
+                    "--journal-directory",
+                    journal.to_str().unwrap(),
+                ],
+            );
             assert_eq!(output.status.code(), Some(1), "{output:?}");
-            assert!(String::from_utf8_lossy(&output.stderr).contains("LOG_CREATE_FAILED"), "{output:?}");
+            assert!(
+                String::from_utf8_lossy(&output.stderr).contains("LOG_CREATE_FAILED"),
+                "{output:?}"
+            );
             assert!(output.stdout.is_empty());
             assert_eq!(manifest(root.path()), before);
         }
@@ -368,11 +445,14 @@ mod selected {
                 actual["committed_destinations"],
                 if root_album { 5 } else { 6 }
             );
-            assert_eq!(actual["legacy_summary"], serde_json::json!({
-                "songs_sorted": if root_album {0} else {1},
-                "artist_folders_created": if root_album {0} else {1}, "albums_processed":1,
-                "top_artists": if root_album {serde_json::json!([["שלום עולם",4]])} else {serde_json::json!([["שלום עולם",4],["אמן בדיקה",1]])}
-            }));
+            assert_eq!(
+                actual["legacy_summary"],
+                serde_json::json!({
+                    "songs_sorted": if root_album {0} else {1},
+                    "artist_folders_created": if root_album {0} else {1}, "albums_processed":1,
+                    "top_artists": if root_album {serde_json::json!([["שלום עולם",4]])} else {serde_json::json!([["שלום עולם",4],["אמן בדיקה",1]])}
+                })
+            );
             assert!(actual["recovery_error"].is_null(), "{actual}");
             if !root_album {
                 assert!(

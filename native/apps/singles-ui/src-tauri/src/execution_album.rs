@@ -105,9 +105,19 @@ impl Host {
                     JobStatus::NeedsRecovery => "needs_recovery",
                 };
                 let legacy_summary = sorter_executor::legacy_summary::LegacySummary::from_receipts(
-                    &plan.operations, result.transfers.as_ref().map(|transfers| transfers.committed_operations.as_slice()).unwrap_or_default(),
-                    &result.created_directories.iter().map(|entry| entry.reference.clone()).collect::<Vec<_>>(),
-                    result.albums_completed, &result.artist_files,
+                    &plan.operations,
+                    result
+                        .transfers
+                        .as_ref()
+                        .map(|transfers| transfers.committed_operations.as_slice())
+                        .unwrap_or_default(),
+                    &result
+                        .created_directories
+                        .iter()
+                        .map(|entry| entry.reference.clone())
+                        .collect::<Vec<_>>(),
+                    result.albums_completed,
+                    &result.artist_files,
                 );
                 let mut projected = project(
                     result,
@@ -644,7 +654,10 @@ mod tests {
             let result = outcome.result.unwrap();
             assert_eq!(result.albums.unwrap().completed, 1);
             assert_eq!(result.committed_destinations, 4);
-            assert_eq!(serde_json::to_value(result.legacy_summary.unwrap()).unwrap(), json!({"songs_sorted":0,"artist_folders_created":0,"albums_processed":1,"top_artists":[["שלום עולם",4]]}));
+            assert_eq!(
+                serde_json::to_value(result.legacy_summary.unwrap()).unwrap(),
+                json!({"songs_sorted":0,"artist_folders_created":0,"albums_processed":1,"top_artists":[["שלום עולם",4]]})
+            );
             assert_eq!(result.moved_sources, if copy { 0 } else { 4 });
             assert_eq!(source.exists(), copy);
             for track in 1..=3 {

@@ -398,7 +398,8 @@ impl SelectedWindowsJob {
                             reference: r.clone(),
                             identity: created.identity().clone(),
                         })?;
-                        self.created_directory_receipts.push((r.clone(), created.identity().clone()));
+                        self.created_directory_receipts
+                            .push((r.clone(), created.identity().clone()));
                         self.created_directories.push(created.clone());
                         parent = created;
                     }

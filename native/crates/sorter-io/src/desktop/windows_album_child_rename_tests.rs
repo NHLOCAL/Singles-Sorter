@@ -411,7 +411,10 @@ fn changed_membership_content_or_identity_stops_before_child_dispatch() {
     let retained = f.path.join("source/retained.mp3");
     std::fs::rename(&original, &retained).unwrap();
     std::fs::write(&original, b"song").unwrap();
-    no_effect(f.storage.rename_next_album_child(&mut scope, &AtomicBool::new(false)));
+    no_effect(
+        f.storage
+            .rename_next_album_child(&mut scope, &AtomicBool::new(false)),
+    );
     assert_eq!(scope.current_tree(), retained_tree);
     assert!(!f.path.join("source/album/song.mp3").exists());
     assert_eq!(std::fs::read(&original).unwrap(), b"song");

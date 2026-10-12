@@ -21,49 +21,81 @@ impl WindowsDiagnosticLog {
     /// A later creation/path-query error may leave a directory or empty log;
     /// callers must report it without asserting no effects or deleting it.
     pub fn create_for_cwd(timestamp: &str, exclusions: &[PathBuf]) -> Result<Self, MutationError> {
-        Self::create_at(&std::env::current_dir().map_err(io_error)?, timestamp, exclusions)
+        Self::create_at(
+            &std::env::current_dir().map_err(io_error)?,
+            timestamp,
+            exclusions,
+        )
     }
 
-    fn create_at(cwd: &Path, timestamp: &str, exclusions: &[PathBuf]) -> Result<Self, MutationError> {
+    fn create_at(
+        cwd: &Path,
+        timestamp: &str,
+        exclusions: &[PathBuf],
+    ) -> Result<Self, MutationError> {
         let bytes = timestamp.as_bytes();
         if bytes.len() != 15
             || bytes[8] != b'_'
-            || bytes.iter().enumerate().any(|(i, byte)| i != 8 && !byte.is_ascii_digit())
+            || bytes
+                .iter()
+                .enumerate()
+                .any(|(i, byte)| i != 8 && !byte.is_ascii_digit())
         {
-            return Err(err(MutationErrorKind::InvalidName, "invalid diagnostic timestamp"));
+            return Err(err(
+                MutationErrorKind::InvalidName,
+                "invalid diagnostic timestamp",
+            ));
         }
         let ancestry = chain(cwd).map_err(read_error)?;
-        let parent = ancestry.last().ok_or_else(|| err(MutationErrorKind::Io, "missing cwd handle"))?;
+        let parent = ancestry
+            .last()
+            .ok_or_else(|| err(MutationErrorKind::Io, "missing cwd handle"))?;
         ensure_directory(parent)?;
         ensure_case_insensitive(parent)?;
         // Compare held identities, not caller spelling: short-name aliases and
         // case differences must not let the diagnostic sink enter media roots.
         let cwd_id = identity(parent).map_err(read_error)?;
-        let cwd_ids = ancestry.iter().map(identity).collect::<std::result::Result<Vec<_>, _>>()
+        let cwd_ids = ancestry
+            .iter()
+            .map(identity)
+            .collect::<std::result::Result<Vec<_>, _>>()
             .map_err(read_error)?;
         let mut pinned_exclusions = Vec::new();
         for path in exclusions {
             let handles = chain(path).map_err(read_error)?;
-            let leaf = handles.last().ok_or_else(|| err(MutationErrorKind::Io, "missing excluded root"))?;
+            let leaf = handles
+                .last()
+                .ok_or_else(|| err(MutationErrorKind::Io, "missing excluded root"))?;
             ensure_directory(leaf)?;
             if cwd_ids.contains(&identity(leaf).map_err(read_error)?) {
-                return Err(err(MutationErrorKind::InvalidName, "diagnostic logs overlap selected root"));
+                return Err(err(
+                    MutationErrorKind::InvalidName,
+                    "diagnostic logs overlap selected root",
+                ));
             }
             for pair in handles.windows(2) {
                 if identity(&pair[0]).map_err(read_error)? == cwd_id {
                     let child = diagnostic_path(&pair[1])?;
-                    let leaf = child.file_name().ok_or_else(|| err(MutationErrorKind::Io, "excluded child has no name"))?;
+                    let leaf = child
+                        .file_name()
+                        .ok_or_else(|| err(MutationErrorKind::Io, "excluded child has no name"))?;
                     let leaf = leaf.encode_wide().collect::<Vec<_>>();
                     let comparison = unsafe {
                         windows::Win32::Globalization::CompareStringOrdinal(
-                            &leaf, &"logs".encode_utf16().collect::<Vec<_>>(), true,
+                            &leaf,
+                            &"logs".encode_utf16().collect::<Vec<_>>(),
+                            true,
                         )
-                    }.0;
+                    }
+                    .0;
                     if !(1..=3).contains(&comparison) {
                         return Err(io_error(io::Error::last_os_error()));
                     }
                     if comparison == 2 {
-                        return Err(err(MutationErrorKind::InvalidName, "selected root is inside diagnostic logs"));
+                        return Err(err(
+                            MutationErrorKind::InvalidName,
+                            "selected root is inside diagnostic logs",
+                        ));
                     }
                 }
             }
@@ -130,7 +162,10 @@ impl WindowsDiagnosticLog {
 
     fn check_usable(&self) -> Result<(), MutationError> {
         if self.poisoned {
-            return Err(err(MutationErrorKind::UnknownOutcome, "diagnostic sink failed; do not retry"));
+            return Err(err(
+                MutationErrorKind::UnknownOutcome,
+                "diagnostic sink failed; do not retry",
+            ));
         }
         Ok(())
     }
@@ -149,7 +184,10 @@ fn diagnostic_path(file: &File) -> Result<PathBuf, MutationError> {
         return Err(io_error(io::Error::last_os_error()));
     }
     if length >= units.len() {
-        return Err(err(MutationErrorKind::Unsupported, "diagnostic path exceeds bound"));
+        return Err(err(
+            MutationErrorKind::Unsupported,
+            "diagnostic path exceeds bound",
+        ));
     }
     units.truncate(length);
     Ok(PathBuf::from(std::ffi::OsString::from_wide(&units)))
@@ -159,7 +197,10 @@ fn diagnostic_path(file: &File) -> Result<PathBuf, MutationError> {
 mod diagnostic_log_tests {
     use super::*;
     mod reparse_fixture {
-        include!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/support/windows_reparse.rs"));
+        include!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/support/windows_reparse.rs"
+        ));
     }
 
     #[test]
@@ -192,7 +233,12 @@ mod diagnostic_log_tests {
     #[test]
     fn invalid_timestamp_and_non_directory_logs_have_no_file_effects() {
         let root = tempfile::tempdir().unwrap();
-        for timestamp in ["../escape", "20261012_02000x", "202610120020000", "20261012_020000/child"] {
+        for timestamp in [
+            "../escape",
+            "20261012_02000x",
+            "202610120020000",
+            "20261012_020000/child",
+        ] {
             assert!(WindowsDiagnosticLog::create_at(root.path(), timestamp, &[]).is_err());
             assert_eq!(std::fs::read_dir(root.path()).unwrap().count(), 0);
         }
@@ -233,7 +279,10 @@ mod diagnostic_log_tests {
         reparse_fixture::set_junction(&alias, &outside);
         assert!(WindowsDiagnosticLog::create_at(&alias, "20261012_020004", &[]).is_err());
         assert_eq!(std::fs::read_dir(&outside).unwrap().count(), 1);
-        assert_eq!(std::fs::read(outside.join("sentinel")).unwrap(), b"unchanged");
+        assert_eq!(
+            std::fs::read(outside.join("sentinel")).unwrap(),
+            b"unchanged"
+        );
     }
 
     #[test]
@@ -250,7 +299,6 @@ mod diagnostic_log_tests {
         assert!(log.sync().is_err());
         assert_eq!(std::fs::read(readonly).unwrap(), b"sentinel");
     }
-
 
     #[test]
     fn selected_root_overlap_is_rejected_before_creating_logs() {
@@ -294,7 +342,9 @@ mod diagnostic_log_tests {
         let grant = |path: &PathBuf| WindowsSelectedRootGrant::new(path.clone(), id(path)).unwrap();
         let cancel = AtomicBool::new(false);
         let mut album = WindowsMutationStorage::for_selected_album_root_rename(
-            grant(source), grant(target), grant(journal),
+            grant(source),
+            grant(target),
+            grant(journal),
             vec![WindowsAlbumTreeEntry {
                 relative: vec![MutationName::Windows("track.mp3".encode_utf16().collect())],
                 identity: id(&track),
@@ -305,10 +355,13 @@ mod diagnostic_log_tests {
                 }),
             }],
             &cancel,
-        ).unwrap();
+        )
+        .unwrap();
         let parent = album.target_and_journal().selected_target_root().unwrap();
         let publication = album.rename_album_directory(
-            &parent, &MutationName::Windows("album".encode_utf16().collect()), &cancel,
+            &parent,
+            &MutationName::Windows("album".encode_utf16().collect()),
+            &cancel,
         );
         let MutationOutcome::Applied(publication) = publication else {
             panic!("active diagnostic log blocked selected root album move");
@@ -316,8 +369,10 @@ mod diagnostic_log_tests {
         assert!(!source.exists());
         assert_eq!(publication.entries().len(), 1);
         drop(publication);
-        assert_eq!(std::fs::read(target.join("album/track.mp3")).unwrap(), b"owned audio");
+        assert_eq!(
+            std::fs::read(target.join("album/track.mp3")).unwrap(),
+            b"owned audio"
+        );
         drop(log);
     }
-
 }

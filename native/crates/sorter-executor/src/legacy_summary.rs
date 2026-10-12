@@ -30,7 +30,10 @@ impl LegacySummary {
         albums_processed: usize,
         album_artist_files: &[(String, usize)],
     ) -> Self {
-        let by_id = operations.iter().map(|op| (op.id, op)).collect::<HashMap<_, _>>();
+        let by_id = operations
+            .iter()
+            .map(|op| (op.id, op))
+            .collect::<HashMap<_, _>>();
         let mut artists = Vec::<(String, usize)>::new();
         let mut positions = HashMap::<String, usize>::new();
         let mut credit = |artist: &str, count: usize| {
@@ -69,8 +72,14 @@ impl LegacySummary {
         }
         let mut folder_artists = HashSet::new();
         for operation in operations {
-            if let OperationKind::SingleTransfer { artist, transfer, .. } = &operation.kind
-                && let Some(parent) = transfer.destination.components.len().checked_sub(1)
+            if let OperationKind::SingleTransfer {
+                artist, transfer, ..
+            } = &operation.kind
+                && let Some(parent) = transfer
+                    .destination
+                    .components
+                    .len()
+                    .checked_sub(1)
                     .and_then(|count| windows_reference(&transfer.destination, count))
                 && !album_parents.contains(&parent)
                 && created.remove(&parent)

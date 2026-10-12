@@ -687,14 +687,19 @@ impl WholeAlbumJob {
         // Each album is processed in order, and deferred singles run afterward.
         // A whole-object rename is one effect, never invented per-file moves.
         for album in &self.header.snapshot.albums {
-            effect_receipts.extend(self.child_renames.iter()
-                .filter(|receipt| receipt.operation == album.operation)
-                .map(|receipt| crate::results::ObservedEffectReceipt {
-                    operation: receipt.operation,
-                    kind: "album_child_renamed".into(),
-                    identity: receipt.observation.identity.clone(),
-                }));
-            if let Some(outcome) = self.outcomes.iter().find(|outcome| outcome.operation == album.operation && outcome.status == "complete") {
+            effect_receipts.extend(
+                self.child_renames
+                    .iter()
+                    .filter(|receipt| receipt.operation == album.operation)
+                    .map(|receipt| crate::results::ObservedEffectReceipt {
+                        operation: receipt.operation,
+                        kind: "album_child_renamed".into(),
+                        identity: receipt.observation.identity.clone(),
+                    }),
+            );
+            if let Some(outcome) = self.outcomes.iter().find(|outcome| {
+                outcome.operation == album.operation && outcome.status == "complete"
+            }) {
                 if let Some(root) = &outcome.root {
                     effect_receipts.push(crate::results::ObservedEffectReceipt {
                         operation: album.operation,
@@ -782,7 +787,11 @@ impl WholeAlbumJob {
                         size: None,
                     };
                     acknowledge_created_directory(
-                        manifest, &mut self.directories, &mut self.created, directory, observed,
+                        manifest,
+                        &mut self.directories,
+                        &mut self.created,
+                        directory,
+                        observed,
                     )?;
                 }
                 MutationOutcome::NoEffect(error) => {

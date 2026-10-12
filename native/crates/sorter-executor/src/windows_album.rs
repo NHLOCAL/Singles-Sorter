@@ -1345,7 +1345,11 @@ impl SelectedAlbumFileJob {
                         size: None,
                     };
                     acknowledge_created_directory(
-                        manifest, &mut self.directories, &mut self.created, directory, observed,
+                        manifest,
+                        &mut self.directories,
+                        &mut self.created,
+                        directory,
+                        observed,
                     )?;
                 }
                 MutationOutcome::NoEffect(error) => {
@@ -1495,7 +1499,10 @@ impl SelectedAlbumFileJob {
             artist_files,
             whole_albums: vec![],
             status,
-            effect_receipts: transfers.as_ref().map(|result| result.effect_receipts.clone()).unwrap_or_default(),
+            effect_receipts: transfers
+                .as_ref()
+                .map(|result| result.effect_receipts.clone())
+                .unwrap_or_default(),
             transfers,
             albums_completed,
             created_directories: self.created.clone(),
@@ -2588,24 +2595,41 @@ mod directory_receipt_tests {
         let storage = WindowsMutationStorage::for_owned_synthetic_tree(root).unwrap();
         let target = storage.parent(Path::new("target")).unwrap();
         let journal = storage.parent(Path::new("journal")).unwrap();
-        let file = storage.create_journal(&journal, &name("receipt.jsonl")).unwrap();
+        let file = storage
+            .create_journal(&journal, &name("receipt.jsonl"))
+            .unwrap();
         let mut manifest = Manifest {
-            sink: WindowsJournalStore::new(file), job_id: "receipt-test".into(),
-            sequence: 0, previous: String::new(), bytes: MAX_MANIFEST, poisoned: false,
+            sink: WindowsJournalStore::new(file),
+            job_id: "receipt-test".into(),
+            sequence: 0,
+            previous: String::new(),
+            bytes: MAX_MANIFEST,
+            poisoned: false,
         };
-        let MutationOutcome::Applied(directory) = storage.create_destination_directory(
-            &target, &name("artist"), &AtomicBool::new(false),
-        ) else { panic!("owned directory creation failed"); };
+        let MutationOutcome::Applied(directory) =
+            storage.create_destination_directory(&target, &name("artist"), &AtomicBool::new(false))
+        else {
+            panic!("owned directory creation failed");
+        };
         let observed = MutationObservation {
             reference: reference(&created_path),
-            identity: directory.identity().clone(), parent_identity: target.identity().clone(),
-            actual_name: name("artist"), size: None,
+            identity: directory.identity().clone(),
+            parent_identity: target.identity().clone(),
+            actual_name: name("artist"),
+            size: None,
         };
         let mut guards = Vec::new();
         let mut acknowledged = Vec::new();
-        assert_eq!(acknowledge_created_directory(
-            &mut manifest, &mut guards, &mut acknowledged, directory, observed,
-        ), Err(E::NeedsRecovery));
+        assert_eq!(
+            acknowledge_created_directory(
+                &mut manifest,
+                &mut guards,
+                &mut acknowledged,
+                directory,
+                observed,
+            ),
+            Err(E::NeedsRecovery)
+        );
         assert_eq!(guards.len(), 1);
         assert!(acknowledged.is_empty());
         assert!(manifest.poisoned);

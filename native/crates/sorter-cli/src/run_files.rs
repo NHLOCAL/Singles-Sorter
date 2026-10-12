@@ -232,22 +232,35 @@ pub(super) fn execute_request(
             return Ok(());
         }
         let fresh = plan_files::execute_request_controlled(&request.preview, cancel)?;
-        if !fresh.plan.as_ref().is_some_and(|fresh| fresh.binding_sha256 == plan.binding_sha256
-            && sorter_executor::no_op::is_clean_sort_noop(fresh)) {
-            return Err(Failure::new(1, "PLAN_CHANGED", "Files or resources changed; inspect a fresh plan"));
+        if !fresh.plan.as_ref().is_some_and(|fresh| {
+            fresh.binding_sha256 == plan.binding_sha256
+                && sorter_executor::no_op::is_clean_sort_noop(fresh)
+        }) {
+            return Err(Failure::new(
+                1,
+                "PLAN_CHANGED",
+                "Files or resources changed; inspect a fresh plan",
+            ));
         }
         if cancel.load(Ordering::Acquire) || invalid_control.load(Ordering::Acquire) {
             event("cancelled", json!({"before_apply":true}))?;
-            return Err(Failure::new(1, "EXECUTION_INCOMPLETE", "No-op confirmation was cancelled"));
+            return Err(Failure::new(
+                1,
+                "EXECUTION_INCOMPLETE",
+                "No-op confirmation was cancelled",
+            ));
         }
         // No mutation grant or journal is needed: the revalidated job has no
         // effects to perform. Never use this branch for an error/blocked plan.
-        event("result", json!({"job_id":format!("no-op-{}",plan.binding_sha256),
+        event(
+            "result",
+            json!({"job_id":format!("no-op-{}",plan.binding_sha256),
             "plan_id":plan.binding_sha256,"status":"complete","no_op":true,
             "source_items":0,"committed_destinations":0,"committed_operations":[],"effect_receipts":[],
             "moved_sources":0,"failed_operations":0,"blocked_operations":0,"recovery_operations":0,
             "cancelled_operations":0,"items":[],"journal_directory":null,"invalid_control":false,
-            "legacy_summary":sorter_executor::legacy_summary::LegacySummary::default()}))?;
+            "legacy_summary":sorter_executor::legacy_summary::LegacySummary::default()}),
+        )?;
         return Ok(());
     }
     let fail = |e: &dyn std::fmt::Display| Failure::new(1, "EXECUTION_REFUSED", e.to_string());
@@ -523,9 +536,14 @@ pub(super) fn execute_request(
     match result {
         Ok(result) => {
             let legacy_summary = sorter_executor::legacy_summary::LegacySummary::from_receipts(
-                &plan.operations, &result.committed_operations,
-                &job.created_directory_receipts().iter().map(|(reference, _)| reference.clone()).collect::<Vec<_>>(),
-                0, &[],
+                &plan.operations,
+                &result.committed_operations,
+                &job.created_directory_receipts()
+                    .iter()
+                    .map(|(reference, _)| reference.clone())
+                    .collect::<Vec<_>>(),
+                0,
+                &[],
             );
             let status = match result.status {
                 JobStatus::Complete => "complete",

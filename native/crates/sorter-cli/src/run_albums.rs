@@ -76,11 +76,21 @@ pub(super) fn execute(
     match result {
         Ok(result) => {
             let actual = status(result.status);
-            let committed_operations = result.transfers.as_ref().map(|transfers| transfers.committed_operations.as_slice()).unwrap_or_default();
+            let committed_operations = result
+                .transfers
+                .as_ref()
+                .map(|transfers| transfers.committed_operations.as_slice())
+                .unwrap_or_default();
             let legacy_summary = sorter_executor::legacy_summary::LegacySummary::from_receipts(
-                &plan.operations, committed_operations,
-                &result.created_directories.iter().map(|entry| entry.reference.clone()).collect::<Vec<_>>(),
-                result.albums_completed, &result.artist_files,
+                &plan.operations,
+                committed_operations,
+                &result
+                    .created_directories
+                    .iter()
+                    .map(|entry| entry.reference.clone())
+                    .collect::<Vec<_>>(),
+                result.albums_completed,
+                &result.artist_files,
             );
             // Whole directory receipts and per-file transfer receipts are disjoint.
             let whole_files = result
