@@ -134,8 +134,8 @@ fn rewritten_snapshot_mapping_membership_cleanup_and_parent_forgery_are_rejected
                     snapshot["directories"][0]["children"][0]["parent_identity"] = serde_json::json!({"Windows":{"volume":0,"file_id":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}})
                 }
                 7..=10 => {
-                    let family = ["copied_directories", "destinations", "files", "albums"]
-                        [change - 7];
+                    let families = ["copied_directories", "destinations", "files", "albums"];
+                    let family = families[change - 7];
                     assert!(!snapshot[family].as_array().unwrap().is_empty());
                     snapshot[family][0]["destination"]["unexpected"] = serde_json::json!(true);
                 }
