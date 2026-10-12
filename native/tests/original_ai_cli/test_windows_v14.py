@@ -95,20 +95,25 @@ class PairedWindowsContract(unittest.TestCase):
         def reference(path):
             raw=path.encode('utf-16-le')
             return {'WindowsPath':{'utf16':[int.from_bytes(raw[i:i+2],'little') for i in range(0,len(raw),2)]}}
+        # WindowsPath evidence needs Windows spelling even when this test runs on Linux.
+        root=PureWindowsPath(r'C:\owned')
         identity={'Test':{'id':'album'}}
         result={'effect_receipts':[{'operation':0,'kind':'album_renamed','identity':identity}],
-                'whole_albums':[{'operation':0,'status':'complete','root':{'identity':identity,'reference':reference('/owned/target/album')}}]}
-        plan={'operations':[{'id':0,'kind':{'AlbumTransfer':{'source':{'identity':identity,'reference':reference('/owned/source/album')}}}}]}
-        order=gate.acknowledged_transfer_order(Path('/owned'),result,plan,[])
-        self.assertEqual([(r['kind'],r['source'],r['destination']) for r in order],[('move','source/album','target/album')])
+                'whole_albums':[{'operation':0,'status':'complete','root':{'identity':identity,'reference':reference(str(root/'target'/'album'))}}]}
+        plan={'operations':[{'id':0,'kind':{'AlbumTransfer':{'source':{'identity':identity,'reference':reference(str(root/'source'/'album'))}}}}]}
+        order=gate.acknowledged_transfer_order(root,result,plan,[])
+        self.assertEqual([(r['kind'],r['source'],r['destination']) for r in order],[('move',r'source\album',r'target\album')])
+        wrong_separator=copy.deepcopy(plan)
+        wrong_separator['operations'][0]['kind']['AlbumTransfer']['source']['reference']=reference('C:/owned/source/album')
+        with self.assertRaises(ValueError): gate.acknowledged_transfer_order(root,result,wrong_separator,[])
         omitted=copy.deepcopy(result);omitted['effect_receipts']=[]
-        with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(Path('/owned'),omitted,plan,[])
+        with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(root,omitted,plan,[])
         omitted['whole_albums'][0]['root']=None
-        with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(Path('/owned'),omitted,plan,[])
+        with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(root,omitted,plan,[])
         result['whole_albums'][0]['status']='partial'
-        with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(Path('/owned'),result,plan,[])
+        with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(root,result,plan,[])
         result['whole_albums'][0]['status']='complete'; plan['operations'][0]['kind']['AlbumTransfer']['source']['identity']={'Test':{'id':'other'}}
-        with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(Path('/owned'),result,plan,[])
+        with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(root,result,plan,[])
 
     def test_namespace_receipt_absence_remains_open_and_empty_is_explicit(self):
         self.assertIsNone(gate.acknowledged_transfer_order(Path('/owned'),{'status':'complete'},None,[]))
