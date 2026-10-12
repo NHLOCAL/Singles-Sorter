@@ -332,6 +332,26 @@ pub(super) fn execute_request_controlled(
             .map(|p| desktop.reference(p))
             .transpose()
             .map_err(storage_failure)?;
+        // The stronger Windows planning adapter requires disjoint roots. Keep
+        // the public same-object input error before that adapter's scope refusal;
+        // both observations still come from the pinned no-reparse read owner.
+        #[cfg(all(windows, feature = "selected-windows-execution"))]
+        if request.mode == JobMode::Sort
+            && let Some(target) = &target
+        {
+            let source_entry = desktop.stat(&source).map_err(storage_failure)?;
+            let target_entry = desktop.stat(target).map_err(storage_failure)?;
+            if source_entry.reference == target_entry.reference
+                || (source_entry.identity.is_some()
+                    && source_entry.identity == target_entry.identity)
+            {
+                return Err(Failure::new(
+                    2,
+                    "SAME_ROOT",
+                    "Source and target identify the same object",
+                ));
+            }
+        }
         #[cfg(all(windows, feature = "selected-windows-execution"))]
         let desktop: Box<dyn ReadStorage + '_> = if let Some(target) = &request.target {
             Box::new(

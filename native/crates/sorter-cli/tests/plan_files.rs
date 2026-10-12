@@ -205,18 +205,31 @@ fn ai_profile_is_required_and_caller_cannot_claim_available_inference() {
 #[test]
 fn non_directory_roots_and_same_sort_root_are_not_plans() {
     let t = tree();
+    let before = manifest(t.path());
     let mut r = request(t.path(), "Sort");
     r["target"] = r["source"].clone();
     assert_eq!(
         run(&serde_json::to_vec(&r).unwrap(), t.path(), 2)["error"]["code"],
         "SAME_ROOT"
     );
+    assert_eq!(manifest(t.path()), before);
+    #[cfg(windows)]
+    {
+        // Distinct lexical spellings must retain the same full native identity.
+        r["target"] = json!(t.path().join("SOURCE"));
+        assert_eq!(
+            run(&serde_json::to_vec(&r).unwrap(), t.path(), 2)["error"]["code"],
+            "SAME_ROOT"
+        );
+        assert_eq!(manifest(t.path()), before);
+    }
     r = request(t.path(), "FixNames");
     r["source"] = json!(t.path().join("source/אברהם_פריד.mp3"));
     assert_eq!(
         run(&serde_json::to_vec(&r).unwrap(), t.path(), 2)["error"]["code"],
         "STORAGE_NotDirectory"
     );
+    assert_eq!(manifest(t.path()), before);
 }
 #[cfg(target_os = "linux")]
 #[test]
