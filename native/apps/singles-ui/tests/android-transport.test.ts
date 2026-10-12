@@ -37,3 +37,22 @@ describe('Android WebView 83 compatibility',()=>{
   expect('replaceChildren' in OtherElement.prototype).toBe(false);
  });
 });
+
+describe('Android modal scroll ownership',()=>{
+ it('locks only while at least one dialog is open and restores on close/dispose',async()=>{
+  const {watchAndroidDialogs}=await import('../src/android-transport');
+  let opened=0,notify=()=>{};const classes=new Set<string>();let disconnected=false;
+  const root={classList:{toggle:(key:string,on:boolean)=>on?classes.add(key):classes.delete(key),remove:(key:string)=>classes.delete(key)}};
+  const doc={documentElement:root,querySelector:(selector:string)=>{expect(selector).toBe('dialog[open]');return opened?{}:null;}};
+  class Observer {
+   constructor(callback:()=>void){notify=callback;}
+   observe(target:unknown,options:unknown){expect(target).toBe(root);expect(options).toEqual({subtree:true,attributes:true,attributeFilter:['open']});}
+   disconnect(){disconnected=true;}
+  }
+  const stop=watchAndroidDialogs(doc as unknown as Document,Observer as unknown as typeof MutationObserver);
+  expect(classes.size).toBe(0);opened=2;notify();expect(classes.has('android-modal-open')).toBe(true);
+  opened=1;notify();expect(classes.has('android-modal-open')).toBe(true);
+  opened=0;notify();expect(classes.size).toBe(0);
+  opened=1;notify();stop();expect(classes.size).toBe(0);expect(disconnected).toBe(true);
+ });
+});

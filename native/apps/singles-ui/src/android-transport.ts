@@ -33,6 +33,15 @@ window.addEventListener('pagehide',()=>{
   pending.clear();
 });
 
+/** Attribute-driven fallback for WebView versions without CSS :has(). */
+export function watchAndroidDialogs(doc:Document,Observer:typeof MutationObserver):()=>void {
+  const update=()=>doc.documentElement.classList.toggle('android-modal-open',doc.querySelector('dialog[open]')!==null);
+  const observer=new Observer(update);
+  observer.observe(doc.documentElement,{subtree:true,attributes:true,attributeFilter:['open']});
+  update();
+  return ()=>{observer.disconnect();doc.documentElement.classList.remove('android-modal-open');};
+}
+
 // Vite lowers syntax, not missing built-ins. Android 11's original WebView
 // predates Object.hasOwn; preserve the exact own-property semantics in the UI.
 if(hasAndroidHost()) {
@@ -49,6 +58,7 @@ if(hasAndroidHost()) {
   }
   if(typeof document!=='undefined') {
     document.documentElement.dataset.androidHost='true';
+    if(typeof MutationObserver!=='undefined'){const stop=watchAndroidDialogs(document,MutationObserver);window.addEventListener('pagehide',stop);}
     queueMicrotask(()=>{for(const id of ['source','target']){const input=document.getElementById(id) as HTMLInputElement|null;if(input){input.readOnly=true;input.placeholder='בחר תיקיה';input.addEventListener('click',()=>document.getElementById(`${id}-picker`)?.click());}}});
   }
 }

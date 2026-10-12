@@ -2,3 +2,15 @@
    desktop layout stay unchanged. dvh overrides vh on newer WebViews. */
 html[data-android-host] #app {height:100vh;height:100dvh}
 html[data-android-host] input[readonly] {cursor:pointer}
+/* WebView 83 lacks dvh and :has(). Keep long editors inside the visual
+   viewport even when opened from a scrolled settings page. */
+html[data-android-host] dialog[open] {
+  position:fixed;top:50%;bottom:auto;left:0;right:0;margin:0 auto;
+  transform:translateY(-50%);max-height:85vh;max-height:85dvh;
+}
+html[data-android-host] .editor-dialog[open] {
+  max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);
+}
+html[data-android-host].android-modal-open,
+html[data-android-host].android-modal-open body {overflow:hidden}
+html[data-android-host] .help-popover {max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px)}
