@@ -105,3 +105,92 @@ runner disposal for diagnosis. The report is written only after all byte/layout
 checks pass. Optimized Python is refused because the independent MP3 parser uses
 assertions. The runtime application has no Python dependency. Positional Ctrl-C
 handler behavior still needs its own actual console-signal acceptance case.
+
+## Paired actual-Windows v14 diagnostics (not a parity approval)
+
+`check_windows_v14.py` is an additive diagnostic lane after the actual release
+build. It refuses non-Windows/non-CI execution. Its 36 cases use two fresh owned
+trees each, never the user's music or the reference checkout:
+
+- All 32 combinations of Copy/Move, main-only/recursive, abc, singles directory,
+  and exist-only. The bit order in each case ID is recorded in `SETTING_NAMES`.
+- Real authored silent WAVs at root, direct-child and deeper levels, an unknown
+  song, an unsupported sidecar, an existing artist destination, a missing artist
+  destination, a processable three-track album with a sidecar, and a protected
+  album with three distinct artists and no 70% main artist.
+- Four real-original-model duet cases: Copy/Move × first/all artists. The duet
+  must actually invoke original NER and the original classifier and return at
+  least two artists. Unsupported Move-all remains explicitly OPEN, not passing
+  parity. A crash or unrelated execution failure is not treated as unsupported.
+
+The oracle reuses the authenticated model/source loader in `check_cli.py`. Its
+existing two-result interface and 44-route checks are unchanged; the new optional
+`include_sorter` exposes the same loaded original object to the paired harness.
+The sorter source must match frozen commit
+`78d001aee5ce49628bdffebd34540fa83ba32c12`, original blob
+`0b67726e72e527556f47a8eeffeb44778c62809b`, 41,353 bytes, SHA-256
+`ec4a98ce29c431b5d46b59f11a531eaf8fb4f3c8c16248372771de630086fffa`.
+It never uses the later modified checkout's `src/core/singles_sorter_v5.py`.
+Both case CWDs receive exactly the immutable released primary alias CSV, with
+hashes recorded. No original policy or counter method is reimplemented. The
+original runs unchanged class methods with real music-tag metadata; wrappers
+record their actual returns and filesystem calls. All original writes and
+mutation source/destination paths are confined to that case with a BaseException
+safety abort that its ordinary Exception handlers cannot swallow. No injected
+metadata, synthetic artist result or model replacement is used in these cases.
+
+Each native case first records a real `plan-files` response without mutation,
+then runs the selected executable's actual positional frontend with closed stdin
+and only System32 on PATH. Evidence contains raw stdout/stderr, exit code,
+source/target snapshots with exact paths, file hashes and mtimes, original actual
+summary/decisions/operation order/model calls, native preview decisions and
+predicted counters, native final result, raw journal bytes and ordered records,
+and a mapping of committed receipts to independently observed destination bytes.
+Physical committed/moved counts remain separate from original summary counters.
+
+A native final `legacy_summary` must match the original return exactly:
+`songs_sorted`, `artist_folders_created`, `albums_processed`, and ordered
+`top_artists` pairs. Missing actual summary or actual decision evidence is OPEN;
+matching predictions never fills that gap. Single-journal committed transfer
+order can be compared directly. Multiple journals or whole-directory album
+renames do not establish a global per-file transfer order and remain explicit
+evidence gaps. Whole-directory receipts are never expanded into fictional file
+transfer events. All traces remain in encounter order, including ties and skips.
+
+Only each exact owned root prefix is stripped for comparison. No names, case,
+Unicode, separators, artists, counters or order are normalized. Original tuples
+serialize as JSON arrays without changing values/order. Authored file mtimes use
+one fixed epoch and are compared exactly. Raw directory mtimes are retained but
+excluded from paired equality because the independent jobs run at different
+wall times; access time is not sampled. Runtime/job IDs, OS identities and plan
+hashes are recorded where available but are not expected equal across trees.
+These choices are repeated in the machine-readable report.
+
+The two historical unsafe cases remain narrowly identified from the hash-bound
+immutable `historical-unsafe.jsonl`: deleting an untransferred duet after all
+exist-only destinations were skipped, and incrementing legacy success counters
+after a failed Move. This lane does not rerun those synthetic historical tests
+or claim Windows proof for them. They are never blanket exclusions for other
+mismatches and never requirements to reproduce data loss or false physical
+success.
+
+Every attempted case writes a separate JSON record, including errors; subsequent
+cases continue. The summary binds each evidence file's SHA-256 and records all
+36 outcomes. Nonzero exit codes distinguish OPEN (2) and mismatch/harness error
+(1) from complete MATCH (0). The workflow deliberately marks this diagnostic
+step `continue-on-error` and always uploads its evidence separately, including
+when other gates fail. A green enclosing workflow therefore does NOT establish
+v14 parity. No preview package is relabeled as parity-approved by this lane.
+No authored media, model pickle or original model assets are uploaded; only
+owned-fixture diagnostics are retained for seven days.
+
+Reproduce on the owned Windows CI runner after the pinned export/build steps:
+
+```powershell
+python tests/original_ai_cli/check_windows_v14.py --binary target/release/singles-sorter.exe --bundle target/original-ai/bundle --baseline "$env:GITHUB_WORKSPACE/original-baseline" --report target/original-ai/windows-v14-paired/report.json
+```
+
+Portable `test_windows_v14.py` checks exhaustive coverage, mutation confinement,
+exact comparisons, narrow timestamp handling, counter separation and authored
+fixture equivalence. These harness tests, including any Linux original-method
+smoke, are not substitutes for the Windows paired report.

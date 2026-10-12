@@ -81,7 +81,7 @@ def git_bytes(baseline, path):
 
 
 @contextlib.contextmanager
-def original_oracle(baseline, bundle, temporary):
+def original_oracle(baseline, bundle, temporary, *, include_sorter=False):
     """Run unchanged release methods, with explicit already-verified model paths."""
     import numpy
     import sklearn
@@ -155,7 +155,9 @@ def original_oracle(baseline, bundle, temporary):
             result = list(sorter.artists_from_song(path) or [])
             return result, list(trace)
 
-        yield predict, sources
+        # The paired physical harness needs the same authenticated original object.
+        # Existing read-only callers keep their unchanged two-value contract.
+        yield (predict, sources, sorter) if include_sorter else (predict, sources)
     finally:
         os.chdir(previous)
         sys.path.remove(str(code))

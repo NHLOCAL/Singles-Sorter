@@ -163,6 +163,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Build default-off CLI and original AI with Windows selected execution
+        id: build-selected-cli
         run: |
           cargo +1.99.0 build --locked --release -p sorter-cli
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -173,6 +174,26 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo +1.99.0 build --locked --release -p sorter-classifier --example parity
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Diagnose paired actual-Windows frozen-v14 regression (32 settings and 4 duets)
+        if: runner.os == 'Windows' && !cancelled() && steps.build-selected-cli.outcome == 'success'
+        continue-on-error: true
+        run: |
+          # A diagnostic lane, not a release/parity gate: OPEN and MISMATCH exit nonzero.
+          # Never promote unsupported execution or missing actual summaries to parity.
+          python tests/original_ai_cli/check_windows_v14.py --binary target/release/singles-sorter.exe --bundle target/original-ai/bundle --baseline "$env:GITHUB_WORKSPACE/original-baseline" --report target/original-ai/windows-v14-paired/report.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Always retain paired Windows regression diagnostics
+        if: always() && runner.os == 'Windows' && steps.build-selected-cli.outcome == 'success'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-v14-paired-diagnostic-${{ github.sha }}
+          path: native/target/original-ai/windows-v14-paired
+          if-no-files-found: error
+          retention-days: 7
+          include-hidden-files: false
+          overwrite: false
 
       - name: Compare original classifier numeric oracle at application optimization level
         run: |
