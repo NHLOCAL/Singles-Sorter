@@ -388,6 +388,8 @@ pub(crate) fn open_owned_recovery_domain_with_control(
 /// owned roots. It cannot resume, publish, delete, append or adopt a found temp.
 pub struct WindowsCopyRecovery<'a> {
     control: Option<&'a InspectionControl<'a>>,
+    read_budget: Option<(usize, u64)>,
+    limit_reached: bool,
     owned: &'a WindowsMutationStorage,
     binding: ExecutionBinding,
     reads: DesktopStorage,
@@ -450,6 +452,8 @@ impl<'a> WindowsCopyRecovery<'a> {
         let reads = probe(control, || DesktopStorage::new(&roots).map_err(|_| E::Scope))?;
         Ok(Self {
             control,
+            read_budget: None,
+            limit_reached: false,
             owned,
             binding: binding.clone(),
             reads,
@@ -458,12 +462,56 @@ impl<'a> WindowsCopyRecovery<'a> {
             _target: Some(target),
         })
     }
+    /// Restart inspection can cap all file/metadata observations and content
+    /// bytes. Exhaustion is uncertain evidence, never an absent/committed file.
+    #[cfg(feature = "selected-windows-execution")]
+    pub(crate) fn limit_reads(&mut self, observations: usize, bytes: u64) -> Result<()> {
+        // Legacy bounded diagnostics do not have a controlled ADS reader.
+        if self.binding.data.copied_move_sources.is_some() { return Err(E::Unsupported); }
+        self.read_budget = Some((observations, bytes));
+        Ok(())
+    }
+    #[cfg(feature = "selected-windows-execution")]
+    pub(crate) fn limit_reached(&self) -> bool {
+        self.limit_reached
+    }
+    fn charge_observation(&mut self) -> Result<()> {
+        if let Some((observations, _)) = &mut self.read_budget {
+            if *observations == 0 {
+                self.limit_reached = true;
+                return Err(E::NeedsRecovery);
+            }
+            *observations -= 1;
+        }
+        Ok(())
+    }
+    fn check_content_length(&mut self, bytes: u64) -> Result<()> {
+        if let Some((_, remaining)) = self.read_budget {
+            // Leave room for one actual byte if a growing file fails the EOF probe.
+            if bytes >= remaining {
+                self.limit_reached = true;
+                return Err(E::NeedsRecovery);
+            }
+        }
+        Ok(())
+    }
+    fn charge_content(&mut self, bytes: u64) -> Result<()> {
+        if let Some((_, remaining)) = &mut self.read_budget {
+            if bytes > *remaining {
+                self.limit_reached = true;
+                return Err(E::NeedsRecovery);
+            }
+            *remaining -= bytes;
+        }
+        Ok(())
+    }
     fn observe(
         &mut self,
         reference: &StorageRef,
     ) -> Result<Option<crate::recovery::ObservedObject>> {
         let control = self.control;
         checkpoint(control)?;
+        self.charge_observation()?;
         within_roots(reference, &self.roots).map_err(|_| E::Scope)?;
         let before = probe(control, || match self.reads.stat(reference) {
             Ok(entry) => Ok(Some(entry)),
@@ -471,6 +519,7 @@ impl<'a> WindowsCopyRecovery<'a> {
             Err(_) => Err(E::Io),
         })?;
         let Some(before) = before else { return Ok(None); };
+        self.check_content_length(before.size.ok_or(E::Stale)?)?;
         let mut input = probe(control, || self.reads.open_read(reference).map_err(|_| E::Io))?;
         let bound = input.binding().ok_or(E::Stale)?;
         if Some(&bound.identity) != before.identity.as_ref()
@@ -487,6 +536,7 @@ impl<'a> WindowsCopyRecovery<'a> {
             let result = input.read(&mut buffer[..amount]).map_err(|_| E::Io);
             let count = match result { Ok(count) => count, Err(error) => { checkpoint(control)?; return Err(error); } };
             if let Some(control) = control { control.bytes(count)?; }
+            self.charge_content(count as u64)?;
             checkpoint(control)?;
             if count == 0 { break; }
             length = length.checked_add(count as u64).ok_or(E::Unsupported)?;
@@ -574,6 +624,7 @@ impl crate::recovery::RecoveryStorage for WindowsCopyRecovery<'_> {
         destination: &DestinationEvidence,
         expected: &crate::physical_journal::CopyMetadataEvidence,
     ) -> Result<bool> {
+        self.charge_observation()?;
         if !controlled_any(self.binding.operations().iter(), self.control, |op| {
             op.destination == *destination
                 && op.source.observation.identity.as_ref() == Some(&expected.source_identity)

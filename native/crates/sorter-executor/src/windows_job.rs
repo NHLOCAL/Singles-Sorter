@@ -549,11 +549,14 @@ pub struct DirectoryRecovery {
     pub rejected: Vec<StorageRef>,
     pub complete: bool,
     pub incomplete_tail: bool,
+    /// Recorded created-directory identities not freshly proven at the same path.
+    pub unverified: Vec<StorageRef>,
 }
 #[derive(Clone, Debug)]
 pub struct SelectedRecoveryReport {
     pub directories: DirectoryRecovery,
     pub transfers: Option<crate::recovery::RecoveryReport>,
+    pub observation_limit_reached: bool,
 }
 /// Caller reads identity-checked journal files using the explicitly selected
 /// journal-root capability. This function performs no writes or automatic replay.
@@ -564,7 +567,7 @@ pub fn inspect_recovery(
     directories: &[u8],
     transfers: Option<&[u8]>,
 ) -> Result<SelectedRecoveryReport> {
-    inspect_recovery_inner(roots, scope, job_id, directories, transfers, None)
+    inspect_recovery_inner(Some(roots), scope, job_id, directories, transfers, RecoveryReadOptions::default())
 }
 pub fn inspect_recovery_controlled(
     roots: &WindowsMutationStorage,
@@ -574,19 +577,28 @@ pub fn inspect_recovery_controlled(
     transfers: Option<&[u8]>,
     control: &InspectionControl,
 ) -> Result<SelectedRecoveryReport> {
-    inspect_recovery_inner(roots, scope, job_id, directories, transfers, Some(control))
+    inspect_recovery_inner(Some(roots), scope, job_id, directories, transfers,
+        RecoveryReadOptions { control: Some(control), ..RecoveryReadOptions::default() })
+}
+#[derive(Default)]
+struct RecoveryReadOptions<'a> {
+    control: Option<&'a InspectionControl<'a>>,
+    cursor: usize,
+    restart: bool,
+    bounded: bool,
 }
 fn inspect_recovery_inner(
-    roots: &WindowsMutationStorage,
+    roots: Option<&WindowsMutationStorage>,
     scope: &RecoveryScope,
     job_id: &str,
     directories: &[u8],
     transfers: Option<&[u8]>,
-    control: Option<&InspectionControl>,
+    options: RecoveryReadOptions<'_>,
 ) -> Result<SelectedRecoveryReport> {
+    let control = options.control;
     crate::inspection_control::check_recorded_input(directories, control)?;
     if let Some(control) = control { control.stage("directory_journal")?; }
-    if roots.domain() != WindowsMutationDomain::SelectedRoots {
+    if roots.is_some_and(|roots| roots.domain() != WindowsMutationDomain::SelectedRoots) {
         return Err(E::Scope);
     }
     let mut report = DirectoryRecovery {
@@ -595,6 +607,7 @@ fn inspect_recovery_inner(
         rejected: vec![],
         complete: false,
         incomplete_tail: false,
+        unverified: vec![],
     };
     let mut offset = 0;
     let mut sequence = 0;
@@ -651,11 +664,13 @@ fn inspect_recovery_inner(
                 {
                     return Err(E::Scope);
                 }
+                if let Some(roots) = roots {
                 if probe(control, || roots.selected_source_reference().map_err(|_| E::Scope))? != header.source_root.reference
                     || probe(control, || roots.selected_target_reference().map_err(|_| E::Scope))? != header.target_root.reference
                     || probe(control, || roots.selected_source_root().map_err(|_| E::Scope))?.identity() != &scope.original_scope.source_root
                     || probe(control, || roots.selected_target_root().map_err(|_| E::Scope))?.identity() != &scope.original_scope.target_root {
                     return Err(E::Scope);
+                }
                 }
                 binding = Some(header);
             }
@@ -692,7 +707,7 @@ fn inspect_recovery_inner(
                     return Err(E::CorruptJournal);
                 }
                 pending = None;
-                if control.is_some() && report.observed.len() >= 8192 { return Err(E::Unsupported); }
+                if control.is_some() && report.observed.len() >= MAX_STREAMING_DIRECTORIES { return Err(E::Unsupported); }
                 report.observed.push((reference, identity));
             }
             DirectoryEvent::Rejected { reference, .. } => {
@@ -714,20 +729,32 @@ fn inspect_recovery_inner(
     if let Some(reference) = pending {
         report.pending.push(reference);
     }
-    // Keep every recorded created-directory identity pinned through all file
-    // checks. A replacement cannot be hidden by moving the original files back.
+    // Pin matched created directories across all later content observations.
     let mut held_directories = Vec::new();
-    if control.is_some() {
-        for (reference, expected) in &report.observed {
-            let parent = probe(control, || roots.parent_reference(reference).map_err(|_| E::Stale))?;
-            if parent.identity() != expected { return Err(E::Stale); }
-            held_directories.push(parent);
+    let mut observation_limit_reached = false;
+    if let Some(roots) = roots {
+        if control.is_some() || options.restart {
+            for (index, (reference, expected)) in report.observed.iter().enumerate() {
+                checkpoint(control)?;
+                if options.bounded && index >= MAX_RESTART_OBSERVATIONS {
+                    observation_limit_reached = true;
+                    report.unverified.push(reference.clone());
+                    continue;
+                }
+                match probe(control, || roots.parent_reference(reference).map_err(|_| E::Stale)) {
+                    Ok(parent) if parent.identity() == expected => held_directories.push(parent),
+                    Err(E::Cancelled) => return Err(E::Cancelled),
+                    _ if options.restart => report.unverified.push(reference.clone()),
+                    _ => return Err(E::Stale),
+                }
+            }
         }
     }
     let transfer_report = if let Some(bytes) = transfers {
         if !report.complete || report.incomplete_tail {
             return Err(E::CorruptJournal);
         }
+        let roots = roots.ok_or(E::Scope)?;
         if let Some(control) = control { control.stage("transfer_journal")?; }
         let journal = crate::windows_copy::open_owned_recovery_domain_with_control(
             roots,
@@ -743,13 +770,18 @@ fn inspect_recovery_inner(
             binding.domain(),
             control,
         )?;
-        Some(crate::recovery::recover_job_inner(
+        if options.bounded {
+            reads.limit_reads(MAX_RESTART_OBSERVATIONS.saturating_sub(report.observed.len()), MAX_RESTART_CONTENT_BYTES)?;
+        }
+        let recovered = crate::recovery::recover_job_inner(
             journal.binding(),
             &journal,
             &mut reads,
             control,
-            0,
-        )?)
+            options.cursor,
+        )?;
+        observation_limit_reached |= reads.limit_reached();
+        Some(recovered)
     } else {
         None
     };
@@ -758,9 +790,149 @@ fn inspect_recovery_inner(
     Ok(SelectedRecoveryReport {
         directories: report,
         transfers: transfer_report,
+        observation_limit_reached,
     })
 }
 
 #[path = "windows_copied_move.rs"]
 mod copied_move;
 pub use copied_move::{CopiedMoveScope, prepare_copied_move_scope, supported_copied_move_plan};
+
+/// Bounded input limit shared with the host's discovery/read path.
+pub const MAX_SELECTED_JOURNAL_BYTES: usize = 64 * 1024 * 1024;
+/// Tighter restart-only work limits: bound strict parser/event scans as well as
+/// native file reads. Existing in-process mutation/reconciliation is unchanged.
+pub const MAX_RESTART_JOURNAL_BYTES: usize = 4 * 1024 * 1024;
+const MAX_RESTART_RECORDS: usize = 2048;
+const MAX_RESTART_OPERATIONS: usize = 128;
+const MAX_RESTART_OBSERVATIONS: usize = 256;
+pub const MAX_RESTART_CONTENT_BYTES: u64 = 64 * 1024 * 1024;
+// These larger ceilings are reachable only through cancellable control paths.
+pub const MAX_STREAMING_JOURNAL_BYTES: usize = 64 * 1024 * 1024;
+const MAX_STREAMING_RECORD_BYTES: usize = 4 * 1024 * 1024;
+const MAX_STREAMING_RECORDS: usize = 65_536;
+const MAX_STREAMING_OPERATIONS: usize = 4_096;
+const MAX_STREAMING_DIRECTORIES: usize = 8_192;
+fn check_recorded_input(bytes: &[u8], control: Option<&InspectionControl>) -> Result<()> {
+    let (max_bytes, max_records) = if control.is_some() {
+        (MAX_STREAMING_JOURNAL_BYTES, MAX_STREAMING_RECORDS)
+    } else { (MAX_RESTART_JOURNAL_BYTES, MAX_RESTART_RECORDS) };
+    if bytes.len() > max_bytes { return Err(E::Unsupported); }
+    let mut records = 0usize;
+    let mut record_bytes = 0usize;
+    for chunk in bytes.chunks(65_536) {
+        checkpoint(control)?;
+        for byte in chunk {
+            record_bytes += 1;
+            if record_bytes > MAX_STREAMING_RECORD_BYTES { return Err(E::Unsupported); }
+            if *byte == b'\n' { records += 1; record_bytes = 0; }
+            if records > max_records { return Err(E::Unsupported); }
+        }
+    }
+    checkpoint(control)
+}
+/// Display/evidence only. This cannot execute, append, replay, or grant native
+/// access; callers must obtain fresh root selections before reconciliation.
+#[derive(Clone,Debug,Serialize)]
+pub struct RecordedSelectedJob {
+    pub job_id:String,
+    pub source:StorageRef,
+    pub source_identity:ObjectIdentity,
+    pub target:StorageRef,
+    pub target_identity:ObjectIdentity,
+    pub binding_sha256:String,
+    pub operations:Vec<RecordedSelectedOperation>,
+}
+#[derive(Clone,Debug,Serialize)]
+pub struct RecordedSelectedOperation {
+    pub id:usize,
+    pub source:StorageRef,
+    pub destination:DestinationEvidence,
+}
+fn recorded_header(bytes:&[u8])->Result<(RecordedSelectedJob,RecoveryScope,ExecutionDomain)> {
+    recorded_header_with_control(bytes, None)
+}
+fn recorded_header_with_control(bytes: &[u8], control: Option<&InspectionControl>) -> Result<(RecordedSelectedJob, RecoveryScope, ExecutionDomain)> {
+    check_recorded_input(bytes, control)?;
+    let end=bytes.iter().position(|b|*b==b'\n').ok_or(E::CorruptJournal)?;
+    let envelope:DirectoryEnvelope=serde_json::from_slice(&bytes[..end]).map_err(|_|E::CorruptJournal)?;
+    if envelope.body.sequence!=0 || !envelope.body.previous.is_empty() || crate::hash(&envelope.body)?!=envelope.sha256 {return Err(E::CorruptJournal);}
+    let DirectoryEvent::Header{schema,job_id,binding_sha256,binding,target_root}=envelope.body.event else{return Err(E::CorruptJournal);};
+    let max_operations = if control.is_some() { MAX_STREAMING_OPERATIONS } else { MAX_RESTART_OPERATIONS };
+    if binding.operations.len() > max_operations { return Err(E::Unsupported); }
+    if schema!=1 || job_id.is_empty() || job_id.len()>100 || !job_id.bytes().all(|b|b.is_ascii_alphanumeric()||b==b'-') || crate::hash(&binding)?!=binding_sha256 || !binding.valid_domain() || !(binding.selected_windows_copy||binding.selected_windows_rename||binding.copied_move_sources.is_some()) {return Err(E::CorruptJournal);}
+    let evidence=&binding.scope_evidence;
+    if binding.source_root.identity.as_ref()!=Some(&evidence.source_root) || binding.target_root.identity.as_ref()!=Some(&evidence.target_root) || target_root!=evidence.target_root || binding.plan_sha256!=evidence.inspected_plan || binding.resources!=evidence.resources {return Err(E::CorruptJournal);}
+    let source_path=path(&binding.source_root.reference)?;let target_path=path(&binding.target_root.reference)?;
+    if !source_path.is_absolute()||!target_path.is_absolute()||source_path.starts_with(&target_path)||target_path.starts_with(&source_path){return Err(E::Scope);}
+    for (index,op) in binding.operations.iter().enumerate(){
+        checkpoint(control)?;
+        if op.id!=index||op.depends_on.iter().any(|d|*d>=index)||op.destination.components.is_empty()||op.destination.components.iter().any(|c|c.is_empty()||c=="."||c==".."||c.contains(['/', '\\', ':', '\0']))||!path(&op.source.observation.reference)?.starts_with(&source_path)||!evidence.inspected_sources.contains(&op.source){return Err(E::CorruptJournal);}
+    }
+    let scope=ExecutionScope{inspected_plan:evidence.inspected_plan.clone(),source_root:evidence.source_root.clone(),target_root:evidence.target_root.clone(),inspected_sources:evidence.inspected_sources.clone(),resources:evidence.resources.clone(),allowed_modes:evidence.allowed_modes.clone()};
+    if scope_digest(&scope)?!=binding.scope_sha256{return Err(E::CorruptJournal);}
+    let domain=binding.domain();
+    let operations=binding.operations.iter().map(|op|RecordedSelectedOperation{id:op.id,source:op.source.observation.reference.clone(),destination:op.destination.clone()}).collect();
+    let recorded=RecordedSelectedJob{job_id,source:binding.source_root.reference.clone(),source_identity:evidence.source_root.clone(),target:binding.target_root.reference.clone(),target_identity:evidence.target_root.clone(),binding_sha256:binding_sha256.clone(),operations};
+    Ok((recorded,RecoveryScope{original_scope:scope,inspected_binding_sha256:binding_sha256},domain))
+}
+/// Parse bounded untrusted journal bytes for display; never return authority.
+/// The full directory hash chain and phase sequence are validated, including any
+/// preserved incomplete tail. Physical journal reconciliation is a separate step.
+pub fn inspect_recorded_selected_job(directories:&[u8])->Result<RecordedSelectedJob>{
+    let (recorded,scope,_)=recorded_header(directories)?;
+    inspect_recovery_inner(None,&scope,&recorded.job_id,directories,None,RecoveryReadOptions::default())?;
+    Ok(recorded)
+}
+/// Reconstruct only read-only recovery scope after fresh explicitly selected
+/// root grants match recorded roles, lossless paths and full identities exactly.
+pub fn recover_selected_journals(roots:&WindowsMutationStorage,directories:&[u8],transfers:Option<&[u8]>)->Result<SelectedRecoveryReport>{
+    if let Some(bytes) = transfers { check_recorded_input(bytes, None)?; }
+    let (recorded,scope,domain)=recorded_header(directories)?;
+    // Copied Move full-stream verification always requires a live control.
+    if domain == ExecutionDomain::SelectedWindowsCopiedMove { return Err(E::Unsupported); }
+    inspect_recovery_inner(Some(roots),&scope,&recorded.job_id,directories,transfers,
+        RecoveryReadOptions { restart: true, bounded: true, ..RecoveryReadOptions::default() })
+}
+
+/// Current observations across a cancellable inspection interval, never an
+/// atomic library snapshot. A resume cursor does not reuse old hash evidence.
+pub fn recover_selected_journals_controlled(
+    roots: &WindowsMutationStorage, directories: &[u8], transfers: Option<&[u8]>,
+    control: &InspectionControl, start_operation: usize,
+) -> Result<SelectedRecoveryReport> {
+    control.stage("journals")?;
+    if let Some(bytes) = transfers { check_recorded_input(bytes, Some(control))?; }
+    let (recorded, scope, _) = recorded_header_with_control(directories, Some(control))?;
+    inspect_recovery_inner(Some(roots), &scope, &recorded.job_id, directories, transfers,
+        RecoveryReadOptions { control: Some(control), cursor: start_operation, restart: true, bounded: false })
+}
+
+/// Historical completion only, never proof of current filesystem state.
+#[derive(Clone,Debug,Serialize)]
+pub struct RecordedSelectedSummary {
+    pub job:RecordedSelectedJob,
+    pub recorded_complete:bool,
+}
+pub fn summarize_recorded_selected_job(directories:&[u8],transfers:Option<&[u8]>)->Result<RecordedSelectedSummary>{
+    summarize_recorded_selected_job_with_control(directories, transfers, None)
+}
+pub fn summarize_recorded_selected_job_with_control(directories: &[u8], transfers: Option<&[u8]>, control: Option<&InspectionControl>) -> Result<RecordedSelectedSummary> {
+    if let Some(control) = control { control.stage("journals")?; }
+    let (job,scope,domain)=recorded_header_with_control(directories,control)?;
+    let report=inspect_recovery_inner(None,&scope,&job.job_id,directories,None,
+        RecoveryReadOptions { control, ..RecoveryReadOptions::default() })?;
+    let mut recorded_complete=false;
+    if let Some(bytes)=transfers {
+        check_recorded_input(bytes, control)?;
+        if !report.directories.complete||report.directories.incomplete_tail{return Err(E::CorruptJournal);}
+        let journal=PhysicalJournalV2::open_for_recovery_domain_with_control(&scope,&job.job_id,bytes,domain,control)?;
+        let mut phases = std::collections::HashMap::new();
+        for event in journal.events() { checkpoint(control)?; phases.insert(event.operation, event.phase); }
+        // A copied-Move descriptor never certifies a retired cohort. Fresh
+        // granted-root full-stream reconciliation is required even for a final log.
+        recorded_complete=domain!=ExecutionDomain::SelectedWindowsCopiedMove&&!journal.needs_recovery()&&journal.incomplete_tail().is_empty()&&!job.operations.is_empty()&&!controlled_any(job.operations.iter(), control, |op|phases.get(&op.id)!=Some(&crate::physical_journal::Phase::Committed))?;
+    }
+    checkpoint(control)?;
+    Ok(RecordedSelectedSummary{job,recorded_complete})
+}

@@ -791,3 +791,149 @@ fn controlled_copied_inspection_streams_more_than_the_old_aggregate_limit() {
     assert_eq!(progress.completed_operations, 2);
     assert_eq!(inspection_tree(f._tree.path()), before);
 }
+
+fn recorded_copied_job(f: &Fixture, partial: bool) -> (Vec<u8>, Vec<u8>) {
+    let mut job = f.job().unwrap();
+    let cancel = AtomicBool::new(false);
+    let result = job.run(&cancel, &mut |progress| {
+        if partial && progress.operation == 1 { cancel.store(true, Ordering::Release); }
+    }).unwrap();
+    assert_eq!(result.moved_sources, usize::from(!partial));
+    let roots = grants(&f.source, &f.target, &f.journal);
+    let locations = job.journal_locations();
+    let directories = roots.read_selected_journal(locations[0].name(), locations[0].identity()).unwrap();
+    let transfers = roots.read_selected_journal(locations[1].name(), locations[1].identity()).unwrap();
+    drop(roots);
+    drop(job);
+    (directories, transfers)
+}
+#[test]
+fn restart_copied_descriptor_needs_fresh_exact_grants_and_full_current_evidence() {
+    let f = Fixture::new(true);
+    let (directories, transfers) = recorded_copied_job(&f, false);
+    let before = inspection_tree(f._tree.path());
+    let descriptor = inspect_recorded_selected_job(&directories).unwrap();
+    assert_eq!(descriptor.operations.len(), 2);
+    let serialized = serde_json::to_value(&descriptor).unwrap();
+    assert!(serialized.get("scope").is_none());
+    assert!(serialized.get("copied_move_sources").is_none());
+    assert!(serialized.get("recorded_complete").is_none());
+    let summary = summarize_recorded_selected_job_with_control(&directories, Some(&transfers), Some(&fresh_inspection_control())).unwrap();
+    assert!(!summary.recorded_complete);
+    let roots = grants(&f.source, &f.target, &f.journal);
+    assert!(matches!(recover_selected_journals(&roots, &directories, Some(&transfers)), Err(sorter_executor::ExecutionError::Unsupported)));
+    let report = recover_selected_journals_controlled(&roots, &directories, Some(&transfers), &fresh_inspection_control(), 0).unwrap();
+    assert!(report.directories.unverified.is_empty());
+    assert!(!report.observation_limit_reached);
+    assert!(report.transfers.unwrap().operations.iter().all(|operation| operation.status == RecoveryStatus::Committed));
+    assert_eq!(inspection_tree(f._tree.path()), before);
+}
+#[test]
+fn restart_copied_foreign_selected_root_identity_is_refused() {
+    for target in [false, true] {
+        let f = Fixture::new(true);
+        let (directories, transfers) = recorded_copied_job(&f, false);
+        let selected = if target { &f.target } else { &f.source };
+        std::fs::rename(selected, selected.with_file_name(if target { "owned-old-target" } else { "owned-old-source" })).unwrap();
+        std::fs::create_dir(selected).unwrap();
+        let before = inspection_tree(f._tree.path());
+        let roots = grants(&f.source, &f.target, &f.journal);
+        assert!(matches!(recover_selected_journals_controlled(&roots, &directories, Some(&transfers), &fresh_inspection_control(), 0), Err(sorter_executor::ExecutionError::Scope)));
+        assert_eq!(inspection_tree(f._tree.path()), before);
+    }
+}
+#[test]
+fn restart_copied_changed_stream_missing_destination_and_reappeared_source_stay_unresolved() {
+    for change in ["stream", "missing", "source"] {
+        let f = Fixture::new(true);
+        let (directories, transfers) = recorded_copied_job(&f, false);
+        match change {
+            "stream" => std::fs::write(f.target.join("אמן/song.mp3:notes"), b"changed-owned-stream").unwrap(),
+            "missing" => std::fs::rename(f.target.join("אמן/song.mp3"), f.target.join("owned-saved-song.mp3")).unwrap(),
+            "source" => {
+                std::fs::write(f.source.join("song.mp3"), b"foreign-reappeared-main").unwrap();
+                std::fs::write(f.source.join("song.mp3:notes"), b"foreign-reappeared-stream").unwrap();
+            }
+            _ => unreachable!(),
+        }
+        // Deliberate owned changes become the new no-write baseline.
+        let before = inspection_tree(f._tree.path());
+        let roots = grants(&f.source, &f.target, &f.journal);
+        let report = recover_selected_journals_controlled(&roots, &directories, Some(&transfers), &fresh_inspection_control(), 0).unwrap();
+        assert!(report.transfers.unwrap().operations.iter().all(|operation| operation.status == RecoveryStatus::NeedsRecovery));
+        assert_eq!(inspection_tree(f._tree.path()), before);
+    }
+}
+#[test]
+fn restart_copied_cancelled_observation_cursor_never_reuses_hashes() {
+    let f = Fixture::with_contents(true, false, &vec![7; 256 * 1024], b"owned-auxiliary");
+    let (directories, transfers) = recorded_copied_job(&f, false);
+    let before = inspection_tree(f._tree.path());
+    let roots = grants(&f.source, &f.target, &f.journal);
+    let (control, _) = stopped_after_media_bytes(0);
+    assert!(matches!(recover_selected_journals_controlled(&roots, &directories, Some(&transfers), &control, 1), Err(sorter_executor::ExecutionError::Cancelled)));
+    assert_eq!(control.snapshot().unwrap().bytes_read, 65536);
+    assert_eq!(inspection_tree(f._tree.path()), before);
+    drop(roots);
+    std::fs::write(f.target.join("אמן/song.mp3:notes"), b"changed-after-stop").unwrap();
+    let changed = inspection_tree(f._tree.path());
+    let fresh = fresh_inspection_control();
+    let roots = grants(&f.source, &f.target, &f.journal);
+    let report = recover_selected_journals_controlled(&roots, &directories, Some(&transfers), &fresh, 1).unwrap().transfers.unwrap();
+    assert_eq!(report.operations.iter().map(|operation| operation.operation).collect::<Vec<_>>(), vec![0, 1]);
+    assert!(report.operations.iter().all(|operation| operation.status == RecoveryStatus::NeedsRecovery));
+    assert_eq!(fresh.snapshot().unwrap().completed_operations, 2);
+    assert_eq!(inspection_tree(f._tree.path()), changed);
+}
+#[test]
+fn restart_partial_copied_move_keeps_original_and_never_adopts_missing_retirement() {
+    let f = Fixture::new(true);
+    let (directories, transfers) = recorded_copied_job(&f, true);
+    let before = inspection_tree(f._tree.path());
+    let roots = grants(&f.source, &f.target, &f.journal);
+    let report = recover_selected_journals_controlled(&roots, &directories, Some(&transfers), &fresh_inspection_control(), 0).unwrap().transfers.unwrap();
+    assert!(report.operations.iter().any(|operation| operation.status != RecoveryStatus::Committed));
+    assert!(f.source.join("song.mp3").exists());
+    assert_eq!(inspection_tree(f._tree.path()), before);
+}
+#[test]
+fn restart_copied_strict_phase_parser_rejects_reframed_invalid_stream_history() {
+    #[derive(serde::Serialize, serde::Deserialize)]
+    struct Record {
+        sequence: u64,
+        job_id: String,
+        plan_sha256: String,
+        previous: String,
+        event: sorter_executor::physical_journal::Event,
+    }
+    #[derive(serde::Serialize, serde::Deserialize)]
+    struct Envelope { body: Record, sha256: String }
+    let f = Fixture::new(true);
+    let (directories, transfers) = recorded_copied_job(&f, false);
+    let before = inspection_tree(f._tree.path());
+    let mut lines = transfers.split(|byte| *byte == b'\n');
+    let header = lines.next().unwrap();
+    let value: serde_json::Value = serde_json::from_slice(header).unwrap();
+    let mut previous = value["sha256"].as_str().unwrap().to_owned();
+    let mut changed = header.to_vec();
+    changed.push(b'\n');
+    let mut altered = false;
+    for line in lines.filter(|line| !line.is_empty()) {
+        let mut envelope: Envelope = serde_json::from_slice(line).unwrap();
+        if !altered && envelope.body.event.phase == sorter_executor::physical_journal::Phase::AuxiliaryStreamsObserved {
+            envelope.body.event.phase = sorter_executor::physical_journal::Phase::BytesSynced;
+            altered = true;
+        }
+        envelope.body.previous = previous;
+        envelope.sha256 = digest(&serde_json::to_vec(&envelope.body).unwrap());
+        previous = envelope.sha256.clone();
+        changed.extend_from_slice(&serde_json::to_vec(&envelope).unwrap());
+        changed.push(b'\n');
+    }
+    assert!(altered);
+    assert!(inspect_recorded_selected_job(&directories).is_ok());
+    assert!(matches!(summarize_recorded_selected_job_with_control(&directories, Some(&changed), Some(&fresh_inspection_control())), Err(sorter_executor::ExecutionError::CorruptJournal)));
+    let roots = grants(&f.source, &f.target, &f.journal);
+    assert!(matches!(recover_selected_journals_controlled(&roots, &directories, Some(&changed), &fresh_inspection_control(), 0), Err(sorter_executor::ExecutionError::CorruptJournal)));
+    assert_eq!(inspection_tree(f._tree.path()), before);
+}
