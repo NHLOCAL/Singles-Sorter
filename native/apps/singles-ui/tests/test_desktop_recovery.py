@@ -3,7 +3,7 @@ from pathlib import Path
 import os
 import tempfile
 import unittest
-from desktop_recovery import selected_cases, copied_cases, copied_snapshot, repair_cases, tree_snapshot
+from desktop_recovery import selected_cases, copied_cases, copied_snapshot, repair_cases, tree_snapshot, journal_snapshot
 
 
 def snapshot(root):
@@ -11,6 +11,103 @@ def snapshot(root):
 
 
 class RecoveryAcceptanceHelpers(unittest.TestCase):
+    def test_journal_snapshot_does_not_read_live_webview_contents(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            cache = root / 'EBWebView'; cache.mkdir()
+            locked = cache / 'locked.log'; locked.write_bytes(b'live-cache')
+            journal = root / 'owned.transfers.jsonl'; journal.write_bytes(b'journal')
+            original_open = Path.open
+            def opened(path, *args, **kwargs):
+                if cache in path.parents:
+                    raise PermissionError('owned simulation of live WebView lock')
+                return original_open(path, *args, **kwargs)
+            with patch.object(Path, 'open', opened):
+                before = journal_snapshot(root, permissions=lambda _: 'test-acl')
+            locked.write_bytes(b'changed-live-cache')
+            (cache / 'new-live-cache').mkdir()
+            info = cache.stat(); os.utime(cache, ns=(info.st_atime_ns, info.st_mtime_ns + 1000000000))
+            self.assertEqual(before, journal_snapshot(root, permissions=lambda _: 'test-acl'))
+            self.assertEqual(before['live_webview_subtree']['path'], 'EBWebView')
+            self.assertNotIn('modified_ns', before['live_webview_subtree'])
+            self.assertTrue(any(row['path'] == 'owned.transfers.jsonl' and row['sha256'] for row in before['protected_namespace']))
+
+    def test_journal_snapshot_keeps_absent_cache_and_new_namespace_entries_strict(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'owned.repair.jsonl').write_bytes(b'journal')
+            before = journal_snapshot(root, permissions=lambda _: 'test-acl')
+            self.assertIsNone(before['live_webview_subtree'])
+            original = root.stat()
+            (root / 'unexpected-empty-directory').mkdir()
+            os.utime(root, ns=(original.st_atime_ns, original.st_mtime_ns))
+            self.assertNotEqual(before, journal_snapshot(root, permissions=lambda _: 'test-acl'))
+            (root / 'unexpected-empty-directory').rmdir()
+            (root / 'EBWebView').mkdir()
+            os.utime(root, ns=(original.st_atime_ns, original.st_mtime_ns))
+            self.assertNotEqual(before, journal_snapshot(root, permissions=lambda _: 'test-acl'))
+
+    def test_journal_snapshot_keeps_profile_and_nested_cache_names_strict(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'profile-v1' / 'EBWebView').mkdir(parents=True)
+            profile = root / 'profile-v1' / 'EBWebView' / 'profile.json'; profile.write_bytes(b'profile')
+            journal = root / 'owned.album.jsonl'; journal.write_bytes(b'journal')
+            before = journal_snapshot(root, permissions=lambda _: 'test-acl')
+            profile.write_bytes(b'changed')
+            self.assertNotEqual(before, journal_snapshot(root, permissions=lambda _: 'test-acl'))
+            before = journal_snapshot(root, permissions=lambda _: 'test-acl')
+            journal.write_bytes(b'changed')
+            self.assertNotEqual(before, journal_snapshot(root, permissions=lambda _: 'test-acl'))
+            before = journal_snapshot(root, permissions=lambda _: 'test-acl')
+            info = journal.stat(); os.utime(journal, ns=(info.st_atime_ns, info.st_mtime_ns + 1000000000))
+            self.assertNotEqual(before, journal_snapshot(root, permissions=lambda _: 'test-acl'))
+
+    def test_journal_snapshot_retains_webview_boundary_identity_and_permissions(self):
+        with tempfile.TemporaryDirectory() as directory, tempfile.TemporaryDirectory() as retained:
+            root = Path(directory); cache = root / 'EBWebView'; cache.mkdir()
+            before = journal_snapshot(root, permissions=lambda _: 'test-acl')
+            original = root.stat()
+            cache.rename(Path(retained) / 'old-live-boundary'); cache.mkdir()
+            os.utime(root, ns=(original.st_atime_ns, original.st_mtime_ns))
+            after = journal_snapshot(root, permissions=lambda _: 'test-acl')
+            self.assertNotEqual(before['live_webview_subtree']['identity'], after['live_webview_subtree']['identity'])
+            self.assertNotEqual(before, after)
+            self.assertNotEqual(after, journal_snapshot(root, permissions=lambda path: 'changed-acl' if path == cache else 'test-acl'))
+
+    def test_journal_snapshot_refuses_webview_files_and_all_links(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        import stat
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); cache = root / 'EBWebView'; cache.write_bytes(b'not-a-directory')
+            with self.assertRaises(AssertionError):
+                journal_snapshot(root, permissions=lambda _: 'test-acl')
+            cache.unlink()
+            cache.mkdir()
+            original_lstat = Path.lstat
+            for mode, attributes in [(stat.S_IFLNK | 0o777, 0), (stat.S_IFDIR | 0o700, 0x400)]:
+                def observed(path):
+                    if path == cache:
+                        return SimpleNamespace(st_mode=mode, st_file_attributes=attributes)
+                    return original_lstat(path)
+                with patch.object(Path, 'lstat', observed), self.assertRaises(AssertionError):
+                    journal_snapshot(root, permissions=lambda _: 'test-acl')
+
+    def test_journal_snapshot_has_no_generic_cache_or_locked_file_exemption(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); other = root / 'Cache'; other.mkdir()
+            (other / 'locked.log').write_bytes(b'not the documented live subtree')
+            original_open = Path.open
+            def opened(path, *args, **kwargs):
+                if other in path.parents:
+                    raise PermissionError('unexpected locked data')
+                return original_open(path, *args, **kwargs)
+            with patch.object(Path, 'open', opened), self.assertRaises(PermissionError):
+                journal_snapshot(root, permissions=lambda _: 'test-acl')
+
     def test_completed_copy_and_move_are_both_required(self):
         copy, move = {'copy_mode': True}, {'copy_mode': False}
         self.assertEqual(selected_cases({'cases': [{'case': 'stale'}, move, copy]}), [copy, move])

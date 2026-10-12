@@ -150,7 +150,7 @@ def observed_attributes(raw, public=None):
     return public['win32_handle_attributes']
 
 
-def tree_snapshot(root, permissions=security_descriptor, raw_observations=None):
+def tree_snapshot(root, permissions=security_descriptor, raw_observations=None, *, recursive=True):
     """Fresh lstat each pass, including directories; reject links/reparse points.
 
     Access time is intentionally omitted because reading may legitimately update
@@ -195,7 +195,7 @@ def tree_snapshot(root, permissions=security_descriptor, raw_observations=None):
         if not directory:
             row.update(size=info.st_size, sha256=digest(path))
         rows.append(row)
-        if directory:
+        if directory and recursive:
             for child in sorted(path.iterdir(), key=lambda p: p.name):
                 visit(child)
 

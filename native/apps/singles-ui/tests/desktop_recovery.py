@@ -7,12 +7,45 @@ partial-job interruption is separately covered by windows_selected_job.rs.
 import hashlib
 import json
 import os
+import stat
 from pathlib import Path
 from desktop_ai import tree_snapshot
 
 
 def file_hash(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def journal_snapshot(root, permissions=None):
+    """Strict app/journal namespace, with one explicit live-WebView boundary.
+
+    Tauri documents APPLOCALDATA/EBWebView as Windows browser data. Never walk
+    that live subtree; retain its exact directory identity/ACL/attributes instead.
+    Its contents and last-write time may change while the UI is running. Every
+    other path, including profile-v1 and nested folders called EBWebView, stays
+    fully protected. Missing EBWebView is valid; new/replaced entries still differ.
+    See native/docs/restart-journal-snapshot.md for pinned-source limitations.
+    """
+    root = Path(root)
+    options = {'permissions': permissions} if permissions is not None else {}
+    protected = tree_snapshot(root, recursive=False, **options)
+    assert protected[0]['directory'], 'Journal namespace root must be a directory'
+    live = None
+    for child in sorted(root.iterdir(), key=lambda path: path.name):
+        if child.name == 'EBWebView':
+            info = child.lstat()
+            assert stat.S_ISDIR(info.st_mode) and not stat.S_ISLNK(info.st_mode) and not (
+                getattr(info, 'st_file_attributes', 0) & 0x400), 'Live WebView boundary must be a real non-reparse directory'
+            live = tree_snapshot(child, recursive=False, **options)[0]
+            assert live['directory'], 'Live WebView boundary changed kind during observation'
+            live['path'] = child.name
+            live.pop('modified_ns')
+            live.pop('win32_last_write_ticks', None)
+        else:
+            for row in tree_snapshot(child, **options):
+                row['path'] = child.name if row['path'] == '.' else child.name + '/' + row['path']
+                protected.append(row)
+    return {'protected_namespace': protected, 'live_webview_subtree': live}
 
 
 def selected_cases(receipt):
@@ -81,7 +114,7 @@ def exercise_recovery(script, click, wait, capture, pick, restart, binary, outpu
     for case in cases:
         source, target, journals = (Path(case[key]) for key in ('source', 'target', 'journal_path'))
         before_source, before_target = tree_snapshot(source), tree_snapshot(target)
-        before_journals = tree_snapshot(journals)
+        before_journals = journal_snapshot(journals)
         changed_target = None
         job_id = choose(source)
         recorded = {path.name: file_hash(path) for path in journals.glob(job_id + '.*.jsonl')}
@@ -122,7 +155,7 @@ def exercise_recovery(script, click, wait, capture, pick, restart, binary, outpu
             assert tree_snapshot(source) == before_source and tree_snapshot(target) == changed_target
             capture('recovery-external-change-detected')
         assert {path.name: file_hash(path) for path in journals.glob(job_id + '.*.jsonl')} == recorded
-        assert tree_snapshot(journals) == before_journals
+        assert journal_snapshot(journals) == before_journals
         inspected.append({'job_id': job_id, 'copy_mode': case['copy_mode'], 'journal_sha256': recorded, 'measured_progress': measured_progress,
                           'source_before': before_source, 'target_before': before_target,
                           'journals_before': before_journals, 'owned_changed_target': changed_target})
@@ -131,7 +164,7 @@ def exercise_recovery(script, click, wait, capture, pick, restart, binary, outpu
     for case in copied_cases(copied_receipt):
         source, target, journals = (Path(case[key]) for key in ('source', 'target', 'journal_path'))
         before_source, before_target = copied_snapshot(source), copied_snapshot(target)
-        before_journals = tree_snapshot(journals)
+        before_journals = journal_snapshot(journals)
         job_id = choose(source)
         assert script("return document.querySelector('#recovery-list button[aria-pressed=true]').dataset.recoveryState") == 'inspection_needed'
         assert script("return document.querySelector('#recovery-inspect').disabled")
@@ -159,7 +192,7 @@ def exercise_recovery(script, click, wait, capture, pick, restart, binary, outpu
             assert copied_snapshot(source) == before_source and copied_snapshot(target) == changed_target
             capture('recovery-copied-changed-named-stream')
         assert {path.name: file_hash(path) for path in journals.glob(job_id + '.*.jsonl')} == recorded
-        assert tree_snapshot(journals) == before_journals
+        assert journal_snapshot(journals) == before_journals
         inspected.append({'job_id': job_id, 'family': 'single', 'case': case['case'], 'copied_move': True,
                           'source_before': before_source, 'target_before': before_target,
                           'journals_before': before_journals, 'owned_changed_target': changed_target})
@@ -167,7 +200,7 @@ def exercise_recovery(script, click, wait, capture, pick, restart, binary, outpu
     repair_receipt = json.loads((output / 'repair-execution.json').read_text(encoding='utf-8'))
     for case in repair_cases(repair_receipt):
         source, journals = Path(case['source']), Path(case['journal_path'])
-        before_source, before_journals = tree_snapshot(source), tree_snapshot(journals)
+        before_source, before_journals = tree_snapshot(source), journal_snapshot(journals)
         job_id = choose(source)
         assert script("return document.querySelector('#recovery-target-picker').hidden && document.querySelector('#recovery-inspect').disabled")
         pick('#recovery-source-picker', source); idle()
@@ -176,7 +209,7 @@ def exercise_recovery(script, click, wait, capture, pick, restart, binary, outpu
         wait(lambda: script("return !document.querySelector('#recovery-report').hidden && document.querySelector('#recovery-busy').hidden"), timeout=120)
         expected = 'נדרשת בדיקה נוספת' if case['case'] == 'unsupported' else 'הקבצים שנבדקו תואמים ליומן'
         assert script("return document.querySelector('#recovery-result-title').textContent") == expected
-        assert tree_snapshot(source) == before_source and tree_snapshot(journals) == before_journals
+        assert tree_snapshot(source) == before_source and journal_snapshot(journals) == before_journals
         capture('recovery-fix-' + case['case'])
         changed_source = None
         if case['case'] == 'id3v24':
@@ -189,7 +222,7 @@ def exercise_recovery(script, click, wait, capture, pick, restart, binary, outpu
             wait(lambda: script("return !document.querySelector('#recovery-report').hidden && document.querySelector('#recovery-busy').hidden"), timeout=120)
             assert script("return document.querySelector('#recovery-result-title').textContent") == 'נדרשת בדיקה נוספת'
             assert script("return [...document.querySelectorAll('[data-recovery-evidence-role=backup]')].some(row=>row.dataset.recoveryEvidenceStatus==='Changed')")
-            assert tree_snapshot(source) == changed_source and tree_snapshot(journals) == before_journals
+            assert tree_snapshot(source) == changed_source and journal_snapshot(journals) == before_journals
             capture('recovery-fix-backup-change-detected')
         inspected.append({'job_id': job_id, 'family': 'repair', 'case': case['case'], 'source_before': before_source,
                           'journals_before': before_journals, 'owned_changed_source': changed_source})
