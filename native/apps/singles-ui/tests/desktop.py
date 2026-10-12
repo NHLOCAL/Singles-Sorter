@@ -298,7 +298,7 @@ try:
         if os.environ.get('SINGLES_DESKTOP_APPLY_EXPECTED') == 'on':
             apply_checks = exercise_apply(script, click, fill, wait, capture, scratch / 'apply-cases', OUTPUT, AI_MODE)
             checks.append('Real selected-root execution: ' + ', '.join(apply_checks))
-            repair_checks = exercise_repair(script, click, fill, wait, capture, scratch / 'repair-cases', OUTPUT, ROOT.parents[1] / 'tests/fixtures/media/blank.mp3')
+            repair_checks = exercise_repair(command, script, click, fill, wait, capture, scratch / 'repair-cases', OUTPUT, ROOT.parents[1] / 'tests/fixtures/media/blank.mp3')
             checks.append('Real source-only repair: ' + ', '.join(repair_checks))
     assert not script("return !!document.querySelector('vite-error-overlay')")
     if package_guard:

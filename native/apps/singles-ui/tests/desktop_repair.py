@@ -6,13 +6,18 @@ and retained original bytes. It is deliberately not a general-purpose tag reader
 import hashlib
 import json
 from pathlib import Path
+from desktop_ai import write_wave
+from desktop_polish import set_developer_mode
+from desktop_stability import exercise_shell
 
 FIELDS = {b'TPE1': ('àáâ', 'אבג'), b'TPE2': ('äåæ', 'הוז'),
           b'TIT2': ('çèé', 'חטי'), b'TALB': ('ëìî', 'כלמ'), b'TCON': ('ðñò', 'נסע')}
 PRIVATE = b'owned-fixture-owner\x00opaque\x00\xff\x10payload'
 CHECKS = {'actual-fix-id3v23', 'actual-fix-id3v24', 'fix-original-backup-retained',
           'fix-media-and-unknown-frame-preserved', 'fix-source-only-confirmation',
-          'fix-unsupported-tags-partial', 'fix-stale-plan-no-effects'}
+          'fix-unsupported-tags-partial', 'fix-stale-plan-no-effects',
+          'fix-terminal-inactive-filter', 'fix-inactive-independent-of-developer',
+          'fix-terminal-footer-stability'}
 
 
 def sync_size(number):
@@ -62,7 +67,7 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def exercise_repair(script, click, fill, wait, capture, root, output, audio_path):
+def exercise_repair(command, script, click, fill, wait, capture, root, output, audio_path):
     root = Path(root); root.mkdir()  # Never reuse another test's tree.
     audio = Path(audio_path).read_bytes()
     receipts = []
@@ -89,15 +94,19 @@ def exercise_repair(script, click, fill, wait, capture, root, output, audio_path
         path = source / f'repair_input_{version}.mp3'
         expected_name = f'repair input {version}.mp3'
         before = generated_mp3(audio, version, unsupported); path.write_bytes(before)
+        unchanged = source / 'unchanged.wav'; write_wave(unchanged)
+        unchanged_bytes = unchanged.read_bytes()
         fields, raw, offset, payload = inspect_mp3(before)
         assert fields == {key: value[0] for key, value in FIELDS.items()}
         setup(source)
         capture('fix-review-' + label)
         click('#apply-back')
-        assert list(source.iterdir()) == [path] and path.read_bytes() == before
+        assert set(source.iterdir()) == {path, unchanged} and path.read_bytes() == before
+        assert unchanged.read_bytes() == unchanged_bytes
         click('#review-apply'); click('#confirm-apply')
         expected_title = 'הביצוע הושלם חלקית' if unsupported else 'הביצוע הושלם'
         wait(lambda: script("return document.querySelector('#execution-title').textContent") == expected_title, timeout=120)
+        wait(lambda: script("return !document.querySelector('#show-inactive').disabled"))
         assert script("return document.querySelector('#review-apply').hidden")
         fixed = source / expected_name
         assert fixed.is_file() and not path.exists()
@@ -115,10 +124,32 @@ def exercise_repair(script, click, fill, wait, capture, root, output, audio_path
             assert changed == {key: value[1] for key, value in FIELDS.items()}
             assert new_offset == offset and new_payload == payload
             assert new_raw[b'PRIV'] == raw[b'PRIV']
+        assert unchanged.read_bytes() == unchanged_bytes
+        assert script("return document.querySelectorAll('#rows tr').length") == 1
+        assert 'unchanged.wav' not in script("return document.querySelector('#rows').textContent")
+        set_developer_mode(script, click, wait, True)
+        assert not script("return document.querySelector('#show-inactive').checked")
+        assert script("return document.querySelectorAll('#rows tr').length") == 1
+        click('#show-inactive')
+        wait(lambda: script("return document.querySelector('#app').dataset.showInactive==='true' && !document.querySelector('#show-inactive').disabled"))
+        assert script("return document.querySelectorAll('#rows tr').length") == 2
+        set_developer_mode(script, click, wait, False)
+        assert script("return document.querySelector('#show-inactive').checked")
+        assert script("return document.querySelectorAll('#rows tr').length") == 2
+        assert 'ללא שינוי' in script("return document.querySelector('#rows').textContent")
+        capture('fix-result-including-unchanged-' + label)
+        click('#show-inactive')
+        wait(lambda: script("return document.querySelector('#app').dataset.showInactive==='false' && !document.querySelector('#show-inactive').disabled"))
+        assert script("return document.querySelectorAll('#rows tr').length") == 1
+        assert '—' not in script("return document.querySelector('#rows').textContent")
+        if version == 4:
+            exercise_shell(command, script, capture, output, 'fix-terminal-' + label)
         capture('fix-result-' + label)
         receipts.append(dict(case=label, original_sha256=digest(before), current_sha256=digest(after),
                              backup_sha256=[digest(backup.read_bytes()) for backup in backups],
-                             renamed=True, tags_repaired=not unsupported, media_sha256=digest(payload), ipc_mocked=False))
+                             renamed=True, tags_repaired=not unsupported, media_sha256=digest(payload),
+                             unchanged_sha256=digest(unchanged_bytes), inactive_hidden_by_default=True,
+                             developer_filter_independent=True, ipc_mocked=False))
     source = root / 'stale'; source.mkdir(); path = source / 'stale_input.mp3'
     path.write_bytes(generated_mp3(audio, 4)); setup(source)
     path.write_bytes(path.read_bytes() + b'owned-stale-change'); changed = path.read_bytes()

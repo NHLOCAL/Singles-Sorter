@@ -36,7 +36,9 @@ APPLY_CHECKS = {'actual-multi-file-copy', 'actual-same-volume-move', 'artist-and
                 'review-dismiss-no-effects', 'stale-plan-no-effects', 'one-shot-no-repeat', 'original-ai-selected-copy'}
 REPAIR_CHECKS = {'actual-fix-id3v23', 'actual-fix-id3v24', 'fix-original-backup-retained',
                  'fix-media-and-unknown-frame-preserved', 'fix-source-only-confirmation',
-                 'fix-unsupported-tags-partial', 'fix-stale-plan-no-effects'}
+                 'fix-unsupported-tags-partial', 'fix-stale-plan-no-effects',
+                 'fix-terminal-inactive-filter', 'fix-inactive-independent-of-developer',
+                 'fix-terminal-footer-stability'}
 DESKTOP_FEATURES = ['desktop', 'original-ai', 'selected-windows-execution', 'tauri/custom-protocol']
 require, digest = cli.require, cli.digest
 
