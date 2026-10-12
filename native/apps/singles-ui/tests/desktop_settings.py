@@ -4,6 +4,8 @@ import hashlib
 import io
 import json
 
+from desktop_modes import select_sort_setup
+
 MAIN_SETTINGS = ('copy_mode', 'main_folder_only', 'singles_folder', 'abc_sort', 'exist_only')
 SETTINGS_CHECKS = ('all-main-settings-explicit-save-and-restart',
                    'unsaved-main-draft-not-persisted-by-immediate-duet',
@@ -30,6 +32,7 @@ def read_main_settings(script):
 def set_main_settings(script, click, wait, expected):
     if set(expected) != set(MAIN_SETTINGS) or any(type(value) is not bool for value in expected.values()):
         raise ValueError('Expected main settings must contain the exact five boolean controls')
+    select_sort_setup(script, click, wait)
     for key in MAIN_SETTINGS:
         if read_main_settings(script)[key] != expected[key]:
             click('#' + key)

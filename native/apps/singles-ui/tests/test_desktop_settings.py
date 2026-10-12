@@ -4,7 +4,8 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from desktop_settings import MAIN_SETTINGS, editor_rows, read_main_settings, verify_export, require_export_notice
+from desktop_modes import SORT_CONTROLS_READY, SORT_TAB_READY
+from desktop_settings import MAIN_SETTINGS, editor_rows, read_main_settings, set_main_settings, verify_export, require_export_notice
 
 
 class SettingsHelpers(unittest.TestCase):
@@ -14,6 +15,30 @@ class SettingsHelpers(unittest.TestCase):
         for invalid in [{}, {**expected, 'duet_mode': False}, {**expected, 'copy_mode': 0}]:
             with self.assertRaises(ValueError):
                 read_main_settings(lambda _: invalid)
+
+    def test_setting_edits_wait_for_real_sort_controls_before_each_draft(self):
+        values = dict.fromkeys(MAIN_SETTINGS, False)
+        mode = ['fix']
+        events = []
+        def script(source):
+            if source == SORT_TAB_READY: return True
+            if source == SORT_CONTROLS_READY: return mode[0] == 'sort'
+            return dict(values)
+        def click(selector):
+            events.append(selector)
+            if selector == '#tab-mode-sort': mode[0] = 'sort'
+            else:
+                self.assertEqual(mode[0], 'sort')
+                values[selector[1:]] = not values[selector[1:]]
+        def wait(predicate): self.assertTrue(predicate())
+        expected = dict.fromkeys(MAIN_SETTINGS, True)
+        set_main_settings(script, click, wait, expected)
+        self.assertEqual(events, ['#tab-mode-sort'] + ['#' + key for key in MAIN_SETTINGS])
+        self.assertEqual(values, expected)
+        events.clear()
+        set_main_settings(script, click, wait, expected)
+        self.assertEqual(events, ['#tab-mode-sort'])
+        self.assertEqual(values, expected)
 
     def editor(self, pages):
         current = [0]

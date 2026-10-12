@@ -8,6 +8,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 
+from desktop_modes import select_sort_setup
 from desktop_ai import tree_snapshot, write_wave
 from desktop_polish import set_developer_mode
 from desktop_repair import FIELDS, assert_observed_filename, digest
@@ -113,6 +114,7 @@ def exercise_wavpack(script, click, fill, wait, capture, root, output):
     def setup(source):
         if script("return document.querySelector('#app').dataset.view==='results'"):
             click('#back-setup'); wait(lambda: script("return document.querySelector('#app').dataset.view==='setup'"))
+        select_sort_setup(script, click, wait)
         fill('#source', str(source)); fill('#target', '')
         click('#advanced'); click('#duet-first')
         wait(lambda: script("return !document.querySelector('#duet-first').disabled"))

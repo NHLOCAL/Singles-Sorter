@@ -3,6 +3,7 @@ import base64
 import importlib.util
 import json
 from pathlib import Path
+from desktop_modes import select_sort_setup
 from desktop_albums import snapshot
 from desktop_flac import fixture as flac_fixture
 from desktop_polish import set_developer_mode
@@ -86,6 +87,7 @@ def exercise_ogg(script, click, fill, wait, capture, root, output):
         unchanged.write_bytes(unchanged_bytes); original = snapshot(source)
         if script("return document.querySelector('#app').dataset.view==='results'"):
             click('#back-setup'); wait(lambda: script("return document.querySelector('#app').dataset.view==='setup'"))
+        select_sort_setup(script, click, wait)
         fill('#source', str(source)); fill('#target', '')
         click('#advanced'); click('#duet-first')
         wait(lambda: script("return !document.querySelector('#duet-first').disabled"))

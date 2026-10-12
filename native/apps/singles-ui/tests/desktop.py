@@ -19,6 +19,7 @@ import time
 import urllib.error
 import urllib.request
 
+from desktop_modes import select_sort_setup
 from desktop_diagnostics import snapshot, startup_probe, owned_processes, write_json
 from windows_integrity import process_security, require_medium
 from native_picker import interact_with_owned_picker
@@ -181,6 +182,7 @@ try:
     wait(lambda: 'מסדר הסינגלים' in text('h1'))
     wait(lambda: script("return document.documentElement.dataset.startupState === 'ready'"))
     wait(lambda: script("return !document.querySelector('#sort').disabled"))
+    assert script("return document.querySelector('#app').dataset.workMode==='sort'"), 'A fresh renderer must start in Sort mode'
     assert not script("return !!document.querySelector('dialog[open]')"), 'Startup must not open automatic help'
     check_native_layout(command, script, capture, OUTPUT, '01-native-home')
     capture_platform_fonts(command, OUTPUT)
@@ -201,6 +203,7 @@ try:
         before = hashlib.sha256(media.read_bytes()).hexdigest()
         fixture_guard = ProtectedTrees({'source': source, 'target': target, 'unselected_control': observer_control}, OUTPUT, 'native-fixtures')
         fixture_guard.verify('before-native-picker')
+        select_sort_setup(script, click, wait)
         pick_owned_path('#source-picker', source)
         wait(lambda: script("return document.querySelector('#source').value") == str(source))
         fixture_guard.verify('after-source-picker')
@@ -238,6 +241,7 @@ try:
         click('#back-setup')
         wait(lambda:script("return document.querySelector('#app').dataset.view === 'setup'"))
         assert script("return document.querySelector('#source').value") == str(source)
+        select_sort_setup(script, click, wait)
         fill('#target','')
         click('#tab-mode-fix')
         click('#fix')

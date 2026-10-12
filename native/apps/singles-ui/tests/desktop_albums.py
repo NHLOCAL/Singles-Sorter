@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import stat
 
+from desktop_modes import select_sort_setup
 from desktop_ai import digest
 from desktop_repair import sync_size
 from desktop_polish import set_developer_mode
@@ -75,6 +76,7 @@ def exercise_albums(script, click, fill, wait, capture, root, output, audio_path
         if script("return document.querySelector('#app').dataset.view==='results'"):
             click('#back-setup')
             wait(lambda: script("return document.querySelector('#app').dataset.view==='setup'"))
+        select_sort_setup(script, click, wait)
         fill('#source', str(source)); fill('#target', str(target))
         for key, value in dict(copy_mode=copy, main_folder_only=False, singles_folder=False, abc_sort=False, exist_only=False).items():
             if script(f"return document.querySelector('#{key}').checked") != value:

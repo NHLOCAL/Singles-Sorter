@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import tempfile
 
+from desktop_modes import select_sort_setup
 from desktop_albums import ALBUM, ARTIST, fixture, files, metadata
 from desktop_ai import tree_snapshot as snapshot
 from desktop_copied_move import AUXILIARY, auxiliary, digest
@@ -63,6 +64,7 @@ def exercise_cross_albums(script, click, fill, wait, capture, root, output, audi
             before_source, before_target = snapshot(source), snapshot(target)
             if script("return document.querySelector('#app').dataset.view==='results'"):
                 click('#back-setup'); wait(lambda: script("return document.querySelector('#app').dataset.view==='setup'"))
+            select_sort_setup(script, click, wait)
             fill('#source', str(source)); fill('#target', str(target))
             for key, value in dict(copy_mode=False, main_folder_only=False, singles_folder=False,
                                    abc_sort=False, exist_only=False).items():

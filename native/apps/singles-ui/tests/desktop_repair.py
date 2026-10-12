@@ -6,6 +6,7 @@ and retained original bytes. It is deliberately not a general-purpose tag reader
 import hashlib
 import json
 from pathlib import Path
+from desktop_modes import select_sort_setup
 from desktop_ai import write_wave
 from desktop_polish import set_developer_mode
 from desktop_stability import exercise_shell
@@ -85,6 +86,7 @@ def exercise_repair(command, script, click, fill, wait, capture, root, output, a
         if script("return document.querySelector('#app').dataset.view==='results'"):
             click('#back-setup')
             wait(lambda: script("return document.querySelector('#app').dataset.view==='setup'"))
+        select_sort_setup(script, click, wait)
         fill('#source', str(source)); fill('#target', '')
         click('#advanced'); click('#duet-first')
         wait(lambda: script("return !document.querySelector('#duet-first').disabled"))

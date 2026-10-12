@@ -6,6 +6,7 @@ IPC is untouched, no execution is invoked, and protected file evidence is checke
 import json
 import time
 from pathlib import Path
+from desktop_modes import select_sort_setup
 from desktop_ai import ProtectedTrees, write_wave
 from desktop_polish import set_developer_mode
 
@@ -100,6 +101,7 @@ def exercise_result_stability(command, script, click, fill, wait, capture, root,
     guard = ProtectedTrees({'source':source,'target':target},output,'stability-fixtures')
     if script("return document.querySelector('#app').dataset.view==='results'"):
         click('#back-setup'); wait(lambda: script("return document.querySelector('#app').dataset.view==='setup'"))
+    select_sort_setup(script, click, wait)
     fill('#source',str(source)); fill('#target',str(target))
     for key, value in dict(copy_mode=True,main_folder_only=False,singles_folder=True,abc_sort=False,exist_only=False).items():
         if script(f"return document.querySelector('#{key}').checked") != value: click('#'+key)

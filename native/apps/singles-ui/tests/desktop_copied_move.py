@@ -7,6 +7,7 @@ from pathlib import Path
 import tempfile
 import wave
 
+from desktop_modes import select_sort_setup
 from desktop_ai import write_wave
 from desktop_albums import snapshot
 from desktop_polish import set_developer_mode
@@ -74,6 +75,7 @@ def exercise_copied_move(script, click, fill, wait, capture, root, output, secon
             identities = {path.name: path.stat().st_ino for path in paths}
             if script("return document.querySelector('#app').dataset.view==='results'"):
                 click('#back-setup'); wait(lambda: script("return document.querySelector('#app').dataset.view==='setup'"))
+            select_sort_setup(script, click, wait)
             fill('#source', str(source)); fill('#target', str(target))
             for key, value in dict(copy_mode=False, main_folder_only=True, singles_folder=False, abc_sort=False, exist_only=label in ('one-eligible', 'zero-eligible')).items():
                 if script(f"return document.querySelector('#{key}').checked") != value: click('#'+key)

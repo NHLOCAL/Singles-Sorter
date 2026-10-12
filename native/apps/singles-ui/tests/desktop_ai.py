@@ -14,6 +14,7 @@ import stat
 import time
 import wave
 
+from desktop_modes import select_sort_setup
 from desktop_polish import set_developer_mode
 
 MODEL_FILES = ('manifest.json', 'tensors.f32', 'tokenizer.json',
@@ -411,6 +412,7 @@ const invoke = (name, args) => window.__TAURI_INTERNALS__.invoke(name, args);
         if self.script('return document.querySelector("#app").dataset.view') == 'results':
             self.click('#back-setup')
         self.wait(lambda: self.script('return document.querySelector("#app").dataset.view==="setup" && !document.querySelector("#sort").disabled'))
+        select_sort_setup(self.script, self.click, self.wait)
         self.fill('#source', str(source))
         self.fill('#target', str(target))
         self.choose_profile(profile, available)
