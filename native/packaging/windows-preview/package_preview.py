@@ -35,6 +35,8 @@ EXECUTION_CHECKS = {'positional-copy', 'positional-move', 'positional-original-a
                     'positional-album-descendant-metadata', 'positional-album-dry-run-no-effects',
                     'positional-flac-five-fields', 'positional-flac-shifted-audio', 'positional-flac-opaque-partial',
                     'positional-primary-resource-order',
+                    'positional-vorbis-five-fields', 'positional-opus-five-fields',
+                    'positional-ogg-packets-backup-preserved', 'positional-ogg-chained-refused',
                     'retained-original-and-media', 'closed-stdin', 'no-developer-path',
                     'explicit-dry-run-no-effects', 'overlap-rejected-no-effects', 'legacy-argument-exits'}
 CLI_FEATURES = ['original-ai', 'selected-windows-execution']
@@ -341,8 +343,8 @@ def build(args):
             'crt_linkage': 'dynamic MSVC; official Microsoft Visual C++ x64 Redistributable prerequisite',
             'clean_machine_without_prerequisite_tested': False,
             'offline_runtime': True, 'physical_apply': True,
-            'execution_scope': ['selected singles Copy', 'same-volume Move', 'source-only FixNames', 'bounded album Copy and same-volume whole-directory Move', 'bounded native FLAC tag repair'],
-            'unsupported_execution': ['cross-volume Move', 'Move-all duet retirement', 'changed tags outside bounded MP3 ID3v2.3/v2.4 and native FLAC'],
+            'execution_scope': ['selected singles Copy', 'same-volume Move', 'source-only FixNames', 'bounded album Copy and same-volume whole-directory Move', 'bounded native FLAC and single-stream Ogg Vorbis/Opus tag repair'],
+            'unsupported_execution': ['cross-volume Move', 'Move-all duet retirement', 'changed tags outside bounded MP3 ID3v2.3/v2.4, native FLAC and single-stream Ogg Vorbis/Opus'],
             'automatic_replay': False, 'automatic_backup_cleanup': False,
             'baseline_commit': BASELINE, 'bundle_id': 'original-v14-ner-3.7.5',
             'ner_model': {'name': 'singer_ner_he', 'version': '2.0.0', 'spacy_compatibility': '>=3.7.5,<3.8.0'},

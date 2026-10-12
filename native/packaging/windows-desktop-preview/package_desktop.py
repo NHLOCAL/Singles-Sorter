@@ -42,6 +42,9 @@ REPAIR_CHECKS = {'actual-fix-id3v23', 'actual-fix-id3v24', 'fix-original-backup-
 FLAC_CHECKS = {'actual-fix-flac-five-fields', 'actual-fix-flac-shifted-audio',
                'flac-original-backup-retained', 'flac-picture-vendor-unknowns-preserved',
                'flac-opaque-offset-partial', 'flac-unchanged-hidden', 'flac-stale-plan-no-effects'}
+OGG_CHECKS = {'actual-fix-vorbis-five-fields', 'actual-fix-opus-five-fields',
+              'ogg-encoded-audio-and-timing-preserved', 'ogg-artwork-vendor-unknowns-preserved',
+              'ogg-original-backup-retained', 'ogg-chained-refused', 'ogg-unchanged-hidden'}
 ALBUM_CHECKS = {'actual-album-copy', 'actual-root-album-move', 'actual-mixed-album-move',
                 'album-nested-files-and-sidecars', 'album-copy-metadata',
                 'album-review-no-effects', 'album-stale-membership-no-effects',
@@ -61,6 +64,7 @@ def report_gate(path, binary, mode, package=None):
         require(report.get('apply_mode') == 'on' and APPLY_CHECKS <= set(report.get('apply_checks', [])), 'incomplete actual selected Copy/Move acceptance')
         require(REPAIR_CHECKS <= set(report.get('repair_checks', [])), 'incomplete actual FixNames acceptance')
         require(FLAC_CHECKS <= set(report.get('flac_checks', [])), 'incomplete actual FLAC FixNames acceptance')
+        require(OGG_CHECKS <= set(report.get('ogg_checks', [])), 'incomplete actual Ogg FixNames acceptance')
         require(ALBUM_CHECKS <= set(report.get('album_checks', [])), 'incomplete actual album acceptance')
         require(package is not None and report.get('package_sha256sums_sha256') == digest(package / 'SHA256SUMS.txt'), 'acceptance not bound to exact package')
     return report
@@ -183,8 +187,8 @@ def build(args):
             'crt_linkage':'dynamic MSVC; Microsoft runtime DLLs not bundled',
             'webview2_sdk_loader':'Microsoft SDK static loader; exact SDK license/notices included in licenses',
             'clean_machine_without_prerequisites_tested':False, 'physical_apply':True,
-            'supported_apply':['selected-root Copy', 'selected-root same-volume rename Move', 'required artist and singles directories', 'bounded album Copy and same-volume whole-directory Move', 'Copy file and album directory timestamps/attributes', 'selected-source filename repair', 'bounded ID3v2.3/v2.4 and native FLAC five-field tag repair with original backup'],
-            'unsupported_apply':['tag representations outside supported MP3/native FLAC bounds', 'cross-volume Move', 'Move duet retirement'],
+            'supported_apply':['selected-root Copy', 'selected-root same-volume rename Move', 'required artist and singles directories', 'bounded album Copy and same-volume whole-directory Move', 'Copy file and album directory timestamps/attributes', 'selected-source filename repair', 'bounded ID3v2.3/v2.4 , native FLAC and single-stream Ogg Vorbis/Opus five-field tag repair with original backup'],
+            'unsupported_apply':['tag representations outside supported MP3/native FLAC/single-stream Ogg Vorbis/Opus bounds', 'cross-volume Move', 'Move duet retirement'],
             'model_execution':'local native; no Python or model network', 'webview_network_isolation_tested':False,
             'baseline_commit':cli.BASELINE, 'bundle_id':'original-v14-ner-3.7.5',
             'assets_sha256':assets, 'assets_bytes':{n:(models/n).stat().st_size for n in cli.ASSETS},

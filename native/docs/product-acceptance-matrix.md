@@ -86,9 +86,9 @@ preserved; a filename change does not imply a successful tag repair.
 | `.aiff` | AIFF fixtures | Tag writes unavailable; filename repair can still complete |
 | `.flac` | FLAC fixtures | Bounded native FLAC Vorbis comments are composed in the next candidate, including shorter metadata after duplicate collapse; pictures/vendor/unknown pairs/audio and original backup retained. Native and staged/extracted EXE gates are required; no runtime acceptance inferred from MP3 |
 | `.wv` | WavPack fixtures | Tag writes unavailable; filename repair can still complete |
-| `.ogg` | Ogg Vorbis fixtures | Tag writes unavailable; filename repair can still complete |
+| `.ogg` | Ogg Vorbis fixtures | Next candidate adds bounded single-logical-stream Vorbis writes; preserves encoded packets/timing/vendor/artwork/unknown pairs. Chained/multiplexed/other-codec layouts refused. Native and real consumer gates pending |
 | `.dsf` | DSF fixtures | Tag writes unavailable; filename repair can still complete |
-| `.opus` | Ogg Opus fixtures | Tag writes unavailable; filename repair can still complete |
+| `.opus` | Ogg Opus fixtures | Next candidate adds bounded ordinary single-logical-stream Opus writes; same byte/backup and pending-runtime boundary as Vorbis |
 | `.wma` | Released metadata open rejects ASF | Preserve metadata-error outcome after any supported filename repair |
 | `.aac` | Released ADTS fixture rejects tags | Preserve metadata-error outcome after any supported filename repair |
 

@@ -20,6 +20,7 @@ import wave
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / 'native/apps/singles-ui/tests'))
 from desktop_albums import fixture as album_fixture, metadata as album_metadata, files as album_files, ARTIST, ALBUM
+from desktop_ogg import generated_ogg, verify_repaired as verify_ogg_repaired
 from desktop_flac import generated_flac, inspect_flac, FIELDS as FLAC_FIELDS, UNKNOWN as FLAC_UNKNOWN
 from desktop_repair import generated_mp3, inspect_mp3, FIELDS  # Independent fixture parser.
 
@@ -31,6 +32,8 @@ CHECKS = {'positional-copy', 'positional-move', 'positional-original-ai-copy',
           'positional-album-descendant-metadata', 'positional-album-dry-run-no-effects',
           'positional-flac-five-fields', 'positional-flac-shifted-audio', 'positional-flac-opaque-partial',
           'positional-primary-resource-order',
+          'positional-vorbis-five-fields', 'positional-opus-five-fields',
+          'positional-ogg-packets-backup-preserved', 'positional-ogg-chained-refused',
           'retained-original-and-media', 'closed-stdin', 'no-developer-path',
           'explicit-dry-run-no-effects', 'overlap-rejected-no-effects', 'legacy-argument-exits'}
 
@@ -227,6 +230,25 @@ def run(binary, bundle, report, package_root=None):
         require(digest(case/'target'/artist/name)==before and digest(case/'source'/name)==before,'Selected primary aliases did not precede personal aliases')
         require(not (case/'target/אישי שני').exists(),'Personal alias unexpectedly replaced the earlier primary row')
         receipts[-1].update(case='primary-explicit' if explicit else 'primary-cwd',primary_first=True,source_sha256=before)
+    for opus,duplicate,chained in [(False,False,False),(True,True,False),(False,True,True),(True,True,True)]:
+        extension='opus' if opus else 'ogg';label=extension+('-chained' if chained else '-repair')
+        case=roots(label);source=case/'source';original=source/f'repair_input.{extension}'
+        before=generated_ogg(opus,duplicate=duplicate)
+        if chained: before+=before
+        original.write_bytes(before)
+        completed=invoke(case,['source','-f','--no-ai','--journal-directory','journal'],1 if chained else 0)
+        actual=result_record(completed.stderr)
+        require(actual['status']==('partial' if chained else 'complete') and actual.get('recovery_error') is None,'Ogg execution or recovery failed')
+        current=source/f'repair input.{extension}';require(current.is_file() and not original.exists(),'Ogg filename was not repaired')
+        after=current.read_bytes();backups=list(source.glob('*.backup'))
+        require(actual['repair']['renamed_files']==1 and actual['repair']['repaired_files']==(0 if chained else 1),'Ogg observed counts differ')
+        if chained:
+            require(after==before and not backups,'Chained Ogg was changed by tag repair')
+        else:
+            verify_ogg_repaired(before,after,duplicate)
+            require(len(backups)==1 and backups[0].read_bytes()==before,'Ogg original backup differs')
+        require(set(source.iterdir())=={current,*backups},'Unexpected Ogg staged or source files remain')
+        receipts[-1].update(case=label,original_sha256=hashlib.sha256(before).hexdigest(),current_sha256=digest(current),backup_sha256=[digest(p) for p in backups])
 
     case=roots('dry-run');write_wave(case/'source/אברהם פריד - בדיקה.wav');before=snapshot(case)
     completed=invoke(case,['source','target','-c','--no-ai','--dry-run','-l','ERROR'])
