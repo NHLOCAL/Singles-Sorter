@@ -12,6 +12,16 @@ public final class OriginalPlanning {
         if(result==null)throw new IllegalStateException("JNI_RESULT_MISSING");
         return new String(result,StandardCharsets.UTF_8);
     }
+    private static native byte[] stageRepair0(long id,byte[] cache,byte[] request);
+    /** Private owned cache only. Caller owns cancellation, partial-output cleanup and provider publication. */
+    public static String stageRepair(long id,String cache,String request){
+        if(cache==null||request==null||cache.length()>4096||request.length()>1024*1024)throw new IllegalArgumentException("REPAIR_LIMIT");
+        byte[] encoded=request.getBytes(StandardCharsets.UTF_8),directory=cache.getBytes(StandardCharsets.UTF_8);
+        if(encoded.length>1024*1024||directory.length>4096)throw new IllegalArgumentException("REPAIR_LIMIT");
+        byte[] result=stageRepair0(id,directory,encoded);
+        if(result==null||result.length>65536)throw new IllegalStateException("REPAIR_RESULT_LIMIT");
+        return new String(result,StandardCharsets.UTF_8);
+    }
     public interface SnapshotProvider { byte[] snapshot(byte[] token) throws Exception; }
     private static native byte[] plan0(long id,byte[] models,byte[] cache,byte[] input,SnapshotProvider provider);
     public static long begin() {return OriginalInference.begin0();}

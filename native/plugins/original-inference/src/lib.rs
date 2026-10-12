@@ -1,6 +1,8 @@
 //! Read-only Android recognition seam; product planner is explicitly feature-gated.
 #[cfg(feature = "product")]
 mod product;
+#[cfg(feature = "product")]
+mod repair;
 use jni::{
     JNIEnv,
     objects::{JByteArray, JClass},
@@ -21,6 +23,7 @@ struct Job {
     running: bool,
     phase: i32,
     cancel: JobCancellation,
+    repair_cancel: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
 struct Registry {
     next: i64,
@@ -43,6 +46,7 @@ fn begin() -> i64 {
         running: false,
         phase: 0,
         cancel: JobCancellation::new(),
+        repair_cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
     });
     id
 }
@@ -52,6 +56,7 @@ fn cancel(id: i64) {
         && job.id == id
     {
         job.cancel.cancel();
+        job.repair_cancel.store(true, std::sync::atomic::Ordering::Release);
     }
 }
 fn claim(id: i64) -> Result<JobCancellation, &'static str> {
@@ -278,6 +283,7 @@ mod tests {
         assert!(claim(id).is_err());
         cancel(id);
         assert!(token.is_cancelled());
+        assert!(JOBS.lock().unwrap().job.as_ref().unwrap().repair_cancel.load(std::sync::atomic::Ordering::Acquire));
         assert!(
             execute(id, b"/does-not-exist", br#"{"texts":["test"]}"#, token)
                 .unwrap_err()
