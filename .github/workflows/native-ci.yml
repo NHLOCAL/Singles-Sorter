@@ -414,6 +414,11 @@ jobs:
         if: ${{ !cancelled() && runner.os == 'Windows' }}
         shell: pwsh
         run: |
+          $limits = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib controlled_writer_boundary_tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($limits | Where-Object { $_ -match ": test$" }).Count -ne 3) { throw "Expected three exact controlled writer boundary cases" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib controlled_writer_boundary_tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $cases = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib copied_move_journal_tests -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 6) { throw "Expected six copied Move journal cases" }

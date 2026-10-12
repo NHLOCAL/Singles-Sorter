@@ -28,3 +28,13 @@ Cancellation is cooperative between native probes and each bounded read. A synch
 Source fixtures cover actual selected completed and partial copied jobs: cancel from the first main chunk, destination ADS chunk and still-present-source ADS chunk; cancel identity-bound journal reads and actual strict replay; fresh full reinspection; mixed route metadata ordering; replaced directory with preserved file objects; and more than the old aggregate media limit. Owned snapshots compare root/directories, full identities/kinds/sizes, permissions/attributes, creation/write times, main content and every generated named stream, excluding access time. Native CI requires exactly 21 copied-Move job cases, retaining all original cases.
 
 Portable test source additionally covers parser cancellation, cancellation escaping storage errors, original dependency order after a cursor and borrowed flag identity. `git diff --check` and source gate-count checks are local checks only. Rust compilation, formatter, all Rust tests, actual Windows fixture execution, host integration and package/renderer acceptance remain pending. There is no local native-runtime claim.
+
+Copied-Move preparation now checks both exact serialized physical and directory
+headers, including their hash envelopes and newline, against the same 4 MiB line
+limit as controlled inspection. It also checks the physical-operation and maximum
+record-count bounds before any journal/destination effect. Copied-domain writers
+refuse an oversized subsequent record before appending it, preserving a readable
+prefix and stopping on uncertainty. Existing Copy/rename admission is unchanged.
+The size check occurs during fresh preparation; preview remains read-only but does
+not yet reproduce the complete serialized execution binding. Three exact-boundary
+unit cases are required, including the one-byte envelope overflow.

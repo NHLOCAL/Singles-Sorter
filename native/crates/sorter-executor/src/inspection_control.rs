@@ -196,24 +196,50 @@ mod tests {
     }
 }
 
+pub(crate) const MAX_RECORDED_BYTES: usize = 64 * 1024 * 1024;
+pub(crate) const MAX_RECORD_BYTES: usize = 4 * 1024 * 1024;
+pub(crate) const MAX_RECORDS: usize = 65536;
+pub(crate) const MAX_OPERATIONS: usize = 4096;
+/// Writer and reader use identical limits, including JSON envelope and newline.
+pub(crate) fn check_recorded_write(line_bytes: usize, total_bytes: usize, records: usize) -> Result<()> {
+    if line_bytes > MAX_RECORD_BYTES || total_bytes > MAX_RECORDED_BYTES || records > MAX_RECORDS {
+        Err(E::Unsupported)
+    } else { Ok(()) }
+}
+
 /// A controlled parser is bounded before expensive strict replay. These are
 /// recorded-input ceilings, not cumulative media-content limits.
 pub(crate) fn check_recorded_input(bytes: &[u8], control: Option<&InspectionControl>) -> Result<()> {
     if control.is_none() { return Ok(()); }
-    if bytes.len() > 64 * 1024 * 1024 { return Err(E::Unsupported); }
+    if bytes.len() > MAX_RECORDED_BYTES { return Err(E::Unsupported); }
     let mut records = 0usize;
     let mut length = 0usize;
     for chunk in bytes.chunks(65536) {
         checkpoint(control)?;
         for byte in chunk {
             length = length.checked_add(1).ok_or(E::Unsupported)?;
-            if length > 4 * 1024 * 1024 { return Err(E::Unsupported); }
+            if length > MAX_RECORD_BYTES { return Err(E::Unsupported); }
             if *byte == b'\n' {
                 records = records.checked_add(1).ok_or(E::Unsupported)?;
-                if records > 65536 { return Err(E::Unsupported); }
+                if records > MAX_RECORDS { return Err(E::Unsupported); }
                 length = 0;
             }
         }
     }
     checkpoint(control)
+}
+
+#[cfg(test)]
+mod controlled_writer_boundary_tests {
+    use super::*;
+    #[test]
+    fn writer_record_line_and_total_limits_share_reader_boundaries() {
+        assert_eq!(check_recorded_write(MAX_RECORD_BYTES, MAX_RECORDED_BYTES, MAX_RECORDS), Ok(()));
+        assert_eq!(check_recorded_write(MAX_RECORD_BYTES + 1, MAX_RECORDED_BYTES, MAX_RECORDS), Err(E::Unsupported));
+        assert_eq!(check_recorded_write(1, MAX_RECORDED_BYTES + 1, 1), Err(E::Unsupported));
+        assert_eq!(check_recorded_write(1, 1, MAX_RECORDS + 1), Err(E::Unsupported));
+        let control = InspectionControl::new(Arc::new(AtomicBool::new(false)), |_| {});
+        assert_eq!(check_recorded_input(&vec![b'\n'; MAX_RECORDS], Some(&control)), Ok(()));
+        assert_eq!(check_recorded_input(&vec![b'\n'; MAX_RECORDS + 1], Some(&control)), Err(E::Unsupported));
+    }
 }

@@ -103,6 +103,18 @@ fn line<T: Serialize>(body: T) -> Result<(Vec<u8>, String)> {
     Ok((bytes, sha256))
 }
 impl PhysicalJournalV2 {
+    fn header_line(binding: &ExecutionBinding, job_id: &str) -> Result<(Vec<u8>, String)> {
+        line(Header { schema: 2, job_id: job_id.into(), binding: binding.data.clone(), binding_sha256: binding.sha256()? })
+    }
+    pub(crate) fn validate_controlled_creation(binding: &ExecutionBinding, job_id: &str) -> Result<()> {
+        use crate::inspection_control::{MAX_OPERATIONS, MAX_RECORDS, check_recorded_write};
+        // At most 15 physical records per copied operation, including retirement.
+        if job_id.is_empty() || binding.operations().len() > MAX_OPERATIONS
+            || binding.operations().len().checked_mul(15).and_then(|n| n.checked_add(1)).is_none_or(|n| n > MAX_RECORDS)
+        { return Err(E::Unsupported); }
+        let (bytes, _) = Self::header_line(binding, job_id)?;
+        check_recorded_write(bytes.len(), bytes.len(), 1)
+    }
     pub fn create(
         binding: &ExecutionBinding,
         job_id: &str,
@@ -114,16 +126,8 @@ impl PhysicalJournalV2 {
         if job_id.is_empty() || !sink.read_all()?.is_empty() {
             return Err(E::CorruptJournal);
         }
-        let header = Header {
-            schema: 2,
-            job_id: job_id.into(),
-            binding: binding.data.clone(),
-            binding_sha256: binding.sha256()?,
-        };
-        let (bytes, previous) = line(header)?;
-        if binding.data.copied_move_sources.is_some() && bytes.len() > 64 * 1024 * 1024 {
-            return Err(E::Unsupported);
-        }
+        let (bytes, previous) = Self::header_line(binding, job_id)?;
+        if binding.data.copied_move_sources.is_some() { Self::validate_controlled_creation(binding, job_id)?; }
         sink.append(&bytes)?;
         sink.sync()?;
         Ok(Self {
@@ -147,7 +151,7 @@ impl PhysicalJournalV2 {
     pub(crate) fn open_with_control(binding: &ExecutionBinding, job_id: &str, bytes: &[u8], control: Option<&InspectionControl>) -> Result<Self> {
         crate::inspection_control::check_recorded_input(bytes, control)?;
         checkpoint(control)?;
-        if control.is_some() && binding.operations().len() > 4096 { return Err(E::Unsupported); }
+        if control.is_some() && binding.operations().len() > crate::inspection_control::MAX_OPERATIONS { return Err(E::Unsupported); }
         if !binding.data.valid_domain() {
             return Err(E::InvalidBinding);
         }
@@ -227,7 +231,7 @@ impl PhysicalJournalV2 {
             .ok_or(E::CorruptJournal)?;
         let head: Envelope<Header> =
             serde_json::from_slice(&bytes[..end]).map_err(|_| E::CorruptJournal)?;
-        if control.is_some() && head.body.binding.operations.len() > 4096 { return Err(E::Unsupported); }
+        if control.is_some() && head.body.binding.operations.len() > crate::inspection_control::MAX_OPERATIONS { return Err(E::Unsupported); }
         checkpoint(control)?;
         if hash(&head.body.binding)? != scope.inspected_binding_sha256
             || head.body.binding.scope_sha256 != scope_digest(&scope.original_scope)?
@@ -287,15 +291,12 @@ impl PhysicalJournalV2 {
             event: event.clone(),
         };
         let (bytes, next) = line(record)?;
-        if self.binding.data.copied_move_sources.is_some()
-            && self
-                .bytes
-                .len()
-                .checked_add(bytes.len())
-                .is_none_or(|length| length > 64 * 1024 * 1024)
-        {
-            return Err(E::NeedsRecovery);
+        if self.binding.data.copied_move_sources.is_some() {
+            let total = self.bytes.len().checked_add(bytes.len()).ok_or(E::NeedsRecovery)?;
+            let records = self.events.len().checked_add(2).ok_or(E::NeedsRecovery)?;
+            crate::inspection_control::check_recorded_write(bytes.len(), total, records).map_err(|_| E::NeedsRecovery)?;
         }
+
         sink.append(&bytes)?;
         sink.sync()?;
         self.bytes.extend(bytes);
@@ -1065,5 +1066,28 @@ mod copied_move_journal_tests {
         let mut rename = event(&binding, Phase::AtomicRenamePrepared);
         rename.observed_identity = Some(rename.expected_source.clone());
         assert!(journal.validate(&rename).is_err());
+    }
+}
+
+#[cfg(test)]
+mod controlled_writer_boundary_tests {
+    use super::*;
+    #[test]
+    fn physical_exact_envelope_and_newline_match_reader_limit() {
+        let header: Envelope<Header> = serde_json::from_slice(include_bytes!("../tests/fixtures/physical-copy-v2-before-metadata.jsonl").split(|b| *b == b'\n').next().unwrap()).unwrap();
+        let mut binding = ExecutionBinding { data: header.body.binding, recovery_only: false };
+        binding.data.resources.resource_ids.push(String::new());
+        let initial = PhysicalJournalV2::header_line(&binding, "boundary").unwrap().0.len();
+        let padding = crate::inspection_control::MAX_RECORD_BYTES - initial;
+        *binding.data.resources.resource_ids.last_mut().unwrap() = "x".repeat(padding);
+        let bytes = PhysicalJournalV2::header_line(&binding, "boundary").unwrap().0;
+        assert_eq!(bytes.len(), crate::inspection_control::MAX_RECORD_BYTES);
+        assert!(serde_json::to_vec(&binding.data).unwrap().len() < bytes.len());
+        assert_eq!(PhysicalJournalV2::validate_controlled_creation(&binding, "boundary"), Ok(()));
+        assert_eq!(PhysicalJournalV2::validate_controlled_creation(&binding, "boundaryx"), Err(E::Unsupported));
+        let control = InspectionControl::new(std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)), |_| {});
+        assert_eq!(crate::inspection_control::check_recorded_input(&bytes, Some(&control)), Ok(()));
+        let larger = PhysicalJournalV2::header_line(&binding, "boundaryx").unwrap().0;
+        assert_eq!(crate::inspection_control::check_recorded_input(&larger, Some(&control)), Err(E::Unsupported));
     }
 }

@@ -484,6 +484,19 @@ struct DirectoryJournal {
     poisoned: bool,
 }
 impl DirectoryJournal {
+    fn header(binding: &ExecutionBinding, job_id: &str) -> Result<DirectoryEvent> {
+        Ok(DirectoryEvent::Header { schema: 1, job_id: job_id.into(), binding_sha256: binding.sha256()?,
+            binding: Box::new(binding.data.clone()), target_root: binding.data.scope_evidence.target_root.clone() })
+    }
+    fn validate_controlled_creation(binding: &ExecutionBinding, job_id: &str) -> Result<()> {
+        let body = DirectoryRecord { sequence: 0, previous: String::new(), event: Self::header(binding, job_id)? };
+        let sha256 = crate::hash(&body)?;
+        let bytes = serde_json::to_vec(&DirectoryEnvelope { body, sha256 }).map_err(|_| E::Io)?;
+        let length = bytes.len().checked_add(1).ok_or(E::Unsupported)?;
+        let components = binding.operations().iter().try_fold(0usize, |n, op| n.checked_add(op.destination.components.len()).ok_or(E::Unsupported))?;
+        let records = components.checked_mul(2).and_then(|n| n.checked_add(2)).ok_or(E::Unsupported)?;
+        crate::inspection_control::check_recorded_write(length, length, records)
+    }
     fn new(sink: WindowsJournalStore, binding: &ExecutionBinding, job_id: &str) -> Result<Self> {
         let mut value = Self {
             bytes_written: 0,
@@ -497,13 +510,8 @@ impl DirectoryJournal {
             previous: String::new(),
             poisoned: false,
         };
-        value.append(DirectoryEvent::Header {
-            schema: 1,
-            job_id: job_id.into(),
-            binding_sha256: binding.sha256()?,
-            binding: Box::new(binding.data.clone()),
-            target_root: binding.data.scope_evidence.target_root.clone(),
-        })?;
+        if binding.data.copied_move_sources.is_some() { Self::validate_controlled_creation(binding, job_id)?; }
+        value.append(Self::header(binding, job_id)?)?;
         Ok(value)
     }
     fn append(&mut self, event: DirectoryEvent) -> Result<()> {
@@ -528,6 +536,9 @@ impl DirectoryJournal {
             .checked_add(bytes.len())
             .filter(|total| *total <= self.limit)
             .ok_or(E::NeedsRecovery)?;
+        if self.limit != usize::MAX {
+            crate::inspection_control::check_recorded_write(bytes.len(), total, usize::try_from(self.sequence).ok().and_then(|n| n.checked_add(1)).ok_or(E::NeedsRecovery)?).map_err(|_| E::NeedsRecovery)?;
+        }
         self.sink
             .append(&bytes)
             .and_then(|()| self.sink.sync())
@@ -642,7 +653,7 @@ fn inspect_recovery_inner(
                 binding: header,
                 target_root,
             } => {
-                if control.is_some() && header.operations.len() > 4096 { return Err(E::Unsupported); }
+                if control.is_some() && header.operations.len() > crate::inspection_control::MAX_OPERATIONS { return Err(E::Unsupported); }
                 checkpoint(control)?;
                 if sequence != 1
                     || schema != 1
@@ -935,4 +946,25 @@ pub fn summarize_recorded_selected_job_with_control(directories: &[u8], transfer
     }
     checkpoint(control)?;
     Ok(RecordedSelectedSummary{job,recorded_complete})
+}
+
+#[cfg(test)]
+mod controlled_writer_boundary_tests {
+    use super::*;
+    #[test]
+    fn directory_exact_envelope_and_newline_are_admitted_before_creation() {
+        let value: serde_json::Value = serde_json::from_slice(include_bytes!("../tests/fixtures/physical-copy-v2-before-metadata.jsonl").split(|b| *b == b'\n').next().unwrap()).unwrap();
+        let mut binding = ExecutionBinding { data: serde_json::from_value(value["body"]["binding"].clone()).unwrap(), recovery_only: false };
+        binding.data.resources.resource_ids.push(String::new());
+        let encoded = |binding: &ExecutionBinding| {
+            let body = DirectoryRecord { sequence: 0, previous: String::new(), event: DirectoryJournal::header(binding, "boundary").unwrap() };
+            let sha256 = crate::hash(&body).unwrap();
+            serde_json::to_vec(&DirectoryEnvelope { body, sha256 }).unwrap().len() + 1
+        };
+        let padding = crate::inspection_control::MAX_RECORD_BYTES - encoded(&binding);
+        *binding.data.resources.resource_ids.last_mut().unwrap() = "x".repeat(padding);
+        assert_eq!(encoded(&binding), crate::inspection_control::MAX_RECORD_BYTES);
+        assert_eq!(DirectoryJournal::validate_controlled_creation(&binding, "boundary"), Ok(()));
+        assert_eq!(DirectoryJournal::validate_controlled_creation(&binding, "boundaryx"), Err(E::Unsupported));
+    }
 }

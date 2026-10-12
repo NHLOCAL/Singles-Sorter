@@ -261,13 +261,14 @@ impl SelectedWindowsJob {
         if !binding.data.valid_domain() {
             return Err(E::InvalidBinding);
         }
-        if serde_json::to_vec(&binding.data)
-            .map_err(|_| E::InvalidBinding)?
-            .len()
-            > 8 * 1024 * 1024
-        {
-            return Err(E::Unsupported);
-        }
+        static NEXT: AtomicU64 = AtomicU64::new(0);
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|_| E::Io)?
+            .as_nanos();
+        let job_id = format!("sorter-{}-{nanos}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed));
+        PhysicalJournalV2::validate_controlled_creation(&binding, &job_id)?;
+        DirectoryJournal::validate_controlled_creation(&binding, &job_id)?;
         drop(reads);
         let mut held = Vec::new();
         for source in &scope.execution.inspected_sources {
@@ -313,11 +314,6 @@ impl SelectedWindowsJob {
             };
             held.push((source.observation.reference.clone(), lease));
         }
-        static NEXT: AtomicU64 = AtomicU64::new(0);
-        let nanos = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_err(|_| E::Io)?
-            .as_nanos();
         Ok(Self {
             storage: Storage::CopiedMove(CopiedMoveStorage {
                 roots,
@@ -325,11 +321,7 @@ impl SelectedWindowsJob {
                 sources: scope.sources.clone(),
             }),
             binding,
-            job_id: format!(
-                "sorter-{}-{nanos}-{}",
-                std::process::id(),
-                NEXT.fetch_add(1, Ordering::Relaxed)
-            ),
+            job_id,
             attempted: false,
             created_directories: Vec::new(),
             created_directory_receipts: Vec::new(),

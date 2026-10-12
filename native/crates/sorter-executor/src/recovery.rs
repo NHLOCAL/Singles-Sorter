@@ -97,7 +97,7 @@ pub(crate) fn recover_job_inner(
     checkpoint(control)?;
     if binding.sha256()? != journal.binding().sha256()? { return Err(E::InvalidBinding); }
     let count = binding.operations().len();
-    if control.is_some() && count > 4096 { return Err(E::Unsupported); }
+    if control.is_some() && count > crate::inspection_control::MAX_OPERATIONS { return Err(E::Unsupported); }
     if start_operation >= count && start_operation != 0 { return Err(E::InvalidBinding); }
     if let Some(control) = control { control.operations(count)?; control.stage("metadata")?; }
     let mut report = RecoveryReport { operations: Vec::with_capacity(count), append_blocked: journal.needs_recovery() };
