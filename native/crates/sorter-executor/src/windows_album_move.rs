@@ -365,7 +365,7 @@ impl WholeAlbumJob {
                     if outcome.operation!=album.operation||outcome.child_renames!=report.child_renames.iter().filter(|receipt|receipt.operation==album.operation).cloned().collect::<Vec<_>>(){return Err(E::CorruptJournal)}
                     if record.phase=="AlbumObserved"{self.validate_outcome(album,&parent,&outcome)?;}
                     else {if !outcome.descendants.is_empty()||outcome.failure.is_none()||!(if record.phase=="AlbumUnknown"{outcome.status=="needs_recovery"}else{matches!(outcome.status.as_str(),"failed"|"cancelled")}){return Err(E::CorruptJournal)}
-                        if let Some(root)=&outcome.root{let original=&self.header.observed_sources[index];let destination=destination_path(&Destination{root:self.header.observed_target.clone(),components:album.destination.components.clone()})?;let at_original=root.reference==original.reference&&root.parent_identity==original.parent_identity&&root.actual_name==original.actual_name;let at_destination=root.reference==reference(&destination)&&root.parent_identity==parent&&root.actual_name==name(album.destination.components.last().ok_or(E::CorruptJournal)?);if root.identity!=original.identity||!(at_original||at_destination){return Err(E::CorruptJournal)}}stopped=true;}
+                        if let Some(root)=&outcome.root{let original=&self.header.observed_sources[index];let destination=destination_path(&Destination{root:self.header.observed_target.clone(),components:album.destination.components.clone()})?;let at_original=root.reference==original.reference&&root.parent_identity==original.parent_identity&&root.actual_name==original.actual_name;let at_destination=root.reference==reference(&destination)&&root.parent_identity==parent&&root.actual_name==name(album.destination.components.last().ok_or(E::CorruptJournal)?);if root.identity!=original.identity||root.size.is_some()||!(at_original||at_destination){return Err(E::CorruptJournal)}}stopped=true;}
                     report.recorded.push(outcome);
                 }
                 "SinglesPrepared"=>{
@@ -396,7 +396,7 @@ impl WholeAlbumJob {
     fn next_recorded_child(&self,album:&AlbumGroup,receipts:&[AlbumChildRenameReceipt])->Option<usize>{album.children.iter().enumerate().find(|(index,child)|leaf(&child.source).is_ok_and(|source|source!=name(&child.destination_name))&&!receipts.iter().any(|receipt|receipt.operation==album.operation&&receipt.planner_index==*index)).map(|(index,_)|index)}
     fn validate_child_receipt(&self,index:usize,receipt:&AlbumChildRenameReceipt)->Result<()>{
         let album=&self.header.snapshot.albums[index];let child=album.children.get(receipt.planner_index).ok_or(E::CorruptJournal)?;let root=&self.header.observed_sources[index];let mut expected=path(&root.reference)?;expected.push(&child.destination_name);let observed=&receipt.observation;
-        if observed.reference!=reference(&expected)||observed.parent_identity!=root.identity||Some(&observed.identity)!=child.source.identity.as_ref()||observed.actual_name!=name(&child.destination_name)||(child.source.kind==EntryKind::File&&observed.size!=child.source.size){return Err(E::CorruptJournal)}Ok(())
+        if observed.reference!=reference(&expected)||observed.parent_identity!=root.identity||Some(&observed.identity)!=child.source.identity.as_ref()||observed.actual_name!=name(&child.destination_name)||observed.size!=child.source.size{return Err(E::CorruptJournal)}Ok(())
     }
     fn expected_parent(&self,child:&StorageRef,created:&[MutationObservation])->Result<ObjectIdentity>{
         let child=path(child)?;let parent=reference(child.parent().ok_or(E::CorruptJournal)?);
@@ -414,7 +414,7 @@ impl WholeAlbumJob {
     }
     fn validate_outcome(&self,album:&AlbumGroup,parent:&ObjectIdentity,outcome:&WholeAlbumOutcome)->Result<()> {
         let root=outcome.root.as_ref().ok_or(E::CorruptJournal)?;
-        if outcome.status!="complete"||outcome.failure.is_some()||Some(&root.identity)!=album.source.identity.as_ref()||&root.parent_identity!=parent||root.actual_name!=name(album.destination.components.last().ok_or(E::CorruptJournal)?){return Err(E::CorruptJournal)}
+        if outcome.status!="complete"||root.size.is_some()||outcome.failure.is_some()||Some(&root.identity)!=album.source.identity.as_ref()||&root.parent_identity!=parent||root.actual_name!=name(album.destination.components.last().ok_or(E::CorruptJournal)?){return Err(E::CorruptJournal)}
         let root_path=path(&root.reference)?;
         let expected_root=destination_path(&Destination{root:self.header.observed_target.clone(),components:album.destination.components.clone()})?;
         if root_path!=expected_root{return Err(E::CorruptJournal)}
@@ -427,7 +427,7 @@ impl WholeAlbumJob {
             let mut source=source_path.clone();let mut destination=root_path.clone();
             for (part_index,part) in relative.iter().enumerate(){let MutationName::Windows(units)=part else{return Err(E::CorruptJournal)};if units.is_empty()||units.iter().any(|u|matches!(*u,0|47|92|58))||units==&[46]||units==&[46,46]{return Err(E::CorruptJournal)}let part=OsString::from_wide(units);if part_index==0{let child=album.children.iter().find(|child|name(&child.destination_name)==*relative.first().ok_or(E::CorruptJournal)?).ok_or(E::CorruptJournal)?;source.push(path(&child.source.reference)?.file_name().ok_or(E::CorruptJournal)?);}else{source.push(&part);}destination.push(part);}
             let source=reference(&source);let entry=expected.iter().find(|entry|entry.reference==source).ok_or(E::CorruptJournal)?;
-            if !seen.insert(source)||observation.reference!=reference(&destination)||Some(&observation.identity)!=entry.identity.as_ref()||Some(&observation.parent_identity)!=entry.parent_identity.as_ref()||Some(&observation.actual_name)!=relative.last()||(entry.kind==EntryKind::File&&observation.size!=entry.size){return Err(E::CorruptJournal)}
+            if !seen.insert(source)||observation.reference!=reference(&destination)||Some(&observation.identity)!=entry.identity.as_ref()||Some(&observation.parent_identity)!=entry.parent_identity.as_ref()||Some(&observation.actual_name)!=relative.last()||observation.size!=entry.size{return Err(E::CorruptJournal)}
         }
         Ok(())
     }
