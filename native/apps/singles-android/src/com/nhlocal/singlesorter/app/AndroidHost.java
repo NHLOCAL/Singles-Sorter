@@ -91,6 +91,9 @@ final class AndroidHost implements AutoCloseable {
                         case "get_model_status":
                             if(models==null)models=OriginalAssets.prepare(activity.getApplicationContext(),()->{synchronized(AndroidHost.this){return closed;}});
                             value=new JSONObject().put("available",true).put("platform","android").put("message","שני מודלי הזיהוי המקוריים אומתו. הקבצים נבדקים מחדש לפני כל בדיקה.");break;
+                        case "open_local_licenses":
+                            if(args.length()!=0)throw new IllegalArgumentException("LICENSE_ARGUMENTS");
+                            activity.runOnUiThread(()->{synchronized(AndroidHost.this){if(closed)return;try{activity.startActivity(new Intent(activity,LicensesActivity.class));completion.finish(()->reply(requestId,true,JSONObject.NULL));}catch(RuntimeException failure){completion.finish(()->error(requestId,"LICENSE_UNAVAILABLE",failure));}}});return;
                         case "open_project_link":
                             if(args.length()!=1||!args.has("target"))throw new IllegalArgumentException("PROJECT_LINK_ARGUMENTS");
                             final String projectUrl=ProjectLinks.resolve(args.getString("target"));

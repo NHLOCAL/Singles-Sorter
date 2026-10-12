@@ -35,3 +35,6 @@ export const openFooterLink = ():Promise<void> => invokeHost('open_footer_link')
 
 /** Only these named project destinations are accepted by the native host. */
 export const openProjectLink = (target:ProjectLinkTarget):Promise<void> => invokeHost('open_project_link',{target});
+
+/** Fixed offline Android notice viewer, no caller-supplied path. */
+export const openLocalLicenses=():Promise<void>=>invokeHost('open_local_licenses');
