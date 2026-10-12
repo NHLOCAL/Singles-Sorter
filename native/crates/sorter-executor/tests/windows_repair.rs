@@ -545,7 +545,7 @@ fn raw_selected_temp_root_recovery_uses_held_root_alias() {
     // any real short ancestor such as RUNNER~1 used by Windows CI/CLI callers.
     let fixture = Fixture::new_with_spelling(
         &[("song__demo.mp3", mp3())],
-        Metadata(Some("שלום")),
+        Metadata(Some("àáøäí")),
         None,
     );
     let mut job = fixture.job();
