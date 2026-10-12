@@ -89,7 +89,10 @@ impl Host {
         ))
     }
     pub fn select_recovery_parent_path(&self, _: &str, _: PathBuf) -> Result<RootSelection> {
-        Err(HostError::new("RECOVERY_UNAVAILABLE", "בדיקת יומני ביצוע אינה זמינה בבנייה זו."))
+        Err(HostError::new(
+            "RECOVERY_UNAVAILABLE",
+            "בדיקת יומני ביצוע אינה זמינה בבנייה זו.",
+        ))
     }
     pub fn select_recovery_path(&self, _: Role, _: PathBuf) -> Result<RootSelection> {
         Err(HostError::new(
@@ -431,37 +434,80 @@ mod selected {
                 },
             )
         }
-        pub fn select_recovery_parent_path(&self, token: &str, path: PathBuf) -> Result<RootSelection> {
+        pub fn select_recovery_parent_path(
+            &self,
+            token: &str,
+            path: PathBuf,
+        ) -> Result<RootSelection> {
             let expected = {
                 let inner = self.lock()?;
-                let record = inner.recovery.records.iter().find(|record| record.token == token).ok_or_else(changed)?;
+                let record = inner
+                    .recovery
+                    .records
+                    .iter()
+                    .find(|record| record.token == token)
+                    .ok_or_else(changed)?;
                 let RetainedJournal::Album { descriptor, .. } = &record.journal else {
-                    return Err(HostError::new("UNSUPPORTED_RECOVERY_PARENT", "לפעולה זו יש לבחור את תיקיית המקור עצמה."));
+                    return Err(HostError::new(
+                        "UNSUPPORTED_RECOVERY_PARENT",
+                        "לפעולה זו יש לבחור את תיקיית המקור עצמה.",
+                    ));
                 };
-                descriptor.original_source.as_ref().ok_or_else(|| HostError::new(
-                    "UNSUPPORTED_RECOVERY_PARENT", "היומן אינו כולל ראיה למיקום המקור שהוסר. יש לבחור מקור קיים."
-                ))?.parent_identity.clone()
+                descriptor
+                    .original_source
+                    .as_ref()
+                    .ok_or_else(|| {
+                        HostError::new(
+                            "UNSUPPORTED_RECOVERY_PARENT",
+                            "היומן אינו כולל ראיה למיקום המקור שהוסר. יש לבחור מקור קיים.",
+                        )
+                    })?
+                    .parent_identity
+                    .clone()
             };
             validate_path(&path)?;
             let observed = inspect_root(&path)?;
             if observed.identity.as_ref() != Some(&expected) {
-                return Err(HostError::new("RECOVERY_PARENT_CHANGED", "התיקייה שנבחרה אינה התיקייה שהכילה את המקור המתועד."));
+                return Err(HostError::new(
+                    "RECOVERY_PARENT_CHANGED",
+                    "התיקייה שנבחרה אינה התיקייה שהכילה את המקור המתועד.",
+                ));
             }
             // The identity supplied to native open is the fresh picker observation,
             // not the data-only expected identity read from the saved journal.
             sorter_io::desktop::windows_mutation::WindowsAlbumInspectionParentGrant::new(
-                path.clone(), observed.identity.clone().ok_or_else(changed)?
-            ).map_err(storage_error)?;
+                path.clone(),
+                observed.identity.clone().ok_or_else(changed)?,
+            )
+            .map_err(storage_error)?;
             let selection = RootSelection {
                 token: self.next("recovery-parent"),
                 display_name: path.to_string_lossy().into_owned(),
-                capabilities: RootCapabilities { read: observed.capabilities.read == Some(true), list: observed.capabilities.list == Some(true) },
+                capabilities: RootCapabilities {
+                    read: observed.capabilities.read == Some(true),
+                    list: observed.capabilities.list == Some(true),
+                },
                 platform: platform(),
             };
             let mut inner = self.lock()?;
-            if !inner.recovery.records.iter().any(|record| record.token == token) { return Err(changed()); }
-            inner.recovery.parents.retain(|root| root.record_token != token);
-            inner.recovery.parents.push(ParentRoot { record_token: token.to_owned(), selection: selection.clone(), path, observed });
+            if !inner
+                .recovery
+                .records
+                .iter()
+                .any(|record| record.token == token)
+            {
+                return Err(changed());
+            }
+            inner
+                .recovery
+                .parents
+                .retain(|root| root.record_token != token);
+            inner.recovery.parents.push(ParentRoot {
+                record_token: token.to_owned(),
+                selection: selection.clone(),
+                path,
+                observed,
+            });
             Ok(selection)
         }
         pub fn select_recovery_path(&self, role: Role, path: PathBuf) -> Result<RootSelection> {
@@ -642,16 +688,28 @@ mod selected {
                         return Ok(record);
                     }
                     if family == "album" {
-                        let fallback = InspectionControl::new(Arc::new(AtomicBool::new(false)), |_| {});
-                        let descriptor = inspect_recorded_album_file_job(&directories, control.unwrap_or(&fallback)).map_err(recorded_error)?;
-                        if descriptor.job_id != stem { return Err(changed()); }
+                        let fallback =
+                            InspectionControl::new(Arc::new(AtomicBool::new(false)), |_| {});
+                        let descriptor = inspect_recorded_album_file_job(
+                            &directories,
+                            control.unwrap_or(&fallback),
+                        )
+                        .map_err(recorded_error)?;
+                        if descriptor.job_id != stem {
+                            return Err(changed());
+                        }
                         let transfer_path = directory.join(format!("{stem}.transfers.jsonl"));
                         let transfers = observation(&mut storage, &transfer_path, control)?
-                            .map(|observed| read_bound(&mut storage, &observed, &mut budget, control))
+                            .map(|observed| {
+                                read_bound(&mut storage, &observed, &mut budget, control)
+                            })
                             .transpose()?;
-                        let original_parent = descriptor.original_source.as_ref().and_then(|source| {
-                            PathBuf::from(display(&source.reference)).parent().map(|path| path.to_string_lossy().into_owned())
-                        });
+                        let original_parent =
+                            descriptor.original_source.as_ref().and_then(|source| {
+                                PathBuf::from(display(&source.reference))
+                                    .parent()
+                                    .map(|path| path.to_string_lossy().into_owned())
+                            });
                         let record = RecoveryRecord {
                             token: token.clone(), job_id: Some(descriptor.job_id.clone()), journal_name: name.clone(), family,
                             source: Some(display(&descriptor.source.reference)), target: Some(display(&descriptor.target.reference)),
@@ -660,8 +718,15 @@ mod selected {
                             operation_count: descriptor.file_count,
                         };
                         retained.push(RetainedRecord {
-                            token: token.clone(), directory: directory.clone(), root: root.clone(),
-                            journal: RetainedJournal::Album { manifest: directory_evidence, transfers: transfers.map(|(_, evidence)| evidence), transfer_path, descriptor },
+                            token: token.clone(),
+                            directory: directory.clone(),
+                            root: root.clone(),
+                            journal: RetainedJournal::Album {
+                                manifest: directory_evidence,
+                                transfers: transfers.map(|(_, evidence)| evidence),
+                                transfer_path,
+                                descriptor,
+                            },
                         });
                         return Ok(record);
                     }
@@ -789,9 +854,18 @@ mod selected {
                 let source = if matches!(&record.journal, RetainedJournal::Album { .. }) {
                     match find(source_token, Role::Source) {
                         Ok(root) => SelectedSource::Present(root),
-                        Err(_) => SelectedSource::Missing(inner.recovery.parents.iter()
-                            .find(|parent| parent.record_token == record.token && parent.selection.token == source_token)
-                            .cloned().ok_or_else(changed)?),
+                        Err(_) => SelectedSource::Missing(
+                            inner
+                                .recovery
+                                .parents
+                                .iter()
+                                .find(|parent| {
+                                    parent.record_token == record.token
+                                        && parent.selection.token == source_token
+                                })
+                                .cloned()
+                                .ok_or_else(changed)?,
+                        ),
                     }
                 } else {
                     SelectedSource::Present(find(source_token, Role::Source)?)
@@ -799,9 +873,17 @@ mod selected {
                 (record, source, target)
             };
             if matches!(&record.journal, RetainedJournal::Album { .. }) {
-                return inspect_album_record(record, source, target.ok_or_else(changed)?, control, cursor);
+                return inspect_album_record(
+                    record,
+                    source,
+                    target.ok_or_else(changed)?,
+                    control,
+                    cursor,
+                );
             }
-            let SelectedSource::Present(source) = source else { return Err(changed()); };
+            let SelectedSource::Present(source) = source else {
+                return Err(changed());
+            };
             if matches!(&record.journal, RetainedJournal::Repair { .. }) {
                 return inspect_repair_record(record, source, control, cursor)
                     .map_err(repair_inspection_error);
@@ -925,7 +1007,9 @@ mod selected {
         control: Option<&InspectionControl>,
         cursor: usize,
     ) -> Result<RecoveryReport> {
-        project_album_inspection(read_album_inspection(record, source, target, control, cursor)?)
+        project_album_inspection(read_album_inspection(
+            record, source, target, control, cursor,
+        )?)
     }
 
     fn read_album_inspection(
@@ -943,13 +1027,27 @@ mod selected {
         use sorter_io::mutation::MutationName;
         let fallback = InspectionControl::new(Arc::new(AtomicBool::new(false)), |_| {});
         let control = control.unwrap_or(&fallback);
-        let RetainedJournal::Album { manifest, transfers, transfer_path, descriptor } = &record.journal else {
+        let RetainedJournal::Album {
+            manifest,
+            transfers,
+            transfer_path,
+            descriptor,
+        } = &record.journal
+        else {
             return Err(changed());
         };
-        let mut storage = probe(Some(control), || Desktop::new(std::slice::from_ref(&record.directory)).map_err(storage_error))?;
-        let reference = storage.reference(&record.directory).map_err(storage_error)?;
-        let observed = probe(Some(control), || storage.stat(&reference).map_err(storage_error))?;
-        if observed.identity != record.root.identity || observed.kind != EntryKind::Directory { return Err(changed()); }
+        let mut storage = probe(Some(control), || {
+            Desktop::new(std::slice::from_ref(&record.directory)).map_err(storage_error)
+        })?;
+        let reference = storage
+            .reference(&record.directory)
+            .map_err(storage_error)?;
+        let observed = probe(Some(control), || {
+            storage.stat(&reference).map_err(storage_error)
+        })?;
+        if observed.identity != record.root.identity || observed.kind != EntryKind::Directory {
+            return Err(changed());
+        }
         let mut budget = PAGE_BYTE_BUDGET;
         // Preserve discovery's exact metadata/digest evidence before native open.
         // The executor repeats the digest check through its own held read handles.
@@ -969,122 +1067,277 @@ mod selected {
             })
         };
         let mut journals = vec![journal(manifest)?];
-        if let Some(evidence) = transfers { journals.push(journal(evidence)?); }
-        let grant = |root: Root| WindowsSelectedRootGrant::new(root.path, root.observed.identity.ok_or_else(changed)?).map_err(storage_error);
+        if let Some(evidence) = transfers {
+            journals.push(journal(evidence)?);
+        }
+        let grant = |root: Root| {
+            WindowsSelectedRootGrant::new(root.path, root.observed.identity.ok_or_else(changed)?)
+                .map_err(storage_error)
+        };
         let source = match source {
             SelectedSource::Present(root) => AlbumFileInspectionSource::Present(grant(root)?),
             SelectedSource::Missing(parent) => AlbumFileInspectionSource::Missing(
-                WindowsAlbumInspectionParentGrant::new(parent.path, parent.observed.identity.ok_or_else(changed)?).map_err(storage_error)?
+                WindowsAlbumInspectionParentGrant::new(
+                    parent.path,
+                    parent.observed.identity.ok_or_else(changed)?,
+                )
+                .map_err(storage_error)?,
             ),
         };
         let grants = AlbumFileInspectionGrants {
-            source, target: grant(target)?,
-            journal: WindowsSelectedRootGrant::new(record.directory, record.root.identity.ok_or_else(changed)?).map_err(storage_error)?,
+            source,
+            target: grant(target)?,
+            journal: WindowsSelectedRootGrant::new(
+                record.directory,
+                record.root.identity.ok_or_else(changed)?,
+            )
+            .map_err(storage_error)?,
         };
-        recover_recorded_album_file_job(descriptor, grants, journals, control, cursor).map_err(recorded_error)
+        recover_recorded_album_file_job(descriptor, grants, journals, control, cursor)
+            .map_err(recorded_error)
     }
 
     fn project_album_inspection(
         inspected: sorter_executor::windows_album::RecordedAlbumFileInspection,
     ) -> Result<RecoveryReport> {
         use sorter_executor::recovery::{CopyMetadataRecoveryStatus, RecoveryStatus};
-        use sorter_executor::windows_album::{AlbumDirectoryEvidenceStatus, AlbumInspectionSourceState};
+        use sorter_executor::windows_album::{
+            AlbumDirectoryEvidenceStatus, AlbumInspectionSourceState,
+        };
         use std::collections::HashSet;
         let recorded = inspected.recorded;
         let report = inspected.recovery;
-        if report.whole.is_some() || recorded.files.len() != recorded.file_count
+        if report.whole.is_some()
+            || recorded.files.len() != recorded.file_count
             || inspected.files.len() != recorded.files.len()
-        { return Err(changed()); }
+        {
+            return Err(changed());
+        }
         let mut operations = Vec::with_capacity(inspected.files.len());
         for (index, item) in inspected.files.into_iter().enumerate() {
-            if item.file != recorded.files[index] || item.file.physical_operation != index
-                || item.recovery.as_ref().is_some_and(|entry| entry.operation != index)
-            { return Err(changed()); }
-            let status = item.recovery.as_ref().map(|entry| {
-                if matches!(entry.copy_metadata, CopyMetadataRecoveryStatus::Verified | CopyMetadataRecoveryStatus::NotRequested) {
-                    format!("{:?}", entry.status)
-                } else { "NeedsRecovery".into() }
-            }).unwrap_or_else(|| "NeedsRecovery".into());
-            let evidence = item.recovery.as_ref().filter(|entry| entry.copy_metadata != CopyMetadataRecoveryStatus::NotRequested)
+            if item.file != recorded.files[index]
+                || item.file.physical_operation != index
+                || item
+                    .recovery
+                    .as_ref()
+                    .is_some_and(|entry| entry.operation != index)
+            {
+                return Err(changed());
+            }
+            let status = item
+                .recovery
+                .as_ref()
+                .map(|entry| {
+                    if matches!(
+                        entry.copy_metadata,
+                        CopyMetadataRecoveryStatus::Verified
+                            | CopyMetadataRecoveryStatus::NotRequested
+                    ) {
+                        format!("{:?}", entry.status)
+                    } else {
+                        "NeedsRecovery".into()
+                    }
+                })
+                .unwrap_or_else(|| "NeedsRecovery".into());
+            let evidence = item
+                .recovery
+                .as_ref()
+                .filter(|entry| entry.copy_metadata != CopyMetadataRecoveryStatus::NotRequested)
                 .map(|entry| RecoveryEvidence {
-                    role: "file_metadata".into(), path: display(&item.file.destination),
+                    role: "file_metadata".into(),
+                    path: display(&item.file.destination),
                     status: match entry.copy_metadata {
                         CopyMetadataRecoveryStatus::Verified => "Verified",
                         CopyMetadataRecoveryStatus::Mismatch => "Changed",
                         _ => "Unverified",
-                    }.into(),
-                }).into_iter().collect();
-            operations.push(RecoveryOperation { operation: index, source: display(&item.file.source),
-                destination: display(&item.file.destination), status, evidence });
+                    }
+                    .into(),
+                })
+                .into_iter()
+                .collect();
+            operations.push(RecoveryOperation {
+                operation: index,
+                source: display(&item.file.source),
+                destination: display(&item.file.destination),
+                status,
+                evidence,
+            });
         }
-        let removed = report.removed_directory_references.iter().map(|(reference, identity)| (reference, identity)).collect::<HashSet<_>>();
-        if removed.len() != report.removed_directory_references.len() { return Err(changed()); }
-        let root_removed = removed.contains(&(&recorded.source.reference, recorded.source.identity.as_ref().ok_or_else(changed)?));
+        let removed = report
+            .removed_directory_references
+            .iter()
+            .map(|(reference, identity)| (reference, identity))
+            .collect::<HashSet<_>>();
+        if removed.len() != report.removed_directory_references.len() {
+            return Err(changed());
+        }
+        let root_removed = removed.contains(&(
+            &recorded.source.reference,
+            recorded.source.identity.as_ref().ok_or_else(changed)?,
+        ));
         let mut evidence = vec![match inspected.source_state {
             AlbumInspectionSourceState::Present { observed } => RecoveryEvidence {
-                role: "source_root".into(), path: display(&observed.reference),
+                role: "source_root".into(),
+                path: display(&observed.reference),
                 status: if root_removed { "Changed" } else { "Verified" }.into(),
             },
             AlbumInspectionSourceState::Absent { recorded: original } => RecoveryEvidence {
-                role: "source_root".into(), path: display(&original.reference),
-                status: if root_removed { "AbsentExpected" } else { "Missing" }.into(),
+                role: "source_root".into(),
+                path: display(&original.reference),
+                status: if root_removed {
+                    "AbsentExpected"
+                } else {
+                    "Missing"
+                }
+                .into(),
             },
         }];
-        evidence.push(RecoveryEvidence { role: "target_root".into(), path: display(&recorded.target.reference), status: "Verified".into() });
+        evidence.push(RecoveryEvidence {
+            role: "target_root".into(),
+            path: display(&recorded.target.reference),
+            status: "Verified".into(),
+        });
         let mut observed_directories = 0;
         let mut rejected_directories = 0;
         let mut unverified_directories = 0;
         let mut observed_removed = HashSet::new();
         for directory in &report.directories {
-            let was_removed = removed.contains(&(&directory.reference, &directory.expected_identity));
+            let was_removed =
+                removed.contains(&(&directory.reference, &directory.expected_identity));
             let status = match directory.status {
                 AlbumDirectoryEvidenceStatus::Absent if was_removed => {
                     observed_removed.insert((&directory.reference, &directory.expected_identity));
-                    observed_directories += 1; "AbsentExpected"
+                    observed_directories += 1;
+                    "AbsentExpected"
                 }
-                AlbumDirectoryEvidenceStatus::SameIdentity if !was_removed
-                    && directory.observed_identity.as_ref() == Some(&directory.expected_identity) => {
-                    observed_directories += 1; "Verified"
+                AlbumDirectoryEvidenceStatus::SameIdentity
+                    if !was_removed
+                        && directory.observed_identity.as_ref()
+                            == Some(&directory.expected_identity) =>
+                {
+                    observed_directories += 1;
+                    "Verified"
                 }
-                AlbumDirectoryEvidenceStatus::Unverified => { unverified_directories += 1; "Unverified" }
-                AlbumDirectoryEvidenceStatus::Absent => { rejected_directories += 1; "Missing" }
-                _ => { rejected_directories += 1; "Changed" }
+                AlbumDirectoryEvidenceStatus::Unverified => {
+                    unverified_directories += 1;
+                    "Unverified"
+                }
+                AlbumDirectoryEvidenceStatus::Absent => {
+                    rejected_directories += 1;
+                    "Missing"
+                }
+                _ => {
+                    rejected_directories += 1;
+                    "Changed"
+                }
             };
-            evidence.push(RecoveryEvidence { role: if was_removed { "removed_directory" } else { "directory" }.into(), path: display(&directory.reference), status: status.into() });
+            evidence.push(RecoveryEvidence {
+                role: if was_removed {
+                    "removed_directory"
+                } else {
+                    "directory"
+                }
+                .into(),
+                path: display(&directory.reference),
+                status: status.into(),
+            });
         }
         for (reference, identity) in &report.removed_directory_references {
             if !observed_removed.contains(&(reference, identity)) {
-                evidence.push(RecoveryEvidence { role: "removed_directory".into(), path: display(reference), status: "Unverified".into() });
+                evidence.push(RecoveryEvidence {
+                    role: "removed_directory".into(),
+                    path: display(reference),
+                    status: "Unverified".into(),
+                });
             }
         }
-        let completed = report.completed_albums.iter().copied().collect::<HashSet<_>>();
-        let expected = recorded.album_operations.iter().copied().collect::<HashSet<_>>();
+        let completed = report
+            .completed_albums
+            .iter()
+            .copied()
+            .collect::<HashSet<_>>();
+        let expected = recorded
+            .album_operations
+            .iter()
+            .copied()
+            .collect::<HashSet<_>>();
         let transfer_complete = report.transfers.as_ref().is_some_and(|transfers| {
-            !transfers.append_blocked && transfers.operations.len() == recorded.files.len()
-                && transfers.operations.iter().all(|entry| entry.status == RecoveryStatus::Committed
-                    && matches!(entry.copy_metadata, CopyMetadataRecoveryStatus::Verified | CopyMetadataRecoveryStatus::NotRequested))
+            !transfers.append_blocked
+                && transfers.operations.len() == recorded.files.len()
+                && transfers.operations.iter().all(|entry| {
+                    entry.status == RecoveryStatus::Committed
+                        && matches!(
+                            entry.copy_metadata,
+                            CopyMetadataRecoveryStatus::Verified
+                                | CopyMetadataRecoveryStatus::NotRequested
+                        )
+                })
         });
-        let terminal_complete = report.manifest_finished && report.recorded_status.as_deref() == Some("Complete")
-            && !report.incomplete_tail && transfer_complete && completed == expected
+        let terminal_complete = report.manifest_finished
+            && report.recorded_status.as_deref() == Some("Complete")
+            && !report.incomplete_tail
+            && transfer_complete
+            && completed == expected
             && completed.len() == report.completed_albums.len();
-        evidence.push(RecoveryEvidence { role: "journal_completion".into(), path: format!("{}.album.jsonl", recorded.job_id), status: if terminal_complete { "Verified" } else { "Unverified" }.into() });
-        let pending = report.pending_directories.iter().chain(&report.pending_cleanup).chain(&report.pending_metadata).collect::<HashSet<_>>();
+        evidence.push(RecoveryEvidence {
+            role: "journal_completion".into(),
+            path: format!("{}.album.jsonl", recorded.job_id),
+            status: if terminal_complete {
+                "Verified"
+            } else {
+                "Unverified"
+            }
+            .into(),
+        });
+        let pending = report
+            .pending_directories
+            .iter()
+            .chain(&report.pending_cleanup)
+            .chain(&report.pending_metadata)
+            .collect::<HashSet<_>>();
         for reference in &pending {
-            evidence.push(RecoveryEvidence { role: "pending_directory".into(), path: display(reference), status: "Unverified".into() });
+            evidence.push(RecoveryEvidence {
+                role: "pending_directory".into(),
+                path: display(reference),
+                status: "Unverified".into(),
+            });
         }
         for (reference, status) in &report.directory_metadata_status {
-            evidence.push(RecoveryEvidence { role: "directory_metadata".into(), path: display(reference), status: match status.as_str() { "verified" => "Verified", "changed" | "mismatch" => "Changed", _ => "Unverified" }.into() });
+            evidence.push(RecoveryEvidence {
+                role: "directory_metadata".into(),
+                path: display(reference),
+                status: match status.as_str() {
+                    "verified" => "Verified",
+                    "changed" | "mismatch" => "Changed",
+                    _ => "Unverified",
+                }
+                .into(),
+            });
         }
-        let consistent = terminal_complete && pending.is_empty() && !operations.is_empty()
+        let consistent = terminal_complete
+            && pending.is_empty()
+            && !operations.is_empty()
             && report.directory_metadata_status.len() == report.directory_metadata.len()
             && observed_removed.len() == removed.len()
-            && evidence.iter().all(|entry| matches!(entry.status.as_str(), "Verified" | "AbsentExpected"))
+            && evidence
+                .iter()
+                .all(|entry| matches!(entry.status.as_str(), "Verified" | "AbsentExpected"))
             && operations.iter().all(|entry| entry.status == "Committed");
         Ok(RecoveryReport {
-            job_id: recorded.job_id, state: if consistent { "consistent" } else { "needs_attention" },
-            observed_directories, pending_directories: pending.len(), rejected_directories,
-            incomplete_tail: report.incomplete_tail, unverified_directories, observation_limit_reached: false,
-            operations, evidence,
+            job_id: recorded.job_id,
+            state: if consistent {
+                "consistent"
+            } else {
+                "needs_attention"
+            },
+            observed_directories,
+            pending_directories: pending.len(),
+            rejected_directories,
+            incomplete_tail: report.incomplete_tail,
+            unverified_directories,
+            observation_limit_reached: false,
+            operations,
+            evidence,
         })
     }
 
@@ -1434,7 +1687,9 @@ mod selected {
                     let mut chunk = [0u8; 64 * 1024];
                     loop {
                         let count = file.read(&mut chunk).unwrap();
-                        if count == 0 { break; }
+                        if count == 0 {
+                            break;
+                        }
                         hash.update(&chunk[..count]);
                     }
                     format!("{:x}", hash.finalize())
@@ -1814,7 +2069,9 @@ mod selected {
             let page = host.list_recovery(0, 10).unwrap();
             assert_eq!(page.records.len(), 5);
             assert!(page.records.iter().all(|record| record.state
-                == if record.family == "orphan" || record.journal_name.ends_with(".album-move.jsonl") {
+                == if record.family == "orphan"
+                    || record.journal_name.ends_with(".album-move.jsonl")
+                {
                     "unsupported"
                 } else {
                     "invalid"
@@ -1835,9 +2092,17 @@ mod selected {
         fn parent_picker_requires_a_retained_schema_two_album_record() {
             let directory = tempfile::tempdir().unwrap();
             let host = Host::default();
-            assert!(host.select_recovery_parent_path("unretained", directory.path().into()).is_err());
+            assert!(
+                host.select_recovery_parent_path("unretained", directory.path().into())
+                    .is_err()
+            );
             assert!(host.lock().unwrap().recovery.parents.is_empty());
-            assert!(std::fs::read_dir(directory.path()).unwrap().next().is_none());
+            assert!(
+                std::fs::read_dir(directory.path())
+                    .unwrap()
+                    .next()
+                    .is_none()
+            );
         }
         #[test]
         fn recovery_root_tokens_never_replace_preview_selection() {

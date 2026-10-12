@@ -17,7 +17,14 @@ impl FileManifestEvidence<'_> {
         control: &InspectionControl,
     ) -> Result<(SelectedAlbumRecovery, Vec<(StorageRef, ObjectIdentity)>)> {
         let cancel = control.cancellation_flag();
-        crate::inspection_control::check_recorded_input(bytes, self.binding.data.copied_move_sources.is_some().then_some(control))?;
+        crate::inspection_control::check_recorded_input(
+            bytes,
+            self.binding
+                .data
+                .copied_move_sources
+                .is_some()
+                .then_some(control),
+        )?;
         if bytes.len() > MAX_MANIFEST {
             return Err(E::Unsupported);
         }
@@ -81,13 +88,21 @@ impl FileManifestEvidence<'_> {
             if stopped_status.is_some() && record.phase != "Finished" {
                 return Err(E::CorruptJournal);
             }
-            if album_completion_stopped.is_some() && !matches!(record.phase.as_str(), "TransfersObserved" | "Finished") { return Err(E::CorruptJournal); }
+            if album_completion_stopped.is_some()
+                && !matches!(record.phase.as_str(), "TransfersObserved" | "Finished")
+            {
+                return Err(E::CorruptJournal);
+            }
             match record.phase.as_str() {
                 "Header" => {
                     if header
                         || sequence != 1
                         || record.payload
-                            != album_header(self.binding, self.snapshot, self.original_source.as_ref())
+                            != album_header(
+                                self.binding,
+                                self.snapshot,
+                                self.original_source.as_ref(),
+                            )
                     {
                         return Err(E::CorruptJournal);
                     }
@@ -199,7 +214,12 @@ impl FileManifestEvidence<'_> {
                     {
                         return Err(E::CorruptJournal);
                     }
-                    if album_completion_stopped.as_deref().is_some_and(|expected| expected != status) { return Err(E::CorruptJournal); }
+                    if album_completion_stopped
+                        .as_deref()
+                        .is_some_and(|expected| expected != status)
+                    {
+                        return Err(E::CorruptJournal);
+                    }
                     if metadata_stopped
                         .as_deref()
                         .is_some_and(|expected| expected != status)
@@ -221,7 +241,8 @@ impl FileManifestEvidence<'_> {
                 "DirectoryMetadataPrepared" => {
                     if !transfers_prepared
                         || transfers_observed
-                        || !(self.binding.data.selected_windows_copy || self.binding.data.copied_move_sources.is_some())
+                        || !(self.binding.data.selected_windows_copy
+                            || self.binding.data.copied_move_sources.is_some())
                         || pending_metadata.is_some()
                         || metadata_stopped.is_some()
                     {
@@ -240,7 +261,14 @@ impl FileManifestEvidence<'_> {
                         })
                         .ok_or(E::CorruptJournal)?;
                     let directory = &self.snapshot.copied_directories[index];
-                    if self.binding.data.copied_move_sources.is_some() && !report.album_transfers.iter().any(|ack| ack.operation == directory.operation) { return Err(E::CorruptJournal); }
+                    if self.binding.data.copied_move_sources.is_some()
+                        && !report
+                            .album_transfers
+                            .iter()
+                            .any(|ack| ack.operation == directory.operation)
+                    {
+                        return Err(E::CorruptJournal);
+                    }
                     let destination = reference(&destination_path(&directory.destination)?);
                     let created = created_evidence
                         .iter()
@@ -303,26 +331,53 @@ impl FileManifestEvidence<'_> {
                     metadata_stopped = Some(status.to_owned());
                 }
                 "AlbumCompletionStopped" => {
-                    let operation = record.payload["operation"].as_u64().and_then(|value| usize::try_from(value).ok()).ok_or(E::CorruptJournal)?;
+                    let operation = record.payload["operation"]
+                        .as_u64()
+                        .and_then(|value| usize::try_from(value).ok())
+                        .ok_or(E::CorruptJournal)?;
                     let status = record.payload["status"].as_str().ok_or(E::CorruptJournal)?;
-                    if self.binding.data.copied_move_sources.is_none() || transfers_observed
-                        || !report.album_transfers.last().is_some_and(|ack| ack.operation == operation)
+                    if self.binding.data.copied_move_sources.is_none()
+                        || transfers_observed
+                        || !report
+                            .album_transfers
+                            .last()
+                            .is_some_and(|ack| ack.operation == operation)
                         || report.completed_albums.contains(&operation)
                         || !matches!(status, "Partial" | "Cancelled" | "NeedsRecovery")
-                        || metadata_stopped.as_deref().is_some_and(|prior| prior != status)
-                        || (pending_metadata.is_some() || pending_cleanup.is_some() || !report.pending_cleanup.is_empty()) && status != "NeedsRecovery"
-                        || record.payload != serde_json::json!({"operation":operation,"status":status})
-                    { return Err(E::CorruptJournal); }
+                        || metadata_stopped
+                            .as_deref()
+                            .is_some_and(|prior| prior != status)
+                        || (pending_metadata.is_some()
+                            || pending_cleanup.is_some()
+                            || !report.pending_cleanup.is_empty())
+                            && status != "NeedsRecovery"
+                        || record.payload
+                            != serde_json::json!({"operation":operation,"status":status})
+                    {
+                        return Err(E::CorruptJournal);
+                    }
                     album_completion_stopped = Some(status.to_owned());
                 }
                 "AlbumTransfersObserved" => {
-                    if !transfers_prepared || transfers_observed || pending_cleanup.is_some()
-                        || pending_metadata.is_some() || metadata_stopped.is_some()
+                    if !transfers_prepared
+                        || transfers_observed
+                        || pending_cleanup.is_some()
+                        || pending_metadata.is_some()
+                        || metadata_stopped.is_some()
                         || self.binding.data.copied_move_sources.is_none()
-                    { return Err(E::CorruptJournal); }
-                    let ack: AlbumTransferAcknowledgment = serde_json::from_value(record.payload).map_err(|_| E::CorruptJournal)?;
-                    let album = self.snapshot.albums.get(report.album_transfers.len()).ok_or(E::CorruptJournal)?;
-                    if report.album_transfers.len() != report.completed_albums.len() { return Err(E::CorruptJournal); }
+                    {
+                        return Err(E::CorruptJournal);
+                    }
+                    let ack: AlbumTransferAcknowledgment =
+                        serde_json::from_value(record.payload).map_err(|_| E::CorruptJournal)?;
+                    let album = self
+                        .snapshot
+                        .albums
+                        .get(report.album_transfers.len())
+                        .ok_or(E::CorruptJournal)?;
+                    if report.album_transfers.len() != report.completed_albums.len() {
+                        return Err(E::CorruptJournal);
+                    }
                     ack.validate(album, self.binding)?;
                     report.album_transfers.push(ack);
                 }
@@ -331,8 +386,12 @@ impl FileManifestEvidence<'_> {
                         || pending_metadata.is_some()
                         || metadata_stopped.is_some()
                         || (self.binding.data.selected_windows_copy && transfers_observed)
-                        || (!self.binding.data.selected_windows_copy && self.binding.data.copied_move_sources.is_none() && transfer_status.as_deref() != Some("Complete"))
-                    { return Err(E::CorruptJournal); }
+                        || (!self.binding.data.selected_windows_copy
+                            && self.binding.data.copied_move_sources.is_none()
+                            && transfer_status.as_deref() != Some("Complete"))
+                    {
+                        return Err(E::CorruptJournal);
+                    }
                     let operation = record.payload["operation"]
                         .as_u64()
                         .and_then(|id| usize::try_from(id).ok())
@@ -343,37 +402,52 @@ impl FileManifestEvidence<'_> {
                         .iter()
                         .find(|album| album.operation == operation)
                         .ok_or(E::CorruptJournal)?;
-                    if self.binding.data.copied_move_sources.is_some() && (transfers_observed
-                        || !report.album_transfers.iter().any(|ack| ack.operation == operation)) { return Err(E::CorruptJournal); }
+                    if self.binding.data.copied_move_sources.is_some()
+                        && (transfers_observed
+                            || !report
+                                .album_transfers
+                                .iter()
+                                .any(|ack| ack.operation == operation))
+                    {
+                        return Err(E::CorruptJournal);
+                    }
                     if report.completed_albums.contains(&operation)
                         || record.payload
                             != serde_json::json!({"operation":operation,"files":album.files})
                     {
                         return Err(E::CorruptJournal);
                     }
-                    if (self.binding.data.selected_windows_copy || self.binding.data.copied_move_sources.is_some()) && self
-                        .snapshot
-                        .copied_directories
-                        .iter()
-                        .filter(|directory| directory.operation == operation)
-                        .any(|directory| {
-                            destination_path(&directory.destination).map_or(true, |p| {
-                                !report
-                                    .directory_metadata
-                                    .iter()
-                                    .any(|receipt| receipt.destination == reference(&p))
+                    if (self.binding.data.selected_windows_copy
+                        || self.binding.data.copied_move_sources.is_some())
+                        && self
+                            .snapshot
+                            .copied_directories
+                            .iter()
+                            .filter(|directory| directory.operation == operation)
+                            .any(|directory| {
+                                destination_path(&directory.destination).map_or(true, |p| {
+                                    !report
+                                        .directory_metadata
+                                        .iter()
+                                        .any(|receipt| receipt.destination == reference(&p))
+                                })
                             })
-                        })
                     {
                         return Err(E::CorruptJournal);
                     }
-                    if !self.binding.data.selected_windows_copy && album.cleanup.iter().any(|entry| !cleaned.contains(&entry.reference)) {
+                    if !self.binding.data.selected_windows_copy
+                        && album
+                            .cleanup
+                            .iter()
+                            .any(|entry| !cleaned.contains(&entry.reference))
+                    {
                         return Err(E::CorruptJournal);
                     }
                     report.completed_albums.push(operation);
                 }
                 "CleanupPrepared" => {
-                    if (self.binding.data.copied_move_sources.is_none() && transfer_status.as_deref() != Some("Complete"))
+                    if (self.binding.data.copied_move_sources.is_none()
+                        && transfer_status.as_deref() != Some("Complete"))
                         || (self.binding.data.copied_move_sources.is_some() && transfers_observed)
                         || self.binding.data.selected_windows_copy
                         || pending_cleanup.is_some()
@@ -392,11 +466,33 @@ impl FileManifestEvidence<'_> {
                         return Err(E::CorruptJournal);
                     }
                     if self.binding.data.copied_move_sources.is_some() {
-                        let album = self.snapshot.albums.iter().find(|album| album.cleanup.contains(&directory)).ok_or(E::CorruptJournal)?;
-                        if !report.album_transfers.iter().any(|ack| ack.operation == album.operation) { return Err(E::CorruptJournal); }
-                        for required in self.snapshot.copied_directories.iter().filter(|required| required.operation == album.operation) {
+                        let album = self
+                            .snapshot
+                            .albums
+                            .iter()
+                            .find(|album| album.cleanup.contains(&directory))
+                            .ok_or(E::CorruptJournal)?;
+                        if !report
+                            .album_transfers
+                            .iter()
+                            .any(|ack| ack.operation == album.operation)
+                        {
+                            return Err(E::CorruptJournal);
+                        }
+                        for required in self
+                            .snapshot
+                            .copied_directories
+                            .iter()
+                            .filter(|required| required.operation == album.operation)
+                        {
                             let target = reference(&destination_path(&required.destination)?);
-                            if !report.directory_metadata.iter().any(|receipt| receipt.destination == target) { return Err(E::CorruptJournal); }
+                            if !report
+                                .directory_metadata
+                                .iter()
+                                .any(|receipt| receipt.destination == target)
+                            {
+                                return Err(E::CorruptJournal);
+                            }
                         }
                     }
                     pending_cleanup = Some(directory);
@@ -405,11 +501,21 @@ impl FileManifestEvidence<'_> {
                     let observation: MutationObservation =
                         serde_json::from_value(record.payload).map_err(|_| E::CorruptJournal)?;
                     let directory = pending_cleanup.take().ok_or(E::CorruptJournal)?;
-                    let relative = path(&directory.reference)?.strip_prefix(path(&self.binding.data.source_root.reference)?).map_err(|_| E::CorruptJournal)?.to_path_buf();
-                    let expected_name = if directory.reference == self.binding.data.source_root.reference {
-                        self.original_source.as_ref().map(|source| source.actual_name.clone()).unwrap_or(leaf(&directory)?)
-                    } else { leaf(&directory)? };
-                    if path(&observation.reference)? != path(self.observed_source_root)?.join(relative)
+                    let relative = path(&directory.reference)?
+                        .strip_prefix(path(&self.binding.data.source_root.reference)?)
+                        .map_err(|_| E::CorruptJournal)?
+                        .to_path_buf();
+                    let expected_name =
+                        if directory.reference == self.binding.data.source_root.reference {
+                            self.original_source
+                                .as_ref()
+                                .map(|source| source.actual_name.clone())
+                                .unwrap_or(leaf(&directory)?)
+                        } else {
+                            leaf(&directory)?
+                        };
+                    if path(&observation.reference)?
+                        != path(self.observed_source_root)?.join(relative)
                         || observation.size.is_some()
                         || Some(&observation.identity) != directory.identity.as_ref()
                         || Some(&observation.parent_identity) != directory.parent_identity.as_ref()
@@ -420,14 +526,19 @@ impl FileManifestEvidence<'_> {
                     if record.phase == "CleanupObserved" {
                         cleaned.insert(directory.reference.clone());
                         removed_evidence.push(observation.clone());
-                        report.removed_directory_references.push((directory.reference.clone(), observation.identity.clone()));
+                        report
+                            .removed_directory_references
+                            .push((directory.reference.clone(), observation.identity.clone()));
                     } else {
                         report.pending_cleanup.push(directory.reference.clone());
                     }
                     observed.push((directory.reference, observation.identity));
                 }
                 "DirectoryRetained" => {
-                    if !transfers_observed && (self.binding.data.copied_move_sources.is_none() || pending_cleanup.is_none()) {
+                    if !transfers_observed
+                        && (self.binding.data.copied_move_sources.is_none()
+                            || pending_cleanup.is_none())
+                    {
                         return Err(E::CorruptJournal);
                     }
                     let retained: RetainedDirectory =
@@ -474,7 +585,8 @@ impl FileManifestEvidence<'_> {
                                 && status == "NeedsRecovery"
                         }
                         Some("membership") => {
-                            transfer_status.as_deref() == Some("Complete") && matches!(status, "Partial" | "Cancelled")
+                            transfer_status.as_deref() == Some("Complete")
+                                && matches!(status, "Partial" | "Cancelled")
                         }
                         Some("cleanup") => {
                             transfer_status.as_deref() == Some("Complete")

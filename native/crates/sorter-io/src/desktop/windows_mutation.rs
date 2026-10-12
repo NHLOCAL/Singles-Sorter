@@ -4880,11 +4880,11 @@ pub use album_rename::{
 #[path = "windows_album_inspection.rs"]
 mod album_inspection;
 pub use album_inspection::{
-    WindowsAlbumInspectionDirectory, WindowsAlbumInspectionJournal, WindowsAlbumInspectionTarget,
-    WindowsAlbumJournalInspection, WindowsAlbumJournalInspectionInputs, WindowsAlbumPresentJournalInspectionInputs,
+    WindowsAlbumInspectionDirectory, WindowsAlbumInspectionJournal,
+    WindowsAlbumInspectionParentGrant, WindowsAlbumInspectionTarget, WindowsAlbumJournalInspection,
+    WindowsAlbumJournalInspectionInputs, WindowsAlbumOriginalLocation,
+    WindowsAlbumOriginalLocationInspection, WindowsAlbumPresentJournalInspectionInputs,
     WindowsAlbumReadInspection, WindowsAlbumReadInspectionInputs,
-    WindowsAlbumInspectionParentGrant, WindowsAlbumOriginalLocation,
-    WindowsAlbumOriginalLocationInspection,
 };
 
 #[path = "windows_copy_metadata.rs"]

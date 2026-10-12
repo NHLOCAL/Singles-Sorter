@@ -2840,7 +2840,12 @@ impl SelectedAlbumFileJob {
 
 #[path = "windows_album_recorded.rs"]
 mod recorded;
-pub use recorded::{RecordedAlbumFile, RecordedAlbumFileJob, inspect_recorded_album_file_job, AlbumFileInspectionSource, AlbumFileInspectionGrants, AlbumFileInspectionJournal, AlbumInspectionSourceState, RecordedAlbumFileInspection, RecordedAlbumFileEvidence, recover_recorded_album_file_job};
+pub use recorded::{
+    AlbumFileInspectionGrants, AlbumFileInspectionJournal, AlbumFileInspectionSource,
+    AlbumInspectionSourceState, RecordedAlbumFile, RecordedAlbumFileEvidence,
+    RecordedAlbumFileInspection, RecordedAlbumFileJob, inspect_recorded_album_file_job,
+    recover_recorded_album_file_job,
+};
 
 #[path = "windows_album_manifest.rs"]
 mod file_manifest;

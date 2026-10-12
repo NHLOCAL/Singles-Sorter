@@ -155,8 +155,14 @@ impl WindowsMutationStorage {
                 "stream inspection requires media root",
             ));
         }
-        inspect_bound_streams_observed(parent.handle(), name, expected_identity, cancel, observe,
-            || self.check_parent(parent))
+        inspect_bound_streams_observed(
+            parent.handle(),
+            name,
+            expected_identity,
+            cancel,
+            observe,
+            || self.check_parent(parent),
+        )
     }
 
     /// Inspect under existing source-root authority. This never creates a file.
