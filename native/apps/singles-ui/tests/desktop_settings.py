@@ -65,10 +65,17 @@ def editor_rows(script, click, wait):
         wait(lambda: script("return document.querySelector('#list-alias-" + str(next_index) + "') !== null"))
 
 
+
+def require_export_notice(path, notice):
+    expected = 'הרשימה יוצאה: ' + str(path)
+    if notice != expected:
+        raise ValueError(f'Native export returned a different selected path: actual={notice!r}, expected={expected!r}')
+
+
 def verify_export(path, expected_rows):
     """The caller supplies a fresh owned directory, with no precreated CSV."""
     if path.is_symlink() or not path.is_file() or set(path.parent.iterdir()) != {path}:
-        raise ValueError('Native export did not create exactly one ordinary owned CSV')
+        raise ValueError(f'Native export did not create exactly one ordinary owned CSV: requested={str(path)!r}, exists={path.exists()}, file={path.is_file()}, symlink={path.is_symlink()}, owned_directory_entries={sorted(child.name for child in path.parent.iterdir())!r}')
     if path.stat().st_size > 16 * 1024 * 1024:
         raise ValueError('Native export exceeds the profile CSV bound')
     data = path.read_bytes()

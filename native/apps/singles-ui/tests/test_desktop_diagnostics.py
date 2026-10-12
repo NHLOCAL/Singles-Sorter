@@ -14,7 +14,7 @@ import desktop_diagnostics as diagnostics
 from owned_window_capture import png_from_bgra
 from windows_integrity import require_medium
 import run_desktop_medium as launcher
-from native_picker import unique_folder_edit, unique_save_edit, interact_with_owned_picker
+from native_picker import unique_folder_edit, unique_save_edit, interact_with_owned_picker, literal_keyboard_text, enter_owned_save_path
 from native_fixtures import write_import_csv
 
 
@@ -60,6 +60,50 @@ class DiagnosticContracts(unittest.TestCase):
                         [dict(combo, automation_id='1148'), edit], [combo, search]]:
             with self.assertRaises(RuntimeError):
                 unique_save_edit(records, 42)
+
+    def test_save_uses_focused_literal_keyboard_input_and_blur(self):
+        value = r'D:\owned\רשימה +^%~{ENTER}(שם).csv'
+        control = Mock()
+        control.process_id.return_value = 42
+        control.has_keyboard_focus.return_value = True
+        control.get_value.return_value = value
+        enter_owned_save_path(control, value, 42)
+        self.assertEqual(control.method_calls, [
+            unittest.mock.call.process_id(), unittest.mock.call.set_focus(),
+            unittest.mock.call.has_keyboard_focus(),
+            unittest.mock.call.type_keys('^a{BACKSPACE}', set_foreground=False),
+            unittest.mock.call.type_keys(r'D:\owned\רשימה {+}{^}{%}{~}{{}ENTER{}}{(}שם{)}.csv',
+                                        with_spaces=True, set_foreground=False, vk_packet=True),
+            unittest.mock.call.get_value(),
+            unittest.mock.call.type_keys('{TAB}', set_foreground=False),
+            unittest.mock.call.get_value()])
+        control.set_edit_text.assert_not_called()
+
+    def test_save_refuses_foreign_or_unfocused_input_before_typing(self):
+        for pid, focused in [(99, True), (42, False)]:
+            control = Mock()
+            control.process_id.return_value = pid
+            control.has_keyboard_focus.return_value = focused
+            with self.assertRaises(RuntimeError):
+                enter_owned_save_path(control, r'D:\owned\new.csv', 42)
+            control.type_keys.assert_not_called()
+
+    def test_save_rechecks_path_before_and_after_blur(self):
+        expected = r'D:\owned\new.csv'
+        for values in [['default.csv'], [expected, 'default.csv']]:
+            control = Mock()
+            control.process_id.return_value = 42
+            control.has_keyboard_focus.return_value = True
+            control.get_value.side_effect = values
+            with self.assertRaisesRegex(RuntimeError, 'Native Save input'):
+                enter_owned_save_path(control, expected, 42)
+
+    def test_save_path_never_interprets_literal_modifiers_as_commands(self):
+        self.assertEqual(literal_keyboard_text('+^%~{}()'), '{+}{^}{%}{~}{{}{}}{(}{)}')
+        self.assertEqual(literal_keyboard_text('שלום []\\a.csv'), 'שלום []\\a.csv')
+        for control in ['\0', '\r', '\n', '\t', '\x7f']:
+            with self.assertRaisesRegex(RuntimeError, 'control character'):
+                literal_keyboard_text('new' + control + '.csv')
 
     def test_save_route_is_explicit_and_refuses_existing_or_missing_parent(self):
         with tempfile.TemporaryDirectory() as temp:

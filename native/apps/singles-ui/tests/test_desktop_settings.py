@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from desktop_settings import MAIN_SETTINGS, editor_rows, read_main_settings, verify_export
+from desktop_settings import MAIN_SETTINGS, editor_rows, read_main_settings, verify_export, require_export_notice
 
 
 class SettingsHelpers(unittest.TestCase):
@@ -43,6 +43,14 @@ class SettingsHelpers(unittest.TestCase):
         self.assertEqual(self.editor([{'rows': [], 'malformed': 0, 'next_disabled': True}]), [])
         with self.assertRaises(ValueError):
             self.editor([{'rows': [], 'malformed': 0, 'next_disabled': False}])
+
+    def test_export_requires_exact_returned_path_before_reading_file(self):
+        path = Path('owned') / 'רשימה.csv'
+        require_export_notice(path, 'הרשימה יוצאה: ' + str(path))
+        for notice in ['', 'הרשימה יוצאה: C:\\Users\\runneradmin\\Documents\\personal-singer-list.csv',
+                       'הרשימה יוצאה: ' + str(path) + '.csv']:
+            with self.assertRaisesRegex(ValueError, 'different selected path'):
+                require_export_notice(path, notice)
 
     def test_export_preserves_utf8_order_duplicates_and_quoting(self):
         with tempfile.TemporaryDirectory() as tmp:

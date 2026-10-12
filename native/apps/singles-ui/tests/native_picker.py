@@ -31,6 +31,36 @@ def unique_save_edit(records, pid):
     return edits[0]
 
 
+
+def literal_keyboard_text(value):
+    # pywinauto keyboard syntax treats these characters as commands/modifiers.
+    # https://pywinauto.readthedocs.io/en/latest/code/pywinauto.keyboard.html
+    if any(ord(character) < 32 or ord(character) == 127 for character in value):
+        raise RuntimeError('Owned Save filename contains a control character')
+    return ''.join('{' + character + '}' if character in '+^%~{}()' else character
+                   for character in value)
+
+
+def enter_owned_save_path(filename, path, pid):
+    # Actual dfae evidence: ValuePattern SetValue/get_value agreed, but Save
+    # returned its original default path. Use real edit input and blur before
+    # invoking Save so the dialog receives the normal edit/commit notifications.
+    value = str(path)
+    keys = literal_keyboard_text(value)
+    if filename.process_id() != pid:
+        raise RuntimeError('Save filename input does not belong to the owned app')
+    filename.set_focus()
+    if not filename.has_keyboard_focus():
+        raise RuntimeError('Owned Save filename input did not receive keyboard focus')
+    filename.type_keys('^a{BACKSPACE}', set_foreground=False)
+    filename.type_keys(keys, with_spaces=True, set_foreground=False, vk_packet=True)
+    if filename.get_value() != value:
+        raise RuntimeError('Native Save input did not retain the exact owned fixture path')
+    filename.type_keys('{TAB}', set_foreground=False)
+    if filename.get_value() != value:
+        raise RuntimeError('Native Save input changed after the edit lost focus')
+
+
 def require_new_save_path(path):
     if path.exists() or path.is_symlink() or not path.parent.is_dir():
         raise RuntimeError('Save acceptance requires a new CSV in an existing owned directory')
@@ -107,9 +137,15 @@ def _interact_with_owned_picker(binary, path, output, label, *, save=False):
             filename = filename.wrapper_object()
         if filename.process_id() != app.process:
             raise RuntimeError('Path input does not belong to the owned app')
-        filename.set_edit_text(str(path))
-        if filename.get_value() != str(path):
-            raise RuntimeError('Native path input did not retain the exact owned fixture path')
+        if save:
+            evidence['requested_owned_path'] = str(path)
+            evidence['filename_before_input'] = filename.get_value()
+            enter_owned_save_path(filename, path, app.process)
+            evidence['filename_after_keyboard_and_blur'] = filename.get_value()
+        else:
+            filename.set_edit_text(str(path))
+            if filename.get_value() != str(path):
+                raise RuntimeError('Native path input did not retain the exact owned fixture path')
         confirm = dialog.child_window(auto_id='1', control_type='Button')
         confirm.wait('visible enabled', timeout=10)
         if confirm.wrapper_object().process_id() != app.process:

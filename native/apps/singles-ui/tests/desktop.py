@@ -41,7 +41,7 @@ from desktop_cross_albums import exercise_cross_albums
 from desktop_polish import exercise_information, set_developer_mode
 from driver_readiness import wait_driver_ready
 from desktop_stability import exercise_shell, exercise_result_stability
-from desktop_settings import SETTINGS_CHECKS, read_main_settings, set_main_settings, editor_rows, verify_export
+from desktop_settings import SETTINGS_CHECKS, read_main_settings, set_main_settings, editor_rows, verify_export, require_export_notice
 
 ROOT = Path(__file__).resolve().parents[1]
 if os.name != 'nt' or os.environ.get('GITHUB_ACTIONS') != 'true':
@@ -338,6 +338,12 @@ try:
         assert not exported_csv.exists() and not list(export_root.iterdir())
         pick_owned_path('#export-list', exported_csv, save=True)
         wait(lambda: script("return !document.querySelector('#export-list').disabled && document.querySelector('#profile-error').hidden"))
+        export_notice = text('#profile-notice')
+        (OUTPUT / 'export-result-path.json').write_text(json.dumps({
+            'requested_owned_path': str(exported_csv), 'actual_notice': export_notice,
+            'owned_directory_entries': sorted(child.name for child in export_root.iterdir())},
+            ensure_ascii=False, indent=2), encoding='utf-8')
+        require_export_notice(exported_csv, export_notice)
         export_receipt = verify_export(exported_csv, reopened_personal)
         capture('08-native-personal-export')
         click('#advanced-dialog .close-dialog')
