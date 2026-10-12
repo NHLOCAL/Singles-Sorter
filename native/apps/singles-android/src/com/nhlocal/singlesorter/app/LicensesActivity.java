@@ -69,7 +69,7 @@ public final class LicensesActivity extends Activity {
         catch(RuntimeException error){pending=false;export.setEnabled(true);status.setText("לא ניתן לפתוח את בחירת הקובץ.");}
     }
     @Override protected void onActivityResult(int request,int result,Intent data){
-        super.onActivityResult(request,result,data);if(request!=1||!pending)return;
+        super.onActivityResult(request,result,data);if(request!=1||!pending||cancelled.get())return;
         if(result!=RESULT_OK||data==null||data.getData()==null){pending=false;export.setEnabled(true);return;}
         final Uri destination=data.getData();
         if(!LicensePaths.exportGrant("content".equals(destination.getScheme()),android.provider.DocumentsContract.isDocumentUri(this,destination),(data.getFlags()&Intent.FLAG_GRANT_READ_URI_PERMISSION)!=0,(data.getFlags()&Intent.FLAG_GRANT_WRITE_URI_PERMISSION)!=0)){pending=false;export.setEnabled(true);status.setText("יעד השמירה אינו נתמך.");return;}
@@ -95,10 +95,11 @@ public final class LicensesActivity extends Activity {
             if(!LicensePaths.safe(name)||name.equals("inventory.json")||!names.add(name)||size<0||size>MAX_FILE||!f.getString("sha256").matches("[0-9a-f]{64}"))throw new java.io.IOException("entry");
             total+=size;if(total>MAX_TOTAL)throw new java.io.IOException("total bound");}
         MessageDigest archive=MessageDigest.getInstance("SHA-256");
+        checkpoint();
         try(OutputStream raw=getContentResolver().openOutputStream(destination,"w")){
             if(raw==null)throw new java.io.IOException("output missing");
             try(ZipOutputStream zip=new ZipOutputStream(new DigestOutputStream(raw,archive))){
-                zip.putNextEntry(new ZipEntry("inventory.json"));zip.write(inventory);zip.closeEntry();byte[] buffer=new byte[65536];
+                checkpoint();zip.putNextEntry(new ZipEntry("inventory.json"));zip.write(inventory);zip.closeEntry();byte[] buffer=new byte[65536];
                 for(int i=0;i<files.length();i++){checkpoint();JSONObject f=files.getJSONObject(i);String name=f.getString("path");long count=0;MessageDigest digest=MessageDigest.getInstance("SHA-256");zip.putNextEntry(new ZipEntry(name));
                     try(InputStream input=getAssets().open("licenses/"+name)){int n;while((n=input.read(buffer))!=-1){checkpoint();count+=n;if(count>f.getLong("bytes"))throw new java.io.IOException("asset grew");digest.update(buffer,0,n);zip.write(buffer,0,n);}}
                     if(count!=f.getLong("bytes")||!hex(digest.digest()).equals(f.getString("sha256")))throw new java.io.IOException("asset mismatch");zip.closeEntry();}
