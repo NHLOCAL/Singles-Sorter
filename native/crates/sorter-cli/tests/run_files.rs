@@ -234,8 +234,7 @@ mod selected {
         assert_eq!(backups.len(), 1);
         assert_eq!(fs::read(&backups[0]).unwrap(), original);
         assert_eq!(
-            result["recovery"]["recorded_finished"],
-            true,
+            result["recovery"]["recorded_finished"], true,
             "repair recovery must verify the journal; result={result}; planned={planned}"
         );
         assert!(result["recovery_error"].is_null(), "{result}");
