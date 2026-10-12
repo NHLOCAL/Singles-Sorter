@@ -334,7 +334,10 @@ fn retained_journal_identity_survives_replacement_after_comparison() {
     let actual = WindowsMutationStorage::for_selected_roots(
         grant(&source), grant(&target), selected::journal_grant(journal.clone(), Some(retained)).unwrap(),
     );
-    assert!(actual.is_err(), "A replacement journal root must not be adopted");
+    match actual {
+        Ok(_) => panic!("A replacement journal root must not be adopted"),
+        Err(error) => assert_eq!(error.kind, sorter_io::mutation::MutationErrorKind::StalePlan),
+    }
     for path in [&source, &target, &journal, &original_journal] {
         assert!(path.is_dir());
         assert_eq!(std::fs::read_dir(path).unwrap().count(), 0);
