@@ -57,6 +57,17 @@ class ExecutionContractTests(unittest.TestCase):
             self.assertIn('Python assertions enabled', result.stderr)
             self.assertFalse(report.exists())
 
+    def test_album_terminal_evidence_is_required_even_after_committed_files(self):
+        import copy
+        valid = dict(manifest_finished=True,incomplete_tail=False,pending_directories=[],pending_cleanup=[],pending_metadata=[],directory_metadata_status=[],
+                     transfers={'append_blocked':False,'operations':[{'status':'Committed','copy_metadata':'Verified'}]},whole=None)
+        execution.require_album_recovery(valid)
+        for key in ('manifest_finished','incomplete_tail'):
+            report=copy.deepcopy(valid);report[key]=not report[key]
+            with self.assertRaises(ValueError): execution.require_album_recovery(report)
+        report=copy.deepcopy(valid);report['transfers']['append_blocked']=True
+        with self.assertRaises(ValueError): execution.require_album_recovery(report)
+
     def test_unconditional_guard(self):
         with self.assertRaisesRegex(ValueError, 'physical proof'):
             execution.require(False, 'physical proof')

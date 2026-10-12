@@ -13,17 +13,23 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import stat
 import tempfile
 import wave
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / 'native/apps/singles-ui/tests'))
+from desktop_albums import fixture as album_fixture, metadata as album_metadata, files as album_files, ARTIST, ALBUM
+from desktop_flac import generated_flac, inspect_flac, FIELDS as FLAC_FIELDS, UNKNOWN as FLAC_UNKNOWN
 from desktop_repair import generated_mp3, inspect_mp3, FIELDS  # Independent fixture parser.
 
 spec = importlib.util.spec_from_file_location('execution_package_contract', ROOT / 'native/packaging/windows-preview/package_preview.py')
 package = importlib.util.module_from_spec(spec); spec.loader.exec_module(package)
 CHECKS = {'positional-copy', 'positional-move', 'positional-original-ai-copy',
           'positional-fix-id3v23', 'positional-fix-id3v24', 'positional-fix-partial',
+          'positional-album-copy', 'positional-root-album-move', 'positional-mixed-album-move',
+          'positional-album-descendant-metadata', 'positional-album-dry-run-no-effects',
+          'positional-flac-five-fields', 'positional-flac-shifted-audio', 'positional-flac-opaque-partial',
           'retained-original-and-media', 'closed-stdin', 'no-developer-path',
           'explicit-dry-run-no-effects', 'overlap-rejected-no-effects', 'legacy-argument-exits'}
 
@@ -56,6 +62,25 @@ def result_record(stderr):
     records = [json.loads(line.split('result: ', 1)[1]) for line in stderr.splitlines() if ' - MusicSorter - result: ' in line]
     if len(records) != 1: raise AssertionError(f'Expected one native result: {stderr}')
     return records[0]
+
+
+def require_album_recovery(report):
+    require(report and report['manifest_finished'] and not report['incomplete_tail'], 'Album manifest lacks its terminal evidence')
+    for key in ('pending_directories', 'pending_cleanup', 'pending_metadata'):
+        require(not report[key], 'Album reconciliation contains pending effects: ' + key)
+    require(all(status == 'verified' for _, status in report['directory_metadata_status']), 'Album directory metadata was not verified')
+    transfers = report.get('transfers')
+    if transfers:
+        require(not transfers['append_blocked'], 'Transfer journal cannot accept a safe terminal append')
+        require(all(item['status'] == 'Committed' and item['copy_metadata'] not in ('Unverified', 'Mismatch') for item in transfers['operations']), 'Album transfer reconciliation failed')
+    whole = report.get('whole')
+    if whole:
+        require(whole['recorded_finished'] and not whole['incomplete_tail'] and not whole['pending_albums'] and not whole['pending_directories'], 'Whole-album terminal evidence is incomplete')
+        require(all(item['status'] == 'Absent' for item in whole['source_evidence']), 'Moved album source remains or is unverified')
+        require(all(item['status'] == 'SameIdentity' for item in whole['destination_evidence']), 'Moved album destination identity differs')
+        require(all(item['status'] == 'verified' for item in whole['files']), 'Moved album file content differs')
+        if whole['singles']:
+            require_album_recovery(whole['singles'])
 
 
 def run(binary, bundle, report, package_root=None):
@@ -135,6 +160,55 @@ def run(binary, bundle, report, package_root=None):
             require(changed=={key:value[1] for key,value in FIELDS.items()}, 'Five ID3 fields differ from the frozen repair expectation')
             require(new_offset==offset and new_payload==payload and new_raw[b'PRIV']==raw[b'PRIV'], 'Repair changed audio offset, audio bytes or unknown frame')
             require(actual['repair']['renamed_files']==1 and actual['repair']['repaired_files']==1, 'Repair counts do not match observed effects')
+        receipts[-1].update(case=label,original_sha256=hashlib.sha256(before).hexdigest(),current_sha256=digest(current),backup_sha256=[digest(p) for p in backups])
+
+    for copying, root_album, label in [(True, False, 'album-copy'), (False, True, 'root-album-move'), (False, False, 'mixed-album-move')]:
+        case=scratch/label; (case/'journal').mkdir(parents=True); (case/'app').mkdir()
+        source,target,album=album_fixture(case,audio,root_album)
+        if copying: (album/'cover.jpg').chmod(stat.S_IREAD)
+        before=album_files(album); source_before=album_files(source); metadata_before=album_metadata(album)
+        args=['source','target','-n','--no-ai','--journal-directory','journal']+(['-c'] if copying else [])
+        no_effect=snapshot(case)
+        invoke(case,[*args,'--dry-run'])
+        require(snapshot(case)==no_effect,'Album dry-run changed files, directories or metadata')
+        completed=invoke(case,args); actual=result_record(completed.stderr)
+        require(actual['status']=='complete' and actual.get('recovery_error') is None,'Album execution or recovery failed')
+        require_album_recovery(actual['recovery'])
+        require(actual['albums_completed']==1 and actual['artist_files']==[[ARTIST,4]],'Album original-policy counters differ')
+        expected_files=5 if root_album else 6
+        require(actual['committed_destinations']==expected_files and actual['moved_sources']==(0 if copying else expected_files),'Physical album counters differ')
+        destination=target/ARTIST/ALBUM
+        if copying:
+            require(album_metadata(destination)==metadata_before,'Album descendant timestamp/readonly metadata differs')
+            require(destination.stat().st_mtime_ns!=album.stat().st_mtime_ns,'Copy album container should be newly created')
+            require(album_files(source)==source_before,'Album Copy changed source content')
+        else:
+            require(not album.exists(),'Album Move retained its original container')
+        require(album_files(destination)==before,'Album nested files or sidecar bytes differ')
+        if not root_album:
+            require((target/ARTIST/f'{ARTIST} - שיר בודד.mp3').read_bytes()==audio,'Mixed single destination differs')
+        receipts[-1].update(case=label,source_sha256=before,destination_sha256=album_files(destination),source_retained=copying)
+
+    for duplicate,opaque,label in [(False,False,'flac-five-fields'),(True,False,'flac-shifted-audio'),(True,True,'flac-opaque-partial')]:
+        case=roots(label);source=case/'source';original=source/'repair_input.flac'
+        before=generated_flac(duplicate=duplicate,opaque=opaque);original.write_bytes(before)
+        vendor,_,blocks,offset,audio_bytes=inspect_flac(before)
+        completed=invoke(case,['source','-f','--no-ai','--journal-directory','journal'],1 if opaque else 0)
+        actual=result_record(completed.stderr)
+        require(actual['status']==('partial' if opaque else 'complete') and actual.get('recovery_error') is None,'FLAC execution or recovery failed')
+        current=source/'repair input.flac';require(current.is_file() and not original.exists(),'FLAC filename was not repaired')
+        after=current.read_bytes();backups=list(source.glob('*.backup'))
+        require(actual['repair']['renamed_files']==1 and actual['repair']['repaired_files']==(0 if opaque else 1),'FLAC observed counts differ')
+        if opaque:
+            require(after==before and not backups,'Unsupported opaque FLAC tags were changed')
+        else:
+            require(len(backups)==1 and backups[0].read_bytes()==before,'FLAC original backup differs')
+            new_vendor,values,new_blocks,new_offset,new_audio=inspect_flac(after)
+            replacement='א, ב' if duplicate else 'א'
+            require(values==FLAC_UNKNOWN+[f'{key}={replacement}' for key in FLAC_FIELDS],'FLAC five fields or unknown pair order differ')
+            require(new_vendor==vendor and [b for b in blocks if b[0]&127!=4]==[b for b in new_blocks if b[0]&127!=4],'FLAC vendor or non-comment blocks differ')
+            require(new_audio==audio_bytes and ((new_offset<offset) if duplicate else (new_offset==offset)),'FLAC audio or expected metadata offset differs')
+        require(set(source.iterdir())=={current,*backups},'Unexpected FLAC staged or source files remain')
         receipts[-1].update(case=label,original_sha256=hashlib.sha256(before).hexdigest(),current_sha256=digest(current),backup_sha256=[digest(p) for p in backups])
 
     case=roots('dry-run');write_wave(case/'source/אברהם פריד - בדיקה.wav');before=snapshot(case)

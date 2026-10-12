@@ -31,6 +31,9 @@ ASSETS = {
 }
 EXECUTION_CHECKS = {'positional-copy', 'positional-move', 'positional-original-ai-copy',
                     'positional-fix-id3v23', 'positional-fix-id3v24', 'positional-fix-partial',
+                    'positional-album-copy', 'positional-root-album-move', 'positional-mixed-album-move',
+                    'positional-album-descendant-metadata', 'positional-album-dry-run-no-effects',
+                    'positional-flac-five-fields', 'positional-flac-shifted-audio', 'positional-flac-opaque-partial',
                     'retained-original-and-media', 'closed-stdin', 'no-developer-path',
                     'explicit-dry-run-no-effects', 'overlap-rejected-no-effects', 'legacy-argument-exits'}
 CLI_FEATURES = ['original-ai', 'selected-windows-execution']
@@ -337,8 +340,8 @@ def build(args):
             'crt_linkage': 'dynamic MSVC; official Microsoft Visual C++ x64 Redistributable prerequisite',
             'clean_machine_without_prerequisite_tested': False,
             'offline_runtime': True, 'physical_apply': True,
-            'execution_scope': ['selected singles Copy', 'same-volume Move', 'source-only FixNames'],
-            'unsupported_execution': ['albums', 'cross-volume Move', 'changed tags outside bounded MP3 ID3v2.3/v2.4'],
+            'execution_scope': ['selected singles Copy', 'same-volume Move', 'source-only FixNames', 'bounded album Copy and same-volume whole-directory Move', 'bounded native FLAC tag repair'],
+            'unsupported_execution': ['cross-volume Move', 'Move-all duet retirement', 'changed tags outside bounded MP3 ID3v2.3/v2.4 and native FLAC'],
             'automatic_replay': False, 'automatic_backup_cleanup': False,
             'baseline_commit': BASELINE, 'bundle_id': 'original-v14-ner-3.7.5',
             'ner_model': {'name': 'singer_ner_he', 'version': '2.0.0', 'spacy_compatibility': '>=3.7.5,<3.8.0'},
