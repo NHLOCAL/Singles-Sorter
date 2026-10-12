@@ -14,3 +14,9 @@ pub mod mutation;
 
 /// Bounded staged metadata transforms; no live source writes or path authority.
 pub mod staged_tags;
+
+/// Stream-only native FLAC repair; no live source writes or path authority.
+pub mod staged_flac;
+
+/// Product dispatch shared by platform backends; no filesystem authority.
+pub mod staged_repair;
