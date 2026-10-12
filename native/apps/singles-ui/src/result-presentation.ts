@@ -8,6 +8,11 @@ export function executionReadinessText(readiness:ApplyReadiness,developer:boolea
  if(readiness.mode==='FixNames')return developer?`${readiness.operation_count===1?'קובץ אחד':readiness.operation_count.toLocaleString('he-IL')+' קבצים'} בתוכנית לאימות ולתיקון לפי הצורך`:'מוכן לאימות הקבצים ולביצוע תיקונים לפי הצורך.';
  return developer?`${readiness.operation_count.toLocaleString('he-IL')} פעולות ${readiness.copy_mode?'העתקה':'העברה'} ממתינות לאישור`:'הקבצים מוכנים. אפשר לבדוק ולאשר את הביצוע.';
 }
+/** A zero total is an unknown byte extent, not an estimated zero-byte job. */
+export function executionBytesText(written:number,total:number):string{
+ const observed=written.toLocaleString('he-IL');
+ return total>0?`${observed} מתוך ${total.toLocaleString('he-IL')} בתים`:`${observed} בתים עובדו`;
+}
 export const REPAIR_REVIEW_TEXT='בדיקה חוזרת של הקבצים שבתוכנית וביצוע תיקונים מתוכננים בלבד. קבצים שלא נדרש בהם תיקון יישארו ללא שינוי. לפני החלפת תגיות נשמר עותק מקורי לצד הקובץ.';
 export const DEVELOPER_PREFERENCE='singles-sorter.developer-mode.v1';
 export function readDeveloperMode(storage:Pick<Storage,'getItem'>):boolean{try{return storage.getItem(DEVELOPER_PREFERENCE)==='true';}catch{return false;}}

@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,verificationWarning,developerRowSummary,recoveryNoticeText,verificationProgressText,resultFilename,DEVELOPER_PREFERENCE,executionReadinessText,REPAIR_REVIEW_TEXT} from '../src/result-presentation';
+import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,verificationWarning,developerRowSummary,recoveryNoticeText,verificationProgressText,resultFilename,DEVELOPER_PREFERENCE,executionReadinessText,executionBytesText,REPAIR_REVIEW_TEXT} from '../src/result-presentation';
 import type {ExecutionSnapshot,PlanRow,ExecutionItem,ApplyReadiness} from '../src/contracts';
 const row:PlanRow={id:'file',source:'song.mp3',artist:'אמן',kind:'Single',destination:'אמן/song.mp3',reason:'raw_trace(hash)',blockers:[],operation_ids:[0]};
 const item=(status:ExecutionItem['status']):ExecutionItem=>({operation:0,status,detail:'raw filesystem evidence'});
@@ -261,5 +261,22 @@ describe('retained repair validation wording',()=>{
   const result={source_items:1,committed_destinations:0,moved_sources:0,failed_operations:0,blocked_operations:0,recovery_operations:0,cancelled_operations:0,items:[],repair:{total_files:1,processed_files:1,renamed_files:0,repaired_files:0,unchanged_files:1,unsupported_files:0,failed_files:0,retained_backup_bytes:0}};
   expect(simpleExecutionSummary({status:'complete',result},false)).toBe('1 ללא שינוי');
   expect(result.repair).toMatchObject({renamed_files:0,repaired_files:0,unchanged_files:1});
+ });
+});
+
+describe('running byte extent presentation',()=>{
+ it('omits an unknown zero denominator while retaining actual observed bytes',()=>{
+  expect(executionBytesText(227,0)).toBe('227 בתים עובדו');
+  expect(executionBytesText(0,0)).toBe('0 בתים עובדו');
+  expect(executionBytesText(1234567,0)).toBe(`${(1234567).toLocaleString('he-IL')} בתים עובדו`);
+ });
+ it('keeps known totals and the existing localized format',()=>{
+  expect(executionBytesText(0,4096)).toBe(`0 מתוך ${(4096).toLocaleString('he-IL')} בתים`);
+  expect(executionBytesText(227,4096)).toBe(`227 מתוך ${(4096).toLocaleString('he-IL')} בתים`);
+  expect(executionBytesText(4096,4096)).toBe(`${(4096).toLocaleString('he-IL')} מתוך ${(4096).toLocaleString('he-IL')} בתים`);
+ });
+ it('never invents a total or clamps observed progress',()=>{
+  expect(executionBytesText(227,100)).toBe('227 מתוך 100 בתים');
+  expect(executionBytesText(227,0)).not.toContain('מתוך');
  });
 });
