@@ -76,11 +76,13 @@ reads are bounded at 64 MiB. Fresh restart discovery/UI is a separate integratio
 
 ## Acceptance
 
-The original thirteen Windows driver cases are retained unchanged. Twelve FLAC
+The original thirteen Windows driver cases are retained unchanged. Thirteen FLAC
 product/recovery cases cover shrink/equal-size repair, exact retained backups,
 unchanged tags, unsupported opaque shifts, cancellation, lost backup/publication
 responses, no-overwrite collision, foreign identical-byte replacement, version-1
-compatibility and rehashed original/replacement length/hash substitutions. The
+compatibility and rehashed original/replacement length/hash substitutions. One
+case uses the actual TagLib StorageMetadataProvider for both preview and fresh
+prepare-time planning, before native staged verification and publication. The
 staged writer and native preservation suites remain mandatory. These require actual Windows CI and a selected
 application build with native metadata. Source review or portable parsing alone
 is not runtime acceptance. Host and CLI must show filename/tag counts separately,
