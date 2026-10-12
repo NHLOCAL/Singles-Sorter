@@ -21,6 +21,7 @@ impl CopiedMoveScope {
 }
 
 pub fn supported_copied_move_plan(plan: &JobPlanV2) -> Result<()> {
+    sorter_core::job_plan::verify_job_plan_binding(plan).map_err(|_| E::InvalidBinding)?;
     if plan.request.mode != JobMode::Sort
         || plan.request.settings.copy_mode
         || plan.operations.is_empty()

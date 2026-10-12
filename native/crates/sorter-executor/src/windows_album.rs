@@ -1014,7 +1014,7 @@ impl MutationStorage for AlbumStorage {
         if !matches!(self.inner, Inner::Copied(_)) {
             self.check_all()?;
         }
-        let value = match (&mut self.inner, published) {
+        match (&mut self.inner, published) {
             (Inner::Copy(storage), AlbumPublished::Native(published)) => {
                 storage.verify(published, digest)
             }
@@ -1025,8 +1025,7 @@ impl MutationStorage for AlbumStorage {
                 storage.verify(published, digest)
             }
             _ => Err(wrong_album_route()),
-        };
-        value
+        }
     }
     fn retire_source(
         &mut self,
@@ -1042,7 +1041,7 @@ impl MutationStorage for AlbumStorage {
         if !matches!(self.inner, Inner::Copied(_)) {
             self.check_all()?;
         }
-        let value = match (&mut self.inner, published) {
+        match (&mut self.inner, published) {
             (Inner::Copy(storage), AlbumPublished::Native(published)) => storage.inspect(published),
             (Inner::Rename(storage), AlbumPublished::Native(published)) => {
                 storage.inspect(published)
@@ -1051,8 +1050,7 @@ impl MutationStorage for AlbumStorage {
                 storage.inspect(published)
             }
             _ => Err(wrong_album_route()),
-        };
-        value
+        }
     }
 }
 impl TransferStorage for AlbumStorage {
@@ -1065,7 +1063,7 @@ impl TransferStorage for AlbumStorage {
         if let Err(error) = self.check_all_controlled(cancel) {
             return MutationOutcome::NoEffect(error);
         }
-        let value = match (&mut self.inner, source, temp) {
+        match (&mut self.inner, source, temp) {
             (Inner::Copy(storage), AlbumSource::Native(source), AlbumTemp::Native(temp)) => {
                 storage.finalize_selected_copy_metadata(source, temp, cancel)
             }
@@ -1076,8 +1074,7 @@ impl TransferStorage for AlbumStorage {
                 storage.finalize_selected_copy_metadata(source, temp, cancel)
             }
             _ => MutationOutcome::NoEffect(wrong_album_route()),
-        };
-        value
+        }
     }
     fn source_parent(
         &mut self,
@@ -1103,16 +1100,15 @@ impl TransferStorage for AlbumStorage {
         &mut self,
         source: &mut AlbumSource,
     ) -> std::result::Result<(), MutationError> {
-        let value = match (&mut self.inner, source) {
+        match (&mut self.inner, source) {
             (Inner::Copy(storage), AlbumSource::Native(source)) => storage.rewind_source(source),
             (Inner::Rename(storage), AlbumSource::Native(source)) => storage.rewind_source(source),
             (Inner::Copied(storage), AlbumSource::Copied(source)) => storage.rewind_source(source),
             _ => Err(wrong_album_route()),
-        };
-        value
+        }
     }
     fn read_source(&mut self, source: &mut AlbumSource, buffer: &mut [u8]) -> io::Result<usize> {
-        let value = match (&mut self.inner, source) {
+        match (&mut self.inner, source) {
             (Inner::Copy(storage), AlbumSource::Native(source)) => {
                 storage.read_source(source, buffer)
             }
@@ -1123,39 +1119,35 @@ impl TransferStorage for AlbumStorage {
                 storage.read_source(source, buffer)
             }
             _ => Err(io::Error::other("album route mismatch")),
-        };
-        value
+        }
     }
     fn write_temp(&mut self, temp: &mut AlbumTemp, buffer: &[u8]) -> io::Result<usize> {
-        let value = match (&mut self.inner, temp) {
+        match (&mut self.inner, temp) {
             (Inner::Copy(storage), AlbumTemp::Native(temp)) => storage.write_temp(temp, buffer),
             (Inner::Rename(storage), AlbumTemp::Native(temp)) => storage.write_temp(temp, buffer),
             (Inner::Copied(storage), AlbumTemp::Copied(temp)) => storage.write_temp(temp, buffer),
             _ => Err(io::Error::other("album route mismatch")),
-        };
-        value
+        }
     }
     fn sync_temp(&mut self, temp: &mut AlbumTemp) -> std::result::Result<(), MutationError> {
-        let value = match (&mut self.inner, temp) {
+        match (&mut self.inner, temp) {
             (Inner::Copy(storage), AlbumTemp::Native(temp)) => storage.sync_temp(temp),
             (Inner::Rename(storage), AlbumTemp::Native(temp)) => storage.sync_temp(temp),
             (Inner::Copied(storage), AlbumTemp::Copied(temp)) => storage.sync_temp(temp),
             _ => Err(wrong_album_route()),
-        };
-        value
+        }
     }
     fn verify_temp(
         &mut self,
         temp: &AlbumTemp,
         digest: &ContentDigest,
     ) -> std::result::Result<MutationObservation, MutationError> {
-        let value = match (&mut self.inner, temp) {
+        match (&mut self.inner, temp) {
             (Inner::Copy(storage), AlbumTemp::Native(temp)) => storage.verify_temp(temp, digest),
             (Inner::Rename(storage), AlbumTemp::Native(temp)) => storage.verify_temp(temp, digest),
             (Inner::Copied(storage), AlbumTemp::Copied(temp)) => storage.verify_temp(temp, digest),
             _ => Err(wrong_album_route()),
-        };
-        value
+        }
     }
     fn verify_selected_copied_move_temp(
         &mut self,
@@ -1164,7 +1156,7 @@ impl TransferStorage for AlbumStorage {
         cancel: &AtomicBool,
     ) -> std::result::Result<MutationObservation, MutationError> {
         self.check_all_controlled(cancel)?;
-        let value = match (&mut self.inner, temp) {
+        match (&mut self.inner, temp) {
             (Inner::Copy(storage), AlbumTemp::Native(temp)) => {
                 storage.verify_selected_copied_move_temp(temp, digest, cancel)
             }
@@ -1175,8 +1167,7 @@ impl TransferStorage for AlbumStorage {
                 storage.verify_selected_copied_move_temp(temp, digest, cancel)
             }
             _ => Err(wrong_album_route()),
-        };
-        value
+        }
     }
     fn verify_selected_copied_move(
         &mut self,
@@ -1185,7 +1176,7 @@ impl TransferStorage for AlbumStorage {
         cancel: &AtomicBool,
     ) -> std::result::Result<MutationObservation, MutationError> {
         self.check_all_controlled(cancel)?;
-        let value = match (&mut self.inner, published) {
+        match (&mut self.inner, published) {
             (Inner::Copy(storage), AlbumPublished::Native(published)) => {
                 storage.verify_selected_copied_move(published, digest, cancel)
             }
@@ -1196,8 +1187,7 @@ impl TransferStorage for AlbumStorage {
                 storage.verify_selected_copied_move(published, digest, cancel)
             }
             _ => Err(wrong_album_route()),
-        };
-        value
+        }
     }
     fn rename_eligible(&self, source: &AlbumSource, parent: &WindowsParent) -> bool {
         match (&self.inner, source) {
@@ -1254,7 +1244,7 @@ impl TransferStorage for AlbumStorage {
         if let Err(error) = self.check_all_controlled(cancel) {
             return MutationOutcome::NoEffect(error);
         }
-        let value = match (&mut self.inner, source, temp) {
+        match (&mut self.inner, source, temp) {
             (Inner::Copy(storage), AlbumSource::Native(source), AlbumTemp::Native(temp)) => {
                 storage.copy_selected_move_streams(source, temp, cancel)
             }
@@ -1265,8 +1255,7 @@ impl TransferStorage for AlbumStorage {
                 storage.copy_selected_move_streams(source, temp, cancel)
             }
             _ => MutationOutcome::NoEffect(wrong_album_route()),
-        };
-        value
+        }
     }
     fn retire_selected_copied_move(
         &mut self,
@@ -2146,7 +2135,7 @@ impl AlbumTransferAcknowledgment {
         {
             return Err(E::CorruptJournal);
         }
-        for (id, pair) in album.files.iter().zip(self.events.chunks_exact(2)) {
+        for (id, pair) in album.files.iter().zip(self.events.as_chunks::<2>().0) {
             let operation = binding
                 .operations()
                 .get(*id)

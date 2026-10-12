@@ -588,6 +588,7 @@ fn incomplete_duet_is_refused_during_read_only_readiness() {
             after_operations.pop();
         }
     }
+    assert!(verify_job_plan_binding(&plan).is_err());
     assert!(supported_copied_move_plan(&plan).is_err());
     let mut reads = WindowsPlanningStorage::for_preview(&f.source, &f.target).unwrap();
     assert!(

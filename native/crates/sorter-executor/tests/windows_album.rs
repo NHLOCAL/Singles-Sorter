@@ -6,6 +6,7 @@ use sorter_executor::{
     windows_copy::WindowsPlanningStorage,
 };
 use sorter_io::desktop::{DesktopStorage, WindowsDirectoryReadLimits, windows_mutation::*};
+use sorter_storage_contracts::MutationName;
 use std::{
     path::PathBuf,
     sync::atomic::{AtomicBool, Ordering},
@@ -1138,7 +1139,7 @@ fn cross_volume_album(root_album: bool) -> (Fixture, tempfile::TempDir) {
         b"album auxiliary bytes",
     )
     .unwrap();
-    let reads = DesktopStorage::new(std::slice::from_ref(&fixture.target)).unwrap();
+    let mut reads = DesktopStorage::new(std::slice::from_ref(&fixture.target)).unwrap();
     fixture.plan.request.target = Some(reads.reference(&fixture.target).unwrap());
     drop(reads);
     fixture.replan();
