@@ -2,22 +2,19 @@
 //! Known streams are leased; new external stream creation still requires the
 //! documented ordinary-use assumption that no other writer changes the file.
 use super::*;
-use serde::{Deserialize, Serialize};
 
 const MAX_STREAM_INVENTORY: usize = 1024 * 1024;
 const MAX_STREAMS: usize = 256;
 
-/// Data only. Deserialization cannot construct a source lease or authorize paths.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+/// Native data only; the executor separately serializes its bound journal evidence.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WindowsMoveStreamEvidence {
     /// Native stream suffix, including leading ':' and trailing ':$DATA'.
     pub name: Vec<u16>,
     pub length: u64,
     pub sha256: [u8; 32],
 }
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WindowsMoveSourceEvidence {
     pub identity: ObjectIdentity,
     pub attributes: u32,
@@ -1995,7 +1992,7 @@ impl WindowsMutationStorage {
     ) -> MutationOutcome<RetirementOutcome> {
         use std::os::windows::io::IntoRawHandle;
         use windows::Wdk::Storage::FileSystem::{
-            FILE_DISPOSITION_DELETE, FILE_DISPOSITION_INFORMATION_EX,
+            FILE_DISPOSITION_DELETE, FILE_DISPOSITION_INFORMATION_EX, FILE_DISPOSITION_INFORMATION_EX_FLAGS,
             FILE_DISPOSITION_POSIX_SEMANTICS, FileDispositionInformationEx,
         };
         let before = (|| {
@@ -2035,7 +2032,9 @@ impl WindowsMutationStorage {
             Err(error) => return MutationOutcome::NoEffect(error),
         };
         let disposition = FILE_DISPOSITION_INFORMATION_EX {
-            Flags: FILE_DISPOSITION_DELETE | FILE_DISPOSITION_POSIX_SEMANTICS,
+            Flags: FILE_DISPOSITION_INFORMATION_EX_FLAGS(
+                FILE_DISPOSITION_DELETE.0 | FILE_DISPOSITION_POSIX_SEMANTICS.0,
+            ),
         };
         let mut ios = IO_STATUS_BLOCK::default();
         let status = unsafe {
