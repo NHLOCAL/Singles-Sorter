@@ -3,8 +3,8 @@ import './styles.css';
 import {installViewport} from './viewport';
 import {nativeHost,openFooterLink,openProjectLink,openLocalLicenses} from './host';
 import {installAbout} from './about';
-import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,verificationWarning} from './result-presentation';
-import {kindLabel,reasonLabel,blockerLabel,warningPresentation,noticeLabel,sourceLabel} from './presentation';
+import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,verificationWarning,resultFilename} from './result-presentation';
+import {kindLabel,reasonLabel,blockerLabel,warningPresentation,noticeLabel} from './presentation';
 import {PAGE_SIZE,PreviewController} from './state';
 import type {Settings,ImportEncoding,Mode,PlanRow,ExecutionItem} from './contracts';
 import {PersonalListController} from './lists';
@@ -122,7 +122,7 @@ function closeRow(){if(history.state?.singlesView==='detail')history.back();else
 $('row-close').addEventListener('click',closeRow);
 $('row-dialog').addEventListener('cancel',event=>{event.preventDefault();closeRow();});
 function openRow(row:PlanRow,trigger:HTMLButtonElement,push=true){
- detailTrigger=trigger;$('row-title').textContent=sourceLabel(row.source,controller.state.model?.platform);$('row-content').replaceChildren();
+ detailTrigger=trigger;$('row-title').textContent=resultFilename(row,executionItems(row),controller.state.model?.platform);$('row-content').replaceChildren();
  if(!controller.state.developerMode){
   const status=rowStatus(row);
   if(row.artist)$('row-content').append(text('p',row.artist,'detail-artist'));
@@ -237,11 +237,11 @@ function render(){
  $('count').textContent=ready?`${s.page!.total.toLocaleString('he-IL')} ${developer?'רשומות':s.page!.total===1?'פריט':'פריטים'}`:'';
  $('rows').replaceChildren();
  if(ready)for(const row of s.page!.rows){
-  const tr=document.createElement('tr');
-  const origin=document.createElement('td');origin.className='file-name';const name=text('bdi',sourceLabel(row.source,s.model?.platform),'source-name');name.dir='auto';name.title=developer?row.source:sourceLabel(row.source,s.model?.platform);origin.append(name);tr.append(origin);
-  const items=executionItems(row);const action=text('td',developer?(items.length?items.map(itemLabel).join(' · '):kindLabel(row.kind)):(row.artist??''),'row-action');action.dir='auto';tr.append(action);
+  const tr=document.createElement('tr'),items=executionItems(row),filename=resultFilename(row,items,s.model?.platform);
+  const origin=document.createElement('td');origin.className='file-name';const name=text('bdi',filename,'source-name');name.dir='auto';name.title=developer?row.source:filename;origin.append(name);tr.append(origin);
+  const action=text('td',developer?(items.length?items.map(itemLabel).join(' · '):kindLabel(row.kind)):(row.artist??''),'row-action');action.dir='auto';tr.append(action);
   const reason=document.createElement('td');reason.className='row-reason';reason.append(text('span',developer?`${kindLabel(row.kind)} · `:row.artist?`${row.artist} · `:'','mobile-action'),text('span',developer?(row.blockers.length?row.blockers.map(blockerLabel).join(' · '):reasonLabel(row)):rowStatus(row)));tr.append(reason);
-  const detail=document.createElement('td');detail.className='row-detail';const button=document.createElement('button');button.className='icon-button detail-button';button.dataset.rowId=row.id;button.setAttribute('aria-label',`פרטים: ${sourceLabel(row.source,s.model?.platform)}`);button.append(iconElement('info'));button.addEventListener('click',()=>openRow(row,button));detail.append(button);tr.append(detail);$('rows').append(tr);
+  const detail=document.createElement('td');detail.className='row-detail';const button=document.createElement('button');button.className='icon-button detail-button';button.dataset.rowId=row.id;button.setAttribute('aria-label',`פרטים: ${filename}`);button.append(iconElement('info'));button.addEventListener('click',()=>openRow(row,button));detail.append(button);tr.append(detail);$('rows').append(tr);
  }
  $('warnings').replaceChildren();$('technical-notices').replaceChildren();
  if(ready)for(const warning of s.snapshot!.warnings){

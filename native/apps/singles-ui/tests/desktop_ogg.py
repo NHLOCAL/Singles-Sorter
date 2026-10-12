@@ -6,7 +6,7 @@ from pathlib import Path
 from desktop_albums import snapshot
 from desktop_flac import fixture as flac_fixture
 from desktop_polish import set_developer_mode
-from desktop_repair import digest
+from desktop_repair import assert_observed_filename, digest
 
 NATIVE = Path(__file__).resolve().parents[3]
 spec = importlib.util.spec_from_file_location('owned_ogg_fixture', NATIVE / 'tests/staged_ogg/verify_fixture_contract.py')
@@ -113,6 +113,7 @@ def exercise_ogg(script, click, fill, wait, capture, root, output):
         assert unchanged.read_bytes() == unchanged_bytes
         assert not script("return document.querySelector('#show-inactive').checked")
         assert script("return document.querySelectorAll('#rows tr').length") == 1
+        assert_observed_filename(script, fixed)
         assert '\u2014' not in script("return document.querySelector('#rows').textContent")
         capture('ogg-result-' + label)
         click('#show-inactive')
@@ -123,7 +124,7 @@ def exercise_ogg(script, click, fill, wait, capture, root, output):
         wait(lambda: script("return document.querySelector('#app').dataset.showInactive==='false' && !document.querySelector('#show-inactive').disabled"))
         assert script("return document.querySelector('#review-apply').hidden")
         receipts.append(dict(case=label, original_sha256=digest(before), current_sha256=digest(after),
-                             original_bytes=len(before), current_bytes=len(after),
+                             displayed_filename=fixed.name, original_bytes=len(before), current_bytes=len(after),
                              backup_sha256=[digest(p.read_bytes()) for p in backups],
                              tags_repaired=not chained, unchanged_sha256=digest(unchanged_bytes), ipc_mocked=False))
     (Path(output) / 'ogg-execution.json').write_text(json.dumps(dict(status='passed', checks=sorted(CHECKS), cases=receipts), ensure_ascii=False, indent=2), encoding='utf-8')

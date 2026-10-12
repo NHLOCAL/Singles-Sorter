@@ -9,7 +9,7 @@ from pathlib import Path
 
 from desktop_albums import snapshot
 from desktop_polish import set_developer_mode
-from desktop_repair import digest
+from desktop_repair import assert_observed_filename, digest
 
 NATIVE = Path(__file__).resolve().parents[3]
 spec = importlib.util.spec_from_file_location('owned_flac_fixture', NATIVE / 'tests/staged_flac/verify_fixture_contract.py')
@@ -127,6 +127,7 @@ def exercise_flac(script, click, fill, wait, capture, root, output):
             assert (new_offset < offset) if duplicate else (new_offset == offset)
         assert not script("return document.querySelector('#show-inactive').checked")
         assert script("return document.querySelectorAll('#rows tr').length") == 1
+        assert_observed_filename(script, fixed)
         assert 'unchanged.flac' not in script("return document.querySelector('#rows').textContent")
         assert '\u2014' not in script("return document.querySelector('#rows').textContent")
         capture('flac-result-' + label)
@@ -140,7 +141,7 @@ def exercise_flac(script, click, fill, wait, capture, root, output):
         assert script("return document.querySelectorAll('#rows tr').length") == 1
         assert script("return document.querySelector('#review-apply').hidden")
         receipts.append(dict(case=label, original_sha256=digest(before), current_sha256=digest(after),
-                             original_bytes=len(before), current_bytes=len(after), media_sha256=digest(audio),
+                             displayed_filename=fixed.name, original_bytes=len(before), current_bytes=len(after), media_sha256=digest(audio),
                              backup_sha256=[digest(p.read_bytes()) for p in backups],
                              unchanged_sha256=digest(unchanged_bytes), renamed=True,
                              tags_repaired=not opaque, inactive_hidden_by_default=True, ipc_mocked=False))

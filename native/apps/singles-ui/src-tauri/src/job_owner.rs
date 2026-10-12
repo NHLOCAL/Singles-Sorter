@@ -1243,6 +1243,7 @@ mod tests {
                         renamed: false,
                         repaired: false,
                         unchanged: true,
+                        observed_filename: None,
                     }),
                 }],
             }),

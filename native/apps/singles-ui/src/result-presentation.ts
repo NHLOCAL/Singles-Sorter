@@ -1,8 +1,21 @@
 import {userErrorLabels} from './state';
-import type {PlanRow,ExecutionItem,ExecutionSnapshot} from './contracts';
+import type {PlanRow,ExecutionItem,ExecutionSnapshot,Platform} from './contracts';
+import {sourceLabel} from './presentation';
 export const DEVELOPER_PREFERENCE='singles-sorter.developer-mode.v1';
 export function readDeveloperMode(storage:Pick<Storage,'getItem'>):boolean{try{return storage.getItem(DEVELOPER_PREFERENCE)==='true';}catch{return false;}}
 export function saveDeveloperMode(storage:Pick<Storage,'setItem'>,enabled:boolean){try{storage.setItem(DEVELOPER_PREFERENCE,String(enabled));}catch{/* The current view still works when local storage is unavailable. */}}
+/** A planned destination never proves a rename. Keep older hosts and uncertain
+ * per-file outcomes on their retained source label without changing status. */
+export function resultFilename(row:PlanRow,items:ExecutionItem[],platform:Platform|undefined):string{
+ const original=sourceLabel(row.source,platform);
+ if(row.kind!=='FixNames'||row.operation_ids?.length!==1)return original;
+ const matching=items.filter(item=>row.operation_ids?.includes(item.operation));
+ if(matching.length!==1)return original;
+ const item=matching[0],repair=item.repair,name=repair?.observed_filename;
+ if(item.status!=='complete'&&!(repair?.renamed&&['unsupported_tags','metadata_failure'].includes(item.status)))return original;
+ if(!name||name==='.'||name==='..'||/[\\/\x00-\x1f\x7f-\x9f]/.test(name)||/\.(backup|tmp)$/i.test(name))return original;
+ return name;
+}
 export function simpleStatus(row:PlanRow,items:ExecutionItem[],copy:boolean,context:{repairEligible?:boolean;terminalResult?:boolean;uncertain?:boolean}={}):string{
  if(items.length){
   const completed=items.some(item=>item.status==='complete'||item.status==='source_retained'||item.repair?.renamed||item.repair?.repaired);

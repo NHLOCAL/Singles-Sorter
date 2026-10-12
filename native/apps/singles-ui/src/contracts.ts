@@ -52,7 +52,8 @@ export interface ProfileHost {
 export interface ApplyReadiness {supported:boolean;reason:string|null;operation_count:number;copy_mode:boolean;source:string;target:string|null;mode?:Mode;notice?:string|null}
 export type ExecutionStatus='preparing'|'running'|'complete'|'partial'|'cancelled'|'failed'|'needs_recovery';
 export type ItemStatus='partial'|'complete'|'source_retained'|'failed'|'cancelled'|'blocked'|'needs_recovery'|'unsupported_tags'|'metadata_failure';
-export interface RepairOutcome {renamed:boolean;repaired:boolean;unchanged:boolean}
+/** Optional display-only observed leaf; older/Android hosts may omit it. */
+export interface RepairOutcome {renamed:boolean;repaired:boolean;unchanged:boolean;observed_filename?:string|null}
 export interface RepairSummary {total_files:number;processed_files:number;renamed_files:number;repaired_files:number;unchanged_files:number;unsupported_files:number;failed_files:number;retained_backup_bytes:number}
 export interface ExecutionItem {operation:number;status:ItemStatus;detail:string;repair?:RepairOutcome|null}
 export interface ExecutionResult {source_items:number;committed_destinations:number;moved_sources:number;failed_operations:number;blocked_operations:number;recovery_operations:number;cancelled_operations:number;items:ExecutionItem[];repair?:RepairSummary|null;albums?:{completed:number;child_names_changed:number;created_directories:number;removed_directories:number;retained_directories:number}|null}

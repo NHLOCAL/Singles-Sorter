@@ -67,6 +67,15 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
+def assert_observed_filename(script, fixed):
+    """Actual ordinary result must match the independently verified current file."""
+    assert Path(fixed).is_file()
+    name = Path(fixed).name
+    assert script("return Array.from(document.querySelectorAll('#rows .source-name'),n=>n.textContent)") == [name]
+    assert script("return document.querySelector('#rows .source-name').title") == name
+    assert script("return document.querySelector('#rows .detail-button').getAttribute('aria-label')") == 'פרטים: ' + name
+
+
 def exercise_repair(command, script, click, fill, wait, capture, root, output, audio_path):
     root = Path(root); root.mkdir()  # Never reuse another test's tree.
     audio = Path(audio_path).read_bytes()
@@ -80,7 +89,9 @@ def exercise_repair(command, script, click, fill, wait, capture, root, output, a
         click('#advanced'); click('#duet-first')
         wait(lambda: script("return !document.querySelector('#duet-first').disabled"))
         script("document.querySelector('#ai-profile').value='Disabled';document.querySelector('#ai-profile').dispatchEvent(new Event('change',{bubbles:true}));")
-        click('#advanced-dialog .close-dialog'); click('#fix')
+        click('#advanced-dialog .close-dialog')
+        set_developer_mode(script, click, wait, False)
+        click('#fix')
         wait(lambda: script("return document.querySelector('#app').dataset.view==='results' && !document.querySelector('#back-setup').disabled"), timeout=120)
         assert script("return !document.querySelector('#review-apply').hidden && !document.querySelector('#review-apply').disabled"), 'Source-only repair was not authorized'
         click('#review-apply')
@@ -127,7 +138,17 @@ def exercise_repair(command, script, click, fill, wait, capture, root, output, a
         assert unchanged.read_bytes() == unchanged_bytes
         assert script("return document.querySelectorAll('#rows tr').length") == 1
         assert 'unchanged.wav' not in script("return document.querySelector('#rows').textContent")
+        assert_observed_filename(script, fixed)
+        click('#rows .detail-button')
+        assert script("return document.querySelector('#row-title').textContent") == fixed.name
+        click('#row-close')
+        wait(lambda: script("return !document.querySelector('#row-dialog').open"))
         set_developer_mode(script, click, wait, True)
+        click('#rows .detail-button')
+        assert script("return document.querySelector('#row-title').textContent") == fixed.name
+        assert str(path) in script("return Array.from(document.querySelectorAll('#row-content input'),n=>n.value)")
+        click('#row-close')
+        wait(lambda: script("return !document.querySelector('#row-dialog').open"))
         assert not script("return document.querySelector('#show-inactive').checked")
         assert script("return document.querySelectorAll('#rows tr').length") == 1
         click('#show-inactive')
@@ -147,7 +168,7 @@ def exercise_repair(command, script, click, fill, wait, capture, root, output, a
         capture('fix-result-' + label)
         receipts.append(dict(case=label, original_sha256=digest(before), current_sha256=digest(after),
                              backup_sha256=[digest(backup.read_bytes()) for backup in backups],
-                             renamed=True, tags_repaired=not unsupported, media_sha256=digest(payload),
+                             displayed_filename=fixed.name, renamed=True, tags_repaired=not unsupported, media_sha256=digest(payload),
                              unchanged_sha256=digest(unchanged_bytes), inactive_hidden_by_default=True,
                              developer_filter_independent=True, ipc_mocked=False))
     source = root / 'stale'; source.mkdir(); path = source / 'stale_input.mp3'

@@ -55,6 +55,9 @@ pub struct RepairOutcome {
     pub renamed: bool,
     pub repaired: bool,
     pub unchanged: bool,
+    /// Display-only leaf from a successful current-file observation, never a plan.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub observed_filename: Option<String>,
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct RepairSummary {

@@ -46,3 +46,24 @@ are not labeled Android validation.
 Implementation references: [CSS Grid automatic minimum size](https://www.w3.org/TR/css-grid-1/#min-size-auto),
 [CSS overflow behavior](https://www.w3.org/TR/css-overflow-3/#overflow-properties),
 [Visual Viewport](https://drafts.csswg.org/cssom-view/#the-visualviewport-interface).
+
+
+## Observed FixNames filenames
+
+The optional `repair.observed_filename` host display field contains only the
+actual current leaf observed for a completed file, or a verified rename followed
+by unsupported tags/metadata-read failure. It never comes from the intended name,
+a backup or a staged replacement. Failed, cancelled, needs-recovery and missing
+current observations omit it; their statuses and retained original labels remain.
+A complete item can retain its observed name in an overall partial/cancelled job.
+The renderer also fails closed for nonmatching/ambiguous operations and uncertain
+item statuses. Older/Android hosts may omit the field without changing the UI
+contract. The original source/path stays available in developer details.
+
+Ordinary filename text, full-name title, detail title and accessible detail-button
+name use the same observed leaf. Existing CSS sizing, overflow and bidirectional
+isolation remain unchanged. Actual MP3/FLAC/Ogg desktop cases now assert the exact
+current filename against their independently checked physical file, including
+filename-only partial outcomes. MP3 checks also assert the retained original
+source in developer details. Portable tests do not establish native compilation
+or these actual Windows receipts; both remain required on the final CI source.

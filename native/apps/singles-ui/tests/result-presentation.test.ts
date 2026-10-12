@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,verificationWarning,DEVELOPER_PREFERENCE} from '../src/result-presentation';
+import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,verificationWarning,resultFilename,DEVELOPER_PREFERENCE} from '../src/result-presentation';
 import type {ExecutionSnapshot,PlanRow,ExecutionItem} from '../src/contracts';
 const row:PlanRow={id:'file',source:'song.mp3',artist:'אמן',kind:'Single',destination:'אמן/song.mp3',reason:'raw_trace(hash)',blockers:[],operation_ids:[0]};
 const item=(status:ExecutionItem['status']):ExecutionItem=>({operation:0,status,detail:'raw filesystem evidence'});
@@ -101,5 +101,48 @@ describe('actual album result projection',()=>{
   const result={source_items:5,committed_destinations:5,moved_sources:5,failed_operations:0,blocked_operations:0,cancelled_operations:0,recovery_operations:0,items:[],albums:{completed:1,child_names_changed:0,created_directories:2,removed_directories:0,retained_directories:1}};
   const summary=simpleExecutionSummary({status:'partial',result},false);
   expect(summary).toContain('5 קבצים הועברו');expect(summary).toContain('1 אלבומים הושלמו');expect(summary).toContain('נותרו תיקיות במקור');expect(summary).not.toContain('2');
+ });
+});
+
+
+describe('observed repair filenames',()=>{
+ const fix:PlanRow={...row,kind:'FixNames',source:'C:\\owned\\old_name.mp3',destination:'planned name.mp3'};
+ const repaired:ExecutionItem={...item('complete'),repair:{renamed:true,repaired:true,unchanged:false,observed_filename:'שם מתוקן.mp3'}};
+ it('uses only the matching actual leaf without mutating the retained source or plan',()=>{
+  const before=JSON.stringify(fix);
+  expect(resultFilename(fix,[repaired],'windows')).toBe('שם מתוקן.mp3');
+  expect(JSON.stringify(fix)).toBe(before);
+  expect(resultFilename(fix,[{...repaired,operation:99}],'windows')).toBe('old_name.mp3');
+  expect(resultFilename(fix,[repaired,repaired],'windows')).toBe('old_name.mp3');
+  expect(resultFilename({...fix,operation_ids:[0,1]},[repaired],'windows')).toBe('old_name.mp3');
+  expect(resultFilename({...fix,kind:'Single'},[repaired],'windows')).toBe('old_name.mp3');
+ });
+ it('retains a verified filename-only result while leaving partial status intact',()=>{
+  for(const status of ['unsupported_tags','metadata_failure'] as const){
+   const partial={...repaired,status,repair:{...repaired.repair!,repaired:false}};
+   expect(resultFilename(fix,[partial],'windows')).toBe('שם מתוקן.mp3');
+   expect(simpleStatus(fix,[partial],false)).toBe('בוצע חלקית');
+   expect(resultFilename(fix,[{...partial,repair:{...partial.repair,renamed:false}}],'windows')).toBe('old_name.mp3');
+  }
+ });
+ it('falls back for preview, older hosts, Android display names and missing result evidence',()=>{
+  expect(resultFilename(fix,[],'windows')).toBe('old_name.mp3');
+  expect(resultFilename(fix,[item('complete')],'windows')).toBe('old_name.mp3');
+  expect(resultFilename(fix,[{...repaired,repair:{renamed:true,repaired:true,unchanged:false}}],'windows')).toBe('old_name.mp3');
+  expect(resultFilename({...fix,source:'שם מוצג.mp3'},[],'android')).toBe('שם מוצג.mp3');
+  expect(resultFilename({...fix,source:'שם מוצג.mp3'},[repaired],'android')).toBe('שם מתוקן.mp3');
+ });
+ it('never promotes a plan, recovery, cancellation, failure or internal temporary name',()=>{
+  for(const status of ['failed','cancelled','needs_recovery','partial','blocked','source_retained'] as const){
+   const uncertain={...repaired,status};
+   expect(resultFilename(fix,[uncertain],'windows')).toBe('old_name.mp3');
+  }
+  for(const observed_filename of [null,'','.', '..','.sorter-owned.backup','.sorter-owned.TMP','C:\\backup.mp3','dir/song.mp3','bad\0name.mp3']){
+   expect(resultFilename(fix,[{...repaired,repair:{...repaired.repair!,observed_filename}}],'windows')).toBe('old_name.mp3');
+  }
+ });
+ it('preserves valid mixed-direction, long and user-provided punctuation verbatim',()=>{
+  const observed_filename='שלום — Song '.repeat(20)+'.flac';
+  expect(resultFilename(fix,[{...repaired,repair:{...repaired.repair!,observed_filename}}],'windows')).toBe(observed_filename);
  });
 });
