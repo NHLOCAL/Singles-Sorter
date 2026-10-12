@@ -25,6 +25,7 @@ from desktop_ai import DesktopAI, ProtectedTrees, ai_mode, verify_package, REQUI
 from desktop_apply import exercise_apply
 from desktop_repair import exercise_repair
 from desktop_polish import exercise_information, set_developer_mode
+from driver_readiness import wait_driver_ready
 
 ROOT = Path(__file__).resolve().parents[1]
 if os.name != 'nt' or os.environ.get('GITHUB_ACTIONS') != 'true':
@@ -145,7 +146,7 @@ try:
     driver_security = process_security(process.pid)
     write_json(OUTPUT / 'tauri-driver-security.json', driver_security)
     require_medium(driver_security)
-    wait(lambda: call('GET','/status'))
+    wait_driver_ready(call, process)
     result = call('POST','/session',{'capabilities':{'alwaysMatch':{'browserName':'wry','tauri:options':{'application':str(BINARY)}}}})
     session = result['sessionId']
     verify_app_security('initial-app')
