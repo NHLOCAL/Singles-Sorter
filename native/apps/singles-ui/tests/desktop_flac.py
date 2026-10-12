@@ -133,6 +133,10 @@ def exercise_flac(script, click, fill, wait, capture, root, output):
         wait(lambda: script("return document.querySelector('#app').dataset.showInactive==='true' && !document.querySelector('#show-inactive').disabled"))
         assert script("return document.querySelectorAll('#rows tr').length") == 2
         assert 'ללא שינוי' in script("return document.querySelector('#rows').textContent")
+        capture('flac-result-including-unchanged-' + label)
+        click('#show-inactive')
+        wait(lambda: script("return document.querySelector('#app').dataset.showInactive==='false' && !document.querySelector('#show-inactive').disabled"))
+        assert script("return document.querySelectorAll('#rows tr').length") == 1
         assert script("return document.querySelector('#review-apply').hidden")
         receipts.append(dict(case=label, original_sha256=digest(before), current_sha256=digest(after),
                              original_bytes=len(before), current_bytes=len(after), media_sha256=digest(audio),
