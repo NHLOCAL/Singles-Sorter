@@ -56,7 +56,7 @@ def developer_mode(page, enabled):
     else:
         page.locator('#developer-mode').uncheck()
     expect(page.locator('#app')).to_have_attribute('data-developer-mode',str(enabled).lower())
-    page.locator('#advanced-dialog .close-dialog').click()
+    page.locator('#advanced-dialog .close-dialog.primary').click()
 
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *_):
@@ -87,6 +87,26 @@ try:
             assert_layout(metrics)
             measurements.append(metrics)
             page.screenshot(path=str(OUTPUT / f'renderer-home-{width}x{height}.png'),full_page=True)
+        page.locator('#source').fill('C:\\Music')
+        page.locator('#target').fill('D:\\Music')
+        page.locator('#tab-mode-fix').click()
+        expect(page.locator('#tab-mode-fix')).to_have_attribute('aria-pressed','true')
+        expect(page.locator('#target-station')).to_be_hidden()
+        expect(page.locator('#destination-options-group')).to_be_hidden()
+        expect(page.locator('#copy_mode')).to_be_hidden()
+        expect(page.locator('#fix')).to_be_visible()
+        page.screenshot(path=str(OUTPUT / 'renderer-studio-fix.png'),full_page=True)
+        page.locator('#tab-mode-sort').click()
+        expect(page.locator('#source')).to_have_value('C:\\Music')
+        expect(page.locator('#target')).to_have_value('D:\\Music')
+        expect(page.locator('#target-station')).to_be_visible()
+        assert not page.evaluate("window.__calls.some(c=>c.command==='start_preview')")
+        page.locator('#source').fill('')
+        page.locator('#target').fill('')
+        icon_centers=page.evaluate("""()=>['menu','open-settings'].map(id=>{const b=document.getElementById(id).getBoundingClientRect(),i=document.querySelector('#'+id+' svg').getBoundingClientRect();return Math.abs((b.x+b.width/2)-(i.x+i.width/2))<=1&&Math.abs((b.y+b.height/2)-(i.y+i.height/2))<=1})""")
+        assert all(icon_centers), icon_centers
+        assert page.locator('#open-settings').bounding_box()['x'] < 150
+        checks.append('Work modes preserve paths without starting work; both toolbar icons centered on the left')
         badge=page.locator('[aria-label="עזרה: תיקית מקור"]')
         badge.hover()
         expect(page.locator('#context-help')).to_be_visible()
@@ -117,8 +137,11 @@ try:
         expect(cancel_page.locator('#sort')).to_be_enabled()
         cancel_page.locator('#source').fill('C:\\Music')
         cancel_page.evaluate("window.__jobStatus='running';window.__startDelay=400")
+        cancel_page.locator('#tab-mode-fix').click()
         cancel_page.locator('#fix').click()
         expect(cancel_page.locator('#processing-screen')).to_be_visible()
+        expect(cancel_page.locator('#tab-mode-sort')).to_be_disabled()
+        expect(cancel_page.locator('#tab-mode-fix')).to_be_disabled()
         cancel_page.locator('#cancel-preview').click()
         expect(cancel_page.locator('#cancel-preview')).to_be_disabled()
         expect(cancel_page.locator('#source')).to_be_disabled()
@@ -134,6 +157,7 @@ try:
         expect(cancel_page.locator('#source')).to_be_focused()
         # Browser Back requests cancellation, stays blocked until native terminal.
         cancel_page.evaluate("window.__jobStatus='running';window.__startDelay=0")
+        cancel_page.locator('#tab-mode-fix').click()
         cancel_page.locator('#fix').click()
         expect(cancel_page.locator('#processing-screen')).to_be_visible()
         cancel_page.go_back()
@@ -171,6 +195,20 @@ try:
         expect(page.locator('#warnings')).to_contain_text('דורשים בדיקה')
         expect(page.locator('#warnings')).not_to_contain_text('Unknown actionable')
         page.screenshot(path=str(OUTPUT/'renderer-results-simple.png'),full_page=True)
+        page.locator('#filter-chip-attention').click()
+        expect(page.locator('#filter-chip-attention')).to_have_attribute('aria-pressed','true')
+        expect(page.locator('#filter-empty')).to_be_visible()
+        expect(page.locator('#filter-summary')).to_have_text('0 מתוך 1 בעמוד')
+        page.locator('#filter-chip-ready').click()
+        expect(page.locator('#rows tr:not([hidden])')).to_have_count(1)
+        expect(page.locator('#filter-empty')).to_be_hidden()
+        page.locator('#filter-chip-inactive').click()
+        expect(page.locator('#show-inactive')).to_be_checked()
+        page.locator('#filter-chip-all').click()
+        page.locator('#show-inactive').uncheck()
+        expect(page.locator('#rows tr')).to_have_count(1)
+        assert page.evaluate("window.__calls.filter(c=>c.command==='start_preview').length")==1
+        checks.append('Page filters expose selected state, match counts and empty matches without restarting or changing the plan')
         page.locator('#rows .detail-button').click()
         expect(page.locator('#row-content')).not_to_contain_text('מידע טכני')
         expect(page.locator('#row-content .source-path')).to_have_count(0)
@@ -364,6 +402,7 @@ try:
         expect(page.locator('#settings-notice')).to_have_text('נשמר')
         assert page.evaluate('window.__storedSettings.singles_folder') is False
         checks.append('Main settings save separately from immediate duet persistence')
+        page.locator('#tab-mode-fix').click()
         page.locator('#fix').click()
         expect(page.locator('#error')).to_contain_text('RECOGNITION_UNAVAILABLE')
         checks.append('Dialog escape/focus return, sixth setting, configured AI fail closed')
@@ -401,20 +440,32 @@ try:
         large=page.evaluate('() => {'+METRICS+'}')
         assert large['reflow']
         assert_layout(large,require_bounded=False)
-        for selector in ['#source','#target','#copy_mode','#exist_only','#advanced','#save-settings','#sort','#fix']:
+        page.locator('#tab-mode-sort').click()
+        for selector in ['#source','#target','#copy_mode','#exist_only','#advanced','#save-settings','#sort']:
             page.locator(selector).scroll_into_view_if_needed()
             expect(page.locator(selector)).to_be_in_viewport()
         page.evaluate("document.documentElement.style.fontSize=''")
         checks.append('200% desktop text intentionally reflows and retains every primary command')
         page.set_viewport_size({'width': 360, 'height': 800})
-        page.screenshot(path=str(OUTPUT / 'renderer-mock-mobile.png'), full_page=True)
+        page.wait_for_function("!document.getElementById('app').classList.contains('reflow')")
+        page.evaluate("document.querySelector('main').scrollTop=0")
+        page.wait_for_timeout(100)
+        mobile_image=page.screenshot(path=str(OUTPUT / 'renderer-mock-mobile.png'), full_page=True)
+        assert int.from_bytes(mobile_image[16:20],'big') == 360
         assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth')
         expect(page.locator('#copy_mode')).to_be_visible()
         checks.append('360px layout retains basic controls without page horizontal overflow')
         page.evaluate("document.documentElement.style.fontSize='200%'")
         assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth')
+        for selector in ['#source','#source-picker','#target','#target-picker','#sort','#advanced','#save-settings']:
+            control=page.locator(selector)
+            control.scroll_into_view_if_needed()
+            box=control.bounding_box()
+            assert box and box['width'] > 0 and box['x'] >= -1 and box['x'] + box['width'] <= 361, (selector,box)
+            assert control.evaluate('(el)=>el.scrollWidth <= el.clientWidth + 1'), selector
+            expect(control).to_be_in_viewport()
         page.screenshot(path=str(OUTPUT / 'renderer-mock-mobile-large-text.png'), full_page=True)
-        checks.append('200% base text no horizontal page overflow')
+        checks.append('200% mobile text retains complete folder pickers and primary commands without clipping')
         assert not errors, errors
         checks.append('No JavaScript page errors')
         for scale in [1.25,1.5]:

@@ -442,6 +442,7 @@ const invoke = (name, args) => window.__TAURI_INTERNALS__.invoke(name, args);
                 request = self.request(source, target, 'Configured')
                 self.ipc('start_preview', {'request': request}, 'RECOGNITION_UNAVAILABLE')
                 self.setup(source, target, 'Configured', False)
+                self.click('#tab-mode-sort')
                 self.click('#sort')
                 self.wait(lambda: self.script('return !document.querySelector("#sort").disabled && !document.querySelector("#error").hidden'))
                 require(self.script('return document.querySelector("#app").dataset.developerMode') == 'false',
@@ -540,6 +541,7 @@ return job;
                             _, no_ai = self.preview(source, target, 'Disabled')
                             self.assert_artist(no_ai, False)
                             self.setup(source, target, 'Configured', False)
+                            self.click('#tab-mode-sort')
                             self.click('#sort')
                             self.wait(lambda: self.script('return !document.querySelector("#sort").disabled && !document.querySelector("#error").hidden'), timeout=120)
                             require(self.script('return document.querySelector("#app").dataset.view==="setup" && document.querySelectorAll("#rows tr").length===0'),

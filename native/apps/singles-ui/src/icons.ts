@@ -23,9 +23,9 @@ export function iconElement(name:IconName):SVGSVGElement{
  svg.classList.add('app-icon');if(['source','import','export'].includes(name))svg.classList.add('rtl-mirror');
  svg.setAttribute('aria-hidden','true');svg.setAttribute('focusable','false');return svg;
 }
-export function setButtonLabel(button:HTMLElement,label:string,name:IconName){const span=document.createElement('span');span.textContent=label;button.replaceChildren(iconElement(name),span);}
+export function setButtonLabel(button:HTMLElement,label:string,name:IconName){if(!label.trim()){button.replaceChildren(iconElement(name));return;}const span=document.createElement('span');span.textContent=label;button.replaceChildren(iconElement(name),span);}
 export function installIcons(root:HTMLElement){
- const ids:Record<string,IconName>={menu:'more','open-settings':'settings',sort:'sort',fix:'fix','source-picker':'source','target-picker':'folder',advanced:'settings','save-settings':'save','edit-list':'settings','import-list':'import','export-list':'export','list-add':'add','list-save':'save','confirm-import':'import','decode-import':'info','back-setup':'back','reopen-results':'next',previous:'back',next:'next','list-prev':'back','list-next':'next','import-prev':'back','import-next':'next'};
+ const ids:Record<string,IconName>={'tab-mode-sort':'sort','tab-mode-fix':'fix',menu:'more','open-settings':'settings',sort:'sort',fix:'fix','source-picker':'source','target-picker':'folder',advanced:'settings','save-settings':'save','edit-list':'settings','import-list':'import','export-list':'export','list-add':'add','list-save':'save','confirm-import':'import','decode-import':'info','back-setup':'back','reopen-results':'next',previous:'back',next:'next','list-prev':'back','list-next':'next','import-prev':'back','import-next':'next'};
  for(const [id,name]of Object.entries(ids)){const button=root.querySelector<HTMLElement>(`#${id}`);if(button)setButtonLabel(button,id==='menu'?'':button.textContent??'',name);}
  for(const button of root.querySelectorAll<HTMLElement>('.help-badge'))button.replaceChildren(iconElement('help'));
  for(const button of root.querySelectorAll<HTMLElement>('.icon-button[aria-label^="סגור"],.icon-button[aria-label^="בטל"]'))button.replaceChildren(iconElement('close'));

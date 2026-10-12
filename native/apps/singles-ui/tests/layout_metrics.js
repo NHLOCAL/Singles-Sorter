@@ -3,7 +3,7 @@ return (() => {
  const scrollParent=el=>{for(let p=el.parentElement;p&&p.tagName!=='DIALOG';p=p.parentElement)if(['auto','scroll'].includes(getComputedStyle(p).overflowY))return {rect:rect(p),scrollTop:p.scrollTop,scrollHeight:p.scrollHeight};return null;};
  const setupIds=['source','target','source-picker','target-picker','copy_mode','main_folder_only','singles_folder','abc_sort','exist_only','advanced','save-settings','sort','fix'];
  const app=document.getElementById('app');const ids=app.dataset.view==='results'?['back-setup',...(!document.getElementById('pagination').hidden?['previous','next']:[])]:setupIds;
- const controls=Object.fromEntries(ids.map(id=>[id,rect(document.getElementById(id))]));
+ const controls=Object.fromEntries([...ids,'tab-mode-sort','tab-mode-fix'].map(id=>document.getElementById(id)).filter(el=>el&&el.getClientRects().length).map(el=>[el.id,rect(el)]));
  const body=document.getElementById('results-body');
  return {view:app.dataset.view,setupVisible:!document.getElementById('setup-screen').hidden,resultsVisible:!document.getElementById('results').hidden,innerWidth,innerHeight,dpr:devicePixelRatio,screenWidth:screen.width,screenHeight:screen.height,
   reflow:app.classList.contains('reflow')||innerWidth<=740||innerHeight<=560,

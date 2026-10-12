@@ -106,6 +106,7 @@ def exercise_result_stability(command, script, click, fill, wait, capture, root,
     click('#open-settings');click('#duet-first');wait(lambda: script("return !document.querySelector('#duet-first').disabled"))
     script("document.querySelector('#ai-profile').value='Disabled';document.querySelector('#ai-profile').dispatchEvent(new Event('change',{bubbles:true}))")
     click('#advanced-dialog .close-dialog');set_developer_mode(script,click,wait,False)
+    click('#tab-mode-sort')
     click('#sort');wait(lambda: script("return document.querySelector('#app').dataset.view==='results' && !document.querySelector('#show-inactive').disabled"),timeout=120)
     assert not script("return document.querySelector('#show-inactive').checked")
     assert script("return document.querySelectorAll('#rows tr').length") == 50

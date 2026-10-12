@@ -35,6 +35,7 @@ def exercise_apply(script, click, fill, wait, capture, root, output, ai_mode="of
         profile = 'Configured' if configured else 'Disabled'
         script(f"document.querySelector('#ai-profile').value='{profile}';document.querySelector('#ai-profile').dispatchEvent(new Event('change',{{bubbles:true}}));")
         click('#advanced-dialog .close-dialog')
+        click('#tab-mode-sort')
         click('#sort')
         wait(lambda: script("return document.querySelector('#app').dataset.view==='results'"), timeout=120)
         assert script("return !document.querySelector('#review-apply').hidden && !document.querySelector('#review-apply').disabled"), 'Native backend did not authorize the real owned plan'

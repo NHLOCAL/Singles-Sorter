@@ -73,6 +73,7 @@ def exercise_cross_albums(script, click, fill, wait, capture, root, output, audi
             script("document.querySelector('#ai-profile').value='Disabled';document.querySelector('#ai-profile').dispatchEvent(new Event('change',{bubbles:true}));")
             click('#advanced-dialog .close-dialog'); set_developer_mode(script, click, wait, False)
             before_journal = journal_snapshot(journal_root)
+            click('#tab-mode-sort')
             click('#sort')
             wait(lambda: script("return document.querySelector('#app').dataset.view==='results' && !document.querySelector('#back-setup').disabled"), timeout=120)
             assert script("return !document.querySelector('#review-apply').hidden && !document.querySelector('#review-apply').disabled"), label

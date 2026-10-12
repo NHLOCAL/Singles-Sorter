@@ -85,6 +85,7 @@ def exercise_flac(script, click, fill, wait, capture, root, output):
         script("document.querySelector('#ai-profile').value='Disabled';document.querySelector('#ai-profile').dispatchEvent(new Event('change',{bubbles:true}));")
         click('#advanced-dialog .close-dialog')
         set_developer_mode(script, click, wait, False)
+        click('#tab-mode-fix')
         click('#fix')
         wait(lambda: script("return document.querySelector('#app').dataset.view==='results' && !document.querySelector('#back-setup').disabled"), timeout=120)
         assert script("return !document.querySelector('#review-apply').hidden && !document.querySelector('#review-apply').disabled")
