@@ -32,10 +32,24 @@ def files(root):
     return {path.relative_to(root).as_posix(): digest(path) for path in root.rglob('*') if path.is_file()}
 
 
+def snapshot(root):
+    """No-effect receipt includes roots/directories; atime may change on reads."""
+    result = {}
+    for path in [root, *sorted(root.rglob('*'))]:
+        info = path.lstat()
+        result[path.relative_to(root).as_posix()] = dict(
+            kind=stat.S_IFMT(info.st_mode), mode=info.st_mode,
+            attributes=getattr(info, 'st_file_attributes', None),
+            size=info.st_size, modified_ns=info.st_mtime_ns,
+            sha256=digest(path) if stat.S_ISREG(info.st_mode) else None)
+    return result
+
+
 def metadata(root):
+    # Copytree descendants receive copystat; the album container is freshly created.
     # Windows timestamps are compared before content verification reads.
     return {path.relative_to(root).as_posix(): (path.stat().st_mtime_ns, bool(path.stat().st_file_attributes & stat.FILE_ATTRIBUTE_READONLY))
-            for path in [root, *root.rglob('*')]}
+            for path in root.rglob('*')}
 
 
 def fixture(root, audio, root_album):
@@ -83,18 +97,22 @@ def exercise_albums(script, click, fill, wait, capture, root, output, audio_path
         if copying:
             (album / 'cover.jpg').chmod(stat.S_IREAD)
         before = files(album); source_before = files(source); before_metadata = metadata(album)
+        source_snapshot = snapshot(source); target_snapshot = snapshot(target)
         setup(source, target, copying)
-        assert files(source) == source_before and not list(target.iterdir())
+        assert snapshot(source) == source_snapshot and snapshot(target) == target_snapshot
         click('#review-apply')
         assert 'סגור תוכנות או סנכרון' in script("return document.querySelector('#apply-description').textContent")
         capture('album-review-' + label); click('#apply-back')
-        assert files(source) == source_before and not list(target.iterdir())
+        assert snapshot(source) == source_snapshot and snapshot(target) == target_snapshot
         click('#review-apply'); click('#confirm-apply')
         wait(lambda: script("return document.querySelector('#execution-title').textContent==='הביצוע הושלם'"), timeout=120)
         wait(lambda: script("return !document.querySelector('#show-inactive').disabled"))
         destination = target / ARTIST / ALBUM
         if copying:
-            assert metadata(destination) == before_metadata, 'Album Copy did not preserve timestamps and readonly attributes'
+            assert metadata(destination) == before_metadata, 'Album Copy did not preserve descendant timestamps and readonly attributes'
+            container = destination.stat()
+            assert destination.is_dir() and container.st_mtime_ns != album.stat().st_mtime_ns
+            assert not container.st_file_attributes & stat.FILE_ATTRIBUTE_READONLY, 'Fresh album container inherited readonly attributes'
             assert files(source) == source_before
         else:
             assert not album.exists(), 'Whole album Move left its original container path'
@@ -109,15 +127,15 @@ def exercise_albums(script, click, fill, wait, capture, root, output, audio_path
         assert script("return document.querySelector('#review-apply').hidden")
         capture('album-complete-' + label)
         receipts.append(dict(case=label, source_sha256=before, destination_sha256=files(destination),
-                             source_retained=copying, metadata_preserved=copying, ipc_mocked=False))
+                             source_retained=copying, descendant_metadata_preserved=copying, fresh_copy_container=copying, ipc_mocked=False))
 
     source, target, album = fixture(root / 'stale-membership', audio, True)
     setup(source, target, True)
     (album / 'late-sidecar.txt').write_bytes(b'owned addition after preview')
-    changed = files(source)
+    changed = snapshot(source); target_before = snapshot(target)
     click('#review-apply'); click('#confirm-apply')
     wait(lambda: script("return !document.querySelector('#back-setup').disabled && !document.querySelector('#error').hidden"), timeout=120)
-    assert files(source) == changed and not list(target.iterdir()), 'Changed album membership produced an effect'
+    assert snapshot(source) == changed and snapshot(target) == target_before, 'Changed album membership produced an effect'
     capture('album-stale-membership-rejected')
     receipts.append(dict(case='stale-membership', source_unchanged=True, target_unchanged=True, ipc_mocked=False))
     (Path(output) / 'album-execution.json').write_text(json.dumps(dict(status='passed', checks=sorted(CHECKS), cases=receipts), ensure_ascii=False, indent=2), encoding='utf-8')

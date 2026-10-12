@@ -2,7 +2,9 @@
 from pathlib import Path
 import tempfile
 import unittest
-from desktop_albums import ALBUM, ARTIST, CHECKS, album_audio, fixture, files
+from unittest.mock import Mock
+from types import SimpleNamespace
+from desktop_albums import ALBUM, ARTIST, CHECKS, album_audio, fixture, files, metadata, snapshot
 from desktop_repair import read_size
 
 
@@ -29,6 +31,29 @@ class AlbumFixtures(unittest.TestCase):
                 self.assertEqual(len(files(source)), 5 if root_album else 6)
                 self.assertTrue((album / 'booklet/nested/readme.txt').is_file())
                 self.assertEqual(list(target.iterdir()), [])
+
+    def test_copy_metadata_excludes_fresh_album_container(self):
+        root = Mock()
+        child = Mock()
+        child.relative_to.return_value.as_posix.return_value = 'booklet'
+        child.stat.return_value = SimpleNamespace(st_mtime_ns=123, st_file_attributes=1)
+        root.rglob.return_value = [child]
+        self.assertEqual(metadata(root), {'booklet': (123, True)})
+        root.stat.assert_not_called()
+
+    def test_no_effect_snapshot_detects_empty_directories_and_metadata(self):
+        import os
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            file = root / 'track'; file.write_bytes(b'owned')
+            before = snapshot(root)
+            (root / 'empty').mkdir()
+            self.assertNotEqual(snapshot(root), before)
+            self.assertIn('empty', snapshot(root))
+            before = snapshot(root)
+            os.utime(file, ns=(1_600_000_000_000_000_000, 1_600_000_000_000_000_000))
+            self.assertNotEqual(snapshot(root), before)
+            self.assertIn('.', before)
 
     def test_every_actual_check_is_mandatory_in_packaging(self):
         import importlib.util
