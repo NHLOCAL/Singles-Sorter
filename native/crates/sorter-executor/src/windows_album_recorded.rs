@@ -1311,13 +1311,12 @@ fn target_records(
     let target_path = path(&root.reference)?;
     for (reference, identity) in observed {
         control.checkpoint()?;
-        if path(reference)?.starts_with(&target_path) {
-            if identities
+        if path(reference)?.starts_with(&target_path)
+            && identities
                 .insert(reference.clone(), identity.clone())
                 .is_some()
-            {
-                return Err(E::CorruptJournal);
-            }
+        {
+            return Err(E::CorruptJournal);
         }
     }
     let mut records = Vec::new();
@@ -1687,10 +1686,8 @@ fn inspect_directories(
             Err(E::Cancelled) => return Err(E::Cancelled),
             Err(_) => {}
         }
-        if !source {
-            if !matches!(evidence.status, AlbumDirectoryEvidenceStatus::SameIdentity) {
-                return Err(E::Stale);
-            }
+        if !source && !matches!(evidence.status, AlbumDirectoryEvidenceStatus::SameIdentity) {
+            return Err(E::Stale);
         }
         report.directories.push(evidence);
     }
