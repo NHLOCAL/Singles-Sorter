@@ -28,6 +28,7 @@ from desktop_ai import DesktopAI, ProtectedTrees, ai_mode, verify_package, REQUI
 from desktop_apply import exercise_apply
 from desktop_recovery import exercise_recovery
 from desktop_album_recovery import AlbumRecovery
+from desktop_whole_album_recovery import WholeAlbumRecovery
 from desktop_repair import exercise_repair
 from desktop_flac import exercise_flac
 from desktop_ogg import exercise_ogg
@@ -74,6 +75,7 @@ original_ai_checks = []
 apply_checks = []
 recovery_checks = []
 album_recovery_checks = []
+whole_album_recovery_checks = []
 repair_checks = []
 flac_checks = []
 ogg_checks = []
@@ -344,6 +346,11 @@ try:
                 album_recovery = AlbumRecovery(script, click, wait, capture, pick_owned_path, restart_app, BINARY, OUTPUT)
                 album_copy = next(case for case in json.loads((OUTPUT / 'album-execution.json').read_text(encoding='utf-8'))['cases'] if case['case'] == 'copy')
                 album_recovery.run(album_copy)
+                whole_recovery = WholeAlbumRecovery(script, click, wait, capture, pick_owned_path, restart_app, BINARY, OUTPUT)
+                album_cases = json.loads((OUTPUT / 'album-execution.json').read_text(encoding='utf-8'))['cases']
+                for name in ['root-move', 'mixed-move']:
+                    whole_recovery.run(next(case for case in album_cases if case['case'] == name))
+                whole_album_recovery_checks = whole_recovery.finish()
             cross_album_checks = exercise_cross_albums(script, click, fill, wait, capture, scratch / 'cross-album-cases', OUTPUT, ROOT.parents[1] / 'tests/fixtures/media/blank.mp3', ROOT,
                                                        recovery=album_recovery.run if album_recovery else None)
             if album_recovery:
@@ -357,7 +364,7 @@ try:
         package_guard.verify()
         assert verify_package(BINARY.parent) == PACKAGE_MANIFEST_SHA256
         assert set(REQUIRED_CHECKS).issubset(original_ai_checks)
-    (OUTPUT / 'acceptance.json').write_text(json.dumps({'status':'passed','platform':'windows-native-tauri','binary_sha256':hashlib.sha256(BINARY.read_bytes()).hexdigest(),'ipc_mocked':False,'medium_integrity_verified':True,'ai_mode':AI_MODE,'package_sha256sums_sha256':PACKAGE_MANIFEST_SHA256,'original_ai_checks':original_ai_checks,'apply_mode':os.environ.get('SINGLES_DESKTOP_APPLY_EXPECTED','off'),'apply_checks':apply_checks,'recovery_checks':recovery_checks,'album_recovery_checks':album_recovery_checks,'repair_checks':repair_checks,'flac_checks':flac_checks,'ogg_checks':ogg_checks,'mp4_checks':mp4_checks,'id3_container_checks':id3_container_checks,'wavpack_checks':wavpack_checks,'album_checks':album_checks,'cross_album_checks':cross_album_checks,'copied_move_checks':copied_move_checks,'checks':checks,'remaining':['Narrator','200 percent DPI','Android SAF and physical ARM64','unsupported apply modes, automatic replay, and whole-object Album restart inspection']},ensure_ascii=False,indent=2),encoding='utf-8')
+    (OUTPUT / 'acceptance.json').write_text(json.dumps({'status':'passed','platform':'windows-native-tauri','binary_sha256':hashlib.sha256(BINARY.read_bytes()).hexdigest(),'ipc_mocked':False,'medium_integrity_verified':True,'ai_mode':AI_MODE,'package_sha256sums_sha256':PACKAGE_MANIFEST_SHA256,'original_ai_checks':original_ai_checks,'apply_mode':os.environ.get('SINGLES_DESKTOP_APPLY_EXPECTED','off'),'apply_checks':apply_checks,'recovery_checks':recovery_checks,'album_recovery_checks':album_recovery_checks,'whole_album_recovery_checks':whole_album_recovery_checks,'repair_checks':repair_checks,'flac_checks':flac_checks,'ogg_checks':ogg_checks,'mp4_checks':mp4_checks,'id3_container_checks':id3_container_checks,'wavpack_checks':wavpack_checks,'album_checks':album_checks,'cross_album_checks':cross_album_checks,'copied_move_checks':copied_move_checks,'checks':checks,'remaining':['Narrator','200 percent DPI','Android SAF and physical ARM64','unsupported apply modes, automatic replay, and unrecorded historical whole-Album named-stream baselines']},ensure_ascii=False,indent=2),encoding='utf-8')
 except Exception as error:
     snapshot(active_binary, OUTPUT, 'webdriver-failure')
     if session:

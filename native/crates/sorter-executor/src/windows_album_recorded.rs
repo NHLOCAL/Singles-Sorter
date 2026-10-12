@@ -35,7 +35,7 @@ struct Header {
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct RecordedSnapshot {
+pub(super) struct RecordedSnapshot {
     copied_directories: Vec<RecordedCopiedDirectory>,
     directories: Vec<RecordedDirectory>,
     destinations: Vec<RecordedDestination>,
@@ -177,7 +177,7 @@ fn check_observation(
     Ok(())
 }
 impl RecordedSnapshot {
-    fn into_snapshot(self, control: &InspectionControl) -> Result<Snapshot> {
+    pub(super) fn into_snapshot(self, control: &InspectionControl) -> Result<Snapshot> {
         if self.files.is_empty()
             || self.files.len() > MAX_OPERATIONS
             || self.albums.len() > MAX_OPERATIONS
@@ -364,33 +364,38 @@ fn validate_snapshot(
     snapshot: &Snapshot,
     control: &InspectionControl,
 ) -> Result<()> {
-    let source_path = checked_path(&binding.source_root.reference)?;
-    let target_path = checked_path(&binding.target_root.reference)?;
-    let source_id = binding
-        .source_root
-        .identity
-        .as_ref()
-        .ok_or(E::CorruptJournal)?;
-    let target_id = binding
-        .target_root
-        .identity
-        .as_ref()
-        .ok_or(E::CorruptJournal)?;
+    validate_snapshot_projection(
+        &binding.source_root,
+        &binding.target_root,
+        binding.selected_windows_copy,
+        snapshot,
+        control,
+    )
+}
+
+pub(super) fn validate_snapshot_projection(
+    source: &EntryObservation,
+    target: &EntryObservation,
+    copy: bool,
+    snapshot: &Snapshot,
+    control: &InspectionControl,
+) -> Result<()> {
+    let source_path = checked_path(&source.reference)?;
+    let target_path = checked_path(&target.reference)?;
+    let source_id = source.identity.as_ref().ok_or(E::CorruptJournal)?;
+    let target_id = target.identity.as_ref().ok_or(E::CorruptJournal)?;
     if source_path.starts_with(&target_path)
         || target_path.starts_with(&source_path)
         || source_id == target_id
-        || binding.source_root.kind != EntryKind::Directory
-        || binding.target_root.kind != EntryKind::Directory
+        || source.kind != EntryKind::Directory
+        || target.kind != EntryKind::Directory
     {
         return invalid();
     }
-    check_observation(&binding.source_root, &source_path, source_id)?;
-    check_observation(&binding.target_root, &target_path, target_id)?;
+    check_observation(source, &source_path, source_id)?;
+    check_observation(target, &target_path, target_id)?;
     let mut directory_map = HashMap::new();
-    let mut catalog = HashMap::from([(
-        binding.source_root.reference.clone(),
-        binding.source_root.clone(),
-    )]);
+    let mut catalog = HashMap::from([(source.reference.clone(), source.clone())]);
     for directory in &snapshot.directories {
         control.checkpoint()?;
         check_observation(&directory.source, &source_path, source_id)?;
@@ -484,7 +489,7 @@ fn validate_snapshot(
         directories: directory_map,
         visited: HashSet::new(),
         directory_order: vec![],
-        target: &binding.target_root.reference,
+        target: &target.reference,
         destinations: vec![],
         seen_destinations: HashSet::new(),
         files: vec![],
@@ -515,7 +520,7 @@ fn validate_snapshot(
                 destination.components.push(child.destination_name.clone());
                 expansion.expand(&child.source, destination, operation, &mut cleanup, 0)?;
             }
-            if !binding.selected_windows_copy && children.len() == all.len() {
+            if !copy && children.len() == all.len() {
                 cleanup.push(album.source.clone());
             }
             if cleanup != album.cleanup
@@ -562,10 +567,8 @@ fn validate_snapshot(
     {
         return invalid();
     }
-    let mut target_directories = HashMap::from([(
-        binding.target_root.reference.clone(),
-        binding.target_root.identity.clone(),
-    )]);
+    let mut target_directories =
+        HashMap::from([(target.reference.clone(), target.identity.clone())]);
     for requirement in &snapshot.destinations {
         control.checkpoint()?;
         let destination = reference(&destination_path(&requirement.destination)?);
@@ -1071,7 +1074,7 @@ pub fn recover_recorded_album_file_job(
     }
     .map_err(inspection_error)?;
     let mut storage = RecordedAlbumReads {
-        owner,
+        owner: &owner,
         binding: &binding,
         source_indices,
         target_indices,
@@ -1167,7 +1170,7 @@ pub fn recover_recorded_album_file_job(
     })
 }
 
-fn validate_transfer_receipts(
+pub(super) fn validate_transfer_receipts(
     snapshot: &Snapshot,
     binding: &ExecutionBinding,
     report: &SelectedAlbumRecovery,
@@ -1254,7 +1257,7 @@ fn validate_transfer_receipts(
     Ok(())
 }
 
-type ReadIndices = HashMap<StorageRef, usize>;
+pub(super) type ReadIndices = HashMap<StorageRef, usize>;
 fn source_records(
     snapshot: &Snapshot,
     binding: &ExecutionBinding,
@@ -1390,7 +1393,7 @@ fn destination_evidence_path(destination: &DestinationEvidence) -> Result<PathBu
 }
 
 struct RecordedAlbumReads<'a, 'c> {
-    owner: WindowsAlbumReadInspection,
+    owner: &'a WindowsAlbumReadInspection,
     binding: &'a ExecutionBinding,
     source_indices: ReadIndices,
     target_indices: ReadIndices,
@@ -1692,4 +1695,38 @@ fn inspect_directories(
         report.directories.push(evidence);
     }
     Ok(pins)
+}
+
+/// Controlled reconciliation over an already consumed, fixed read ledger. The
+/// caller retains and revalidates directory pins for this complete read pass.
+pub(super) fn recover_deferred_transfers(
+    owner: &WindowsAlbumReadInspection,
+    binding: &ExecutionBinding,
+    journal: &PhysicalJournalV2,
+    source_indices: ReadIndices,
+    target_indices: ReadIndices,
+    control: &InspectionControl,
+) -> Result<crate::recovery::RecoveryReport> {
+    let mut storage = RecordedAlbumReads {
+        owner,
+        binding,
+        source_indices,
+        target_indices,
+        present: true,
+        control,
+        destination_operations: binding
+            .operations()
+            .iter()
+            .enumerate()
+            .map(|(index, operation)| (operation.destination.id.clone(), index))
+            .collect(),
+        operation_sources: binding
+            .operations()
+            .iter()
+            .map(|operation| operation.source.observation.reference.clone())
+            .collect(),
+        move_sources: HashMap::new(),
+        target_directories: vec![],
+    };
+    crate::recovery::recover_job_controlled(binding, journal, &mut storage, control, 0)
 }

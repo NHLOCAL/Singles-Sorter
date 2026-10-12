@@ -121,9 +121,12 @@ export class RecoveryController {
       const report=snapshot.report;
       if(!report||report.job_id!==record.job_id||!['consistent','needs_attention'].includes(report.state))throw new Error('התקבלה תשובה שאינה שייכת ליומן שנבחר.');
       const album=record.family==='album';
+      const whole=record.verification_scope==='recorded_main_hash_identity_membership';
+      if(report.verification_scope!==record.verification_scope||(record.verification_scope!==undefined&&(!album||!whole)))throw new Error('תחום הבדיקה אינו תואם ליומן שנבחר.');
       if(album&&(report.operations.length!==record.operation_count||new Set(report.operations.map(item=>item.operation)).size!==record.operation_count||report.operations.some(item=>!Number.isSafeInteger(item.operation)||item.operation<0||item.operation>=record.operation_count)))throw new Error('תשובת הבדיקה אינה כוללת את כל הקבצים שתועדו.');
       const albumScopeComplete=!album||[['source_root',this.sourceMode==='removed'?'AbsentExpected':'Verified'],['target_root','Verified'],['journal_completion','Verified']].every(([role,status])=>report.evidence?.filter(entry=>entry.role===role).length===1&&report.evidence.some(entry=>entry.role===role&&entry.status===status));
-      if(report.state==='consistent'&&(!albumScopeComplete||report.unverified_directories>0||report.observation_limit_reached||report.pending_directories>0||report.rejected_directories>0||report.incomplete_tail||report.evidence?.some(entry=>!['Verified','AbsentExpected'].includes(entry.status))||!report.operations.length||report.operations.some(operation=>operation.status!=='Committed'||(album&&operation.evidence?.some(entry=>entry.status!=='Verified'))||(record.family==='repair'&&(!operation.evidence?.length||operation.evidence.some(evidence=>evidence.status!=='Verified'))))))throw new Error('הבדיקה לא הושלמה; יש לבדוק את הקבצים והתיקיות לפני ביצוע נוסף.');
+      const wholeScopeComplete=!whole||['whole_album','membership'].every(role=>report.evidence?.some(entry=>entry.role===role&&entry.status==='Verified'));
+      if(report.state==='consistent'&&(!wholeScopeComplete||!albumScopeComplete||report.unverified_directories>0||report.observation_limit_reached||report.pending_directories>0||report.rejected_directories>0||report.incomplete_tail||report.evidence?.some(entry=>!['Verified','AbsentExpected'].includes(entry.status))||!report.operations.length||report.operations.some(operation=>operation.status!==(whole?'Verified':'Committed')||(album&&operation.evidence?.some(entry=>entry.status!=='Verified'))||(record.family==='repair'&&(!operation.evidence?.length||operation.evidence.some(evidence=>evidence.status!=='Verified'))))))throw new Error('הבדיקה לא הושלמה; יש לבדוק את הקבצים והתיקיות לפני ביצוע נוסף.');
       this.report=report;
     });
   }
@@ -142,7 +145,7 @@ export function recoveryStateLabel(state:RecoveryRecord['state']):string {
  return {recorded_complete:'היומן מציין ביצוע שהושלם',inspection_needed:'נדרשת בדיקת הקבצים',invalid:'לא ניתן לאמת את היומן',unsupported:'הבדיקה עדיין אינה נתמכת לפעולה זו'}[state];
 }
 export function recoveryOperationLabel(status:string):string {
- return ({Committed:'הפעולה רשומה ומאומתת',ReadyForExplicitResume:'לא נמצאה פעולה שהושלמה',EffectProvenAwaitingJournal:'נמצא שינוי ללא סיום מאומת ביומן',NeedsRecovery:'נדרשת בדיקה נוספת'} as Record<string,string>)[status]??'מצב לא מוכר; נדרשת בדיקה';
+ return ({Verified:'הקובץ נבדק ונמצא תואם',Changed:'הקובץ השתנה',Missing:'הקובץ לא נמצא',Unverified:'הקובץ לא אומת',Committed:'הפעולה רשומה ומאומתת',ReadyForExplicitResume:'לא נמצאה פעולה שהושלמה',EffectProvenAwaitingJournal:'נמצא שינוי ללא סיום מאומת ביומן',NeedsRecovery:'נדרשת בדיקה נוספת'} as Record<string,string>)[status]??'מצב לא מוכר; נדרשת בדיקה';
 }
 
 /** Display only: expose control/bidi formatting characters instead of letting
@@ -155,12 +158,12 @@ export function recoveryFamilyLabel(family:RecoveryRecord['family']):string {
  return {single:'מיון שירים',album:'מיון אלבומים',repair:'תיקון שמות ותגיות',orphan:'יומן פעולה לא שלם'}[family];
 }
 export function recoveryNextStep(report:RecoveryReport):string {
- if(report.observation_limit_reached)return 'הבדיקה הגיעה למגבלת הקריאה הבטוחה ונעצרה. חלק מהקבצים לא אומתו. יש לבדוק אותם לפני ביצוע נוסף ולשמור את היומנים והעותקים המקוריים.';
- return report.state==='consistent'?'הקבצים תואמים לתיעוד בזמן שכל אחד מהם נבדק. הבדיקה נערכה לאורך פרק זמן, ולא מהווה תמונה בו־זמנית של כל הספרייה. לא בוצעו שינויים.':'יש לבדוק את הקבצים המפורטים לפני ביצוע נוסף. שמור את היומנים ואת העותקים המקוריים. לא בוצעו שינויים ולא הופעלה פעולה מחדש.';
+ const guidance=report.observation_limit_reached?'הבדיקה הגיעה למגבלת הקריאה הבטוחה ונעצרה. חלק מהקבצים לא אומתו. יש לבדוק אותם לפני ביצוע נוסף ולשמור את היומנים והעותקים המקוריים.':report.state==='consistent'?'הקבצים תואמים לתיעוד בזמן שכל אחד מהם נבדק. הבדיקה נערכה לאורך פרק זמן, ולא מהווה תמונה בו־זמנית של כל הספרייה. לא בוצעו שינויים.':'יש לבדוק את הקבצים המפורטים לפני ביצוע נוסף. שמור את היומנים ואת העותקים המקוריים. לא בוצעו שינויים ולא הופעלה פעולה מחדש.';
+ return report.verification_scope==='recorded_main_hash_identity_membership'?`${guidance} נבדקו תוכן הקבצים, מיקומם ומבנה התיקיות. מידע נלווה שלא תועד ביומן לא נבדק.`:guidance;
 }
 
 export function recoveryEvidenceRole(role:string):string{
- return ({source_root:'מיקום המקור',target_root:'תיקיית היעד',journal_completion:'תיעוד סיום הפעולה',directory:'תיקייה שנבדקה',removed_directory:'תיקייה שהסרתה תועדה',pending_directory:'תיקייה הדורשת בדיקה נוספת',directory_metadata:'מאפייני תיקייה',file_metadata:'מאפייני קובץ',current:'קובץ נוכחי לפי התיעוד',backup:'עותק מקורי שנשמר',staged:'קובץ ביניים',original:'קובץ מקור',planned_name:'שם מתוכנן לבדיקה',backup_candidate:'עותק מקורי מתוכנן לבדיקה',published_candidate:'יעד פרסום לבדיקה'} as Record<string,string>)[role]??'ראיית קובץ לבדיקה';
+ return ({source_root:'מיקום המקור',target_root:'תיקיית היעד',journal_completion:'תיעוד סיום הפעולה',membership:'מבנה תיקייה',whole_album:'העברת אלבום בשלמותו',album_source:'מיקום האלבום המקורי',album_destination:'מיקום האלבום הנוכחי',child_location:'מיקום קודם של פריט באלבום',directory:'תיקייה שנבדקה',removed_directory:'תיקייה שהסרתה תועדה',pending_directory:'תיקייה הדורשת בדיקה נוספת',directory_metadata:'מאפייני תיקייה',file_metadata:'מאפייני קובץ',current:'קובץ נוכחי לפי התיעוד',backup:'עותק מקורי שנשמר',staged:'קובץ ביניים',original:'קובץ מקור',planned_name:'שם מתוכנן לבדיקה',backup_candidate:'עותק מקורי מתוכנן לבדיקה',published_candidate:'יעד פרסום לבדיקה'} as Record<string,string>)[role]??'ראיית קובץ לבדיקה';
 }
 export function recoveryEvidenceStatus(status:string):string{
  return ({Verified:'אומת',AbsentExpected:'ההיעדרות תואמת לתיעוד',Missing:'לא נמצא',Changed:'השתנה',Unverified:'לא אומת'} as Record<string,string>)[status]??'מצב לא מוכר';

@@ -360,6 +360,12 @@ jobs:
           if (@($albumRestartListing | Where-Object { $_ -eq "${albumRestartCase}: test" }).Count -ne 1) { throw "Actual file-Album fresh-host restart case must not be compiled out" }
           cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai,selected-windows-execution --lib $albumRestartCase -- --exact --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $wholeRestartCase = 'job_owner::recovery_owner::selected::whole_restart_tests::fresh_host_reopens_whole_albums_without_fabricating_child_transfers'
+          $wholeRestartListing = cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai,selected-windows-execution --lib $wholeRestartCase -- --exact --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($wholeRestartListing | Where-Object { $_ -eq "${wholeRestartCase}: test" }).Count -ne 1) { throw "Actual Whole-Album fresh-host restart case must not be compiled out" }
+          cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai,selected-windows-execution --lib $wholeRestartCase -- --exact --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $fixRestartCase = 'job_owner::recovery_owner::selected::tests::fresh_fix_restart_requires_source_only_and_verifies_retained_backups'
           $fixRestartListing = cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai,selected-windows-execution --lib $fixRestartCase -- --exact --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

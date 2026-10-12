@@ -1258,3 +1258,135 @@ fn present_source_root_relocation_cannot_be_reinterpreted_as_current_source() {
         Err(error) => sharing_refusal(error),
     }
 }
+
+#[test]
+fn native_target_reference_verification_binds_both_reader_states_without_writes() {
+    let fixture = Fixture::new();
+    let expected = observed(&fixture.target).reference;
+    let wrong = reference_of(&fixture.target.join("wrong"));
+    let before = snapshot(fixture.tree.path());
+    let flag = AtomicBool::new(false);
+    let reader = unbound(&fixture);
+    reader
+        .verify_target_reference_observed(&expected, &flag, &mut no_progress)
+        .unwrap();
+    stale_result(reader.verify_target_reference_observed(&wrong, &flag, &mut no_progress));
+    drop(reader);
+    let owner = fixture.open();
+    owner
+        .verify_target_reference_observed(&expected, &flag, &mut no_progress)
+        .unwrap();
+    stale_result(owner.verify_target_reference_observed(&wrong, &flag, &mut no_progress));
+    flag.store(true, std::sync::atomic::Ordering::Release);
+    assert_eq!(
+        owner
+            .verify_target_reference_observed(&expected, &flag, &mut no_progress)
+            .unwrap_err()
+            .kind,
+        MutationErrorKind::Cancelled
+    );
+    drop(owner);
+    assert_eq!(snapshot(fixture.tree.path()), before);
+}
+
+#[test]
+fn native_target_reference_verification_rechecks_held_location() {
+    let fixture = Fixture::new();
+    let expected = observed(&fixture.target).reference;
+    let original_id = id(&fixture.target);
+    let moved = fixture.tree.path().join("moved target");
+    let before = snapshot(fixture.tree.path());
+    let owner = fixture.open();
+    let mut relocation = None;
+    let result =
+        owner.verify_target_reference_observed(&expected, &AtomicBool::new(false), &mut |_| {
+            if relocation.is_none() {
+                relocation = Some(std::fs::rename(&fixture.target, &moved));
+            }
+            Ok(())
+        });
+    match relocation.expect("probe callback reached") {
+        Ok(()) => {
+            stale_result(result);
+            assert_eq!(id(&moved), original_id);
+            assert!(!fixture.target.exists());
+        }
+        Err(error) => {
+            assert!(matches!(error.raw_os_error(), Some(5 | 32 | 33)), "{error}");
+            result.unwrap();
+            assert_eq!(snapshot(fixture.tree.path()), before);
+            assert!(!moved.exists());
+            drop(owner);
+            std::fs::rename(&fixture.target, &moved).unwrap();
+            assert_eq!(id(&moved), original_id);
+        }
+    }
+}
+
+#[test]
+fn pinned_membership_is_fresh_bounded_and_cancellable_without_writes() {
+    let fixture = Fixture::new();
+    let owner = fixture.open();
+    let flag = AtomicBool::new(false);
+    let pin = owner
+        .pin_directory_observed(0, &flag, &mut no_progress)
+        .unwrap();
+    let first = pin.members_observed(&flag, &mut no_progress).unwrap();
+    assert_eq!(first.len(), 1);
+    assert_eq!(
+        first[0].identity,
+        id(&fixture.target.join("artist/song.mp3"))
+    );
+    assert_eq!(first[0].kind, EntryKind::File);
+    assert_eq!(
+        pin.members_observed(&flag, &mut no_progress).unwrap(),
+        first
+    );
+    std::fs::write(fixture.target.join("artist/late.txt"), b"late child").unwrap();
+    let before = snapshot(fixture.tree.path());
+    assert_eq!(
+        pin.members_observed(&flag, &mut no_progress).unwrap().len(),
+        2
+    );
+    let result = pin.members_observed(&flag, &mut |_| {
+        flag.store(true, std::sync::atomic::Ordering::Release);
+        Ok(())
+    });
+    assert_eq!(result.unwrap_err().kind, MutationErrorKind::Cancelled);
+    drop(pin);
+    drop(owner);
+    assert_eq!(snapshot(fixture.tree.path()), before);
+}
+
+#[test]
+fn source_root_membership_requires_present_grant_and_keeps_independent_cursor() {
+    let fixture = present_fixture();
+    let before = snapshot(fixture.tree.path());
+    let owner = present_bound(&fixture);
+    let flag = AtomicBool::new(false);
+    let first = owner
+        .source_root_members_observed(&flag, &mut no_progress)
+        .unwrap();
+    assert_eq!(first.len(), 1);
+    assert_eq!(first[0].identity, id(&fixture.source.join("artist")));
+    assert_eq!(first[0].kind, EntryKind::Directory);
+    assert_eq!(
+        owner
+            .source_root_members_observed(&flag, &mut no_progress)
+            .unwrap(),
+        first
+    );
+    let result = owner.source_root_members_observed(&flag, &mut |_| {
+        flag.store(true, std::sync::atomic::Ordering::Release);
+        Ok(())
+    });
+    assert_eq!(result.unwrap_err().kind, MutationErrorKind::Cancelled);
+    drop(owner);
+    assert_eq!(snapshot(fixture.tree.path()), before);
+    let absent = Fixture::new();
+    stale_result(
+        absent
+            .open()
+            .source_root_members_observed(&AtomicBool::new(false), &mut no_progress),
+    );
+}

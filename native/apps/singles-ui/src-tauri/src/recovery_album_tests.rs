@@ -6,7 +6,7 @@ mod album_restart_tests {
     use sorter_executor::recovery::CopyMetadataRecoveryStatus;
     use sorter_executor::windows_album::AlbumDirectoryEvidenceStatus;
 
-    fn audio(track: usize) -> Vec<u8> {
+    pub(super) fn audio(track: usize) -> Vec<u8> {
         fn sync(size: usize) -> [u8; 4] {
             [((size >> 21) & 127) as u8, ((size >> 14) & 127) as u8,
                 ((size >> 7) & 127) as u8, (size & 127) as u8]

@@ -408,6 +408,7 @@ mod tests {
                     entered.send(()).unwrap();
                     pending.recv().unwrap();
                     Ok(RecoveryOutput::Report(RecoveryReport {
+                        verification_scope: None,
                         job_id: "record".into(),
                         state: "needs_attention",
                         observed_directories: 0,

@@ -4,6 +4,8 @@ use super::*;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct RecoveryRecord {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    verification_scope: Option<&'static str>,
     token: String,
     job_id: Option<String>,
     journal_name: String,
@@ -40,6 +42,8 @@ pub struct RecoveryEvidence {
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct RecoveryReport {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    verification_scope: Option<&'static str>,
     job_id: String,
     state: &'static str,
     observed_directories: usize,
@@ -51,6 +55,63 @@ pub struct RecoveryReport {
     operations: Vec<RecoveryOperation>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     evidence: Vec<RecoveryEvidence>,
+}
+#[cfg(test)]
+mod scope_wire_tests {
+    use super::*;
+
+    #[test]
+    fn optional_scope_preserves_existing_recovery_wire_and_serializes_when_explicit() {
+        let mut record = RecoveryRecord {
+            verification_scope: None,
+            token: "record".into(),
+            job_id: Some("job".into()),
+            journal_name: "job.album.jsonl".into(),
+            family: "album",
+            source: None,
+            target: None,
+            original_parent: None,
+            state: "inspection_needed",
+            detail: "inspection required".into(),
+            operation_count: 1,
+        };
+        let mut report = RecoveryReport {
+            verification_scope: None,
+            job_id: "job".into(),
+            state: "needs_attention",
+            observed_directories: 0,
+            pending_directories: 0,
+            rejected_directories: 0,
+            incomplete_tail: false,
+            unverified_directories: 0,
+            observation_limit_reached: false,
+            operations: Vec::new(),
+            evidence: Vec::new(),
+        };
+        assert!(
+            serde_json::to_value(&record)
+                .unwrap()
+                .get("verification_scope")
+                .is_none()
+        );
+        assert!(
+            serde_json::to_value(&report)
+                .unwrap()
+                .get("verification_scope")
+                .is_none()
+        );
+        let scope = "recorded_main_hash_identity_membership";
+        record.verification_scope = Some(scope);
+        report.verification_scope = Some(scope);
+        assert_eq!(
+            serde_json::to_value(record).unwrap()["verification_scope"],
+            scope
+        );
+        assert_eq!(
+            serde_json::to_value(report).unwrap()["verification_scope"],
+            scope
+        );
+    }
 }
 #[path = "recovery_run.rs"]
 mod run;
@@ -111,7 +172,10 @@ mod selected {
     use super::*;
     use sorter_core::discovery::StorageErrorKind;
     use sorter_executor::inspection_control::InspectionControl;
-    use sorter_executor::windows_album::{RecordedAlbumFileJob, inspect_recorded_album_file_job};
+    use sorter_executor::windows_album::{
+        RecordedAlbumFileJob, RecordedWholeAlbumJob, inspect_recorded_album_file_job,
+        inspect_recorded_whole_album_job,
+    };
     use sorter_executor::windows_job::{
         MAX_RESTART_JOURNAL_BYTES, MAX_STREAMING_JOURNAL_BYTES, recover_selected_journals,
         recover_selected_journals_controlled, summarize_recorded_selected_job_with_control,
@@ -153,6 +217,11 @@ mod selected {
     }
     #[derive(Clone)]
     enum RetainedJournal {
+        Whole {
+            manifest: JournalEvidence,
+            nested: Vec<(PathBuf, Option<JournalEvidence>)>,
+            descriptor: Box<RecordedWholeAlbumJob>,
+        },
         Album {
             manifest: JournalEvidence,
             transfers: Option<JournalEvidence>,
@@ -382,7 +451,12 @@ mod selected {
     fn journal_order(name: &str) -> (Option<u128>, &str) {
         // Ordering is display-only; a generated-looking name is not authority.
         let time = journal_descriptor(name)
-            .and_then(|(stem, _)| stem.split('-').nth(2))
+            .and_then(|(stem, _)| {
+                ["album-move-", "sorter-", "album-", "repair-"]
+                    .into_iter()
+                    .find_map(|prefix| stem.strip_prefix(prefix))
+            })
+            .and_then(|generated| generated.split('-').nth(1))
             .and_then(|time| time.parse().ok());
         (time, name)
     }
@@ -451,15 +525,16 @@ mod selected {
                     .iter()
                     .find(|record| record.token == token)
                     .ok_or_else(changed)?;
-                let RetainedJournal::Album { descriptor, .. } = &record.journal else {
-                    return Err(HostError::new(
-                        "UNSUPPORTED_RECOVERY_PARENT",
-                        "לפעולה זו יש לבחור את תיקיית המקור עצמה.",
-                    ));
+                let original = match &record.journal {
+                    RetainedJournal::Album { descriptor, .. } => {
+                        descriptor.original_source.as_ref()
+                    }
+                    RetainedJournal::Whole { descriptor, .. } => {
+                        descriptor.original_source.as_ref()
+                    }
+                    _ => None,
                 };
-                descriptor
-                    .original_source
-                    .as_ref()
+                original
                     .ok_or_else(|| {
                         HostError::new(
                             "UNSUPPORTED_RECOVERY_PARENT",
@@ -629,7 +704,7 @@ mod selected {
                 checkpoint(control)?;
                 let token = self.next("recovery-record");
                 let (stem, family) = journal_descriptor(&name).expect("filtered safe journal name");
-                if name.ends_with(".album-move.jsonl") || family == "orphan" {
+                if family == "orphan" {
                     let regular = match observation(&mut storage, &directory.join(&name), control) {
                         Ok(observed) => observed.is_some_and(|entry| entry.kind == EntryKind::File),
                         Err(error) if error.code == "CANCELLED" => return Err(error),
@@ -647,6 +722,7 @@ mod selected {
                         }
                     };
                     records.push(RecoveryRecord {
+                        verification_scope: None,
                         token,
                         job_id: Some(stem.into()),
                         journal_name: name,
@@ -678,7 +754,8 @@ mod selected {
                         if descriptor.job_id != stem {
                             return Err(changed());
                         }
-                        let record = RecoveryRecord { token: token.clone(), job_id: Some(descriptor.job_id), journal_name: name.clone(), family,
+                        let record = RecoveryRecord {
+verification_scope: None, token: token.clone(), job_id: Some(descriptor.job_id), journal_name: name.clone(), family,
                             source: Some(display(&descriptor.source)), target: None, original_parent: None, state: "inspection_needed",
                             detail: "נמצא יומן תיקון שמות ותגיות. יש לבחור מחדש את תיקיית המקור כדי לבדוק את הקבצים והעותקים המקוריים. היומן לבדו אינו מאמת את מצבם.".into(), operation_count: descriptor.operations.len() };
                         retained.push(RetainedRecord {
@@ -687,6 +764,64 @@ mod selected {
                             root: root.clone(),
                             journal: RetainedJournal::Repair {
                                 journal: directory_evidence,
+                            },
+                        });
+                        return Ok(record);
+                    }
+                    if name.ends_with(".album-move.jsonl") {
+                        let fallback =
+                            InspectionControl::new(Arc::new(AtomicBool::new(false)), |_| {});
+                        let descriptor = inspect_recorded_whole_album_job(
+                            &directories,
+                            control.unwrap_or(&fallback),
+                        )
+                        .map_err(recorded_error)?;
+                        if descriptor.job_id != stem {
+                            return Err(changed());
+                        }
+                        let mut nested = Vec::new();
+                        if let Some(singles) = &descriptor.singles_job_id {
+                            let manifest_name = format!("{singles}.album.jsonl");
+                            if journal_descriptor(&manifest_name)
+                                != Some((singles.as_str(), "album"))
+                            {
+                                return Err(changed());
+                            }
+                            for filename in [manifest_name, format!("{singles}.transfers.jsonl")] {
+                                let path = directory.join(filename);
+                                let bound = observation(&mut storage, &path, control)?
+                                    .map(|observed| {
+                                        read_bound(&mut storage, &observed, &mut budget, control)
+                                    })
+                                    .transpose()?;
+                                nested.push((path, bound.map(|(_, evidence)| evidence)));
+                            }
+                            if nested[0].1.is_none() && nested[1].1.is_some() {
+                                return Err(changed());
+                            }
+                        }
+                        let original_parent =
+                            descriptor.original_source.as_ref().and_then(|source| {
+                                PathBuf::from(display(&source.reference))
+                                    .parent()
+                                    .map(|path| path.to_string_lossy().into_owned())
+                            });
+                        let record = RecoveryRecord {
+                            verification_scope: Some(WHOLE_VERIFICATION_SCOPE),
+                            token: token.clone(), job_id: Some(descriptor.job_id.clone()), journal_name: name.clone(), family,
+                            source: Some(display(&descriptor.source.reference)), target: Some(display(&descriptor.target.reference)),
+                            original_parent, state: "inspection_needed",
+                            detail: "נמצא יומן העברת אלבום שלם. יש לבחור מחדש את מיקום המקור והיעד. הבדיקה משווה תוכן ראשי, זהויות וחברות בתיקיות; היומן ההיסטורי אינו כולל חתימות של זרמי נתונים נוספים.".into(),
+                            operation_count: descriptor.files.len(),
+                        };
+                        retained.push(RetainedRecord {
+                            token: token.clone(),
+                            directory: directory.clone(),
+                            root: root.clone(),
+                            journal: RetainedJournal::Whole {
+                                manifest: directory_evidence,
+                                nested,
+                                descriptor: Box::new(descriptor),
                             },
                         });
                         return Ok(record);
@@ -715,6 +850,7 @@ mod selected {
                                     .map(|path| path.to_string_lossy().into_owned())
                             });
                         let record = RecoveryRecord {
+verification_scope: None,
                             token: token.clone(), job_id: Some(descriptor.job_id.clone()), journal_name: name.clone(), family,
                             source: Some(display(&descriptor.source.reference)), target: Some(display(&descriptor.target.reference)),
                             original_parent, state: "inspection_needed",
@@ -748,6 +884,7 @@ mod selected {
                         return Err(changed());
                     }
                     let record = RecoveryRecord {
+                        verification_scope: None,
                         token: token.clone(),
                         job_id: Some(summary.job.job_id),
                         journal_name: name.clone(),
@@ -781,6 +918,7 @@ mod selected {
                     return Err(error.clone());
                 }
                 records.push(checked.unwrap_or_else(|error: HostError| RecoveryRecord {
+                    verification_scope: None,
                     token,
                     job_id: None,
                     journal_name: name,
@@ -855,7 +993,10 @@ mod selected {
                         ));
                     }
                 };
-                let source = if matches!(&record.journal, RetainedJournal::Album { .. }) {
+                let source = if matches!(
+                    &record.journal,
+                    RetainedJournal::Album { .. } | RetainedJournal::Whole { .. }
+                ) {
                     match find(source_token, Role::Source) {
                         Ok(root) => SelectedSource::Present(root),
                         Err(_) => SelectedSource::Missing(
@@ -876,6 +1017,15 @@ mod selected {
                 };
                 (record, source, target)
             };
+            if matches!(&record.journal, RetainedJournal::Whole { .. }) {
+                return inspect_whole_record(
+                    record,
+                    source,
+                    target.ok_or_else(changed)?,
+                    control,
+                    cursor,
+                );
+            }
             if matches!(&record.journal, RetainedJournal::Album { .. }) {
                 return inspect_album_record(
                     record,
@@ -987,6 +1137,7 @@ mod selected {
                     .all(|operation| operation.status == "Committed");
             checkpoint(control)?;
             Ok(RecoveryReport {
+                verification_scope: None,
                 job_id: summary.job.job_id,
                 state: if consistent {
                     "consistent"
@@ -1004,6 +1155,8 @@ mod selected {
             })
         }
     }
+    include!("recovery_whole.rs");
+
     fn inspect_album_record(
         record: RetainedRecord,
         source: SelectedSource,
@@ -1328,6 +1481,7 @@ mod selected {
                 .all(|entry| matches!(entry.status.as_str(), "Verified" | "AbsentExpected"))
             && operations.iter().all(|entry| entry.status == "Committed");
         Ok(RecoveryReport {
+            verification_scope: None,
             job_id: recorded.job_id,
             state: if consistent {
                 "consistent"
@@ -1455,6 +1609,7 @@ mod selected {
                 .all(|operation| operation.status == "Committed");
         checkpoint(Some(controlled))?;
         Ok(RecoveryReport {
+            verification_scope: None,
             job_id: report.job_id,
             state: if consistent {
                 "consistent"
@@ -1473,6 +1628,8 @@ mod selected {
     }
     #[cfg(test)]
     include!("recovery_album_tests.rs");
+    #[cfg(test)]
+    include!("recovery_whole_tests.rs");
 
     #[cfg(test)]
     mod tests {
@@ -1521,9 +1678,21 @@ mod selected {
         }
         #[test]
         fn history_order_uses_generated_time_before_process_identifier() {
-            assert!(
-                journal_order("sorter-1-200-0.directories.jsonl")
-                    > journal_order("sorter-9999-100-0.directories.jsonl")
+            for (prefix, suffix) in [
+                ("sorter-", ".directories.jsonl"),
+                ("album-", ".album.jsonl"),
+                ("album-move-", ".album-move.jsonl"),
+                ("repair-", ".repair.jsonl"),
+            ] {
+                let recent = format!("{prefix}1-200-0{suffix}");
+                let older = format!("{prefix}9999-100-0{suffix}");
+                assert_eq!(journal_order(&recent).0, Some(200));
+                assert_eq!(journal_order(&older).0, Some(100));
+                assert!(journal_order(&recent) > journal_order(&older));
+            }
+            assert_eq!(
+                journal_order("album-move-9999-unknown-0.album-move.jsonl").0,
+                None
             );
         }
         #[test]
@@ -2073,9 +2242,7 @@ mod selected {
             let page = host.list_recovery(0, 10).unwrap();
             assert_eq!(page.records.len(), 5);
             assert!(page.records.iter().all(|record| record.state
-                == if record.family == "orphan"
-                    || record.journal_name.ends_with(".album-move.jsonl")
-                {
+                == if record.family == "orphan" {
                     "unsupported"
                 } else {
                     "invalid"

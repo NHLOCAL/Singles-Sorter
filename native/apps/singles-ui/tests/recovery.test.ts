@@ -1,6 +1,6 @@
 import {describe,it,expect,vi} from 'vitest';
 import type {RecoveryHost,RecoveryPage,RecoveryReport,RecoverySnapshot,RecoveryProgress} from '../src/contracts';
-import {RecoveryController,displayRecoveryPath} from '../src/recovery';
+import {recoveryNextStep,recoveryOperationLabel,RecoveryController,displayRecoveryPath} from '../src/recovery';
 const page:RecoveryPage={offset:0,total:1,truncated:false,records:[{token:'record',job_id:'persisted',journal_name:'sorter.directories.jsonl',family:'single',source:'C:\\source',target:'C:\\target',state:'inspection_needed',detail:'incomplete',operation_count:2}]};
 const report:RecoveryReport={job_id:'persisted',state:'needs_attention',observed_directories:1,pending_directories:0,rejected_directories:0,incomplete_tail:false,unverified_directories:0,observation_limit_reached:false,operations:[{operation:0,source:'a',destination:'b',status:'Committed'},{operation:1,source:'c',destination:'d',status:'ReadyForExplicitResume'}]};
 type TestHost=RecoveryHost&{listRecovery:(offset:number,limit:number)=>Promise<RecoveryPage>;inspectRecovery:(token:string,source:string,target:string|null)=>Promise<RecoveryReport>};
@@ -162,4 +162,25 @@ it('requires the explicit missing-source selection before accepting expected roo
  const h=albumHost(),c=await chosen(h);c.setSourceMode('removed');await c.selectRoot('Source');await c.selectRoot('Target');
  h.inspectRecovery=async()=>({...report,state:'consistent',operations:report.operations.map(item=>({...item,status:'Committed'})),evidence:[{role:'source_root',path:'source',status:'AbsentExpected'},{role:'target_root',path:'target',status:'Verified'},{role:'journal_completion',path:'journal',status:'Verified'}]});
  await c.inspect();expect(c.report?.state).toBe('consistent');
+});
+
+function wholeAlbumReport():RecoveryReport{return {...report,verification_scope:'recorded_main_hash_identity_membership',state:'consistent',operations:report.operations.map(item=>({...item,status:'Verified'})),evidence:[{role:'source_root',path:'source',status:'Verified'},{role:'target_root',path:'target',status:'Verified'},{role:'journal_completion',path:'journal',status:'Verified'},{role:'whole_album',path:'album',status:'Verified'},{role:'membership',path:'album',status:'Verified'}]};}
+it('presents whole-album descendant inspection without manufacturing file transfers',async()=>{
+ const h=albumHost();h.listRecovery=async()=>({...page,records:[{...page.records[0],family:'album',verification_scope:'recorded_main_hash_identity_membership'}]});
+ h.inspectRecovery=async()=>wholeAlbumReport();const c=await chosen(h);await c.selectRoot('Source');await c.selectRoot('Target');await c.inspect();
+ expect(c.report?.state).toBe('consistent');expect(recoveryNextStep(c.report!)).toContain('מידע נלווה שלא תועד ביומן לא נבדק');expect(recoveryOperationLabel('Verified')).toBe('הקובץ נבדק ונמצא תואם');
+});
+it('refuses a Whole inspection scope mismatch or synthetic committed descendant',async()=>{
+ for(const change of ['missing-report-scope','missing-record-scope','committed','unverified']){
+  const h=albumHost();h.listRecovery=async()=>({...page,records:[{...page.records[0],family:'album',verification_scope:change==='missing-record-scope'?undefined:'recorded_main_hash_identity_membership'}]});
+  const value=wholeAlbumReport();if(change==='missing-report-scope')delete value.verification_scope;if(change==='committed')value.operations[0].status='Committed';if(change==='unverified')value.operations[0].status='Unverified';
+  h.inspectRecovery=async()=>value;const c=await chosen(h);await c.selectRoot('Source');await c.selectRoot('Target');await c.inspect();expect(c.report,change).toBeNull();expect(c.error,change).toBeTruthy();
+ }
+});
+it('requires whole-container and directory membership evidence before all-clear',async()=>{
+ for(const missing of ['whole_album','membership']){
+  const h=albumHost();h.listRecovery=async()=>({...page,records:page.records.map(item=>({...item,family:'album',verification_scope:'recorded_main_hash_identity_membership'}))});
+  h.inspectRecovery=async()=>{const value=wholeAlbumReport();value.evidence=value.evidence!.filter(item=>item.role!==missing);return value;};
+  const c=await chosen(h);await c.selectRoot('Source');await c.selectRoot('Target');await c.inspect();expect(c.report).toBeNull();expect(c.error).toBeTruthy();
+ }
 });

@@ -74,7 +74,7 @@ COPIED_MOVE_CHECKS = {'actual-one-eligible-duet-move', 'actual-zero-eligible-due
                       'copied-move-stale-target-no-effects', 'copied-move-cancel-before-effects'}
 RECOVERY_CHECKS = {'actual-process-restart', 'fresh-native-role-selections', 'wrong-roots-rejected',
                    'historical-vs-current-state', 'per-file-reconciliation', 'recovery-no-file-or-journal-writes',
-                   'completed-copy-and-move-reconciled', 'copied-duet-and-mixed-restart-reconciled', 'copied-restart-named-stream-change-detected', 'unsupported-whole-album-visible',
+                   'completed-copy-and-move-reconciled', 'copied-duet-and-mixed-restart-reconciled', 'copied-restart-named-stream-change-detected', 'whole-album-inspection-available',
                    'completed-fix-reconciled', 'partial-fix-stays-unresolved', 'fix-source-only-fresh-grant', 'fix-retained-backup-change-detected',
                    'measured-streaming-progress', 'close-reopen-requires-fresh-roots'}
 ALBUM_RECOVERY_CHECKS = {'file-album-copy-restarted-with-fresh-source', 'cross-album-root-restarted-with-fresh-parent',
@@ -82,6 +82,11 @@ ALBUM_RECOVERY_CHECKS = {'file-album-copy-restarted-with-fresh-source', 'cross-a
                          'file-album-parent-refusal', 'file-album-current-scope-evidence', 'file-album-restart-no-effects',
                          'file-album-stream-change-detected', 'file-album-recreated-root-refused',
                          'file-album-restart-media-progress', 'file-album-close-revokes-selections'}
+WHOLE_ALBUM_RECOVERY_CHECKS = {'whole-album-root-restarted-with-fresh-parent', 'whole-album-mixed-restarted-with-fresh-source',
+                                'whole-album-main-identity-membership-scope-visible', 'whole-album-descendants-are-inspection-rows',
+                                'whole-album-single-atomic-receipt-retained', 'whole-album-deferred-single-covered',
+                                'whole-album-parent-refusal', 'whole-album-restart-no-effects',
+                                'whole-album-main-content-change-detected', 'whole-album-extra-member-detected'}
 DESKTOP_FEATURES = ['desktop', 'original-ai', 'selected-windows-execution', 'tauri/custom-protocol']
 require, digest = cli.require, cli.digest
 
@@ -106,6 +111,7 @@ def report_gate(path, binary, mode, package=None):
         require(COPIED_MOVE_CHECKS <= set(report.get('copied_move_checks', [])), 'incomplete actual copied-Move acceptance')
         require(RECOVERY_CHECKS <= set(report.get('recovery_checks', [])), 'incomplete actual restart recovery acceptance')
         require(ALBUM_RECOVERY_CHECKS <= set(report.get('album_recovery_checks', [])), 'incomplete actual file-Album restart recovery acceptance')
+        require(WHOLE_ALBUM_RECOVERY_CHECKS <= set(report.get('whole_album_recovery_checks', [])), 'incomplete actual Whole-Album restart recovery acceptance')
         require(package is not None and report.get('package_sha256sums_sha256') == digest(package / 'SHA256SUMS.txt'), 'acceptance not bound to exact package')
     return report
 

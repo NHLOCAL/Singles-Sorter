@@ -51,6 +51,9 @@ class AlbumRecovery:
             for index in range(count):
                 self.click(f'#recovery-list button:nth-child({index + 1})')
                 if self.script("return document.querySelector('#recovery-recorded-source').value") == str(source):
+                    expected_scope = getattr(self, 'expected_scope', None)
+                    if expected_scope is not None and self.script("return document.querySelector('#recovery-list button[aria-pressed=true]').dataset.recoveryScope") != expected_scope:
+                        continue
                     assert self.script("return document.querySelector('#recovery-list button[aria-pressed=true]').dataset.recoveryFamily") == 'album'
                     assert self.script("return document.querySelector('#recovery-list button[aria-pressed=true]').dataset.recoveryState") == 'inspection_needed'
                     return self.script("return document.querySelector('#recovery-list button[aria-pressed=true]').dataset.recoveryJob")

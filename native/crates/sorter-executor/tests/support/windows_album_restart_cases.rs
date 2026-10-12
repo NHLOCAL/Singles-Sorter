@@ -14,7 +14,7 @@ fn observed_identity(path: &std::path::Path) -> ObjectIdentity {
 fn grant(path: &std::path::Path) -> WindowsSelectedRootGrant {
     WindowsSelectedRootGrant::new(path.to_path_buf(), observed_identity(path)).unwrap()
 }
-fn records(fixture: &Fixture) -> Vec<AlbumFileInspectionJournal> {
+pub(super) fn records(fixture: &Fixture) -> Vec<AlbumFileInspectionJournal> {
     let mut paths = std::fs::read_dir(&fixture.journal)
         .unwrap()
         .map(|entry| entry.unwrap().path())
@@ -51,7 +51,7 @@ fn descriptor(fixture: &Fixture) -> RecordedAlbumFileJob {
         .unwrap();
     inspect_recorded_album_file_job(&std::fs::read(path).unwrap(), &control()).unwrap()
 }
-fn grants(fixture: &Fixture, missing: bool) -> AlbumFileInspectionGrants {
+pub(super) fn grants(fixture: &Fixture, missing: bool) -> AlbumFileInspectionGrants {
     let source = if missing {
         let parent = fixture.source.parent().unwrap();
         AlbumFileInspectionSource::Missing(
@@ -67,7 +67,7 @@ fn grants(fixture: &Fixture, missing: bool) -> AlbumFileInspectionGrants {
         journal: grant(&fixture.journal),
     }
 }
-fn journal_bytes(fixture: &Fixture) -> Vec<(PathBuf, Vec<u8>)> {
+pub(super) fn journal_bytes(fixture: &Fixture) -> Vec<(PathBuf, Vec<u8>)> {
     let mut paths = std::fs::read_dir(&fixture.journal)
         .unwrap()
         .map(|entry| entry.unwrap().path())
@@ -83,7 +83,7 @@ fn journal_bytes(fixture: &Fixture) -> Vec<(PathBuf, Vec<u8>)> {
 }
 // Same owned-tree evidence as the selected-job restart fixtures, extended for
 // this suite's known notes ADS. Access time is excluded because reads may update it.
-type TreeEvidence = Vec<(
+pub(super) type TreeEvidence = Vec<(
     PathBuf,
     EntryObservation,
     u32,
@@ -92,7 +92,7 @@ type TreeEvidence = Vec<(
     Option<String>,
     Option<String>,
 )>;
-fn owned_tree_snapshot(root: &std::path::Path) -> TreeEvidence {
+pub(super) fn owned_tree_snapshot(root: &std::path::Path) -> TreeEvidence {
     use std::os::windows::fs::MetadataExt;
     let mut reads = DesktopStorage::new(&[root.to_path_buf()]).unwrap();
     let mut pending = vec![root.to_path_buf()];

@@ -1847,3 +1847,9 @@ mod recorded_descriptor;
 
 #[path = "support/windows_album_restart_cases.rs"]
 mod recorded_restart;
+
+#[path = "support/windows_whole_album_recorded_cases.rs"]
+mod whole_recorded_descriptor;
+
+#[path = "support/windows_whole_album_restart_cases.rs"]
+mod whole_recorded_restart;

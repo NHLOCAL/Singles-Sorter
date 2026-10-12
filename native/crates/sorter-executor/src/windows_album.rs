@@ -2857,7 +2857,10 @@ mod removed_root_recovery;
 mod whole;
 pub use whole::{
     AlbumChildLocationEvidence, AlbumChildRenameReceipt, AlbumFailure, AlbumFileEvidence,
-    WholeAlbumOutcome, WholeAlbumRecovery,
+    RecordedWholeAlbum, RecordedWholeAlbumChildLocation, RecordedWholeAlbumDirectory,
+    RecordedWholeAlbumFile, RecordedWholeAlbumInspection, RecordedWholeAlbumJob,
+    WholeAlbumInspectionFile, WholeAlbumMembershipEvidence, WholeAlbumOutcome, WholeAlbumRecovery,
+    inspect_recorded_whole_album_job, recover_recorded_whole_album_job,
 };
 /// Product album dispatcher. Fresh host grants select the explicit whole-root
 /// authority before any generic source pin is constructed.

@@ -27,9 +27,15 @@ class DesktopPackageTests(unittest.TestCase):
         self.report=self.root/'report.json'
         self.data={'medium_integrity_verified':True,'status':'passed','platform':'windows-native-tauri','ipc_mocked':False,'ai_mode':'on',
                    'binary_sha256':p.digest(self.binary),'package_sha256sums_sha256':p.digest(self.pkg/'SHA256SUMS.txt'),
-                   'original_ai_checks':sorted(p.REQUIRED_CHECKS),'copied_move_checks':sorted(p.COPIED_MOVE_CHECKS),'apply_mode':'on','apply_checks':sorted(p.APPLY_CHECKS),'recovery_checks':sorted(p.RECOVERY_CHECKS),'album_recovery_checks':sorted(p.ALBUM_RECOVERY_CHECKS),'repair_checks':sorted(p.REPAIR_CHECKS),'flac_checks':sorted(p.FLAC_CHECKS),'ogg_checks':sorted(p.OGG_CHECKS),'mp4_checks':sorted(p.MP4_CHECKS),'id3_container_checks':sorted(p.ID3_CONTAINER_CHECKS),'wavpack_checks':sorted(p.WAVPACK_CHECKS),'album_checks':sorted(p.ALBUM_CHECKS),'cross_album_checks':sorted(p.CROSS_ALBUM_CHECKS)}
+                   'original_ai_checks':sorted(p.REQUIRED_CHECKS),'copied_move_checks':sorted(p.COPIED_MOVE_CHECKS),'apply_mode':'on','apply_checks':sorted(p.APPLY_CHECKS),'recovery_checks':sorted(p.RECOVERY_CHECKS),'album_recovery_checks':sorted(p.ALBUM_RECOVERY_CHECKS),'whole_album_recovery_checks':sorted(p.WHOLE_ALBUM_RECOVERY_CHECKS),'repair_checks':sorted(p.REPAIR_CHECKS),'flac_checks':sorted(p.FLAC_CHECKS),'ogg_checks':sorted(p.OGG_CHECKS),'mp4_checks':sorted(p.MP4_CHECKS),'id3_container_checks':sorted(p.ID3_CONTAINER_CHECKS),'wavpack_checks':sorted(p.WAVPACK_CHECKS),'album_checks':sorted(p.ALBUM_CHECKS),'cross_album_checks':sorted(p.CROSS_ALBUM_CHECKS)}
         self.save()
     def save(self): self.report.write_text(json.dumps(self.data),encoding='utf-8')
+    def test_each_whole_album_restart_check_is_mandatory(self):
+        for missing in p.WHOLE_ALBUM_RECOVERY_CHECKS:
+            self.data['whole_album_recovery_checks'] = sorted(p.WHOLE_ALBUM_RECOVERY_CHECKS - {missing}); self.save()
+            with self.assertRaisesRegex(ValueError, 'Whole-Album restart'):
+                p.report_gate(self.report, self.binary, 'on', self.pkg)
+
     def test_each_file_album_restart_check_is_mandatory(self):
         for missing in p.ALBUM_RECOVERY_CHECKS:
             self.data['album_recovery_checks'] = sorted(p.ALBUM_RECOVERY_CHECKS - {missing}); self.save()

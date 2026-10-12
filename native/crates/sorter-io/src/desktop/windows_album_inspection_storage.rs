@@ -50,6 +50,16 @@ pub struct WindowsAlbumJournalInspection {
 }
 
 impl WindowsAlbumJournalInspection {
+    /// Verify the journal's native target spelling against this fresh held root.
+    pub fn verify_target_reference_observed(
+        &self,
+        expected: &StorageRef,
+        cancel: &AtomicBool,
+        progress: &mut dyn FnMut(WindowsInspectionEvent) -> Result<(), MutationError>,
+    ) -> Result<(), MutationError> {
+        self.owner
+            .verify_target_reference_observed(expected, cancel, progress)
+    }
     pub fn open_present_observed(
         inputs: WindowsAlbumPresentJournalInspectionInputs,
         cancel: &AtomicBool,
@@ -426,6 +436,37 @@ pub struct WindowsAlbumInspectionDirectory {
 }
 
 impl WindowsAlbumInspectionDirectory {
+    /// List only this pinned directory, with an independent bounded cursor.
+    pub fn members_observed(
+        &self,
+        cancel: &AtomicBool,
+        progress: &mut dyn FnMut(WindowsInspectionEvent) -> Result<(), MutationError>,
+    ) -> Result<Vec<WindowsDirectoryMember>, MutationError> {
+        self.revalidate_observed(cancel, progress)?;
+        let directory = inspection_probe(cancel, progress, || {
+            super::super::super::open_child(
+                self.parent.handle(),
+                units(&self.observed.actual_name)?,
+                true,
+            )
+            .map_err(read_error)
+        })?;
+        inspection_probe(cancel, progress, || ensure_directory(&directory))?;
+        if read_observation(&directory, self.parent.identity(), cancel, progress)? != self.observed
+        {
+            return Err(stale("listed pinned directory changed"));
+        }
+        let members = inspection_probe(cancel, progress, || {
+            directory_members_with_limits(&directory, cancel, 100_000, 1024)
+        })?;
+        if read_observation(&directory, self.parent.identity(), cancel, progress)? != self.observed
+        {
+            return Err(stale("listed pinned directory changed during enumeration"));
+        }
+        self.revalidate_observed(cancel, progress)?;
+        cancelled(cancel)?;
+        Ok(members)
+    }
     pub fn observation(&self) -> &MutationObservation {
         &self.observed
     }
@@ -444,6 +485,61 @@ impl WindowsAlbumInspectionDirectory {
 }
 
 impl WindowsAlbumReadInspection {
+    /// List only the freshly granted present source root. No absent-root owner
+    /// or recorded sibling path can select this read.
+    pub fn source_root_members_observed(
+        &self,
+        cancel: &AtomicBool,
+        progress: &mut dyn FnMut(WindowsInspectionEvent) -> Result<(), MutationError>,
+    ) -> Result<Vec<WindowsDirectoryMember>, MutationError> {
+        cancelled(cancel)?;
+        let OriginalReadState::Present { source, .. } = &self.original else {
+            return Err(stale(
+                "source root membership requires a fresh present grant",
+            ));
+        };
+        inspection_probe(cancel, progress, || source.validate(cancel))?;
+        let parent = source
+            .handles
+            .iter()
+            .rev()
+            .nth(1)
+            .ok_or_else(|| stale("source root parent missing"))?;
+        let directory = inspection_probe(cancel, progress, || {
+            super::super::super::open_child(parent, units(&source.observed.actual_name)?, true)
+                .map_err(read_error)
+        })?;
+        inspection_probe(cancel, progress, || ensure_directory(&directory))?;
+        let parent_identity =
+            inspection_probe(cancel, progress, || identity(parent).map_err(read_error))?;
+        if read_observation(&directory, &parent_identity, cancel, progress)? != source.observed {
+            return Err(stale("listed source root changed"));
+        }
+        let members = inspection_probe(cancel, progress, || {
+            directory_members_with_limits(&directory, cancel, 100_000, 1024)
+        })?;
+        if read_observation(&directory, &parent_identity, cancel, progress)? != source.observed {
+            return Err(stale("listed source root changed during enumeration"));
+        }
+        inspection_probe(cancel, progress, || source.validate(cancel))?;
+        cancelled(cancel)?;
+        Ok(members)
+    }
+    /// This compares one actual held native spelling, without normalizing aliases.
+    pub fn verify_target_reference_observed(
+        &self,
+        expected: &StorageRef,
+        cancel: &AtomicBool,
+        progress: &mut dyn FnMut(WindowsInspectionEvent) -> Result<(), MutationError>,
+    ) -> Result<(), MutationError> {
+        inspection_probe(cancel, progress, || self.ledger.target.validate(cancel))?;
+        if self.ledger.target.observed.reference != *expected {
+            return Err(stale(
+                "recorded native target reference differs from fresh root",
+            ));
+        }
+        cancelled(cancel)
+    }
     pub fn open_observed(
         inputs: WindowsAlbumReadInspectionInputs,
         original: WindowsAlbumOriginalLocationInspection,
