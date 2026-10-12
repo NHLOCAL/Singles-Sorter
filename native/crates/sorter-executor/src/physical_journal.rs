@@ -1,4 +1,5 @@
 //! Append-only JSONL framing. Durability is a sink contract, not an fsync claim.
+use crate::inspection_control::{InspectionControl, checkpoint, any as controlled_any, find as controlled_find};
 use crate::{ExecutionError as E, Result, binding::*, hash};
 use serde::{Deserialize, Serialize};
 use sorter_core::discovery::ObjectIdentity;
@@ -138,6 +139,15 @@ impl PhysicalJournalV2 {
     /// `job_id` and the freshly host-authorized binding must match the header.
     /// An incomplete final record is retained byte-for-byte and blocks append.
     pub fn open(binding: &ExecutionBinding, job_id: &str, bytes: &[u8]) -> Result<Self> {
+        Self::open_with_control(binding, job_id, bytes, None)
+    }
+    pub fn open_controlled(binding: &ExecutionBinding, job_id: &str, bytes: &[u8], control: &InspectionControl) -> Result<Self> {
+        Self::open_with_control(binding, job_id, bytes, Some(control))
+    }
+    pub(crate) fn open_with_control(binding: &ExecutionBinding, job_id: &str, bytes: &[u8], control: Option<&InspectionControl>) -> Result<Self> {
+        crate::inspection_control::check_recorded_input(bytes, control)?;
+        checkpoint(control)?;
+        if control.is_some() && binding.operations().len() > 4096 { return Err(E::Unsupported); }
         if !binding.data.valid_domain() {
             return Err(E::InvalidBinding);
         }
@@ -166,8 +176,12 @@ impl PhysicalJournalV2 {
             tail: bytes[end..].to_vec(),
             poisoned: false,
         };
-        let all: Vec<_> = lines.collect();
-        for raw in &all[..all.len() - 1] {
+        // The terminated input has one final empty split. Avoid collecting a
+        // second record vector and check cancellation while consuming each line.
+        let mut records = lines.peekable();
+        while let Some(raw) = records.next() {
+            if records.peek().is_none() { break; }
+            checkpoint(control)?;
             let record: Envelope<Record> =
                 serde_json::from_slice(raw).map_err(|_| E::CorruptJournal)?;
             if hash(&record.body)? != record.sha256
@@ -178,12 +192,13 @@ impl PhysicalJournalV2 {
             {
                 return Err(E::CorruptJournal);
             }
-            journal
-                .validate(&record.body.event)
-                .map_err(|_| E::CorruptJournal)?;
+            journal.validate_with_control(&record.body.event, control)
+                .map_err(|error| if error == E::Cancelled { error } else { E::CorruptJournal })?;
+            if let Some(control) = control { control.record()?; }
             journal.events.push(record.body.event);
             journal.previous = record.sha256;
         }
+        checkpoint(control)?;
         Ok(journal)
     }
     /// Reconstruct only read-only reconciliation authority. Host consent must
@@ -198,12 +213,22 @@ impl PhysicalJournalV2 {
         bytes: &[u8],
         domain: ExecutionDomain,
     ) -> Result<Self> {
+        Self::open_for_recovery_domain_with_control(scope, job_id, bytes, domain, None)
+    }
+    pub(crate) fn open_for_recovery_domain_with_control(
+        scope: &RecoveryScope, job_id: &str, bytes: &[u8], domain: ExecutionDomain,
+        control: Option<&InspectionControl>,
+    ) -> Result<Self> {
+        crate::inspection_control::check_recorded_input(bytes, control)?;
+        checkpoint(control)?;
         let end = bytes
             .iter()
             .position(|b| *b == b'\n')
             .ok_or(E::CorruptJournal)?;
         let head: Envelope<Header> =
             serde_json::from_slice(&bytes[..end]).map_err(|_| E::CorruptJournal)?;
+        if control.is_some() && head.body.binding.operations.len() > 4096 { return Err(E::Unsupported); }
+        checkpoint(control)?;
         if hash(&head.body.binding)? != scope.inspected_binding_sha256
             || head.body.binding.scope_sha256 != scope_digest(&scope.original_scope)?
             || head.body.binding.plan_sha256 != scope.original_scope.inspected_plan
@@ -221,7 +246,7 @@ impl PhysicalJournalV2 {
             data: head.body.binding,
             recovery_only: true,
         };
-        Self::open(&binding, job_id, bytes)
+        Self::open_with_control(&binding, job_id, bytes, control)
     }
     pub fn job_id(&self) -> &str {
         &self.job_id
@@ -280,6 +305,18 @@ impl PhysicalJournalV2 {
         Ok(())
     }
     fn validate(&self, event: &Event) -> Result<()> {
+        self.validate_with_control(event, None)
+    }
+    fn history_with_control(&self, operation: usize, control: Option<&InspectionControl>) -> Result<Vec<&Event>> {
+        let mut history = Vec::new();
+        for event in &self.events {
+            checkpoint(control)?;
+            if event.operation == operation { history.push(event); }
+        }
+        Ok(history)
+    }
+    fn validate_with_control(&self, event: &Event, control: Option<&InspectionControl>) -> Result<()> {
+        checkpoint(control)?;
         let op = self
             .binding
             .operations()
@@ -291,11 +328,7 @@ impl PhysicalJournalV2 {
         {
             return Err(E::InvalidTransition);
         }
-        let history: Vec<_> = self
-            .events
-            .iter()
-            .filter(|e| e.operation == event.operation)
-            .collect();
+        let history = self.history_with_control(event.operation, control)?;
         let last = history.last().map(|e| e.phase);
         use Phase::*;
         if self.binding.data.windows_rename()
@@ -401,14 +434,18 @@ impl PhysicalJournalV2 {
                 | DestinationPublishPrepared
                 | AtomicRenamePrepared
                 | SourceRetirementPrepared
-        ) && !self.dependencies_ready(event.operation)
+        ) && !self.dependencies_ready_with_control(event.operation, control)?
         {
             return Err(E::InvalidTransition);
         }
-        let required = self
-            .binding
-            .required_destinations(&op.source.observation.reference);
-        let atomic = history.iter().any(|e| e.phase == AtomicRenamePrepared);
+        let mut required = Vec::new();
+        for operation in self.binding.operations() {
+            checkpoint(control)?;
+            if operation.source.observation.reference == op.source.observation.reference {
+                required.push(operation.destination.id.as_str());
+            }
+        }
+        let atomic = controlled_any(history.iter(), control, |event| event.phase == AtomicRenamePrepared)?;
         if event.phase == AtomicRenamePrepared
             && (op.mode != TransferMode::Move || required.len() != 1)
         {
@@ -418,27 +455,26 @@ impl PhysicalJournalV2 {
             if op.mode != TransferMode::Move || atomic {
                 return Err(E::InvalidTransition);
             }
-            if self.events.iter().any(|e| {
+            if controlled_any(self.events.iter(), control, |e| {
                 matches!(e.phase, Failed | Cancelled | NeedsRecovery)
                     && self.binding.operations()[e.operation]
                         .source
                         .observation
                         .reference
                         == op.source.observation.reference
-            }) {
+            })? {
                 return Err(E::InvalidTransition);
             }
-            let committed: HashSet<_> = self
-                .events
-                .iter()
-                .filter(|e| e.phase == Committed)
-                .map(|e| e.destination_id.as_str())
-                .collect();
-            if required.is_empty() || !required.iter().all(|id| committed.contains(id)) {
+            let mut committed = HashSet::new();
+            for prior in &self.events {
+                checkpoint(control)?;
+                if prior.phase == Committed { committed.insert(prior.destination_id.as_str()); }
+            }
+            if required.is_empty() || controlled_any(required.iter(), control, |id| !committed.contains(id))? {
                 return Err(E::InvalidTransition);
             }
             // One retirement owner per source; another operation cannot retire it twice.
-            if self.events.iter().any(|e| {
+            if controlled_any(self.events.iter(), control, |e| {
                 e.operation != event.operation
                     && matches!(e.phase, SourceRetirementPrepared | SourceRetired)
                     && self.binding.operations()[e.operation]
@@ -446,7 +482,7 @@ impl PhysicalJournalV2 {
                         .observation
                         .reference
                         == op.source.observation.reference
-            }) {
+            })? {
                 return Err(E::InvalidTransition);
             }
         }
@@ -457,10 +493,8 @@ impl PhysicalJournalV2 {
         {
             Some(&event.expected_source)
         } else {
-            history
-                .iter()
-                .find(|e| e.phase == TempAllocated)
-                .and_then(|e| e.observed_identity.as_ref())
+            controlled_find(history.iter(), control, |event| event.phase == TempAllocated)?
+                .and_then(|event| event.observed_identity.as_ref())
         };
         if event.phase == TempAllocated {
             if !(matches!(event.observed_identity, Some(ObjectIdentity::Test { .. }))
@@ -472,15 +506,11 @@ impl PhysicalJournalV2 {
                     || self.binding.data.copied_move_sources.is_some()))
                 || event.observed_identity == self.binding.data.source_root.identity
                 || event.observed_identity == self.binding.data.target_root.identity
-                || self
-                    .binding
-                    .operations()
-                    .iter()
-                    .any(|o| event.observed_identity == o.source.observation.identity)
+                || controlled_any(self.binding.operations().iter(), control, |o| event.observed_identity == o.source.observation.identity)?
                 || event.observed_identity.as_ref() == Some(&event.expected_source)
-                || self.events.iter().any(|e| {
+                || controlled_any(self.events.iter(), control, |e| {
                     e.phase == TempAllocated && e.observed_identity == event.observed_identity
-                })
+                })?
             {
                 return Err(E::InvalidTransition);
             }
@@ -493,58 +523,37 @@ impl PhysicalJournalV2 {
         {
             return Err(E::InvalidTransition);
         }
-        Ok(())
+        checkpoint(control)
     }
     /// Destination commitment alone does not complete a move dependency.
     /// The sole pre-retirement exception is another copy of the same duet source.
-    pub(crate) fn dependency_ready(&self, dependency: usize, dependent: usize) -> bool {
+    pub(crate) fn dependency_ready_with_control(&self, dependency: usize, dependent: usize, control: Option<&InspectionControl>) -> Result<bool> {
+        checkpoint(control)?;
         let prior = &self.binding.operations()[dependency];
         let next = &self.binding.operations()[dependent];
-        let history: Vec<_> = self
-            .events
-            .iter()
-            .filter(|e| e.operation == dependency)
-            .collect();
-        if !history
-            .last()
-            .is_some_and(|e| matches!(e.phase, Phase::Committed | Phase::SourceRetired))
-        {
-            return false;
+        let history = self.history_with_control(dependency, control)?;
+        if !history.last().is_some_and(|event| matches!(event.phase, Phase::Committed | Phase::SourceRetired)) {
+            return Ok(false);
         }
-        if self.events.iter().any(|e| {
-            matches!(
-                e.phase,
-                Phase::Failed | Phase::Cancelled | Phase::NeedsRecovery
-            ) && self.binding.operations()[e.operation]
-                .source
-                .observation
-                .reference
-                == prior.source.observation.reference
-        }) {
-            return false;
-        }
-        if prior.mode == TransferMode::Copy {
-            return true;
-        }
-        if same_duet_cohort(prior, next) {
-            return true;
-        }
-        self.events.iter().any(|e| {
-            e.phase == Phase::SourceRetired
-                && self.binding.operations()[e.operation]
-                    .source
-                    .observation
-                    .reference
-                    == prior.source.observation.reference
-        }) || history
-            .iter()
-            .any(|e| e.phase == Phase::AtomicRenameObserved)
+        if controlled_any(self.events.iter(), control, |event| {
+            matches!(event.phase, Phase::Failed | Phase::Cancelled | Phase::NeedsRecovery)
+                && self.binding.operations()[event.operation].source.observation.reference == prior.source.observation.reference
+        })? { return Ok(false); }
+        if prior.mode == TransferMode::Copy || same_duet_cohort(prior, next) { return Ok(true); }
+        Ok(controlled_any(self.events.iter(), control, |event| {
+            event.phase == Phase::SourceRetired
+                && self.binding.operations()[event.operation].source.observation.reference == prior.source.observation.reference
+        })? || controlled_any(history.iter(), control, |event| event.phase == Phase::AtomicRenameObserved)?)
     }
     pub(crate) fn dependencies_ready(&self, dependent: usize) -> bool {
-        self.binding.operations()[dependent]
-            .depends_on
-            .iter()
-            .all(|d| self.dependency_ready(*d, dependent))
+        self.dependencies_ready_with_control(dependent, None).unwrap_or(false)
+    }
+    fn dependencies_ready_with_control(&self, dependent: usize, control: Option<&InspectionControl>) -> Result<bool> {
+        for dependency in &self.binding.operations()[dependent].depends_on {
+            checkpoint(control)?;
+            if !self.dependency_ready_with_control(*dependency, dependent, control)? { return Ok(false); }
+        }
+        Ok(true)
     }
     pub fn latest_phases(&self) -> HashMap<usize, Phase> {
         self.events.iter().map(|e| (e.operation, e.phase)).collect()

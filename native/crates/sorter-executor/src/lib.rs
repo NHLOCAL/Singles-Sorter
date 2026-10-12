@@ -2,6 +2,7 @@
 //! Native Copy and same-volume rename are owned Windows fixtures only; no CLI/UI apply.
 pub mod binding;
 pub mod physical_journal;
+pub mod inspection_control;
 pub mod recovery;
 use serde::Serialize;
 use sha2::{Digest, Sha256};

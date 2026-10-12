@@ -1,5 +1,6 @@
 //! Host-selected local NTFS jobs. Selection and content inspection are live host
 //! authority; serialized plans and journal headers are evidence only.
+use crate::inspection_control::{InspectionControl, checkpoint, probe, any as controlled_any};
 use crate::{
     ExecutionError as E, Result,
     binding::*,
@@ -262,6 +263,21 @@ impl SelectedWindowsJob {
             &directories,
             transfers.as_deref(),
         )
+    }
+    /// Reconcile after Apply using the host's existing cancellation owner. An
+    /// interrupted check returns no all-clear report and never resumes effects.
+    pub fn inspect_recovery_controlled(&self, scope: &RecoveryScope, control: &InspectionControl) -> Result<SelectedRecoveryReport> {
+        control.stage("journals")?;
+        let directory = self.journal_locations.first().ok_or(E::Unsupported)?;
+        let roots = self.storage.roots();
+        let mut observe = |event| crate::windows_copy::inspection_event(control, event);
+        let directories = roots.read_selected_journal_observed(directory.name(), directory.identity(), control.cancellation_flag(), &mut observe)
+            .map_err(crate::windows_copy::inspection_error)?;
+        let transfers = self.journal_locations.get(1).map(|location| {
+            roots.read_selected_journal_observed(location.name(), location.identity(), control.cancellation_flag(), &mut observe)
+                .map_err(crate::windows_copy::inspection_error)
+        }).transpose()?;
+        inspect_recovery_controlled(roots, scope, &self.job_id, &directories, transfers.as_deref(), control)
     }
     /// No automatic replay. A second call fails even when the first call lost an
     /// acknowledgment. Caller receives the journal names before effects begin.
@@ -548,6 +564,28 @@ pub fn inspect_recovery(
     directories: &[u8],
     transfers: Option<&[u8]>,
 ) -> Result<SelectedRecoveryReport> {
+    inspect_recovery_inner(roots, scope, job_id, directories, transfers, None)
+}
+pub fn inspect_recovery_controlled(
+    roots: &WindowsMutationStorage,
+    scope: &RecoveryScope,
+    job_id: &str,
+    directories: &[u8],
+    transfers: Option<&[u8]>,
+    control: &InspectionControl,
+) -> Result<SelectedRecoveryReport> {
+    inspect_recovery_inner(roots, scope, job_id, directories, transfers, Some(control))
+}
+fn inspect_recovery_inner(
+    roots: &WindowsMutationStorage,
+    scope: &RecoveryScope,
+    job_id: &str,
+    directories: &[u8],
+    transfers: Option<&[u8]>,
+    control: Option<&InspectionControl>,
+) -> Result<SelectedRecoveryReport> {
+    crate::inspection_control::check_recorded_input(directories, control)?;
+    if let Some(control) = control { control.stage("directory_journal")?; }
     if roots.domain() != WindowsMutationDomain::SelectedRoots {
         return Err(E::Scope);
     }
@@ -564,6 +602,7 @@ pub fn inspect_recovery(
     let mut binding = None;
     let mut pending: Option<StorageRef> = None;
     while offset < directories.len() {
+        checkpoint(control)?;
         let Some(end) = directories[offset..].iter().position(|b| *b == b'\n') else {
             report.incomplete_tail = true;
             break;
@@ -580,6 +619,7 @@ pub fn inspect_recovery(
             return Err(E::CorruptJournal);
         }
         sequence += 1;
+        if let Some(control) = control { control.record()?; }
         previous = envelope.sha256;
         match envelope.body.event {
             DirectoryEvent::Header {
@@ -589,6 +629,8 @@ pub fn inspect_recovery(
                 binding: header,
                 target_root,
             } => {
+                if control.is_some() && header.operations.len() > 4096 { return Err(E::Unsupported); }
+                checkpoint(control)?;
                 if sequence != 1
                     || schema != 1
                     || record_job != job_id
@@ -609,21 +651,10 @@ pub fn inspect_recovery(
                 {
                     return Err(E::Scope);
                 }
-                if roots.selected_source_reference().map_err(|_| E::Scope)?
-                    != header.source_root.reference
-                    || roots.selected_target_reference().map_err(|_| E::Scope)?
-                        != header.target_root.reference
-                    || roots
-                        .selected_source_root()
-                        .map_err(|_| E::Scope)?
-                        .identity()
-                        != &scope.original_scope.source_root
-                    || roots
-                        .selected_target_root()
-                        .map_err(|_| E::Scope)?
-                        .identity()
-                        != &scope.original_scope.target_root
-                {
+                if probe(control, || roots.selected_source_reference().map_err(|_| E::Scope))? != header.source_root.reference
+                    || probe(control, || roots.selected_target_reference().map_err(|_| E::Scope))? != header.target_root.reference
+                    || probe(control, || roots.selected_source_root().map_err(|_| E::Scope))?.identity() != &scope.original_scope.source_root
+                    || probe(control, || roots.selected_target_root().map_err(|_| E::Scope))?.identity() != &scope.original_scope.target_root {
                     return Err(E::Scope);
                 }
                 binding = Some(header);
@@ -633,21 +664,20 @@ pub fn inspect_recovery(
                 if pending.is_some() || !matches!(parent, ObjectIdentity::Windows { .. }) {
                     return Err(E::CorruptJournal);
                 }
-                let intended = header.operations.iter().any(|op| {
-                    let Ok(mut p) = path(&op.destination.root) else {
-                        return false;
-                    };
-                    op.destination.components[..op.destination.components.len().saturating_sub(1)]
-                        .iter()
-                        .any(|c| {
-                            p.push(c);
-                            self::reference(&p) == reference
-                        })
-                });
+                let mut intended = false;
+                for operation in &header.operations {
+                    checkpoint(control)?;
+                    let Ok(mut parent_path) = path(&operation.destination.root) else { continue; };
+                    for component in &operation.destination.components[..operation.destination.components.len().saturating_sub(1)] {
+                        checkpoint(control)?;
+                        parent_path.push(component);
+                        if self::reference(&parent_path) == reference { intended = true; break; }
+                    }
+                    if intended { break; }
+                }
                 if !intended
-                    || report.observed.iter().any(|(r, _)| r == &reference)
-                    || report.rejected.contains(&reference)
-                {
+                    || controlled_any(report.observed.iter(), control, |(prior, _)| prior == &reference)?
+                    || controlled_any(report.rejected.iter(), control, |prior| prior == &reference)? {
                     return Err(E::CorruptJournal);
                 }
                 pending = Some(reference);
@@ -662,6 +692,7 @@ pub fn inspect_recovery(
                     return Err(E::CorruptJournal);
                 }
                 pending = None;
+                if control.is_some() && report.observed.len() >= 8192 { return Err(E::Unsupported); }
                 report.observed.push((reference, identity));
             }
             DirectoryEvent::Rejected { reference, .. } => {
@@ -683,30 +714,47 @@ pub fn inspect_recovery(
     if let Some(reference) = pending {
         report.pending.push(reference);
     }
+    // Keep every recorded created-directory identity pinned through all file
+    // checks. A replacement cannot be hidden by moving the original files back.
+    let mut held_directories = Vec::new();
+    if control.is_some() {
+        for (reference, expected) in &report.observed {
+            let parent = probe(control, || roots.parent_reference(reference).map_err(|_| E::Stale))?;
+            if parent.identity() != expected { return Err(E::Stale); }
+            held_directories.push(parent);
+        }
+    }
     let transfer_report = if let Some(bytes) = transfers {
         if !report.complete || report.incomplete_tail {
             return Err(E::CorruptJournal);
         }
-        let journal = crate::windows_copy::open_owned_recovery_domain(
+        if let Some(control) = control { control.stage("transfer_journal")?; }
+        let journal = crate::windows_copy::open_owned_recovery_domain_with_control(
             roots,
             scope,
             job_id,
             bytes,
             binding.domain(),
+            control,
         )?;
-        let mut reads = crate::windows_copy::WindowsCopyRecovery::new_domain(
+        let mut reads = crate::windows_copy::WindowsCopyRecovery::new_domain_with_control(
             roots,
             journal.binding(),
             binding.domain(),
+            control,
         )?;
-        Some(crate::recovery::recover_job(
+        Some(crate::recovery::recover_job_inner(
             journal.binding(),
             &journal,
             &mut reads,
+            control,
+            0,
         )?)
     } else {
         None
     };
+    checkpoint(control)?;
+    drop(held_directories);
     Ok(SelectedRecoveryReport {
         directories: report,
         transfers: transfer_report,

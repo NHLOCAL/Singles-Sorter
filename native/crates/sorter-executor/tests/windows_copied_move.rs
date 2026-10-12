@@ -53,6 +53,9 @@ impl Fixture {
         Self::with_second_volume(duet, !duet)
     }
     fn with_second_volume(duet: bool, second_volume: bool) -> Self {
+        Self::with_contents(duet, second_volume, b"owned-main-audio", b"owned-auxiliary")
+    }
+    fn with_contents(duet: bool, second_volume: bool, main: &[u8], named: &[u8]) -> Self {
         let tree = tempfile::tempdir().unwrap();
         let root = tree.path().canonicalize().unwrap();
         let target_tree =
@@ -66,8 +69,8 @@ impl Fixture {
         for path in [&source, &target, &journal] {
             std::fs::create_dir(path).unwrap();
         }
-        std::fs::write(source.join("song.mp3"), b"owned-main-audio").unwrap();
-        std::fs::write(source.join("song.mp3:notes"), b"owned-auxiliary").unwrap();
+        std::fs::write(source.join("song.mp3"), main).unwrap();
+        std::fs::write(source.join("song.mp3:notes"), named).unwrap();
         let mut reads = WindowsPlanningStorage::for_preview(&source, &target).unwrap();
         let request = JobRequestV2 {
             mode: JobMode::Sort,
@@ -586,4 +589,205 @@ fn incomplete_duet_is_refused_during_read_only_readiness() {
     assert_eq!(std::fs::read_dir(&f.target).unwrap().count(), 0);
     assert_eq!(std::fs::read_dir(&f.journal).unwrap().count(), 0);
     assert_eq!(std::fs::read(f.source.join("song.mp3:notes")).unwrap(), b"owned-auxiliary");
+}
+
+// Include roots, directories, identities, kinds, sizes, attributes, creation and
+// write times, main hashes, and each generated named stream. Exclude access time.
+#[derive(Debug, PartialEq, Eq)]
+struct InspectionTreeEntry {
+    path: PathBuf,
+    observation: EntryObservation,
+    attributes: u32,
+    created: u64,
+    written: u64,
+    content: Option<String>,
+    streams: Vec<(String, u64, String)>,
+}
+fn inspection_tree(root: &std::path::Path) -> Vec<InspectionTreeEntry> {
+    use std::os::windows::fs::MetadataExt;
+    let mut reads = DesktopStorage::new(&[root.to_path_buf()]).unwrap();
+    let mut pending = vec![root.to_path_buf()];
+    let mut entries = Vec::new();
+    while let Some(path) = pending.pop() {
+        let metadata = std::fs::symlink_metadata(&path).unwrap();
+        assert!(!metadata.file_type().is_symlink());
+        let reference = reads.reference(&path).unwrap();
+        let observation = reads.stat(&reference).unwrap();
+        let content = metadata.is_file().then(|| digest(&std::fs::read(&path).unwrap()));
+        let mut streams = Vec::new();
+        if metadata.is_dir() {
+            pending.extend(std::fs::read_dir(&path).unwrap().map(|entry| entry.unwrap().path()));
+        } else if path.extension().is_some_and(|extension| extension == "mp3") {
+            let suffix = if path.file_name().unwrap() == "zzz-solo.mp3" { "extra" } else { "notes" };
+            let bytes = std::fs::read(format!("{}:{suffix}", path.display())).unwrap();
+            streams.push((suffix.into(), bytes.len() as u64, digest(&bytes)));
+        }
+        entries.push(InspectionTreeEntry { path: path.strip_prefix(root).unwrap().to_path_buf(), observation,
+            attributes: metadata.file_attributes(), created: metadata.creation_time(), written: metadata.last_write_time(), content, streams });
+    }
+    entries.sort_by(|a, b| a.path.cmp(&b.path));
+    entries
+}
+fn stopped_after_media_bytes(threshold: u64) -> (sorter_executor::inspection_control::InspectionControl<'static>, std::sync::Arc<std::sync::atomic::AtomicU64>) {
+    use sorter_executor::inspection_control::InspectionControl;
+    use std::sync::{Arc, atomic::AtomicU64};
+    let cancel = Arc::new(AtomicBool::new(false));
+    let flag = cancel.clone();
+    let baseline = Arc::new(AtomicU64::new(0));
+    let journal_bytes = baseline.clone();
+    let control = InspectionControl::with_progress_interval(cancel, std::time::Duration::ZERO, move |progress| {
+        if progress.stage == "metadata" { journal_bytes.store(progress.bytes_read, Ordering::Release); }
+        if progress.stage == "files" && progress.bytes_read > journal_bytes.load(Ordering::Acquire) + threshold {
+            flag.store(true, Ordering::Release);
+        }
+    });
+    (control, baseline)
+}
+fn fresh_inspection_control() -> sorter_executor::inspection_control::InspectionControl<'static> {
+    sorter_executor::inspection_control::InspectionControl::new(std::sync::Arc::new(AtomicBool::new(false)), |_| {})
+}
+#[test]
+fn controlled_main_chunk_cancel_preserves_trees_and_fresh_reinspection() {
+    let main = vec![7u8; 256 * 1024];
+    let f = Fixture::with_contents(true, false, &main, b"owned-auxiliary");
+    let mut job = f.job().unwrap();
+    assert_eq!(job.run(&AtomicBool::new(false), &mut |_| {}).unwrap().status, JobStatus::Complete);
+    let before = inspection_tree(f._tree.path());
+    let (control, baseline) = stopped_after_media_bytes(0);
+    assert!(matches!(job.inspect_recovery_controlled(&f.recovery(&job), &control), Err(sorter_executor::ExecutionError::Cancelled)));
+    let progress = control.snapshot().unwrap();
+    assert_eq!(progress.bytes_read - baseline.load(Ordering::Acquire), 65536);
+    assert_eq!(progress.completed_operations, 0);
+    assert_eq!(inspection_tree(f._tree.path()), before);
+    let fresh = fresh_inspection_control();
+    let report = job.inspect_recovery_controlled(&f.recovery(&job), &fresh).unwrap();
+    assert!(report.transfers.unwrap().operations.iter().all(|operation| operation.status == RecoveryStatus::Committed));
+    assert_eq!(fresh.snapshot().unwrap().completed_operations, 2);
+    assert_eq!(inspection_tree(f._tree.path()), before);
+}
+#[test]
+fn controlled_destination_named_stream_chunk_cancel_is_explicit() {
+    let main = b"owned-main-audio";
+    let named = vec![9u8; 256 * 1024];
+    let f = Fixture::with_contents(true, false, main, &named);
+    let mut job = f.job().unwrap();
+    assert_eq!(job.run(&AtomicBool::new(false), &mut |_| {}).unwrap().status, JobStatus::Complete);
+    let before = inspection_tree(f._tree.path());
+    // Initial destination main read, then the full-stream verifier's main read.
+    let (control, baseline) = stopped_after_media_bytes(2 * main.len() as u64);
+    assert!(matches!(job.inspect_recovery_controlled(&f.recovery(&job), &control), Err(sorter_executor::ExecutionError::Cancelled)));
+    assert_eq!(control.snapshot().unwrap().bytes_read - baseline.load(Ordering::Acquire), 2 * main.len() as u64 + 65536);
+    assert_eq!(inspection_tree(f._tree.path()), before);
+    assert!(job.inspect_recovery_controlled(&f.recovery(&job), &fresh_inspection_control()).unwrap().transfers.unwrap().operations.iter().all(|operation| operation.status == RecoveryStatus::Committed));
+}
+#[test]
+fn controlled_partial_source_named_stream_cancel_keeps_original_and_partial_evidence() {
+    let main = b"owned-main-audio";
+    let named = vec![3u8; 256 * 1024];
+    let f = Fixture::with_contents(true, false, main, &named);
+    let mut job = f.job().unwrap();
+    let cancel = AtomicBool::new(false);
+    let result = job.run(&cancel, &mut |progress| {
+        if progress.operation == 1 { cancel.store(true, Ordering::Release); }
+    }).unwrap();
+    assert_eq!((result.committed_destinations, result.moved_sources), (1, 0));
+    let before = inspection_tree(f._tree.path());
+    // Source and committed destination main reads, then source full-stream main.
+    let (control, baseline) = stopped_after_media_bytes(3 * main.len() as u64);
+    assert!(matches!(job.inspect_recovery_controlled(&f.recovery(&job), &control), Err(sorter_executor::ExecutionError::Cancelled)));
+    assert_eq!(control.snapshot().unwrap().bytes_read - baseline.load(Ordering::Acquire), 3 * main.len() as u64 + 65536);
+    assert_eq!(inspection_tree(f._tree.path()), before);
+    let report = job.inspect_recovery_controlled(&f.recovery(&job), &fresh_inspection_control()).unwrap();
+    assert!(report.transfers.unwrap().operations.iter().any(|operation| operation.status != RecoveryStatus::Committed));
+    assert_eq!(inspection_tree(f._tree.path()), before);
+}
+#[test]
+fn controlled_journal_read_and_strict_replay_stop_before_media_observation() {
+    use sorter_executor::inspection_control::InspectionControl;
+    use std::sync::Arc;
+    let f = Fixture::new(true);
+    let mut job = f.job().unwrap();
+    assert_eq!(job.run(&AtomicBool::new(false), &mut |_| {}).unwrap().status, JobStatus::Complete);
+    let before = inspection_tree(f._tree.path());
+    for stage in ["journals", "directory_journal", "transfer_journal"] {
+        let cancel = Arc::new(AtomicBool::new(false));
+        let flag = cancel.clone();
+        let first_record = std::sync::atomic::AtomicU64::new(u64::MAX);
+        let control = InspectionControl::with_progress_interval(cancel, std::time::Duration::ZERO, move |progress| {
+            if progress.stage == stage {
+                let _ = first_record.compare_exchange(u64::MAX, progress.records_checked, Ordering::AcqRel, Ordering::Acquire);
+                if stage == "journals" && progress.bytes_read > 0
+                    || stage != "journals" && progress.records_checked > first_record.load(Ordering::Acquire) {
+                    flag.store(true, Ordering::Release);
+                }
+            }
+        });
+        assert!(matches!(job.inspect_recovery_controlled(&f.recovery(&job), &control), Err(sorter_executor::ExecutionError::Cancelled)));
+        assert_eq!(control.snapshot().unwrap().completed_operations, 0);
+        assert_eq!(inspection_tree(f._tree.path()), before);
+    }
+}
+#[test]
+fn controlled_mixed_routes_preserve_receipts_and_whole_cohort_metadata_prepass() {
+    use sorter_executor::inspection_control::InspectionControl;
+    use std::sync::{Arc, Mutex};
+    let f = mixed_fixture();
+    let mut job = f.job().unwrap();
+    assert_eq!(job.run(&AtomicBool::new(false), &mut |_| {}).unwrap().status, JobStatus::Complete);
+    let before = inspection_tree(f._tree.path());
+    let events = Arc::new(Mutex::new(Vec::new()));
+    let observed = events.clone();
+    let control = InspectionControl::with_progress_interval(Arc::new(AtomicBool::new(false)), std::time::Duration::ZERO, move |progress| {
+        observed.lock().unwrap().push(progress);
+    });
+    let report = job.inspect_recovery_controlled(&f.recovery(&job), &control).unwrap().transfers.unwrap();
+    assert!(report.operations.iter().all(|operation| operation.status == RecoveryStatus::Committed));
+    assert_eq!(report.operations.iter().map(|operation| operation.copy_metadata).collect::<Vec<_>>(), vec![
+        sorter_executor::recovery::CopyMetadataRecoveryStatus::Verified,
+        sorter_executor::recovery::CopyMetadataRecoveryStatus::Verified,
+        sorter_executor::recovery::CopyMetadataRecoveryStatus::NotRequested,
+    ]);
+    let events = events.lock().unwrap();
+    let metadata = events.iter().filter(|event| event.stage == "metadata").collect::<Vec<_>>();
+    assert!(metadata.len() >= 5); // stage plus each parent/metadata probe
+    assert!(metadata.iter().all(|event| event.bytes_read == metadata[0].bytes_read));
+    let first_content = events.iter().position(|event| event.stage == "files" && event.bytes_read > metadata[0].bytes_read).unwrap();
+    assert!(events.iter().enumerate().filter(|(_, event)| event.stage == "metadata").all(|(index, _)| index < first_content));
+    assert_eq!(inspection_tree(f._tree.path()), before);
+}
+#[test]
+fn controlled_directory_replacement_cannot_be_hidden_by_original_file_objects() {
+    let f = Fixture::new(true);
+    let mut job = f.job().unwrap();
+    assert_eq!(job.run(&AtomicBool::new(false), &mut |_| {}).unwrap().status, JobStatus::Complete);
+    let scope = f.recovery(&job);
+    let id = job.job_id().to_owned();
+    let roots = grants(&f.source, &f.target, &f.journal);
+    let journals = job.journal_locations().iter().map(|location| roots.read_selected_journal(location.name(), location.identity()).unwrap()).collect::<Vec<_>>();
+    drop(roots);
+    drop(job);
+    let artist = f.target.join("אמן");
+    let saved = f.target.join("owned-old-artist");
+    std::fs::rename(&artist, &saved).unwrap();
+    std::fs::create_dir(&artist).unwrap();
+    std::fs::rename(saved.join("song.mp3"), artist.join("song.mp3")).unwrap();
+    let before = inspection_tree(f._tree.path());
+    let roots = grants(&f.source, &f.target, &f.journal);
+    assert!(matches!(inspect_recovery_controlled(&roots, &scope, &id, &journals[0], Some(&journals[1]), &fresh_inspection_control()), Err(sorter_executor::ExecutionError::Stale)));
+    assert_eq!(inspection_tree(f._tree.path()), before);
+}
+#[test]
+fn controlled_copied_inspection_streams_more_than_the_old_aggregate_limit() {
+    let main = vec![11u8; 17 * 1024 * 1024];
+    let f = Fixture::with_contents(true, false, &main, b"owned-auxiliary");
+    let mut job = f.job().unwrap();
+    assert_eq!(job.run(&AtomicBool::new(false), &mut |_| {}).unwrap().status, JobStatus::Complete);
+    let before = inspection_tree(f._tree.path());
+    let control = fresh_inspection_control();
+    let report = job.inspect_recovery_controlled(&f.recovery(&job), &control).unwrap();
+    assert!(report.transfers.unwrap().operations.iter().all(|operation| operation.status == RecoveryStatus::Committed));
+    let progress = control.snapshot().unwrap();
+    assert!(progress.bytes_read > 64 * 1024 * 1024);
+    assert_eq!(progress.completed_operations, 2);
+    assert_eq!(inspection_tree(f._tree.path()), before);
 }

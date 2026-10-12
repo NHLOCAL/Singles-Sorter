@@ -79,6 +79,25 @@ fn read_error(e: crate::storage::StorageError) -> MutationError {
     };
     err(kind, &format!("{e:?}"))
 }
+/// Data-only observations emitted by cooperative native inspection readers.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WindowsInspectionEvent {
+    Probe,
+    BytesRead(usize),
+}
+fn inspection_probe<T>(
+    cancel: &AtomicBool,
+    observe: &mut dyn FnMut(WindowsInspectionEvent) -> Result<(), MutationError>,
+    read: impl FnOnce() -> Result<T, MutationError>,
+) -> Result<T, MutationError> {
+    cancelled(cancel)?;
+    observe(WindowsInspectionEvent::Probe)?;
+    cancelled(cancel)?;
+    let result = read();
+    cancelled(cancel)?;
+    result
+}
+
 fn cancelled(cancel: &AtomicBool) -> Result<(), MutationError> {
     if cancel.load(Ordering::Acquire) {
         Err(err(
@@ -797,6 +816,55 @@ impl WindowsMutationStorage {
             name: name.clone(),
             identity: expected_identity.clone(),
         })
+    }
+
+    /// Controlled identity-bound selected-journal read. The callback contains only
+    /// read observations; it cannot grant a writable reopen or replay capability.
+    pub fn read_selected_journal_observed(
+        &self,
+        name: &MutationName,
+        expected_identity: &ObjectIdentity,
+        cancel: &AtomicBool,
+        observe: &mut dyn FnMut(WindowsInspectionEvent) -> Result<(), MutationError>,
+    ) -> Result<Vec<u8>, MutationError> {
+        if !matches!(expected_identity, ObjectIdentity::Windows { .. }) {
+            return Err(err(MutationErrorKind::Unsupported, "full Windows journal identity required"));
+        }
+        let parent = inspection_probe(cancel, observe, || self.selected_journal_root())?;
+        inspection_probe(cancel, observe, || self.check_role(&parent, RootRole::Journal))?;
+        let mut file = inspection_probe(cancel, observe, || {
+            open_relative_file(parent.handle(), units(name)?, false, FILE_GENERIC_READ)
+        })?;
+        inspection_probe(cancel, observe, || ensure_regular(&file))?;
+        if inspection_probe(cancel, observe, || identity(&file).map_err(read_error))? != *expected_identity {
+            return Err(err(MutationErrorKind::StalePlan, "journal identity changed"));
+        }
+        let length = inspection_probe(cancel, observe, || file.metadata().map_err(io_error))?.len();
+        const LIMIT: u64 = 64 * 1024 * 1024;
+        if length > LIMIT { return Err(err(MutationErrorKind::Unsupported, "selected journal exceeds read limit")); }
+        let mut bytes = Vec::new();
+        bytes.try_reserve_exact(length as usize).map_err(|_| err(MutationErrorKind::Io, "journal allocation failed"))?;
+        let mut chunk = [0u8; 65536];
+        loop {
+            cancelled(cancel)?;
+            // Read no more than the observed length, then one bounded EOF probe.
+            let remaining = (length as usize).saturating_sub(bytes.len());
+            let amount = remaining.min(chunk.len()).max(1);
+            let read = file.read(&mut chunk[..amount]).map_err(io_error);
+            let count = match read { Ok(count) => count, Err(error) => { cancelled(cancel)?; return Err(error); } };
+            observe(WindowsInspectionEvent::BytesRead(count))?;
+            cancelled(cancel)?;
+            if count == 0 { break; }
+            if count > remaining { return Err(err(MutationErrorKind::StalePlan, "journal grew during inspection")); }
+            bytes.extend_from_slice(&chunk[..count]);
+        }
+        if bytes.len() as u64 != length
+            || inspection_probe(cancel, observe, || file.metadata().map_err(io_error))?.len() != length
+            || inspection_probe(cancel, observe, || identity(&file).map_err(read_error))? != *expected_identity {
+            return Err(err(MutationErrorKind::StalePlan, "journal changed during inspection"));
+        }
+        inspection_probe(cancel, observe, || self.check_parent(&parent))?;
+        Ok(bytes)
     }
 
     /// Read-only close/reopen inspection, using previously captured identity and

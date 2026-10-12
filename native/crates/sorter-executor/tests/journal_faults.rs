@@ -1755,3 +1755,76 @@ fn typed_planning_abort_cannot_produce_an_execution_binding() {
         );
     }
 }
+
+#[test]
+fn controlled_strict_replay_cancels_after_a_valid_record() {
+    use sorter_executor::inspection_control::InspectionControl;
+    use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
+    let b = copy_binding(false);
+    let mut sink = Sink::default();
+    run(&b, &mut sink, &mut Fake::new(), false).unwrap();
+    let before = sink.bytes.clone();
+    let cancel = Arc::new(AtomicBool::new(false));
+    let flag = cancel.clone();
+    let control = InspectionControl::with_progress_interval(cancel, std::time::Duration::ZERO, move |progress| {
+        if progress.records_checked == 1 { flag.store(true, Ordering::Release); }
+    });
+    assert!(matches!(PhysicalJournalV2::open_controlled(&b, "job", &sink.bytes, &control), Err(E::Cancelled)));
+    assert_eq!(control.snapshot().unwrap().records_checked, 1);
+    assert_eq!(sink.bytes, before);
+    let fresh = InspectionControl::new(Arc::new(AtomicBool::new(false)), |_| {});
+    let journal = PhysicalJournalV2::open_controlled(&b, "job", &sink.bytes, &fresh).unwrap();
+    assert_eq!(journal.events().last().unwrap().phase, Phase::Committed);
+}
+
+#[test]
+fn controlled_recovery_propagates_cancelled_storage_instead_of_unknown_evidence() {
+    use sorter_executor::inspection_control::InspectionControl;
+    use std::sync::{Arc, atomic::AtomicBool};
+    struct CancelledRead;
+    impl RecoveryStorage for CancelledRead {
+        fn source(&mut self, _: &StorageRef) -> Result<Option<ObservedObject>> { Err(E::Cancelled) }
+        fn destination(&mut self, _: &DestinationEvidence) -> Result<Option<ObservedObject>> { panic!("read after cancellation") }
+    }
+    let b = copy_binding(false);
+    let mut sink = Sink::default();
+    let journal = PhysicalJournalV2::create(&b, "job", &mut sink).unwrap();
+    let control = InspectionControl::new(Arc::new(AtomicBool::new(false)), |_| {});
+    assert_eq!(recover_job_controlled(&b, &journal, &mut CancelledRead, &control, 0), Err(E::Cancelled));
+    assert_eq!(control.snapshot().unwrap().completed_operations, 0);
+}
+
+#[test]
+fn controlled_resume_reorders_reads_but_rechecks_every_dependency_in_original_order() {
+    use sorter_executor::inspection_control::InspectionControl;
+    use std::sync::{Arc, Mutex, atomic::AtomicBool};
+    struct Observations { first: String }
+    impl RecoveryStorage for Observations {
+        fn source(&mut self, reference: &StorageRef) -> Result<Option<ObservedObject>> {
+            let StorageRef::TestOpaque { id } = reference else { panic!() };
+            Ok(Some(ObservedObject { identity: identity(id), sha256: digest(b"audio") }))
+        }
+        fn destination(&mut self, destination: &DestinationEvidence) -> Result<Option<ObservedObject>> {
+            Ok((destination.id == self.first).then(|| ObservedObject { identity: identity("temp-0"), sha256: digest(b"audio") }))
+        }
+    }
+    for copy in [false, true] {
+        let b = review_two_mode(copy);
+        let (journal, _) = review_committed_destination(&b);
+        let first = b.operations()[0].destination.id.clone();
+        let baseline = recover_job(&b, &journal, &mut Observations { first: first.clone() }).unwrap();
+        let reads = Arc::new(Mutex::new(Vec::new()));
+        let observed = reads.clone();
+        let control = InspectionControl::new(Arc::new(AtomicBool::new(false)), move |progress| {
+            if let Some(operation) = progress.operation {
+                let mut values = observed.lock().unwrap();
+                if values.last() != Some(&operation) { values.push(operation); }
+            }
+        });
+        let resumed = recover_job_controlled(&b, &journal, &mut Observations { first }, &control, 1).unwrap();
+        assert_eq!(resumed, baseline);
+        assert_eq!(*reads.lock().unwrap(), vec![1, 0]);
+        assert_eq!(resumed.operations.iter().map(|operation| operation.operation).collect::<Vec<_>>(), vec![0, 1]);
+        assert_eq!(control.snapshot().unwrap().completed_operations, 2);
+    }
+}

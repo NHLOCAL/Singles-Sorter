@@ -1,4 +1,5 @@
 //! Read-only reconciliation: reports evidence; never appends, retries or deletes.
+use crate::inspection_control::{InspectionControl, checkpoint, any as controlled_any, find as controlled_find};
 use crate::{ExecutionError as E, Result, binding::*, physical_journal::*};
 use sorter_core::discovery::{ObjectIdentity, StorageRef};
 
@@ -66,231 +67,179 @@ pub fn recover_job(
     journal: &PhysicalJournalV2,
     storage: &mut dyn RecoveryStorage,
 ) -> Result<RecoveryReport> {
-    if binding.sha256()? != journal.binding().sha256()? {
-        return Err(E::InvalidBinding);
-    }
-    let mut report = RecoveryReport {
-        operations: vec![],
-        append_blocked: journal.needs_recovery(),
-    };
-    // Capture every metadata receipt before any file-content/stream reads. A
-    // retirement cohort can inspect a later destination during the first item.
-    let metadata_evidence = binding
-        .operations()
-        .iter()
-        .map(|op| {
-            if !binding.data.metadata_required_for(op) {
-                return CopyMetadataRecoveryStatus::NotRequested;
-            }
-            let expected = journal
-                .events()
-                .iter()
-                .filter(|event| event.operation == op.id)
-                .find_map(|event| event.copy_metadata.as_ref());
-            match expected.map(|expected| storage.verify_copy_metadata(&op.destination, expected)) {
-                Some(Ok(true)) => CopyMetadataRecoveryStatus::Verified,
-                Some(Ok(false)) => CopyMetadataRecoveryStatus::Mismatch,
-                _ => CopyMetadataRecoveryStatus::Unverified,
-            }
-        })
-        .collect::<Vec<_>>();
-    let mut observed_source_absent = vec![false; binding.operations().len()];
+    recover_job_inner(binding, journal, storage, None, 0)
+}
+/// Read-only observations may start at a previous cursor, but every operation is
+/// reverified. Report IDs and dependency evaluation retain the original order.
+pub fn recover_job_controlled(
+    binding: &ExecutionBinding,
+    journal: &PhysicalJournalV2,
+    storage: &mut dyn RecoveryStorage,
+    control: &InspectionControl,
+    start_operation: usize,
+) -> Result<RecoveryReport> {
+    recover_job_inner(binding, journal, storage, Some(control), start_operation)
+}
+fn observation<T>(control: Option<&InspectionControl>, read: impl FnOnce() -> Result<T>) -> Result<Result<T>> {
+    checkpoint(control)?;
+    let result = read();
+    checkpoint(control)?;
+    if result.as_ref().err() == Some(&E::Cancelled) { return Err(E::Cancelled); }
+    Ok(result)
+}
+pub(crate) fn recover_job_inner(
+    binding: &ExecutionBinding,
+    journal: &PhysicalJournalV2,
+    storage: &mut dyn RecoveryStorage,
+    control: Option<&InspectionControl>,
+    start_operation: usize,
+) -> Result<RecoveryReport> {
+    checkpoint(control)?;
+    if binding.sha256()? != journal.binding().sha256()? { return Err(E::InvalidBinding); }
+    let count = binding.operations().len();
+    if control.is_some() && count > 4096 { return Err(E::Unsupported); }
+    if start_operation >= count && start_operation != 0 { return Err(E::InvalidBinding); }
+    if let Some(control) = control { control.operations(count)?; control.stage("metadata")?; }
+    let mut report = RecoveryReport { operations: Vec::with_capacity(count), append_blocked: journal.needs_recovery() };
+    // Preserve the current whole-cohort metadata prepass: no source, destination
+    // or ADS content is read until every route-required receipt has been probed.
     for op in binding.operations() {
-        let history: Vec<_> = journal
-            .events()
-            .iter()
-            .filter(|event| event.operation == op.id)
-            .collect();
-        let copy_metadata = metadata_evidence[op.id];
-        let source = storage.source(&op.source.observation.reference);
-        let dest = storage.destination(&op.destination);
+        checkpoint(control)?;
+        let copy_metadata = if !binding.data.metadata_required_for(op) {
+            CopyMetadataRecoveryStatus::NotRequested
+        } else {
+            let expected = controlled_find(journal.events().iter(), control, |event| {
+                event.operation == op.id && event.copy_metadata.is_some()
+            })?.and_then(|event| event.copy_metadata.as_ref());
+            match expected {
+                Some(expected) => match observation(control, || storage.verify_copy_metadata(&op.destination, expected))? {
+                    Ok(true) => CopyMetadataRecoveryStatus::Verified,
+                    Ok(false) => CopyMetadataRecoveryStatus::Mismatch,
+                    Err(_) => CopyMetadataRecoveryStatus::Unverified,
+                },
+                None => CopyMetadataRecoveryStatus::Unverified,
+            }
+        };
+        report.operations.push(OperationRecovery { copy_metadata, operation: op.id, status: RecoveryStatus::NeedsRecovery });
+    }
+    let mut observed_source_absent = vec![false; count];
+    for index in (start_operation..count).chain(0..start_operation) {
+        checkpoint(control)?;
+        let op = &binding.operations()[index];
+        if let Some(control) = control { control.begin_operation(op.id)?; }
+        let mut history = Vec::new();
+        for event in journal.events() {
+            checkpoint(control)?;
+            if event.operation == op.id { history.push(event); }
+        }
+        let copy_metadata = report.operations[op.id].copy_metadata;
+        let source = observation(control, || storage.source(&op.source.observation.reference))?;
+        let dest = observation(control, || storage.destination(&op.destination))?;
         let mut status = RecoveryStatus::NeedsRecovery;
-        if !journal.needs_recovery()
-            && let (Ok(source), Ok(dest)) = (source, dest)
-        {
+        if !journal.needs_recovery() && let (Ok(source), Ok(dest)) = (source, dest) {
             observed_source_absent[op.id] = source.is_none();
-            let auxiliary = binding
-                .data
-                .copied_move_sources
-                .as_ref()
-                .and_then(|sources| {
-                    sources
-                        .iter()
-                        .find(|source| source.source == op.source.observation.reference)
-                });
-            let source_streams_ok = auxiliary.is_none_or(|expected| {
-                matches!(storage.verify_move_source_streams(expected), Ok(true))
-            });
-            let source_ok = source_streams_ok
-                && source.as_ref().is_some_and(|s| {
-                    Some(&s.identity) == op.source.observation.identity.as_ref()
-                        && s.sha256 == op.source.sha256
-                });
-            let atomic = history
-                .iter()
-                .any(|e| e.phase == Phase::AtomicRenamePrepared);
-            let expected = if atomic {
-                op.source.observation.identity.as_ref()
-            } else {
-                history
-                    .iter()
-                    .find(|e| e.phase == Phase::DestinationPublishPrepared)
-                    .and_then(|e| e.observed_identity.as_ref())
+            let auxiliary = controlled_find(binding.data.copied_move_sources.iter().flatten(), control,
+                |source| source.source == op.source.observation.reference)?;
+            let source_streams_ok = match auxiliary {
+                Some(expected) => observation(control, || storage.verify_move_source_streams(expected))?.unwrap_or(false),
+                None => true,
             };
-            let destination_streams_ok = auxiliary.is_none_or(|auxiliary| {
-                expected.is_some_and(|identity| {
-                    matches!(
-                        storage.verify_move_destination_streams(
-                            &op.destination,
-                            identity,
-                            auxiliary
-                        ),
-                        Ok(true)
-                    )
-                })
+            let source_ok = source_streams_ok && source.as_ref().is_some_and(|source| {
+                Some(&source.identity) == op.source.observation.identity.as_ref() && source.sha256 == op.source.sha256
             });
-            let dest_ok = destination_streams_ok
-                && dest
-                    .as_ref()
-                    .is_some_and(|d| Some(&d.identity) == expected && d.sha256 == op.source.sha256);
-            let terminal = history.iter().any(|e| {
-                matches!(
-                    e.phase,
-                    Phase::Failed | Phase::Cancelled | Phase::NeedsRecovery
-                )
+            let atomic = controlled_any(history.iter(), control, |event| event.phase == Phase::AtomicRenamePrepared)?;
+            let expected = if atomic { op.source.observation.identity.as_ref() } else {
+                controlled_find(history.iter(), control, |event| event.phase == Phase::DestinationPublishPrepared)?
+                    .and_then(|event| event.observed_identity.as_ref())
+            };
+            let destination_streams_ok = match (auxiliary, expected) {
+                (Some(auxiliary), Some(identity)) => observation(control, || storage.verify_move_destination_streams(&op.destination, identity, auxiliary))?.unwrap_or(false),
+                (Some(_), None) => false,
+                (None, _) => true,
+            };
+            let dest_ok = destination_streams_ok && dest.as_ref().is_some_and(|dest| {
+                Some(&dest.identity) == expected && dest.sha256 == op.source.sha256
             });
+            let terminal = controlled_any(history.iter(), control, |event| matches!(event.phase, Phase::Failed | Phase::Cancelled | Phase::NeedsRecovery))?;
             if !terminal && dest_ok && (source_ok && !atomic || source.is_none() && atomic) {
-                status = if history.iter().any(|e| e.phase == Phase::Committed) {
+                status = if controlled_any(history.iter(), control, |event| event.phase == Phase::Committed)? {
                     RecoveryStatus::Committed
-                } else {
-                    RecoveryStatus::EffectProvenAwaitingJournal
-                };
-            } else if !terminal
-                && source_ok
-                && dest.is_none()
-                && history.iter().all(|e| e.phase == Phase::Prepared)
-            {
+                } else { RecoveryStatus::EffectProvenAwaitingJournal };
+            } else if !terminal && source_ok && dest.is_none()
+                && !controlled_any(history.iter(), control, |event| event.phase != Phase::Prepared)? {
                 status = RecoveryStatus::ReadyForExplicitResume;
             }
-            // Absence following retirement intent alone cannot prove which actor
-            // removed the source. Require the durable post-event and every distinct
-            // required destination still carrying the exact committed identity+digest.
+            // Retired source absence alone cannot prove the effect. Recheck each
+            // required destination's exact identity, main digest and full streams.
             if !terminal && source.is_none() && !atomic && dest_ok {
-                let retired = journal.events().iter().any(|e| {
-                    e.phase == Phase::SourceRetired
-                        && binding.operations()[e.operation]
-                            .source
-                            .observation
-                            .reference
-                            == op.source.observation.reference
-                });
+                let retired = controlled_any(journal.events().iter(), control, |event| {
+                    event.phase == Phase::SourceRetired
+                        && binding.operations()[event.operation].source.observation.reference == op.source.observation.reference
+                })?;
                 if retired {
                     let mut all = true;
-                    for required in binding.operations().iter().filter(|o| {
-                        o.source.observation.reference == op.source.observation.reference
-                    }) {
-                        let committed = journal
-                            .events()
-                            .iter()
-                            .find(|e| e.operation == required.id && e.phase == Phase::Committed);
-                        let observed = storage.destination(&required.destination);
-                        all &= matches!((committed,observed),(Some(e),Ok(Some(d))) if Some(&d.identity)==e.observed_identity.as_ref() && d.sha256==required.source.sha256);
+                    for required in binding.operations() {
+                        checkpoint(control)?;
+                        if required.source.observation.reference != op.source.observation.reference { continue; }
+                        let committed = controlled_find(journal.events().iter(), control, |event| event.operation == required.id && event.phase == Phase::Committed)?;
+                        let observed = observation(control, || storage.destination(&required.destination))?;
+                        all &= matches!((committed, observed), (Some(event), Ok(Some(dest))) if Some(&dest.identity) == event.observed_identity.as_ref() && dest.sha256 == required.source.sha256);
                         if let Some(auxiliary) = auxiliary {
-                            all &= committed
-                                .and_then(|event| event.observed_identity.as_ref())
-                                .is_some_and(|identity| {
-                                    matches!(
-                                        storage.verify_move_destination_streams(
-                                            &required.destination,
-                                            identity,
-                                            auxiliary
-                                        ),
-                                        Ok(true)
-                                    )
-                                });
+                            all &= match committed.and_then(|event| event.observed_identity.as_ref()) {
+                                Some(identity) => observation(control, || storage.verify_move_destination_streams(&required.destination, identity, auxiliary))?.unwrap_or(false),
+                                None => false,
+                            };
                         }
                     }
-                    if all {
-                        status = RecoveryStatus::Committed;
-                    }
+                    if all { status = RecoveryStatus::Committed; }
                 }
             }
         }
-        if binding.data.copied_move_sources.is_some()
-            && !observed_source_absent[op.id]
-            && journal.events().iter().any(|event| {
+        if binding.data.copied_move_sources.is_some() && !observed_source_absent[op.id]
+            && controlled_any(journal.events().iter(), control, |event| {
                 event.phase == Phase::SourceRetired
-                    && binding.operations()[event.operation]
-                        .source
-                        .observation
-                        .reference
-                        == op.source.observation.reference
-            })
-        {
-            status = RecoveryStatus::NeedsRecovery;
-        }
+                    && binding.operations()[event.operation].source.observation.reference == op.source.observation.reference
+            })? { status = RecoveryStatus::NeedsRecovery; }
         if binding.data.metadata_required_for(op)
-            && matches!(
-                status,
-                RecoveryStatus::Committed | RecoveryStatus::EffectProvenAwaitingJournal
-            )
-            && copy_metadata != CopyMetadataRecoveryStatus::Verified
-        {
-            status = RecoveryStatus::NeedsRecovery;
-        }
-        report.operations.push(OperationRecovery {
-            copy_metadata,
-            operation: op.id,
-            status,
-        });
+            && matches!(status, RecoveryStatus::Committed | RecoveryStatus::EffectProvenAwaitingJournal)
+            && copy_metadata != CopyMetadataRecoveryStatus::Verified { status = RecoveryStatus::NeedsRecovery; }
+        report.operations[op.id].status = status;
+        if let Some(control) = control { control.complete_operation()?; }
     }
-    // Copied Move retirement is a cohort fact: a bad stream or metadata receipt at
-    // any required destination invalidates the whole retired-source assertion.
+    // Preserve cohort-wide invalidation and route-specific metadata requirements.
     if binding.data.copied_move_sources.is_some() {
-        let verified = report
-            .operations
-            .iter()
-            .map(|operation| {
-                operation.status == RecoveryStatus::Committed
-                    && operation.copy_metadata == CopyMetadataRecoveryStatus::Verified
-            })
-            .collect::<Vec<_>>();
+        let mut verified = Vec::with_capacity(count);
+        for operation in &report.operations {
+            checkpoint(control)?;
+            verified.push(operation.status == RecoveryStatus::Committed && operation.copy_metadata == CopyMetadataRecoveryStatus::Verified);
+        }
         for operation in &mut report.operations {
-            if binding
-                .data
-                .copied_move_operation(&binding.operations()[operation.operation])
+            checkpoint(control)?;
+            if binding.data.copied_move_operation(&binding.operations()[operation.operation])
                 && observed_source_absent[operation.operation]
-                && binding
-                    .operations()
-                    .iter()
-                    .filter(|candidate| {
-                        candidate.source.observation.reference
-                            == binding.operations()[operation.operation]
-                                .source
-                                .observation
-                                .reference
-                    })
-                    .any(|candidate| !verified[candidate.id])
-            {
-                operation.status = RecoveryStatus::NeedsRecovery;
+                && controlled_any(binding.operations().iter(), control, |candidate| {
+                    candidate.source.observation.reference == binding.operations()[operation.operation].source.observation.reference
+                        && !verified[candidate.id]
+                })? { operation.status = RecoveryStatus::NeedsRecovery; }
+        }
+    }
+    // This pass intentionally stays in original dependency order, regardless of
+    // the observation cursor. No previously observed hash is reused as current.
+    for index in 0..count {
+        checkpoint(control)?;
+        if report.operations[index].status != RecoveryStatus::ReadyForExplicitResume { continue; }
+        for dependency in &binding.operations()[index].depends_on {
+            checkpoint(control)?;
+            let prior = &binding.operations()[*dependency];
+            let next = &binding.operations()[index];
+            if report.operations[*dependency].status != RecoveryStatus::Committed
+                || !journal.dependency_ready_with_control(*dependency, index, control)?
+                || (prior.mode == TransferMode::Move && !same_duet_cohort(prior, next) && !observed_source_absent[*dependency]) {
+                report.operations[index].status = RecoveryStatus::NeedsRecovery;
+                break;
             }
         }
     }
-    // An invalidated predecessor prevents resuming a stale simulated timeline.
-    for i in 0..report.operations.len() {
-        if report.operations[i].status == RecoveryStatus::ReadyForExplicitResume
-            && binding.operations()[i].depends_on.iter().any(|d| {
-                let prior = &binding.operations()[*d];
-                let next = &binding.operations()[i];
-                report.operations[*d].status != RecoveryStatus::Committed
-                    || !journal.dependency_ready(*d, i)
-                    || (prior.mode == TransferMode::Move
-                        && !same_duet_cohort(prior, next)
-                        && !observed_source_absent[*d])
-            })
-        {
-            report.operations[i].status = RecoveryStatus::NeedsRecovery;
-        }
-    }
+    checkpoint(control)?;
     Ok(report)
 }
