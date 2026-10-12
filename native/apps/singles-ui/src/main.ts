@@ -3,7 +3,7 @@ import './styles.css';
 import {installViewport} from './viewport';
 import {nativeHost,nativeRecoveryHost,openFooterLink,openProjectLink,openLocalLicenses,openExecutionDiagnostics,openRecovery} from './host';
 import {installAbout} from './about';
-import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,verificationWarning,recoveryNoticeText,verificationProgressText,resultFilename} from './result-presentation';
+import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,verificationWarning,developerRowSummary,recoveryNoticeText,verificationProgressText,resultFilename} from './result-presentation';
 import {kindLabel,reasonLabel,blockerLabel,warningPresentation,noticeLabel} from './presentation';
 import {PAGE_SIZE,PreviewController} from './state';
 import type {Settings,ImportEncoding,Mode,PlanRow,ExecutionItem} from './contracts';
@@ -314,7 +314,7 @@ function render(){
   const tr=document.createElement('tr'),items=executionItems(row),filename=resultFilename(row,items,s.model?.platform);
   const origin=document.createElement('td');origin.className='file-name';const name=text('bdi',filename,'source-name');name.dir='auto';name.title=developer?row.source:filename;origin.append(name);tr.append(origin);
   const action=text('td',developer?(items.length?items.map(itemLabel).join(' · '):kindLabel(row.kind)):(row.artist??''),'row-action');action.dir='auto';tr.append(action);
-  const reason=document.createElement('td');reason.className='row-reason';reason.append(text('span',developer?`${kindLabel(row.kind)} · `:row.artist?`${row.artist} · `:'','mobile-action'),text('span',developer?(row.blockers.length?row.blockers.map(blockerLabel).join(' · '):reasonLabel(row)):rowStatus(row)));tr.append(reason);
+  const reason=document.createElement('td');reason.className='row-reason';reason.append(text('span',developer?`${kindLabel(row.kind)} · `:row.artist?`${row.artist} · `:'','mobile-action'),text('span',developer?developerRowSummary(row,rowStatus(row),items.length>0||!!s.execution&&!['preparing','running'].includes(s.execution.status)):rowStatus(row)));tr.append(reason);
   const detail=document.createElement('td');detail.className='row-detail';const button=document.createElement('button');button.className='icon-button detail-button';button.dataset.rowId=row.id;button.setAttribute('aria-label',`פרטים: ${filename}`);button.append(iconElement('info'));button.addEventListener('click',()=>openRow(row,button));detail.append(button);tr.append(detail);$('rows').append(tr);
  }
  $('warnings').replaceChildren();$('technical-notices').replaceChildren();

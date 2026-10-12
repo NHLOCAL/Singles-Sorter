@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,verificationWarning,recoveryNoticeText,verificationProgressText,resultFilename,DEVELOPER_PREFERENCE} from '../src/result-presentation';
+import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,verificationWarning,developerRowSummary,recoveryNoticeText,verificationProgressText,resultFilename,DEVELOPER_PREFERENCE} from '../src/result-presentation';
 import type {ExecutionSnapshot,PlanRow,ExecutionItem} from '../src/contracts';
 const row:PlanRow={id:'file',source:'song.mp3',artist:'אמן',kind:'Single',destination:'אמן/song.mp3',reason:'raw_trace(hash)',blockers:[],operation_ids:[0]};
 const item=(status:ExecutionItem['status']):ExecutionItem=>({operation:0,status,detail:'raw filesystem evidence'});
@@ -214,4 +214,18 @@ describe('native resolved platform display markers',()=>{
 it('unreadable recovery does not claim that prior source files were preserved',()=>{
  const text=recoveryNoticeText({status:'unreadable',journal_count:1,acknowledged_operations:null,unresolved_operations:null});
  expect(text).toContain('הבדיקה הזו לא שינתה קבצים');expect(text).toContain('המקור והיעד');expect(text).not.toContain('הקבצים נשמרו');
+});
+
+describe('developer current-state summary',()=>{
+ it('uses actual outcomes without changing original blocker evidence',()=>{
+  const blocked={...row,blockers:['PHYSICAL_APPLY_UNAVAILABLE']};
+  for(const status of ['הועבר','בוצע חלקית','נדרשת בדיקה','לא בוצע'])expect(developerRowSummary(blocked,status,true)).toBe(status);
+  expect(blocked.blockers).toEqual(['PHYSICAL_APPLY_UNAVAILABLE']);
+ });
+ it('uses native effective readiness and preserves unresolved blockers',()=>{
+  expect(developerRowSummary({...row,blockers:['PHYSICAL_APPLY_UNAVAILABLE'],effective_blockers:[]},'להעברה',false)).toBe('להעברה');
+  const blocked={...row,blockers:['PHYSICAL_APPLY_UNAVAILABLE'],effective_blockers:['AMBIGUOUS_DISPLAY_NAME']};
+  expect(developerRowSummary(blocked,'לא ניתן לבצע',false)).not.toBe('להעברה');
+  expect(developerRowSummary({...row,blockers:['PHYSICAL_APPLY_UNAVAILABLE']},'להעברה',false)).not.toBe('להעברה');
+ });
 });

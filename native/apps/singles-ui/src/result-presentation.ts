@@ -1,3 +1,4 @@
+import {blockerLabel,reasonLabel} from './presentation';
 import {userErrorLabels} from './state';
 import type {PlanRow,ExecutionItem,ExecutionSnapshot,Platform} from './contracts';
 import {sourceLabel} from './presentation';
@@ -135,4 +136,12 @@ export function recoveryNoticeText(notice:import('./contracts').RecoveryNotice|n
  if(!notice)return '';
  if(notice.status==='unreadable')return 'לא ניתן לבדוק את רישום הביצוע הקודם. הבדיקה הזו לא שינתה קבצים. יש לבדוק את המקור והיעד ולשמור את היומן; הביצוע חסום עד לבירור.';
  return `הביצוע הקודם דורש בדיקה. ${notice.acknowledged_operations} פעולות נרשמו כהושלמו, ${notice.unresolved_operations} דורשות בירור. אפשר לבדוק תיקיות ולשמור יומן לבדיקה; לא יתבצע ניסיון חוזר אוטומטי.`;
+}
+
+// The list summarizes current execution/readiness; the detail panel retains original plan evidence.
+export function developerRowSummary(row:PlanRow,currentStatus:string,hasExecutionEvidence:boolean):string{
+ if(hasExecutionEvidence)return currentStatus;
+ const blockers=row.effective_blockers??row.blockers;
+ if(blockers.length)return blockers.map(blockerLabel).join(' · ');
+ return row.effective_blockers!==undefined?currentStatus:reasonLabel(row);
 }
