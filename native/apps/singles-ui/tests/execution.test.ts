@@ -49,3 +49,13 @@ describe('actual terminal result projection',()=>{
   expect(c.state.error).toBe('offline');expect(c.canApply).toBe(false);
  });
 });
+
+describe('retained no-op completion',()=>{
+ it('accepts a host-verified empty result without granting a second apply',async()=>{
+  const h=host();h.snapshot=async()=>({...readyPlan,apply:{...readyPlan.apply!,operation_count:0}});
+  h.executionSnapshot=async()=>({...done,operation_count:0,journal_path:null,result:{source_items:0,committed_destinations:0,moved_sources:0,failed_operations:0,blocked_operations:0,recovery_operations:0,cancelled_operations:0,items:[],legacy_summary:{songs_sorted:0,artist_folders_created:0,albums_processed:0,top_artists:[]}}});
+  const c=await selected(h);expect(c.canApply).toBe(true);await c.apply();
+  expect(c.state.execution?.status).toBe('complete');expect(c.state.execution?.result?.legacy_summary?.songs_sorted).toBe(0);
+  expect(c.state.execution?.journal_path).toBeNull();expect(c.canApply).toBe(false);
+ });
+});

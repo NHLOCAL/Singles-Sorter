@@ -58,3 +58,5 @@ pub mod windows_repair;
 pub mod windows_album;
 
 pub mod legacy_summary;
+
+pub mod no_op;

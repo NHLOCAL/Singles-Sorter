@@ -156,3 +156,13 @@ namespace effect. This is not a full cross-journal event trace: directory and
 metadata phases are deliberately absent. The ordinary desktop view renders the
 compact human summary without raw journal diagnostics. Physical counters remain
 separate and retain their existing meanings.
+
+A legitimately skipped Sort job can now finish with an explicit zero summary.
+The CLI confirmation and retained host plan are re-read using the same resources
+and exact binding before completion; no mutation grants or journal files are
+created. Changed plans still require another preview. Empty plans containing
+vanished items, item/metadata/album-read failures, unresolved blockers, predicted
+effects or recognition diagnostics are not admitted as successful no-ops. Empty
+source directories remain the frozen planner's `SOURCE_EMPTY` error. The ordinary
+frontend journal-directory configuration remains required, but the zero-effect
+result has no journal path and no invented commit or namespace receipts.

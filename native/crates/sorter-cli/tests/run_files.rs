@@ -141,6 +141,43 @@ mod selected {
         assert!(fs::read_dir(journal).unwrap().count() >= 2);
     }
     #[test]
+    fn clean_noop_requires_fresh_confirmation_and_never_creates_a_journal() {
+        for changed in [false, true] {
+            let root = tempfile::tempdir().unwrap();
+            let source = root.path().join("source"); let target = root.path().join("target");
+            let journal = root.path().join("journal");
+            for path in [&source, &target, &journal] { fs::create_dir(path).unwrap(); }
+            fs::write(source.join("notes.txt"), b"owned non-audio").unwrap();
+            let mut child = Command::new(env!("CARGO_BIN_EXE_singles-sorter"))
+                .args(["run-files", "--ndjson"]).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().unwrap();
+            let mut stdin = child.stdin.take().unwrap();
+            let mut output = BufReader::new(child.stdout.take().unwrap());
+            writeln!(stdin, "{}", json!({"schema_version":1,"journal_directory":journal,"preview":{"schema_version":2,"mode":"Sort","source":source,"target":target,"settings":{"copy_mode":true},"ai_profile":"Disabled","personal_aliases":null}})).unwrap();
+            stdin.flush().unwrap();
+            let mut line = String::new(); output.read_line(&mut line).unwrap();
+            let planned: Value = serde_json::from_str(&line).unwrap();
+            assert_eq!(planned["event"], "planned", "{planned}");
+            assert_eq!(planned["data"]["plan"]["operations"], json!([]));
+            if changed { fs::write(source.join("אברהם פריד - new.wav"), wave()).unwrap(); }
+            writeln!(stdin, "{}", json!({"action":"apply","plan_id":planned["data"]["plan"]["binding_sha256"]})).unwrap();
+            stdin.flush().unwrap(); drop(stdin);
+            let events = output.lines().map(|line| serde_json::from_str::<Value>(&line.unwrap()).unwrap()).collect::<Vec<_>>();
+            let status = child.wait().unwrap();
+            assert_eq!(status.success(), !changed, "{events:?}");
+            if changed {
+                assert!(events.iter().any(|event| event["event"] == "error" && event["data"]["code"] == "PLAN_CHANGED"));
+            } else {
+                let result = &events.iter().find(|event| event["event"] == "result").unwrap()["data"];
+                assert_eq!(result["status"], "complete"); assert_eq!(result["no_op"], true);
+                assert_eq!(result["legacy_summary"], json!({"songs_sorted":0,"artist_folders_created":0,"albums_processed":0,"top_artists":[]}));
+                assert_eq!(result["effect_receipts"], json!([])); assert!(result["journal_directory"].is_null());
+            }
+            assert_eq!(fs::read_dir(journal).unwrap().count(), 0);
+            assert_eq!(fs::read_dir(target).unwrap().count(), 0);
+            assert_eq!(fs::read(source.join("notes.txt")).unwrap(), b"owned non-audio");
+        }
+    }
+    #[test]
     fn actual_copy_and_move_require_exact_inspected_confirmation() {
         run_case(true, "apply");
         run_case(false, "apply");
