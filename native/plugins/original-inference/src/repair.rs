@@ -56,6 +56,10 @@ fn stage_repair(id: i64, directory: &[u8], input: &[u8]) -> Result<Value, String
         let state = JOBS.lock().map_err(|_| "poisoned")?;
         state.job.as_ref().filter(|job| job.id == id && job.running).ok_or("stale_or_running")?.repair_cancel.clone()
     };
+    stage_repair_owned(directory,input,&flag)
+}
+// Trusted caller-owned private directory is a precondition, not authority granted by this path.
+fn stage_repair_owned(directory: &[u8], input: &[u8], flag: &std::sync::atomic::AtomicBool) -> Result<Value,String> {
     if flag.load(Ordering::Acquire) { return Err("cancelled".into()); }
     let request = parse_repair(input)?;
     if directory.len() > MAX_PATH { return Err("path_limit".into()); }
@@ -70,14 +74,14 @@ fn stage_repair(id: i64, directory: &[u8], input: &[u8]) -> Result<Value, String
     let metadata = source.metadata().map_err(|_| "snapshot_stat")?;
     if !metadata.is_file() || metadata.len() != request.source_bytes { return Err("snapshot_shape".into()); }
     let repairs: Vec<_> = request.repairs.into_iter().map(|repair| FieldRepair { field: repair.field, original: repair.original, replacement: repair.replacement }).collect();
-    let plan = StagedRepairPlan::inspect(&request.filename, &mut source, request.source_bytes, &repairs, &flag).map_err(|error| format!("{error:?}"))?;
+    let plan = StagedRepairPlan::inspect(&request.filename, &mut source, request.source_bytes, &repairs, flag).map_err(|error| format!("{error:?}"))?;
     if plan.staged_length() > MAX_STAGED_FILE { return Err("staged_file_limit".into()); }
     if flag.load(Ordering::Acquire) { return Err("cancelled".into()); }
     source.seek(SeekFrom::Start(0)).map_err(|_| "snapshot_seek")?;
     let mut options = OpenOptions::new();options.write(true).create_new(true);
     #[cfg(unix)] { use std::os::unix::fs::OpenOptionsExt;options.mode(0o600).custom_flags(libc::O_NOFOLLOW); }
     let mut output = options.open(directory.join(&request.output_file)).map_err(|_| "staged_create")?;
-    let evidence = plan.write_staged(&mut source, &mut BoundedOutput { file: &mut output, remaining: MAX_STAGED_FILE }, &request.source_sha256, &flag).map_err(|error| format!("{error:?}"))?;
+    let evidence = plan.write_staged(&mut source, &mut BoundedOutput { file: &mut output, remaining: MAX_STAGED_FILE }, &request.source_sha256, flag).map_err(|error| format!("{error:?}"))?;
     output.sync_all().map_err(|_| "staged_sync")?;
     if output.metadata().map_err(|_| "staged_stat")?.len() != evidence.staged_length || evidence.staged_length != plan.staged_length() { return Err("staged_length_mismatch".into()); }
     if flag.load(Ordering::Acquire) { return Err("cancelled".into()); }
@@ -115,5 +119,51 @@ mod tests {
         let mut value=request();let duplicate=value["repairs"][0].clone();value["repairs"].as_array_mut().unwrap().push(duplicate);assert!(parse_repair(&serde_json::to_vec(&value).unwrap()).is_err());
         let mut value=request();value["repairs"][0]["original"]=json!("x".repeat(131073));assert!(parse_repair(&serde_json::to_vec(&value).unwrap()).is_err());
         let mut value=request();value["unexpected"]=json!(true);assert!(parse_repair(&serde_json::to_vec(&value).unwrap()).is_err());
+    }
+
+    struct OwnedDirectory(PathBuf);
+    impl OwnedDirectory {
+        fn new() -> Self {
+            static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+            let unique = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+            let path = std::env::temp_dir().join(format!("singles-repair-{}-{unique}-{}",std::process::id(),NEXT.fetch_add(1,Ordering::Relaxed)));
+            std::fs::create_dir(&path).unwrap();
+            #[cfg(unix)] { use std::os::unix::fs::PermissionsExt;std::fs::set_permissions(&path,std::fs::Permissions::from_mode(0o700)).unwrap(); }
+            Self(path)
+        }
+        fn run(&self,value:&Value,cancel:bool) -> Result<Value,String> {
+            stage_repair_owned(self.0.to_str().unwrap().as_bytes(),&serde_json::to_vec(value).unwrap(),&std::sync::atomic::AtomicBool::new(cancel))
+        }
+    }
+    impl Drop for OwnedDirectory { fn drop(&mut self) { let _ = std::fs::remove_dir_all(&self.0); } }
+    fn fixture() -> Vec<u8> {
+        let payload=b"\x00old";let mut body=b"TPE1".to_vec();body.extend((payload.len() as u32).to_be_bytes());body.extend([0,0]);body.extend(payload);body.extend([0;64]);
+        let mut file=vec![b'I',b'D',b'3',3,0,0,0,0,0,body.len() as u8];file.extend(body);
+        let original=include_bytes!("../../../tests/fixtures/media/tagged.mp3");let header=original[6..10].iter().fold(0usize,|n,b|(n<<7)|usize::from(*b));file.extend(&original[10+header..]);file
+    }
+    fn prepared(directory:&OwnedDirectory) -> (Vec<u8>,Value) {
+        use sha2::{Digest,Sha256};let before=fixture();std::fs::write(directory.0.join("source.bin"),&before).unwrap();let mut value=request();value["source_bytes"]=json!(before.len());value["source_sha256"]=json!(format!("{:x}",Sha256::digest(&before)));(before,value)
+    }
+    #[test]
+    fn staged_composition_preserves_source_and_reports_actual_output() {
+        use sha2::{Digest,Sha256};let directory=OwnedDirectory::new();let (before,value)=prepared(&directory);let evidence=directory.run(&value,false).unwrap();let after=std::fs::read(directory.0.join("staged.bin")).unwrap();
+        assert_eq!(std::fs::read(directory.0.join("source.bin")).unwrap(),before);assert_ne!(before,after);assert_eq!(evidence["staged_sha256"],json!(format!("{:x}",Sha256::digest(&after))));assert_eq!(evidence["staged_length"],json!(after.len()));
+    }
+    #[test]
+    fn existing_output_is_refused_without_changes() {
+        let directory=OwnedDirectory::new();let (before,value)=prepared(&directory);std::fs::write(directory.0.join("staged.bin"),b"owned sentinel").unwrap();assert!(directory.run(&value,false).is_err());assert_eq!(std::fs::read(directory.0.join("staged.bin")).unwrap(),b"owned sentinel");assert_eq!(std::fs::read(directory.0.join("source.bin")).unwrap(),before);
+    }
+    #[test]
+    fn wrong_hash_never_returns_success_and_preserves_input() {
+        let directory=OwnedDirectory::new();let (before,mut value)=prepared(&directory);value["source_sha256"]=json!("00".repeat(32));assert!(directory.run(&value,false).is_err());assert_eq!(std::fs::read(directory.0.join("source.bin")).unwrap(),before);
+    }
+    #[test]
+    fn cancelled_before_create_leaves_no_output() {
+        let directory=OwnedDirectory::new();let (before,value)=prepared(&directory);assert_eq!(directory.run(&value,true).unwrap_err(),"cancelled");assert!(!directory.0.join("staged.bin").exists());assert_eq!(std::fs::read(directory.0.join("source.bin")).unwrap(),before);
+    }
+    #[cfg(unix)]
+    #[test]
+    fn symlink_source_is_refused() {
+        let directory=OwnedDirectory::new();let (before,value)=prepared(&directory);std::fs::rename(directory.0.join("source.bin"),directory.0.join("real.bin")).unwrap();std::os::unix::fs::symlink("real.bin",directory.0.join("source.bin")).unwrap();assert!(directory.run(&value,false).is_err());assert!(!directory.0.join("staged.bin").exists());assert_eq!(std::fs::read(directory.0.join("real.bin")).unwrap(),before);
     }
 }
