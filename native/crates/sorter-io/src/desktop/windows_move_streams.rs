@@ -29,6 +29,7 @@ pub struct WindowsCopiedMoveSource {
     main: WindowsSourceLease,
     named: Vec<File>,
     evidence: WindowsMoveSourceEvidence,
+    required_destinations: usize,
 }
 impl WindowsCopiedMoveSource {
     pub fn evidence(&self) -> &WindowsMoveSourceEvidence {
@@ -57,7 +58,7 @@ impl WindowsMutationStorage {
         expected: &ExpectedSource,
         cancel: &AtomicBool,
     ) -> Result<WindowsMoveSourceEvidence, MutationError> {
-        Ok(self.acquire_move_streams(parent, expected, None, cancel)?.evidence)
+        Ok(self.acquire_move_streams(parent, expected, None, 1, cancel)?.evidence)
     }
 
     /// The exact preview inventory must survive revalidation before any effects.
@@ -66,9 +67,10 @@ impl WindowsMutationStorage {
         parent: &WindowsParent,
         expected: &ExpectedSource,
         preview: &WindowsMoveSourceEvidence,
+        required_destinations: usize,
         cancel: &AtomicBool,
     ) -> Result<WindowsCopiedMoveSource, MutationError> {
-        self.acquire_move_streams(parent, expected, Some(preview), cancel)
+        self.acquire_move_streams(parent, expected, Some(preview), required_destinations, cancel)
     }
 
     fn acquire_move_streams(
@@ -76,9 +78,13 @@ impl WindowsMutationStorage {
         parent: &WindowsParent,
         expected: &ExpectedSource,
         preview: Option<&WindowsMoveSourceEvidence>,
+        required_destinations: usize,
         cancel: &AtomicBool,
     ) -> Result<WindowsCopiedMoveSource, MutationError> {
         cancelled(cancel)?;
+        if required_destinations == 0 || required_destinations > 1024 {
+            return Err(err(MutationErrorKind::Unsupported, "invalid copied Move destination cohort size"));
+        }
         if !matches!(self.domain, WindowsMutationDomain::SelectedRoots | WindowsMutationDomain::OwnedSyntheticTree) {
             return Err(err(MutationErrorKind::Unsupported, "copied Move source domain required"));
         }
@@ -93,6 +99,7 @@ impl WindowsMutationStorage {
             mode: SourceLeaseMode::Ordinary, repair: None,
         };
         let file = main.file.as_ref().expect("new source lease");
+        require_move_volume(file)?;
         let attributes = move_representation(file)?;
         let inventory = stream_inventory(file)?;
         let mut streams = Vec::with_capacity(inventory.len());
@@ -124,7 +131,7 @@ impl WindowsMutationStorage {
         if preview.is_some_and(|preview| preview != &evidence) {
             return Err(err(MutationErrorKind::StalePlan, "source streams differ from preview"));
         }
-        Ok(WindowsCopiedMoveSource { main, named, evidence })
+        Ok(WindowsCopiedMoveSource { main, named, evidence, required_destinations })
     }
 
     pub fn verify_copied_move_source(
@@ -329,7 +336,7 @@ mod move_stream_inventory_tests {
         let notes = preview.streams.iter().find(|stream| stream.name == ":notes:$DATA".encode_utf16().collect::<Vec<_>>()).unwrap();
         assert_eq!(notes.length, 14);
         assert_eq!(notes.sha256, Sha256::digest(b"retained notes").as_slice());
-        let source = f.storage.acquire_copied_move_source(&f.parent, &f.expected, &preview, &AtomicBool::new(false)).unwrap();
+        let source = f.storage.acquire_copied_move_source(&f.parent, &f.expected, &preview, 1, &AtomicBool::new(false)).unwrap();
         f.storage.verify_copied_move_source(&source, &AtomicBool::new(false)).unwrap();
         assert!(std::fs::write(f.ads("notes"), b"changed").is_err());
         assert!(std::fs::rename(&f.path, f.path.with_extension("renamed")).is_err());
@@ -346,7 +353,7 @@ mod move_stream_inventory_tests {
                 1 => std::fs::remove_file(f.ads("notes")).unwrap(),
                 _ => std::fs::write(f.ads("notes"), b"other").unwrap(),
             }
-            assert!(f.storage.acquire_copied_move_source(&f.parent, &f.expected, &preview, &AtomicBool::new(false)).is_err());
+            assert!(f.storage.acquire_copied_move_source(&f.parent, &f.expected, &preview, 1, &AtomicBool::new(false)).is_err());
             assert_eq!(std::fs::read(&f.path).unwrap(), b"audio");
         }
     }
@@ -356,7 +363,7 @@ mod move_stream_inventory_tests {
         use std::os::windows::fs::OpenOptionsExt;
         let f = Fixture::new();
         let preview = f.inspect();
-        let source = f.storage.acquire_copied_move_source(&f.parent, &f.expected, &preview, &AtomicBool::new(false)).unwrap();
+        let source = f.storage.acquire_copied_move_source(&f.parent, &f.expected, &preview, 1, &AtomicBool::new(false)).unwrap();
         let opened = std::fs::OpenOptions::new().write(true).create_new(true)
             .share_mode(FILE_SHARE_DELETE.0).open(f.ads("late"));
         match opened {
@@ -461,6 +468,7 @@ pub struct WindowsCopiedMovePublished {
     named: Vec<File>,
     evidence: WindowsMoveSourceEvidence,
     poisoned: bool,
+    synced: bool,
 }
 impl Write for WindowsCopiedMoveTemp {
     fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
@@ -609,7 +617,7 @@ impl WindowsMutationStorage {
         temp.poisoned = true;
         match self.publish_no_replace(&mut temp.main, parent, name, cancel) {
             MutationOutcome::Applied(main) => MutationOutcome::Applied(WindowsCopiedMovePublished {
-                main, named: std::mem::take(&mut temp.named), evidence, poisoned: false,
+                main, named: std::mem::take(&mut temp.named), evidence, poisoned: false, synced: false,
             }),
             MutationOutcome::NoEffect(error) => MutationOutcome::NoEffect(error),
             MutationOutcome::PendingUnknown(error) => MutationOutcome::PendingUnknown(error),
@@ -642,6 +650,7 @@ impl WindowsMutationStorage {
         let observation = acknowledgment.observation().clone();
         verify_bound_streams(&published.main.file, &published.named, &published.evidence, cancel)?;
         published.poisoned = false;
+        published.synced = true;
         Ok(observation)
     }
 }
@@ -692,7 +701,7 @@ mod move_stream_copy_tests {
                 size: Some(5), modified: None, digest: ContentDigest { length: 5, sha256: Sha256::digest(b"audio").into() },
             };
             let preview = storage.inspect_copied_move_source(&parent, &expected, &AtomicBool::new(false)).unwrap();
-            let source = storage.acquire_copied_move_source(&parent, &expected, &preview, &AtomicBool::new(false)).unwrap();
+            let source = storage.acquire_copied_move_source(&parent, &expected, &preview, 1, &AtomicBool::new(false)).unwrap();
             Self { storage, source, target, path }
         }
         fn temp(&mut self) -> WindowsCopiedMoveTemp {
@@ -766,4 +775,134 @@ mod move_stream_copy_tests {
         drop(f.source);
         assert_eq!(std::fs::read(f.path.join("source/song.mp3:notes")).unwrap(), b"notes");
     }
+}
+
+fn require_move_volume(file: &File) -> Result<(), MutationError> {
+    let mut flags = 0;
+    unsafe { GetVolumeInformationByHandleW(
+        HANDLE(file.as_raw_handle()), None, None, None, Some(&mut flags), None,
+    ) }.map_err(win_error)?;
+    // FILE_SUPPORTS_POSIX_UNLINK_RENAME, Windows SDK volume capability bit.
+    if flags & 0x0000_0400 == 0 {
+        return Err(err(MutationErrorKind::Unsupported, "source volume lacks POSIX unlink support"));
+    }
+    Ok(())
+}
+
+impl WindowsMutationStorage {
+    /// Invoke only after the complete required cohort and retirement intent are
+    /// durably journaled. This checks every held destination again, then freshly
+    /// checks the complete source inventory before requesting exact-object unlink.
+    /// Live namespace removal is verified; crash recovery never infers automatic
+    /// cleanup authority from this acknowledgment alone.
+    pub fn retire_copied_move_source(
+        &mut self, source: &mut WindowsCopiedMoveSource,
+        destinations: &[&WindowsCopiedMovePublished], cancel: &AtomicBool,
+    ) -> MutationOutcome<RetirementOutcome> {
+        self.retire_copied_move_source_with(source, destinations, cancel, |_| Ok(()), |handle| {
+            unsafe { windows::Win32::Foundation::CloseHandle(handle) }.map_err(win_error)
+        })
+    }
+
+    fn retire_copied_move_source_with(
+        &mut self, source: &mut WindowsCopiedMoveSource,
+        destinations: &[&WindowsCopiedMovePublished], cancel: &AtomicBool,
+        mut checkpoint: impl FnMut(&str) -> Result<(), MutationError>,
+        close: impl FnOnce(HANDLE) -> Result<(), MutationError>,
+    ) -> MutationOutcome<RetirementOutcome> {
+        use std::os::windows::io::IntoRawHandle;
+        use windows::Wdk::Storage::FileSystem::{
+            FILE_DISPOSITION_DELETE, FILE_DISPOSITION_INFORMATION_EX,
+            FILE_DISPOSITION_POSIX_SEMANTICS, FileDispositionInformationEx,
+        };
+        let before = (|| {
+            cancelled(cancel)?;
+            if destinations.len() != source.required_destinations {
+                return Err(err(MutationErrorKind::VerificationFailed, "required copied Move destinations missing"));
+            }
+            let mut ids = std::collections::HashSet::new();
+            for destination in destinations {
+                if !destination.synced || destination.evidence != source.evidence
+                    || !ids.insert(destination.main.observation.identity.clone()) {
+                    return Err(err(MutationErrorKind::VerificationFailed, "destination cohort is unsynced, foreign or duplicated"));
+                }
+                self.verify_copied_move_publication(destination, &source.main.expected.digest, cancel)?;
+            }
+            checkpoint("before_disposition")?;
+            self.verify_copied_move_source(source, cancel)?;
+            let file = source.main.file.as_ref().expect("verified source");
+            require_move_volume(file)?;
+            cancelled(cancel)?;
+            Ok(source.main.observation.clone())
+        })();
+        let observed = match before {
+            Ok(observed) => observed,
+            Err(error) => return MutationOutcome::NoEffect(error),
+        };
+        let disposition = FILE_DISPOSITION_INFORMATION_EX {
+            Flags: FILE_DISPOSITION_DELETE | FILE_DISPOSITION_POSIX_SEMANTICS,
+        };
+        let mut ios = IO_STATUS_BLOCK::default();
+        let status = unsafe { NtSetInformationFile(
+            HANDLE(source.main.file.as_ref().expect("verified source").as_raw_handle()),
+            &mut ios, (&disposition as *const FILE_DISPOSITION_INFORMATION_EX).cast(),
+            size_of::<FILE_DISPOSITION_INFORMATION_EX>() as u32, FileDispositionInformationEx,
+        ) };
+        if status.0 < 0 {
+            return MutationOutcome::NoEffect(io_error(io::Error::from_raw_os_error(
+                unsafe { RtlNtStatusToDosError(status) } as i32,
+            )));
+        }
+        let mut uncertain = status.0 != 0;
+        for stage in ["after_disposition", "before_close"] {
+            if checkpoint(stage).and_then(|()| cancelled(cancel)).is_err() { uncertain = true; }
+        }
+        // Consume ownership before the only close attempt. Never reconstitute or
+        // retry a potentially recycled handle after a lost close response.
+        let file = source.main.file.take().expect("verified source consumed once");
+        if close(HANDLE(file.into_raw_handle())).is_err() { uncertain = true; }
+        source.named.clear();
+        if checkpoint("after_close").and_then(|()| cancelled(cancel)).is_err() { uncertain = true; }
+        let checked = (|| {
+            checkpoint("before_namespace_check")?;
+            cancelled(cancel)?;
+            self.check_role(&source.main.parent, RootRole::Source)?;
+            if move_original_identity(&source.main.parent, &source.main.expected.name)? == Some(source.main.expected.identity.clone()) {
+                return Err(err(MutationErrorKind::UnknownOutcome, "original source link remains"));
+            }
+            checkpoint("after_namespace_check")?;
+            cancelled(cancel)
+        })();
+        if uncertain || checked.is_err() {
+            return MutationOutcome::PendingUnknown(err(
+                MutationErrorKind::UnknownOutcome, "copied Move retirement dispatched; inspect source and all destinations without replay",
+            ).with_observation(observed));
+        }
+        MutationOutcome::Applied(RetirementOutcome::Retired(observed))
+    }
+}
+
+fn move_original_identity(parent: &WindowsParent, leaf: &MutationName) -> Result<Option<ObjectIdentity>, MutationError> {
+    use windows::Win32::Foundation::STATUS_OBJECT_NAME_NOT_FOUND;
+    ensure_directory(parent.handle())?;
+    let mut name = units(leaf)?.to_vec();
+    let string = UNICODE_STRING { Length: (name.len() * 2) as u16, MaximumLength: (name.len() * 2) as u16, Buffer: PWSTR(name.as_mut_ptr()) };
+    let attributes = OBJECT_ATTRIBUTES { Length: size_of::<OBJECT_ATTRIBUTES>() as u32,
+        RootDirectory: HANDLE(parent.handle().as_raw_handle()), ObjectName: &string,
+        Attributes: OBJ_DONT_REPARSE | OBJ_CASE_INSENSITIVE, ..Default::default() };
+    let mut handle = HANDLE::default();
+    let mut ios = IO_STATUS_BLOCK::default();
+    let status = unsafe { NtCreateFile(
+        &mut handle, FILE_READ_ATTRIBUTES | SYNCHRONIZE, &attributes, &mut ios, None,
+        FILE_ATTRIBUTE_NORMAL, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        FILE_OPEN, FILE_OPEN_REPARSE_POINT | FILE_SYNCHRONOUS_IO_NONALERT, None, 0,
+    ) };
+    if status == STATUS_OBJECT_NAME_NOT_FOUND { return Ok(None); }
+    if status.0 != 0 { return Err(io_error(io::Error::from_raw_os_error(unsafe { RtlNtStatusToDosError(status) } as i32))); }
+    if handle.is_invalid() { return Err(err(MutationErrorKind::UnknownOutcome, "source probe returned no handle")); }
+    let file = unsafe { File::from_raw_handle(handle.0) };
+    if kind(&file.metadata().map_err(io_error)?) == EntryKind::LinkOrReparse {
+        return Err(err(MutationErrorKind::UnsafeReparse, "source location became reparse"));
+    }
+    Ok(Some(identity(&file).map_err(read_error)?))
 }
