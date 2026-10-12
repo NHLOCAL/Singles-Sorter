@@ -81,3 +81,11 @@ describe('repair verification uncertainty',()=>{
   expect(JSON.stringify(execution)).toBe(before);
  });
 });
+
+describe('optional inactive rows',()=>{
+ it('does not advertise unchanged Fix files as pending repairs',()=>{
+  const row={id:'n',source:'unchanged.mp3',kind:'FixNames',destination:null,reason:'',blockers:[],operation_ids:[0],no_action:true};
+  expect(simpleStatus(row,[],false,{repairEligible:true})).toBe('ללא שינוי');
+  expect(simpleReason(row,true)).toContain('לא נמצא שינוי');
+ });
+});

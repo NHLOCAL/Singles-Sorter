@@ -9,7 +9,8 @@
       "source": "מקור",
       "developer_only": true,
       "artist": null,
-      "operation_ids": []
+      "operation_ids": [],
+      "no_action": true
     },
     {
       "blockers": [],
@@ -22,9 +23,10 @@
       "artist": "אברהם פריד",
       "operation_ids": [
         0
-      ]
+      ],
+      "no_action": false
     }
   ],
   "total": 2,
-  "skipped": 0
+  "skipped": 1
 }

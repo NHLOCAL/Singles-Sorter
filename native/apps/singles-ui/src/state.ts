@@ -6,7 +6,7 @@ export interface RootInput {text:string;selection:RootSelection|null;pending:boo
 export interface State {
   source:RootInput;target:RootInput;settings:Settings;model:ModelStatus|null;
   initialized:boolean;startupWaiting:boolean;hostAvailable:boolean;busy:boolean;cancelRequested:boolean;activity:'preview'|'apply'|'settings'|'page'|null;error:string|null;
-  snapshot:Snapshot|null;execution:ExecutionSnapshot|null;page:PlanPage|null;offset:number;ai:'Disabled'|'Configured';developerMode:boolean;
+  snapshot:Snapshot|null;execution:ExecutionSnapshot|null;page:PlanPage|null;offset:number;ai:'Disabled'|'Configured';developerMode:boolean;showInactive:boolean;
 }
 const newRoot = ():RootInput => ({text:'',selection:null,pending:false,revision:0});
 export const userErrorLabels:Readonly<Record<string,string>>={
@@ -32,7 +32,7 @@ export function errorText(error:unknown):string {
   return 'הפעולה לא הושלמה. נסה שוב לאחר בדיקת החיבור לתוכנה.';
 }
 export class PreviewController {
-  readonly state:State={source:newRoot(),target:newRoot(),settings:{...defaults},model:null,initialized:false,startupWaiting:false,hostAvailable:false,busy:false,cancelRequested:false,activity:null,error:null,snapshot:null,execution:null,page:null,offset:0,ai:'Disabled',developerMode:false};
+  readonly state:State={source:newRoot(),target:newRoot(),settings:{...defaults},model:null,initialized:false,startupWaiting:false,hostAvailable:false,busy:false,cancelRequested:false,activity:null,error:null,snapshot:null,execution:null,page:null,offset:0,ai:'Disabled',developerMode:false,showInactive:false};
   private activeApply:{jobId:string;started:boolean;cancelSent:boolean;terminal:boolean}|null=null;
   private activePreview:{jobId:string|null;cancelSent:boolean;terminal:boolean}|null=null;
   private listeners=new Set<()=>void>();
@@ -62,7 +62,7 @@ export class PreviewController {
         if(retained){
           if(retained.preview.status!=='completed'||retained.preview.job_id!==retained.execution.job_id||retained.preview.plan_id!==retained.execution.plan_id||['running','preparing'].includes(retained.execution.status))throw new Error('תוצאת הביצוע הקודמת טרם אומתה.');
           this.state.snapshot=retained.preview;this.state.execution=retained.execution;
-          this.state.page=await this.host.page(retained.preview.job_id,0,PAGE_SIZE,this.state.developerMode);
+          this.state.page=await this.host.page(retained.preview.job_id,0,PAGE_SIZE,this.state.developerMode,this.state.showInactive);
         }
       }
     }catch(error){this.state.error=errorText(error);this.state.hostAvailable=false;}
@@ -175,7 +175,7 @@ export class PreviewController {
           run.terminal=true;
           if(snapshot.status==='failed')throw new Error(snapshot.error||'התצוגה המקדימה נכשלה.');
           if(snapshot.status==='completed'&&!this.state.cancelRequested){
-            const page=await this.host.page(started.job_id,0,PAGE_SIZE,this.state.developerMode);
+            const page=await this.host.page(started.job_id,0,PAGE_SIZE,this.state.developerMode,this.state.showInactive);
             if(!this.state.cancelRequested)this.state.page=page;
           }
           break;
@@ -239,6 +239,12 @@ export class PreviewController {
         if(snapshot.status!=='running'&&snapshot.status!=='preparing'){
           run.terminal=true;
           if(snapshot.error)this.state.error=snapshot.error;
+          // Reconcile display filtering against the actual terminal outcomes.
+          // This does not alter the retained plan, execution or its counters.
+          try{
+            this.state.page=await this.host.page(run.jobId,0,PAGE_SIZE,this.state.developerMode,this.state.showInactive);
+            this.state.offset=0;
+          }catch(error){this.state.error=errorText(error);}
           break;
         }
         await new Promise(resolve=>setTimeout(resolve,250));
@@ -255,8 +261,19 @@ export class PreviewController {
     if(!snapshot||snapshot.status!=='completed'){this.state.developerMode=enabled;this.emit();return;}
     this.state.busy=true;this.state.activity='page';this.state.error=null;this.emit();
     try{
-      const page=await this.host.page(snapshot.job_id,0,PAGE_SIZE,enabled);
+      const page=await this.host.page(snapshot.job_id,0,PAGE_SIZE,enabled,this.state.showInactive);
       this.state.page=page;this.state.offset=0;this.state.developerMode=enabled;
+    }catch(error){this.state.error=errorText(error);}
+    finally{this.state.busy=false;this.state.activity=null;this.emit();}
+  }
+  async setShowInactive(enabled:boolean){
+    if(this.state.busy||this.state.showInactive===enabled)return;
+    const snapshot=this.state.snapshot;
+    if(!snapshot||snapshot.status!=='completed'){this.state.showInactive=enabled;this.emit();return;}
+    this.state.busy=true;this.state.activity='page';this.state.error=null;this.emit();
+    try{
+      const page=await this.host.page(snapshot.job_id,0,PAGE_SIZE,this.state.developerMode,enabled);
+      this.state.page=page;this.state.offset=0;this.state.showInactive=enabled;
     }catch(error){this.state.error=errorText(error);}
     finally{this.state.busy=false;this.state.activity=null;this.emit();}
   }
@@ -264,7 +281,7 @@ export class PreviewController {
     const snapshot=this.state.snapshot;
     if(this.state.busy||!snapshot||snapshot.status!=='completed'||!Number.isSafeInteger(offset)||offset<0||offset>=(this.state.page?.total??0))return;
     this.state.busy=true;this.state.activity='page';this.state.error=null;this.emit();
-    try{const page=await this.host.page(snapshot.job_id,offset,PAGE_SIZE,this.state.developerMode);this.state.page=page;this.state.offset=offset;}
+    try{const page=await this.host.page(snapshot.job_id,offset,PAGE_SIZE,this.state.developerMode,this.state.showInactive);this.state.page=page;this.state.offset=offset;}
     catch(error){this.state.error=errorText(error);}
     finally{this.state.busy=false;this.state.activity=null;this.emit();}
   }

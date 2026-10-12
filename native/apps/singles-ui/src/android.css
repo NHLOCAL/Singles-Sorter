@@ -1,6 +1,6 @@
 /* Platform-only fallback for the Android 11 system WebView. Shared UI text and
    desktop layout stay unchanged. dvh overrides vh on newer WebViews. */
-html[data-android-host] #app {height:100vh;height:100dvh}
+html[data-android-host] #app {height:100vh;height:var(--viewport-height,100dvh)}
 html[data-android-host] input[readonly] {cursor:pointer}
 /* WebView 83 lacks dvh and :has(). Keep long editors inside the visual
    viewport even when opened from a scrolled settings page. */

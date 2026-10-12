@@ -26,6 +26,7 @@ from desktop_apply import exercise_apply
 from desktop_repair import exercise_repair
 from desktop_polish import exercise_information, set_developer_mode
 from driver_readiness import wait_driver_ready
+from desktop_stability import exercise_shell, exercise_result_stability
 
 ROOT = Path(__file__).resolve().parents[1]
 if os.name != 'nt' or os.environ.get('GITHUB_ACTIONS') != 'true':
@@ -158,6 +159,7 @@ try:
     capture_platform_fonts(command, OUTPUT)
     checks.append('Actual measured desktop CSS viewports retain controls without document overflow')
     capture('01-native-home')
+    exercise_shell(command,script,capture,OUTPUT,'native-setup-stable')
     check_phone_layout(command,script,capture,OUTPUT,'01-native-home')
     checks.append('Actual Windows Tauri/WebView2 rendered local assets and initialized real IPC')
     checks.extend(exercise_information(command, script, click, wait, capture, ROOT, OUTPUT))
@@ -210,9 +212,14 @@ try:
         assert script("return document.querySelector('#source').value") == str(source)
         fill('#target','')
         click('#fix')
-        wait(lambda: script("return document.querySelector('#app').dataset.view === 'results' && document.querySelectorAll('#rows tr').length > 0 && !document.querySelector('#fix').disabled"))
+        wait(lambda: script("return document.querySelector('#app').dataset.view === 'results' && !document.querySelector('#fix').disabled"))
         assert script("return document.querySelector('#error').hidden"), text('#error')
         capture('03-native-real-fix-preview')
+        click('#show-inactive')
+        wait(lambda: script("return document.querySelector('#app').dataset.showInactive === 'true' && !document.querySelector('#show-inactive').disabled"))
+        assert script("return document.querySelectorAll('#rows tr').length") == 1
+        click('#show-inactive')
+        wait(lambda: script("return document.querySelector('#app').dataset.showInactive === 'false' && !document.querySelector('#show-inactive').disabled"))
         assert hashlib.sha256(media.read_bytes()).hexdigest() == before
         fixture_guard.verify('after-fixnames-preview')
         checks.append('Target-free real FixNames preview; owned source bytes unchanged')
@@ -282,6 +289,7 @@ try:
         checks.append('Native explicit preference Save, immediate duet and personal list persisted after app restart; source authority not persisted')
         click('#list-cancel'); click('#advanced-dialog .close-dialog')
         fixture_guard.verify('after-app-restart')
+        checks.extend(exercise_result_stability(command,script,click,fill,wait,capture,scratch/'stability-cases',OUTPUT))
         ai_scratch = scratch / 'ai-cases'
         ai_scratch.mkdir()
         original_ai_checks = DesktopAI(command, script, click, fill, wait, capture,

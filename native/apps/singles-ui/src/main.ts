@@ -1,5 +1,6 @@
 import {hasAndroidHost} from './android-transport';
 import './styles.css';
+import {installViewport} from './viewport';
 import {nativeHost,openFooterLink,openProjectLink,openLocalLicenses} from './host';
 import {installAbout} from './about';
 import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,verificationWarning} from './result-presentation';
@@ -21,7 +22,7 @@ let resultsScroll=0;
 const app=document.querySelector<HTMLDivElement>('#app')!;
 // Static trusted markup only. Every host/file value is rendered with textContent.
 app.innerHTML=`
-<header class="topbar"><div class="brand"><img src="/icon.png" alt="" width="32" height="32"><h1>מסדר הסינגלים</h1></div><button id="menu" class="icon-button" aria-label="עזרה ומידע" aria-haspopup="dialog">⋮</button></header>
+<header class="topbar"><button id="open-settings" class="icon-button" aria-label="הגדרות מתקדמות" aria-haspopup="dialog"></button><div class="brand"><img src="/icon.png" alt="" width="32" height="32"><h1>מסדר הסינגלים</h1></div><button id="menu" class="icon-button" aria-label="עזרה ומידע" aria-haspopup="dialog">⋮</button></header>
 <main>
 <div id="connection" class="notice" role="status" hidden></div>
 <div id="error" class="error" role="alert" hidden></div>
@@ -38,7 +39,7 @@ app.innerHTML=`
 <div class="options-bottom"><button id="advanced" class="text-button">הגדרות מתקדמות</button><button id="save-settings" class="text-button">שמור הגדרות</button></div><p id="settings-notice" role="status" class="hint"></p>
 </aside></div>
 <section id="processing-screen" hidden aria-labelledby="processing-title"><progress aria-label="מתבצעת בדיקה"></progress><h2 id="processing-title" tabindex="-1">קורא ומנתח את הקבצים…</h2><p id="busy" role="status" aria-live="polite"></p><button id="cancel-preview" class="text-button">ביטול</button></section>
-<section id="results" class="results card" aria-labelledby="results-heading"><div class="results-toolbar"><button id="back-setup" class="text-button">חזרה להגדרות</button><div class="section-title"><h2 id="results-heading" tabindex="-1">תוכנית מיון</h2><span id="count" class="quiet-label" role="status"></span></div></div>
+<section id="results" class="results card" aria-labelledby="results-heading"><div class="results-toolbar"><button id="back-setup" class="text-button">חזרה להגדרות</button><div class="section-title"><h2 id="results-heading" tabindex="-1">תוכנית מיון</h2><span id="count" class="quiet-label" role="status"></span></div><label class="option inactive-option"><input id="show-inactive" type="checkbox"><span>הצג גם ללא פעולה</span><span id="inactive-count" class="quiet-label"></span></label></div>
 <section id="execution-panel" class="execution-panel" aria-label="ביצוע התוכנית" hidden><div class="execution-heading"><div><h3 id="execution-title">התוכנית מוכנה לבדיקה</h3><p id="execution-summary" role="status" aria-live="polite"></p></div><button id="review-apply" class="primary">בצע את התוכנית</button><button id="cancel-apply" class="secondary" hidden>עצור ביצוע</button></div><progress id="execution-progress" aria-label="התקדמות הקובץ הנוכחי" hidden></progress><p id="execution-recovery" class="warning" hidden></p><p id="recovery-inspection" class="hint" hidden></p><label id="journal-label" class="detail-path-label" hidden>יומן הפעולה<input id="journal-path" class="source-path" dir="ltr" readonly></label></section>
 <div class="results-body" id="results-body" tabindex="0" aria-label="תוכן התוצאות">
 
@@ -57,11 +58,11 @@ app.innerHTML=`
 <dialog id="menu-dialog" aria-labelledby="menu-title"><div class="dialog-heading"><h2 id="menu-title">עזרה ומידע</h2><button class="close-dialog icon-button" aria-label="סגור">×</button></div><div class="menu-items" role="group" aria-label="נושאי מידע"><button data-help="help" aria-pressed="true" aria-controls="usage-content">איך משתמשים?</button><button data-help="about" aria-pressed="false" aria-controls="about-content">אודות התוכנה</button></div>
 <div id="help-content" class="help-content">
 <section id="usage-content" data-info-page="help" aria-labelledby="usage-title"><h3 id="usage-title">מהתיקייה לתוכנית המיון</h3><ol class="usage-steps"><li>בחר תיקית מקור, ובמיון גם תיקית יעד.</li><li>התאם את האפשרויות ולחץ על <strong>מיין שירים</strong> או <strong>תקן שמות</strong>. במצב תיקון אין צורך ביעד.</li><li>עיין בהצעות ובסיבות לחסימה. כשאפשר לבצע את התוכנית, יופיע כפתור ביצוע ואישור נוסף לפני שינוי הקבצים.</li></ol><p class="hint">רשימת האמנים האישית ומיון דואטים נמצאים בהגדרות מתקדמות. ההסבר ליד כל אפשרות זמין גם במקלדת ובמגע.</p></section>
-<section id="about-content" data-info-page="about" aria-labelledby="about-name" hidden><div class="about-brand"><img src="/icon.png" width="44" height="44" alt=""><div><h3 id="about-name">מסדר הסינגלים</h3><p class="hint">סידור המוזיקה שלך בתיקיות לפי אמנים</p></div></div><dl class="about-facts"><div><dt>גרסת התוכנה</dt><dd id="about-version" dir="ltr"></dd></div><div><dt>כללי המיון</dt><dd>מבוססים על גרסה 14.0</dd></div><div><dt>פרויקט המקור</dt><dd><bdi>NHLOCAL / Singles-Sorter</bdi></dd></div></dl><p>מיון לפי רשימת אמנים, אפשרויות המיון והרשימה האישית שלך. זיהוי בעזרת המודלים המקוריים פועל מקומית כאשר הם זמינים.</p><p class="hint about-capability">הזמינות לביצוע מוצגת בכל תוכנית לפי המכשיר והפעולות הנדרשות. פעולות שאינן נתמכות נשארות לתצוגה בלבד.</p><div class="about-links"><button class="secondary" data-project-link="Source">קוד המקור ב־GitHub</button><button class="secondary" data-project-link="License">רישיון MIT</button></div><p class="hint about-browser-note">הקישורים נפתחים בדפדפן שלך.</p><p id="about-link-error" class="error" role="alert" hidden></p><button class="secondary" data-local-notices hidden>הודעות רישוי וקוד מקור לרכיבים</button><details class="about-credits"><summary>רכיבים ותודות</summary><p>הפרויקט מבוסס על מסדר הסינגלים המקורי של NHLOCAL, רשימת האמנים והמודלים המקוריים לזיהוי שמות אמנים.</p><p><bdi>Rust</bdi> למנוע המיון, <bdi>Tauri</bdi> למארח שולחן העבודה, <bdi>TagLib</bdi> לקריאת מאפייני קבצים, וסמלים מתוך <bdi>Microsoft Fluent UI System Icons</bdi>.</p><p class="hint">קוד הפרויקט מופץ ברישיון MIT. לרכיבי צד שלישי ולמודלים יש תנאי רישוי נפרדים; הודעות הרישוי הנלוות לחבילה הן המקור המלא.</p></details></section></div><details class="developer-options"><summary>אפשרויות תצוגה</summary><label class="option"><input id="developer-mode" type="checkbox" role="switch"><span>מצב מפתחים</span></label><p class="hint">מציג את כל פרטי הבדיקה והיומנים. אינו משנה את המיון או את הקבצים.</p></details></dialog>
+<section id="about-content" data-info-page="about" aria-labelledby="about-name" hidden><div class="about-brand"><img src="/icon.png" width="44" height="44" alt=""><div><h3 id="about-name">מסדר הסינגלים</h3><p class="hint">סידור המוזיקה שלך בתיקיות לפי אמנים</p></div></div><dl class="about-facts"><div><dt>גרסת התוכנה</dt><dd id="about-version" dir="ltr"></dd></div><div><dt>כללי המיון</dt><dd>מבוססים על גרסה 14.0</dd></div><div><dt>פרויקט המקור</dt><dd><bdi>NHLOCAL / Singles-Sorter</bdi></dd></div></dl><p>מיון לפי רשימת אמנים, אפשרויות המיון והרשימה האישית שלך. זיהוי בעזרת המודלים המקוריים פועל מקומית כאשר הם זמינים.</p><p class="hint about-capability">הזמינות לביצוע מוצגת בכל תוכנית לפי המכשיר והפעולות הנדרשות. פעולות שאינן נתמכות נשארות לתצוגה בלבד.</p><div class="about-links"><button class="secondary" data-project-link="Source">קוד המקור ב־GitHub</button><button class="secondary" data-project-link="License">רישיון MIT</button></div><p class="hint about-browser-note">הקישורים נפתחים בדפדפן שלך.</p><p id="about-link-error" class="error" role="alert" hidden></p><button class="secondary" data-local-notices hidden>הודעות רישוי וקוד מקור לרכיבים</button><details class="about-credits"><summary>רכיבים ותודות</summary><p>הפרויקט מבוסס על מסדר הסינגלים המקורי של NHLOCAL, רשימת האמנים והמודלים המקוריים לזיהוי שמות אמנים.</p><p><bdi>Rust</bdi> למנוע המיון, <bdi>Tauri</bdi> למארח שולחן העבודה, <bdi>TagLib</bdi> לקריאת מאפייני קבצים, וסמלים מתוך <bdi>Microsoft Fluent UI System Icons</bdi>.</p><p class="hint">קוד הפרויקט מופץ ברישיון MIT. לרכיבי צד שלישי ולמודלים יש תנאי רישוי נפרדים; הודעות הרישוי הנלוות לחבילה הן המקור המלא.</p></details></section></div></dialog>
 <dialog id="advanced-dialog" aria-labelledby="advanced-title"><div class="dialog-heading"><h2 id="advanced-title">הגדרות מתקדמות</h2><button class="close-dialog icon-button" aria-label="סגור">×</button></div>
 <fieldset><legend>מיון דואטים <button class="help-badge" aria-label="עזרה: דואטים" data-help-text="בחר להיכן יועתקו שירי דואט. הבחירה נשמרת מיד, בלי לשמור שינויים באפשרויות האחרות.">?</button></legend><label class="option"><input type="radio" name="duet" id="duet-first" value="first" checked><span>לזמר הראשון בשם השיר</span></label><label class="option"><input type="radio" name="duet" id="duet-all" value="all"><span>לכל הזמרים המופיעים בשיר</span></label></fieldset>
 <fieldset><legend class="ai-heading"><span>זיהוי בעזרת AI</span><span id="model-status" class="quiet-label"></span><button id="model-help" class="help-badge" aria-label="עזרה: זמינות AI" data-help-text="">?</button></legend><div class="field-label"><label for="ai-profile">פרופיל הבדיקה</label><button class="help-badge" aria-label="עזרה: פרופיל הבדיקה" data-help-text="אם נדרש מודל ואינו זמין, הבדיקה תיחסם. אין מעבר אוטומטי לפרופיל אחר.">?</button></div><select id="ai-profile"><option value="Disabled">ללא AI</option><option value="Configured">דרוש מודל AI זמין</option></select></fieldset>
-<section><div class="field-label"><h3>הוספת זמרים</h3><button class="help-badge" aria-label="עזרה: רשימת אמנים" data-help-text="השורות האישיות מתווספות אחרי הרשימה המובנית. סדר ההתאמה נשמר.">?</button></div><div class="list-actions"><button id="edit-list" class="secondary">ערוך רשימה</button><button id="import-list" class="secondary">יבא קובץ CSV</button><button id="export-list" class="secondary">יצא לקובץ CSV</button></div><p id="profile-notice" class="hint" role="status"></p><p id="profile-error" class="error" role="alert" hidden></p></section><p id="settings-error" class="error" role="alert" hidden></p><button class="close-dialog primary">סגור</button></dialog>
+<section><div class="field-label"><h3>הוספת זמרים</h3><button class="help-badge" aria-label="עזרה: רשימת אמנים" data-help-text="השורות האישיות מתווספות אחרי הרשימה המובנית. סדר ההתאמה נשמר.">?</button></div><div class="list-actions"><button id="edit-list" class="secondary">ערוך רשימה</button><button id="import-list" class="secondary">יבא קובץ CSV</button><button id="export-list" class="secondary">יצא לקובץ CSV</button></div><p id="profile-notice" class="hint" role="status"></p><p id="profile-error" class="error" role="alert" hidden></p></section><fieldset class="display-settings"><legend>תצוגה</legend><label class="option"><input id="developer-mode" type="checkbox" role="switch"><span>מצב מפתחים</span></label><p class="hint">מציג פרטים טכניים ויומנים. פריטים ללא פעולה מוצגים רק לפי הבחירה ברשימת התוצאות.</p></fieldset><p id="settings-error" class="error" role="alert" hidden></p><button class="close-dialog primary">סגור</button></dialog>
 <dialog id="list-dialog" class="wide-dialog editor-dialog" aria-labelledby="list-title"><div class="dialog-heading"><h2 id="list-title">הוספת זמרים</h2><button id="list-cancel-x" class="icon-button" aria-label="סגור בלי לשמור">×</button><button class="help-badge" aria-label="עזרה: עריכת רשימה" data-help-text="שם האמן הוא הטקסט לחיפוש; שם התיקייה הוא היעד. אין שינוי סדר או הסרת כפילויות אוטומטיים.">?</button></div><div class="editor-content"><div class="editor-config"><p id="list-error" class="error" role="alert" hidden></p><p id="list-notice" role="status"></p></div><div class="editor-row-scroll" tabindex="0" aria-label="שורות לעריכה"><div class="editor-columns" aria-hidden="true"><span></span><span>שם תיקיה</span><span>שם זמר</span><span></span></div><div id="list-rows"></div></div></div><div class="editor-footer"><nav class="list-pagination" aria-label="עמודי רשימת אמנים"><button id="list-prev" class="secondary">הקודם</button><span id="list-range"></span><button id="list-next" class="secondary">הבא</button></nav><div class="dialog-actions"><button id="list-add" class="secondary">הוסף שורה</button><button id="list-save" class="primary">שמור רשימה</button><button id="list-cancel" class="secondary">ביטול</button></div></div></dialog>
 <dialog id="import-dialog" class="wide-dialog editor-dialog" aria-labelledby="import-title"><div class="dialog-heading"><h2 id="import-title">בדיקת קובץ הייבוא</h2><button id="import-cancel-x" class="icon-button" aria-label="בטל ייבוא">×</button><button class="help-badge" aria-label="עזרה: ייבוא רשימה" data-help-text="האישור מוסיף את כל השורות בסוף הרשימה. שורות לא תקינות וכפילויות אינן מוסרות אוטומטית. אפשר לערוך או למחוק שורות לפני האישור.">?</button></div><div class="editor-content"><div class="editor-config"><p id="import-filename" dir="auto"></p><label for="import-encoding">קידוד הקובץ</label><select id="import-encoding"><option value="Utf8">UTF-8</option><option value="Utf8Bom">UTF-8 עם BOM</option><option value="Windows1255">Windows-1255 (עברית)</option><option value="Windows1252">Windows-1252</option><option value="Utf16Le">UTF-16 LE</option><option value="Utf16Be">UTF-16 BE</option></select><button id="decode-import" class="secondary">הצג לפי הקידוד שבחרתי</button><p id="import-error" class="error" role="alert" hidden></p><p id="import-summary"></p></div><div class="editor-row-scroll" tabindex="0" aria-label="שורות לעריכה"><div class="editor-columns" aria-hidden="true"><span></span><span>שם תיקיה</span><span>שם זמר</span><span></span></div><div id="import-rows"></div></div></div><div class="editor-footer"><nav class="list-pagination" aria-label="עמודי הייבוא"><button id="import-prev" class="secondary">הקודם</button><span id="import-range"></span><button id="import-next" class="secondary">הבא</button></nav><div class="dialog-actions"><button id="confirm-import" class="primary">אשר הוספה לרשימה</button><button id="cancel-import" class="secondary">ביטול</button></div></div></dialog>`;
 // Keep the historical footer destination, verified from the released source.
@@ -153,31 +154,22 @@ function syncPersonalNotices(){
 function openDialog(id:string){$<HTMLDialogElement>(id).showModal();syncPersonalNotices();}
 for(const id of ['list-dialog','import-dialog'])$(id).addEventListener('close',syncPersonalNotices);
 $('menu').addEventListener('click',()=>openDialog('menu-dialog'));
-$('advanced').addEventListener('click',()=>openDialog('advanced-dialog'));
-$('advanced-dialog').addEventListener('close',()=>{if(!document.querySelector('dialog[open]')&&navigation.screen==='setup')$('advanced').focus();});
+let settingsTrigger:HTMLElement=$('advanced');
+for(const id of ['advanced','open-settings'])$(id).addEventListener('click',()=>{settingsTrigger=$(id);openDialog('advanced-dialog');});
+$('advanced-dialog').addEventListener('close',()=>{if(!document.querySelector('dialog[open]'))settingsTrigger.focus();});
 $('menu-dialog').addEventListener('close',()=>{if(!document.querySelector('dialog[open]'))$('menu').focus();});
 for(const button of document.querySelectorAll<HTMLButtonElement>('.close-dialog'))button.addEventListener('click',()=>button.closest('dialog')?.close());
 installIcons(app);
 installHelpBadges(app);
-// Respect enlarged text without hiding controls or trapping the page in a fixed height.
-const main=app.querySelector('main')!,workspace=app.querySelector<HTMLElement>('.workspace')!,connection=$('connection'),errorBox=$('error');
-function fitWorkspace(){
- const styles=getComputedStyle(main);
- const gap=parseFloat(styles.rowGap==='normal'?'0':styles.rowGap);
- const noticeHeight=[connection,errorBox].reduce((height,element)=>height+(element.hidden?0:element.getBoundingClientRect().height+gap),0);
- const screenHeight=navigation.screen==='setup'?workspace.getBoundingClientRect().height:220;
- const required=noticeHeight+screenHeight+app.querySelector('header')!.getBoundingClientRect().height+app.querySelector('footer')!.getBoundingClientRect().height+parseFloat(styles.paddingTop)+parseFloat(styles.paddingBottom)+parseFloat(styles.rowGap==='normal'?'0':styles.rowGap)+160;
- app.classList.toggle('reflow',required>window.innerHeight||parseFloat(getComputedStyle(document.documentElement).fontSize)>21);
-}
-const layoutObserver=new ResizeObserver(fitWorkspace);
-for(const element of [workspace,connection,errorBox,app.querySelector('header')!,app.querySelector('footer')!])layoutObserver.observe(element);
-window.addEventListener('resize',fitWorkspace);fitWorkspace();
+// Alerts live in the scrollable middle track and never change the shell geometry.
+installViewport(app);
 installAbout(app,openProjectLink,hasAndroidHost()?openLocalLicenses:undefined);
 $('developer-mode').addEventListener('change',async()=>{
  const enabled=$<HTMLInputElement>('developer-mode').checked;
  await controller.setDeveloperMode(enabled);
  if(controller.state.developerMode===enabled)try{saveDeveloperMode(localStorage,enabled);}catch{/* Session preference remains usable. */}
 });
+$('show-inactive').addEventListener('change',()=>void controller.setShowInactive($<HTMLInputElement>('show-inactive').checked));
 $('previous').addEventListener('click',()=>void controller.changePage(Math.max(0,controller.state.offset-PAGE_SIZE)));
 $('next').addEventListener('click',()=>void controller.changePage(controller.state.offset+PAGE_SIZE));
 function text(tag:string,value:string,className?:string){const node=document.createElement(tag);node.textContent=value;if(className)node.className=className;return node;}
@@ -190,7 +182,7 @@ function rowStatus(row:PlanRow){
 }
 function renderExecution(){
  const s=controller.state,e=s.execution,readiness=s.snapshot?.apply;
- $('execution-panel').hidden=!readiness&&!e;
+ $('execution-panel').hidden=!readiness&&!e;$('results').dataset.executionVisible=String(!!readiness||!!e);
  $('review-apply').hidden=!!e||!readiness?.supported;$<HTMLButtonElement>('review-apply').disabled=!controller.canApply;
  const running=s.activity==='apply';$('cancel-apply').hidden=!running;$<HTMLButtonElement>('cancel-apply').disabled=s.cancelRequested;
  $<HTMLButtonElement>('back-setup').disabled=running;
@@ -209,8 +201,10 @@ function renderExecution(){
 }
 function render(){
  const s=controller.state;const blocked=s.busy||!s.hostAvailable;
- const developer=s.developerMode;app.dataset.developerMode=String(developer);
+ const developer=s.developerMode;app.dataset.developerMode=String(developer);app.dataset.showInactive=String(s.showInactive);
  $<HTMLInputElement>('developer-mode').checked=developer;$<HTMLInputElement>('developer-mode').disabled=s.busy;
+ $<HTMLInputElement>('show-inactive').checked=s.showInactive;$<HTMLInputElement>('show-inactive').disabled=s.busy;
+ $('inactive-count').textContent=s.page?.skipped?`(${s.page.skipped.toLocaleString('he-IL')})`:'';
  $('result-second-heading').textContent=developer?'פעולה':'אמן';$('result-third-heading').textContent=developer?'סיבה / חסימה':'מצב';
  app.dataset.view=navigation.screen;
  $('setup-screen').hidden=navigation.screen!=='setup';$('processing-screen').hidden=navigation.screen!=='processing';$('results').hidden=navigation.screen!=='results';$('reopen-results').hidden=!hasResults();
@@ -239,12 +233,12 @@ function render(){
  $('empty').hidden=s.busy||!!s.error||ready&&s.page!.total>0;
  $('empty').textContent=ready?(s.snapshot?.apply?.mode??navigation.mode)==='FixNames'?'לא נמצאו קבצים לתיקון.':'לא נמצאו קבצים למיון.':'התוצאה תופיע כאן לאחר בחירת תיקיות והפעלת בדיקה.';
  $('table-wrap').hidden=!ready||!s.page!.rows.length;
- $('count').textContent=ready?`${s.page!.total.toLocaleString('he-IL')} ${developer?'רשומות':s.page!.total===1?'פריט':'פריטים'}${s.page!.skipped?` · ${s.page!.skipped.toLocaleString('he-IL')} דולגו`:''}`:'';
+ $('count').textContent=ready?`${s.page!.total.toLocaleString('he-IL')} ${developer?'רשומות':s.page!.total===1?'פריט':'פריטים'}`:'';
  $('rows').replaceChildren();
  if(ready)for(const row of s.page!.rows){
   const tr=document.createElement('tr');
-  const origin=document.createElement('td');origin.className='file-name';const name=text('bdi',sourceLabel(row.source,s.model?.platform),'source-name');name.dir='auto';if(developer)name.title=row.source;origin.append(name);tr.append(origin);
-  const items=executionItems(row);const action=text('td',developer?(items.length?items.map(itemLabel).join(' · '):kindLabel(row.kind)):(row.artist??'—'),'row-action');action.dir='auto';tr.append(action);
+  const origin=document.createElement('td');origin.className='file-name';const name=text('bdi',sourceLabel(row.source,s.model?.platform),'source-name');name.dir='auto';name.title=developer?row.source:sourceLabel(row.source,s.model?.platform);origin.append(name);tr.append(origin);
+  const items=executionItems(row);const action=text('td',developer?(items.length?items.map(itemLabel).join(' · '):kindLabel(row.kind)):(row.artist??''),'row-action');action.dir='auto';tr.append(action);
   const reason=document.createElement('td');reason.className='row-reason';reason.append(text('span',developer?`${kindLabel(row.kind)} · `:row.artist?`${row.artist} · `:'','mobile-action'),text('span',developer?(row.blockers.length?row.blockers.map(blockerLabel).join(' · '):reasonLabel(row)):rowStatus(row)));tr.append(reason);
   const detail=document.createElement('td');detail.className='row-detail';const button=document.createElement('button');button.className='icon-button detail-button';button.dataset.rowId=row.id;button.setAttribute('aria-label',`פרטים: ${sourceLabel(row.source,s.model?.platform)}`);button.append(iconElement('info'));button.addEventListener('click',()=>openRow(row,button));detail.append(button);tr.append(detail);$('rows').append(tr);
  }

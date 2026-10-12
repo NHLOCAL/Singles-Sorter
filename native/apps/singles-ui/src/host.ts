@@ -23,7 +23,7 @@ export const nativeHost: Host & ProfileHost = {
   startPreview: request => invokeHost('start_preview',{request}),
   cancelPreview: jobId => invokeHost('cancel_preview',{jobId}),
   snapshot: jobId => invokeHost('job_snapshot',{jobId}),
-  page: (jobId,offset,limit,developerMode=false) => invokeHost('get_plan_page',{jobId,offset,limit,developerMode}),
+  page: (jobId,offset,limit,developerMode=false,showInactive=false) => invokeHost('get_plan_page',{jobId,offset,limit,developerMode,showInactive}),
   startApply: (jobId,planId) => invokeHost('start_apply',{jobId,planId}),
   executionSnapshot: jobId => invokeHost('execution_snapshot',{jobId}),
   cancelApply: jobId => invokeHost('cancel_apply',{jobId}),

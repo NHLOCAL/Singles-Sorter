@@ -45,20 +45,18 @@ window.__TAURI_INTERNALS__={invoke:async(command,args={})=>{
  }
  if(command==='cancel_preview')return null;
  if(command==='job_snapshot')return {host_schema:1,job_id:'renderer-fixture',status:window.__jobStatus??'completed',plan_id:'renderer-fixture-not-native',total_rows:2,blockers:['PHYSICAL_APPLY_UNAVAILABLE'],warnings:['Effects and counters are predicted; no files or tags were changed','AI intentionally disabled; no native inference bundle is used','Unknown actionable fixture warning']};
- if(command==='get_plan_page'){const rows=window.__realHostFixture.rows.filter(row=>args.developerMode||!row.developer_only);return {rows:rows.slice(args.offset,args.offset+args.limit),total:rows.length,skipped:rows.filter(row=>row.kind==='Single'&&!row.operation_ids?.length).length};}
+ if(command==='get_plan_page'){const projected=window.__realHostFixture.rows.filter(row=>args.developerMode||!row.developer_only);const rows=projected.filter(row=>args.showInactive||!row.no_action);return {rows:rows.slice(args.offset,args.offset+args.limit),total:rows.length,skipped:projected.filter(row=>row.no_action).length};}
  throw new Error('Unexpected mock command '+command);
 }};
 """
 def developer_mode(page, enabled):
-    page.locator('#menu').click()
-    if not page.locator('.developer-options').evaluate('el=>el.open'):
-        page.locator('.developer-options summary').click()
+    page.locator('#open-settings').click()
     if enabled:
         page.locator('#developer-mode').check()
     else:
         page.locator('#developer-mode').uncheck()
     expect(page.locator('#app')).to_have_attribute('data-developer-mode',str(enabled).lower())
-    page.locator('#menu-dialog .close-dialog').click()
+    page.locator('#advanced-dialog .close-dialog').click()
 
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *_):
@@ -178,6 +176,8 @@ try:
         expect(page.locator('#row-content .source-path')).to_have_count(0)
         page.keyboard.press('Escape')
         developer_mode(page,True)
+        expect(page.locator('#rows tr')).to_have_count(1)
+        page.locator('#show-inactive').check()
         expect(page.locator('#rows tr')).to_have_count(2)
         expect(page.locator('#rows')).to_contain_text('בדיקת אלבום')
         expect(page.locator('#warnings')).to_have_text('Unknown actionable fixture warning')
@@ -186,6 +186,7 @@ try:
         expect(page.locator('#details')).to_be_visible()
         page.screenshot(path=str(OUTPUT/'renderer-results-developer.png'),full_page=True)
         developer_mode(page,False)
+        page.locator('#show-inactive').uncheck()
         expect(page.locator('#rows tr')).to_have_count(1)
         checks.append('Ordinary results hide routine folder diagnostics and technical text; developer mode restores complete evidence with correct pagination')
         page.locator('#back-setup').click()

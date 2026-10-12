@@ -78,8 +78,15 @@ pub fn get_plan_page(
     offset: usize,
     limit: usize,
     developer_mode: Option<bool>,
+    show_inactive: Option<bool>,
 ) -> Result<PlanPage, HostError> {
-    state.page_view(&job_id, offset, limit, developer_mode.unwrap_or(false))
+    state.page_view_options(
+        &job_id,
+        offset,
+        limit,
+        developer_mode.unwrap_or(false),
+        show_inactive.unwrap_or(developer_mode.unwrap_or(false)),
+    )
 }
 #[tauri::command]
 pub async fn get_settings(

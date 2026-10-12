@@ -25,7 +25,7 @@ below require final-head CI results; the presence of a test is not a passing run
 | Apply review / repeat click | Host-selected paths and retained digest only | New UI/CLI candidate; cannot repeat consumed plan |
 | Apply progress / cancellation | Actual bytes; predicted rows stay predictions | Native result distinguishes committed, blocked, cancelled, partial and recovery |
 | Recovery | Hash-chained journal and identity-bound reconciliation | Read-only retained-job inspection; process-restart product UI/import not implemented |
-| Hebrew RTL compact layout / import editing | Existing shared UI and original labels preserved | UI unit/build checks; actual Windows screenshots required for new execution panel |
+| Hebrew RTL compact layout / import editing | Shared UI and original labels preserved | Latest [result/viewport candidate](ui-results-layout.md): action-only default, optional inactive rows, developer settings, bounded width and stationary footer. Portable tests pass; final Windows native receipts and Android device evidence still required |
 | CLI supplied-facts v1 | Existing envelopes remain model-free and non-executable | No physical authorization granted |
 | CLI real-file v2 JSON | Same request fields and original planning policy | Read-only; optional selected planning adapter strengthens capability observations |
 | CLI NDJSON execution | One-process inspected-digest handshake | Same selected Windows backend; machine protocol remains explicit |

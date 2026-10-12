@@ -162,6 +162,8 @@ pub struct DisplayRow {
     pub operation_ids: Vec<usize>,
     pub artist: Option<String>,
     pub developer_only: bool,
+    /// Display classification only; never consulted by execution.
+    pub no_action: bool,
 }
 #[derive(Serialize)]
 pub struct PlanPage {
@@ -555,14 +557,25 @@ impl Host {
     }
     #[cfg(test)]
     pub fn page(&self, id: &str, offset: usize, limit: usize) -> Result<PlanPage> {
-        self.page_view(id, offset, limit, true)
+        self.page_view_options(id, offset, limit, true, true)
     }
+    #[cfg(test)]
     pub fn page_view(
         &self,
         id: &str,
         offset: usize,
         limit: usize,
         developer_mode: bool,
+    ) -> Result<PlanPage> {
+        self.page_view_options(id, offset, limit, developer_mode, developer_mode)
+    }
+    pub fn page_view_options(
+        &self,
+        id: &str,
+        offset: usize,
+        limit: usize,
+        developer_mode: bool,
+        show_inactive: bool,
     ) -> Result<PlanPage> {
         if limit == 0 || limit > MAX_PAGE {
             return Err(HostError::new(
@@ -582,10 +595,16 @@ impl Host {
                 "Only completed jobs have result pages",
             ));
         }
-        let visible: Vec<_> = job
+        let projected: Vec<_> = job
             .rows
             .iter()
             .filter(|row| developer_mode || !row.developer_only)
+            .map(|row| (row, display_no_action(row, job.execution.as_ref())))
+            .collect();
+        let skipped = projected.iter().filter(|(_, no_action)| *no_action).count();
+        let visible: Vec<_> = projected
+            .into_iter()
+            .filter(|(_, no_action)| show_inactive || !*no_action)
             .collect();
         if offset > visible.len() {
             return Err(HostError::new(
@@ -594,21 +613,53 @@ impl Host {
             ));
         }
         let total = visible.len();
-        let skipped = visible
-            .iter()
-            .filter(|row| row.kind == "Single" && row.operation_ids.is_empty())
-            .count();
         Ok(PlanPage {
             rows: visible
                 .into_iter()
                 .skip(offset)
                 .take(limit)
-                .cloned()
+                .map(|(row, no_action)| {
+                    let mut row = row.clone();
+                    row.no_action = no_action;
+                    row
+                })
                 .collect(),
             total,
             skipped,
         })
     }
+}
+// Keep incomplete/uncertain attempts visible. Only observed no-effect outcomes
+// disappear; missing result items never prove that a file was untouched.
+fn display_no_action(row: &DisplayRow, execution: Option<&ExecutionSnapshot>) -> bool {
+    let Some(execution) = execution.filter(|value| !value.is_running()) else {
+        return row.no_action;
+    };
+    let Some(result) = &execution.result else {
+        return false;
+    };
+    if row.operation_ids.is_empty() {
+        return row.no_action;
+    }
+    row.operation_ids.iter().all(|operation| {
+        let items: Vec<_> = result
+            .items
+            .iter()
+            .filter(|item| item.operation == *operation)
+            .collect();
+        !items.is_empty()
+            && items.iter().all(|item| {
+                if item
+                    .repair
+                    .as_ref()
+                    .is_some_and(|repair| repair.renamed || repair.repaired)
+                {
+                    return false;
+                }
+                item.status == "blocked"
+                    || (item.status == "complete" && item.repair.is_some())
+            })
+    })
 }
 fn validate_path(path: &Path) -> Result<()> {
     let bad = path.to_str().is_none_or(|raw| {
@@ -917,6 +968,7 @@ fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
                     operation_ids: vec![op.id],
                     artist: None,
                     developer_only: false,
+                    no_action: !f.rename_intended && f.repairs.is_empty() && f.failure.is_none(),
                 },
                 _ => unreachable!("fix planner only emits fix operations"),
             })
@@ -1012,6 +1064,9 @@ fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
                     _ => None,
                 },
                 developer_only: matches!(d, DecisionV2::Album { decision, .. } if !decision.is_album)
+                    && !operations_by_source.contains_key(&read.source.reference)
+                    && !inspection_error,
+                no_action: matches!(d, DecisionV2::Single { .. } | DecisionV2::Album { .. })
                     && !operations_by_source.contains_key(&read.source.reference)
                     && !inspection_error,
                 source: entry_display(&read.source),
@@ -1123,6 +1178,87 @@ mod tests {
         );
         assert_eq!(std::fs::read_dir(d.path()).unwrap().count(), 0);
     }
+    #[test]
+    fn terminal_display_hides_only_proven_no_effect_items() {
+        use execution::{ExecutionItem, ExecutionResult, RepairOutcome};
+        let mut row = DisplayRow {
+            id: "owned".into(),
+            source: "owned.mp3".into(),
+            kind: "FixNames".into(),
+            destination: None,
+            reason: String::new(),
+            blockers: vec![],
+            operation_ids: vec![0],
+            artist: None,
+            developer_only: false,
+            no_action: false,
+        };
+        let mut snapshot = ExecutionSnapshot {
+            host_schema: 1,
+            job_id: "owned".into(),
+            plan_id: "retained".into(),
+            status: "complete",
+            operation_count: 1,
+            operation: None,
+            bytes_written: 0,
+            source_length: 0,
+            journal_path: None,
+            error: None,
+            recovery: None,
+            recovery_error: None,
+            result: Some(ExecutionResult {
+                source_items: 1,
+                committed_destinations: 0,
+                moved_sources: 0,
+                failed_operations: 0,
+                blocked_operations: 0,
+                recovery_operations: 0,
+                cancelled_operations: 0,
+                repair: None,
+                items: vec![ExecutionItem {
+                    operation: 0,
+                    status: "complete",
+                    detail: String::new(),
+                    repair: Some(RepairOutcome {
+                        renamed: false,
+                        repaired: false,
+                        unchanged: true,
+                    }),
+                }],
+            }),
+        };
+        assert!(display_no_action(&row, Some(&snapshot)));
+        for status in [
+            "failed",
+            "cancelled",
+            "source_retained",
+            "needs_recovery",
+            "unsupported_tags",
+            "metadata_failure",
+        ] {
+            snapshot.result.as_mut().unwrap().items[0].status = status;
+            assert!(!display_no_action(&row, Some(&snapshot)), "{status}");
+        }
+        snapshot.result.as_mut().unwrap().items[0].status = "blocked";
+        assert!(display_no_action(&row, Some(&snapshot)));
+        snapshot.result.as_mut().unwrap().items[0].status = "complete";
+        snapshot.result.as_mut().unwrap().items[0]
+            .repair
+            .as_mut()
+            .unwrap()
+            .renamed = true;
+        assert!(!display_no_action(&row, Some(&snapshot)));
+        snapshot.result.as_mut().unwrap().items[0].status = "blocked";
+        assert!(!display_no_action(&row, Some(&snapshot)));
+        snapshot.result.as_mut().unwrap().items[0].status = "complete";
+        snapshot.result.as_mut().unwrap().items[0].repair = None;
+        assert!(!display_no_action(&row, Some(&snapshot)));
+        row.operation_ids.push(1);
+        assert!(!display_no_action(&row, Some(&snapshot)));
+        snapshot.result = None;
+        row.no_action = true;
+        assert!(!display_no_action(&row, Some(&snapshot)));
+    }
     #[cfg(any(windows, target_os = "linux"))]
     #[test]
     fn ordinary_pages_filter_before_offset_and_preserve_errors_and_skips() {
@@ -1153,23 +1289,30 @@ mod tests {
                     operation_ids: vec![],
                     artist: None,
                     developer_only: !matches!(index, 30 | 60 | 90),
+                    no_action: !matches!(index, 60 | 90),
                 })
                 .collect();
         }
-        let first = host.page_view(&job.job_id, 0, 1, false).unwrap();
+        let first = host.page_view_options(&job.job_id, 0, 1, false, true).unwrap();
         assert_eq!(first.total, 3);
         assert_eq!(first.skipped, 1);
         assert_eq!(first.rows[0].id, "row-30");
         assert_eq!(
-            host.page_view(&job.job_id, 1, 1, false).unwrap().rows[0].id,
+            host.page_view_options(&job.job_id, 1, 1, false, true)
+                .unwrap()
+                .rows[0]
+                .id,
             "row-60"
         );
         assert_eq!(
-            host.page_view(&job.job_id, 2, 1, false).unwrap().rows[0].kind,
+            host.page_view_options(&job.job_id, 2, 1, false, true)
+                .unwrap()
+                .rows[0]
+                .kind,
             "Vanished"
         );
         assert!(
-            host.page_view(&job.job_id, 3, 1, false)
+            host.page_view_options(&job.job_id, 3, 1, false, true)
                 .unwrap()
                 .rows
                 .is_empty()
@@ -1177,7 +1320,24 @@ mod tests {
         assert!(host.page_view(&job.job_id, usize::MAX, 1, false).is_err());
         let technical = host.page_view(&job.job_id, 0, 200, true).unwrap();
         assert_eq!(technical.total, 120);
-        assert_eq!(technical.skipped, 1);
+        assert_eq!(technical.skipped, 118);
+        let active = host.page_view_options(&job.job_id, 0, 1, false, false).unwrap();
+        assert_eq!(active.total, 2);
+        assert_eq!(active.skipped, 1);
+        assert_eq!(active.rows[0].kind, "ItemError");
+        assert_eq!(
+            host.page_view_options(&job.job_id, 1, 1, false, false)
+                .unwrap()
+                .rows[0]
+                .kind,
+            "Vanished"
+        );
+        assert_eq!(
+            host.page_view_options(&job.job_id, 0, 200, true, false)
+                .unwrap()
+                .total,
+            2
+        );
         assert!(
             technical
                 .rows
@@ -1251,6 +1411,10 @@ mod tests {
                 DecisionV2::Vanished { read },
             ];
             assert!(project_rows(&plan).iter().all(|row| !row.developer_only));
+            let projected = project_rows(&plan);
+            assert!(projected[0].no_action);
+            assert!(!projected[1].no_action);
+            assert!(!projected[2].no_action);
             let mut album = plan.decisions[0].clone();
             if let DecisionV2::Album { read, decision } = &mut album {
                 decision.is_album = false;
@@ -1273,9 +1437,38 @@ mod tests {
                     };
                     let projected = project_rows(&test_plan);
                     assert!(!projected[0].developer_only);
+                    assert!(!projected[0].no_action);
                     assert!(projected[0].blockers.contains(&"ALBUM_READ_ERROR".into()));
                 }
             }
+        }
+        {
+            use sorter_core::fix_plan::{FixFailure, FixFilePlan};
+            let inner = h.lock().unwrap();
+            let mut plan = inner.job.as_ref().unwrap()._plan.as_ref().unwrap().clone();
+            plan.request.mode = JobMode::FixNames;
+            plan.operations.truncate(1);
+            let original = operation_source(&plan.operations[0].kind).clone();
+            plan.operations[0].kind = OperationKind::FixFile(FixFilePlan {
+                source: original,
+                intended_name: None,
+                rename_intended: false,
+                repairs: vec![],
+                save_intended: true,
+                failure: None,
+                blockers: vec![],
+                executable: false,
+            });
+            assert!(project_rows(&plan)[0].no_action);
+            if let OperationKind::FixFile(fix) = &mut plan.operations[0].kind {
+                fix.rename_intended = true;
+            }
+            assert!(!project_rows(&plan)[0].no_action);
+            if let OperationKind::FixFile(fix) = &mut plan.operations[0].kind {
+                fix.rename_intended = false;
+                fix.failure = Some(FixFailure::Open(sorter_core::metadata::MetadataError::Parser));
+            }
+            assert!(!project_rows(&plan)[0].no_action);
         }
         let root_json = serde_json::to_value(&s).unwrap();
         assert_eq!(
@@ -1325,6 +1518,7 @@ mod tests {
                     "developer_only",
                     "id",
                     "kind",
+                    "no_action",
                     "operation_ids",
                     "reason",
                     "source"

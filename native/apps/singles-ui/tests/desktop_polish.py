@@ -43,28 +43,26 @@ def exercise_information(command, script, click, wait, capture, root, output):
     assert script("return document.querySelector('.about-credits').open")
     assert script("const d=document.querySelector('#menu-dialog');return d.scrollWidth<=d.clientWidth+1")
     capture('01-native-about-credits')
-    assert script("return !document.querySelector('.developer-options').open")
-    assert script("return document.querySelector('#developer-mode').getClientRects().length===0"), 'Closed developer options retained an out-of-flow control box'
+    assert script("return !document.querySelector('#menu-dialog #developer-mode')"), 'Developer mode belongs to Settings'
     check_phone_layout(command, script, capture, output, '01-native-about')
-    click('.developer-options summary')
-    assert script("return document.querySelector('.developer-options').open && !document.querySelector('#developer-mode').checked")
-    check_phone_layout(command, script, capture, output, '01-native-developer-options')
-    click('.developer-options summary')
-    assert script("return document.querySelector('#developer-mode').getClientRects().length===0")
     click('#menu-dialog .close-dialog')
     assert script("return document.activeElement.id==='menu'")
+    click('#open-settings')
+    assert script("return document.querySelector('#advanced-dialog #developer-mode') !== null")
+    assert not script("return document.querySelector('#developer-mode').checked")
+    check_phone_layout(command, script, capture, output, '01-native-display-settings')
+    click('#advanced-dialog .close-dialog')
+    assert script("return document.activeElement.id==='open-settings'")
     command('DELETE', '/actions')
     return ['Actual pointer leave closes help immediately after hover and repeated clicks',
             'Actual keyboard help focus, Escape, Enter and Tab dismissal',
             'About shows packaged version, source lineage and expandable credits without horizontal overflow',
-            'Closed and expanded developer options retain correct bounded scroll layout']
+            'Developer mode is in advanced Settings, accessible from the global settings button']
 
 
 def set_developer_mode(script, click, wait, enabled):
-    click('#menu')
-    if not script("return document.querySelector('.developer-options').open"):
-        click('.developer-options summary')
+    click('#open-settings')
     if script("return document.querySelector('#developer-mode').checked") != enabled:
         click('#developer-mode')
     wait(lambda: script("return document.querySelector('#app').dataset.developerMode") == str(enabled).lower())
-    click('#menu-dialog .close-dialog')
+    click('#advanced-dialog .close-dialog')

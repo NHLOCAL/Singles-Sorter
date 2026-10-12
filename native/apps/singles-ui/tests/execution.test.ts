@@ -34,3 +34,18 @@ describe('retained native apply ownership',()=>{
  }finally{vi.useRealTimers();}});
 
 });
+
+describe('actual terminal result projection',()=>{
+ it('refetches display rows after execution without changing actual counters',async()=>{
+  const h=host();h.page=vi.fn().mockResolvedValueOnce({total:2,rows:[]}).mockResolvedValueOnce({total:1,skipped:1,rows:[]});
+  const c=await selected(h);c.state.offset=50;await c.apply();
+  expect(h.page).toHaveBeenLastCalledWith('job',0,50,false,false);
+  expect(c.state.offset).toBe(0);expect(c.state.page?.skipped).toBe(1);
+  expect(c.state.execution?.result?.committed_destinations).toBe(2);
+ });
+ it('retains the real terminal outcome when display reconciliation fails',async()=>{
+  const h=host();h.page=vi.fn().mockResolvedValueOnce({total:2,rows:[]}).mockRejectedValueOnce(new Error('offline'));
+  const c=await selected(h);await c.apply();expect(c.state.execution?.status).toBe('complete');
+  expect(c.state.error).toBe('offline');expect(c.canApply).toBe(false);
+ });
+});

@@ -9,9 +9,9 @@ describe('verified About identity',()=>{
   expect(APP_VERSION).toBe(config.version);
   expect(cargo).toContain(`version = "${APP_VERSION}"`);
  });
- it('removes closed disclosure content boxes and checks both native disclosure states',()=>{
-  expect(nativeChecks).toContain("'01-native-developer-options'");
-  expect(nativeChecks).toContain("#developer-mode').getClientRects().length===0");
+ it('places developer mode in tested advanced settings, outside About',()=>{
+  expect(nativeChecks).toContain("'01-native-display-settings'");
+  expect(nativeChecks).toContain("#menu-dialog #developer-mode");
  });
  it('offers only verified project destinations, also pinned in native code',()=>{
   expect(PROJECT_LINKS).toEqual({Source:'https://github.com/NHLOCAL/Singles-Sorter',License:'https://github.com/NHLOCAL/Singles-Sorter/blob/main/LICENSE'});
