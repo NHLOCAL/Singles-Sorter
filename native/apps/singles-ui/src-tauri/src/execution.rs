@@ -659,16 +659,15 @@ mod selected {
             })
         }
         pub(super) fn execution_error(&self, id: &str, status: &'static str, error: &str) {
-            if let Ok(mut inner) = self.lock() {
-                if let Some(e) = inner
+            if let Ok(mut inner) = self.lock()
+                && let Some(e) = inner
                     .job
                     .as_mut()
                     .filter(|j| j.snapshot.job_id == id)
                     .and_then(|j| j.execution.as_mut())
-                {
-                    e.status = status;
-                    e.error = Some(error.into());
-                }
+            {
+                e.status = status;
+                e.error = Some(error.into());
             }
         }
         fn execute_selected(
@@ -890,29 +889,27 @@ mod selected {
                 original_scope: scope.clone(),
                 inspected_binding_sha256: job.binding_sha256().map_err(storage_error)?,
             };
-            if let Ok(mut inner) = self.lock() {
-                if let Some(e) = inner
+            if let Ok(mut inner) = self.lock()
+                && let Some(e) = inner
                     .job
                     .as_mut()
                     .filter(|j| j.snapshot.job_id == id)
                     .and_then(|j| j.execution.as_mut())
-                {
-                    e.status = "running";
-                    e.journal_path = Some(journal_path);
-                }
+            {
+                e.status = "running";
+                e.journal_path = Some(journal_path);
             }
             let result = job.run(&cancellation.cancelled, &mut |progress| {
-                if let Ok(mut inner) = self.lock() {
-                    if let Some(e) = inner
+                if let Ok(mut inner) = self.lock()
+                    && let Some(e) = inner
                         .job
                         .as_mut()
                         .filter(|j| j.snapshot.job_id == id)
                         .and_then(|j| j.execution.as_mut())
-                    {
-                        e.operation = Some(progress.operation);
-                        e.bytes_written = progress.bytes_written;
-                        e.source_length = progress.source_length;
-                    }
+                {
+                    e.operation = Some(progress.operation);
+                    e.bytes_written = progress.bytes_written;
+                    e.source_length = progress.source_length;
                 }
             });
             let (recovered, recovery_error) = if job.journal_locations().is_empty() {
@@ -939,16 +936,15 @@ mod selected {
                     Err(error) => (None, Some(error.to_string())),
                 }
             };
-            if let Ok(mut inner) = self.lock() {
-                if let Some(e) = inner
+            if let Ok(mut inner) = self.lock()
+                && let Some(e) = inner
                     .job
                     .as_mut()
                     .filter(|j| j.snapshot.job_id == id)
                     .and_then(|j| j.execution.as_mut())
-                {
-                    e.recovery = recovered;
-                    e.recovery_error = recovery_error;
-                }
+            {
+                e.recovery = recovered;
+                e.recovery_error = recovery_error;
             }
             match result {
                 Ok(result) => {

@@ -157,7 +157,7 @@ mod selected {
             manifest: JournalEvidence,
             transfers: Option<JournalEvidence>,
             transfer_path: PathBuf,
-            descriptor: RecordedAlbumFileJob,
+            descriptor: Box<RecordedAlbumFileJob>,
         },
         Single {
             directories: JournalEvidence,
@@ -367,15 +367,14 @@ mod selected {
             (".transfers.jsonl", "album-", "orphan"),
             (".repair.jsonl", "repair-", "repair"),
         ] {
-            if let Some(stem) = name.strip_suffix(suffix) {
-                if stem.starts_with(prefix)
-                    && stem.len() <= 100
-                    && stem
-                        .bytes()
-                        .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
-                {
-                    return Some((stem, family));
-                }
+            if let Some(stem) = name.strip_suffix(suffix)
+                && stem.starts_with(prefix)
+                && stem.len() <= 100
+                && stem
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+            {
+                return Some((stem, family));
             }
         }
         None
@@ -730,7 +729,7 @@ mod selected {
                                 manifest: directory_evidence,
                                 transfers: transfers.map(|(_, evidence)| evidence),
                                 transfer_path,
-                                descriptor,
+                                descriptor: Box::new(descriptor),
                             },
                         });
                         return Ok(record);
@@ -776,10 +775,10 @@ mod selected {
                     });
                     Ok(record)
                 })();
-                if let Err(error) = &checked {
-                    if error.code == "CANCELLED" {
-                        return Err(error.clone());
-                    }
+                if let Err(error) = &checked
+                    && error.code == "CANCELLED"
+                {
+                    return Err(error.clone());
                 }
                 records.push(checked.unwrap_or_else(|error: HostError| RecoveryRecord {
                     token,
