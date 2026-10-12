@@ -192,6 +192,13 @@ mod selected {
         let id = id.to_owned();
         InspectionControl::new(cancel.cancelled.clone(), move |progress| host.update_recovery_progress(&id, progress.into()))
     }
+    fn single_record_detail(recorded_complete: bool) -> &'static str {
+        if recorded_complete {
+            "היומן מתעד סיום; מצב הקבצים הנוכחי דורש בדיקה."
+        } else {
+            "יש לבחור מחדש את תיקיות המקור והיעד כדי לבדוק את הקבצים. היומן לבדו אינו מאמת את מצבם."
+        }
+    }
     fn display(reference: &StorageRef) -> String {
         match reference { StorageRef::WindowsPath {utf16} => String::from_utf16_lossy(utf16), _ => "מיקום שאינו נתמך".into() }
     }
@@ -325,7 +332,7 @@ mod selected {
                     let transfer = observation(&mut storage, &transfer_path, control)?.map(|observed| read_bound(&mut storage,&observed,&mut budget,control)).transpose()?;
                     let summary = summarize_recorded_selected_job_with_control(&directories, transfer.as_ref().map(|(bytes,_)| bytes.as_slice()), control).map_err(recorded_error)?;
                     if summary.job.job_id != stem { return Err(changed()); }
-                    let record = RecoveryRecord {token:token.clone(),job_id:Some(summary.job.job_id),journal_name:name.clone(),family,source:Some(display(&summary.job.source)),target:Some(display(&summary.job.target)),state:if summary.recorded_complete {"recorded_complete"} else {"inspection_needed"},detail:if summary.recorded_complete {"היומן מתעד סיום; מצב הקבצים הנוכחי דורש בדיקה."} else {"לא נמצא סיום מלא ביומן. יש לבדוק את הקבצים לפני פעולה נוספת."}.into(),operation_count:summary.job.operations.len()};
+                    let record = RecoveryRecord {token:token.clone(),job_id:Some(summary.job.job_id),journal_name:name.clone(),family,source:Some(display(&summary.job.source)),target:Some(display(&summary.job.target)),state:if summary.recorded_complete {"recorded_complete"} else {"inspection_needed"},detail:single_record_detail(summary.recorded_complete).into(),operation_count:summary.job.operations.len()};
                     retained.push(RetainedRecord {token:token.clone(),directory:directory.clone(),root:root.clone(),journal:RetainedJournal::Single {directories:directory_evidence,transfers:transfer.map(|(_,evidence)|evidence),transfer_path}});
                     Ok(record)
                 })();
@@ -427,6 +434,17 @@ mod selected {
     #[cfg(test)]
     mod tests {
         use super::*;
+        #[test]
+        fn inspection_needed_descriptor_does_not_claim_missing_terminal_records() {
+            // Copied-Move descriptors deliberately keep this flag false even
+            // for a valid final journal; it expresses inspection policy only.
+            let detail = single_record_detail(false);
+            assert!(detail.contains("לבחור מחדש"));
+            assert!(detail.contains("היומן לבדו אינו מאמת"));
+            assert!(!detail.contains("לא נמצא סיום"));
+            assert!(!detail.contains("לא הושלם"));
+            assert!(single_record_detail(true).contains("דורש בדיקה"));
+        }
         #[test]
         fn journal_names_are_only_single_generated_components() {
             assert_eq!(journal_descriptor("sorter-1-2-3.directories.jsonl"),Some(("sorter-1-2-3", "single")));
