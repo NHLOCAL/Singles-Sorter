@@ -769,7 +769,9 @@ impl WindowsMutationStorage {
         // No recursive/path deletion, readonly override, ON_CLOSE update, or
         // fallback to weaker flags on older OS/filesystem implementations.
         let disposition = FILE_DISPOSITION_INFO_EX {
-            Flags: FILE_DISPOSITION_FLAG_DELETE | FILE_DISPOSITION_FLAG_POSIX_SEMANTICS,
+            Flags: FILE_DISPOSITION_INFO_EX_FLAGS(
+                FILE_DISPOSITION_FLAG_DELETE.0 | FILE_DISPOSITION_FLAG_POSIX_SEMANTICS.0,
+            ),
         };
         if let Err(error) = unsafe {
             SetFileInformationByHandle(

@@ -1554,6 +1554,7 @@ impl WholeAlbumJob {
         }
         let mut seen = HashSet::new();
         for (relative, observation) in &outcome.descendants {
+            let first = relative.first().ok_or(E::CorruptJournal)?;
             let mut source = source_path.clone();
             let mut destination = root_path.clone();
             for (part_index, part) in relative.iter().enumerate() {
@@ -1572,10 +1573,7 @@ impl WholeAlbumJob {
                     let child = album
                         .children
                         .iter()
-                        .find(|child| {
-                            name(&child.destination_name)
-                                == *relative.first().ok_or(E::CorruptJournal)?
-                        })
+                        .find(|child| name(&child.destination_name) == *first)
                         .ok_or(E::CorruptJournal)?;
                     source.push(
                         path(&child.source.reference)?
