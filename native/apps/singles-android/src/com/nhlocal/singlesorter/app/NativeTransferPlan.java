@@ -17,7 +17,7 @@ final class NativeTransferPlan {
     }
     final List<Transfer> operations;final boolean copyMode;
     private NativeTransferPlan(List<Transfer> operations,boolean copyMode){this.operations=Collections.unmodifiableList(operations);this.copyMode=copyMode;}
-    private static void blockers(JSONArray values,boolean global)throws Exception{
+    static void blockers(JSONArray values,boolean global)throws Exception{
         for(int i=0;i<values.length();i++){
             String value=values.getString(i);
             if(!value.equals("MISSING_IDENTITY")&&!(global&&(value.equals("UNKNOWN_CAPABILITY")||value.equals("PHYSICAL_APPLY_UNAVAILABLE"))))throw new IllegalArgumentException("ORIGINAL_PLAN_BLOCKED: "+value);
@@ -25,11 +25,16 @@ final class NativeTransferPlan {
         // These unchanged core markers are resolved only by the separate Android
         // provider contract (fresh content/scope checks and explicit quiescence), not CAS.
     }
-    private static boolean sameReference(JSONObject a,JSONObject b)throws Exception{
+    static boolean sameReference(JSONObject a,JSONObject b)throws Exception{
         if(a.length()!=1||b.length()!=1||!a.has("AndroidDocument")||!b.has("AndroidDocument"))return false;
         JSONObject x=a.getJSONObject("AndroidDocument"),y=b.getJSONObject("AndroidDocument");
         for(String key:new String[]{"tree_uri","authority","document_id"})if(!x.getString(key).equals(y.getString(key)))return false;
         return x.length()==3&&y.length()==3;
+    }
+    static void requireOrder(JSONObject operation,int id)throws Exception{
+        if(operation.getInt("id")!=id||!operation.getBoolean("stop_and_replan_on_effect_mismatch"))throw new IllegalArgumentException("OPERATION_ORDER");
+        JSONArray dependencies=operation.getJSONArray("depends_on");if(dependencies.length()!=id)throw new IllegalArgumentException("OPERATION_DEPENDENCIES");
+        for(int n=0;n<id;n++)if(dependencies.getInt(n)!=n)throw new IllegalArgumentException("OPERATION_DEPENDENCIES");
     }
     static NativeTransferPlan prepare(RetainedPlan retained,ProviderReferences references)throws Exception{
         JSONObject plan=retained.planCopy(),request=plan.getJSONObject("request");
@@ -40,10 +45,8 @@ final class NativeTransferPlan {
         if(original.length()==0||original.length()>10000)throw new IllegalArgumentException("OPERATION_COUNT");
         ArrayList<Transfer> operations=new ArrayList<>();long outputBytes=0;
         for(int i=0;i<original.length();i++){
-            JSONObject operation=original.getJSONObject(i);if(operation.getInt("id")!=i||!operation.getBoolean("stop_and_replan_on_effect_mismatch"))throw new IllegalArgumentException("OPERATION_ORDER");
-            JSONArray dependencies=operation.getJSONArray("depends_on");if(dependencies.length()!=i)throw new IllegalArgumentException("OPERATION_DEPENDENCIES");
-            for(int n=0;n<i;n++)if(dependencies.getInt(n)!=n)throw new IllegalArgumentException("OPERATION_DEPENDENCIES");
-            JSONObject kind=operation.getJSONObject("kind");if(kind.length()!=1||!kind.has("SingleTransfer"))throw new IllegalArgumentException("ANDROID_ALBUM_EXECUTION_PENDING");
+            JSONObject operation=original.getJSONObject(i);requireOrder(operation,i);
+            JSONObject kind=operation.getJSONObject("kind");if(kind.length()==1&&kind.has("AlbumTransfer"))continue;if(kind.length()!=1||!kind.has("SingleTransfer"))throw new IllegalArgumentException("ANDROID_OPERATION_UNSUPPORTED");
             JSONObject single=kind.getJSONObject("SingleTransfer"),source=single.getJSONObject("source"),transfer=single.getJSONObject("transfer"),destination=transfer.getJSONObject("destination");
             if(!"File".equals(source.getString("kind"))||!sameReference(source.getJSONObject("reference"),transfer.getJSONObject("source").getJSONObject("reference"))||!sameReference(destination.getJSONObject("root"),target)||!transfer.getBoolean("predicted_success"))throw new IllegalArgumentException("TRANSFER_BINDING");
             blockers(transfer.getJSONArray("blockers"),false);JSONArray components=destination.getJSONArray("components");if(components.length()==0||components.length()>128)throw new IllegalArgumentException("DESTINATION_LIMIT");

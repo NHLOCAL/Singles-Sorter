@@ -7,7 +7,7 @@ final class ExecutionOutcomes {
     ExecutionOutcomes(int count){if(count<0||count>10000)throw new IllegalArgumentException("count");status=new String[count];detail=new String[count];destination=new String[count];attempted=new boolean[count];}
     void begin(int id){check(id);if(status[id]!=null||attempted[id])throw new IllegalStateException("operation owner");attempted[id]=true;}
     void finish(int id,String outcome,String description){
-        check(id);if(!attempted[id]||status[id]!=null||!outcome.matches("complete|failed|cancelled|needs_recovery"))throw new IllegalStateException("operation outcome");
+        check(id);if(!attempted[id]||status[id]!=null||!outcome.matches("complete|partial|failed|cancelled|needs_recovery|unsupported_tags|metadata_failure"))throw new IllegalStateException("operation outcome");
         status[id]=outcome;detail[id]=description;
     }
     void destination(int id,String evidence){

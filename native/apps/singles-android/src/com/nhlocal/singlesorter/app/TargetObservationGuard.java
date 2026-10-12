@@ -18,7 +18,11 @@ import org.json.JSONObject;
 final class TargetObservationGuard {
     private final ContentResolver resolver;private final Uri tree;private final CancellationSignal cancel;
     private final HashMap<String,JSONObject> expected=new HashMap<>();
+    private final HashSet<String> unlistedSourceDirectories=new HashSet<>();
     TargetObservationGuard(Context context,RetainedPlan plan,Uri tree,CancellationSignal cancel)throws Exception{
+        this(context,plan,tree,cancel,false);
+    }
+    TargetObservationGuard(Context context,RetainedPlan plan,Uri tree,CancellationSignal cancel,boolean sourceMainOnly)throws Exception{
         resolver=context.getApplicationContext().getContentResolver();this.tree=tree;this.cancel=cancel;
         JSONArray entries=plan.referencesCopy();HashMap<String,JSONObject> tokens=new HashMap<>();
         for(int i=0;i<entries.length();i++)tokens.put(entries.getJSONObject(i).getString("token"),entries.getJSONObject(i));
@@ -29,6 +33,7 @@ final class TargetObservationGuard {
                 .put("modified",e.get("observed_modified")).put("size",e.getBoolean("directory")?JSONObject.NULL:e.get("observed_size")).put("parent",parent==null?JSONObject.NULL:parent);
             if(normalized.getBoolean("directory")&&normalized.isNull("modified"))throw new IOException("TARGET_DIRECTORY_OBSERVATION_UNAVAILABLE");
             expected.put(e.getString("document_id"),normalized);
+            if(sourceMainOnly&&e.getBoolean("directory")&&parent!=null&&!Boolean.TRUE.equals(e.opt("directory_children_complete")))unlistedSourceDirectories.add(e.getString("document_id"));
         }
         if(expected.isEmpty())throw new IOException("TARGET_OBSERVATIONS_MISSING");
     }
@@ -52,7 +57,7 @@ final class TargetObservationGuard {
     void validateTree()throws Exception{HashSet<String> seen=new HashSet<>();walk(uri(DocumentsContract.getTreeDocumentId(tree)),seen,0);if(seen.size()!=expected.size())throw new IOException("TARGET_REMOVED_SINCE_PREVIEW");}
     private void walk(Uri current,HashSet<String> seen,int depth)throws Exception{
         cancel.throwIfCanceled();String id=DocumentsContract.getDocumentId(current);if(depth>128||seen.size()>=10000||!seen.add(id))throw new IOException("TARGET_TREE_LIMIT");require(current);
-        if(!expected.get(id).getBoolean("directory"))return;
+        if(!expected.get(id).getBoolean("directory")||unlistedSourceDirectories.contains(id))return;
         try(Cursor c=resolver.query(DocumentsContract.buildChildDocumentsUriUsingTree(tree,id),new String[]{DocumentsContract.Document.COLUMN_DOCUMENT_ID},null,null,null,cancel)){
             if(c==null)throw new IOException("TARGET_LIST_UNAVAILABLE");
             while(c.moveToNext()){
@@ -77,6 +82,19 @@ final class TargetObservationGuard {
         if(known==null||!known.getBoolean("directory")||!DocumentsContract.getDocumentId(parent).equals(known.getString("parent")))throw new IOException("STAGE_REMOVAL_NOT_TRACKED");
         for(JSONObject entry:expected.values())if(id.equals(entry.optString("parent")))throw new IOException("STAGE_REMOVAL_HAS_TRACKED_CHILDREN");
         expected.remove(id);refresh(parent);
+    }
+    boolean contains(Uri value){return expected.containsKey(DocumentsContract.getDocumentId(value));}
+    void forgetSubtree(Uri node)throws Exception{
+        String id=DocumentsContract.getDocumentId(node);if(!expected.containsKey(id))throw new IOException("TARGET_SUBTREE_NOT_TRACKED");HashSet<String> removed=new HashSet<>();removed.add(id);boolean changed=true;
+        while(changed){cancel.throwIfCanceled();changed=false;for(JSONObject entry:expected.values())if(!removed.contains(entry.getString("id"))&&removed.contains(entry.optString("parent"))){removed.add(entry.getString("id"));changed=true;}}
+        for(String child:removed)expected.remove(child);
+    }
+    void removedSubtree(Uri node,Uri parent)throws Exception{
+        String id=DocumentsContract.getDocumentId(node);JSONObject known=expected.get(id);
+        if(known==null||!DocumentsContract.getDocumentId(parent).equals(known.optString("parent")))throw new IOException("SOURCE_REMOVAL_NOT_TRACKED");
+        HashSet<String> removed=new HashSet<>();removed.add(id);boolean changed=true;
+        while(changed){cancel.throwIfCanceled();changed=false;for(JSONObject entry:expected.values())if(!removed.contains(entry.getString("id"))&&removed.contains(entry.optString("parent"))){removed.add(entry.getString("id"));changed=true;}}
+        for(String child:removed){expected.remove(child);unlistedSourceDirectories.remove(child);}refresh(parent);
     }
     void refresh(Uri current)throws Exception{
         String id=DocumentsContract.getDocumentId(current);JSONObject old=expected.get(id);if(old==null)throw new IOException("UNOWNED_OBSERVATION_UPDATE");JSONObject now=observe(current,old.get("parent"));

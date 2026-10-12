@@ -53,3 +53,15 @@ SOURCES+=("$ROOT/native/plugins/original-inference/android/src/com/nhlocal/singl
 "$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.RecoveryDisplayTest
 
 "$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.PreviewGenerationTest
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.FixAcknowledgedOutcomeTest
+
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.FixEffectObservationTest
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.ReservedScopePolicyTest
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.RetainedNamespaceListingTest
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.PrivateFixPathsTest
+
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.AlbumSnapshotEvidenceTest
+
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.AlbumRecoveryProjectionTest
+
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.AlbumEffectBudgetTest

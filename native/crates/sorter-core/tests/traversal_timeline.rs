@@ -892,3 +892,99 @@ fn v2_binding_covers_roots_versions_observations_and_mutation_intentions() {
     p.request.resource_ids.push("changed".into());
     assert!(verify_job_plan_binding(&p).is_err());
 }
+#[test]
+fn retained_original_backup_leaf_keeps_original_recursive_audio_discovery() {
+    let (mut request, mut storage, mut metadata, mut ai) = scenario(
+        &[
+            (".singles-original-fixture/original.backup", json!({})),
+            (".user-folder/אברהם פריד.mp3", json!({})),
+            ("אברהם פריד.mp3", json!({})),
+        ],
+        Settings::default(),
+    );
+    request.mode = JobMode::FixNames;
+    request.target = None;
+    let plan = plan_job(&request, &mut storage, &mut metadata, &mut ai).unwrap();
+    let sources = plan
+        .operations
+        .iter()
+        .map(|operation| match &operation.kind {
+            OperationKind::FixFile(fix) => id(&fix.source.reference),
+            _ => panic!("only original Fix intentions"),
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(sources.len(), 2);
+    assert!(sources.contains(&"source/.user-folder/אברהם פריד.mp3".into()));
+    assert!(sources.contains(&"source/אברהם פריד.mp3".into()));
+    assert!(
+        storage
+            .reads
+            .contains(&"source/.singles-original-fixture".into())
+    );
+    assert!(
+        !sources
+            .iter()
+            .any(|source| source.ends_with("original.backup"))
+    );
+}
+
+#[test]
+fn album_projection_borrows_all_frozen_sort_intentions_without_changing_plans() {
+    let mut cases = 0;
+    let mut albums = 0;
+    for golden in goldens().into_iter().filter(|g| g["op"] == "sort") {
+        let inp = inputs();
+        let input = inp["cases"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|i| i["id"] == golden["id"])
+            .unwrap();
+        let (request, mut storage, mut metadata, mut ai) = fixture(input, &golden);
+        let plan = plan_job(&request, &mut storage, &mut metadata, &mut ai).unwrap();
+        let before = serde_json::to_vec(&plan).unwrap();
+        let projected =
+            album_projection::project_album_operations(&plan, &UncontrolledPlanning).unwrap();
+        let expected: Vec<_> = plan
+            .operations
+            .iter()
+            .filter(|op| matches!(op.kind, OperationKind::AlbumTransfer { .. }))
+            .collect();
+        assert_eq!(projected.operations.len(), expected.len());
+        for (actual, original) in projected.operations.iter().zip(expected) {
+            let OperationKind::AlbumTransfer {
+                source,
+                destination,
+                children,
+                remove_empty_source,
+            } = &original.kind
+            else {
+                unreachable!()
+            };
+            assert_eq!(actual.id, original.id);
+            assert!(std::ptr::eq(actual.source, source));
+            assert!(std::ptr::eq(actual.destination, destination));
+            assert_eq!(actual.depends_on, original.depends_on);
+            assert_eq!(actual.remove_empty_source, *remove_empty_source);
+            assert_eq!(actual.copy_mode, request.settings.copy_mode);
+            assert_eq!(actual.children.len(), children.len());
+            for (child, intention) in actual.children.iter().zip(children) {
+                assert!(std::ptr::eq(child.intent, intention));
+                assert_eq!(
+                    child.planned_name,
+                    intention.destination.components.last().unwrap()
+                );
+                assert_eq!(
+                    child.name_changes,
+                    child.planned_name != intention.source.name
+                );
+            }
+            albums += 1;
+        }
+        assert_eq!(projected.blockers, plan.blockers);
+        assert_eq!(before, serde_json::to_vec(&plan).unwrap());
+        cases += 1;
+    }
+    assert_eq!(cases, 15);
+    assert!(albums > 0);
+}
