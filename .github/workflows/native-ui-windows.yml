@@ -22,7 +22,9 @@ concurrency:
 jobs:
   windows-ui:
     runs-on: windows-2025
-    timeout-minutes: 60
+    # Two sequential source/package-bound selected trials have 30-minute caps.
+    # Actual 881 preparation/build took about 24 minutes; retain bounded room for both.
+    timeout-minutes: 90
     defaults:
       run:
         shell: pwsh

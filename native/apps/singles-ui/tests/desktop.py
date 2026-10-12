@@ -19,6 +19,7 @@ import time
 import urllib.error
 import urllib.request
 
+from desktop_progress import DesktopProgress
 from desktop_modes import select_sort_setup
 from desktop_diagnostics import snapshot, startup_probe, owned_processes, write_json
 from windows_integrity import process_security, require_medium
@@ -88,6 +89,13 @@ album_checks = []
 cross_album_checks = []
 copied_move_checks = []
 settings_checks = []
+with BINARY.open('rb') as stream:
+    progress_binary_sha256 = hashlib.file_digest(stream, 'sha256').hexdigest()
+progress = DesktopProgress(OUTPUT / 'runtime-progress.json', dict(
+    binary_sha256=progress_binary_sha256, package_sha256sums_sha256=PACKAGE_MANIFEST_SHA256,
+    source_commit=os.environ.get('GITHUB_SHA'), ai_mode=AI_MODE,
+    selected_execution=os.environ.get('SINGLES_DESKTOP_APPLY_EXPECTED') == 'on'))
+progress.phase('startup-layout-settings-and-csv')
 
 def call(method, path, body=None, *, timeout=30):
     data = None if body is None else json.dumps(body).encode('utf-8')
@@ -115,12 +123,14 @@ def command(method, path, body=None):
     return call(method, f'/session/{session}{path}', body)
 
 def wait(predicate, timeout=45):
+    progress.waiting(timeout)
     deadline = time.monotonic() + timeout
     last = None
     while time.monotonic() < deadline:
         try:
             value = predicate()
             if value:
+                progress.waited()
                 return value
         except (urllib.error.URLError, RuntimeError, KeyError) as error:
             last = error
@@ -131,9 +141,11 @@ def find(selector):
     return command('POST','/element',{'using':'css selector','value':selector})[ELEMENT]
 
 def click(selector):
+    progress.action('click', selector)
     command('POST',f'/element/{find(selector)}/click',{})
 
 def fill(selector, value):
+    progress.action('fill', selector, case=value if selector=='#source' else None)
     element = find(selector)
     command('POST',f'/element/{element}/clear',{})
     command('POST',f'/element/{element}/value',{'text':value})
@@ -145,16 +157,19 @@ def script(source):
     return command('POST','/execute/sync',{'script':source,'args':[]})
 
 def capture(name):
+    progress.action('screenshot', name)
     (OUTPUT / f'{name}.png').write_bytes(base64.b64decode(command('GET','/screenshot')))
 
 def pick_owned_path(selector, path, *, save=False):
     # Native dialog controls belong to this exact owned preview executable.
     # Never interact with a generic desktop window or another user's app.
     click(selector)
+    progress.action('native-picker', selector + ': ' + str(path))
     interact_with_owned_picker(BINARY, path, OUTPUT, selector.removeprefix('#'), save=save)
 
 def restart_app(binary, label):
     global session, active_binary
+    progress.action('restart', label, case=label)
     if session:
         previous_binary = active_binary
         previous_processes = owned_processes(previous_binary)
@@ -367,56 +382,74 @@ try:
             'expected_immediate_duet': expected_duet, 'observed_immediate_duet': observed_duet, 'restored_baseline': read_main_settings(script),
             'personal_baseline': personal_baseline, 'export_path': str(exported_csv),
             'export': export_receipt}, ensure_ascii=False, indent=2), encoding='utf-8')
+        progress.phase('result-layout-stability')
         checks.extend(exercise_result_stability(command,script,click,fill,wait,capture,scratch/'stability-cases',OUTPUT))
+        progress.phase('original-ai')
         ai_scratch = scratch / 'ai-cases'
         ai_scratch.mkdir()
         original_ai_checks = DesktopAI(command, script, click, fill, wait, capture,
                                        restart_app, OUTPUT).run(BINARY, AI_MODE, ai_scratch)
         checks.append('Real IPC AI mode ' + AI_MODE + ': ' + ', '.join(original_ai_checks))
         if os.environ.get('SINGLES_DESKTOP_APPLY_EXPECTED') == 'on':
+            progress.phase('single-copy-and-move')
             apply_checks = exercise_apply(script, click, fill, wait, capture, scratch / 'apply-cases', OUTPUT, AI_MODE)
             checks.append('Real selected-root execution: ' + ', '.join(apply_checks))
+            progress.phase('copied-move')
             copied_move_checks = exercise_copied_move(script, click, fill, wait, capture, scratch / 'copied-move-cases', OUTPUT, ROOT)
             checks.append('Real copied Move: ' + ', '.join(copied_move_checks))
+            progress.phase('mp3-repair')
             repair_checks = exercise_repair(command, script, click, fill, wait, capture, scratch / 'repair-cases', OUTPUT, ROOT.parents[1] / 'tests/fixtures/media/blank.mp3')
             checks.append('Real source-only repair: ' + ', '.join(repair_checks))
+            progress.phase('flac-repair')
             flac_checks = exercise_flac(script, click, fill, wait, capture, scratch / 'flac-cases', OUTPUT)
             checks.append('Real FLAC repair: ' + ', '.join(flac_checks))
+            progress.phase('ogg-repair')
             ogg_checks = exercise_ogg(script, click, fill, wait, capture, scratch / 'ogg-cases', OUTPUT)
             checks.append('Real Ogg repair: ' + ', '.join(ogg_checks))
+            progress.phase('mp4-repair')
             mp4_checks = exercise_mp4(script, click, fill, wait, capture, scratch / 'mp4-cases', OUTPUT)
             checks.append('Real MP4 AAC/ALAC repair: ' + ', '.join(mp4_checks))
+            progress.phase('id3-container-repair')
             id3_container_checks = exercise_id3_containers(script, click, fill, wait, capture, scratch / 'id3-container-cases', OUTPUT)
             checks.append('Real existing-ID3 WAVE/AIFF/DSF repair: ' + ', '.join(id3_container_checks))
+            progress.phase('wavpack-repair')
             wavpack_checks = exercise_wavpack(script, click, fill, wait, capture, scratch / 'wavpack-cases', OUTPUT)
             checks.append('Real WavPack APEv2 repair: ' + ', '.join(wavpack_checks))
+            progress.phase('same-volume-albums')
             album_checks = exercise_albums(script, click, fill, wait, capture, scratch / 'album-cases', OUTPUT, ROOT.parents[1] / 'tests/fixtures/media/blank.mp3')
             checks.append('Real album execution: ' + ', '.join(album_checks))
             album_recovery = None
             if os.environ.get('SINGLES_DESKTOP_RECOVERY_EXPECTED') == 'on':
                 album_recovery = AlbumRecovery(script, click, wait, capture, pick_owned_path, restart_app, BINARY, OUTPUT)
                 album_copy = next(case for case in json.loads((OUTPUT / 'album-execution.json').read_text(encoding='utf-8'))['cases'] if case['case'] == 'copy')
+                progress.phase('file-album-copy-restart')
                 album_recovery.run(album_copy)
                 whole_recovery = WholeAlbumRecovery(script, click, wait, capture, pick_owned_path, restart_app, BINARY, OUTPUT)
                 album_cases = json.loads((OUTPUT / 'album-execution.json').read_text(encoding='utf-8'))['cases']
                 for name in ['root-move', 'mixed-move']:
+                    progress.phase('whole-album-' + name + '-restart')
                     whole_recovery.run(next(case for case in album_cases if case['case'] == name))
                 whole_album_recovery_checks = whole_recovery.finish()
+            progress.phase('cross-volume-albums-and-restart')
             cross_album_checks = exercise_cross_albums(script, click, fill, wait, capture, scratch / 'cross-album-cases', OUTPUT, ROOT.parents[1] / 'tests/fixtures/media/blank.mp3', ROOT,
                                                        recovery=album_recovery.run if album_recovery else None)
             if album_recovery:
                 album_recovery_checks = album_recovery.finish()
             checks.append('Real cross-volume albums: ' + ', '.join(cross_album_checks))
             if os.environ.get('SINGLES_DESKTOP_RECOVERY_EXPECTED') == 'on':
+                progress.phase('single-copied-and-fix-restart')
                 recovery_checks = exercise_recovery(script, click, wait, capture, pick_owned_path, restart_app, BINARY, OUTPUT)
                 checks.append('Actual read-only process-restart inspection: ' + ', '.join(recovery_checks))
+    progress.phase('final-package-verification')
     assert not script("return !!document.querySelector('vite-error-overlay')")
     if package_guard:
         package_guard.verify()
         assert verify_package(BINARY.parent) == PACKAGE_MANIFEST_SHA256
         assert set(REQUIRED_CHECKS).issubset(original_ai_checks)
     (OUTPUT / 'acceptance.json').write_text(json.dumps({'status':'passed','platform':'windows-native-tauri','binary_sha256':hashlib.sha256(BINARY.read_bytes()).hexdigest(),'ipc_mocked':False,'medium_integrity_verified':True,'ai_mode':AI_MODE,'package_sha256sums_sha256':PACKAGE_MANIFEST_SHA256,'original_ai_checks':original_ai_checks,'settings_checks':settings_checks,'apply_mode':os.environ.get('SINGLES_DESKTOP_APPLY_EXPECTED','off'),'apply_checks':apply_checks,'recovery_checks':recovery_checks,'album_recovery_checks':album_recovery_checks,'whole_album_recovery_checks':whole_album_recovery_checks,'repair_checks':repair_checks,'flac_checks':flac_checks,'ogg_checks':ogg_checks,'mp4_checks':mp4_checks,'id3_container_checks':id3_container_checks,'wavpack_checks':wavpack_checks,'album_checks':album_checks,'cross_album_checks':cross_album_checks,'copied_move_checks':copied_move_checks,'checks':checks,'remaining':['Narrator','200 percent DPI','Android SAF and physical ARM64','unsupported apply modes, automatic replay, and unrecorded historical whole-Album named-stream baselines']},ensure_ascii=False,indent=2),encoding='utf-8')
+    progress.finish(True)
 except Exception as error:
+    progress.finish(False, error)
     snapshot(active_binary, OUTPUT, 'webdriver-failure')
     if session:
         try:

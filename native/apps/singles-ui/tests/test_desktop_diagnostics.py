@@ -188,6 +188,41 @@ class DiagnosticContracts(unittest.TestCase):
                 self.assertEqual(launcher.main(), 7)
             self.assertEqual((root / 'test-results/native-windows/failure.json').read_text(), 'actual failure')
 
+    def test_runtime_budget_is_bounded_and_selected_only(self):
+        for env in [{}, {'SINGLES_DESKTOP_APPLY_EXPECTED': 'off'}, {'SINGLES_DESKTOP_APPLY_EXPECTED': 'invalid'}]:
+            self.assertEqual(launcher.runtime_budget_seconds(False, env), 900)
+            self.assertEqual(launcher.runtime_budget_seconds(True, env), 60)
+        self.assertEqual(launcher.runtime_budget_seconds(False, {'SINGLES_DESKTOP_APPLY_EXPECTED': 'on'}), 1800)
+        self.assertEqual(launcher.runtime_budget_seconds(True, {'SINGLES_DESKTOP_APPLY_EXPECTED': 'on'}), 60)
+
+    def test_selected_timeout_kills_child_tree_retains_diagnostics_and_still_raises(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp); executable = root / 'gsudo.exe'; executable.write_bytes(b'fixture')
+            output = root / 'output'
+            process = Mock(pid=99)
+            process.wait.side_effect = [subprocess.TimeoutExpired(['owned'], 1800), -1]
+            def spawn(command, cwd, env):
+                evidence = Path(env['SINGLES_UI_EVIDENCE']); evidence.mkdir(parents=True)
+                (evidence / 'runtime-progress.json').write_text('{"status":"running","active_phase":"restart"}')
+                return process
+            with patch.object(launcher, 'ROOT', root / 'repo'), \
+                 patch.object(launcher, 'is_ci_windows', return_value=True), \
+                 patch.object(launcher, 'process_security', return_value={'pid': 1, 'integrity_rid': 12288, 'elevated': True}), \
+                 patch.dict(os.environ, {'LOCALAPPDATA': str(root / 'profile'), 'SINGLES_GSUDO_EXE': str(executable),
+                                        'SINGLES_UI_OUTPUT': str(output), 'SINGLES_DESKTOP_APPLY_EXPECTED': 'on'}), \
+                 patch.object(launcher.subprocess, 'Popen', side_effect=spawn), \
+                 patch.object(launcher.subprocess, 'run') as kill:
+                with self.assertRaises(subprocess.TimeoutExpired): launcher.main()
+            self.assertEqual(process.wait.call_args_list[0].kwargs, {'timeout': 1800})
+            self.assertEqual(process.wait.call_args_list[1].kwargs, {'timeout': 10})
+            kill.assert_called_once_with(['taskkill', '/PID', '99', '/T', '/F'], capture_output=True, timeout=10, check=True)
+            runtime = json.loads((output / 'launcher-runtime.json').read_text())
+            self.assertEqual(runtime['status'], 'timed_out')
+            self.assertEqual(runtime['timeout_seconds'], 1800)
+            self.assertNotIn('exit_code', runtime)
+            self.assertEqual(json.loads((output / 'runtime-progress.json').read_text())['active_phase'], 'restart')
+            self.assertFalse((output / 'acceptance.json').exists())
+
     def test_preflight_uses_lightweight_script_and_sixty_second_bound(self):
         with tempfile.TemporaryDirectory() as temp:
             executable = Path(temp) / 'gsudo.exe'

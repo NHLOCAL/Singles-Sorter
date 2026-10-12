@@ -5,6 +5,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import time
 import uuid
 
 from windows_integrity import process_security
@@ -24,6 +25,13 @@ def command_for(security, launcher, python, script):
     return [str(launcher), '--integrity', 'Medium', '--wait', '--direct', python, str(script)]
 
 
+def runtime_budget_seconds(preflight, env):
+    # Actual full selected lane exhausted 900s after steady progress through all
+    # format/Album cases, at its first restart picker (8813a50f, 2026-10-12).
+    # Keep preflight/feature-off bounds and every inner operation timeout intact.
+    return 60 if preflight else 1800 if env.get('SINGLES_DESKTOP_APPLY_EXPECTED') == 'on' else 900
+
+
 def main(preflight=False):
     if not is_ci_windows():
         raise SystemExit('Medium-integrity launcher is restricted to owned Windows CI')
@@ -39,15 +47,24 @@ def main(preflight=False):
                SINGLES_UI_TEMP=str(owned / 'fixtures'), PYTHONDONTWRITEBYTECODE='1')
     launcher = Path(os.environ['SINGLES_GSUDO_EXE']).resolve(strict=True)
     command = command_for(security, launcher, sys.executable, ROOT / ('tests/probe_windows_token.py' if preflight else 'tests/desktop.py'))
+    budget = runtime_budget_seconds(preflight, env)
+    runtime = dict(timeout_seconds=budget, preflight=preflight, selected_execution=env.get('SINGLES_DESKTOP_APPLY_EXPECTED') == 'on', status='running')
+    (output / 'launcher-runtime.json').write_text(json.dumps(runtime, indent=2), encoding='utf-8')
+    started = time.monotonic()
     process = subprocess.Popen(command, cwd=ROOT, env=env)
     try:
-        return process.wait(timeout=60 if preflight else 900)
+        code = process.wait(timeout=budget)
+        runtime.update(status='exited', exit_code=code)
+        return code
     except subprocess.TimeoutExpired:
+        runtime['status'] = 'timed_out'
         subprocess.run(['taskkill', '/PID', str(process.pid), '/T', '/F'],
                        capture_output=True, timeout=10, check=True)
         process.wait(timeout=10)
         raise
     finally:
+        runtime['elapsed_seconds'] = round(time.monotonic() - started, 3)
+        (output / 'launcher-runtime.json').write_text(json.dumps(runtime, indent=2), encoding='utf-8')
         evidence = owned / 'evidence'
         if evidence.is_dir():
             shutil.copytree(evidence, output, dirs_exist_ok=True)
