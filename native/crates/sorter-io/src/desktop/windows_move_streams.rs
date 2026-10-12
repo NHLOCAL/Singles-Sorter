@@ -1992,8 +1992,9 @@ impl WindowsMutationStorage {
     ) -> MutationOutcome<RetirementOutcome> {
         use std::os::windows::io::IntoRawHandle;
         use windows::Wdk::Storage::FileSystem::{
-            FILE_DISPOSITION_DELETE, FILE_DISPOSITION_INFORMATION_EX, FILE_DISPOSITION_INFORMATION_EX_FLAGS,
-            FILE_DISPOSITION_POSIX_SEMANTICS, FileDispositionInformationEx,
+            FILE_DISPOSITION_DELETE, FILE_DISPOSITION_INFORMATION_EX,
+            FILE_DISPOSITION_INFORMATION_EX_FLAGS, FILE_DISPOSITION_POSIX_SEMANTICS,
+            FileDispositionInformationEx,
         };
         let before = (|| {
             cancelled(cancel)?;
