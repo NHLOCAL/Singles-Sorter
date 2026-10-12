@@ -118,6 +118,16 @@ presence alone is not a native pass.
 
 ## Observed v14 summary
 
+The frozen reference is released commit `78d001aee5ce49628bdffebd34540fa83ba32c12`,
+`src/core/singles_sorter_v5.py`, blob `0b67726e72e527556f47a8eeffeb44778c62809b`,
+41,353 bytes, SHA-256
+`ec4a98ce29c431b5d46b59f11a531eaf8fb4f3c8c16248372771de630086fffa`.
+Its exact counter anchors are [album direct files and original artist, lines
+548–551](https://github.com/NHLOCAL/Singles-Sorter/blob/78d001aee5ce49628bdffebd34540fa83ba32c12/src/core/singles_sorter_v5.py#L548-L551),
+[single destination mkdir, lines 611–613](https://github.com/NHLOCAL/Singles-Sorter/blob/78d001aee5ce49628bdffebd34540fa83ba32c12/src/core/singles_sorter_v5.py#L611-L613),
+[committed single credits, lines 642–643](https://github.com/NHLOCAL/Singles-Sorter/blob/78d001aee5ce49628bdffebd34540fa83ba32c12/src/core/singles_sorter_v5.py#L642-L643),
+and [stable summary top five, lines 824–831](https://github.com/NHLOCAL/Singles-Sorter/blob/78d001aee5ce49628bdffebd34540fa83ba32c12/src/core/singles_sorter_v5.py#L824-L831).
+
 Sort result payloads expose `legacy_summary` with exactly `songs_sorted`,
 `artist_folders_created`, `albums_processed` and ordered `top_artists` pairs.
 The shared projection consumes acknowledged commits and directory creations;
