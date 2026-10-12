@@ -30,7 +30,7 @@ RUST_LICENSE_FILES = {
 }
 PROFILES = {
     "cli": {"root": "sorter-cli", "manifest": "native/Cargo.toml", "lock": "native/Cargo.lock",
-            "features": ["sorter-cli/original-ai"], "policy": "reviewed-cargo-notices.json"},
+            "features": ["sorter-cli/original-ai", "sorter-cli/selected-windows-execution"], "policy": "reviewed-cargo-notices.json"},
     "desktop": {"root": "singles-ui-host", "manifest": "native/apps/singles-ui/src-tauri/Cargo.toml",
                 "lock": "native/apps/singles-ui/src-tauri/Cargo.lock", "features": ["desktop", "original-ai", "selected-windows-execution", "tauri/custom-protocol"],
                 "policy": "reviewed-desktop-cargo-notices.json"},

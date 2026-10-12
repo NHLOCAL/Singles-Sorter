@@ -2,7 +2,8 @@
   "schema_version": 1,
   "target": "x86_64-pc-windows-msvc",
   "features": [
-    "sorter-cli/original-ai"
+    "sorter-cli/original-ai",
+    "sorter-cli/selected-windows-execution"
   ],
   "scope": "sorter-cli normal and build dependency closure; no dev-only edges",
   "packages": [
@@ -441,6 +442,11 @@
       "manifest_path": "native/crates/sorter-core/Cargo.toml"
     },
     {
+      "name": "sorter-executor",
+      "version": "0.1.0",
+      "manifest_path": "native/crates/sorter-executor/Cargo.toml"
+    },
+    {
       "name": "sorter-io",
       "version": "0.1.0",
       "manifest_path": "native/crates/sorter-io/Cargo.toml"
@@ -454,6 +460,1225 @@
       "name": "sorter-storage-contracts",
       "version": "0.1.0",
       "manifest_path": "native/crates/sorter-storage-contracts/Cargo.toml"
+    }
+  ],
+  "root_package": "sorter-cli",
+  "lock_path": "native/Cargo.lock",
+  "lock_sha256_lf": "3b1974bbc3d2b16296b0aba5494350ad9687b3ba2d22b7231ac665cef1caa4bf",
+  "graph": [
+    {
+      "package": "block-buffer@0.10.4",
+      "features": [],
+      "dependencies": [
+        {
+          "package": "generic-array@0.14.7",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "cfg-if@1.0.5",
+      "features": [],
+      "dependencies": []
+    },
+    {
+      "package": "cpufeatures@0.2.17",
+      "features": [],
+      "dependencies": []
+    },
+    {
+      "package": "crypto-common@0.1.7",
+      "features": [
+        "std"
+      ],
+      "dependencies": [
+        {
+          "package": "generic-array@0.14.7",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "typenum@1.20.1",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "digest@0.10.7",
+      "features": [
+        "alloc",
+        "block-buffer",
+        "core-api",
+        "default",
+        "std"
+      ],
+      "dependencies": [
+        {
+          "package": "block-buffer@0.10.4",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "crypto-common@0.1.7",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "fastrand@2.5.0",
+      "features": [
+        "alloc",
+        "default",
+        "std"
+      ],
+      "dependencies": []
+    },
+    {
+      "package": "generic-array@0.14.7",
+      "features": [
+        "more_lengths"
+      ],
+      "dependencies": [
+        {
+          "package": "typenum@1.20.1",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "version_check@0.9.5",
+          "kinds": [
+            {
+              "kind": "build",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "getrandom@0.4.3",
+      "features": [],
+      "dependencies": [
+        {
+          "package": "cfg-if@1.0.5",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "itoa@1.0.18",
+      "features": [],
+      "dependencies": []
+    },
+    {
+      "package": "memchr@2.8.3",
+      "features": [
+        "alloc",
+        "std"
+      ],
+      "dependencies": []
+    },
+    {
+      "package": "once_cell@1.21.4",
+      "features": [
+        "alloc",
+        "race",
+        "std"
+      ],
+      "dependencies": []
+    },
+    {
+      "package": "proc-macro2@1.0.107",
+      "features": [
+        "proc-macro"
+      ],
+      "dependencies": [
+        {
+          "package": "unicode-ident@1.0.26",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "quote@1.0.47",
+      "features": [
+        "proc-macro"
+      ],
+      "dependencies": [
+        {
+          "package": "proc-macro2@1.0.107",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "released-ner-probe@0.1.0",
+      "features": [],
+      "dependencies": [
+        {
+          "package": "serde@1.0.229",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "serde_json@1.0.152",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "sha2@0.10.9",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "released-ner-text@0.1.0",
+      "features": [],
+      "dependencies": [
+        {
+          "package": "released-ner-probe@0.1.0",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "serde_json@1.0.152",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "serde@1.0.229",
+      "features": [
+        "default",
+        "derive",
+        "serde_derive",
+        "std"
+      ],
+      "dependencies": [
+        {
+          "package": "serde_core@1.0.229",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "serde_derive@1.0.229",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "serde_core@1.0.229",
+      "features": [
+        "result",
+        "std"
+      ],
+      "dependencies": []
+    },
+    {
+      "package": "serde_derive@1.0.229",
+      "features": [
+        "default"
+      ],
+      "dependencies": [
+        {
+          "package": "proc-macro2@1.0.107",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "quote@1.0.47",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "syn@3.0.7",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "serde_json@1.0.152",
+      "features": [
+        "default",
+        "std"
+      ],
+      "dependencies": [
+        {
+          "package": "itoa@1.0.18",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "memchr@2.8.3",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "serde_core@1.0.229",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "zmij@1.0.23",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "sha2@0.10.9",
+      "features": [
+        "default",
+        "std"
+      ],
+      "dependencies": [
+        {
+          "package": "cfg-if@1.0.5",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "cpufeatures@0.2.17",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": "cfg(any(target_arch = \"aarch64\", target_arch = \"x86_64\", target_arch = \"x86\"))"
+            }
+          ]
+        },
+        {
+          "package": "digest@0.10.7",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "sorter-classifier@0.1.0",
+      "features": [],
+      "dependencies": [
+        {
+          "package": "sha2@0.10.9",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "sorter-cli@0.1.0",
+      "features": [
+        "default",
+        "original-ai",
+        "selected-windows-execution"
+      ],
+      "dependencies": [
+        {
+          "package": "serde@1.0.229",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "serde_json@1.0.152",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "sha2@0.10.9",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "sorter-core@0.1.0",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "sorter-executor@0.1.0",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "sorter-io@0.1.0",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "sorter-recognition@0.1.0",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "sorter-core@0.1.0",
+      "features": [],
+      "dependencies": [
+        {
+          "package": "serde@1.0.229",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "serde_json@1.0.152",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "sha2@0.10.9",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "sorter-executor@0.1.0",
+      "features": [
+        "default",
+        "experimental-windows-copy",
+        "experimental-windows-journal",
+        "experimental-windows-rename",
+        "selected-windows-execution"
+      ],
+      "dependencies": [
+        {
+          "package": "serde@1.0.229",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "serde_json@1.0.152",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "sha2@0.10.9",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "sorter-core@0.1.0",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "sorter-io@0.1.0",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": "cfg(windows)"
+            }
+          ]
+        },
+        {
+          "package": "sorter-storage-contracts@0.1.0",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "sorter-io@0.1.0",
+      "features": [
+        "default",
+        "experimental-windows-mutation"
+      ],
+      "dependencies": [
+        {
+          "package": "sha2@0.10.9",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "sorter-core@0.1.0",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "sorter-storage-contracts@0.1.0",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "tempfile@3.27.0",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "windows@0.62.2",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": "cfg(windows)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "sorter-recognition@0.1.0",
+      "features": [],
+      "dependencies": [
+        {
+          "package": "released-ner-probe@0.1.0",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "released-ner-text@0.1.0",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "serde@1.0.229",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "serde_json@1.0.152",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "sha2@0.10.9",
+          "kinds": [
+            {
+              "kind": "build",
+              "target": null
+            },
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "sorter-classifier@0.1.0",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "sorter-core@0.1.0",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "sorter-storage-contracts@0.1.0",
+      "features": [],
+      "dependencies": [
+        {
+          "package": "serde@1.0.229",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "sorter-core@0.1.0",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "syn@2.0.119",
+      "features": [
+        "clone-impls",
+        "full",
+        "parsing",
+        "printing",
+        "proc-macro"
+      ],
+      "dependencies": [
+        {
+          "package": "proc-macro2@1.0.107",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "quote@1.0.47",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "unicode-ident@1.0.26",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "syn@3.0.7",
+      "features": [
+        "clone-impls",
+        "derive",
+        "parsing",
+        "printing",
+        "proc-macro"
+      ],
+      "dependencies": [
+        {
+          "package": "proc-macro2@1.0.107",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "quote@1.0.47",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "unicode-ident@1.0.26",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "tempfile@3.27.0",
+      "features": [
+        "default",
+        "getrandom"
+      ],
+      "dependencies": [
+        {
+          "package": "fastrand@2.5.0",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "getrandom@0.4.3",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": "cfg(any(unix, windows, target_os = \"wasi\"))"
+            }
+          ]
+        },
+        {
+          "package": "once_cell@1.21.4",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "windows-sys@0.61.2",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": "cfg(windows)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "typenum@1.20.1",
+      "features": [],
+      "dependencies": []
+    },
+    {
+      "package": "unicode-ident@1.0.26",
+      "features": [],
+      "dependencies": []
+    },
+    {
+      "package": "version_check@0.9.5",
+      "features": [],
+      "dependencies": []
+    },
+    {
+      "package": "windows@0.62.2",
+      "features": [
+        "Wdk",
+        "Wdk_Foundation",
+        "Wdk_Storage",
+        "Wdk_Storage_FileSystem",
+        "Win32",
+        "Win32_Foundation",
+        "Win32_Globalization",
+        "Win32_Security",
+        "Win32_Security_Authorization",
+        "Win32_Storage",
+        "Win32_Storage_FileSystem",
+        "Win32_System",
+        "Win32_System_IO",
+        "Win32_System_Memory",
+        "default",
+        "std"
+      ],
+      "dependencies": [
+        {
+          "package": "windows-collections@0.3.2",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "windows-core@0.62.2",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "windows-future@0.3.2",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "windows-numerics@0.3.1",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "windows-collections@0.3.2",
+      "features": [
+        "std"
+      ],
+      "dependencies": [
+        {
+          "package": "windows-core@0.62.2",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "windows-core@0.62.2",
+      "features": [
+        "std"
+      ],
+      "dependencies": [
+        {
+          "package": "windows-implement@0.60.2",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "windows-interface@0.59.3",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "windows-link@0.2.1",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "windows-result@0.4.1",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "windows-strings@0.5.1",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "windows-future@0.3.2",
+      "features": [
+        "std"
+      ],
+      "dependencies": [
+        {
+          "package": "windows-core@0.62.2",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "windows-link@0.2.1",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "windows-threading@0.2.1",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "windows-implement@0.60.2",
+      "features": [],
+      "dependencies": [
+        {
+          "package": "proc-macro2@1.0.107",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "quote@1.0.47",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "syn@2.0.119",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "windows-interface@0.59.3",
+      "features": [],
+      "dependencies": [
+        {
+          "package": "proc-macro2@1.0.107",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "quote@1.0.47",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "syn@2.0.119",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "windows-link@0.2.1",
+      "features": [],
+      "dependencies": []
+    },
+    {
+      "package": "windows-numerics@0.3.1",
+      "features": [
+        "std"
+      ],
+      "dependencies": [
+        {
+          "package": "windows-core@0.62.2",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        },
+        {
+          "package": "windows-link@0.2.1",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "windows-result@0.4.1",
+      "features": [
+        "std"
+      ],
+      "dependencies": [
+        {
+          "package": "windows-link@0.2.1",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "windows-strings@0.5.1",
+      "features": [
+        "std"
+      ],
+      "dependencies": [
+        {
+          "package": "windows-link@0.2.1",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "windows-sys@0.61.2",
+      "features": [
+        "Win32",
+        "Win32_Foundation",
+        "Win32_Networking",
+        "Win32_Networking_WinSock",
+        "Win32_Storage",
+        "Win32_Storage_FileSystem",
+        "Win32_System",
+        "Win32_System_Diagnostics",
+        "Win32_System_Diagnostics_Debug",
+        "default"
+      ],
+      "dependencies": [
+        {
+          "package": "windows-link@0.2.1",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "windows-threading@0.2.1",
+      "features": [],
+      "dependencies": [
+        {
+          "package": "windows-link@0.2.1",
+          "kinds": [
+            {
+              "kind": "normal",
+              "target": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": "zmij@1.0.23",
+      "features": [],
+      "dependencies": []
     }
   ]
 }

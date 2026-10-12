@@ -95,7 +95,10 @@ The same checks run on the release EXE, staged package and consumer-extracted ZI
 Reports bind the EXE hash and, for packaged trials, the complete package manifest.
 The packager refuses to archive without both its read-only PowerShell smoke and
 its distinct actual execution report. Package notice features must exactly match
-the selected CLI feature profile; activation awaits measured graph review.
+the selected CLI feature profile. Its measured 574dcc7 graph contains the same
+37 registry packages and notices as before, plus the local MIT executor. The
+exact graph and unchanged Cargo.lock are now pinned; actual runtime gates remain
+mandatory.
 
 Fixtures are created under a fresh owned temporary directory and retained until
 runner disposal for diagnosis. The report is written only after all byte/layout
