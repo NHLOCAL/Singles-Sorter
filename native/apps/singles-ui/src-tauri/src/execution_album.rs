@@ -104,7 +104,12 @@ impl Host {
                     JobStatus::Cancelled => "cancelled",
                     JobStatus::NeedsRecovery => "needs_recovery",
                 };
-                snapshot.result = Some(project(
+                let legacy_summary = sorter_executor::legacy_summary::LegacySummary::from_receipts(
+                    &plan.operations, result.transfers.as_ref().map(|transfers| transfers.committed_operations.as_slice()).unwrap_or_default(),
+                    &result.created_directories.iter().map(|entry| entry.reference.clone()).collect::<Vec<_>>(),
+                    result.albums_completed, &result.artist_files,
+                );
+                let mut projected = project(
                     result,
                     scope.execution_scope().inspected_sources.len(),
                     &plan
@@ -118,7 +123,9 @@ impl Host {
                             .then_some(operation.id)
                         })
                         .collect::<Vec<_>>(),
-                ));
+                );
+                projected.legacy_summary = Some(legacy_summary);
+                snapshot.result = Some(projected);
                 snapshot.operation = None;
             }),
             Err(error) => self.execution_error(
@@ -165,6 +172,7 @@ fn project(
             items: vec![],
             repair: None,
             albums: None,
+            legacy_summary: None,
         });
     // Copy's transfer report already includes every album file. Whole Move
     // receipts contain album descendants; its optional transfer report contains
@@ -419,6 +427,7 @@ mod tests {
     use sorter_executor::{results::JobResult, windows_album::WholeAlbumOutcome};
     fn result() -> SelectedAlbumResult {
         SelectedAlbumResult {
+            effect_receipts: vec![],
             child_renames: vec![],
             artist_files: vec![],
             whole_albums: vec![],
@@ -449,6 +458,8 @@ mod tests {
             ],
         });
         result.transfers = Some(JobResult {
+            committed_operations: vec![],
+            effect_receipts: vec![],
             status: JobStatus::Complete,
             source_items: 1,
             committed_destinations: 1,
@@ -633,6 +644,7 @@ mod tests {
             let result = outcome.result.unwrap();
             assert_eq!(result.albums.unwrap().completed, 1);
             assert_eq!(result.committed_destinations, 4);
+            assert_eq!(serde_json::to_value(result.legacy_summary.unwrap()).unwrap(), json!({"songs_sorted":0,"artist_folders_created":0,"albums_processed":1,"top_artists":[["שלום עולם",4]]}));
             assert_eq!(result.moved_sources, if copy { 0 } else { 4 });
             assert_eq!(source.exists(), copy);
             for track in 1..=3 {

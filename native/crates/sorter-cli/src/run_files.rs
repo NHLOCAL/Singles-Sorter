@@ -384,7 +384,7 @@ pub(super) fn execute_request(
             .map_err(|e| fail(&e))?;
             return albums::execute(
                 &mut job,
-                &plan.binding_sha256,
+                &plan,
                 &request.journal_directory,
                 scope.execution_scope().inspected_sources.len(),
                 cancel,
@@ -498,6 +498,11 @@ pub(super) fn execute_request(
     });
     match result {
         Ok(result) => {
+            let legacy_summary = sorter_executor::legacy_summary::LegacySummary::from_receipts(
+                &plan.operations, &result.committed_operations,
+                &job.created_directory_receipts().iter().map(|(reference, _)| reference.clone()).collect::<Vec<_>>(),
+                0, &[],
+            );
             let status = match result.status {
                 JobStatus::Complete => "complete",
                 JobStatus::Partial => "partial",
@@ -507,7 +512,7 @@ pub(super) fn execute_request(
             let items=result.items.iter().map(|item|json!({"operation":item.operation,"status":match item.status {ItemStatus::Complete=>"complete",ItemStatus::SourceRetained=>"source_retained",ItemStatus::Failed=>"failed",ItemStatus::Cancelled=>"cancelled",ItemStatus::Blocked=>"blocked",ItemStatus::NeedsRecovery=>"needs_recovery"},"detail":item.detail})).collect::<Vec<_>>();
             event(
                 "result",
-                json!({"job_id":native_id,"status":status,"source_items":result.source_items,"committed_destinations":result.committed_destinations,"moved_sources":result.moved_sources,"failed_operations":result.failed_operations,"blocked_operations":result.blocked_operations,"recovery_operations":result.recovery_operations,"cancelled_operations":result.cancelled_operations,"items":items,"journal_directory":request.journal_directory,"invalid_control":invalid_control.load(Ordering::Acquire)}),
+                json!({"job_id":native_id,"status":status,"source_items":result.source_items,"committed_destinations":result.committed_destinations,"committed_operations":result.committed_operations,"effect_receipts":result.effect_receipts,"legacy_summary":legacy_summary,"moved_sources":result.moved_sources,"failed_operations":result.failed_operations,"blocked_operations":result.blocked_operations,"recovery_operations":result.recovery_operations,"cancelled_operations":result.cancelled_operations,"items":items,"journal_directory":request.journal_directory,"invalid_control":invalid_control.load(Ordering::Acquire)}),
             )?;
             if output_failed || invalid_control.load(Ordering::Acquire) || status != "complete" {
                 return Err(Failure::new(

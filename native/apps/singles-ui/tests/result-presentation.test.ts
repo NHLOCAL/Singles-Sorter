@@ -146,3 +146,22 @@ describe('observed repair filenames',()=>{
   expect(resultFilename(fix,[{...repaired,repair:{...repaired.repair!,observed_filename}}],'windows')).toBe(observed_filename);
  });
 });
+
+describe('observed frozen-v14 summary',()=>{
+ it('keeps physical counts separate from ordered original-artist credits',()=>{
+  const result={source_items:8,committed_destinations:9,moved_sources:0,failed_operations:1,blocked_operations:0,cancelled_operations:0,recovery_operations:0,items:[],
+   legacy_summary:{songs_sorted:2,artist_folders_created:1,albums_processed:1,top_artists:[['שם מקורי',4],['אמן שני',2]] as [string,number][]},
+   albums:{completed:1,child_names_changed:0,created_directories:7,removed_directories:0,retained_directories:0}};
+  const snapshot=JSON.stringify(result);
+  const summary=simpleExecutionSummary({status:'partial',result},true);
+  expect(summary).toContain('9 עותקים');expect(summary).toContain('2 שירים מוינו');
+  expect(summary).toContain('1 תיקיות אמנים חדשות');expect(summary.match(/1 אלבומים הושלמו/g)).toHaveLength(1);
+  expect(summary).toContain('שם מקורי (4), אמן שני (2)');expect(summary).toContain('1 לא הושלמו');
+  expect(summary).not.toContain('created_directories');expect(JSON.stringify(result)).toBe(snapshot);
+ });
+ it('shows actual zero counts without inventing artist or album successes',()=>{
+  const result={source_items:0,committed_destinations:0,moved_sources:0,failed_operations:0,blocked_operations:0,cancelled_operations:0,recovery_operations:0,items:[],legacy_summary:{songs_sorted:0,artist_folders_created:0,albums_processed:0,top_artists:[]}};
+  const summary=simpleExecutionSummary({status:'complete',result},true);
+  expect(summary).toContain('0 שירים מוינו');expect(summary).not.toContain('אמנים מובילים');expect(summary).not.toContain('אלבומים הושלמו');
+ });
+});

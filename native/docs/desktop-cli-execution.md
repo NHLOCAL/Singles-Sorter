@@ -115,3 +115,34 @@ No automatic backup deletion, rollback or replay is exposed. Both staged and
 consumer-extracted EXEs must pass real five-field repair, backup/media checks,
 unsupported-partial and stale-plan cases before packaging acceptance. Test source
 presence alone is not a native pass.
+
+## Observed v14 summary
+
+Sort result payloads expose `legacy_summary` with exactly `songs_sorted`,
+`artist_folders_created`, `albums_processed` and ordered `top_artists` pairs.
+The shared projection consumes acknowledged commits and directory creations;
+`predicted_legacy_counters` never supplies actual result values. A committed
+single destination counts even if a later operation or source retirement fails.
+Album files contribute only the completed album's direct-file count under its
+original analyzed artist, including sidecars but excluding recursive children.
+Albums do not increment `songs_sorted`. Tied artist totals retain first-credit
+order, with albums before deferred singles, and the first five are returned.
+
+A new artist folder means a newly acknowledged complete single destination parent,
+including its optional singles leaf, deduplicated by the original Single artist.
+Album-created parent directories are excluded. A created folder may remain after
+a failed file transfer and still contributes to the folder count. Drivers can
+prepare directories before all transfers, unlike the original per-song loop;
+this failure-time timing difference is retained honestly rather than replacing
+observed creation with predicted successes. Failed/unconfirmed file effects are
+never counted as songs, even where the released Python swallowed such failures.
+A zero summary describes zero acknowledged effects; it never changes a partial,
+blocked, cancelled or recovery outcome into success.
+
+The CLI also preserves `committed_operations` and `effect_receipts` in their actual
+acknowledgment order. These include original planner operation IDs, including
+repeated album IDs for actual child file transfers. A whole-album rename is one
+namespace effect. This is not a full cross-journal event trace: directory and
+metadata phases are deliberately absent. The ordinary desktop view renders the
+compact human summary without raw journal diagnostics. Physical counters remain
+separate and retain their existing meanings.

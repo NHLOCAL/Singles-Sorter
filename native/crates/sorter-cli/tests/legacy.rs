@@ -368,6 +368,11 @@ mod selected {
                 actual["committed_destinations"],
                 if root_album { 5 } else { 6 }
             );
+            assert_eq!(actual["legacy_summary"], serde_json::json!({
+                "songs_sorted": if root_album {0} else {1},
+                "artist_folders_created": if root_album {0} else {1}, "albums_processed":1,
+                "top_artists": if root_album {serde_json::json!([["שלום עולם",4]])} else {serde_json::json!([["שלום עולם",4],["אמן בדיקה",1]])}
+            }));
             assert!(actual["recovery_error"].is_null(), "{actual}");
             if !root_album {
                 assert!(

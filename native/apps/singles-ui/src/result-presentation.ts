@@ -77,7 +77,14 @@ export function simpleExecutionSummary(execution:Pick<ExecutionSnapshot,'status'
   parts.push(`${result.moved_sources.toLocaleString('he-IL')} קבצים הועברו`);
   if(result.committed_destinations>result.moved_sources)parts.push('חלק מקובצי המקור נשמרו');
  }
- if(result.albums?.completed)parts.push(`${result.albums.completed.toLocaleString('he-IL')} אלבומים הושלמו`);
+ if(result.legacy_summary){
+  const summary=result.legacy_summary;
+  parts.push(`${summary.songs_sorted.toLocaleString('he-IL')} שירים מוינו`);
+  if(summary.albums_processed)parts.push(`${summary.albums_processed.toLocaleString('he-IL')} אלבומים הושלמו`);
+  if(summary.artist_folders_created)parts.push(`${summary.artist_folders_created.toLocaleString('he-IL')} תיקיות אמנים חדשות`);
+  if(summary.top_artists.length)parts.push(`אמנים מובילים: ${summary.top_artists.map(([artist,count])=>`${artist} (${count.toLocaleString('he-IL')})`).join(', ')}`);
+ }
+ else if(result.albums?.completed)parts.push(`${result.albums.completed.toLocaleString('he-IL')} אלבומים הושלמו`);
  if(result.albums?.child_names_changed)parts.push(`${result.albums.child_names_changed.toLocaleString('he-IL')} שמות באלבומים שונו`);
  if(result.albums?.retained_directories)parts.push('נותרו תיקיות במקור');
  if(result.failed_operations)parts.push(`${result.failed_operations.toLocaleString('he-IL')} לא הושלמו`);

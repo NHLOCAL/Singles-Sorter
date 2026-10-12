@@ -130,6 +130,9 @@ mod selected {
             .unwrap();
         assert_eq!(result["data"]["status"], "complete");
         assert_eq!(result["data"]["committed_destinations"], 2);
+        assert_eq!(result["data"]["legacy_summary"], json!({"songs_sorted":2,"artist_folders_created":1,"albums_processed":0,"top_artists":[["אברהם פריד",2]]}));
+        assert_eq!(result["data"]["committed_operations"], json!([0,1]));
+        assert!(!result["data"]["effect_receipts"].as_array().unwrap().is_empty());
         for name in names {
             let destination = target.join("אברהם פריד").join("סינגלים").join(name);
             assert_eq!(Sha256::digest(fs::read(destination).unwrap()), expected);

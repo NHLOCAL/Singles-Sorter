@@ -80,6 +80,9 @@ pub struct AlbumSummary {
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct ExecutionResult {
+    #[cfg(feature = "selected-windows-execution")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub legacy_summary: Option<sorter_executor::legacy_summary::LegacySummary>,
     pub source_items: usize,
     pub committed_destinations: usize,
     pub moved_sources: usize,
@@ -674,7 +677,14 @@ mod selected {
                         .and_then(|j| j.execution.as_mut())
                     {
                         e.status = status(&result);
-                        e.result = Some(project(result));
+                        let legacy_summary = sorter_executor::legacy_summary::LegacySummary::from_receipts(
+                            &plan.operations, &result.committed_operations,
+                            &job.created_directory_receipts().iter().map(|(reference, _)| reference.clone()).collect::<Vec<_>>(),
+                            0, &[],
+                        );
+                        let mut projected = project(result);
+                        projected.legacy_summary = Some(legacy_summary);
+                        e.result = Some(projected);
                         e.operation = None;
                     }
                 }
@@ -701,6 +711,7 @@ mod selected {
     }
     pub(super) fn project(result: JobResult) -> ExecutionResult {
         ExecutionResult {
+            legacy_summary: None,
             source_items: result.source_items,
             committed_destinations: result.committed_destinations,
             moved_sources: result.moved_sources,

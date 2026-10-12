@@ -19,7 +19,7 @@ fn status(status: JobStatus) -> &'static str {
 }
 fn transfers(result: &JobResult) -> Value {
     json!({"status":status(result.status),"source_items":result.source_items,
-        "committed_destinations":result.committed_destinations,"moved_sources":result.moved_sources,
+        "committed_destinations":result.committed_destinations,"committed_operations":result.committed_operations,"effect_receipts":result.effect_receipts,"moved_sources":result.moved_sources,
         "failed_operations":result.failed_operations,"blocked_operations":result.blocked_operations,
         "recovery_operations":result.recovery_operations,"cancelled_operations":result.cancelled_operations,
         "items":result.items.iter().map(|item|json!({"operation":item.operation,
@@ -45,7 +45,7 @@ fn recovery(report: SelectedAlbumRecovery) -> Value {
 #[allow(clippy::too_many_arguments)]
 pub(super) fn execute(
     job: &mut SelectedWindowsAlbumJob,
-    plan_id: &str,
+    plan: &sorter_core::job_plan::JobPlanV2,
     directory: &Path,
     source_items: usize,
     cancel: &AtomicBool,
@@ -55,7 +55,7 @@ pub(super) fn execute(
     let id = job.job_id().to_owned();
     event(
         "started",
-        json!({"job_id":id,"plan_id":plan_id,"mode":"Sort","album_execution":true,"journal_directory":directory}),
+        json!({"job_id":id,"plan_id":plan.binding_sha256,"mode":"Sort","album_execution":true,"journal_directory":directory}),
     )?;
     let mut output_failed = false;
     let result = job.run(cancel, &mut |progress| {
@@ -76,6 +76,12 @@ pub(super) fn execute(
     match result {
         Ok(result) => {
             let actual = status(result.status);
+            let committed_operations = result.transfers.as_ref().map(|transfers| transfers.committed_operations.as_slice()).unwrap_or_default();
+            let legacy_summary = sorter_executor::legacy_summary::LegacySummary::from_receipts(
+                &plan.operations, committed_operations,
+                &result.created_directories.iter().map(|entry| entry.reference.clone()).collect::<Vec<_>>(),
+                result.albums_completed, &result.artist_files,
+            );
             // Whole directory receipts and per-file transfer receipts are disjoint.
             let whole_files = result
                 .whole_albums
@@ -95,6 +101,7 @@ pub(super) fn execute(
                 "committed_destinations":whole_files+result.transfers.as_ref().map_or(0,|r|r.committed_destinations),
                 "moved_sources":whole_files+result.transfers.as_ref().map_or(0,|r|r.moved_sources),
                 "albums_completed":result.albums_completed,"artist_files":result.artist_files,
+                "legacy_summary":legacy_summary,"committed_operations":committed_operations,"effect_receipts":result.effect_receipts,
                 "transfers":result.transfers.as_ref().map(transfers),"whole_albums":result.whole_albums,
                 "child_renames":result.child_renames,"created_directories":result.created_directories,
                 "removed_directories":result.removed_directories,"retained_directories":result.retained_directories,

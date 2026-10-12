@@ -56,3 +56,5 @@ pub mod windows_repair;
 
 #[cfg(all(windows, feature = "selected-windows-execution"))]
 pub mod windows_album;
+
+pub mod legacy_summary;
