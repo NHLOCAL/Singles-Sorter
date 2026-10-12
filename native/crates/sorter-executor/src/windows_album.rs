@@ -910,6 +910,21 @@ impl Manifest {
         Ok(())
     }
 }
+fn acknowledge_created_directory(
+    manifest: &mut Manifest,
+    guards: &mut Vec<WindowsParent>,
+    acknowledged: &mut Vec<MutationObservation>,
+    directory: WindowsParent,
+    observed: MutationObservation,
+) -> Result<()> {
+    // Retain the real created object even when journaling fails, but do not
+    // expose it as an acknowledged summary receipt until append+sync succeeds.
+    guards.push(directory);
+    manifest.append("DirectoryObserved", &observed)?;
+    acknowledged.push(observed);
+    Ok(())
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RetainedDirectory {
     pub reference: StorageRef,
@@ -1329,9 +1344,9 @@ impl SelectedAlbumFileJob {
                         actual_name: name(leaf),
                         size: None,
                     };
-                    self.created.push(observed.clone());
-                    self.directories.push(directory);
-                    manifest.append("DirectoryObserved", &observed)?;
+                    acknowledge_created_directory(
+                        manifest, &mut self.directories, &mut self.created, directory, observed,
+                    )?;
                 }
                 MutationOutcome::NoEffect(error) => {
                     return Err(if error.kind == MutationErrorKind::Cancelled {
@@ -2558,4 +2573,42 @@ fn directory_parent_identity(
                 .and_then(|e| e.identity.clone())
         })
         .ok_or(E::CorruptJournal)
+}
+
+#[cfg(test)]
+mod directory_receipt_tests {
+    use super::*;
+
+    #[test]
+    fn failed_directory_ack_retains_guard_without_summary_credit() {
+        let root = tempfile::tempdir().unwrap();
+        std::fs::create_dir(root.path().join("target")).unwrap();
+        std::fs::create_dir(root.path().join("journal")).unwrap();
+        let created_path = root.path().join("target/artist");
+        let storage = WindowsMutationStorage::for_owned_synthetic_tree(root).unwrap();
+        let target = storage.parent(Path::new("target")).unwrap();
+        let journal = storage.parent(Path::new("journal")).unwrap();
+        let file = storage.create_journal(&journal, &name("receipt.jsonl")).unwrap();
+        let mut manifest = Manifest {
+            sink: WindowsJournalStore::new(file), job_id: "receipt-test".into(),
+            sequence: 0, previous: String::new(), bytes: MAX_MANIFEST, poisoned: false,
+        };
+        let MutationOutcome::Applied(directory) = storage.create_destination_directory(
+            &target, &name("artist"), &AtomicBool::new(false),
+        ) else { panic!("owned directory creation failed"); };
+        let observed = MutationObservation {
+            reference: reference(&created_path),
+            identity: directory.identity().clone(), parent_identity: target.identity().clone(),
+            actual_name: name("artist"), size: None,
+        };
+        let mut guards = Vec::new();
+        let mut acknowledged = Vec::new();
+        assert_eq!(acknowledge_created_directory(
+            &mut manifest, &mut guards, &mut acknowledged, directory, observed,
+        ), Err(E::NeedsRecovery));
+        assert_eq!(guards.len(), 1);
+        assert!(acknowledged.is_empty());
+        assert!(manifest.poisoned);
+        assert!(created_path.is_dir());
+    }
 }

@@ -386,6 +386,16 @@ jobs:
           cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_album_reads -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Test acknowledged directory summary boundary
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib directory_receipt_tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 1) { throw "Expected 1 directory receipt boundary case" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib directory_receipt_tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Test native album source guards
         if: ${{ !cancelled() && runner.os == 'Windows' }}
         shell: pwsh

@@ -781,9 +781,9 @@ impl WholeAlbumJob {
                         actual_name: name(leaf),
                         size: None,
                     };
-                    self.created.push(observed.clone());
-                    self.directories.push(directory);
-                    manifest.append("DirectoryObserved", &observed)?;
+                    acknowledge_created_directory(
+                        manifest, &mut self.directories, &mut self.created, directory, observed,
+                    )?;
                 }
                 MutationOutcome::NoEffect(error) => {
                     return Err(if error.kind == MutationErrorKind::Cancelled {
