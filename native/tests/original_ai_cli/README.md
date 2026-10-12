@@ -151,11 +151,16 @@ Physical committed/moved counts remain separate from original summary counters.
 A native final `legacy_summary` must match the original return exactly:
 `songs_sorted`, `artist_folders_created`, `albums_processed`, and ordered
 `top_artists` pairs. Missing actual summary or actual decision evidence is OPEN;
-matching predictions never fills that gap. Single-journal committed transfer
-order can be compared directly. Multiple journals or whole-directory album
-renames do not establish a global per-file transfer order and remain explicit
-evidence gaps. Whole-directory receipts are never expanded into fictional file
-transfer events. All traces remain in encounter order, including ties and skips.
+matching predictions never fills that gap. A single committed journal supplies
+transfer order for older results. New `effect_receipts` supply the actual cross-
+journal namespace order: each file publish/rename must match exactly one committed
+identity, and each whole-directory rename must match the returned completed root
+and the retained source identity. A whole rename stays one directory event. It is
+never expanded to mimic the original per-child calls, so a granularity/order
+difference is an explicit MISMATCH rather than a fabricated pass. Source
+retirement and child-name receipts remain in the raw stream, outside the narrowly
+named original copy/move-call comparison. Missing ordered evidence remains OPEN.
+All traces remain in encounter order, including ties and skips.
 
 Only each exact owned root prefix is stripped for comparison, accepting the
 known local-drive `\\?\` prefix returned by `GetFinalPathNameByHandleW` for that

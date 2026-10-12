@@ -234,9 +234,55 @@ def physical_commit_streams(root, journals):
             operations.append({'kind': 'copy' if operation['copy_effect'] else 'move',
                                'source': source, 'destination': destination,
                                'sha256': event['sha256'], 'sequence': body['sequence'],
-                               'operation': event['operation']})
+                               'operation': event['operation'], 'observed_identity': event.get('observed_identity')})
         streams.append({'journal': journal['path'], 'ordered_commits': operations})
     return streams
+
+
+def acknowledged_transfer_order(root, result, plan, streams):
+    """Consume actual namespace receipt order; never expand a whole rename.
+
+    File effects require a matching committed journal identity. A whole-directory
+    effect requires both its completed returned root and the retained source's
+    same identity. Child renames/retirements remain in the raw effect stream but
+    are outside the original copy/move-call comparison, just like original unlink.
+    """
+    if not result or 'effect_receipts' not in result:
+        return None
+    commits = [entry for stream in streams for entry in stream['ordered_commits']]
+    operations = {operation['id']: operation for operation in (plan or {}).get('operations', [])}
+    observed = []
+    used = set()
+    for index, receipt in enumerate(result['effect_receipts']):
+        kind, identity = receipt['kind'], receipt['identity']
+        require(identity is not None, 'Namespace receipt lacks observed identity')
+        if kind in ('source_retired', 'album_child_renamed'):
+            continue
+        if kind in ('file_published', 'file_renamed'):
+            matches = [entry for entry in commits if entry.get('observed_identity') == identity]
+            require(len(matches) == 1, 'Namespace file receipt lacks one exact committed identity')
+            entry = matches[0]
+            expected_kind = 'copy' if kind == 'file_published' else 'move'
+            require(entry['kind'] == expected_kind, 'Namespace effect and committed transfer mode differ')
+            event = {key: entry[key] for key in ('kind', 'source', 'destination')}
+        elif kind == 'album_renamed':
+            matches = [album for album in result.get('whole_albums', [])
+                       if album['operation'] == receipt['operation'] and album['status'] == 'complete'
+                       and album.get('root') and album['root']['identity'] == identity]
+            require(len(matches) == 1, 'Whole rename lacks one completed matching root receipt')
+            operation = operations.get(receipt['operation'], {}).get('kind', {}).get('AlbumTransfer')
+            require(operation and operation['source'].get('identity') == identity,
+                    'Whole rename does not match its retained observed source identity')
+            event = {'kind': 'move', 'source': reference_path(root, operation['source']['reference']),
+                     'destination': reference_path(root, matches[0]['root']['reference'])}
+        else:
+            raise AssertionError('Unknown namespace receipt kind: ' + kind)
+        key = (event['kind'], event['source'], event['destination'])
+        require(key not in used, 'Duplicate acknowledged transfer receipt')
+        used.add(key)
+        observed.append({**event, 'receipt_index': index, 'receipt_kind': kind,
+                         'operation': receipt['operation'], 'identity': identity})
+    return observed
 
 
 
@@ -338,6 +384,11 @@ def compare_case(case, original, native):
                     for stream in streams for row in stream['ordered_commits']]
     has_whole = bool((native.get('result') or {}).get('whole_albums'))
     order_available = len(streams) == 1 and not has_whole
+    acknowledged = native.get('acknowledged_transfer_order')
+    if acknowledged is not None:
+        native_order = [{key: row[key] for key in ('kind', 'source', 'destination')}
+                        for row in acknowledged]
+        order_available = True
     # An empty successful job has an observable empty transfer order.
     if not expected_order and (native.get('result') or {}).get('status') == 'complete' and not streams and not has_whole:
         order_available = True
@@ -480,6 +531,8 @@ def run(binary, bundle, baseline, report):
                     native['observed_physical'] = physical_observations(native_before, native['after'])
                     native['committed_destination_mapping'] = map_committed_destinations(native_root, native_before, native['after'], native['physical_commit_streams'], native['result'], original['ordered_operations'])
                     plan = native['preview_response'].get('result', {}).get('plan')
+                    native['acknowledged_transfer_order'] = acknowledged_transfer_order(
+                        native_root, native['result'], plan, native['physical_commit_streams'])
                     if plan is not None:
                         native['planning_decisions'] = planning_decisions(native_root, plan)
                     data['comparisons'] = compare_case(case, original, native)

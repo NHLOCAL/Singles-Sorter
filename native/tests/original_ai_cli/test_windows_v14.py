@@ -76,6 +76,52 @@ class PairedWindowsContract(unittest.TestCase):
         with self.assertRaises(AssertionError):
             gate.result_record(line+'\n'+line)
 
+    def test_namespace_receipts_preserve_cross_journal_order_and_require_commits(self):
+        identity_a = {'Test': {'id': 'a'}}; identity_b = {'Test': {'id': 'b'}}
+        commits = [{'journal':'one','ordered_commits':[{'kind':'copy','source':'source/a','destination':'target/a','observed_identity':identity_a}]},
+                   {'journal':'two','ordered_commits':[{'kind':'copy','source':'source/b','destination':'target/b','observed_identity':identity_b}]}]
+        result = {'effect_receipts':[{'operation':1,'kind':'file_published','identity':identity_b},
+                                     {'operation':0,'kind':'file_published','identity':identity_a}]}
+        order = gate.acknowledged_transfer_order(Path('/owned'),result,{},commits)
+        self.assertEqual([row['source'] for row in order],['source/b','source/a'])
+        for invalid in [[], commits+commits]:
+            with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(Path('/owned'),result,{},invalid)
+        result['effect_receipts'].append(result['effect_receipts'][0])
+        with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(Path('/owned'),result,{},commits)
+
+    def test_whole_rename_stays_one_real_event_instead_of_per_file_moves(self):
+        def reference(path):
+            raw=path.encode('utf-16-le')
+            return {'WindowsPath':{'utf16':[int.from_bytes(raw[i:i+2],'little') for i in range(0,len(raw),2)]}}
+        identity={'Test':{'id':'album'}}
+        result={'effect_receipts':[{'operation':0,'kind':'album_renamed','identity':identity}],
+                'whole_albums':[{'operation':0,'status':'complete','root':{'identity':identity,'reference':reference('/owned/target/album')}}]}
+        plan={'operations':[{'id':0,'kind':{'AlbumTransfer':{'source':{'identity':identity,'reference':reference('/owned/source/album')}}}}]}
+        order=gate.acknowledged_transfer_order(Path('/owned'),result,plan,[])
+        self.assertEqual([(r['kind'],r['source'],r['destination']) for r in order],[('move','source/album','target/album')])
+        result['whole_albums'][0]['status']='partial'
+        with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(Path('/owned'),result,plan,[])
+        result['whole_albums'][0]['status']='complete'; plan['operations'][0]['kind']['AlbumTransfer']['source']['identity']={'Test':{'id':'other'}}
+        with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(Path('/owned'),result,plan,[])
+
+    def test_namespace_receipt_absence_remains_open_and_empty_is_explicit(self):
+        self.assertIsNone(gate.acknowledged_transfer_order(Path('/owned'),{'status':'complete'},None,[]))
+        self.assertEqual(gate.acknowledged_transfer_order(Path('/owned'),{'effect_receipts':[]},None,[]),[])
+        with self.assertRaises(AssertionError):
+            gate.acknowledged_transfer_order(Path('/owned'),{'effect_receipts':[{'operation':0,'kind':'guessed','identity':{'Test':{'id':'x'}}}]},None,[])
+
+    def test_whole_rename_granularity_is_an_explicit_mismatch_not_normalized(self):
+        original={'before':[],'after':[],'legacy_summary':None,'ordered_operations':[
+            {'kind':'move','source':'source/album/a','destination':'target/album/a'},
+            {'kind':'move','source':'source/album/b','destination':'target/album/b'}],
+            'ordered_decisions':[],'error':None}
+        native={'before':[],'after':[],'result':{'status':'complete','effect_receipts':[]},
+            'execution':{'exit':0},'observed_physical':{'new_destinations':[],'committed_destinations':0,'moved_sources':0,'changed_existing_files':[]},
+            'acknowledged_transfer_order':[{'kind':'move','source':'source/album','destination':'target/album'}]}
+        rows={row['field']:row for row in gate.compare_case(gate.cases()[0],original,native)}
+        self.assertEqual(rows['actual_transfer_order']['status'],'MISMATCH')
+        self.assertEqual(len(rows['actual_transfer_order']['actual']),1)
+
     def test_physical_counts_are_independent_observed_files(self):
         def row(path, value):
             return {'path': path, 'kind': 'file', 'bytes': len(value), 'sha256': value}
