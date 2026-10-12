@@ -229,7 +229,7 @@ def physical_commit_streams(root, journals):
 
 
 
-def map_committed_destinations(root, before, after, streams, result):
+def map_committed_destinations(root, before, after, streams, result, original_operations=()):
     """Link actual journal/whole-rename receipts to separately hashed file bytes.
 
     Groups retain their own order; their concatenation is not a global timeline.
@@ -255,12 +255,20 @@ def map_committed_destinations(root, before, after, streams, result):
                 continue
             destination = reference_path(root, observed['reference'])
             actual = new.get(destination)
+            expected = [row for row in original_operations
+                        if row['kind'] in ('copy', 'move') and row['destination'] == destination]
+            source = old.get(expected[0]['source']) if len(expected) == 1 else None
+            # The original actual transfer supplies the expected byte relationship;
+            # the native receipt supplies its actual observed destination.
             # No fake per-file transfer or globally ordered receipt is invented.
             mapped.append({'receipt_group': 'whole_album_' + str(album['operation']),
                            'operation_kind': 'whole_directory_rename', 'descendant_components': components,
                            'destination': destination, 'destination_after': actual,
-                           'reported_bytes': observed['size'],
-                           'verified_bytes': actual is not None and actual['bytes'] == observed['size']})
+                           'reported_bytes': observed['size'], 'expected_original_transfers': expected,
+                           'expected_source_before': source,
+                           'verified_bytes': actual is not None and source is not None
+                           and actual['bytes'] == observed['size'] == source['bytes']
+                           and actual['sha256'] == source['sha256']})
     return mapped
 
 
@@ -434,7 +442,10 @@ def run(binary, bundle, baseline, report):
                     data['primary_aliases'] = {side: digest(root/'app/singer-list.csv') for side, root in [('original', original_root), ('native', native_root)]}
                     require(set(data['primary_aliases'].values()) == {alias_hash}, 'Paired primary alias lists differ from frozen v14')
                     original_before, native_before = snapshot(original_root), snapshot(native_root)
-                    require(comparable_snapshot(original_before) == comparable_snapshot(native_before), 'Fresh paired input trees differ')
+                    data['paired_inputs'] = {'original': original_before, 'native': native_before,
+                                             'encounter_order_equal': comparable_snapshot(original_before) == comparable_snapshot(native_before)}
+                    require(data['paired_inputs']['encounter_order_equal'],
+                            'Fresh paired input trees or encounter order differ; this is input evidence, not an engine-policy mismatch')
                     original = json.loads(json.dumps(execute_original(original_root, case['settings'], template, ai=case['ai']), ensure_ascii=False))
                     original.update(before=original_before, after=snapshot(original_root))
                     data['original'] = original
@@ -450,7 +461,7 @@ def run(binary, bundle, baseline, report):
                     native['journals'] = read_journals(native_root)
                     native['physical_commit_streams'] = physical_commit_streams(native_root, native['journals'])
                     native['observed_physical'] = physical_observations(native_before, native['after'])
-                    native['committed_destination_mapping'] = map_committed_destinations(native_root, native_before, native['after'], native['physical_commit_streams'], native['result'])
+                    native['committed_destination_mapping'] = map_committed_destinations(native_root, native_before, native['after'], native['physical_commit_streams'], native['result'], original['ordered_operations'])
                     plan = native['preview_response'].get('result', {}).get('plan')
                     if plan is not None:
                         native['planning_decisions'] = planning_decisions(native_root, plan)
