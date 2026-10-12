@@ -138,4 +138,3 @@ pub(crate) fn rewrite_comments(bytes: &[u8], repairs: &[FieldRepair], kind: Comm
     out.extend_from_slice(suffix);
     Ok(out)
 }
-

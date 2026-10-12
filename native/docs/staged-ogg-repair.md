@@ -17,7 +17,12 @@ The frozen released sorter remains commit
 `0b67726e72e527556f47a8eeffeb44778c62809b`. The repair subset/order remains
 artist, albumartist, title, album, genre, from `FIX_FIELDS`. Every supplied change
 must equal the existing Hebrew `fix_jibrish` result, differ from the original,
-and match the exact raw-comment scalar before any output exists.
+and match the exact raw-comment scalar before any output exists. In the frozen
+`src/core/singles_sorter_v5.py`, helper lines 164–169 read `.value`, test it, call
+`fix_jibrish(value, "heb")`, and assign the resulting scalar. The filename-first
+loop at lines 193–219 loads metadata after the filename step; line 215 enumerates
+those five fields in that exact order, then line 219 saves. The native planner
+preserves this order and the existing sequential exception boundaries.
 
 Format-specific source inspection on 2026-10-12 confirmed:
 
