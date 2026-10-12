@@ -25,12 +25,14 @@ from desktop_copied_move import DUET, SINGLE, ARTISTS, AUXILIARY, auxiliary
 from desktop_ogg import generated_ogg, verify_repaired as verify_ogg_repaired
 from check_cross_albums import exercise as exercise_cross_albums, CHECKS as CROSS_ALBUM_CHECKS
 from desktop_mp4 import generated_mp4, verify_repaired as verify_mp4_repaired
+from desktop_id3_container import CASES as CONTAINER_CASES, generated_container, verify_repaired as verify_container_repaired
 from desktop_flac import generated_flac, inspect_flac, FIELDS as FLAC_FIELDS, UNKNOWN as FLAC_UNKNOWN
 from desktop_repair import generated_mp3, inspect_mp3, FIELDS  # Independent fixture parser.
 
 spec = importlib.util.spec_from_file_location('execution_package_contract', ROOT / 'native/packaging/windows-preview/package_preview.py')
 package = importlib.util.module_from_spec(spec); spec.loader.exec_module(package)
-CHECKS = {'positional-m4a-five-fields', 'positional-alac-five-fields', 'positional-mp4-fast-start-values',
+CHECKS = {'positional-wave-id3-five-fields', 'positional-aiff-id3-five-fields', 'positional-dsf-id3-five-fields',
+          'positional-container-id3-exact-extent-decoded-audio', 'positional-container-id3-insufficient-padding-partial', 'positional-m4a-five-fields', 'positional-alac-five-fields', 'positional-mp4-fast-start-values',
           'positional-mp4-exact-extent-decoded-audio', 'positional-mp4-duplicate-outer-consolidation', 'positional-mp4-structural-partial',
           'positional-cross-volume-move', 'positional-original-ai-duet-move', 'positional-mixed-duet-and-rename',
           'positional-copied-move-named-streams', 'positional-copied-move-fresh-reconciliation',
@@ -384,6 +386,26 @@ def run(binary, bundle, report, package_root=None):
             require(len(backups)==1 and backups[0].read_bytes()==before,'Exact MP4 original backup is missing')
             media=verify_mp4_repaired(before,after,multiple)
         require(set(source.iterdir())=={current,*backups},'Unexpected MP4 source or staged files remain')
+        receipts[-1].update(case=label,original_sha256=hashlib.sha256(before).hexdigest(),current_sha256=digest(current),
+                            backup_sha256=[digest(path) for path in backups],observed_repair=actual['repair'],media=media)
+
+    for kind,version,unsupported in CONTAINER_CASES:
+        label='container-'+kind+'-v2'+str(version)+('-partial' if unsupported else '')
+        case=roots(label); source=case/'source'; original=source/('repair_input.'+kind); current=source/('repair input.'+kind)
+        before=generated_container(kind,version,unsupported); original.write_bytes(before)
+        completed=invoke(case,['source','-f','--no-ai','--journal-directory','journal'],1 if unsupported else 0)
+        actual=result_record(completed.stderr)
+        require(actual['status']==('partial' if unsupported else 'complete') and actual.get('recovery_error') is None,'Container ID3 repair or reconciliation failed')
+        require(current.is_file() and not original.exists(),'Container ID3 filename repair did not complete')
+        after=current.read_bytes(); backups=list(source.glob('*.backup')); media=None
+        require(actual['repair']['renamed_files']==1 and actual['repair']['repaired_files']==(0 if unsupported else 1),'Container ID3 observed counts differ')
+        if unsupported:
+            require(after==before and not backups,'Insufficient ID3 padding produced a changed or backed-up tag')
+            require(actual['repair']['unsupported_files']==1,'Container ID3 refusal was not reported')
+        else:
+            require(len(backups)==1 and backups[0].read_bytes()==before,'Exact container original backup is missing')
+            media=verify_container_repaired(before,after,kind)
+        require(set(source.iterdir())=={current,*backups},'Unexpected container source or staging objects remain')
         receipts[-1].update(case=label,original_sha256=hashlib.sha256(before).hexdigest(),current_sha256=digest(current),
                             backup_sha256=[digest(path) for path in backups],observed_repair=actual['repair'],media=media)
 

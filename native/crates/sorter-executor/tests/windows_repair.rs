@@ -924,3 +924,6 @@ fn repair_restart_rejects_replaced_source_root_and_streams_ordinary_large_jobs()
 
 #[path = "support/windows_mp4_repair_cases.rs"]
 mod mp4;
+
+#[path = "support/windows_id3_container_repair_cases.rs"]
+mod id3_container;

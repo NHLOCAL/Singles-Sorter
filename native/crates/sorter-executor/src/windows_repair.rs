@@ -862,7 +862,7 @@ impl SelectedWindowsRepairJob {
             .map(RepairField::native)
             .collect::<Vec<_>>();
         let extension = op.intended_name.to_ascii_lowercase();
-        if ![".mp3", ".flac", ".ogg", ".opus", ".m4a", ".alac"]
+        if ![".mp3", ".flac", ".ogg", ".opus", ".m4a", ".alac", ".wav", ".aiff", ".dsf"]
             .iter()
             .any(|suffix| extension.ends_with(suffix))
         {
@@ -1716,6 +1716,9 @@ fn recover_repair_journal_inner(
                         || if extension.ends_with(".mp3")
                             || extension.ends_with(".m4a")
                             || extension.ends_with(".alac")
+                            || extension.ends_with(".wav")
+                            || extension.ends_with(".aiff")
+                            || extension.ends_with(".dsf")
                         {
                             length != original_length(op)?
                         } else if extension.ends_with(".flac") {

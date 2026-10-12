@@ -2,6 +2,7 @@
 //! this wrapper only selects a format and enforces its publication boundary.
 use crate::{
     staged_flac::FlacStagedPlan,
+    staged_id3_container::ContainerId3StagedPlan,
     staged_mp4::Mp4StagedPlan,
     staged_ogg::OggStagedPlan,
     staged_tags::{Id3StagedPlan, StagedTagEvidence, TagWriteError},
@@ -21,6 +22,7 @@ enum FormatPlan {
     Flac(FlacStagedPlan),
     Ogg(OggStagedPlan),
     Mp4(Mp4StagedPlan),
+    Id3Container(ContainerId3StagedPlan),
 }
 
 impl StagedRepairPlan {
@@ -45,6 +47,9 @@ impl StagedRepairPlan {
         } else if filename.ends_with(".m4a") || filename.ends_with(".alac") {
             Mp4StagedPlan::inspect(input, source_length, repairs, cancel)
                 .map(|plan| Self(FormatPlan::Mp4(plan)))
+        } else if [".wav", ".aiff", ".dsf"].iter().any(|extension|filename.ends_with(extension)) {
+            ContainerId3StagedPlan::inspect(input, source_length, repairs, cancel)
+                .map(|plan|Self(FormatPlan::Id3Container(plan)))
         } else {
             Err(TagWriteError::Unsupported(
                 "physical tag format is not supported",
@@ -58,6 +63,7 @@ impl StagedRepairPlan {
             FormatPlan::Flac(plan) => plan.changes_bytes(),
             FormatPlan::Ogg(plan) => plan.changes_bytes(),
             FormatPlan::Mp4(plan) => plan.changes_bytes(),
+            FormatPlan::Id3Container(plan) => plan.changes_bytes(),
         }
     }
 
@@ -67,6 +73,7 @@ impl StagedRepairPlan {
             FormatPlan::Flac(plan) => plan.staged_length(),
             FormatPlan::Ogg(plan) => plan.staged_length(),
             FormatPlan::Mp4(plan) => plan.staged_length(),
+            FormatPlan::Id3Container(plan) => plan.staged_length(),
         }
     }
 
@@ -85,6 +92,9 @@ impl StagedRepairPlan {
                 plan.write_staged(input, output, expected_source_sha256, cancel)
             }
             FormatPlan::Ogg(plan) => {
+                plan.write_staged(input, output, expected_source_sha256, cancel)
+            }
+            FormatPlan::Id3Container(plan) => {
                 plan.write_staged(input, output, expected_source_sha256, cancel)
             }
             FormatPlan::Mp4(plan) => {

@@ -196,6 +196,101 @@ impl Id3StagedPlan {
                 ));
             }
         }
+        let mut original_header = header.to_vec();
+        original_header.extend(body);
+        let repaired_header = rewrite_id3_block(&original_header, repairs, cancel)?;
+        Ok(Self {
+            original_header,
+            repaired_header,
+            source_length,
+            changed_fields: repairs.iter().map(|r| r.field).collect(),
+        })
+    }
+    pub fn changes_bytes(&self) -> bool {
+        self.original_header != self.repaired_header
+    }
+    pub fn staged_length(&self) -> u64 {
+        self.source_length - self.original_header.len() as u64 + self.repaired_header.len() as u64
+    }
+    /// Caller supplies an exclusively owned, empty staging stream. This generic
+    /// byte transform is not a native path authority or publication operation.
+    pub fn write_staged(
+        &self,
+        input: &mut (impl Read + Seek),
+        output: &mut impl Write,
+        expected_source_sha256: &str,
+        cancel: &AtomicBool,
+    ) -> Result<StagedTagEvidence> {
+        cancelled(cancel)?;
+        input
+            .seek(SeekFrom::Start(0))
+            .map_err(|_| TagWriteError::Io)?;
+        let mut original = vec![0; self.original_header.len()];
+        input
+            .read_exact(&mut original)
+            .map_err(|_| TagWriteError::Io)?;
+        if original != self.original_header {
+            return Err(TagWriteError::Stale);
+        }
+        let mut source = Sha256::new();
+        source.update(&original);
+        let mut staged = Sha256::new();
+        staged.update(&self.repaired_header);
+        let mut media = Sha256::new();
+        output
+            .write_all(&self.repaired_header)
+            .map_err(|_| TagWriteError::Io)?;
+        let mut remaining = self.source_length - self.original_header.len() as u64;
+        let media_length = remaining;
+        let mut buffer = [0u8; 64 * 1024];
+        while remaining > 0 {
+            cancelled(cancel)?;
+            let amount = remaining.min(buffer.len() as u64) as usize;
+            input
+                .read_exact(&mut buffer[..amount])
+                .map_err(|_| TagWriteError::Io)?;
+            source.update(&buffer[..amount]);
+            staged.update(&buffer[..amount]);
+            media.update(&buffer[..amount]);
+            output
+                .write_all(&buffer[..amount])
+                .map_err(|_| TagWriteError::Io)?;
+            remaining -= amount as u64;
+        }
+        let mut extra = [0; 1];
+        if input.read(&mut extra).map_err(|_| TagWriteError::Io)? != 0 {
+            return Err(TagWriteError::Stale);
+        }
+        let source_sha256 = format!("{:x}", source.finalize());
+        if source_sha256 != expected_source_sha256 {
+            return Err(TagWriteError::Stale);
+        }
+        cancelled(cancel)?;
+        Ok(StagedTagEvidence {
+            source_sha256,
+            staged_sha256: format!("{:x}", staged.finalize()),
+            media_sha256: format!("{:x}", media.finalize()),
+            media_length,
+            staged_length: self.staged_length(),
+            changed_fields: self.changed_fields.clone(),
+        })
+    }
+}
+
+/// Shared exact-extent ID3 text transform. The container caller establishes its
+/// own media/chunk layout; this function never infers an MP3 from ID3 bytes.
+pub(crate) fn rewrite_id3_block(original: &[u8], repairs: &[FieldRepair], cancel: &AtomicBool) -> Result<Vec<u8>> {
+    cancelled(cancel)?;
+    if original.len() < 10 { return Err(TagWriteError::Unsupported("truncated ID3 header")); }
+    let mut header: [u8;10] = original[..10].try_into().unwrap();
+    if &header[..3] != b"ID3" || !matches!(header[3],3|4) || header[4] != 0 || header[5] != 0 {
+        return Err(TagWriteError::Unsupported("only unflagged ID3v2.3/v2.4; no unsync, footer or extended header"));
+    }
+    let size = sync_size(&header[6..10])?;
+    if size > MAX_TAG || size.checked_add(10) != Some(original.len()) {
+        return Err(TagWriteError::Unsupported("ID3 block extent or budget"));
+    }
+    let body = &original[10..];
         let mut previous = None;
         let mut repairs_by_id = Vec::new();
         for repair in repairs {
@@ -297,87 +392,8 @@ impl Id3StagedPlan {
             ));
         }
         rebuilt.resize(body.len(), 0);
-        let mut original_header = header.to_vec();
-        original_header.extend(body);
         header[6..10].copy_from_slice(&write_sync_size(rebuilt.len())?);
         let mut repaired_header = header.to_vec();
         repaired_header.extend(rebuilt);
-        // Report fields in policy order, independently of physical frame order.
-        let changed_fields = repairs.iter().map(|r| r.field).collect();
-        Ok(Self {
-            original_header,
-            repaired_header,
-            source_length,
-            changed_fields,
-        })
-    }
-    pub fn changes_bytes(&self) -> bool {
-        self.original_header != self.repaired_header
-    }
-    pub fn staged_length(&self) -> u64 {
-        self.source_length - self.original_header.len() as u64 + self.repaired_header.len() as u64
-    }
-    /// Caller supplies an exclusively owned, empty staging stream. This generic
-    /// byte transform is not a native path authority or publication operation.
-    pub fn write_staged(
-        &self,
-        input: &mut (impl Read + Seek),
-        output: &mut impl Write,
-        expected_source_sha256: &str,
-        cancel: &AtomicBool,
-    ) -> Result<StagedTagEvidence> {
-        cancelled(cancel)?;
-        input
-            .seek(SeekFrom::Start(0))
-            .map_err(|_| TagWriteError::Io)?;
-        let mut original = vec![0; self.original_header.len()];
-        input
-            .read_exact(&mut original)
-            .map_err(|_| TagWriteError::Io)?;
-        if original != self.original_header {
-            return Err(TagWriteError::Stale);
-        }
-        let mut source = Sha256::new();
-        source.update(&original);
-        let mut staged = Sha256::new();
-        staged.update(&self.repaired_header);
-        let mut media = Sha256::new();
-        output
-            .write_all(&self.repaired_header)
-            .map_err(|_| TagWriteError::Io)?;
-        let mut remaining = self.source_length - self.original_header.len() as u64;
-        let media_length = remaining;
-        let mut buffer = [0u8; 64 * 1024];
-        while remaining > 0 {
-            cancelled(cancel)?;
-            let amount = remaining.min(buffer.len() as u64) as usize;
-            input
-                .read_exact(&mut buffer[..amount])
-                .map_err(|_| TagWriteError::Io)?;
-            source.update(&buffer[..amount]);
-            staged.update(&buffer[..amount]);
-            media.update(&buffer[..amount]);
-            output
-                .write_all(&buffer[..amount])
-                .map_err(|_| TagWriteError::Io)?;
-            remaining -= amount as u64;
-        }
-        let mut extra = [0; 1];
-        if input.read(&mut extra).map_err(|_| TagWriteError::Io)? != 0 {
-            return Err(TagWriteError::Stale);
-        }
-        let source_sha256 = format!("{:x}", source.finalize());
-        if source_sha256 != expected_source_sha256 {
-            return Err(TagWriteError::Stale);
-        }
-        cancelled(cancel)?;
-        Ok(StagedTagEvidence {
-            source_sha256,
-            staged_sha256: format!("{:x}", staged.finalize()),
-            media_sha256: format!("{:x}", media.finalize()),
-            media_length,
-            staged_length: self.staged_length(),
-            changed_fields: self.changed_fields.clone(),
-        })
-    }
+        Ok(repaired_header)
 }

@@ -83,12 +83,12 @@ preserved; a filename change does not imply a successful tag repair.
 | --- | --- | --- |
 | `.mp3` | Supported ID3 fixture classes | Bounded unflagged ID3v2.3/v2.4 with existing padding; five original fields; original backup retained. Unsupported flags/representations/insufficient padding stop tag publication explicitly |
 | `.m4a`, `.alac` | MP4 AAC/ALAC fixtures | Exact-extent UTF-8 five-field repair candidate; main media/chunk offsets/fast-start and opaque ordinary items retained, exact original backup. Duplicate outer text fields are combined in original order, including a later-only changed value; unsupported structures refuse tag writes. Native/staged/extracted acceptance pending |
-| `.wav` | WAVE ID3 fixtures | Tag writes unavailable; filename repair can still complete |
-| `.aiff` | AIFF fixtures | Tag writes unavailable; filename repair can still complete |
+| `.wav` | WAVE ID3 fixtures | Candidate: existing unflagged ID3v2.3/v2.4 in ordinary PCM/float RIFF; exact file/chunk/media extents and INFO bytes retained. Native/package acceptance pending |
+| `.aiff` | AIFF fixtures | Candidate: existing unflagged ID3v2.3/v2.4 in ordinary AIFF, exact COMM/SSND and unknown chunks retained; AIFC and insufficient padding refuse tags. Native/package acceptance pending |
 | `.flac` | FLAC fixtures | Bounded native FLAC Vorbis comments, including shifted audio after shorter metadata; pictures/vendor/unknown pairs/audio and original backup retained. Dedicated staged/extracted Windows cases passed; opaque-offset representations explicitly remain partial |
 | `.wv` | WavPack fixtures | Tag writes unavailable; filename repair can still complete |
 | `.ogg` | Ogg Vorbis fixtures | Bounded single-logical-stream Vorbis writes preserve encoded packets/timing/vendor/artwork/unknown pairs. Dedicated staged/extracted Windows cases passed; chained/multiplexed/other-codec layouts refused |
-| `.dsf` | DSF fixtures | Tag writes unavailable; filename repair can still complete |
+| `.dsf` | DSF fixtures | Candidate: existing terminal ID3v2.3/v2.4 in ordinary DSF, exact metadata pointer/header/media extents retained. Native/package acceptance pending |
 | `.opus` | Ogg Opus fixtures | Bounded ordinary single-logical-stream Opus writes; dedicated staged/extracted Windows byte, timing and retained-backup cases passed, with the same representation limits as Vorbis |
 | `.wma` | Released metadata open rejects ASF | Preserve metadata-error outcome after any supported filename repair |
 | `.aac` | Released ADTS fixture rejects tags | Preserve metadata-error outcome after any supported filename repair |
@@ -271,3 +271,36 @@ The physical writer consolidates that repair into one canonical text item with
 exact padding. Separate real-native-reader fixtures cover that later-only case
 and intact metadata inside a movie containing a refused private structural atom.
 Both belong to the pending exact-head runtime gates, not prior package evidence.
+
+
+## Existing-ID3 WAVE/AIFF/DSF consumer candidate
+
+The [bounded container writer](staged-id3-container-repair.md) reuses the same
+retained-original source-only Fix authority and the five frozen fields. It does
+not infer a supported tag representation from the filename extension. Missing
+tags, unsupported flags/chunks, ambiguous duplicates and insufficient existing
+padding remain explicit boundaries; a filename repair can still complete with
+an honestly partial tag outcome.
+
+The real staged/extracted desktop gate now requires four successful container
+trials (WAVE v2.3/v2.4, AIFF v2.4, DSF v2.3), one insufficient-padding partial,
+and one retained-plan stale-source refusal. The independent authored oracle
+checks exact original backup, full byte layout outside the existing tag, all
+five repaired fields, retained opaque/artwork frames, WAVE INFO bytes that must
+not replace ID3 fields, and actual FFmpeg-decoded PCM equality. Preview/review
+and stale trials bind the complete media tree and application journal snapshot;
+ordinary completed names and the independent inactive filter are exercised.
+The positional CLI package requires the same five physical positive/partial
+trials, native counters and fresh reconciliation on both staging and extraction.
+
+Six portable helper tests pass, including all three formats under both ID3
+versions and actual local FFmpeg decoding of the independent expected bytes.
+They do not run the Rust writer. Ten stream/native cases, six container product
+cases (60 full repair cases with the current MP4 candidate), and actual packaged
+Windows consumer gates remain required before claiming these formats accepted.
+
+Primary format references: [Mutagen WAVE](https://mutagen.readthedocs.io/en/latest/api/wave.html),
+[AIFF](https://mutagen.readthedocs.io/en/latest/api/aiff.html) and
+[DSF](https://mutagen.readthedocs.io/en/latest/api/dsf.html) explicitly use ID3 tags.
+Historical packaged versions remain separately unverified; the transformer’s
+pinned reader evidence and narrower admission are documented in its own scope.

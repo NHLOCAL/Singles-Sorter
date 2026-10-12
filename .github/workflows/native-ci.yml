@@ -280,7 +280,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $repairJobs = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (@($repairJobs | Where-Object { $_ -match ': test$' }).Count -ne 54) { throw "Expected 37 prior product FixNames, 7 restart and 10 MP4 cases" }
+          if (@($repairJobs | Where-Object { $_ -match ': test$' }).Count -ne 60) { throw "Expected 37 prior product FixNames, 7 restart, 10 MP4 and 6 ID3 container cases" }
           cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
@@ -440,6 +440,22 @@ jobs:
           cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib album_cleanup_tests -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Test exact-extent ID3 container staged repair
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-io --test staged_id3_container -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 10) { throw "Expected ten ID3 container, native-reader and decoder cases" }
+          cargo +1.99.0 test --locked -p sorter-io --test staged_id3_container -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 test --locked -p sorter-io --test staged_tags -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $product = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair id3_container:: -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($product | Where-Object { $_ -match ": test$" }).Count -ne 6) { throw "Expected six ID3 container product and restart cases" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair id3_container:: -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Test exact-extent MP4 staged repair
         if: ${{ !cancelled() && runner.os == 'Windows' }}
         shell: pwsh
