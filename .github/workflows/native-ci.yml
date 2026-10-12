@@ -417,7 +417,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $cases = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_copied_move -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 13) { throw "Expected thirteen copied Move job cases including distinct-volume NTFS" }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 14) { throw "Expected fourteen copied Move job cases including distinct-volume NTFS" }
           cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_copied_move -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

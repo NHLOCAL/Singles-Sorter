@@ -568,3 +568,22 @@ fn late_ordinary_collision_keeps_prior_completed_duet_and_never_overwrites() {
     f.verify_destination("אמן");
     f.verify_destination("זמר");
 }
+
+#[test]
+fn incomplete_duet_is_refused_during_read_only_readiness() {
+    let f = Fixture::new(true);
+    let mut plan = f.plan.clone();
+    plan.operations.pop();
+    for effect in &mut plan.predicted_effects {
+        if let PredictedEffect::DuetDeleteIntention { after_operations, .. } = effect {
+            after_operations.pop();
+        }
+    }
+    assert!(supported_copied_move_plan(&plan).is_err());
+    let mut reads = WindowsPlanningStorage::for_preview(&f.source, &f.target).unwrap();
+    assert!(prepare_copied_move_scope(&plan, &mut reads, &grants(&f.source, &f.target, &f.journal),
+        &f.scope.execution_scope().resources, &AtomicBool::new(false)).is_err());
+    assert_eq!(std::fs::read_dir(&f.target).unwrap().count(), 0);
+    assert_eq!(std::fs::read_dir(&f.journal).unwrap().count(), 0);
+    assert_eq!(std::fs::read(f.source.join("song.mp3:notes")).unwrap(), b"owned-auxiliary");
+}

@@ -54,6 +54,27 @@ pub fn supported_copied_move_plan(plan: &JobPlanV2) -> Result<()> {
             _ => return Err(E::Unsupported),
         }
     }
+    // Mirror the binding's exact retained duet cohort before offering Apply.
+    // A skipped destination never becomes permission to retire the source.
+    let mut covered = std::collections::HashSet::new();
+    for effect in &plan.predicted_effects {
+        if let PredictedEffect::DuetDeleteIntention { source, after_operations, .. } = effect {
+            let expected: Vec<_> = plan.operations.iter().filter(|operation| matches!(
+                &operation.kind, OperationKind::SingleTransfer { source: candidate, .. }
+                    if candidate.reference == source.reference
+            )).map(|operation| operation.id).collect();
+            if expected.len() < 2 || expected != *after_operations { return Err(E::Unsupported); }
+            for id in expected {
+                let operation = plan.operations.iter().find(|operation| operation.id == id).ok_or(E::Unsupported)?;
+                if !matches!(&operation.kind, OperationKind::SingleTransfer { source: candidate, transfer, .. }
+                    if candidate == source && transfer.copy) || !covered.insert(id)
+                { return Err(E::Unsupported); }
+            }
+        }
+    }
+    if plan.operations.iter().any(|operation| matches!(&operation.kind,
+        OperationKind::SingleTransfer { transfer, .. } if transfer.copy && !covered.contains(&operation.id)))
+    { return Err(E::Unsupported); }
     Ok(())
 }
 
