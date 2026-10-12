@@ -1,5 +1,6 @@
 """Actual WebView viewport assertions. DPR is measured, never inferred from outer pixels."""
 import json
+import math
 import time
 from pathlib import Path
 
@@ -20,6 +21,33 @@ def assert_editor_actions(metrics):
             assert box['y'] >= dialog['rect']['y'] and box['bottom'] <= dialog['rect']['bottom'], action
             assert 0 <= box['y'] and box['bottom'] <= metrics['innerHeight'], action
 
+def assert_execution_space(metrics):
+    """Account only for the measured visible in-card execution/recovery panel."""
+    panel = metrics['executionPanel']
+    if panel is None:
+        return 0
+    box, card, body = panel['rect'], metrics['results'], metrics['resultsBody']
+    top, bottom = panel['marginTop'], panel['marginBottom']
+    assert panel['parentIsResults'], panel
+    assert all(isinstance(value, (int, float)) and math.isfinite(value) and value >= 0
+               for value in [box['height'], top, bottom]), panel
+    assert box['height'] > 0 and abs(box['bottom'] - box['y'] - box['height']) <= 1, panel
+    reserved = box['height'] + top + bottom
+    assert reserved <= metrics['innerHeight'] / 3, panel
+    assert len(set(panel['expectedActions'])) == len(panel['expectedActions']), panel
+    assert sorted(action['id'] for action in panel['actions']) == sorted(panel['expectedActions']), panel
+    assert card['x'] <= box['x'] and box['right'] <= card['right'] + 1, panel
+    assert card['y'] <= box['y'] - top, panel
+    assert box['bottom'] + bottom <= body['y'] + 1, (panel, body)
+    for action in panel['actions']:
+        control = action['rect']
+        assert control['height'] > 0, action
+        assert box['x'] <= control['x'] and control['right'] <= box['right'] + 1, action
+        assert box['y'] <= control['y'] and control['bottom'] <= box['bottom'] + 1, action
+        assert action['id'] in metrics['controls'], action
+    return reserved
+
+
 def assert_layout(metrics, require_bounded=True):
     assert_editor_actions(metrics)
     if require_bounded:
@@ -32,7 +60,19 @@ def assert_layout(metrics, require_bounded=True):
         if metrics['view'] == 'results':
             assert metrics['resultsVisible'] and not metrics['setupVisible'], metrics
             assert metrics['resultsOverflow'] == 'auto', metrics
-            assert metrics['resultsBody']['height'] >= metrics['innerHeight'] * .5, metrics
+            reserved = assert_execution_space(metrics)
+            # Feature-off keeps its original half-viewport budget. Selected
+            # execution adds real confirmation/progress/recovery chrome above
+            # the list; count only its observed non-overlapping occupied space.
+            # Independently retain 192 px (four compact 48 px row units), even
+            # if a growing panel would otherwise consume the entire allowance.
+            assert metrics['resultsBody']['height'] >= max(4 * 48, metrics['innerHeight'] * .5 - reserved), metrics
+            assert 0 <= metrics['results']['x'] and metrics['results']['right'] <= metrics['innerWidth'] + 1, metrics
+            assert metrics['results']['x'] <= metrics['resultsBody']['x'] and metrics['resultsBody']['right'] <= metrics['results']['right'] + 1, metrics
+            assert metrics['results']['y'] <= metrics['resultsBody']['y'], metrics
+            assert metrics['resultsBody']['bottom'] <= metrics['results']['bottom'] + 1, metrics
+            assert metrics['results']['bottom'] <= metrics['chrome']['footer']['y'] + 1, metrics
+            assert abs(metrics['chrome']['footer']['bottom'] - metrics['innerHeight']) <= 1, metrics
             assert all(height <= 48 for height in metrics['rowHeights']), metrics
         else:
             assert metrics['setupVisible'] and not metrics['resultsVisible'], metrics
