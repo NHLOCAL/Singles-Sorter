@@ -402,7 +402,7 @@ jobs:
         run: |
           $cases = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib move_stream_ -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 18) { throw "Expected 18 copied Move stream inventory/copy/retirement/read-only cases" }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 19) { throw "Expected 19 copied Move stream inventory/copy/retirement/read-only cases" }
           cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib move_stream_ -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
@@ -417,7 +417,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $cases = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_copied_move -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 10) { throw "Expected ten copied Move job cases including distinct-volume NTFS" }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 11) { throw "Expected eleven copied Move job cases including distinct-volume NTFS" }
           cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_copied_move -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

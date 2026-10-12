@@ -175,3 +175,20 @@ fn same_volume_single_is_not_admitted_to_copied_move() {
     assert_eq!(std::fs::read_dir(&f.target).unwrap().count(), 0);
     assert_eq!(std::fs::read_dir(&f.journal).unwrap().count(), 0);
 }
+
+#[test]
+fn cancellation_during_original_plan_revalidation_is_not_mislabeled_stale() {
+    struct CancelAi<'a>(&'a AtomicBool);
+    impl RecognitionProvider for CancelAi<'_> {
+        fn profile(&self) -> AiProfile { Ai(true).profile() }
+        fn classify(&mut self, _: &str) -> Result<sorter_core::ClassifierFact, RecognitionError> {
+            self.0.store(true, Ordering::Release); Ok(sorter_core::ClassifierFact::Accept)
+        }
+        fn ner(&mut self, _: &str) -> Result<Vec<String>, RecognitionError> { Ai(true).ner("") }
+    }
+    let f = Fixture::new(true); let cancel = AtomicBool::new(false);
+    assert!(matches!(SelectedWindowsJob::prepare_copied_move(grants(&f.source, &f.target, &f.journal), &f.plan,
+        &mut Metadata, &mut CancelAi(&cancel), &f.scope.execution_scope().resources, &f.scope, &cancel), Err(sorter_executor::ExecutionError::Cancelled)));
+    assert_eq!(std::fs::read_dir(&f.target).unwrap().count(), 0);
+    assert_eq!(std::fs::read_dir(&f.journal).unwrap().count(), 0);
+}

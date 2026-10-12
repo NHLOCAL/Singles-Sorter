@@ -86,6 +86,10 @@ pub trait TransferStorage: MutationStorage {
     fn verify_selected_copied_move(&mut self, _published: &Self::Published, _digest: &ContentDigest, _cancel: &AtomicBool) -> std::result::Result<MutationObservation, MutationError> {
         Err(error(MutationErrorKind::Unsupported, "cancellable copied Move verification unavailable"))
     }
+    #[cfg(all(windows, feature = "selected-windows-execution"))]
+    fn verify_selected_copied_move_temp(&mut self, _temp: &Self::OwnedTemp, _digest: &ContentDigest, _cancel: &AtomicBool) -> std::result::Result<MutationObservation, MutationError> {
+        Err(error(MutationErrorKind::Unsupported, "cancellable copied Move temp verification unavailable"))
+    }
     /// Positive, lease-derived same-volume evidence. False uses the copy path.
     fn rename_eligible(&self, source: &Self::SourceLease, parent: &Self::Parent) -> bool;
     /// Narrow contract: a write-through, pre/post-flushed same-volume rename.
@@ -789,6 +793,11 @@ impl<S: TransferStorage> Runner<'_, S> {
             self.flag,
             self.progress,
         )?;
+        #[cfg(all(windows, feature = "selected-windows-execution"))]
+        let synced = if self.binding.data.copied_move_sources.is_some() {
+            self.storage.verify_selected_copied_move_temp(&temp, &expected.digest, self.flag)?
+        } else { self.storage.verify_temp(&temp, &expected.digest)? };
+        #[cfg(not(all(windows, feature = "selected-windows-execution")))]
         let synced = self.storage.verify_temp(&temp, &expected.digest)?;
         check_observation(
             &synced,

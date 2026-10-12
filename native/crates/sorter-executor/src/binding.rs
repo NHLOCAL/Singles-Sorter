@@ -203,19 +203,38 @@ pub(crate) fn validate_execution_domain(
     scope: &ExecutionScope,
     domain: ExecutionDomain,
 ) -> Result<ExecutionBinding> {
-    let (root, target) = validate_plan_scope_domain(
+    validate_execution_domain_inner(plan, storage, metadata, recognition, resources, scope, (domain, None))
+}
+#[cfg(all(windows, feature = "selected-windows-execution"))]
+pub(crate) fn validate_copied_move_controlled(
+    plan: &JobPlanV2, storage: &mut dyn ReadStorage, metadata: &mut dyn MetadataProvider,
+    recognition: &mut dyn RecognitionProvider, resources: &Resources, scope: &ExecutionScope,
+    cancel: &std::sync::atomic::AtomicBool,
+) -> Result<ExecutionBinding> {
+    validate_execution_domain_inner(plan, storage, metadata, recognition, resources, scope,
+        (ExecutionDomain::SelectedWindowsCopiedMove, Some(cancel)))
+}
+fn validate_execution_domain_inner(
+    plan: &JobPlanV2, storage: &mut dyn ReadStorage, metadata: &mut dyn MetadataProvider,
+    recognition: &mut dyn RecognitionProvider, resources: &Resources, scope: &ExecutionScope,
+    control: (ExecutionDomain, Option<&std::sync::atomic::AtomicBool>),
+) -> Result<ExecutionBinding> {
+    let (domain, cancel) = control;
+    check_binding_cancel(cancel)?;
+    let (root, target) = validate_plan_scope_inner(
         plan,
         storage,
         metadata,
         recognition,
         resources,
         scope,
-        domain,
+        (domain, cancel),
     )?;
     let mut operations = vec![];
     let mut destinations = HashSet::new();
     let mut sources = HashSet::new();
     for (index, op) in plan.operations.iter().enumerate() {
+        check_binding_cancel(cancel)?;
         if op.id != index
             || !op.stop_and_replan_on_effect_mismatch
             || op.depends_on.iter().any(|d| *d >= op.id)
@@ -278,6 +297,7 @@ pub(crate) fn validate_execution_domain(
         let mut buffer = [0u8; 8192];
         let mut size = 0u64;
         loop {
+            check_binding_cancel(cancel)?;
             let n = input.read(&mut buffer).map_err(|_| E::Stale)?;
             if n == 0 {
                 break;
@@ -461,6 +481,24 @@ pub(crate) fn validate_plan_scope_domain(
     scope: &ExecutionScope,
     domain: ExecutionDomain,
 ) -> Result<(EntryObservation, EntryObservation)> {
+    validate_plan_scope_inner(plan, storage, metadata, recognition, resources, scope, (domain, None))
+}
+fn check_binding_cancel(cancel: Option<&std::sync::atomic::AtomicBool>) -> Result<()> {
+    if cancel.is_some_and(|flag| flag.load(std::sync::atomic::Ordering::Acquire)) { Err(E::Cancelled) } else { Ok(()) }
+}
+struct BindingPlanningControl<'a>(Option<&'a std::sync::atomic::AtomicBool>);
+impl PlanningControl for BindingPlanningControl<'_> {
+    fn checkpoint(&self, _: PlanningBoundary) -> std::result::Result<(), PlanningAbort> {
+        check_binding_cancel(self.0).map_err(|_| PlanningAbort::cancelled())
+    }
+}
+fn validate_plan_scope_inner(
+    plan: &JobPlanV2, storage: &mut dyn ReadStorage, metadata: &mut dyn MetadataProvider,
+    recognition: &mut dyn RecognitionProvider, resources: &Resources, scope: &ExecutionScope,
+    control: (ExecutionDomain, Option<&std::sync::atomic::AtomicBool>),
+) -> Result<(EntryObservation, EntryObservation)> {
+    let (domain, cancel) = control;
+    check_binding_cancel(cancel)?;
     verify_job_plan_binding(plan).map_err(|_| E::InvalidBinding)?;
     if plan.request.mode != JobMode::Sort || plan.operations.is_empty() {
         return Err(E::Unsupported);
@@ -537,7 +575,9 @@ pub(crate) fn validate_plan_scope_domain(
         inner: recognition,
         failed: false,
     };
-    let fresh = plan_job(&plan.request, storage, metadata, &mut checked).map_err(|_| E::Stale)?;
+    let fresh = plan_job_controlled(&plan.request, storage, metadata, &mut checked, &BindingPlanningControl(cancel))
+        .map_err(|_| if check_binding_cancel(cancel).is_err() { E::Cancelled } else { E::Stale })?;
+    check_binding_cancel(cancel)?;
     if checked.failed {
         return Err(E::Unsupported);
     }

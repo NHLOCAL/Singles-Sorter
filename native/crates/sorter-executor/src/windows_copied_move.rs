@@ -116,7 +116,7 @@ impl SelectedWindowsJob {
         { return Err(E::Scope); }
         admission(&roots, plan)?;
         let mut reads = OwnedCopyReadStorage::new(&roots, &plan.request.source, plan.request.target.as_ref().ok_or(E::Scope)?)?;
-        let mut binding = validate_execution_domain(plan, &mut reads, metadata, recognition, resources, &scope.execution, ExecutionDomain::SelectedWindowsCopiedMove)?;
+        let mut binding = validate_copied_move_controlled(plan, &mut reads, metadata, recognition, resources, &scope.execution, cancel)?;
         binding.data.copied_move_sources = Some(scope.sources.clone());
         if !binding.data.valid_domain() { return Err(E::InvalidBinding); }
         if serde_json::to_vec(&binding.data).map_err(|_| E::InvalidBinding)?.len() > 8 * 1024 * 1024 {
@@ -204,7 +204,12 @@ impl TransferStorage for CopiedMoveStorage {
     fn read_source(&mut self, source: &mut Self::SourceLease, bytes: &mut [u8]) -> io::Result<usize> { source.read(bytes) }
     fn write_temp(&mut self, temp: &mut Self::OwnedTemp, bytes: &[u8]) -> io::Result<usize> { temp.write(bytes) }
     fn sync_temp(&mut self, temp: &mut Self::OwnedTemp) -> std::result::Result<(), MutationError> { temp.sync_data() }
-    fn verify_temp(&mut self, temp: &Self::OwnedTemp, digest: &ContentDigest) -> std::result::Result<MutationObservation, MutationError> { temp.verify_content(digest) }
+    fn verify_temp(&mut self, _temp: &Self::OwnedTemp, _digest: &ContentDigest) -> std::result::Result<MutationObservation, MutationError> {
+        Err(MutationError::new(MutationErrorKind::Unsupported, "copied Move temp verification requires execution cancellation"))
+    }
+    fn verify_selected_copied_move_temp(&mut self, temp: &Self::OwnedTemp, digest: &ContentDigest, cancel: &AtomicBool) -> std::result::Result<MutationObservation, MutationError> {
+        temp.verify_content_controlled(digest, cancel)
+    }
     fn rename_eligible(&self, _: &Self::SourceLease, _: &WindowsParent) -> bool { false }
     fn selected_copied_move_contract(&self) -> bool { true }
     fn verify_selected_copied_move(&mut self, published: &Self::Published, digest: &ContentDigest, cancel: &AtomicBool) -> std::result::Result<MutationObservation, MutationError> {

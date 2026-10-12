@@ -285,7 +285,7 @@ fn parse_inventory(bytes: &[u8]) -> Result<Vec<(Vec<u16>, u64)>, MutationError> 
     streams.sort_by(|(a, _), (b, _)| (a != &unnamed()).cmp(&(b != &unnamed())).then(a.cmp(b)));
     Ok(streams)
 }
-fn stream_digest(file: &File, length: u64, cancel: &AtomicBool) -> Result<ContentDigest, MutationError> {
+pub(super) fn stream_digest(file: &File, length: u64, cancel: &AtomicBool) -> Result<ContentDigest, MutationError> {
     stream_digest_with(file, length, cancel, |_| {})
 }
 fn stream_digest_with(
@@ -549,6 +549,10 @@ impl Write for WindowsCopiedMoveTemp {
 impl WindowsCopiedMoveTemp {
     pub fn observation(&self) -> &MutationObservation { self.main.observation() }
     pub fn sync_data(&self) -> Result<(), MutationError> { self.main.sync_data() }
+    pub fn verify_content_controlled(&self, digest: &ContentDigest, cancel: &AtomicBool) -> Result<MutationObservation, MutationError> {
+        if self.poisoned { return Err(err(MutationErrorKind::UnknownOutcome, "copied Move temp poisoned")); }
+        self.main.verify_content_controlled(digest, cancel)
+    }
     pub fn verify_content(&self, digest: &ContentDigest) -> Result<MutationObservation, MutationError> {
         if self.poisoned { return Err(err(MutationErrorKind::UnknownOutcome, "copied Move temp poisoned")); }
         self.main.verify_content(digest)
@@ -595,7 +599,7 @@ impl WindowsMutationStorage {
             }
             self.verify_copied_move_source(source, cancel)?;
             self.check_role(&temp.main.parent, RootRole::Target)?;
-            temp.main.verify_content(&source.main.expected.digest)?;
+            temp.main.verify_content_controlled(&source.main.expected.digest, cancel)?;
             let file = temp.main.file.as_ref().ok_or_else(|| err(MutationErrorKind::StalePlan, "temp consumed"))?;
             if stream_inventory(file)? != vec![(unnamed(), source.main.expected.digest.length)] {
                 return Err(err(MutationErrorKind::StalePlan, "fresh temp has unexpected streams"));
@@ -668,7 +672,7 @@ impl WindowsMutationStorage {
         if temp.poisoned || temp.evidence.as_ref() != Some(&source.evidence) {
             return MutationOutcome::NoEffect(err(MutationErrorKind::StalePlan, "auxiliary streams not verified"));
         }
-        self.finalize_selected_copy_metadata(&source.main, &mut temp.main, cancel)
+        self.finalize_selected_copy_metadata_controlled(&source.main, &mut temp.main, cancel)
     }
 
     pub fn publish_copied_move_no_replace(
@@ -687,7 +691,7 @@ impl WindowsMutationStorage {
         })();
         if let Err(error) = checked { return MutationOutcome::NoEffect(error); }
         temp.poisoned = true;
-        match self.publish_no_replace(&mut temp.main, parent, name, cancel) {
+        match self.publish_finalized_copy_controlled(&mut temp.main, parent, name, cancel) {
             MutationOutcome::Applied(main) => MutationOutcome::Applied(WindowsCopiedMovePublished {
                 main, named: std::mem::take(&mut temp.named), evidence, poisoned: false, synced: false,
             }),
@@ -838,6 +842,20 @@ mod move_stream_copy_tests {
         assert_eq!(bytes, 5);
         assert!(f.path.join("source/song.mp3").exists());
         assert!(matches!(f.storage.retire_copied_move_source(&mut f.source, &[&published], &cancel), MutationOutcome::NoEffect(_)));
+    }
+
+    #[test]
+    fn controlled_temp_metadata_and_publication_refuse_cancel_before_dispatch() {
+        let mut f = Fixture::new(); let mut temp = f.temp();
+        let cancelled = AtomicBool::new(true);
+        assert_eq!(temp.verify_content_controlled(&f.source.main.expected.digest, &cancelled).unwrap_err().kind, MutationErrorKind::Cancelled);
+        assert!(matches!(f.storage.copy_bound_move_streams(&f.source, &mut temp, &cancelled), MutationOutcome::NoEffect(error) if error.kind == MutationErrorKind::Cancelled));
+        applied(f.storage.copy_bound_move_streams(&f.source, &mut temp, &AtomicBool::new(false)));
+        assert!(matches!(f.storage.finalize_copied_move_metadata(&f.source, &mut temp, &cancelled), MutationOutcome::NoEffect(error) if error.kind == MutationErrorKind::Cancelled));
+        applied(f.storage.finalize_copied_move_metadata(&f.source, &mut temp, &AtomicBool::new(false)));
+        assert!(matches!(f.storage.publish_copied_move_no_replace(&mut temp, &f.target, &MutationName::Windows("song.mp3".encode_utf16().collect()), &cancelled), MutationOutcome::NoEffect(error) if error.kind == MutationErrorKind::Cancelled));
+        assert!(!f.path.join("target/song.mp3").exists());
+        assert!(f.path.join("source/song.mp3").exists());
     }
 
     #[test]

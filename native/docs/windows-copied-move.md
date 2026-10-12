@@ -38,8 +38,8 @@ cohort. A source link present after a retirement receipt is a recovery condition
 including a foreign replacement which is never deleted. Reconciliation supplies
 no automatic retry, resume, cleanup or deletion authority.
 
-The candidate adds two native read-only/cancellable-verification tests (18 primitive cases total),
-five journal phase/marker cases and ten actual Windows job cases. The latter
+The candidate adds two native read-only/cancellable-verification tests (19 primitive cases total),
+five journal phase/marker cases and eleven actual Windows job cases. The latter
 include real duet routing, stale auxiliary preview, cancellation during the second
 destination, no-overwrite collision, source reappearance, changed destination ADS,
 one-shot execution and a strict distinct-volume case. That case uses owned TEMP
@@ -57,3 +57,13 @@ route composition is still required for that case. Native full-stream publicatio
 verification now uses the actual execution cancellation flag and preserves cursor
 positions at each bounded hash chunk; metadata/namespace inspection does not hide
 an uncancellable full-file hash. Existing generic adapters are unchanged.
+
+Controlled copied-Move preparation now checkpoints the unchanged original planner
+and each main-file revalidation hash chunk. Its temp verification, metadata
+preflight and finalized publication select controlled counterparts; the existing
+Copy entry points retain their prior behavior. Cancellation remains cooperative:
+a currently executing operating-system call or external metadata/recognition
+provider call returns before its surrounding checkpoint can observe cancellation.
+The added preparation fixture retains `Cancelled` classification and proves no
+journal/artist-directory effect; native temp/metadata/publication cancellation
+checks retain both source bytes and the unpublished owned temp.

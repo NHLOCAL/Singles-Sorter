@@ -1353,6 +1353,20 @@ impl WindowsOwnedTemp {
         }
         Ok(observed)
     }
+    pub(super) fn verify_content_controlled(&self, expected: &ContentDigest, cancel: &AtomicBool) -> Result<MutationObservation, MutationError> {
+        cancelled(cancel)?;
+        let file = self.file.as_ref().ok_or_else(|| err(MutationErrorKind::StalePlan, "temp consumed"))?;
+        ensure_regular(file)?;
+        if let Some(state) = &self.copy_metadata { state.check(file)?; }
+        let observed = observe(file, &self.parent)?;
+        if observed.identity != self.identity || observed.actual_name != self.observation.actual_name
+            || move_streams::stream_digest(file, expected.length, cancel)? != *expected {
+            return Err(err(MutationErrorKind::VerificationFailed, "temp identity/name/content changed"));
+        }
+        if let Some(state) = &self.copy_metadata { state.check(file)?; }
+        cancelled(cancel)?;
+        Ok(observed)
+    }
     pub fn observation(&self) -> &MutationObservation {
         &self.observation
     }
@@ -1662,6 +1676,28 @@ impl WindowsMutationStorage {
             mode,
             repair: None,
         })
+    }
+    pub(super) fn validate_source_controlled(&self, source: &WindowsSourceLease, cancel: &AtomicBool) -> Result<(), MutationError> {
+        cancelled(cancel)?;
+        self.check_role(&source.parent, RootRole::Source)?;
+        let file = source.file.as_ref().ok_or_else(|| err(MutationErrorKind::StalePlan, "source lease consumed"))?;
+        ensure_regular(file)?;
+        let observation = observe(file, &source.parent)?;
+        if observation.identity != source.expected.identity || observation.actual_name != source.expected.name
+            || move_streams::stream_digest(file, source.expected.digest.length, cancel)? != source.expected.digest {
+            return Err(err(MutationErrorKind::StalePlan, "leased source changed"));
+        }
+        cancelled(cancel)
+    }
+    pub(super) fn verify_published_controlled(&mut self, published: &WindowsPublished, expected: &ContentDigest, cancel: &AtomicBool) -> Result<MutationObservation, MutationError> {
+        cancelled(cancel)?;
+        let observation = self.inspect(published)?;
+        if move_streams::stream_digest(&published.file, expected.length, cancel)? != *expected {
+            return Err(err(MutationErrorKind::VerificationFailed, "published digest/EOF mismatch").with_observation(observation));
+        }
+        if let Some(state) = &published.copy_metadata { state.check(&published.file)?; }
+        cancelled(cancel)?;
+        Ok(observation)
     }
     fn validate_source(&self, source: &WindowsSourceLease) -> Result<(), MutationError> {
         self.check_role(&source.parent, RootRole::Source)?;
