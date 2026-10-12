@@ -229,10 +229,15 @@ struct Shared {
     serial: AtomicU64,
     lifecycle: AtomicU64,
 }
+#[cfg(all(test, windows, feature = "selected-windows-execution"))]
+type VerificationObserver = Arc<dyn Fn(&sorter_executor::inspection_control::InspectionProgress) + Send + Sync>;
 #[derive(Clone, Default)]
 pub struct Host {
     shared: Arc<Shared>,
     model_directory: Option<PathBuf>,
+    // Native unit-fixture observer only. No renderer/IPC setter or packaged hook.
+    #[cfg(all(test, windows, feature = "selected-windows-execution"))]
+    verification_observer: Option<VerificationObserver>,
 }
 pub struct BusyGuard {
     shared: Arc<Shared>,

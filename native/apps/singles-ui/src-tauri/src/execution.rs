@@ -784,6 +784,8 @@ mod selected {
             } else {
                 let host = self.clone();
                 let job_id = id.to_owned();
+                #[cfg(test)]
+                let verification_observer = self.verification_observer.clone();
                 let control = sorter_executor::inspection_control::InspectionControl::new(
                     cancellation.cancelled.clone(), move |progress| {
                         if let Ok(mut inner) = host.lock()
@@ -798,6 +800,10 @@ mod selected {
                                     bytes_read: progress.bytes_read,
                                     elapsed_ms: progress.elapsed_ms,
                                 });
+                        }
+                        #[cfg(test)]
+                        if let Some(observer) = &verification_observer {
+                            observer(&progress);
                         }
                     },
                 );
