@@ -279,7 +279,7 @@ jobs:
         run: |
           # A diagnostic lane, not a release/parity gate: OPEN and MISMATCH exit nonzero.
           # Never promote unsupported execution or missing actual summaries to parity.
-          python tests/original_ai_cli/check_windows_v14.py --binary target/release/singles-sorter.exe --bundle target/original-ai/bundle --baseline "$env:GITHUB_WORKSPACE/original-baseline" --report target/original-ai/windows-v14-paired/report.json
+          python tests/original_ai_cli/check_windows_v14.py --binary target/release/singles-sorter.exe --bundle target/original-ai/bundle --baseline "$env:GITHUB_WORKSPACE/original-baseline" --report target/original-ai/windows-v14-paired/report.json --package target/original-ai/windows-preview-extracted --archive target/original-ai/singles-sorter-original-ai-windows-x64-selected-cli.zip
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Always retain paired Windows regression diagnostics

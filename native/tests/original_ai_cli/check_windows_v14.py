@@ -19,6 +19,9 @@ import subprocess
 import sys
 import tempfile
 import traceback
+import zipfile
+
+from windows_runtime_metrics import measured_call, measured_process
 
 from check_cli import ASSETS, BASELINE, BUNDLE_ID, NATIVE, authored_wav, digest, original_oracle, require
 from windows_v14_trace import execute_original, relative
@@ -144,12 +147,11 @@ def author_case(root, case):
 
 def subprocess_record(binary, root, arguments, *, payload=None):
     env = dict(os.environ, PATH=str(Path(os.environ['SystemRoot'])/'System32'))
-    options = {'input': json.dumps(payload, ensure_ascii=False).encode('utf-8')} if payload is not None else {'stdin': subprocess.DEVNULL}
-    result = subprocess.run([str(binary), *arguments], cwd=root, env=env,
-                            capture_output=True, timeout=180, **options)
+    data = json.dumps(payload, ensure_ascii=False).encode('utf-8') if payload is not None else None
+    result, performance = measured_process([str(binary), *arguments], cwd=root, env=env, payload=data)
     return {'arguments': arguments, 'exit': result.returncode,
             'stdout': result.stdout.decode('utf-8'), 'stderr': result.stderr.decode('utf-8'),
-            'closed_stdin': payload is None, 'developer_path_removed': True}
+            'closed_stdin': payload is None, 'developer_path_removed': True, 'performance': performance}
 
 
 def native_request(root, bundle, case):
@@ -523,7 +525,74 @@ def write_json(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
 
-def run(binary, bundle, baseline, report):
+def package_measurement(binary, package, archive):
+    if package is None or archive is None:
+        return {'status': 'unavailable', 'reason': 'Exact final package and archive paths were not supplied'}
+    package, archive = package.resolve(strict=True), archive.resolve(strict=True)
+    from check_execution import package as contract
+    contract.verify_package(package)
+    require(digest(package/'singles-sorter.exe') == digest(binary), 'Measured package differs from paired executable')
+    entries = {path.relative_to(package).as_posix():path for path in package.rglob('*') if path.is_file()}
+    with zipfile.ZipFile(archive) as zipped:
+        members = [entry for entry in zipped.infolist() if not entry.is_dir()]
+        require(len({entry.filename for entry in members}) == len(members), 'Duplicate packaged ZIP entries')
+        require({entry.filename for entry in members} == set(entries), 'Measured ZIP/package members differ')
+        for entry in members:
+            with zipped.open(entry) as stream:
+                value=hashlib.sha256()
+                for chunk in iter(lambda:stream.read(64*1024),b''): value.update(chunk)
+            require(value.hexdigest() == digest(entries[entry.filename]), 'Measured ZIP/package content differs')
+    return {'status':'measured','archive_sha256':digest(archive),'compressed_bytes':archive.stat().st_size,
+            'unpacked_file_bytes':sum(path.stat().st_size for path in entries.values()),
+            'file_count':len(entries),'executable_bytes':binary.stat().st_size,
+            'scope':'exact final native CLI package; not filesystem allocated blocks or the desktop package; no original distributable size inferred'}
+
+
+def fresh_process_trial(binary, bundle, baseline, scratch, sources):
+    """One already-covered Copy-all duet, reused as a bounded startup sample."""
+    trial=scratch/'fresh-process';trial.mkdir()
+    code=trial/'code';code.mkdir()
+    for name, expected in sources.items():
+        if name.endswith('.py'):
+            source=scratch/'oracle-code'/name
+            require(digest(source)==expected,'Cold original source changed')
+            shutil.copyfile(source,code/name)
+    case=next(case for case in cases() if case['id']=='duet-copy-all')
+    original_root,native_root=trial/'original',trial/'native'
+    author_case(original_root,case);author_case(native_root,case)
+    original_before,native_before=snapshot(original_root),snapshot(native_root)
+    require(comparable_snapshot(original_before)==comparable_snapshot(native_before),'Cold paired media inputs differ')
+    # Already verified by original_oracle. Copy only the recorded model closure,
+    # before timing, so original relative paths resolve without aliases or links.
+    lock=json.loads((NATIVE/'probes/released-ner/released-ner-export/release-lock.json').read_text(encoding='utf-8'))
+    for name, expected in lock['source_files'].items():
+        source=baseline/'src/core/models/singer_ner_he'/name
+        require(digest(source)==expected,'Cold original model source changed')
+        destination=original_root/'models/singer_ner_he'/name
+        destination.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(source,destination)
+    classifier=original_root/'models/music_entity_clf/music_entity_clf.pkl'
+    classifier.parent.mkdir(parents=True);shutil.copyfile(bundle/'original-release.pkl',classifier)
+    env=dict(os.environ,PATH=str(Path(os.environ['SystemRoot'])/'System32'),PYTHONDONTWRITEBYTECODE='1',PYTHONIOENCODING='utf-8')
+    original,timing=measured_process([sys.executable,str(Path(__file__).with_name('cold_original.py')),str(original_root),str(code/'singles_sorter_v5.py')],cwd=original_root,env=env)
+    original_record={'exit':original.returncode,'stdout':original.stdout.decode('utf-8'),'stderr':original.stderr.decode('utf-8'),'performance':timing}
+    native=subprocess_record(binary,native_root,native_args(bundle,case))
+    # Compare only actual media trees; code/models/logs remain separate evidence.
+    media=lambda root:[{'role':role,**row} for role in ('source','target') for row in comparable_snapshot(snapshot(root/role))]
+    actual_original,actual_native=media(original_root),media(native_root)
+    expected_destinations={str(Path(artist)/DUET) for artist in ('ישראל כהן','חיים לוי')}
+    found={row['path'] for row in snapshot(original_root/'target') if row['kind']=='file'}
+    functional=(original.returncode==0 and native['exit']==0 and actual_original==actual_native
+                and found==expected_destinations and 'Loaded NER model:' in original_record['stderr']
+                and 'Loaded sklearn model successfully' in original_record['stderr'])
+    return {'status':'measured' if functional else 'functional_mismatch','case':case,'functional_media_match':functional,'original':original_record,'native':native,
+            'original_media':actual_original,'native_media':actual_native,
+            'measurement_conditions':['Fresh processes; both load their actual original models during measured startup.',
+                'Original uses the pinned CPython runtime and a mutation-confinement wrapper; native uses the shipped executable.',
+                'OS disk cache is uncontrolled and may be warm from setup; this is not a cold-disk test.',
+                'One small authored duet is not a full-library benchmark; no speedup ratio or original package-size claim is produced.']}
+
+
+def run(binary, bundle, baseline, report, package=None, archive=None):
     require(os.name == 'nt' and os.environ.get('GITHUB_ACTIONS') == 'true', 'Paired execution requires the owned actual Windows CI runner')
     require(__debug__, 'Paired execution requires Python assertions enabled')
     binary, bundle, baseline = (path.resolve(strict=True) for path in (binary, bundle, baseline))
@@ -535,11 +604,17 @@ def run(binary, bundle, baseline, report):
     scratch = Path(tempfile.mkdtemp(prefix='singles-v14-paired-')).resolve()
     bundle_before = {name: digest(bundle/name) for name in ASSETS}
     binary_before = digest(binary)
+    try:
+        package_size = package_measurement(binary, package, archive)
+    except Exception as error:
+        package_size = {'status':'unavailable','error':str(error)}
     result = {'schema_version': 1, 'result': 'OPEN', 'incomplete': True, 'actual_windows': True,
               'baseline': BASELINE, 'binary_sha256': binary_before,
               'runner': {'platform': platform.platform(), 'python': platform.python_version(),
                          'ci_run_id': os.environ.get('GITHUB_RUN_ID'), 'source_revision': os.environ.get('GITHUB_SHA')},
               'fixture_root': str(scratch), 'normalization': NORMALIZATION,
+              'performance_scope': 'Functional acceptance first. Warm shared-original and fresh-native rows are not comparable speed ratios. One separate fresh-process pair retains startup and same authored inputs; OS cache and tracing overhead remain explicit.',
+              'package_size': package_size,
               'coverage': {'settings_combinations': 32, 'real_model_duets': 4}, 'cases': [],
               'historical_unsafe_exceptions': [
                   {'id': 'historical-duet-skipped-source-loss', 'scope': 'v14 Move-all deletes a source even when every destination is skipped; never required future behavior.', 'actual_windows_exercised_here': False},
@@ -550,6 +625,11 @@ def run(binary, bundle, baseline, report):
         with original_oracle(baseline, bundle, scratch, include_sorter=True) as (_, sources, template):
             require(sources['singles_sorter_v5.py'] == SOURCE_SHA256, 'Wrong frozen v14 sorter source')
             result['original_source_sha256'] = sources
+            try:
+                result['fresh_process_trial'] = fresh_process_trial(binary, bundle, baseline, scratch, sources)
+            except Exception as error:
+                result['fresh_process_trial'] = {'status':'ERROR','error':str(error),'traceback':traceback.format_exc()}
+            write_json(report, result)
             for case in cases():
                 row = {**case, 'status': 'OPEN', 'phase': 'running'}
                 result['cases'].append(row)
@@ -572,7 +652,9 @@ def run(binary, bundle, baseline, report):
                     write_json(evidence, data)
                     require(data['paired_inputs']['encounter_order_equal'],
                             'Fresh paired input trees or encounter order differ; this is input evidence, not an engine-policy mismatch')
-                    original = json.loads(json.dumps(execute_original(original_root, case['settings'], template, ai=case['ai']), ensure_ascii=False))
+                    original, timing = measured_call(lambda: execute_original(original_root, case['settings'], template, ai=case['ai']), runtime='shared warm Python harness; original models and imports already loaded; process-lifetime memory peak includes earlier cases')
+                    original = json.loads(json.dumps(original, ensure_ascii=False))
+                    original['performance'] = timing
                     original.update(before=original_before, after=snapshot(original_root))
                     data['original'] = original
                     write_json(evidence, data)
@@ -630,9 +712,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('binary', 'bundle', 'baseline', 'report'):
         parser.add_argument('--'+name, type=Path, required=True)
+    parser.add_argument('--package', type=Path)
+    parser.add_argument('--archive', type=Path)
     args = parser.parse_args()
     try:
-        return run(args.binary, args.bundle, args.baseline, args.report)
+        return run(args.binary, args.bundle, args.baseline, args.report, args.package, args.archive)
     except Exception as error:
         # Retain Windows preflight failures too, without overwriting earlier evidence.
         if os.name == 'nt' and os.environ.get('GITHUB_ACTIONS') == 'true' and not args.report.exists():
