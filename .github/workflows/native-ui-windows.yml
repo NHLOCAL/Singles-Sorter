@@ -309,6 +309,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Build actual desktop application through pinned Tauri CLI
+        id: default-desktop-build
         run: npm run build:desktop -- --ci -- --locked
 
       # Save only after all contracts and the actual desktop build succeed. Saving
@@ -342,10 +343,13 @@ jobs:
           New-Item -ItemType Directory -Force ../../target/desktop-original/feature-off | Out-Null
           Copy-Item src-tauri/target/release/singles-sorter-preview.exe ../../target/desktop-original/feature-off/singles-sorter-preview.exe
 
-      - name: Build original-AI and selected-execution desktop through pinned Tauri CLI
+      # A renderer-only failure must not starve independent native host evidence.
+      # The successful prerequisite build binds this same checkout/toolchain and
+      # authenticated resources. These are the existing tests, not a second run.
+      - name: Run selected host contracts independently of renderer acceptance
+        id: selected-host-contracts
+        if: ${{ !cancelled() && steps.default-desktop-build.outcome == 'success' }}
         run: |
-          npm run build:desktop -- --ci --features original-ai,selected-windows-execution -- --locked
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai,selected-windows-execution
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $restartCase = 'job_owner::recovery_owner::selected::tests::actual_content_chunk_close_cancels_and_fresh_host_reopens_read_only'
@@ -374,6 +378,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:ORIGINAL_AI_BUNDLE = (Resolve-Path ../../target/desktop-original/bundle).Path
           cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai,selected-windows-execution --release --lib -- --ignored
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build original-AI and selected-execution desktop through pinned Tauri CLI
+        if: ${{ success() && steps.selected-host-contracts.outcome == 'success' }}
+        run: |
+          npm run build:desktop -- --ci --features original-ai,selected-windows-execution -- --locked
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Stage only reviewed desktop runtime, exact models and full notices
