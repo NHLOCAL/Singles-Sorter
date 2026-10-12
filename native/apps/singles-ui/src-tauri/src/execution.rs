@@ -97,6 +97,13 @@ pub struct ExecutionResult {
     pub albums: Option<AlbumSummary>,
 }
 #[derive(Clone, Debug, Serialize)]
+pub struct VerificationProgress {
+    pub completed_operations: usize,
+    pub total_operations: usize,
+    pub bytes_read: u64,
+    pub elapsed_ms: u64,
+}
+#[derive(Clone, Debug, Serialize)]
 pub struct ExecutionSnapshot {
     pub host_schema: u16,
     pub job_id: String,
@@ -112,6 +119,8 @@ pub struct ExecutionSnapshot {
     pub recovery: Option<RecoveryInspection>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub recovery_error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub verification: Option<VerificationProgress>,
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct RecoveryDirectory {
@@ -521,6 +530,7 @@ mod selected {
                 result: None,
                 recovery: None,
                 recovery_error: None,
+                verification: None,
             });
             drop(inner);
             let host = self.clone();
@@ -767,12 +777,31 @@ mod selected {
                     }
                 }
             });
-            let (recovered, recovery_error) = if job.journal_locations().is_empty()
-                || cancellation.is_cancelled()
-            {
+            let (recovered, recovery_error) = if job.journal_locations().is_empty() {
                 (None, None)
+            } else if cancellation.is_cancelled() {
+                (None, Some("VERIFICATION_CANCELLED".into()))
             } else {
-                match job.inspect_recovery(&recovery_scope) {
+                let host = self.clone();
+                let job_id = id.to_owned();
+                let control = sorter_executor::inspection_control::InspectionControl::new(
+                    cancellation.cancelled.clone(), move |progress| {
+                        if let Ok(mut inner) = host.lock()
+                            && let Some(snapshot) = inner.job.as_mut()
+                                .filter(|job| job.snapshot.job_id == job_id)
+                                .and_then(|job| job.execution.as_mut())
+                        {
+                                snapshot.operation = None;
+                                snapshot.verification = Some(VerificationProgress {
+                                    completed_operations: progress.completed_operations,
+                                    total_operations: progress.total_operations,
+                                    bytes_read: progress.bytes_read,
+                                    elapsed_ms: progress.elapsed_ms,
+                                });
+                        }
+                    },
+                );
+                match job.inspect_recovery_controlled(&recovery_scope, &control) {
                     Ok(report) => {
                         let inspection = project_recovery(report);
                         let incomplete = !inspection.pending_operations.is_empty()

@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,verificationWarning,resultFilename,DEVELOPER_PREFERENCE} from '../src/result-presentation';
+import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,verificationWarning,verificationProgressText,resultFilename,DEVELOPER_PREFERENCE} from '../src/result-presentation';
 import type {ExecutionSnapshot,PlanRow,ExecutionItem} from '../src/contracts';
 const row:PlanRow={id:'file',source:'song.mp3',artist:'אמן',kind:'Single',destination:'אמן/song.mp3',reason:'raw_trace(hash)',blockers:[],operation_ids:[0]};
 const item=(status:ExecutionItem['status']):ExecutionItem=>({operation:0,status,detail:'raw filesystem evidence'});
@@ -175,5 +175,15 @@ describe('observed frozen-v14 summary',()=>{
   const result={source_items:0,committed_destinations:0,moved_sources:0,failed_operations:0,blocked_operations:0,cancelled_operations:0,recovery_operations:0,items:[],legacy_summary:{songs_sorted:0,artist_folders_created:0,albums_processed:0,top_artists:[]}};
   const summary=simpleExecutionSummary({status:'complete',result},true);
   expect(summary).toContain('0 שירים מוינו');expect(summary).not.toContain('אמנים מובילים');expect(summary).not.toContain('אלבומים הושלמו');
+ });
+});
+
+describe('live final verification',()=>{
+ it('shows current read progress without inventing completion',()=>{
+  const progress={completed_operations:2,total_operations:5,bytes_read:67108864,elapsed_ms:1500};
+  expect(verificationProgressText(progress)).toBe('בודק את התוצאות: 2 מתוך 5');
+  expect(verificationProgressText(progress)).not.toContain('בתים');
+  expect(verificationProgressText(progress,true)).toContain('67,108,864 בתים נקראו');
+  expect(verificationProgressText({...progress,total_operations:0,completed_operations:0})).toBe('בודק את תוצאות הביצוע…');
  });
 });

@@ -585,12 +585,24 @@ pub(super) fn execute_request(
     let result=job.run(cancel,&mut |progress| {
         if event("progress",json!({"job_id":native_id,"operation":progress.operation,"bytes_written":progress.bytes_written,"source_length":progress.source_length})).is_err() {output_failed=true;cancel.store(true,Ordering::Release);}
     });
-    let (recovery, recovery_error) = if copied.is_none() || job.journal_locations().is_empty()
-        || cancel.load(Ordering::Acquire)
-    {
+    let (recovery, recovery_error) = if copied.is_none() || job.journal_locations().is_empty() {
         (None, None)
+    } else if cancel.load(Ordering::Acquire) {
+        (None, Some("VERIFICATION_CANCELLED".to_owned()))
     } else {
-        match job.inspect_recovery(&recovery_scope) {
+        let control = sorter_executor::inspection_control::InspectionControl::borrowed(cancel, |_| {});
+        if event("verification_started", json!({"job_id":native_id})).is_err() {
+            output_failed = true;
+            cancel.store(true, Ordering::Release);
+        }
+        let inspected = job.inspect_recovery_controlled(&recovery_scope, &control);
+        if let Ok(progress) = control.snapshot()
+            && event("verification_progress", json!({"job_id":native_id,"progress":progress})).is_err()
+        {
+            output_failed = true;
+            cancel.store(true, Ordering::Release);
+        }
+        match inspected {
             Ok(report) => {
                 use sorter_executor::recovery::{CopyMetadataRecoveryStatus, RecoveryStatus};
                 let verified = report.directories.complete

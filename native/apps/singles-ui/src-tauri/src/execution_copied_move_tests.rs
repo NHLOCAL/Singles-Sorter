@@ -56,6 +56,7 @@ fn cross_volume_host_move_retains_preview_streams_and_exact_journal_root() {
         if action == "apply" {
             assert_eq!(outcome.status, "complete", "{outcome:?}");
             assert!(outcome.recovery_error.is_none(), "{outcome:?}");
+            assert!(outcome.verification.as_ref().is_some_and(|progress| progress.bytes_read > 0 && progress.completed_operations == progress.total_operations), "{outcome:?}");
             let result = outcome.result.unwrap();
             assert_eq!((result.committed_destinations, result.moved_sources), (1, 1));
             let destination = target.join("אברהם פריד").join(name);

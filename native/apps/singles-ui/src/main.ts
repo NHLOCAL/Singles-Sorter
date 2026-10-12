@@ -3,7 +3,7 @@ import './styles.css';
 import {installViewport} from './viewport';
 import {nativeHost,openFooterLink,openProjectLink,openLocalLicenses} from './host';
 import {installAbout} from './about';
-import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,verificationWarning,resultFilename} from './result-presentation';
+import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,verificationWarning,verificationProgressText,resultFilename} from './result-presentation';
 import {kindLabel,reasonLabel,blockerLabel,warningPresentation,noticeLabel} from './presentation';
 import {PAGE_SIZE,PreviewController} from './state';
 import type {Settings,ImportEncoding,Mode,PlanRow,ExecutionItem} from './contracts';
@@ -192,8 +192,12 @@ function renderExecution(){
  const developer=s.developerMode;
  $('execution-summary').textContent=developer?(r?r.repair?`${r.repair.renamed_files} שמות תוקנו · ${r.repair.repaired_files} תגיות תוקנו · ${r.repair.unchanged_files} ללא שינוי בתגיות · ${r.repair.unsupported_files} לא נתמכים · ${r.repair.retained_backup_bytes.toLocaleString('he-IL')} בתים נשמרו בגיבוי`:`${r.committed_destinations.toLocaleString('he-IL')} יעדים נכתבו · ${r.moved_sources.toLocaleString('he-IL')} קבצי מקור הועברו · ${r.failed_operations.toLocaleString('he-IL')} נכשלו · ${r.blocked_operations.toLocaleString('he-IL')} לא בוצעו`:s.cancelRequested&&running?'ממתין לעצירה בטוחה…':e?.status==='running'&&e.operation!==null?`פעולה ${e.operation+1} מתוך ${e.operation_count} · ${e.bytes_written.toLocaleString('he-IL')} מתוך ${e.source_length.toLocaleString('he-IL')} בתים`:e&&!['preparing','running'].includes(e.status)?(e.error??'לא התקבלו מוני ביצוע מאומתים. יש לבדוק את היומן.'):readiness?.supported?`${readiness.operation_count.toLocaleString('he-IL')} פעולות ${readiness.mode==='FixNames'?'תיקון':readiness.copy_mode?'העתקה':'העברה'} ממתינות לאישור`:readiness?.reason??''):(e?simpleExecutionSummary(e,readiness?.copy_mode??s.settings.copy_mode):readiness?.supported?'הקבצים מוכנים. אפשר לבדוק ולאשר את הביצוע.':'לא בוצעו שינויים בקבצים.');
  if(!developer&&running)$('execution-summary').textContent=s.cancelRequested?'ממתין לעצירה בטוחה…':e?.operation!==null&&e?.operation!==undefined?`התקדמות: ${e.operation+1} מתוך ${e.operation_count}`:'בודק שהקבצים מוכנים…';
+ if(running&&e?.verification){
+  $('execution-title').textContent='בודק את תוצאות הביצוע';
+  $('execution-summary').textContent=s.cancelRequested?'ממתין לעצירה בטוחה…':verificationProgressText(e.verification,developer);
+ }
  const progress=$<HTMLProgressElement>('execution-progress');progress.hidden=!running;
- if(e?.status==='running'&&e.source_length>0){progress.max=e.source_length;progress.value=Math.min(e.bytes_written,e.source_length);}else progress.removeAttribute('value');
+ if(running&&e?.verification?.total_operations){progress.max=e.verification.total_operations;progress.value=Math.min(e.verification.completed_operations,e.verification.total_operations);}else if(e?.status==='running'&&e.source_length>0){progress.max=e.source_length;progress.value=Math.min(e.bytes_written,e.source_length);}else progress.removeAttribute('value');
  const verification=verificationWarning(e,developer);
  $('execution-recovery').hidden=!verification&&(!e||!['needs_recovery','partial','cancelled','failed'].includes(e.status));
  $('execution-recovery').textContent=verification||(developer?(e?.status==='needs_recovery'?'היומן נשמר. אין להפעיל שוב את התוכנית או למחוק את היומן לפני בדיקת הקבצים. התאוששות אוטומטית אינה מופעלת.':'פעולות שהושלמו נשארות בתוקף. עיין בפרטי הקבצים וביומן לפני בדיקה חדשה.'):readiness?.mode==='FixNames'?'בדוק את הקבצים והגיבויים בתיקיית המקור לפני ניסיון נוסף.':'קבצים שכבר טופלו נשארים במקומם. בדוק את המקור והיעד לפני ניסיון נוסף.');

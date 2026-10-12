@@ -123,3 +123,9 @@ export function verificationWarning(execution:Pick<ExecutionSnapshot,'recovery_e
  if(!execution?.recovery_error)return '';
  return developer?`בדיקת היומן לא הושלמה: ${execution.recovery_error}. תוצאות הביצוע נשמרו; יש לבדוק את הקבצים והגיבויים לפני ניסיון נוסף.`:'הבדיקה הסופית לא הושלמה. בדוק את הקבצים והגיבויים לפני ניסיון נוסף.';
 }
+
+/** Live read-only verification progress never stands in for completed effects. */
+export function verificationProgressText(progress:{completed_operations:number;total_operations:number;bytes_read:number;elapsed_ms:number},developer=false):string{
+ const base=progress.total_operations>0?`בודק את התוצאות: ${progress.completed_operations.toLocaleString('he-IL')} מתוך ${progress.total_operations.toLocaleString('he-IL')}`:'בודק את תוצאות הביצוע…';
+ return developer?`${base} · ${progress.bytes_read.toLocaleString('he-IL')} בתים נקראו · ${(progress.elapsed_ms/1000).toLocaleString('he-IL',{maximumFractionDigits:1})} שניות`:base;
+}

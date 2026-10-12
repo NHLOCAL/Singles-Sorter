@@ -91,6 +91,9 @@ mod selected {
                 assert_eq!(result["committed_destinations"], 1);
                 assert!(result["recovery_error"].is_null(), "{result}");
                 assert_eq!(result["recovery"]["transfers"]["operations"][0]["status"], "Committed");
+                let progress = &events.iter().find(|event| event["event"] == "verification_progress").unwrap()["data"]["progress"];
+                assert!(progress["bytes_read"].as_u64().unwrap() > 0);
+                assert_eq!(progress["completed_operations"], progress["total_operations"]);
                 assert_eq!(fs::read(target.join("אברהם פריד").join(name)).unwrap(), bytes);
                 assert_eq!(fs::read(target.join("אברהם פריד").join(format!("{name}:notes"))).unwrap(), b"owned auxiliary");
                 assert!(!file.exists());

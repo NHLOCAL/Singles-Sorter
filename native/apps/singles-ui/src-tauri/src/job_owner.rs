@@ -1295,6 +1295,7 @@ mod tests {
             error: None,
             recovery: None,
             recovery_error: None,
+            verification: None,
             result: Some(ExecutionResult {
                 #[cfg(feature = "selected-windows-execution")]
                 legacy_summary: None,
