@@ -82,7 +82,16 @@ impl WindowsMutationStorage {
         if !matches!(self.domain, WindowsMutationDomain::SelectedRoots | WindowsMutationDomain::OwnedSyntheticTree) {
             return Err(err(MutationErrorKind::Unsupported, "copied Move source domain required"));
         }
-        let main = self.acquire_source_with_mode(parent, expected, SourceLeaseMode::Ordinary)?;
+        self.check_role(parent, RootRole::Source)?;
+        if expected.parent_identity != parent.identity {
+            return Err(err(MutationErrorKind::StalePlan, "source parent mismatch"));
+        }
+        let file = open_file(parent.handle(), units(&expected.name)?, false)?;
+        let observation = verify_move_main(&file, parent, expected, cancel)?;
+        let main = WindowsSourceLease {
+            file: Some(file), parent: parent.clone(), expected: expected.clone(), observation,
+            mode: SourceLeaseMode::Ordinary, repair: None,
+        };
         let file = main.file.as_ref().expect("new source lease");
         let attributes = move_representation(file)?;
         let inventory = stream_inventory(file)?;
@@ -91,7 +100,7 @@ impl WindowsMutationStorage {
         for (suffix, length) in &inventory {
             cancelled(cancel)?;
             let digest = if suffix == &unnamed() {
-                let actual = digest(file)?;
+                let actual = stream_digest(file, expected.digest.length, cancel)?;
                 if actual != expected.digest || actual.length != *length {
                     return Err(err(MutationErrorKind::StalePlan, "unnamed source stream changed"));
                 }
@@ -101,6 +110,7 @@ impl WindowsMutationStorage {
                 if identity(&stream).map_err(read_error)? != expected.identity {
                     return Err(err(MutationErrorKind::StalePlan, "named stream file identity differs"));
                 }
+                move_representation(&stream)?;
                 let actual = stream_digest(&stream, *length, cancel)?;
                 named.push(stream);
                 actual
@@ -123,8 +133,9 @@ impl WindowsMutationStorage {
         cancel: &AtomicBool,
     ) -> Result<(), MutationError> {
         cancelled(cancel)?;
-        self.validate_source(&source.main)?;
-        let file = source.main.file.as_ref().expect("validated source");
+        self.check_role(&source.main.parent, RootRole::Source)?;
+        let file = source.main.file.as_ref().ok_or_else(|| err(MutationErrorKind::StalePlan, "source consumed"))?;
+        verify_move_main(file, &source.main.parent, &source.main.expected, cancel)?;
         if move_representation(file)? != source.evidence.attributes {
             return Err(err(MutationErrorKind::StalePlan, "source representation changed"));
         }
@@ -133,6 +144,7 @@ impl WindowsMutationStorage {
             return Err(err(MutationErrorKind::StalePlan, "source stream membership changed"));
         }
         for (stream, expected) in source.named.iter().zip(source.evidence.streams.iter().skip(1)) {
+            move_representation(stream)?;
             if stream_digest(stream, expected.length, cancel)?.sha256 != expected.sha256 {
                 return Err(err(MutationErrorKind::StalePlan, "leased named stream content changed"));
             }
@@ -144,6 +156,24 @@ impl WindowsMutationStorage {
     }
 }
 
+fn verify_move_main(
+    file: &File, parent: &WindowsParent, expected: &ExpectedSource, cancel: &AtomicBool,
+) -> Result<MutationObservation, MutationError> {
+    cancelled(cancel)?;
+    ensure_regular(file)?;
+    let observed = observe(file, parent)?;
+    if expected.parent_identity != parent.identity || observed.identity != expected.identity
+        || observed.actual_name != expected.name
+        || expected.size.is_some_and(|size| observed.size != Some(size))
+        || stream_digest(file, expected.digest.length, cancel)? != expected.digest
+        || expected.modified.as_ref().is_some_and(|expected| {
+            file.metadata().and_then(|metadata| metadata.modified())
+                .map(|time| format!("{time:?}")).as_ref().ok() != Some(expected)
+        }) {
+        return Err(err(MutationErrorKind::StalePlan, "source identity/name/content changed").with_observation(observed));
+    }
+    Ok(observed)
+}
 fn unnamed() -> Vec<u16> {
     "::$DATA".encode_utf16().collect()
 }
@@ -189,7 +219,7 @@ fn parse_inventory(bytes: &[u8]) -> Result<Vec<(Vec<u16>, u64)>, MutationError> 
         let end = start.checked_add(length).filter(|end| *end <= bytes.len()).ok_or_else(invalid)?;
         if !length.is_multiple_of(2) || size < 0 { return Err(invalid()); }
         let name = bytes[start..end].as_chunks::<2>().0.iter().map(|unit| u16::from_le_bytes(*unit)).collect::<Vec<_>>();
-        let name = if name.is_empty() { unnamed() } else { name };
+        if name.is_empty() { return Err(invalid()); }
         let suffix = ":$DATA".encode_utf16().collect::<Vec<_>>();
         if name.first() != Some(&58) || !name.ends_with(&suffix) || name.len() < suffix.len() + 1
             || name[1..name.len() - suffix.len()].iter().any(|u| matches!(*u, 0 | 47 | 58 | 92)) {
@@ -206,6 +236,11 @@ fn parse_inventory(bytes: &[u8]) -> Result<Vec<(Vec<u16>, u64)>, MutationError> 
     Ok(streams)
 }
 fn stream_digest(file: &File, length: u64, cancel: &AtomicBool) -> Result<ContentDigest, MutationError> {
+    stream_digest_with(file, length, cancel, |_| {})
+}
+fn stream_digest_with(
+    file: &File, length: u64, cancel: &AtomicBool, mut checkpoint: impl FnMut(u64),
+) -> Result<ContentDigest, MutationError> {
     let mut reader = file;
     reader.seek(SeekFrom::Start(0)).map_err(io_error)?;
     let mut hash = Sha256::new();
@@ -218,6 +253,7 @@ fn stream_digest(file: &File, length: u64, cancel: &AtomicBool) -> Result<Conten
         total = total.checked_add(count as u64).filter(|total| *total <= length)
             .ok_or_else(|| err(MutationErrorKind::StalePlan, "named stream exceeds preview length"))?;
         hash.update(&buffer[..count]);
+        checkpoint(total);
     }
     if total != length { return Err(err(MutationErrorKind::StalePlan, "named stream length changed")); }
     Ok(ContentDigest { length, sha256: hash.finalize().into() })
@@ -350,6 +386,41 @@ mod move_stream_inventory_tests {
     }
 
     #[test]
+    fn named_sparse_representation_refuses_without_flattening() {
+        let f = Fixture::new();
+        let path = f.ads("sparse");
+        let stream = std::fs::OpenOptions::new().read(true).write(true).create_new(true).open(&path).unwrap();
+        let mut returned = 0;
+        unsafe { windows::Win32::System::IO::DeviceIoControl(
+            HANDLE(stream.as_raw_handle()), 0x000900c4, // FSCTL_SET_SPARSE
+            None, 0, None, 0, Some(&mut returned), None,
+        ) }.unwrap();
+        stream.set_len(1024 * 1024).unwrap();
+        assert!(move_representation(&stream).is_err());
+        drop(stream);
+        assert!(f.storage.inspect_copied_move_source(&f.parent, &f.expected, &AtomicBool::new(false)).is_err());
+        assert_eq!(std::fs::metadata(path).unwrap().len(), 1024 * 1024);
+        assert_eq!(std::fs::read(&f.path).unwrap(), b"audio");
+    }
+
+    #[test]
+    fn stream_hash_cancellation_stops_at_a_bounded_chunk_for_main_or_named_data() {
+        let f = Fixture::new();
+        let bytes = vec![7u8; 256 * 1024];
+        std::fs::write(&f.path, &bytes).unwrap();
+        let file = File::open(&f.path).unwrap();
+        let cancel = AtomicBool::new(false);
+        let mut observed = 0;
+        let error = stream_digest_with(&file, bytes.len() as u64, &cancel, |count| {
+            observed = count;
+            cancel.store(true, Ordering::Release);
+        }).unwrap_err();
+        assert_eq!(error.kind, MutationErrorKind::Cancelled);
+        assert_eq!(observed, 64 * 1024);
+        assert_eq!(std::fs::read(&f.path).unwrap(), bytes);
+    }
+
+    #[test]
     fn malformed_inventory_rejects_bad_lengths_names_duplicate_and_negative_size() {
         fn record(name: &str) -> Vec<u8> {
             let name = name.encode_utf16().flat_map(u16::to_le_bytes).collect::<Vec<_>>();
@@ -358,6 +429,7 @@ mod move_stream_inventory_tests {
             bytes[24..].copy_from_slice(&name);
             bytes
         }
+        assert!(parse_inventory(&[0u8; 24]).is_err());
         let valid = record("::$DATA");
         assert_eq!(parse_inventory(&valid).unwrap(), vec![(unnamed(), 0)]);
         for name in [":bad/name:$DATA", ":bad:name:$DATA", ":x:$INDEX_ALLOCATION", ":only:$DATA"] {
@@ -582,6 +654,7 @@ fn verify_bound_streams(
     }
     let main_id = identity(main).map_err(read_error)?;
     for (file, expected) in named.iter().zip(evidence.streams.iter().skip(1)) {
+        move_representation(file)?;
         if identity(file).map_err(read_error)? != main_id || stream_digest(file, expected.length, cancel)?.sha256 != expected.sha256 {
             return Err(err(MutationErrorKind::VerificationFailed, "destination stream identity/content differs"));
         }
