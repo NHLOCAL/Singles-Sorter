@@ -4,6 +4,9 @@ No embedded automation plugin/server is added to the application. This script
 is intentionally CI-only and refuses other platforms. Build the app with the
 pinned Tauri CLI first; put tauri-driver and matching msedgedriver on PATH.
 """
+if not __debug__:
+    raise RuntimeError('Native desktop acceptance requires Python assertions enabled')
+
 import base64
 import hashlib
 import json

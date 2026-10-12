@@ -70,7 +70,8 @@ def inspect_flac(data):
 
 
 def exercise_flac(script, click, fill, wait, capture, root, output):
-    assert __debug__, 'Physical acceptance requires enabled assertions'
+    if not __debug__:
+        raise RuntimeError('Physical acceptance requires Python assertions enabled')
     root = Path(root); root.mkdir()
     receipts = []
 
