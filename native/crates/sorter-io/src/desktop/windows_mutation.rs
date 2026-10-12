@@ -205,6 +205,8 @@ struct Root {
     _ancestors: Vec<File>,
     directory: File,
     _ownership: RootOwnership,
+    album_cleanup: bool,
+    album_cleanup_original: Option<MutationObservation>,
 }
 #[derive(Clone)]
 pub struct WindowsParent {
@@ -336,6 +338,8 @@ fn pin_root(
         _ancestors: ancestors,
         directory,
         _ownership: ownership,
+        album_cleanup: false,
+        album_cleanup_original: None,
     }))
 }
 fn ensure_disjoint_roots(a: &Root, b: &Root) -> Result<(), MutationError> {
@@ -431,6 +435,13 @@ impl WindowsMutationStorage {
             roots: vec![source, journal],
             domain: WindowsMutationDomain::SelectedRepair,
         })
+    }
+    pub fn selected_source_observed_reference(&self) -> Result<StorageRef, MutationError> {
+        let root = self.selected_source_root()?;
+        self.check_role(&root, RootRole::Source)?;
+        let observed = observe(root.handle(), &root)?;
+        if observed.identity != *root.identity() { return Err(err(MutationErrorKind::StalePlan, "selected source root identity changed")); }
+        Ok(observed.reference)
     }
     pub fn selected_repair_reference(&self) -> Result<StorageRef, MutationError> {
         self.selected_reference(RootRole::Repair)
@@ -1945,6 +1956,9 @@ impl WindowsRenameStorage {
 
     pub fn owned(&self) -> &WindowsMutationStorage {
         &self.owned
+    }
+    pub fn owned_mut(&mut self) -> &mut WindowsMutationStorage {
+        &mut self.owned
     }
 
     fn rename_no_replace_with(
@@ -4861,7 +4875,7 @@ pub use album_rename::{
 #[path = "windows_copy_metadata.rs"]
 mod copy_metadata;
 pub use copy_metadata::{
-    WindowsCopyMetadataEvidence, WindowsCopyMetadataObservation, WindowsCreatedCopyDirectory,
+    WindowsCopyMetadataEvidence, WindowsCopyMetadataObservation, WindowsCreatedCopyDirectory, WindowsAlbumMoveDirectoryMetadata,
 };
 
 #[path = "windows_diagnostic_log.rs"]
@@ -4874,3 +4888,7 @@ pub use move_streams::{
     WindowsCopiedMovePublished, WindowsCopiedMoveSource, WindowsCopiedMoveTemp,
     WindowsMoveSourceEvidence, WindowsMoveStreamEvidence,
 };
+
+#[path = "windows_album_cleanup.rs"]
+mod album_cleanup;
+pub use album_cleanup::WindowsAlbumRootCleanup;

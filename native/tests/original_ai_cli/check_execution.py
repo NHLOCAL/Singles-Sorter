@@ -23,12 +23,16 @@ sys.path.insert(0, str(ROOT / 'native/apps/singles-ui/tests'))
 from desktop_albums import fixture as album_fixture, metadata as album_metadata, files as album_files, ARTIST, ALBUM
 from desktop_copied_move import DUET, SINGLE, ARTISTS, AUXILIARY, auxiliary
 from desktop_ogg import generated_ogg, verify_repaired as verify_ogg_repaired
+from check_cross_albums import exercise as exercise_cross_albums, CHECKS as CROSS_ALBUM_CHECKS
+from desktop_mp4 import generated_mp4, verify_repaired as verify_mp4_repaired
 from desktop_flac import generated_flac, inspect_flac, FIELDS as FLAC_FIELDS, UNKNOWN as FLAC_UNKNOWN
 from desktop_repair import generated_mp3, inspect_mp3, FIELDS  # Independent fixture parser.
 
 spec = importlib.util.spec_from_file_location('execution_package_contract', ROOT / 'native/packaging/windows-preview/package_preview.py')
 package = importlib.util.module_from_spec(spec); spec.loader.exec_module(package)
-CHECKS = {'positional-cross-volume-move', 'positional-original-ai-duet-move', 'positional-mixed-duet-and-rename',
+CHECKS = {'positional-m4a-five-fields', 'positional-alac-five-fields', 'positional-mp4-fast-start-values',
+          'positional-mp4-exact-extent-decoded-audio', 'positional-mp4-duplicate-outer-consolidation', 'positional-mp4-structural-partial',
+          'positional-cross-volume-move', 'positional-original-ai-duet-move', 'positional-mixed-duet-and-rename',
           'positional-copied-move-named-streams', 'positional-copied-move-fresh-reconciliation',
           'positional-copy', 'positional-move', 'positional-original-ai-copy',
           'positional-fix-id3v23', 'positional-fix-id3v24', 'positional-fix-partial',
@@ -42,6 +46,7 @@ CHECKS = {'positional-cross-volume-move', 'positional-original-ai-duet-move', 'p
           'retained-original-and-media', 'closed-stdin', 'no-developer-path',
           'explicit-dry-run-no-effects', 'overlap-rejected-no-effects', 'legacy-argument-exits'}
 
+CHECKS |= CROSS_ALBUM_CHECKS
 
 def require(ok, message):
     if not ok:
@@ -49,7 +54,8 @@ def require(ok, message):
 
 
 def digest(path):
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    with Path(path).open('rb') as stream:
+        return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
 def write_wave(path):
@@ -115,7 +121,18 @@ def require_album_recovery(report):
     for key in ('pending_directories', 'pending_cleanup', 'pending_metadata'):
         require(not report[key], 'Album reconciliation contains pending effects: ' + key)
     require(all(status == 'verified' for _, status in report['directory_metadata_status']), 'Album directory metadata was not verified')
-    require(all(entry['status'] == 'SameIdentity' for entry in report['directories']), 'Album destination directory identity differs or is unverified')
+    require(report.get('recorded_status') in (None, 'Complete'), 'Album cleanup did not record successful completion')
+    key = lambda reference, identity: json.dumps([reference, identity], sort_keys=True, separators=(',', ':'))
+    removed = {key(reference, identity) for reference, identity in report.get('removed_directory_references', [])}
+    observed_removed = set()
+    for entry in report['directories']:
+        role_key = key(entry['reference'], entry['expected_identity'])
+        if role_key in removed:
+            require(entry['status'] == 'Absent', 'Acknowledged removed album source directory reappeared or is unverified')
+            observed_removed.add(role_key)
+        else:
+            require(entry['status'] == 'SameIdentity', 'Album destination directory identity differs or is unverified')
+    require(observed_removed == removed, 'Removed source directory evidence is incomplete')
     transfers = report.get('transfers')
     if transfers:
         require(not transfers['append_blocked'], 'Transfer journal cannot accept a safe terminal append')
@@ -243,6 +260,7 @@ def run(binary, bundle, report, package_root=None):
         receipts[-1].update(case=label, source_sha256=before, source_items=len(names), destinations=len(expected), named_streams_verified=True)
 
     audio=(ROOT/'native/tests/fixtures/media/blank.mp3').read_bytes()
+    exercise_cross_albums(invoke, result_record, require_album_recovery, scratch, other, audio, receipts)
     for version,unsupported in [(3,False),(4,False),(4,True)]:
         label='partial' if unsupported else f'fix-id3v2{version}'
         case=roots(label);source=case/'source';original=source/'repair_input.mp3'
@@ -346,6 +364,28 @@ def run(binary, bundle, report, package_root=None):
             require(len(backups)==1 and backups[0].read_bytes()==before,'Ogg original backup differs')
         require(set(source.iterdir())=={current,*backups},'Unexpected Ogg staged or source files remain')
         receipts[-1].update(case=label,original_sha256=hashlib.sha256(before).hexdigest(),current_sha256=digest(current),backup_sha256=[digest(p) for p in backups])
+
+    for alac,multiple,duplicate,opaque,label in [(False,False,False,False,'m4a-five-fields'), (True,False,False,False,'alac-five-fields'),
+                                                 (False,True,False,False,'mp4-fast-start-values'), (False,False,True,False,'mp4-duplicate-outer'),
+                                                 (False,False,False,True,'mp4-opaque-structure')]:
+        case=roots(label); source=case/'source'; extension='alac' if alac else 'm4a'
+        original=source/f'repair_input.{extension}'; current=source/f'repair input.{extension}'
+        before=generated_mp4(alac=alac,multiple=multiple,fast_start=multiple,duplicate_outer=duplicate,opaque_structure=opaque); original.write_bytes(before)
+        completed=invoke(case,['source','-f','--no-ai','--journal-directory','journal'],1 if opaque else 0)
+        actual=result_record(completed.stderr)
+        require(actual['status']==('partial' if opaque else 'complete') and actual.get('recovery_error') is None,'MP4 repair or reconciliation failed')
+        require(current.is_file() and not original.exists(),'MP4 filename repair did not complete')
+        after=current.read_bytes(); backups=list(source.glob('*.backup')); media=None
+        require(actual['repair']['renamed_files']==1 and actual['repair']['repaired_files']==(0 if opaque else 1),'MP4 observed counts differ')
+        if opaque:
+            require(after==before and not backups,'Opaque MP4 structure was rewritten or backed up as repaired')
+            require(actual['repair']['unsupported_files']==1,'Opaque MP4 refusal was not reported')
+        else:
+            require(len(backups)==1 and backups[0].read_bytes()==before,'Exact MP4 original backup is missing')
+            media=verify_mp4_repaired(before,after,multiple)
+        require(set(source.iterdir())=={current,*backups},'Unexpected MP4 source or staged files remain')
+        receipts[-1].update(case=label,original_sha256=hashlib.sha256(before).hexdigest(),current_sha256=digest(current),
+                            backup_sha256=[digest(path) for path in backups],observed_repair=actual['repair'],media=media)
 
     for level in ('DEBUG','INFO','WARNING','ERROR','CRITICAL'):
         case=roots('log-level-'+level.lower());name='אברהם פריד - בדיקה.wav'

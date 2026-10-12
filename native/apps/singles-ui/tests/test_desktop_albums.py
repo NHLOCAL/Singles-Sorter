@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from unittest.mock import Mock
 from types import SimpleNamespace
-from desktop_albums import ALBUM, ARTIST, CHECKS, album_audio, fixture, files, metadata, snapshot
+from desktop_albums import digest, ALBUM, ARTIST, CHECKS, album_audio, fixture, files, metadata, snapshot
 from desktop_repair import read_size
 
 
@@ -54,6 +54,15 @@ class AlbumFixtures(unittest.TestCase):
             os.utime(file, ns=(1_600_000_000_000_000_000, 1_600_000_000_000_000_000))
             self.assertNotEqual(snapshot(root), before)
             self.assertIn('.', before)
+
+    def test_generic_album_digest_streams_instead_of_reading_whole_media(self):
+        from unittest.mock import patch
+        import hashlib
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'owned-media'
+            path.write_bytes(b'owned content' * 100)
+            with patch.object(Path, 'read_bytes', side_effect=AssertionError('whole-file read')):
+                self.assertEqual(digest(path), hashlib.sha256(b'owned content' * 100).hexdigest())
 
     def test_every_actual_check_is_mandatory_in_packaging(self):
         import importlib.util

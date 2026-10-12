@@ -538,7 +538,7 @@ fn album_digest(
     })
 }
 
-fn open_album_directory(
+pub(super) fn open_album_directory(
     parent: &File,
     name: &[u16],
     rename_root: bool,
@@ -727,7 +727,7 @@ fn inspect_album_original_location(
     }
 }
 
-fn album_observe(
+pub(super) fn album_observe(
     file: &File,
     parent_identity: &ObjectIdentity,
 ) -> Result<MutationObservation, MutationError> {
@@ -928,7 +928,7 @@ impl WindowsMutationStorage {
     }
 }
 
-fn require_album_ntfs(directory: &File) -> Result<(), MutationError> {
+pub(super) fn require_album_ntfs(directory: &File) -> Result<(), MutationError> {
     let mut local = [0u16; 32768];
     let n = unsafe {
         GetFinalPathNameByHandleW(

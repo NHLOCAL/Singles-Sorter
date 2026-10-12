@@ -1,10 +1,10 @@
 """Actual native album Copy/Move acceptance on disposable authored media only."""
-import hashlib
 import json
 import os
 from pathlib import Path
 import stat
 
+from desktop_ai import digest
 from desktop_repair import sync_size
 from desktop_polish import set_developer_mode
 
@@ -22,10 +22,6 @@ def album_audio(audio, track):
         payload = b'\x03' + value.encode('utf-8')
         body.extend(name + sync_size(len(payload)) + b'\x00\x00' + payload)
     return b'ID3\x04\x00\x00' + sync_size(len(body)) + body + audio
-
-
-def digest(path):
-    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def files(root):

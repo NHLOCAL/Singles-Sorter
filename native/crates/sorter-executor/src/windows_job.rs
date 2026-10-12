@@ -915,7 +915,7 @@ fn inspect_recovery_inner(
 }
 
 #[path = "windows_copied_move.rs"]
-mod copied_move;
+pub(crate) mod copied_move;
 pub use copied_move::{CopiedMoveScope, prepare_copied_move_scope, supported_copied_move_plan};
 
 /// Bounded input limit shared with the host's discovery/read path.

@@ -16,6 +16,15 @@ pub struct WindowsCopyMetadataEvidence {
     pub retained_attributes: u32,
 }
 
+/// In-process source directory metadata captured before child retirement.
+/// No Deserialize: a journal cannot synthesize this operation capability.
+pub struct WindowsAlbumMoveDirectoryMetadata {
+    source_identity: ObjectIdentity,
+    access_time: i64,
+    write_time: i64,
+    readonly: bool,
+}
+
 /// Read-only native facts for comparison with a persisted Copy receipt. This
 /// does not infer the source object or reconstruct a mutation/publication guard.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -599,6 +608,27 @@ impl WindowsMutationStorage {
         })
     }
 
+    pub fn capture_album_move_directory_metadata(&self, source: &WindowsParent, cancel: &AtomicBool) -> Result<WindowsAlbumMoveDirectoryMetadata, MutationError> {
+        cancelled(cancel)?;
+        self.check_role(source, RootRole::Source)?;
+        if !source.root.album_cleanup { return Err(err(MutationErrorKind::Unsupported, "album metadata capture requires explicit Move scope")); }
+        ensure_directory(source.handle())?;
+        let basic = repair_basic(source.handle())?;
+        if basic.LastAccessTime <= 0 || basic.LastWriteTime <= 0 { return Err(err(MutationErrorKind::Unsupported, "album directory timestamps require explicit positive FILETIME")); }
+        let value = WindowsAlbumMoveDirectoryMetadata { source_identity: source.identity.clone(),
+            access_time: basic.LastAccessTime, write_time: basic.LastWriteTime,
+            readonly: basic.FileAttributes & FILE_ATTRIBUTE_READONLY.0 != 0 };
+        cancelled(cancel)?; Ok(value)
+    }
+    pub fn finalize_album_move_directory_metadata(&self, source: &WindowsParent,
+        captured: &WindowsAlbumMoveDirectoryMetadata, created: &mut WindowsCreatedCopyDirectory,
+        cancel: &AtomicBool) -> MutationOutcome<WindowsCopyMetadataEvidence> {
+        if !source.root.album_cleanup || captured.source_identity != source.identity {
+            return MutationOutcome::NoEffect(err(MutationErrorKind::StalePlan, "album metadata source capture differs"));
+        }
+        self.finalize_copy_directory_metadata_inner(source, created, cancel, |_| Ok(()), Some(captured))
+    }
+
     /// Postorder only: every child namespace/content operation must already be
     /// complete. A later external or caller edit is a verification failure.
     pub fn finalize_selected_copy_directory_metadata(
@@ -615,6 +645,13 @@ impl WindowsMutationStorage {
         created: &mut WindowsCreatedCopyDirectory,
         cancel: &AtomicBool,
         mut checkpoint: impl FnMut(CopyMetadataCheckpoint) -> Result<(), MutationError>,
+    ) -> MutationOutcome<WindowsCopyMetadataEvidence> {
+        self.finalize_copy_directory_metadata_inner(source, created, cancel, &mut checkpoint, None)
+    }
+    fn finalize_copy_directory_metadata_inner(
+        &self, source: &WindowsParent, created: &mut WindowsCreatedCopyDirectory,
+        cancel: &AtomicBool, mut checkpoint: impl FnMut(CopyMetadataCheckpoint) -> Result<(), MutationError>,
+        captured: Option<&WindowsAlbumMoveDirectoryMetadata>,
     ) -> MutationOutcome<WindowsCopyMetadataEvidence> {
         let preflight = (|| {
             cancelled(cancel)?;
@@ -647,7 +684,13 @@ impl WindowsMutationStorage {
                     "created Copy directory binding differs",
                 ));
             }
-            let evidence = capture_copy_metadata(source.handle(), created.directory.handle())?;
+            let mut evidence = capture_copy_metadata(source.handle(), created.directory.handle())?;
+            if let Some(captured) = captured {
+                if captured.source_identity != evidence.source_identity { return Err(err(MutationErrorKind::StalePlan, "captured album directory changed")); }
+                evidence.access_time = captured.access_time;
+                evidence.write_time = captured.write_time;
+                evidence.readonly = captured.readonly;
+            }
             if evidence.source_identity != source.identity
                 || evidence.destination_identity != created.directory.identity
             {

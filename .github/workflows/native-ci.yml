@@ -280,7 +280,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $repairJobs = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (@($repairJobs | Where-Object { $_ -match ': test$' }).Count -ne 44) { throw "Expected 37 product FixNames cases plus 7 controlled read-only restart cases" }
+          if (@($repairJobs | Where-Object { $_ -match ': test$' }).Count -ne 54) { throw "Expected 37 prior product FixNames, 7 restart and 10 MP4 cases" }
           cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
@@ -396,7 +396,7 @@ jobs:
         run: |
           $cases = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib directory_receipt_tests -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 1) { throw "Expected 1 directory receipt boundary case" }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 3) { throw "Expected 3 directory receipt and manifest boundary cases" }
           cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib directory_receipt_tests -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
@@ -428,6 +428,31 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 27) { throw "Expected twenty-seven copied Move job and restart cases including controlled post-run inspection and distinct-volume NTFS" }
           cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_copied_move -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Validate scoped NTFS album cleanup
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib album_cleanup_tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 13) { throw "Expected thirteen explicit album cleanup cases" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib album_cleanup_tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test exact-extent MP4 staged repair
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-io --test staged_mp4 -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 20) { throw "Expected twenty MP4 stream, decoder and native-reader cases" }
+          cargo +1.99.0 test --locked -p sorter-io --test staged_mp4 -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $product = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair mp4:: -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($product | Where-Object { $_ -match ": test$" }).Count -ne 10) { throw "Expected ten MP4 product and restart cases" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair mp4:: -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Test native album source guards
@@ -476,7 +501,7 @@ jobs:
         run: |
           $cases = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_album -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 25) { throw "Expected 25 cases for --test windows_album" }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 38) { throw "Expected 38 cases for --test windows_album" }
           cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_album -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

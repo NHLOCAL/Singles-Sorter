@@ -2,6 +2,7 @@
 //! this wrapper only selects a format and enforces its publication boundary.
 use crate::{
     staged_flac::FlacStagedPlan,
+    staged_mp4::Mp4StagedPlan,
     staged_ogg::OggStagedPlan,
     staged_tags::{Id3StagedPlan, StagedTagEvidence, TagWriteError},
 };
@@ -19,6 +20,7 @@ enum FormatPlan {
     Mp3(Id3StagedPlan),
     Flac(FlacStagedPlan),
     Ogg(OggStagedPlan),
+    Mp4(Mp4StagedPlan),
 }
 
 impl StagedRepairPlan {
@@ -40,6 +42,9 @@ impl StagedRepairPlan {
         } else if filename.ends_with(".ogg") || filename.ends_with(".opus") {
             OggStagedPlan::inspect(input, source_length, repairs, cancel)
                 .map(|plan| Self(FormatPlan::Ogg(plan)))
+        } else if filename.ends_with(".m4a") || filename.ends_with(".alac") {
+            Mp4StagedPlan::inspect(input, source_length, repairs, cancel)
+                .map(|plan| Self(FormatPlan::Mp4(plan)))
         } else {
             Err(TagWriteError::Unsupported(
                 "physical tag format is not supported",
@@ -52,6 +57,7 @@ impl StagedRepairPlan {
             FormatPlan::Mp3(plan) => plan.changes_bytes(),
             FormatPlan::Flac(plan) => plan.changes_bytes(),
             FormatPlan::Ogg(plan) => plan.changes_bytes(),
+            FormatPlan::Mp4(plan) => plan.changes_bytes(),
         }
     }
 
@@ -60,6 +66,7 @@ impl StagedRepairPlan {
             FormatPlan::Mp3(plan) => plan.staged_length(),
             FormatPlan::Flac(plan) => plan.staged_length(),
             FormatPlan::Ogg(plan) => plan.staged_length(),
+            FormatPlan::Mp4(plan) => plan.staged_length(),
         }
     }
 
@@ -78,6 +85,9 @@ impl StagedRepairPlan {
                 plan.write_staged(input, output, expected_source_sha256, cancel)
             }
             FormatPlan::Ogg(plan) => {
+                plan.write_staged(input, output, expected_source_sha256, cancel)
+            }
+            FormatPlan::Mp4(plan) => {
                 plan.write_staged(input, output, expected_source_sha256, cancel)
             }
         }

@@ -45,10 +45,19 @@ FLAC_CHECKS = {'actual-fix-flac-five-fields', 'actual-fix-flac-shifted-audio',
 OGG_CHECKS = {'actual-fix-vorbis-five-fields', 'actual-fix-opus-five-fields',
               'ogg-encoded-audio-and-timing-preserved', 'ogg-artwork-vendor-unknowns-preserved',
               'ogg-original-backup-retained', 'ogg-chained-refused', 'ogg-unchanged-hidden'}
+MP4_CHECKS = {'actual-fix-m4a-five-fields', 'actual-fix-alac-five-fields',
+              'mp4-fast-start-multiple-values', 'mp4-exact-media-offsets-and-decoded-audio',
+              'mp4-artwork-opaque-atoms-preserved', 'mp4-original-backup-retained',
+              'mp4-duplicate-outer-fields-consolidated', 'mp4-unsupported-structure-partial', 'mp4-unchanged-hidden', 'mp4-stale-plan-no-effects'}
 ALBUM_CHECKS = {'actual-album-copy', 'actual-root-album-move', 'actual-mixed-album-move',
                 'album-nested-files-and-sidecars', 'album-copy-metadata',
                 'album-review-no-effects', 'album-stale-membership-no-effects',
                 'album-terminal-simple-results'}
+CROSS_ALBUM_CHECKS = {'actual-cross-volume-root-album-move', 'actual-cross-volume-mixed-album-move',
+                      'cross-album-main-and-named-streams', 'cross-album-descendant-metadata',
+                      'cross-album-exact-source-cleanup', 'cross-album-observed-physical-and-legacy-counts',
+                      'cross-album-review-no-effects', 'cross-album-stale-stream-no-effects',
+                      'cross-album-stale-membership-no-effects'}
 COPIED_MOVE_CHECKS = {'actual-cross-volume-move', 'actual-original-ai-duet-move', 'actual-mixed-duet-and-rename',
                       'copied-move-main-and-named-streams', 'copied-move-final-source-absence',
                       'copied-move-preview-and-review-no-effects', 'copied-move-stale-stream-no-effects',
@@ -74,7 +83,9 @@ def report_gate(path, binary, mode, package=None):
         require(REPAIR_CHECKS <= set(report.get('repair_checks', [])), 'incomplete actual FixNames acceptance')
         require(FLAC_CHECKS <= set(report.get('flac_checks', [])), 'incomplete actual FLAC FixNames acceptance')
         require(OGG_CHECKS <= set(report.get('ogg_checks', [])), 'incomplete actual Ogg FixNames acceptance')
+        require(MP4_CHECKS <= set(report.get('mp4_checks', [])), 'incomplete actual MP4 FixNames acceptance')
         require(ALBUM_CHECKS <= set(report.get('album_checks', [])), 'incomplete actual album acceptance')
+        require(CROSS_ALBUM_CHECKS <= set(report.get('cross_album_checks', [])), 'incomplete actual cross-volume album acceptance')
         require(COPIED_MOVE_CHECKS <= set(report.get('copied_move_checks', [])), 'incomplete actual copied-Move acceptance')
         require(RECOVERY_CHECKS <= set(report.get('recovery_checks', [])), 'incomplete actual restart recovery acceptance')
         require(package is not None and report.get('package_sha256sums_sha256') == digest(package / 'SHA256SUMS.txt'), 'acceptance not bound to exact package')
@@ -198,8 +209,8 @@ def build(args):
             'crt_linkage':'dynamic MSVC; Microsoft runtime DLLs not bundled',
             'webview2_sdk_loader':'Microsoft SDK static loader; exact SDK license/notices included in licenses',
             'clean_machine_without_prerequisites_tested':False, 'physical_apply':True,
-            'supported_apply':['selected-root Copy', 'selected-root same-volume rename Move', 'bounded cross-volume singles Move and complete duet Move cohorts with named-stream preservation', 'required artist and singles directories', 'bounded album Copy and same-volume whole-directory Move', 'Copy file and album directory timestamps/attributes', 'selected-source filename repair', 'bounded ID3v2.3/v2.4 , native FLAC and single-stream Ogg Vorbis/Opus five-field tag repair with original backup'],
-            'unsupported_apply':['tag representations outside supported MP3/native FLAC/single-stream Ogg Vorbis/Opus bounds', 'cross-volume album Move', 'duet Move with fewer than two eligible destinations', 'copied Move outside ordinary quiescent local NTFS'],
+            'supported_apply':['selected-root Copy', 'selected-root same-volume rename Move', 'bounded cross-volume singles Move and complete duet Move cohorts with named-stream preservation', 'required artist and singles directories', 'bounded album Copy, same-volume whole-directory Move and quiescent NTFS cross-volume file/stream Move with exact empty-source cleanup', 'Copy file and album directory timestamps/attributes', 'selected-source filename repair', 'bounded ID3v2.3/v2.4 , native FLAC, single-stream Ogg Vorbis/Opus and exact-extent UTF-8 MP4 AAC/ALAC five-field tag repair with original backup'],
+            'unsupported_apply':['tag representations outside supported MP3/native FLAC/single-stream Ogg Vorbis/Opus/exact-extent MP4 bounds', 'duet Move with fewer than two eligible destinations', 'copied Move outside ordinary quiescent local NTFS'],
             'model_execution':'local native; no Python or model network', 'webview_network_isolation_tested':False,
             'baseline_commit':cli.BASELINE, 'bundle_id':'original-v14-ner-3.7.5',
             'assets_sha256':assets, 'assets_bytes':{n:(models/n).stat().st_size for n in cli.ASSETS},

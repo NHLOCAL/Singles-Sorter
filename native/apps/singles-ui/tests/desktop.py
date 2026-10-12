@@ -30,8 +30,10 @@ from desktop_recovery import exercise_recovery
 from desktop_repair import exercise_repair
 from desktop_flac import exercise_flac
 from desktop_ogg import exercise_ogg
+from desktop_mp4 import exercise_mp4
 from desktop_copied_move import exercise_copied_move
 from desktop_albums import exercise_albums
+from desktop_cross_albums import exercise_cross_albums
 from desktop_polish import exercise_information, set_developer_mode
 from driver_readiness import wait_driver_ready
 from desktop_stability import exercise_shell, exercise_result_stability
@@ -71,7 +73,9 @@ recovery_checks = []
 repair_checks = []
 flac_checks = []
 ogg_checks = []
+mp4_checks = []
 album_checks = []
+cross_album_checks = []
 copied_move_checks = []
 
 def call(method, path, body=None, *, timeout=30):
@@ -319,8 +323,12 @@ try:
             checks.append('Real FLAC repair: ' + ', '.join(flac_checks))
             ogg_checks = exercise_ogg(script, click, fill, wait, capture, scratch / 'ogg-cases', OUTPUT)
             checks.append('Real Ogg repair: ' + ', '.join(ogg_checks))
+            mp4_checks = exercise_mp4(script, click, fill, wait, capture, scratch / 'mp4-cases', OUTPUT)
+            checks.append('Real MP4 AAC/ALAC repair: ' + ', '.join(mp4_checks))
             album_checks = exercise_albums(script, click, fill, wait, capture, scratch / 'album-cases', OUTPUT, ROOT.parents[1] / 'tests/fixtures/media/blank.mp3')
             checks.append('Real album execution: ' + ', '.join(album_checks))
+            cross_album_checks = exercise_cross_albums(script, click, fill, wait, capture, scratch / 'cross-album-cases', OUTPUT, ROOT.parents[1] / 'tests/fixtures/media/blank.mp3', ROOT)
+            checks.append('Real cross-volume albums: ' + ', '.join(cross_album_checks))
             if os.environ.get('SINGLES_DESKTOP_RECOVERY_EXPECTED') == 'on':
                 recovery_checks = exercise_recovery(script, click, wait, capture, pick_owned_path, restart_app, BINARY, OUTPUT)
                 checks.append('Actual read-only process-restart inspection: ' + ', '.join(recovery_checks))
@@ -329,7 +337,7 @@ try:
         package_guard.verify()
         assert verify_package(BINARY.parent) == PACKAGE_MANIFEST_SHA256
         assert set(REQUIRED_CHECKS).issubset(original_ai_checks)
-    (OUTPUT / 'acceptance.json').write_text(json.dumps({'status':'passed','platform':'windows-native-tauri','binary_sha256':hashlib.sha256(BINARY.read_bytes()).hexdigest(),'ipc_mocked':False,'medium_integrity_verified':True,'ai_mode':AI_MODE,'package_sha256sums_sha256':PACKAGE_MANIFEST_SHA256,'original_ai_checks':original_ai_checks,'apply_mode':os.environ.get('SINGLES_DESKTOP_APPLY_EXPECTED','off'),'apply_checks':apply_checks,'recovery_checks':recovery_checks,'repair_checks':repair_checks,'flac_checks':flac_checks,'ogg_checks':ogg_checks,'album_checks':album_checks,'copied_move_checks':copied_move_checks,'checks':checks,'remaining':['Narrator','200 percent DPI','Android SAF and physical ARM64','unsupported apply modes, automatic replay, and Album restart inspection']},ensure_ascii=False,indent=2),encoding='utf-8')
+    (OUTPUT / 'acceptance.json').write_text(json.dumps({'status':'passed','platform':'windows-native-tauri','binary_sha256':hashlib.sha256(BINARY.read_bytes()).hexdigest(),'ipc_mocked':False,'medium_integrity_verified':True,'ai_mode':AI_MODE,'package_sha256sums_sha256':PACKAGE_MANIFEST_SHA256,'original_ai_checks':original_ai_checks,'apply_mode':os.environ.get('SINGLES_DESKTOP_APPLY_EXPECTED','off'),'apply_checks':apply_checks,'recovery_checks':recovery_checks,'repair_checks':repair_checks,'flac_checks':flac_checks,'ogg_checks':ogg_checks,'mp4_checks':mp4_checks,'album_checks':album_checks,'cross_album_checks':cross_album_checks,'copied_move_checks':copied_move_checks,'checks':checks,'remaining':['Narrator','200 percent DPI','Android SAF and physical ARM64','unsupported apply modes, automatic replay, and Album restart inspection']},ensure_ascii=False,indent=2),encoding='utf-8')
 except Exception as error:
     snapshot(active_binary, OUTPUT, 'webdriver-failure')
     if session:

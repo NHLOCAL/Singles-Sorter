@@ -862,7 +862,7 @@ impl SelectedWindowsRepairJob {
             .map(RepairField::native)
             .collect::<Vec<_>>();
         let extension = op.intended_name.to_ascii_lowercase();
-        if ![".mp3", ".flac", ".ogg", ".opus"]
+        if ![".mp3", ".flac", ".ogg", ".opus", ".m4a", ".alac"]
             .iter()
             .any(|suffix| extension.ends_with(suffix))
         {
@@ -1707,13 +1707,16 @@ fn recover_repair_journal_inner(
                         return Err(E::CorruptJournal);
                     }
                     let extension = op.intended_name.to_ascii_lowercase();
-                    // MP3 is fixed-length; FLAC may collapse duplicate comments.
+                    // MP3 and admitted MP4 are fixed-length; FLAC may collapse duplicate comments.
                     // Ogg can add at most one 27-byte header page when separating
                     // Vorbis comment/setup. The exact planned length and hashes
                     // are independently bound to every later replacement record.
                     if serde_json::to_value(&intent.source).map_err(|_| E::Io)? != original
                         || length == 0
-                        || if extension.ends_with(".mp3") {
+                        || if extension.ends_with(".mp3")
+                            || extension.ends_with(".m4a")
+                            || extension.ends_with(".alac")
+                        {
                             length != original_length(op)?
                         } else if extension.ends_with(".flac") {
                             length > original_length(op)?

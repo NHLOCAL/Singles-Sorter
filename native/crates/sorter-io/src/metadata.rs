@@ -316,6 +316,8 @@ struct Context {
 }
 pub struct MetadataHandle {
     #[cfg(native_metadata_bridge)]
+    mp4_duplicates: crate::staged_mp4::DuplicatePreviewFields,
+    #[cfg(native_metadata_bridge)]
     handle: std::ptr::NonNull<std::ffi::c_void>,
     #[cfg(native_metadata_bridge)]
     _context: Box<Context>,
@@ -362,6 +364,18 @@ impl MetadataReader {
         }
         #[cfg(native_metadata_bridge)]
         {
+            let mp4_duplicates = if n >= 8 && &magic[4..8] == b"ftyp" {
+                let fields = crate::staged_mp4::duplicate_preview_fields(&mut input, length)
+                    .map_err(|error| match error {
+                        crate::staged_tags::TagWriteError::Io => MetadataError::InvalidInput,
+                        _ => MetadataError::LegacyOpen {
+                            kind: "UnsupportedMp4Projection".into(),
+                            detail: "MP4 metadata exceeds the bounded raw duplicate-field representation".into(),
+                        },
+                    })?;
+                input.seek(SeekFrom::Start(0)).map_err(|e| MetadataError::Storage(e.into()))?;
+                fields
+            } else { Vec::new() };
             let mut context = Box::new(Context { input, error: None });
             let mut handle = std::ptr::null_mut();
             let abi = ffi::Input {
@@ -388,6 +402,7 @@ impl MetadataReader {
             }
             let handle = std::ptr::NonNull::new(handle).ok_or(MetadataError::InvalidInput)?;
             Ok(MetadataHandle {
+                mp4_duplicates,
                 handle,
                 _context: context,
             })
@@ -402,6 +417,9 @@ impl MetadataHandle {
     pub fn get(&mut self, field: LegacyField) -> Result<LegacyItem, FieldError> {
         #[cfg(native_metadata_bridge)]
         {
+            if let Some((_, values)) = self.mp4_duplicates.iter().find(|(key, _)| *key == field) {
+                return project(RawFamily::Mp4, field, values.clone()?);
+            }
             let mut result = ffi::ResultBuffer {
                 data: std::ptr::null_mut(),
                 len: 0,

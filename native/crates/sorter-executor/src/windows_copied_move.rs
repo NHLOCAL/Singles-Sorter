@@ -291,37 +291,46 @@ impl SelectedWindowsJob {
         PhysicalJournalV2::validate_controlled_creation(&binding, &job_id)?;
         DirectoryJournal::validate_controlled_creation(&binding, &job_id)?;
         drop(reads);
+        let storage = CopiedMoveStorage::from_binding(roots, &binding, scope.sources.clone(), cancel)?;
+        Ok(Self {
+            storage: Storage::CopiedMove(storage),
+            binding, job_id,
+            attempted: false, created_directories: Vec::new(), created_directory_receipts: Vec::new(), journal_locations: Vec::new(), directory_observations: Vec::new(),
+        })
+    }
+}
+
+pub(crate) enum MoveSource { Copy(WindowsCopiedMoveSource), Rename(WindowsSourceLease) }
+impl MoveSource {
+    pub(crate) fn observation(&self) -> &MutationObservation { match self { Self::Copy(source) => source.observation(), Self::Rename(source) => source.observation() } }
+}
+pub(crate) enum MovePublished { Copy(WindowsCopiedMovePublished), Rename(WindowsPublished) }
+pub(crate) struct CopiedMoveStorage {
+    pub(crate) roots: WindowsMutationStorage,
+    held: Vec<(StorageRef, MoveSource)>,
+    sources: Vec<CopiedMoveSourceEvidence>,
+}
+impl CopiedMoveStorage {
+    pub(crate) fn from_binding(roots: WindowsMutationStorage, binding: &ExecutionBinding,
+        sources: Vec<CopiedMoveSourceEvidence>, cancel: &AtomicBool) -> Result<Self> {
+        if !binding.data.valid_domain() { return Err(E::InvalidBinding); }
+        let mut by_source = HashMap::new();
+        for operation in binding.operations() {
+            let entry = by_source.entry(&operation.source.observation.reference).or_insert((operation, 0usize));
+            entry.1 = entry.1.checked_add(1).ok_or(E::InvalidBinding)?;
+        }
+        let mut auxiliary_by_source = HashMap::new();
+        for auxiliary in &sources {
+            if auxiliary_by_source.insert(&auxiliary.source, auxiliary).is_some() { return Err(E::InvalidBinding); }
+        }
         let mut held = Vec::new();
-        for source in &scope.execution.inspected_sources {
-            if cancel.load(Ordering::Acquire) {
-                return Err(E::Cancelled);
-            }
-            let operation = binding
-                .operations()
-                .iter()
-                .find(|op| op.source.observation.reference == source.observation.reference)
-                .ok_or(E::Scope)?;
+        for source in &binding.data.scope_evidence.inspected_sources {
+            if cancel.load(Ordering::Acquire) { return Err(E::Cancelled); }
+            let (operation, required) = by_source.get(&source.observation.reference).ok_or(E::Scope)?;
             let source_path = path(&source.observation.reference)?;
-            let parent = roots
-                .parent_reference(&reference(source_path.parent().ok_or(E::Scope)?))
-                .map_err(|_| E::Stale)?;
-            let lease = if let Some(auxiliary) = scope
-                .sources
-                .iter()
-                .find(|auxiliary| auxiliary.source == source.observation.reference)
-            {
-                let required = binding.required_destinations(&auxiliary.source).len();
-                MoveSource::Copy(
-                    roots
-                        .acquire_copied_move_source(
-                            &parent,
-                            &source_expected(operation)?,
-                            &native_evidence(auxiliary),
-                            required,
-                            cancel,
-                        )
-                        .map_err(preparation_error)?,
-                )
+            let parent = roots.parent_reference(&reference(source_path.parent().ok_or(E::Scope)?)).map_err(|_| E::Stale)?;
+            let lease = if let Some(auxiliary) = auxiliary_by_source.get(&source.observation.reference) {
+                MoveSource::Copy(roots.acquire_copied_move_source(&parent, &source_expected(operation)?, &native_evidence(auxiliary), *required, cancel).map_err(preparation_error)?)
             } else {
                 MoveSource::Rename(
                     roots
@@ -335,43 +344,13 @@ impl SelectedWindowsJob {
             };
             held.push((source.observation.reference.clone(), lease));
         }
-        Ok(Self {
-            storage: Storage::CopiedMove(CopiedMoveStorage {
-                roots,
-                held,
-                sources: scope.sources.clone(),
-            }),
-            binding,
-            job_id,
-            attempted: false,
-            created_directories: Vec::new(),
-            created_directory_receipts: Vec::new(),
-            journal_locations: Vec::new(),
-            directory_observations: Vec::new(),
-        })
+        Ok(Self { roots, held, sources })
     }
 }
-
-pub(super) enum MoveSource {
-    Copy(WindowsCopiedMoveSource),
-    Rename(WindowsSourceLease),
-}
-impl MoveSource {
-    fn observation(&self) -> &MutationObservation {
-        match self {
-            Self::Copy(source) => source.observation(),
-            Self::Rename(source) => source.observation(),
-        }
+impl MovePublished {
+    pub(crate) fn observation(&self) -> &MutationObservation {
+        match self { Self::Copy(value) => value.observation(), Self::Rename(value) => value.observation() }
     }
-}
-pub(super) enum MovePublished {
-    Copy(WindowsCopiedMovePublished),
-    Rename(WindowsPublished),
-}
-pub(super) struct CopiedMoveStorage {
-    pub(super) roots: WindowsMutationStorage,
-    held: Vec<(StorageRef, MoveSource)>,
-    sources: Vec<CopiedMoveSourceEvidence>,
 }
 impl MutationStorage for CopiedMoveStorage {
     type Parent = WindowsParent;

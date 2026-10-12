@@ -921,3 +921,6 @@ fn repair_restart_rejects_replaced_source_root_and_streams_ordinary_large_jobs()
     ));
     assert!(old.exists());
 }
+
+#[path = "support/windows_mp4_repair_cases.rs"]
+mod mp4;

@@ -216,7 +216,7 @@ mod selected {
     use sorter_executor::{
         binding::{ExecutionScope, Resources, prepare_scope},
         results::{ItemStatus, JobResult, JobStatus},
-        windows_album::{AlbumScope, prepare_album_scope, supported_album_plan},
+        windows_album::{AlbumScope, prepare_album_scope, prepare_album_move_streams, supported_album_plan},
         windows_job::{
             CopiedMoveScope, SelectedWindowsJob, prepare_copied_move_scope,
             supported_copied_move_plan, supported_plan,
@@ -249,11 +249,19 @@ mod selected {
         },
         Album {
             target: PathBuf,
+            journal: Option<(PathBuf, sorter_core::discovery::ObjectIdentity)>,
             scope: Box<AlbumScope>,
         },
         Repair(RepairScope),
     }
     impl PreparedSelection {
+        #[cfg(test)]
+        pub(super) fn test_album_scope(&self) -> Option<&AlbumScope> {
+            match &self.scope {
+                PreparedScope::Album { scope, .. } => Some(scope),
+                _ => None,
+            }
+        }
         fn resources(&self) -> &Resources {
             match &self.scope {
                 PreparedScope::Noop { resources, .. } => resources,
@@ -348,15 +356,31 @@ mod selected {
                 )
             }) {
                 supported_album_plan(plan).map_err(storage_error)?;
-                let scope = prepare_album_scope(plan, storage, &resources, &cancellation.cancelled)
+                let mut scope = prepare_album_scope(plan, storage, &resources, &cancellation.cancelled)
                     .map_err(storage_error)?;
+                let mut retained_journal = None;
                 if !plan.request.settings.copy_mode
                     && !matches!((&scope.execution_scope().source_root, &scope.execution_scope().target_root), (sorter_core::discovery::ObjectIdentity::Windows {volume:a,..},sorter_core::discovery::ObjectIdentity::Windows {volume:b,..}) if a == b)
                 {
-                    return Err(HostError::new(
-                        "CROSS_VOLUME_MOVE_UNAVAILABLE",
-                        "העברה בין כוננים אינה זמינה עדיין. אפשר לבחור העתקה ולבדוק מחדש.",
-                    ));
+                    let journal = journal_directory.ok_or_else(|| {
+                        HostError::new("JOURNAL_UNAVAILABLE", "Application journal directory is unavailable")
+                    })?;
+                    let identity = inspect_root(journal)?.identity.ok_or_else(|| {
+                        HostError::new("JOURNAL_UNAVAILABLE", "Journal root identity missing")
+                    })?;
+                    let grant = |path: &Path, identity| {
+                        WindowsSelectedRootGrant::new(path.to_owned(), identity).map_err(storage_error)
+                    };
+                    let roots = WindowsMutationStorage::for_selected_roots(
+                        grant(&source.path, scope.execution_scope().source_root.clone())?,
+                        grant(&target.path, scope.execution_scope().target_root.clone())?,
+                        grant(journal, identity.clone())?,
+                    ).map_err(storage_error)?;
+                    prepare_album_move_streams(&mut scope, &roots, &cancellation.cancelled)
+                        .map_err(storage_error)?;
+                    // The preview grants never escape or create a journal. Apply
+                    // receives retained data and independently reopens every root.
+                    retained_journal = Some((journal.to_owned(), identity));
                 }
                 return Ok(PreparedSelection {
                     source: source.path.clone(),
@@ -364,6 +388,7 @@ mod selected {
                     ai,
                     scope: PreparedScope::Album {
                         target: target.path.clone(),
+                        journal: retained_journal,
                         scope: Box::new(scope),
                     },
                 });
@@ -473,6 +498,7 @@ mod selected {
                 target: target.map(|root| root.selection.display_name.clone()),
                 mode: plan.request.mode,
                 notice: selected.as_ref().and_then(|selection| match &selection.scope {
+                    PreparedScope::Album { journal: Some(_), .. } => Some("סגור תוכנות או סנכרון שמשנים את המקור או היעד עד סיום ההעברה. קובצי המקור יוסרו רק אחרי אימות ההעתקה; תיקיות המקור יוסרו רק כשהן ריקות.".into()),
                     PreparedScope::Album { .. } => Some("לפני מיון אלבומים, סגור תוכנות או סנכרון שעלולים לשנות את המקור או היעד עד לסיום הפעולה.".into()),
                     PreparedScope::CopiedMove { .. } => Some(COPIED_MOVE_NOTICE.into()),
                     _ => None,
@@ -496,6 +522,41 @@ mod selected {
         WindowsSelectedRootGrant::new(directory, identity).map_err(storage_error)
     }
     impl Host {
+        pub(super) fn verification_control(
+            &self,
+            id: &str,
+            cancellation: &Cancellation,
+        ) -> sorter_executor::inspection_control::InspectionControl<'static> {
+            let host = self.clone();
+            let job_id = id.to_owned();
+            #[cfg(test)]
+            let verification_observer = self.verification_observer.clone();
+            sorter_executor::inspection_control::InspectionControl::new(
+                cancellation.cancelled.clone(),
+                move |progress| {
+                    if let Ok(mut inner) = host.lock()
+                        && let Some(snapshot) = inner
+                            .job
+                            .as_mut()
+                            .filter(|job| job.snapshot.job_id == job_id)
+                            .and_then(|job| job.execution.as_mut())
+                    {
+                        snapshot.operation = None;
+                        snapshot.verification = Some(VerificationProgress {
+                            completed_operations: progress.completed_operations,
+                            total_operations: progress.total_operations,
+                            bytes_read: progress.bytes_read,
+                            elapsed_ms: progress.elapsed_ms,
+                        });
+                    }
+                    #[cfg(test)]
+                    if let Some(observer) = &verification_observer {
+                        observer(&progress);
+                    }
+                },
+            )
+        }
+
         pub fn start_apply(
             &self,
             id: &str,
@@ -718,7 +779,12 @@ mod selected {
                         cancellation,
                     );
                 }
-                PreparedScope::Album { target, scope } => {
+                PreparedScope::Album { target, journal, scope } => {
+                    if let Some((path, identity)) = &journal
+                        && (path != &directory || inspect_root(&directory)?.identity.as_ref() != Some(identity))
+                    {
+                        return Err(HostError::new("JOURNAL_CHANGED", "Journal storage changed; inspect a fresh plan"));
+                    }
                     return self.execute_album(
                         id,
                         plan,
@@ -728,6 +794,7 @@ mod selected {
                         &scope,
                         recognition.as_mut(),
                         cancellation,
+                        journal.map(|(_, identity)| identity),
                     );
                 }
                 PreparedScope::Sort { target, scope } => (target, scope, None, None),
@@ -834,34 +901,7 @@ mod selected {
             } else if cancellation.is_cancelled() {
                 (None, Some("VERIFICATION_CANCELLED".into()))
             } else {
-                let host = self.clone();
-                let job_id = id.to_owned();
-                #[cfg(test)]
-                let verification_observer = self.verification_observer.clone();
-                let control = sorter_executor::inspection_control::InspectionControl::new(
-                    cancellation.cancelled.clone(),
-                    move |progress| {
-                        if let Ok(mut inner) = host.lock()
-                            && let Some(snapshot) = inner
-                                .job
-                                .as_mut()
-                                .filter(|job| job.snapshot.job_id == job_id)
-                                .and_then(|job| job.execution.as_mut())
-                        {
-                            snapshot.operation = None;
-                            snapshot.verification = Some(VerificationProgress {
-                                completed_operations: progress.completed_operations,
-                                total_operations: progress.total_operations,
-                                bytes_read: progress.bytes_read,
-                                elapsed_ms: progress.elapsed_ms,
-                            });
-                        }
-                        #[cfg(test)]
-                        if let Some(observer) = &verification_observer {
-                            observer(&progress);
-                        }
-                    },
-                );
+                let control = self.verification_control(id, cancellation);
                 match job.inspect_recovery_controlled(&recovery_scope, &control) {
                     Ok(report) => {
                         let inspection = project_recovery(report);

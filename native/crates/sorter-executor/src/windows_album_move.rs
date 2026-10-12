@@ -718,6 +718,12 @@ impl WholeAlbumJob {
             status,
             transfers,
             albums_completed,
+            completed_album_operations: self
+                .outcomes
+                .iter()
+                .filter(|outcome| outcome.status == "complete")
+                .map(|outcome| outcome.operation)
+                .collect(),
             created_directories: self
                 .created
                 .iter()

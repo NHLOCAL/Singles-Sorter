@@ -59,7 +59,7 @@ class ExecutionContractTests(unittest.TestCase):
 
     def test_album_terminal_evidence_is_required_even_after_committed_files(self):
         import copy
-        valid = dict(manifest_finished=True,incomplete_tail=False,pending_directories=[],pending_cleanup=[],pending_metadata=[],directory_metadata_status=[],directories=[{'status':'SameIdentity'}],
+        valid = dict(manifest_finished=True,incomplete_tail=False,pending_directories=[],pending_cleanup=[],pending_metadata=[],directory_metadata_status=[],directories=[{'reference':{'TestOpaque':{'id':'target'}},'expected_identity':{'Test':{'id':'target'}},'status':'SameIdentity'}],
                      transfers={'append_blocked':False,'operations':[{'status':'Committed','copy_metadata':'Verified'}]},whole=None)
         execution.require_album_recovery(valid)
         for key in ('manifest_finished','incomplete_tail'):
@@ -69,6 +69,27 @@ class ExecutionContractTests(unittest.TestCase):
         with self.assertRaises(ValueError): execution.require_album_recovery(report)
         for status in ('Absent','Replaced','Unverified'):
             report=copy.deepcopy(valid);report['directories'][0]['status']=status
+            with self.assertRaises(ValueError): execution.require_album_recovery(report)
+
+    def test_only_exact_acknowledged_source_cleanup_may_be_absent(self):
+        import copy
+        reference = {'TestOpaque': {'id': 'original-selected-source'}}
+        identity = {'Test': {'id': 'owned'}}
+        valid = dict(manifest_finished=True, recorded_status='Complete', incomplete_tail=False,
+                     pending_directories=[], pending_cleanup=[], pending_metadata=[], directory_metadata_status=[],
+                     directories=[dict(reference=reference, expected_identity=identity, status='Absent')],
+                     removed_directory_references=[[reference, identity]], transfers=None, whole=None)
+        execution.require_album_recovery(valid)
+        for status in ('SameIdentity', 'Replaced', 'Unverified'):
+            report = copy.deepcopy(valid); report['directories'][0]['status'] = status
+            with self.assertRaises(ValueError): execution.require_album_recovery(report)
+        for changes in ('reference', 'identity', 'missing', 'cancelled', 'omitted_entry'):
+            report = copy.deepcopy(valid)
+            if changes == 'reference': report['removed_directory_references'][0][0] = {'TestOpaque': {'id': 'unrelated'}}
+            elif changes == 'identity': report['removed_directory_references'][0][1] = {'Test': {'id': 'foreign'}}
+            elif changes == 'missing': report['removed_directory_references'] = []
+            elif changes == 'cancelled': report['recorded_status'] = 'Cancelled'
+            else: report['directories'] = []
             with self.assertRaises(ValueError): execution.require_album_recovery(report)
 
     def test_copied_move_recovery_requires_terminal_metadata_evidence(self):

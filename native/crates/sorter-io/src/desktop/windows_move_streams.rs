@@ -2004,7 +2004,7 @@ mod move_stream_copy_tests {
     }
 }
 
-fn require_move_volume(file: &File) -> Result<(), MutationError> {
+pub(super) fn require_move_volume(file: &File) -> Result<(), MutationError> {
     let mut flags = 0;
     unsafe {
         GetVolumeInformationByHandleW(

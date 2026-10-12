@@ -531,7 +531,7 @@ impl PlanningControl for BindingPlanningControl<'_> {
         check_binding_cancel(self.0).map_err(|_| PlanningAbort::cancelled())
     }
 }
-fn validate_plan_scope_inner(
+pub(crate) fn validate_plan_scope_inner(
     plan: &JobPlanV2,
     storage: &mut dyn ReadStorage,
     metadata: &mut dyn MetadataProvider,

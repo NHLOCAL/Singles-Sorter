@@ -27,7 +27,8 @@ fn transfers(result: &JobResult) -> Value {
             "detail":item.detail,"observations":item.observations})).collect::<Vec<_>>()})
 }
 fn recovery(report: SelectedAlbumRecovery) -> Value {
-    json!({"manifest_finished":report.manifest_finished,"incomplete_tail":report.incomplete_tail,
+    json!({"manifest_finished":report.manifest_finished,"recorded_status":report.recorded_status,
+        "completed_albums":report.completed_albums,"removed_directory_references":report.removed_directory_references,"incomplete_tail":report.incomplete_tail,
         "pending_directories":report.pending_directories,"pending_cleanup":report.pending_cleanup,
         "pending_metadata":report.pending_metadata,"directory_metadata":report.directory_metadata,
         "directory_metadata_status":report.directory_metadata_status,
@@ -42,6 +43,38 @@ fn recovery(report: SelectedAlbumRecovery) -> Value {
             "files":whole.files.iter().map(|entry|json!({"operation":entry.operation,"reference":entry.reference,"expected_identity":entry.expected_identity,"observed_identity":entry.observed_identity,"status":entry.status})).collect::<Vec<_>>(),
             "singles":whole.singles.map(|singles|recovery(*singles))}))})
 }
+fn reconciliation_complete(report: &SelectedAlbumRecovery) -> bool {
+    use sorter_executor::{recovery::{CopyMetadataRecoveryStatus, RecoveryStatus}, windows_album::AlbumDirectoryEvidenceStatus};
+    let removed = report.removed_directory_references.iter().map(|(reference, identity)| (reference, identity)).collect::<std::collections::HashSet<_>>();
+    report.manifest_finished
+        && report.recorded_status.as_deref().is_none_or(|status| status == "Complete")
+        && !report.incomplete_tail
+        && report.pending_directories.is_empty()
+        && report.pending_cleanup.is_empty()
+        && report.pending_metadata.is_empty()
+        && report.directory_metadata_status.iter().all(|(_, status)| status == "verified")
+        && report.directories.iter().all(|entry| {
+            if removed.contains(&(&entry.reference, &entry.expected_identity)) {
+                matches!(entry.status, AlbumDirectoryEvidenceStatus::Absent)
+            } else { matches!(entry.status, AlbumDirectoryEvidenceStatus::SameIdentity) }
+        })
+        && report.transfers.as_ref().is_none_or(|transfers| {
+            !transfers.append_blocked && transfers.operations.iter().all(|operation| {
+                operation.status == RecoveryStatus::Committed
+                    && matches!(operation.copy_metadata, CopyMetadataRecoveryStatus::Verified | CopyMetadataRecoveryStatus::NotRequested)
+            })
+        })
+        && report.whole.as_ref().is_none_or(|whole| {
+            whole.recorded_finished && !whole.incomplete_tail
+                && whole.pending_albums.is_empty() && whole.pending_directories.is_empty()
+                && whole.source_evidence.iter().all(|entry| matches!(entry.status, AlbumDirectoryEvidenceStatus::Absent))
+                && whole.destination_evidence.iter().all(|entry| matches!(entry.status, AlbumDirectoryEvidenceStatus::SameIdentity))
+                && whole.files.iter().all(|entry| entry.status == "verified")
+                && whole.child_locations.iter().all(|entry| entry.error.is_none())
+                && whole.singles.as_ref().is_none_or(|singles| reconciliation_complete(singles))
+        })
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(super) fn execute(
     job: &mut SelectedWindowsAlbumJob,
@@ -51,6 +84,7 @@ pub(super) fn execute(
     cancel: &AtomicBool,
     invalid_control: &AtomicBool,
     event: &mut dyn FnMut(&str, Value) -> Result<(), Failure>,
+    copied_album: bool,
 ) -> Result<(), Failure> {
     let id = job.job_id().to_owned();
     event(
@@ -64,15 +98,35 @@ pub(super) fn execute(
             cancel.store(true,Ordering::Release);
         }
     });
-    let (inspection, recovery_error) =
-        if job.journal_locations().is_empty() || cancel.load(Ordering::Acquire) {
-            (None, None)
-        } else {
-            match job.inspect_recovery(cancel) {
-                Ok(report) => (Some(recovery(report)), None),
-                Err(error) => (None, Some(error.to_string())),
+    let (inspection, recovery_error) = if job.journal_locations().is_empty() {
+        (None, None)
+    } else if cancel.load(Ordering::Acquire) {
+        (None, Some("VERIFICATION_CANCELLED".to_owned()))
+    } else {
+        let inspected = if copied_album {
+            let control = sorter_executor::inspection_control::InspectionControl::borrowed(cancel, |_| {});
+            if event("verification_started", json!({"job_id":id})).is_err() {
+                output_failed = true;
+                cancel.store(true, Ordering::Release);
             }
-        };
+            let inspected = job.inspect_file_recovery_controlled(&control);
+            if let Ok(progress) = control.snapshot()
+                && event("verification_progress", json!({"job_id":id,"progress":progress})).is_err()
+            {
+                output_failed = true;
+                cancel.store(true, Ordering::Release);
+            }
+            inspected
+        } else { job.inspect_recovery(cancel) };
+        match inspected {
+            Ok(report) => {
+                let verified = reconciliation_complete(&report);
+                (Some(recovery(report)), (!verified).then(|| "ALBUM_RECONCILIATION_INCOMPLETE".to_owned()))
+            }
+            Err(error) => (None, Some(error.to_string())),
+        }
+    };
+    let verification_failed = recovery_error.is_some();
     match result {
         Ok(result) => {
             let actual = status(result.status);
@@ -110,7 +164,7 @@ pub(super) fn execute(
                 json!({"job_id":id,"status":actual,"source_items":source_items,
                 "committed_destinations":whole_files+result.transfers.as_ref().map_or(0,|r|r.committed_destinations),
                 "moved_sources":whole_files+result.transfers.as_ref().map_or(0,|r|r.moved_sources),
-                "albums_completed":result.albums_completed,"artist_files":result.artist_files,
+                "albums_completed":result.albums_completed,"completed_album_operations":result.completed_album_operations,"artist_files":result.artist_files,
                 "legacy_summary":legacy_summary,"committed_operations":committed_operations,"effect_receipts":result.effect_receipts,
                 "transfers":result.transfers.as_ref().map(transfers),"whole_albums":result.whole_albums,
                 "child_renames":result.child_renames,"created_directories":result.created_directories,
@@ -118,7 +172,7 @@ pub(super) fn execute(
                 "detail":result.detail,"recovery":inspection,"recovery_error":recovery_error,
                 "journal_directory":directory,"invalid_control":invalid_control.load(Ordering::Acquire)}),
             )?;
-            if output_failed || invalid_control.load(Ordering::Acquire) || actual != "complete" {
+            if output_failed || invalid_control.load(Ordering::Acquire) || actual != "complete" || verification_failed {
                 return Err(Failure::new(
                     1,
                     "EXECUTION_INCOMPLETE",
