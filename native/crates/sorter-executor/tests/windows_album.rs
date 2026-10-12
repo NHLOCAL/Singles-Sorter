@@ -392,6 +392,9 @@ fn whole_album_move_preserves_all_objects_and_removes_original_container_path() 
     assert_eq!(result.status, JobStatus::Complete);
     assert_eq!(result.albums_completed, 1);
     assert_eq!(result.whole_albums.len(), 1);
+    assert_eq!(result.effect_receipts.len(), 1);
+    assert_eq!(result.effect_receipts[0].kind, "album_renamed");
+    assert_eq!(result.effect_receipts[0].operation, 0);
     assert_eq!(result.artist_files, vec![("שלום עולם".into(), 4)]);
     assert_eq!(
         result.whole_albums[0].root.as_ref().map(|o| &o.identity),
@@ -820,6 +823,9 @@ fn mixed_album_then_single_move_uses_separate_real_receipts() {
     let singles = result.transfers.as_ref().unwrap();
     assert_eq!(singles.moved_sources, 1);
     assert_eq!(singles.items[0].operation, 1);
+    assert_eq!(singles.committed_operations, vec![1]);
+    assert_eq!(result.effect_receipts.iter().map(|receipt| (receipt.operation, receipt.kind.as_str())).collect::<Vec<_>>(),
+        vec![(0, "album_renamed"), (1, "file_renamed")]);
     assert_eq!(order.first(), Some(&0));
     let recovery = job
         .inspect_recovery(&AtomicBool::new(false))

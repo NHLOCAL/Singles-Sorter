@@ -683,7 +683,32 @@ impl WholeAlbumJob {
                 .filter(|o| o.status == "complete")
                 .map(|o| o.operation),
         );
+        let mut effect_receipts = Vec::new();
+        // Each album is processed in order, and deferred singles run afterward.
+        // A whole-object rename is one effect, never invented per-file moves.
+        for album in &self.header.snapshot.albums {
+            effect_receipts.extend(self.child_renames.iter()
+                .filter(|receipt| receipt.operation == album.operation)
+                .map(|receipt| crate::results::ObservedEffectReceipt {
+                    operation: receipt.operation,
+                    kind: "album_child_renamed".into(),
+                    identity: receipt.observation.identity.clone(),
+                }));
+            if let Some(outcome) = self.outcomes.iter().find(|outcome| outcome.operation == album.operation && outcome.status == "complete") {
+                if let Some(root) = &outcome.root {
+                    effect_receipts.push(crate::results::ObservedEffectReceipt {
+                        operation: album.operation,
+                        kind: "album_renamed".into(),
+                        identity: root.identity.clone(),
+                    });
+                }
+            }
+        }
+        if let Some(result) = &transfers {
+            effect_receipts.extend(result.effect_receipts.iter().cloned());
+        }
         Ok(SelectedAlbumResult {
+            effect_receipts,
             child_renames: self.child_renames.clone(),
             artist_files,
             status,

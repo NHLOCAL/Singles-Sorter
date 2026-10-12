@@ -923,6 +923,7 @@ pub struct SelectedAlbumResult {
     pub whole_albums: Vec<WholeAlbumOutcome>,
     pub status: JobStatus,
     pub transfers: Option<JobResult>,
+    pub effect_receipts: Vec<crate::results::ObservedEffectReceipt>,
     pub albums_completed: usize,
     pub created_directories: Vec<MutationObservation>,
     pub removed_directories: Vec<MutationObservation>,
@@ -1259,6 +1260,12 @@ impl SelectedAlbumFileJob {
         for item in &mut result.items {
             item.operation = self.snapshot.files[item.operation].original_operation;
         }
+        for operation in &mut result.committed_operations {
+            *operation = self.snapshot.files[*operation].original_operation;
+        }
+        for receipt in &mut result.effect_receipts {
+            receipt.operation = self.snapshot.files[receipt.operation].original_operation;
+        }
         self.finish(&mut manifest, Some(result), status, detail)
     }
     fn create_directories(&mut self, manifest: &mut Manifest, cancel: &AtomicBool) -> Result<()> {
@@ -1473,6 +1480,7 @@ impl SelectedAlbumFileJob {
             artist_files,
             whole_albums: vec![],
             status,
+            effect_receipts: transfers.as_ref().map(|result| result.effect_receipts.clone()).unwrap_or_default(),
             transfers,
             albums_completed,
             created_directories: self.created.clone(),

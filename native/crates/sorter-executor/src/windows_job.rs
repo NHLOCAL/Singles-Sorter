@@ -122,6 +122,7 @@ pub struct SelectedWindowsJob {
     created_directories: Vec<WindowsParent>,
     journal_locations: Vec<WindowsJournalLocation>,
     directory_observations: Vec<MutationObservation>,
+    created_directory_receipts: Vec<(StorageRef, ObjectIdentity)>,
 }
 impl SelectedWindowsJob {
     #[allow(clippy::too_many_arguments)]
@@ -215,6 +216,7 @@ impl SelectedWindowsJob {
             created_directories: vec![],
             journal_locations: vec![],
             directory_observations: vec![],
+            created_directory_receipts: vec![],
         })
     }
     pub fn job_id(&self) -> &str {
@@ -222,6 +224,11 @@ impl SelectedWindowsJob {
     }
     pub fn binding_sha256(&self) -> Result<String> {
         self.binding.sha256()
+    }
+    /// Only newly created directories whose exact identity was journaled and synced.
+    /// References retain the originally selected root spelling.
+    pub fn created_directory_receipts(&self) -> &[(StorageRef, ObjectIdentity)] {
+        &self.created_directory_receipts
     }
     pub fn directory_observations(&self) -> &[MutationObservation] {
         &self.directory_observations
@@ -391,6 +398,7 @@ impl SelectedWindowsJob {
                             reference: r.clone(),
                             identity: created.identity().clone(),
                         })?;
+                        self.created_directory_receipts.push((r.clone(), created.identity().clone()));
                         self.created_directories.push(created.clone());
                         parent = created;
                     }
