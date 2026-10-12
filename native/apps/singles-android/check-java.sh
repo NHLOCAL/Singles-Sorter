@@ -16,3 +16,40 @@ SOURCES+=("$ROOT/native/plugins/original-inference/android/src/com/nhlocal/singl
 
 "$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.PlanPageSelectionTest
 "$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.LicensePathsTest
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.ProviderNamesTest
+
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.CheckedJournalCommitTest
+
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.TargetFingerprintTest
+
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.ExecutionAttemptTest
+
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.ExecutionCursorTest
+
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.LifecycleIoTest
+
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.LocalWriteGrantPolicyTest
+
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.LifecycleAcceptanceTest
+
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.JournalExportBoundsTest
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.DiagnosticReadGateTest
+
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.ExecutionOutcomesTest
+
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.RecoveryAcknowledgmentsTest
+
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.RecoveryScopePolicyTest
+
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.AncestryResultTest
+
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.RecoveryContentHashTest
+
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.RecoveryIntentLookupTest
+
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.RecoveryOriginalComparisonTest
+
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.RecoveryAcceptancePolicyTest
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.RecoveryDisplayTest
+
+"$JAVA_HOME/bin/java" -cp "$OUT" com.nhlocal.singlesorter.app.PreviewGenerationTest

@@ -1,9 +1,9 @@
 import {hasAndroidHost} from './android-transport';
 import './styles.css';
 import {installViewport} from './viewport';
-import {nativeHost,nativeRecoveryHost,openFooterLink,openProjectLink,openLocalLicenses} from './host';
+import {nativeHost,nativeRecoveryHost,openFooterLink,openProjectLink,openLocalLicenses,openExecutionDiagnostics,openRecovery} from './host';
 import {installAbout} from './about';
-import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,verificationWarning,verificationProgressText,resultFilename} from './result-presentation';
+import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,verificationWarning,recoveryNoticeText,verificationProgressText,resultFilename} from './result-presentation';
 import {kindLabel,reasonLabel,blockerLabel,warningPresentation,noticeLabel} from './presentation';
 import {PAGE_SIZE,PreviewController} from './state';
 import type {Settings,ImportEncoding,Mode,PlanRow,ExecutionItem} from './contracts';
@@ -27,6 +27,7 @@ app.innerHTML=`
 <header class="topbar"><button id="open-settings" class="icon-button" aria-label="הגדרות מתקדמות" aria-haspopup="dialog"></button><div class="brand"><img src="/icon.png" alt="" width="32" height="32"><h1>מסדר הסינגלים</h1></div><button id="menu" class="icon-button" aria-label="עזרה ומידע" aria-haspopup="dialog">⋮</button></header>
 <main>
 <div id="connection" class="notice" role="status" hidden></div>
+<div id="recovery-notice" class="notice" role="status" hidden><span id="recovery-notice-text"></span><button id="open-recovery" class="secondary" hidden>בדוק את הביצוע הקודם</button></div>
 <div id="error" class="error" role="alert" hidden></div>
 <div class="workspace" id="setup-screen">
 <section class="source-panel" aria-labelledby="folders-heading"><h2 id="folders-heading">תיקיות</h2>
@@ -66,7 +67,7 @@ app.innerHTML=`
 <dialog id="advanced-dialog" aria-labelledby="advanced-title"><div class="dialog-heading"><h2 id="advanced-title">הגדרות מתקדמות</h2><button class="close-dialog icon-button" aria-label="סגור">×</button></div>
 <fieldset><legend>מיון דואטים <button class="help-badge" aria-label="עזרה: דואטים" data-help-text="בחר להיכן יועתקו שירי דואט. הבחירה נשמרת מיד, בלי לשמור שינויים באפשרויות האחרות.">?</button></legend><label class="option"><input type="radio" name="duet" id="duet-first" value="first" checked><span>לזמר הראשון בשם השיר</span></label><label class="option"><input type="radio" name="duet" id="duet-all" value="all"><span>לכל הזמרים המופיעים בשיר</span></label></fieldset>
 <fieldset><legend class="ai-heading"><span>זיהוי בעזרת AI</span><span id="model-status" class="quiet-label"></span><button id="model-help" class="help-badge" aria-label="עזרה: זמינות AI" data-help-text="">?</button></legend><div class="field-label"><label for="ai-profile">פרופיל הבדיקה</label><button class="help-badge" aria-label="עזרה: פרופיל הבדיקה" data-help-text="אם נדרש מודל ואינו זמין, הבדיקה תיחסם. אין מעבר אוטומטי לפרופיל אחר.">?</button></div><select id="ai-profile"><option value="Disabled">ללא AI</option><option value="Configured">דרוש מודל AI זמין</option></select></fieldset>
-<section><div class="field-label"><h3>הוספת זמרים</h3><button class="help-badge" aria-label="עזרה: רשימת אמנים" data-help-text="השורות האישיות מתווספות אחרי הרשימה המובנית. סדר ההתאמה נשמר.">?</button></div><div class="list-actions"><button id="edit-list" class="secondary">ערוך רשימה</button><button id="import-list" class="secondary">יבא קובץ CSV</button><button id="export-list" class="secondary">יצא לקובץ CSV</button></div><p id="profile-notice" class="hint" role="status"></p><p id="profile-error" class="error" role="alert" hidden></p></section><fieldset class="display-settings"><legend>תצוגה</legend><label class="option"><input id="developer-mode" type="checkbox" role="switch"><span>מצב מפתחים</span></label><p class="hint">מציג פרטים טכניים ויומנים. פריטים ללא פעולה מוצגים רק לפי הבחירה ברשימת התוצאות.</p></fieldset><p id="settings-error" class="error" role="alert" hidden></p><button class="close-dialog primary">סגור</button></dialog>
+<section><div class="field-label"><h3>הוספת זמרים</h3><button class="help-badge" aria-label="עזרה: רשימת אמנים" data-help-text="השורות האישיות מתווספות אחרי הרשימה המובנית. סדר ההתאמה נשמר.">?</button></div><div class="list-actions"><button id="edit-list" class="secondary">ערוך רשימה</button><button id="import-list" class="secondary">יבא קובץ CSV</button><button id="export-list" class="secondary">יצא לקובץ CSV</button></div><p id="profile-notice" class="hint" role="status"></p><p id="profile-error" class="error" role="alert" hidden></p></section><fieldset class="display-settings"><legend>תצוגה</legend><label class="option"><input id="developer-mode" type="checkbox" role="switch"><span>מצב מפתחים</span></label><p class="hint">מציג פרטים טכניים ויומנים. פריטים ללא פעולה מוצגים רק לפי הבחירה ברשימת התוצאות.</p><button id="execution-diagnostics" class="secondary" hidden>שמור יומן פעולה לבדיקה</button></fieldset><p id="settings-error" class="error" role="alert" hidden></p><button class="close-dialog primary">סגור</button></dialog>
 <dialog id="list-dialog" class="wide-dialog editor-dialog" aria-labelledby="list-title"><div class="dialog-heading"><h2 id="list-title">הוספת זמרים</h2><button id="list-cancel-x" class="icon-button" aria-label="סגור בלי לשמור">×</button><button class="help-badge" aria-label="עזרה: עריכת רשימה" data-help-text="שם האמן הוא הטקסט לחיפוש; שם התיקייה הוא היעד. אין שינוי סדר או הסרת כפילויות אוטומטיים.">?</button></div><div class="editor-content"><div class="editor-config"><p id="list-error" class="error" role="alert" hidden></p><p id="list-notice" role="status"></p></div><div class="editor-row-scroll" tabindex="0" aria-label="שורות לעריכה"><div class="editor-columns" aria-hidden="true"><span></span><span>שם תיקיה</span><span>שם זמר</span><span></span></div><div id="list-rows"></div></div></div><div class="editor-footer"><nav class="list-pagination" aria-label="עמודי רשימת אמנים"><button id="list-prev" class="secondary">הקודם</button><span id="list-range"></span><button id="list-next" class="secondary">הבא</button></nav><div class="dialog-actions"><button id="list-add" class="secondary">הוסף שורה</button><button id="list-save" class="primary">שמור רשימה</button><button id="list-cancel" class="secondary">ביטול</button></div></div></dialog>
 <dialog id="import-dialog" class="wide-dialog editor-dialog" aria-labelledby="import-title"><div class="dialog-heading"><h2 id="import-title">בדיקת קובץ הייבוא</h2><button id="import-cancel-x" class="icon-button" aria-label="בטל ייבוא">×</button><button class="help-badge" aria-label="עזרה: ייבוא רשימה" data-help-text="האישור מוסיף את כל השורות בסוף הרשימה. שורות לא תקינות וכפילויות אינן מוסרות אוטומטית. אפשר לערוך או למחוק שורות לפני האישור.">?</button></div><div class="editor-content"><div class="editor-config"><p id="import-filename" dir="auto"></p><label for="import-encoding">קידוד הקובץ</label><select id="import-encoding"><option value="Utf8">UTF-8</option><option value="Utf8Bom">UTF-8 עם BOM</option><option value="Windows1255">Windows-1255 (עברית)</option><option value="Windows1252">Windows-1252</option><option value="Utf16Le">UTF-16 LE</option><option value="Utf16Be">UTF-16 BE</option></select><button id="decode-import" class="secondary">הצג לפי הקידוד שבחרתי</button><p id="import-error" class="error" role="alert" hidden></p><p id="import-summary"></p></div><div class="editor-row-scroll" tabindex="0" aria-label="שורות לעריכה"><div class="editor-columns" aria-hidden="true"><span></span><span>שם תיקיה</span><span>שם זמר</span><span></span></div><div id="import-rows"></div></div></div><div class="editor-footer"><nav class="list-pagination" aria-label="עמודי הייבוא"><button id="import-prev" class="secondary">הקודם</button><span id="import-range"></span><button id="import-next" class="secondary">הבא</button></nav><div class="dialog-actions"><button id="confirm-import" class="primary">אשר הוספה לרשימה</button><button id="cancel-import" class="secondary">ביטול</button></div></div></dialog>`;
 // Keep the historical footer destination, verified from the released source.
@@ -162,6 +163,7 @@ $('review-apply').addEventListener('click',()=>{
  $('apply-target-label').hidden=repairing;
  $('apply-description').textContent=repairing?'תיקון שמות ותגיות בקבצים שברשימה. לפני החלפת תגיות נשמר עותק מקורי לצד הקובץ.':readiness.operation_count===0?'לא בוצעו שינויים. קובצי המקור יישארו במקומם; הבדיקה החוזרת תאמת שאין פעולות לביצוע.':controller.state.developerMode?`${readiness.copy_mode?'העתקת':'העברת'} ${readiness.operation_count.toLocaleString('he-IL')} פעולות לפי התוכנית שהוצגה.`:readiness.copy_mode?'העתקת הקבצים שברשימה. קובצי המקור יישארו במקומם.':'העברת הקבצים שברשימה אל תיקיית היעד.';
  if(readiness.notice)$('apply-description').append(document.createTextNode(' '+readiness.notice));
+ if(controller.state.model?.platform==='android'&&readiness.reason)$('apply-description').append(document.createTextNode(' '+readiness.reason));
  $<HTMLInputElement>('apply-source').value=readiness.source;$<HTMLInputElement>('apply-target').value=readiness.target??'';
  openDialog('apply-dialog');$('apply-back').focus();
 });
@@ -224,6 +226,8 @@ installHelpBadges(app);
 // Alerts live in the scrollable middle track and never change the shell geometry.
 installViewport(app);
 installAbout(app,openProjectLink,hasAndroidHost()?openLocalLicenses:undefined);
+$('open-recovery').addEventListener('click',()=>{if(controller.state.busy)return;controller.resourcesChanged();void openRecovery().catch(()=>{$('recovery-notice-text').textContent+=' לא ניתן לפתוח את הבדיקה כעת.';});});
+$('execution-diagnostics').addEventListener('click',()=>{void openExecutionDiagnostics().catch(()=>{$('settings-error').textContent='לא ניתן לפתוח את יומני הפעולה.';$('settings-error').hidden=false;});});
 $('developer-mode').addEventListener('change',async()=>{
  const enabled=$<HTMLInputElement>('developer-mode').checked;
  await controller.setDeveloperMode(enabled);
@@ -269,6 +273,7 @@ function render(){
  $('recovery-menu').hidden=controller.state.model?.platform!=='windows';$<HTMLButtonElement>('recovery-menu').disabled=controller.state.busy;
  const s=controller.state;const blocked=s.busy||!s.hostAvailable;
  const developer=s.developerMode;app.dataset.developerMode=String(developer);app.dataset.showInactive=String(s.showInactive);
+ $('execution-diagnostics').hidden=!developer||!hasAndroidHost();$<HTMLButtonElement>('execution-diagnostics').disabled=s.busy;
  $<HTMLInputElement>('developer-mode').checked=developer;$<HTMLInputElement>('developer-mode').disabled=s.busy;
  $<HTMLInputElement>('show-inactive').checked=s.showInactive;$<HTMLInputElement>('show-inactive').disabled=s.busy;
  $('inactive-count').textContent=s.page?.skipped?`(${s.page.skipped.toLocaleString('he-IL')})`:'';
@@ -291,6 +296,9 @@ function render(){
  const previewCancelled=s.snapshot?.status==='cancelled'&&!s.busy&&!s.execution;
  $('connection').hidden=s.hostAvailable&&!previewCancelled;
  $('connection').textContent=previewCancelled?'הבדיקה בוטלה. לא בוצעו שינויים בקבצים.':!s.initialized?(s.startupWaiting?'ממתין לסיום הבדיקה הקודמת…':'טוען את המארח המקומי…'):'המארח המקומי אינו מחובר. יש לפתוח את התוכנה כדי לבדוק תיקיות.';
+ $('recovery-notice').hidden=!s.recoveryNotice;
+ $('recovery-notice-text').textContent=recoveryNoticeText(s.recoveryNotice);
+ $('open-recovery').hidden=!hasAndroidHost()||!s.recoveryNotice;$<HTMLButtonElement>('open-recovery').disabled=s.busy;
  $('settings-label').textContent=controller.settingsDirty?'שינויים שלא נשמרו':'ההגדרות שלך';$('settings-notice').textContent=noticeLabel(controller.savedNotice);$<HTMLButtonElement>('save-settings').disabled=blocked;$('settings-error').hidden=!s.error;$('settings-error').textContent=s.error?(developer?s.error:simpleError(s.error)):'';
  $<HTMLButtonElement>('cancel-preview').disabled=!s.busy||s.cancelRequested;
  $('busy').textContent=s.cancelRequested&&s.activity==='preview'?'מבטל את הבדיקה…':s.activity==='settings'?'שומר הגדרות…':s.activity==='page'?'טוען עמוד תוצאות…':'קורא ומנתח את הקבצים…';

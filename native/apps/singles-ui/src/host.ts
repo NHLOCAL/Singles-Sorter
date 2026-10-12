@@ -46,3 +46,8 @@ export const nativeRecoveryHost:RecoveryHost = {
   selectRecoveryRoot: role => invoke('select_recovery_root',{role}),
   startRecoveryInspection: (token,sourceToken,targetToken,resumeRunId) => invoke('start_recovery_inspection',{token,sourceToken,targetToken,resumeRunId}),
 };
+/** Fixed app-owned diagnostic viewer; no private path supplied by JavaScript. */
+export const openExecutionDiagnostics=():Promise<void>=>invokeHost('open_execution_diagnostics');
+
+/** Fixed native retained-effects review; JavaScript supplies no journal identifier or path. */
+export const openRecovery=():Promise<void>=>invokeHost('open_recovery');

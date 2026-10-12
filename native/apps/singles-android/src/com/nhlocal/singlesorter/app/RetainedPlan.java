@@ -9,10 +9,11 @@ import org.json.JSONObject;
  * A digest binds this preview only. Every provider effect still requires fresh checks.
  */
 final class RetainedPlan {
-    final String jobId,planId;
-    private final String originalPlan,sourceBindings;
-    private RetainedPlan(String job,String id,String plan,String bindings){jobId=job;planId=id;originalPlan=plan;sourceBindings=bindings;}
-    static RetainedPlan capture(String job,JSONObject result,SafSnapshot snapshots,CancellationSignal cancel)throws Exception{
+    final String jobId,planId;final int operationCount;final long recoveryGeneration;
+    final ExecutionAttempt attempt;
+    private final String originalPlan,sourceBindings,references;
+    private RetainedPlan(String job,String id,String plan,String bindings,String entries,int count,long generation){recoveryGeneration=generation;operationCount=count;attempt=new ExecutionAttempt(job);jobId=job;planId=id;originalPlan=plan;sourceBindings=bindings;references=entries;}
+    static RetainedPlan capture(String job,JSONObject result,SafSnapshot snapshots,CancellationSignal cancel,long generation)throws Exception{
         String id=result.getString("plan_id"),encoded=result.getString("_retained_plan");
         if(encoded.getBytes(StandardCharsets.UTF_8).length>8*1024*1024)throw new IllegalArgumentException("PLAN_LIMIT");
         JSONObject plan=new JSONObject(encoded);
@@ -25,8 +26,9 @@ final class RetainedPlan {
             // Deliberately retain no cache path: private snapshots are deleted before completion.
             bindings.put(token,new JSONObject().put("sha256",snapshot.getString("sha256")).put("bytes",snapshot.getLong("snapshot_size")));
         }
-        cancel.throwIfCanceled();return new RetainedPlan(job,id,encoded,bindings.toString());
+        cancel.throwIfCanceled();PreviewGeneration.PROCESS.require(generation);return new RetainedPlan(job,id,encoded,bindings.toString(),snapshots.entries.toString(),plan.getJSONArray("operations").length(),generation);
     }
+    JSONArray referencesCopy()throws Exception{return new JSONArray(references);}
     JSONObject planCopy()throws Exception{return new JSONObject(originalPlan);}
     JSONObject bindingsCopy()throws Exception{return new JSONObject(sourceBindings);}
 }

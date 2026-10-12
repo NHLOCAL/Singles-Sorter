@@ -9,10 +9,11 @@ export interface Settings {
 export const defaults: Readonly<Settings> = Object.freeze({copy_mode:false,main_folder_only:false,singles_folder:true,exist_only:false,abc_sort:false,duet_mode:false});
 export interface RootSelection {token:string;display_name:string;capabilities:{read:boolean;list:boolean};platform:Platform}
 export interface PreviewRequest {mode:Mode;source_token:string;target_token:string|null;settings:Settings;ai_profile:'Disabled'|'Configured'}
-export interface ModelStatus {available:boolean;message:string;platform:Platform}
+export interface ModelStatus {execution_available?:boolean;available:boolean;message:string;platform:Platform}
 export interface Snapshot {host_schema:1;job_id:string;status:'running'|'completed'|'failed'|'cancelled';plan_id:string|null;total_rows:number;blockers:string[];warnings:string[];error?:string|null;apply?:ApplyReadiness|null}
-export interface PlanRow {id:string;source:string;kind:string;destination:string|null;reason:string;blockers:string[];operation_ids?:number[];artist?:string|null;developer_only?:boolean;no_action?:boolean;included_in_album?:number}
+export interface PlanRow {id:string;source:string;kind:string;destination:string|null;reason:string;blockers:string[];effective_blockers?:string[];operation_ids?:number[];artist?:string|null;developer_only?:boolean;no_action?:boolean;included_in_album?:number}
 export interface PlanPage {rows:PlanRow[];total:number;skipped?:number}
+export interface RecoveryNotice {status:'attention'|'unreadable';journal_count:number;acknowledged_operations:number|null;unresolved_operations:number|null}
 export interface Host {
   selectRoot(role:Role):Promise<RootSelection|null>;
   resolveRoot(role:Role,text:string):Promise<RootSelection>;
@@ -25,7 +26,7 @@ export interface Host {
   startApply?(jobId:string,planId:string):Promise<{job_id:string}>;
   executionSnapshot?(jobId:string):Promise<ExecutionSnapshot>;
   cancelApply?(jobId:string):Promise<void>;
-  latestExecution?():Promise<{preview:Snapshot;execution:ExecutionSnapshot}|null>;
+  latestExecution?():Promise<{preview:Snapshot;execution:ExecutionSnapshot}|{recovery_notice:RecoveryNotice}|null>;
 }
 
 export type MainSettings = Omit<Settings,'duet_mode'>;
@@ -49,7 +50,7 @@ export interface ProfileHost {
 }
 
 /** Apply eligibility is granted by retained native evidence, never inferred from rows. */
-export interface ApplyReadiness {supported:boolean;reason:string|null;operation_count:number;copy_mode:boolean;source:string;target:string|null;mode?:Mode;notice?:string|null}
+export interface ApplyReadiness {supported:boolean;recovery_scope_admitted?:boolean;reason:string|null;operation_count:number;copy_mode:boolean;source:string;target:string|null;mode?:Mode;notice?:string|null}
 export type ExecutionStatus='preparing'|'running'|'complete'|'partial'|'cancelled'|'failed'|'needs_recovery';
 export type ItemStatus='partial'|'complete'|'source_retained'|'failed'|'cancelled'|'blocked'|'needs_recovery'|'unsupported_tags'|'metadata_failure';
 /** Optional display-only observed leaf; older/Android hosts may omit it. */

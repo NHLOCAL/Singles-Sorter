@@ -39,9 +39,9 @@ export function simpleStatus(row:PlanRow,items:ExecutionItem[],copy:boolean,cont
  if(row.no_action)return row.kind==='FixNames'?'ללא שינוי':'ללא פעולה';
  if(row.blockers.includes('FIX_METADATA_READ_ERROR'))return context.repairEligible?'תיקון חלקי':'לא ניתן לבדוק';
  if(row.kind==='FixNames'&&context.repairEligible)return 'לתיקון';
- if(row.kind==='ItemError'||row.blockers.includes('ALBUM_READ_ERROR'))return 'לא ניתן לבדוק';
+ if(row.kind==='ItemError'||(row.effective_blockers??row.blockers).includes('ALBUM_READ_ERROR'))return 'לא ניתן לבדוק';
  if(row.kind==='Vanished')return 'הקובץ לא נמצא';
- if(row.blockers.length)return 'לא ניתן לבצע';
+ if((row.effective_blockers??row.blockers).length)return 'לא ניתן לבצע';
  if(row.kind==='FixNames')return 'לתיקון';
  if(!row.operation_ids?.length)return 'דולג';
  return copy?'להעתקה':'להעברה';
@@ -55,10 +55,10 @@ export function simpleReason(row:PlanRow,repairEligible=false):string{
  if(row.blockers.includes('FIX_METADATA_READ_ERROR'))return 'לא ניתן לקרוא את התגיות. ייתכן שרק שם הקובץ יתוקן.';
  if(row.kind==='FixNames'&&row.no_action)return 'לא נמצא שינוי נדרש בשם או בתגיות.';
  if(row.kind==='FixNames'&&repairEligible)return '';
- if(row.kind==='ItemError'||row.blockers.includes('ALBUM_READ_ERROR'))return 'לא ניתן לקרוא את הפריט. בדוק שהוא זמין ושהתוכנה מורשית לקרוא אותו.';
+ if(row.kind==='ItemError'||(row.effective_blockers??row.blockers).includes('ALBUM_READ_ERROR'))return 'לא ניתן לקרוא את הפריט. בדוק שהוא זמין ושהתוכנה מורשית לקרוא אותו.';
  if(row.included_in_album!==undefined)return 'הפריט כלול בפעולת האלבום, ללא פעולה נפרדת.';
  if(row.kind==='Vanished')return 'הקובץ הועבר או אינו זמין כעת.';
- if(row.blockers.length)return 'הפעולה אינה זמינה לקובץ הזה בתוכנית הנוכחית.';
+ if((row.effective_blockers??row.blockers).length)return 'הפעולה אינה זמינה לקובץ הזה בתוכנית הנוכחית.';
  if(row.kind==='Single'&&!row.artist)return 'לא זוהה אמן.';
  if(row.kind==='Single'&&!row.operation_ids?.length)return 'לא נמצאה פעולת מיון מתאימה לפי האפשרויות שבחרת.';
  return '';
@@ -129,4 +129,10 @@ export function verificationWarning(execution:Pick<ExecutionSnapshot,'recovery_e
 export function verificationProgressText(progress:{completed_operations:number;total_operations:number;bytes_read:number;elapsed_ms:number},developer=false):string{
  const base=progress.total_operations>0?`בודק את התוצאות: ${progress.completed_operations.toLocaleString('he-IL')} מתוך ${progress.total_operations.toLocaleString('he-IL')}`:'בודק את תוצאות הביצוע…';
  return developer?`${base} · ${progress.bytes_read.toLocaleString('he-IL')} בתים נקראו · ${(progress.elapsed_ms/1000).toLocaleString('he-IL',{maximumFractionDigits:1})} שניות`:base;
+}
+
+export function recoveryNoticeText(notice:import('./contracts').RecoveryNotice|null):string{
+ if(!notice)return '';
+ if(notice.status==='unreadable')return 'לא ניתן לבדוק את רישום הביצוע הקודם. הבדיקה הזו לא שינתה קבצים. יש לבדוק את המקור והיעד ולשמור את היומן; הביצוע חסום עד לבירור.';
+ return `הביצוע הקודם דורש בדיקה. ${notice.acknowledged_operations} פעולות נרשמו כהושלמו, ${notice.unresolved_operations} דורשות בירור. אפשר לבדוק תיקיות ולשמור יומן לבדיקה; לא יתבצע ניסיון חוזר אוטומטי.`;
 }

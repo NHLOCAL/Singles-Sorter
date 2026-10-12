@@ -1,12 +1,12 @@
 import {defaults} from './contracts';
-import type {Host,ProfileHost,Mode,ModelStatus,PlanPage,Role,RootSelection,Settings,Snapshot,ExecutionSnapshot} from './contracts';
+import type {Host,ProfileHost,Mode,ModelStatus,PlanPage,Role,RootSelection,Settings,Snapshot,ExecutionSnapshot,RecoveryNotice} from './contracts';
 export const PAGE_SIZE = 50;
 const rootKeys = {Source:'source',Target:'target'} as const;
 export interface RootInput {text:string;selection:RootSelection|null;pending:boolean;revision:number}
 export interface State {
   source:RootInput;target:RootInput;settings:Settings;model:ModelStatus|null;
   initialized:boolean;startupWaiting:boolean;hostAvailable:boolean;busy:boolean;cancelRequested:boolean;activity:'preview'|'apply'|'settings'|'page'|null;error:string|null;
-  snapshot:Snapshot|null;execution:ExecutionSnapshot|null;page:PlanPage|null;offset:number;ai:'Disabled'|'Configured';developerMode:boolean;showInactive:boolean;
+  recoveryNotice:RecoveryNotice|null;snapshot:Snapshot|null;execution:ExecutionSnapshot|null;page:PlanPage|null;offset:number;ai:'Disabled'|'Configured';developerMode:boolean;showInactive:boolean;
 }
 const newRoot = ():RootInput => ({text:'',selection:null,pending:false,revision:0});
 export const userErrorLabels:Readonly<Record<string,string>>={
@@ -32,7 +32,7 @@ export function errorText(error:unknown):string {
   return 'הפעולה לא הושלמה. נסה שוב לאחר בדיקת החיבור לתוכנה.';
 }
 export class PreviewController {
-  readonly state:State={source:newRoot(),target:newRoot(),settings:{...defaults},model:null,initialized:false,startupWaiting:false,hostAvailable:false,busy:false,cancelRequested:false,activity:null,error:null,snapshot:null,execution:null,page:null,offset:0,ai:'Disabled',developerMode:false,showInactive:false};
+  readonly state:State={source:newRoot(),target:newRoot(),settings:{...defaults},model:null,initialized:false,startupWaiting:false,hostAvailable:false,busy:false,cancelRequested:false,activity:null,error:null,recoveryNotice:null,snapshot:null,execution:null,page:null,offset:0,ai:'Disabled',developerMode:false,showInactive:false};
   private activeApply:{jobId:string;started:boolean;cancelSent:boolean;terminal:boolean}|null=null;
   private activePreview:{jobId:string|null;cancelSent:boolean;terminal:boolean}|null=null;
   private listeners=new Set<()=>void>();
@@ -57,9 +57,13 @@ export class PreviewController {
         }
       }
       this.state.settings={...settings};this.state.model=model;this.state.hostAvailable=true;
-      if(model.platform==='windows'&&this.host.latestExecution){
+      if((model.platform==='windows'||model.execution_available===true)&&this.host.latestExecution){
         const retained=await this.host.latestExecution();
-        if(retained){
+        if(retained&&'recovery_notice' in retained){
+          const notice=retained.recovery_notice;
+          if((notice.status==='attention'&&(notice.acknowledged_operations===null||notice.unresolved_operations===null))||!['attention','unreadable'].includes(notice.status)||!Number.isSafeInteger(notice.journal_count)||notice.journal_count<1||notice.journal_count>1000||[notice.acknowledged_operations,notice.unresolved_operations].some(value=>value!==null&&(!Number.isSafeInteger(value)||value<0||value>10000000)))throw new Error('מידע הבדיקה של הביצוע הקודם אינו תקין.');
+          this.state.recoveryNotice=notice;
+        }else if(retained){
           if(retained.preview.status!=='completed'||retained.preview.job_id!==retained.execution.job_id||retained.preview.plan_id!==retained.execution.plan_id||['running','preparing'].includes(retained.execution.status))throw new Error('תוצאת הביצוע הקודמת טרם אומתה.');
           this.state.snapshot=retained.preview;this.state.execution=retained.execution;
           this.state.page=await this.host.page(retained.preview.job_id,0,PAGE_SIZE,this.state.developerMode,this.state.showInactive);
@@ -191,7 +195,7 @@ export class PreviewController {
   }
   get canApply():boolean {
     const snapshot=this.state.snapshot;
-    return !this.state.busy&&this.state.hostAvailable&&snapshot?.status==='completed'&&!!snapshot.plan_id&&snapshot.apply?.supported===true&&!this.state.execution&&!!this.host.startApply&&!!this.host.executionSnapshot&&!!this.host.cancelApply;
+    return !this.state.busy&&(!this.state.recoveryNotice||(this.state.recoveryNotice.status==='attention'&&this.state.model?.platform==='android'&&snapshot?.apply?.recovery_scope_admitted===true))&&this.state.hostAvailable&&snapshot?.status==='completed'&&!!snapshot.plan_id&&snapshot.apply?.supported===true&&!this.state.execution&&!!this.host.startApply&&!!this.host.executionSnapshot&&!!this.host.cancelApply;
   }
   cancelApply(){
     const run=this.activeApply;if(!run||run.terminal)return;

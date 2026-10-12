@@ -127,7 +127,7 @@ if arm:
 for p in sorted(Path(ui).rglob('*')):
     if p.is_symlink(): raise SystemExit('UI symlinks are not packaged')
     if p.is_file(): entries.append((p, 'assets/ui/' + p.relative_to(ui).as_posix()))
-receipt = {"preview_only": True, "saf_mutation_enabled": False, "build_tools": "35.0.0", "android_jar": platform, "generated_asset_verifier_sha256": hashlib.sha256((out / "build/OriginalAssets.java").read_bytes()).hexdigest(), "entries": []}
+receipt = {"preview_only": False, "saf_mutation_enabled": True, "validation_scope": "owned-fixture-only", "provider_contract": "quiescent-system-local-single-copy-move", "public_activation_accepted": False, "build_tools": "35.0.0", "android_jar": platform, "generated_asset_verifier_sha256": hashlib.sha256((out / "build/OriginalAssets.java").read_bytes()).hexdigest(), "entries": []}
 with ZipFile(out / "build/unsigned.apk", "a") as apk:
     for source, name in entries:
         data = source.read_bytes()

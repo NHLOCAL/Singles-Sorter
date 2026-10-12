@@ -59,3 +59,35 @@ describe('retained no-op completion',()=>{
   expect(c.state.execution?.journal_path).toBeNull();expect(c.canApply).toBe(false);
  });
 });
+
+ describe('Android recovery startup',()=>{
+ it('keeps the host connected and read-only navigation available for unresolved historical work',async()=>{
+  const h=host();h.getModelStatus=async()=>({available:false,message:'fixture',platform:'android',execution_available:true});
+  h.latestExecution=async()=>({recovery_notice:{status:'attention',journal_count:1,acknowledged_operations:1,unresolved_operations:1}});
+  const c=new PreviewController(h);await c.initialize();expect(c.state.hostAvailable).toBe(true);expect(c.state.error).toBeNull();expect(c.state.recoveryNotice?.acknowledged_operations).toBe(1);expect(c.canApply).toBe(false);
+  c.editRoot('Source','selected');expect(c.state.source.text).toBe('selected');expect(c.state.recoveryNotice).not.toBeNull();c.state.snapshot=readyPlan;expect(c.canApply).toBe(false);
+ });
+ it('keeps unreadable evidence explicit without inventing counters or a clean idle result',async()=>{
+  const h=host();h.latestExecution=async()=>({recovery_notice:{status:'unreadable',journal_count:1,acknowledged_operations:null,unresolved_operations:null}});
+  const c=new PreviewController(h);await c.initialize();expect(c.state.hostAvailable).toBe(true);expect(c.state.recoveryNotice?.status).toBe('unreadable');expect(c.state.execution).toBeNull();expect(c.canApply).toBe(false);
+ });
+ it('does not swallow unrelated host errors',async()=>{const h=host();h.latestExecution=async()=>{throw new Error('transport failed');};const c=new PreviewController(h);await c.initialize();expect(c.state.hostAvailable).toBe(false);expect(c.state.error).toBe('transport failed');});
+ it('rejects malformed recovery counters',async()=>{const h=host();h.latestExecution=async()=>({recovery_notice:{status:'attention',journal_count:1,acknowledged_operations:-1,unresolved_operations:1}});const c=new PreviewController(h);await c.initialize();expect(c.state.hostAvailable).toBe(false);});
+ });
+
+describe('native scoped recovery admission',()=>{
+ it('requires explicit Android native admission and invalidates it when selection changes',async()=>{
+  const h=host();h.getModelStatus=async()=>({available:false,message:'fixture',platform:'android',execution_available:true});
+  h.latestExecution=async()=>({recovery_notice:{status:'attention',journal_count:1,acknowledged_operations:1,unresolved_operations:1}});
+  const c=new PreviewController(h);await c.initialize();c.state.snapshot=structuredClone(readyPlan);expect(c.canApply).toBe(false);
+  c.state.snapshot.apply!.recovery_scope_admitted=true;expect(c.canApply).toBe(true);expect(c.state.recoveryNotice?.unresolved_operations).toBe(1);
+  c.changeSetting('copy_mode',true);expect(c.canApply).toBe(false);expect(c.state.snapshot).toBeNull();
+ });
+ it('never overrides unreadable history or extends the flag to other platforms',async()=>{
+  for(const platform of ['android','windows'] as const){
+   const h=host();h.getModelStatus=async()=>({available:false,message:'fixture',platform,execution_available:true});
+   h.latestExecution=async()=>({recovery_notice:{status:platform==='android'?'unreadable':'attention',journal_count:1,acknowledged_operations:platform==='android'?null:1,unresolved_operations:platform==='android'?null:1}});
+   const c=new PreviewController(h);await c.initialize();c.state.snapshot={...readyPlan,apply:{...readyPlan.apply!,recovery_scope_admitted:true}};expect(c.canApply).toBe(false);
+  }
+ });
+});

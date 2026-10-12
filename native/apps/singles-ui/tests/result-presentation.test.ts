@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,verificationWarning,verificationProgressText,resultFilename,DEVELOPER_PREFERENCE} from '../src/result-presentation';
+import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,verificationWarning,recoveryNoticeText,verificationProgressText,resultFilename,DEVELOPER_PREFERENCE} from '../src/result-presentation';
 import type {ExecutionSnapshot,PlanRow,ExecutionItem} from '../src/contracts';
 const row:PlanRow={id:'file',source:'song.mp3',artist:'אמן',kind:'Single',destination:'אמן/song.mp3',reason:'raw_trace(hash)',blockers:[],operation_ids:[0]};
 const item=(status:ExecutionItem['status']):ExecutionItem=>({operation:0,status,detail:'raw filesystem evidence'});
@@ -194,4 +194,24 @@ describe('live final verification',()=>{
   expect(verificationProgressText(progress,true)).toContain('67,108,864 בתים נקראו');
   expect(verificationProgressText({...progress,total_operations:0,completed_operations:0})).toBe('בודק את תוצאות הביצוע…');
  });
+});
+
+describe('native resolved platform display markers',()=>{
+ it('uses an explicitly empty effective set without changing original developer blockers',()=>{
+  const resolved={...row,blockers:['MISSING_IDENTITY'],effective_blockers:[]};
+  expect(simpleStatus(resolved,[],true)).toBe('להעתקה');expect(simpleReason(resolved)).toBe('');expect(resolved.blockers).toEqual(['MISSING_IDENTITY']);
+ });
+ it('falls back to original blockers when no native resolution is supplied',()=>{
+  expect(simpleStatus({...row,blockers:['MISSING_IDENTITY']},[],true)).toBe('לא ניתן לבצע');
+ });
+ it('keeps real errors and unresolved blockers visible',()=>{
+  const failed={...row,blockers:['MISSING_IDENTITY','ALBUM_READ_ERROR'],effective_blockers:['ALBUM_READ_ERROR']};
+  expect(simpleStatus(failed,[],true)).toBe('לא ניתן לבדוק');expect(simpleReason(failed)).toContain('לא ניתן לקרוא');
+  expect(simpleStatus({...failed,effective_blockers:['DESTINATION_OCCUPIED']},[],true)).toBe('לא ניתן לבצע');
+ });
+});
+
+it('unreadable recovery does not claim that prior source files were preserved',()=>{
+ const text=recoveryNoticeText({status:'unreadable',journal_count:1,acknowledged_operations:null,unresolved_operations:null});
+ expect(text).toContain('הבדיקה הזו לא שינתה קבצים');expect(text).toContain('המקור והיעד');expect(text).not.toContain('הקבצים נשמרו');
 });

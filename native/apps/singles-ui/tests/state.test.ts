@@ -13,6 +13,8 @@ function host():Host{return{
 const deferred=<T>()=>{let resolve!:(value:T)=>void;const promise=new Promise<T>(r=>resolve=r);return{promise,resolve};};
 async function ready(h=host()){const c=new PreviewController(h);await c.initialize();return c;}
 describe('read-only preview controller',()=>{
+ it('requires a new preview after opening retained-effects review',async()=>{const c=await ready();c.editRoot('Source','owned-source');await c.preview('FixNames');expect(c.state.snapshot).not.toBeNull();c.resourcesChanged();expect(c.state.snapshot).toBeNull();expect(c.state.page).toBeNull();expect(c.state.execution).toBeNull();expect(c.state.source.text).toBe('owned-source');expect(c.state.hostAvailable).toBe(true);});
+
  it('uses all six release defaults including explicit false',async()=>{const c=await ready();expect(c.state.settings).toEqual(defaults);expect(c.state.settings.singles_folder).toBe(true);});
  it('keeps the explicit Disabled default even when a model is available',async()=>{const h=host();h.getModelStatus=async()=>({available:true,message:'loaded',platform:'windows'});const c=await ready(h);expect(c.state.model?.available).toBe(true);expect(c.state.ai).toBe('Disabled');});
  it('preserves explicit false preference values',async()=>{const h=host();h.getSettings=async()=>({...defaults,singles_folder:false});const c=await ready(h);expect(c.state.settings.singles_folder).toBe(false);});
@@ -193,5 +195,20 @@ describe('explicit inactive results preference',()=>{
   h.page=vi.fn(async()=>{throw new Error('offline');});await c.setShowInactive(true);
   expect(c.state.showInactive).toBe(false);expect(c.state.page).toBe(page);
   c.state.busy=true;await c.setShowInactive(true);expect(h.page).toHaveBeenCalledTimes(1);
+ });
+});
+
+describe('explicit Android execution capability',()=>{
+ it('does not query execution recovery for a read-only Android host',async()=>{
+  const h=host();h.getModelStatus=async()=>({available:true,message:'ready',platform:'android'});h.latestExecution=vi.fn(async()=>null);
+  await ready(h);expect(h.latestExecution).not.toHaveBeenCalled();
+ });
+ it('checks recovery when Android explicitly supports execution',async()=>{
+  const h=host();h.getModelStatus=async()=>({available:true,message:'ready',platform:'android',execution_available:true});h.latestExecution=vi.fn(async()=>null);
+  const c=await ready(h);expect(h.latestExecution).toHaveBeenCalledOnce();expect(c.state.hostAvailable).toBe(true);
+ });
+ it('keeps Android unavailable when an interrupted journal is unresolved',async()=>{
+  const h=host();h.getModelStatus=async()=>({available:true,message:'ready',platform:'android',execution_available:true});h.latestExecution=vi.fn(async()=>{throw new Error('RECOVERY_REQUIRED');});
+  const c=await ready(h);expect(c.state.hostAvailable).toBe(false);expect(c.state.error).toBe('RECOVERY_REQUIRED');
  });
 });
