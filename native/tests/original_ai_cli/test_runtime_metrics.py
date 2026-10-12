@@ -36,6 +36,16 @@ class RuntimeMetricsTests(unittest.TestCase):
             self.assertEqual(gate.budget_remaining(125),25)
             with self.assertRaises(TimeoutError): gate.fresh_process_trial(None,None,None,None,None,99)
 
+    def test_checked_copy_is_exclusive_and_preserves_bytes(self):
+        import check_windows_v14 as gate
+        with tempfile.TemporaryDirectory() as directory, patch.object(gate.time,'monotonic',return_value=1):
+            root=Path(directory);source=root/'source';destination=root/'destination'
+            source.write_bytes(b'owned'*40000)
+            gate.checked_copy(source,destination,2)
+            self.assertEqual(gate.checked_digest(source,2),gate.checked_digest(destination,2))
+            with self.assertRaises(FileExistsError): gate.checked_copy(source,destination,2)
+            with self.assertRaises(TimeoutError): gate.checked_digest(source,1)
+
     def test_high_water_is_distinct_from_sampled_working_set(self):
         values = iter([{'working_set_bytes':20,'process_lifetime_peak_working_set_bytes':100},
                        {'working_set_bytes':30,'process_lifetime_peak_working_set_bytes':100}])

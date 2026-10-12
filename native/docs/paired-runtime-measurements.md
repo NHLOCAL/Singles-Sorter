@@ -33,8 +33,12 @@ blocks. They are not the desktop package size or an inferred original release
 size. The final desktop artifact's separate hash inventory supplies its sizes.
 
 All 36 functional cases are persisted before package sizing or the extra fresh-
-process pair starts. Optional telemetry has at most 60 seconds and uses only the
+process pair starts. Optional telemetry has a cooperative 60-second budget and uses only the
 remaining eight-minute lane budget, reserving 30 seconds for final report work.
-Telemetry/setup failures remain visible without aborting functional evidence. Performance does not turn any `OPEN`, `MISMATCH` or missing
+Bounded reads/copies and boundaries around package verification and snapshots
+check the deadline. An in-flight filesystem/API call or sampler shutdown cannot
+be forcibly preempted, so this is not a hard wall-clock guarantee. Child process
+communication has its own timeout and kill/reap handling. Telemetry/setup
+failures remain visible without aborting functional evidence. Performance does not turn any `OPEN`, `MISMATCH` or missing
 functional evidence into a parity pass. Authored tests and source review are not
 actual measured Windows results; the next existing lane must produce them.

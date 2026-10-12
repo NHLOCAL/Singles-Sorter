@@ -533,13 +533,34 @@ def budget_remaining(deadline):
     return remaining
 
 
+def checked_digest(path, deadline=None):
+    value=hashlib.sha256()
+    if deadline is not None: budget_remaining(deadline)
+    with Path(path).open('rb') as stream:
+        for chunk in iter(lambda:stream.read(64*1024),b''):
+            if deadline is not None: budget_remaining(deadline)
+            value.update(chunk)
+    if deadline is not None: budget_remaining(deadline)
+    return value.hexdigest()
+
+
+def checked_copy(source, destination, deadline):
+    budget_remaining(deadline)
+    with source.open('rb') as original, destination.open('xb') as copied:
+        for chunk in iter(lambda:original.read(64*1024),b''):
+            budget_remaining(deadline);copied.write(chunk)
+    budget_remaining(deadline)
+
+
 def package_measurement(binary, package, archive, deadline=None):
     if package is None or archive is None:
         return {'status': 'unavailable', 'reason': 'Exact final package and archive paths were not supplied'}
     package, archive = package.resolve(strict=True), archive.resolve(strict=True)
     from check_execution import package as contract
+    if deadline is not None: budget_remaining(deadline)
     contract.verify_package(package)
-    require(digest(package/'singles-sorter.exe') == digest(binary), 'Measured package differs from paired executable')
+    if deadline is not None: budget_remaining(deadline)
+    require(checked_digest(package/'singles-sorter.exe',deadline) == checked_digest(binary,deadline), 'Measured package differs from paired executable')
     entries = {path.relative_to(package).as_posix():path for path in package.rglob('*') if path.is_file()}
     with zipfile.ZipFile(archive) as zipped:
         members = [entry for entry in zipped.infolist() if not entry.is_dir()]
@@ -552,8 +573,8 @@ def package_measurement(binary, package, archive, deadline=None):
                 for chunk in iter(lambda:stream.read(64*1024),b''):
                     if deadline is not None: budget_remaining(deadline)
                     value.update(chunk)
-            require(value.hexdigest() == digest(entries[entry.filename]), 'Measured ZIP/package content differs')
-    return {'status':'measured','archive_sha256':digest(archive),'compressed_bytes':archive.stat().st_size,
+            require(value.hexdigest() == checked_digest(entries[entry.filename],deadline), 'Measured ZIP/package content differs')
+    return {'status':'measured','archive_sha256':checked_digest(archive,deadline),'compressed_bytes':archive.stat().st_size,
             'unpacked_file_bytes':sum(path.stat().st_size for path in entries.values()),
             'file_count':len(entries),'executable_bytes':binary.stat().st_size,
             'scope':'exact final native CLI package; not filesystem allocated blocks or the desktop package; no original distributable size inferred'}
@@ -567,12 +588,15 @@ def fresh_process_trial(binary, bundle, baseline, scratch, sources, deadline):
     for name, expected in sources.items():
         if name.endswith('.py'):
             source=scratch/'oracle-code'/name
-            require(digest(source)==expected,'Cold original source changed')
-            shutil.copyfile(source,code/name)
+            require(checked_digest(source,deadline)==expected,'Cold original source changed')
+            checked_copy(source,code/name,deadline)
     case=next(case for case in cases() if case['id']=='duet-copy-all')
     original_root,native_root=trial/'original',trial/'native'
+    budget_remaining(deadline)
     author_case(original_root,case);author_case(native_root,case)
+    budget_remaining(deadline)
     original_before,native_before=snapshot(original_root),snapshot(native_root)
+    budget_remaining(deadline)
     require(comparable_snapshot(original_before)==comparable_snapshot(native_before),'Cold paired media inputs differ')
     # Already verified by original_oracle. Copy only the recorded model closure,
     # before timing, so original relative paths resolve without aliases or links.
@@ -580,18 +604,20 @@ def fresh_process_trial(binary, bundle, baseline, scratch, sources, deadline):
     for name, expected in lock['source_files'].items():
         budget_remaining(deadline)
         source=baseline/'src/core/models/singer_ner_he'/name
-        require(digest(source)==expected,'Cold original model source changed')
+        require(checked_digest(source,deadline)==expected,'Cold original model source changed')
         destination=original_root/'models/singer_ner_he'/name
-        destination.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(source,destination)
+        destination.parent.mkdir(parents=True,exist_ok=True);checked_copy(source,destination,deadline)
     classifier=original_root/'models/music_entity_clf/music_entity_clf.pkl'
-    classifier.parent.mkdir(parents=True);shutil.copyfile(bundle/'original-release.pkl',classifier)
+    classifier.parent.mkdir(parents=True);checked_copy(bundle/'original-release.pkl',classifier,deadline)
     env=dict(os.environ,PATH=str(Path(os.environ['SystemRoot'])/'System32'),PYTHONDONTWRITEBYTECODE='1',PYTHONIOENCODING='utf-8')
     original,timing=measured_process([sys.executable,str(Path(__file__).with_name('cold_original.py')),str(original_root),str(code/'singles_sorter_v5.py')],cwd=original_root,env=env,timeout=min(30,budget_remaining(deadline)))
     original_record={'exit':original.returncode,'stdout':original.stdout.decode('utf-8'),'stderr':original.stderr.decode('utf-8'),'performance':timing}
     native=subprocess_record(binary,native_root,native_args(bundle,case),timeout=min(30,budget_remaining(deadline)))
     # Compare only actual media trees; code/models/logs remain separate evidence.
     media=lambda root:[{'role':role,**row} for role in ('source','target') for row in comparable_snapshot(snapshot(root/role))]
+    budget_remaining(deadline)
     actual_original,actual_native=media(original_root),media(native_root)
+    budget_remaining(deadline)
     expected_destinations={str(Path(artist)/DUET) for artist in ('ישראל כהן','חיים לוי')}
     found={row['path'] for row in snapshot(original_root/'target') if row['kind']=='file'}
     functional=(original.returncode==0 and native['exit']==0 and actual_original==actual_native
@@ -701,7 +727,8 @@ def run(binary, bundle, baseline, report, package=None, archive=None):
                     print(case['id'], row['status'], flush=True)
             # All functional evidence is already persisted before optional work.
             # Reserve 30 seconds of the existing eight-minute step for final hashes
-            # and report upload; telemetry itself has at most 60 seconds total.
+            # and report upload. Optional telemetry uses a cooperative 60-second
+            # budget: an in-flight filesystem/API call cannot be preempted.
             optional_deadline = min(started + 450, time.monotonic() + 60)
             try:
                 budget_remaining(optional_deadline)
