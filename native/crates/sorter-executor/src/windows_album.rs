@@ -1223,15 +1223,15 @@ impl SelectedAlbumFileJob {
         let mut status = result.status;
         let mut detail = String::new();
         manifest.append("TransfersObserved",&serde_json::json!({"status":format!("{status:?}"),"committed_destinations":result.committed_destinations,"moved_sources":result.moved_sources}))?;
-        if status == JobStatus::Complete {
-            if let Err(error) = self.storage.check_all() {
-                status = JobStatus::Partial;
-                detail = error.detail;
-                manifest.append(
-                    "ExecutionStopped",
-                    &serde_json::json!({"stage":"membership","status":"Partial"}),
-                )?;
-            }
+        if status == JobStatus::Complete
+            && let Err(error) = self.storage.check_all()
+        {
+            status = JobStatus::Partial;
+            detail = error.detail;
+            manifest.append(
+                "ExecutionStopped",
+                &serde_json::json!({"stage":"membership","status":"Partial"}),
+            )?;
         }
         if status == JobStatus::Complete && !self.binding.data.selected_windows_copy {
             // Every known file has an acknowledged verified rename. Drop data/source
@@ -2212,10 +2212,10 @@ impl SelectedAlbumFileJob {
                     {
                         return Err(E::CorruptJournal);
                     }
-                    if let Some(pending) = pending_cleanup.take() {
-                        if pending.reference != retained.reference {
-                            return Err(E::CorruptJournal);
-                        }
+                    if let Some(pending) = pending_cleanup.take()
+                        && pending.reference != retained.reference
+                    {
+                        return Err(E::CorruptJournal);
                     }
                     if retained_evidence
                         .iter()
@@ -2294,7 +2294,7 @@ impl SelectedAlbumFileJob {
                     }
                     let expected = stopped_status
                         .as_deref()
-                        .or_else(|| {
+                        .or({
                             if !retained_evidence.is_empty() {
                                 Some("Partial")
                             } else {

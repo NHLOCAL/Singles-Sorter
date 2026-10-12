@@ -898,42 +898,42 @@ impl WholeAlbumJob {
                             || entry.identity.as_ref() != Some(&expected_identity)
                         {
                             evidence.status = "changed".into();
-                        } else if let Ok(mut input) = reads.open_read(&destination) {
-                            if input.binding().is_some_and(|b| {
+                        } else if let Ok(mut input) = reads.open_read(&destination)
+                            && input.binding().is_some_and(|b| {
                                 b.identity == expected_identity
                                     && Some(b.size) == source.observation.size
-                            }) {
-                                let mut hash = Sha256::new();
-                                let mut length = 0u64;
-                                let mut buffer = [0; 65536];
-                                let mut read_ok = true;
-                                loop {
-                                    cancelled(cancel)?;
-                                    match input.read(&mut buffer) {
-                                        Ok(0) => break,
-                                        Ok(n) => {
-                                            length = length.checked_add(n as u64).ok_or(E::Io)?;
-                                            if Some(length) > source.observation.size {
-                                                read_ok = false;
-                                                break;
-                                            }
-                                            hash.update(&buffer[..n]);
-                                        }
-                                        Err(_) => {
+                            })
+                        {
+                            let mut hash = Sha256::new();
+                            let mut length = 0u64;
+                            let mut buffer = [0; 65536];
+                            let mut read_ok = true;
+                            loop {
+                                cancelled(cancel)?;
+                                match input.read(&mut buffer) {
+                                    Ok(0) => break,
+                                    Ok(n) => {
+                                        length = length.checked_add(n as u64).ok_or(E::Io)?;
+                                        if Some(length) > source.observation.size {
                                             read_ok = false;
                                             break;
                                         }
+                                        hash.update(&buffer[..n]);
+                                    }
+                                    Err(_) => {
+                                        read_ok = false;
+                                        break;
                                     }
                                 }
-                                if read_ok
-                                    && Some(length) == source.observation.size
-                                    && format!("{:x}", hash.finalize()) == source.sha256
-                                    && reads.stat(&destination).is_ok_and(|again| again == entry)
-                                {
-                                    evidence.status = "verified".into();
-                                } else {
-                                    evidence.status = "changed".into();
-                                }
+                            }
+                            if read_ok
+                                && Some(length) == source.observation.size
+                                && format!("{:x}", hash.finalize()) == source.sha256
+                                && reads.stat(&destination).is_ok_and(|again| again == entry)
+                            {
+                                evidence.status = "verified".into();
+                            } else {
+                                evidence.status = "changed".into();
                             }
                         }
                     }
@@ -948,10 +948,10 @@ impl WholeAlbumJob {
         if let Some(singles) = &mut self.singles {
             if !singles.journal_locations().is_empty() {
                 let nested = singles.inspect_recovery(cancel)?;
-                if let Some((status, true)) = &report.recorded_singles {
-                    if nested.recorded_status.as_ref() != Some(status) {
-                        return Err(E::CorruptJournal);
-                    }
+                if let Some((status, true)) = &report.recorded_singles
+                    && nested.recorded_status.as_ref() != Some(status)
+                {
+                    return Err(E::CorruptJournal);
                 }
                 report.singles = Some(Box::new(nested));
             } else if report

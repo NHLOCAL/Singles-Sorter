@@ -405,7 +405,7 @@ fn album_bounded_reparse_entries_match_ordinary_observations_without_following_l
     fs::create_dir(root.join("link")).unwrap();
     fs::write(outside.join("sentinel.mp3"), b"outside").unwrap();
     fixture::set_junction(&root.join("link"), &outside);
-    let mut storage = DesktopStorage::new(&[root.clone()]).unwrap();
+    let mut storage = DesktopStorage::new(std::slice::from_ref(&root)).unwrap();
     let reference = storage.reference(&root).unwrap();
     let ordinary = storage.children(&reference).unwrap();
     let bounded = storage

@@ -395,7 +395,8 @@ fn directory_representation_is_rechecked_at_dispatch() {
 fn readonly_directory_is_refused_without_clearing_its_attribute() {
     let (storage, parent, expected, path) = fixture();
     let album = path.join("album");
-    let mut permissions = std::fs::metadata(&album).unwrap().permissions();
+    let original_permissions = std::fs::metadata(&album).unwrap().permissions();
+    let mut permissions = original_permissions.clone();
     permissions.set_readonly(true);
     std::fs::set_permissions(&album, permissions).unwrap();
     let error = no_effect(diagnostic_remove(
@@ -409,10 +410,10 @@ fn readonly_directory_is_refused_without_clearing_its_attribute() {
         error.kind,
         MutationErrorKind::Unsupported | MutationErrorKind::PermissionDenied
     ));
-    let mut permissions = std::fs::metadata(&album).unwrap().permissions();
+    let permissions = std::fs::metadata(&album).unwrap().permissions();
     assert!(permissions.readonly());
-    permissions.set_readonly(false); // Owned fixture teardown only.
-    std::fs::set_permissions(&album, permissions).unwrap();
+    // Restore the exact owned-fixture permissions, without broadening a mode.
+    std::fs::set_permissions(&album, original_permissions).unwrap();
     assert_eq!(directory_identity(&album), expected);
 }
 
