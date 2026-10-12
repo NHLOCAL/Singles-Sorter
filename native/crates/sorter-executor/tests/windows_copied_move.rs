@@ -411,15 +411,18 @@ fn cancellation_during_original_plan_revalidation_is_not_mislabeled_stale() {
     let f = Fixture::new(true);
     let cancel = AtomicBool::new(false);
     let result = SelectedWindowsJob::prepare_copied_move(
-            grants(&f.source, &f.target, &f.journal),
-            &f.plan,
-            &mut Metadata,
-            &mut CancelAi(&cancel),
-            &f.scope.execution_scope().resources,
-            &f.scope,
-            &cancel
-        );
-    assert!(cancel.load(Ordering::Acquire), "fixture must reach original filename NER");
+        grants(&f.source, &f.target, &f.journal),
+        &f.plan,
+        &mut Metadata,
+        &mut CancelAi(&cancel),
+        &f.scope.execution_scope().resources,
+        &f.scope,
+        &cancel,
+    );
+    assert!(
+        cancel.load(Ordering::Acquire),
+        "fixture must reach original filename NER"
+    );
     assert_eq!(result.err(), Some(sorter_executor::ExecutionError::Cancelled));
     assert_eq!(std::fs::read_dir(&f.target).unwrap().count(), 0);
     assert_eq!(std::fs::read_dir(&f.journal).unwrap().count(), 0);
