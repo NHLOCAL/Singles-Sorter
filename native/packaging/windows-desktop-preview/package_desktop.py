@@ -55,6 +55,10 @@ ID3_CONTAINER_CHECKS = {'actual-fix-wave-id3-five-fields', 'actual-fix-aiff-id3-
                         'container-id3-opaque-artwork-info-preserved', 'container-id3-original-backup-retained',
                         'container-id3-insufficient-padding-partial', 'container-id3-unchanged-hidden',
                         'container-id3-stale-plan-no-effects'}
+WAVPACK_CHECKS = {'actual-fix-wavpack-five-fields', 'wavpack-header-and-footer-only',
+                  'wavpack-original-nul-scalars', 'wavpack-exact-blocks-and-decoded-audio',
+                  'wavpack-artwork-unknown-items-preserved', 'wavpack-original-backup-retained',
+                  'wavpack-readonly-item-partial', 'wavpack-unchanged-hidden', 'wavpack-stale-plan-no-effects'}
 ALBUM_CHECKS = {'actual-album-copy', 'actual-root-album-move', 'actual-mixed-album-move',
                 'album-nested-files-and-sidecars', 'album-copy-metadata',
                 'album-review-no-effects', 'album-stale-membership-no-effects',
@@ -91,6 +95,7 @@ def report_gate(path, binary, mode, package=None):
         require(OGG_CHECKS <= set(report.get('ogg_checks', [])), 'incomplete actual Ogg FixNames acceptance')
         require(MP4_CHECKS <= set(report.get('mp4_checks', [])), 'incomplete actual MP4 FixNames acceptance')
         require(ID3_CONTAINER_CHECKS <= set(report.get('id3_container_checks', [])), 'incomplete actual container ID3 FixNames acceptance')
+        require(WAVPACK_CHECKS <= set(report.get('wavpack_checks', [])), 'incomplete actual WavPack FixNames acceptance')
         require(ALBUM_CHECKS <= set(report.get('album_checks', [])), 'incomplete actual album acceptance')
         require(CROSS_ALBUM_CHECKS <= set(report.get('cross_album_checks', [])), 'incomplete actual cross-volume album acceptance')
         require(COPIED_MOVE_CHECKS <= set(report.get('copied_move_checks', [])), 'incomplete actual copied-Move acceptance')
@@ -216,8 +221,8 @@ def build(args):
             'crt_linkage':'dynamic MSVC; Microsoft runtime DLLs not bundled',
             'webview2_sdk_loader':'Microsoft SDK static loader; exact SDK license/notices included in licenses',
             'clean_machine_without_prerequisites_tested':False, 'physical_apply':True,
-            'supported_apply':['selected-root Copy', 'selected-root same-volume rename Move', 'bounded cross-volume singles Move and nonempty eligible duet Move cohorts with named-stream preservation', 'required artist and singles directories', 'bounded album Copy, same-volume whole-directory Move and quiescent NTFS cross-volume file/stream Move with exact empty-source cleanup', 'Copy file and album directory timestamps/attributes', 'selected-source filename repair', 'bounded ID3v2.3/v2.4 , native FLAC, single-stream Ogg Vorbis/Opus and exact-extent UTF-8 MP4 AAC/ALAC and existing ID3 in ordinary WAVE/AIFF/DSF five-field tag repair with original backup'],
-            'unsupported_apply':['tag representations outside supported MP3/native FLAC/single-stream Ogg Vorbis/Opus/exact-extent MP4/container-ID3 bounds', 'copied Move outside ordinary quiescent local NTFS'],
+            'supported_apply':['selected-root Copy', 'selected-root same-volume rename Move', 'bounded cross-volume singles Move and nonempty eligible duet Move cohorts with named-stream preservation', 'required artist and singles directories', 'bounded album Copy, same-volume whole-directory Move and quiescent NTFS cross-volume file/stream Move with exact empty-source cleanup', 'Copy file and album directory timestamps/attributes', 'selected-source filename repair', 'bounded ID3v2.3/v2.4 , native FLAC, single-stream Ogg Vorbis/Opus and exact-extent UTF-8 MP4 AAC/ALAC and existing ID3 in ordinary WAVE/AIFF/DSF and terminal UTF-8 WavPack APEv2 five-field tag repair with original backup'],
+            'unsupported_apply':['tag representations outside supported MP3/native FLAC/single-stream Ogg Vorbis/Opus/exact-extent MP4/container-ID3/WavPack bounds', 'copied Move outside ordinary quiescent local NTFS'],
             'model_execution':'local native; no Python or model network', 'webview_network_isolation_tested':False,
             'baseline_commit':cli.BASELINE, 'bundle_id':'original-v14-ner-3.7.5',
             'assets_sha256':assets, 'assets_bytes':{n:(models/n).stat().st_size for n in cli.ASSETS},

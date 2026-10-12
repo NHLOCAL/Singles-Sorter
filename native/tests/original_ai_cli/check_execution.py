@@ -26,12 +26,13 @@ from desktop_ogg import generated_ogg, verify_repaired as verify_ogg_repaired
 from check_cross_albums import exercise as exercise_cross_albums, CHECKS as CROSS_ALBUM_CHECKS
 from desktop_mp4 import generated_mp4, verify_repaired as verify_mp4_repaired
 from desktop_id3_container import CASES as CONTAINER_CASES, generated_container, verify_repaired as verify_container_repaired
+from desktop_wavpack import CASES as WAVPACK_CASES, generated_wavpack, verify_repaired as verify_wavpack_repaired
 from desktop_flac import generated_flac, inspect_flac, FIELDS as FLAC_FIELDS, UNKNOWN as FLAC_UNKNOWN
 from desktop_repair import generated_mp3, inspect_mp3, FIELDS  # Independent fixture parser.
 
 spec = importlib.util.spec_from_file_location('execution_package_contract', ROOT / 'native/packaging/windows-preview/package_preview.py')
 package = importlib.util.module_from_spec(spec); spec.loader.exec_module(package)
-CHECKS = {'positional-one-eligible-duet-move', 'positional-zero-eligible-duet-source-retained', 'positional-wave-id3-five-fields', 'positional-aiff-id3-five-fields', 'positional-dsf-id3-five-fields',
+CHECKS = {'positional-one-eligible-duet-move', 'positional-zero-eligible-duet-source-retained', 'positional-wavpack-five-fields', 'positional-wavpack-nul-scalars', 'positional-wavpack-exact-blocks-decoded-audio', 'positional-wavpack-readonly-partial', 'positional-wave-id3-five-fields', 'positional-aiff-id3-five-fields', 'positional-dsf-id3-five-fields',
           'positional-container-id3-exact-extent-decoded-audio', 'positional-container-id3-insufficient-padding-partial', 'positional-m4a-five-fields', 'positional-alac-five-fields', 'positional-mp4-fast-start-values',
           'positional-mp4-exact-extent-decoded-audio', 'positional-mp4-duplicate-outer-consolidation', 'positional-mp4-structural-partial',
           'positional-cross-volume-move', 'positional-original-ai-duet-move', 'positional-mixed-duet-and-rename',
@@ -432,6 +433,23 @@ def run(binary, bundle, report, package_root=None):
             media=verify_container_repaired(before,after,kind)
         require(set(source.iterdir())=={current,*backups},'Unexpected container source or staging objects remain')
         receipts[-1].update(case=label,original_sha256=hashlib.sha256(before).hexdigest(),current_sha256=digest(current),
+                            backup_sha256=[digest(path) for path in backups],observed_repair=actual['repair'],media=media)
+
+    for header,multiple,readonly,label in WAVPACK_CASES:
+        case=roots('wavpack-'+label); source=case/'source'; original=source/'repair_input.wv'; current=source/'repair input.wv'
+        before=generated_wavpack(header,multiple,readonly); original.write_bytes(before)
+        actual=result_record(invoke(case,['source','-f','--no-ai','--journal-directory','journal'],1 if readonly else 0).stderr)
+        require(actual['status']==('partial' if readonly else 'complete') and actual.get('recovery_error') is None,'WavPack repair or reconciliation failed')
+        require(current.is_file() and not original.exists(),'WavPack filename repair did not complete')
+        after=current.read_bytes(); backups=list(source.glob('*.backup')); media=None
+        require(actual['repair']['renamed_files']==1 and actual['repair']['repaired_files']==(0 if readonly else 1),'WavPack observed counters differ')
+        if readonly:
+            require(after==before and not backups and actual['repair']['unsupported_files']==1,'Read-only APE item was rewritten or credited')
+        else:
+            require(len(backups)==1 and backups[0].read_bytes()==before,'Exact WavPack original backup is missing')
+            media=verify_wavpack_repaired(before,after)
+        require(set(source.iterdir())=={current,*backups},'Unexpected WavPack source or staging objects remain')
+        receipts[-1].update(case='wavpack-'+label,original_sha256=hashlib.sha256(before).hexdigest(),current_sha256=digest(current),
                             backup_sha256=[digest(path) for path in backups],observed_repair=actual['repair'],media=media)
 
     for level in ('DEBUG','INFO','WARNING','ERROR','CRITICAL'):

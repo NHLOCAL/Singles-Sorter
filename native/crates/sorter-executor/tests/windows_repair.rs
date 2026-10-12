@@ -927,3 +927,6 @@ mod mp4;
 
 #[path = "support/windows_id3_container_repair_cases.rs"]
 mod id3_container;
+
+#[path = "support/windows_wavpack_repair_cases.rs"]
+mod wavpack;

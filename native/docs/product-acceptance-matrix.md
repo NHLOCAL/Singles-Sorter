@@ -86,7 +86,7 @@ preserved; a filename change does not imply a successful tag repair.
 | `.wav` | WAVE ID3 fixtures | Candidate: existing unflagged ID3v2.3/v2.4 in ordinary PCM/float RIFF; exact file/chunk/media extents and INFO bytes retained. Native/package acceptance pending |
 | `.aiff` | AIFF fixtures | Candidate: existing unflagged ID3v2.3/v2.4 in ordinary AIFF, exact COMM/SSND and unknown chunks retained; AIFC and insufficient padding refuse tags. Native/package acceptance pending |
 | `.flac` | FLAC fixtures | Bounded native FLAC Vorbis comments, including shifted audio after shorter metadata; pictures/vendor/unknown pairs/audio and original backup retained. Dedicated staged/extracted Windows cases passed; opaque-offset representations explicitly remain partial |
-| `.wv` | WavPack fixtures | Tag writes unavailable; filename repair can still complete |
+| `.wv` | WavPack fixtures | Candidate: existing terminal APEv2 UTF-8 five-field patches, original NUL scalar, exact block/tag layout and unknown binary/artwork retained; read-only/binary/external repaired items and ambiguous layouts refuse. Native/package acceptance pending |
 | `.ogg` | Ogg Vorbis fixtures | Bounded single-logical-stream Vorbis writes preserve encoded packets/timing/vendor/artwork/unknown pairs. Dedicated staged/extracted Windows cases passed; chained/multiplexed/other-codec layouts refused |
 | `.dsf` | DSF fixtures | Candidate: existing terminal ID3v2.3/v2.4 in ordinary DSF, exact metadata pointer/header/media extents retained. Native/package acceptance pending |
 | `.opus` | Ogg Opus fixtures | Bounded ordinary single-logical-stream Opus writes; dedicated staged/extracted Windows byte, timing and retained-backup cases passed, with the same representation limits as Vorbis |
@@ -332,3 +332,27 @@ journal trees, actual zero/nonzero counters, and original summary credits. New
 Rust admission tests and these Windows consumer cases remain unrun at this
 source checkpoint. The 36 actually executed paired cases stay unchanged; broader
 duet settings vectors and decision/skip trace parity are a separate active lane.
+
+
+## WavPack APEv2 consumer candidate
+
+The [terminal APEv2 writer](staged-wavpack-repair.md) uses the same retained-original
+Fix authority. Its native scalar preserves embedded NUL separators, matching the
+pinned original APE getter rather than applying the Xiph/MP4 comma-space rule.
+It changes only equal-length UTF-8 target value bytes; header/footer flags, keys,
+item order, encoded WavPack blocks, binary artwork and unknown fields stay exact.
+
+Staged/extracted UI gates require footer-only, header-plus-footer, NUL-value and
+read-only-item partial cases plus stale-source refusal. The first three require
+an exact original backup, complete independent byte/field/layout comparison and
+actual FFmpeg PCM equality. The unsupported trial must retain all original tag
+bytes after filename repair without a fabricated tag backup or success. UI
+preview/review/stale checks include the application journal snapshot, observed
+filename and optional inactive rows. Positional CLI package gates require the
+same four physical cases with actual repair counters and fresh reconciliation.
+
+Five portable helpers, including independent local FFmpeg decoding, pass. These
+are authored reference bytes, not execution of the Rust writer. Ten native/
+stream and five Windows product cases (65 full repair cases), plus the actual
+Windows staged/extracted consumers, remain mandatory. No general APE, ID3v1
+mirror or tag-at-start support is claimed.
