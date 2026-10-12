@@ -53,6 +53,28 @@ def original_route_outcomes(original):
     return result
 
 
+def require_consistent_complete(result, label='result'):
+    """Reject explicit failure evidence without inventing absent family fields."""
+    require(isinstance(result, dict) and result.get('status') == 'complete',
+            label + ' contradicts clean completion')
+    for field in ('failed_operations', 'blocked_operations', 'recovery_operations', 'cancelled_operations'):
+        if field in result:
+            require(type(result[field]) is int and result[field] == 0,
+                    label + ' has a nonzero or invalid ' + field)
+    for field in ('error', 'failure', 'recovery_error'):
+        require(result.get(field) is None, label + ' has explicit ' + field)
+    if 'items' in result:
+        require(isinstance(result['items'], list), label + ' items are not an ordered list')
+        for index, item in enumerate(result['items']):
+            require_consistent_complete(item, label + f'.items[{index}]')
+    if 'whole_albums' in result:
+        require(isinstance(result['whole_albums'], list), label + ' whole_albums is not an ordered list')
+        for index, album in enumerate(result['whole_albums']):
+            require_consistent_complete(album, label + f'.whole_albums[{index}]')
+    if result.get('transfers') is not None:
+        require_consistent_complete(result['transfers'], label + '.transfers')
+
+
 def accepted_decision_outcomes(root, case, native, reference_path, project_decisions):
     """Consume only the live producer's fresh receipt and actual final effects.
 
@@ -79,6 +101,7 @@ def accepted_decision_outcomes(root, case, native, reference_path, project_decis
             or result.get('recovery_error') is not None or result.get('invalid_control', False)):
         evidence['gap'] = 'Fresh policy receipt retained, but final execution is not cleanly complete.'
         return evidence
+    require_consistent_complete(result)
     order = native.get('acknowledged_transfer_order')
     if order is None:
         evidence['gap'] = 'Fresh policy receipt retained, but acknowledged physical effect coverage is missing.'

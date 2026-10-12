@@ -100,6 +100,40 @@ class AcceptedDecisionTests(unittest.TestCase):
         native = self.evidence(); native['acknowledged_transfer_order'] = None
         self.assertFalse(self.project(native)['available'])
 
+    def test_explicit_failed_counters_and_items_cannot_hide_under_complete_status(self):
+        for nested in (False, True):
+            for key in ('failed_operations', 'blocked_operations', 'recovery_operations', 'cancelled_operations'):
+                native = self.evidence()
+                result = native['result']
+                if nested:
+                    result['transfers'] = {'status': 'complete'}
+                    result = result['transfers']
+                result[key] = 1
+                with self.subTest(nested=nested, counter=key), self.assertRaises(AssertionError): self.project(native)
+            for status in ('failed', 'blocked', 'cancelled', 'source_retained', 'needs_recovery'):
+                native = self.evidence()
+                result = native['result']
+                if nested:
+                    result['transfers'] = {'status': 'complete'}
+                    result = result['transfers']
+                result['items'] = [{'operation': 0, 'status': status}]
+                with self.subTest(nested=nested, item_status=status), self.assertRaises(AssertionError): self.project(native)
+        native = self.evidence(); native['result']['transfers'] = {'status': 'partial'}
+        with self.assertRaises(AssertionError): self.project(native)
+        native = self.evidence(); native['result']['whole_albums'] = [{'status': 'partial'}]
+        with self.assertRaises(AssertionError): self.project(native)
+        native = self.evidence(); native['result']['whole_albums'] = [{'status': 'complete', 'failure': 'observed failure'}]
+        with self.assertRaises(AssertionError): self.project(native)
+
+    def test_absent_family_fields_are_not_invented_and_explicit_clean_values_work(self):
+        native = self.evidence()
+        self.assertTrue(self.project(native)['available'])
+        self.assertNotIn('failed_operations', native['result'])
+        native['result'].update(failed_operations=0, blocked_operations=0, recovery_operations=0,
+                                cancelled_operations=0, items=[{'operation': 0, 'status': 'complete'}],
+                                whole_albums=[], transfers=None)
+        self.assertTrue(self.project(native)['available'])
+
     def test_missing_reordered_duplicated_artist_route_never_passes(self):
         for edit in (lambda rows: rows.pop(), lambda rows: rows.reverse(), lambda rows: rows.append(copy.deepcopy(rows[0]))):
             native = self.evidence(); edit(native['result']['execution_decisions']['single_routes'])
