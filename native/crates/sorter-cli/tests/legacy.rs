@@ -135,6 +135,46 @@ mod selected {
             assert!(String::from_utf8_lossy(&result.stderr).contains("complete"));
         }
     }
+    fn album_audio(track: usize) -> Vec<u8> {
+        fn sync(size: usize) -> [u8; 4] { [((size >> 21) & 127) as u8, ((size >> 14) & 127) as u8, ((size >> 7) & 127) as u8, (size & 127) as u8] }
+        let mut body = vec![];
+        for (id, value) in [(b"TPE1", "שלום עולם".to_owned()), (b"TPE2", "שלום עולם".to_owned()), (b"TALB", "אלבום".to_owned()), (b"TRCK", track.to_string())] {
+            let mut payload = vec![3]; payload.extend(value.as_bytes());
+            body.extend(id); body.extend(sync(payload.len())); body.extend([0, 0]); body.extend(payload);
+        }
+        let mut file = b"ID3\x04\x00\x00".to_vec(); file.extend(sync(body.len())); file.extend(body);
+        file.extend(include_bytes!("../../../tests/fixtures/media/blank.mp3")); file
+    }
+    #[test]
+    fn positional_album_copy_root_move_and_mixed_move_use_real_metadata() {
+        for (copying, root_album) in [(true, false), (false, true), (false, false)] {
+            let root = tree(); let source = root.path().join("source");
+            fs::write(root.path().join("app/personal-singer-list.csv"), "זמר בדיקה,אמן בדיקה\nשלום עולם,שם ממופה\n").unwrap();
+            let album = if root_album {
+                fs::remove_file(source.join("זמר בדיקה - שיר.mp3")).unwrap(); source.clone()
+            } else { let album = source.join("input-album"); fs::create_dir(&album).unwrap(); album };
+            for track in 1..=3 { fs::write(album.join(format!("{track}-שיר.mp3")), album_audio(track)).unwrap(); }
+            fs::write(album.join("cover.jpg"), b"owned sidecar").unwrap();
+            fs::create_dir(album.join("booklet")).unwrap();
+            fs::write(album.join("booklet/readme.txt"), b"owned nested file").unwrap();
+            let mut args = vec!["source", "target", "-n", "--no-ai", "--journal-directory", "journal"];
+            if copying { args.push("-c"); }
+            let result = run(root.path(), &args);
+            assert!(result.status.success(), "{result:?}");
+            let destination = root.path().join("target/שם ממופה/אלבום");
+            for track in 1..=3 { assert_eq!(fs::read(destination.join(format!("{track}-שיר.mp3"))).unwrap(), album_audio(track)); }
+            assert_eq!(fs::read(destination.join("cover.jpg")).unwrap(), b"owned sidecar");
+            assert_eq!(fs::read(destination.join("booklet/readme.txt")).unwrap(), b"owned nested file");
+            assert_eq!(album.exists(), copying);
+            let stderr = String::from_utf8(result.stderr).unwrap();
+            let actual: serde_json::Value = serde_json::from_str(stderr.lines().find_map(|line| line.split_once(" - MusicSorter - result: ").map(|(_, value)| value)).unwrap()).unwrap();
+            assert_eq!(actual["status"], "complete"); assert_eq!(actual["albums_completed"], 1);
+            assert_eq!(actual["artist_files"], serde_json::json!([["שלום עולם", 4]]));
+            assert_eq!(actual["committed_destinations"], if root_album {5} else {6});
+            assert!(actual["recovery_error"].is_null(), "{actual}");
+            if !root_album { assert!(root.path().join("target/אמן בדיקה/זמר בדיקה - שיר.mp3").is_file()); }
+        }
+    }
     #[test]
     fn positional_source_only_fix_retains_original_bytes_and_media() {
         let root = tree();

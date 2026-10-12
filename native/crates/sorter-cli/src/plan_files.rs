@@ -258,6 +258,9 @@ fn execute() -> Result<ResultPayload, Failure> {
     execute_request(&request)
 }
 pub(super) fn execute_request(request: &Request) -> Result<ResultPayload, Failure> {
+    execute_request_controlled(request, &std::sync::atomic::AtomicBool::new(false))
+}
+pub(super) fn execute_request_controlled(request: &Request, cancel: &std::sync::atomic::AtomicBool) -> Result<ResultPayload, Failure> {
     if request.schema_version != 2 {
         return Err(Failure::new(
             2,
@@ -312,11 +315,13 @@ pub(super) fn execute_request(request: &Request) -> Result<ResultPayload, Failur
             .transpose()
             .map_err(storage_failure)?;
         #[cfg(all(windows, feature = "selected-windows-execution"))]
-        let desktop: Box<dyn ReadStorage> = if let Some(target) = &request.target {
+        let desktop: Box<dyn ReadStorage + '_> = if let Some(target) = &request.target {
             Box::new(
-                sorter_executor::windows_copy::WindowsPlanningStorage::for_preview(
+                sorter_executor::windows_copy::WindowsPlanningStorage::for_album_preview(
                     &request.source,
                     target,
+                    sorter_io::desktop::WindowsDirectoryReadLimits::ALBUM_DEFAULT,
+                    cancel,
                 )
                 .map_err(|e| Failure::new(1, "STORAGE_ERROR", e.to_string()))?,
             )
@@ -375,12 +380,13 @@ pub(super) fn execute_request(request: &Request) -> Result<ResultPayload, Failur
         }
         core.resource_ids.extend(recognition_resources);
         core.adapter_versions.extend(recognition_adapters);
+        let control = HostControl { inner: control.as_ref(), cancel };
         let outcome = plan_job_controlled(
             &core,
             &mut storage,
             &mut metadata,
             recognition.as_mut(),
-            control.as_ref(),
+            &control,
         );
         let executed = recognition.inference_executed();
         let plan = outcome.map_err(|e| {
@@ -471,8 +477,8 @@ pub(super) fn emit(response: Result<ResultPayload, Failure>) -> ExitCode {
     ExitCode::from(exit)
 }
 
-struct ReadAdapter(Box<dyn ReadStorage>);
-impl ReadStorage for ReadAdapter {
+pub(super) struct ReadAdapter<'a>(pub(super) Box<dyn ReadStorage + 'a>);
+impl ReadStorage for ReadAdapter<'_> {
     fn stat(
         &mut self,
         reference: &sorter_core::discovery::StorageRef,
@@ -490,5 +496,29 @@ impl ReadStorage for ReadAdapter {
         reference: &sorter_core::discovery::StorageRef,
     ) -> Result<sorter_core::discovery::ReadInput, StorageError> {
         self.0.open_read(reference)
+    }
+}
+
+struct HostControl<'a> {
+    inner: &'a dyn PlanningControl,
+    cancel: &'a std::sync::atomic::AtomicBool,
+}
+impl PlanningControl for HostControl<'_> {
+    fn checkpoint(&self, boundary: PlanningBoundary) -> Result<(), sorter_core::job_plan::PlanningAbort> {
+        if self.cancel.load(std::sync::atomic::Ordering::Acquire) {
+            return Err(sorter_core::job_plan::PlanningAbort::cancelled());
+        }
+        self.inner.checkpoint(boundary)
+    }
+}
+
+#[cfg(test)]
+mod cancellation_tests {
+    use super::*;
+    #[test]
+    fn retained_execution_cancellation_also_stops_planning_checkpoints() {
+        let cancel = std::sync::atomic::AtomicBool::new(true);
+        let control = HostControl { inner: &UncontrolledPlanning, cancel: &cancel };
+        assert_eq!(control.checkpoint(PlanningBoundary::Collection).unwrap_err().kind, sorter_core::job_plan::AbortKind::Cancelled);
     }
 }

@@ -7,6 +7,7 @@ export function simpleStatus(row:PlanRow,items:ExecutionItem[],copy:boolean,cont
  if(items.length){
   const completed=items.some(item=>item.status==='complete'||item.status==='source_retained'||item.repair?.renamed||item.repair?.repaired);
   if(items.some(item=>item.status==='needs_recovery'))return 'נדרשת בדיקה';
+  if(items.some(item=>item.status==='partial'))return 'בוצע חלקית';
   if(items.some(item=>item.status==='unsupported_tags'||item.status==='metadata_failure'))return completed?'בוצע חלקית':'לא הושלם';
   if(items.some(item=>item.status==='failed'))return completed?'בוצע חלקית':'לא הושלם';
   if(items.some(item=>item.status==='cancelled'))return completed?'בוצע חלקית':'נעצר';
@@ -63,6 +64,9 @@ export function simpleExecutionSummary(execution:Pick<ExecutionSnapshot,'status'
   parts.push(`${result.moved_sources.toLocaleString('he-IL')} קבצים הועברו`);
   if(result.committed_destinations>result.moved_sources)parts.push('חלק מקובצי המקור נשמרו');
  }
+ if(result.albums?.completed)parts.push(`${result.albums.completed.toLocaleString('he-IL')} אלבומים הושלמו`);
+ if(result.albums?.child_names_changed)parts.push(`${result.albums.child_names_changed.toLocaleString('he-IL')} שמות באלבומים שונו`);
+ if(result.albums?.retained_directories)parts.push('נותרו תיקיות במקור');
  if(result.failed_operations)parts.push(`${result.failed_operations.toLocaleString('he-IL')} לא הושלמו`);
  if(result.blocked_operations)parts.push(`${result.blocked_operations.toLocaleString('he-IL')} לא בוצעו`);
  if(result.cancelled_operations)parts.push(`${result.cancelled_operations.toLocaleString('he-IL')} נעצרו`);

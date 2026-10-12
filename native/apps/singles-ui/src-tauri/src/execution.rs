@@ -5,9 +5,12 @@ use sorter_core::discovery::{ReadInput, StorageError};
 #[cfg(all(windows, feature = "selected-windows-execution"))]
 #[path = "execution_repair.rs"]
 mod repair;
+#[cfg(all(windows, feature = "selected-windows-execution"))]
+#[path = "execution_album.rs"]
+mod album;
 
-pub(super) struct ReadAdapter(pub Box<dyn ReadStorage>);
-impl ReadStorage for ReadAdapter {
+pub(super) struct ReadAdapter<'a>(pub Box<dyn ReadStorage + 'a>);
+impl ReadStorage for ReadAdapter<'_> {
     fn stat(
         &mut self,
         reference: &StorageRef,
@@ -36,6 +39,8 @@ pub struct ApplyReadiness {
     pub source: String,
     pub target: Option<String>,
     pub mode: JobMode,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notice: Option<String>,
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct ExecutionItem {
@@ -63,6 +68,14 @@ pub struct RepairSummary {
     pub retained_backup_bytes: u64,
 }
 #[derive(Clone, Debug, Serialize)]
+pub struct AlbumSummary {
+    pub completed: usize,
+    pub child_names_changed: usize,
+    pub created_directories: usize,
+    pub removed_directories: usize,
+    pub retained_directories: usize,
+}
+#[derive(Clone, Debug, Serialize)]
 pub struct ExecutionResult {
     pub source_items: usize,
     pub committed_destinations: usize,
@@ -74,6 +87,8 @@ pub struct ExecutionResult {
     pub items: Vec<ExecutionItem>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub repair: Option<RepairSummary>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub albums: Option<AlbumSummary>,
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct ExecutionSnapshot {
@@ -93,12 +108,24 @@ pub struct ExecutionSnapshot {
     pub recovery_error: Option<String>,
 }
 #[derive(Clone, Debug, Serialize)]
+pub struct RecoveryDirectory {
+    pub reference: StorageRef,
+    pub role: &'static str,
+    pub status: String,
+}
+#[derive(Clone, Debug, Serialize)]
 pub struct RecoveryInspection {
     pub observed_directories: usize,
     pub pending_directories: usize,
     pub rejected_directories: usize,
     pub incomplete_tail: bool,
     pub transfers: Vec<RecoveryItem>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub pending_operations: Vec<usize>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub directory_evidence: Vec<RecoveryDirectory>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata_issues: Option<usize>,
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct RecoveryItem {
@@ -171,6 +198,7 @@ mod selected {
         binding::{ExecutionScope, Resources, prepare_scope},
         results::{ItemStatus, JobResult, JobStatus},
         windows_job::{SelectedWindowsJob, supported_plan},
+        windows_album::{AlbumScope, prepare_album_scope, supported_album_plan},
         windows_repair::{RepairScope, prepare_repair_scope, supported_repair_plan},
     };
     use sorter_io::desktop::windows_mutation::{WindowsMutationStorage, WindowsSelectedRootGrant};
@@ -187,6 +215,7 @@ mod selected {
             target: PathBuf,
             scope: ExecutionScope,
         },
+        Album { target: PathBuf, scope: Box<AlbumScope> },
         Repair(RepairScope),
     }
     impl PreparedSelection {
@@ -194,6 +223,7 @@ mod selected {
             match &self.scope {
                 PreparedScope::Sort { scope, .. } => &scope.resources,
                 PreparedScope::Repair(scope) => scope.resources(),
+                PreparedScope::Album { scope, .. } => scope.resources(),
             }
         }
     }
@@ -271,6 +301,19 @@ mod selected {
             }
             let target =
                 target.ok_or_else(|| HostError::new("TARGET_REQUIRED", "בחר תיקיית יעד למיון."))?;
+            if plan.operations.iter().any(|operation| matches!(operation.kind, sorter_core::job_plan::OperationKind::AlbumTransfer { .. })) {
+                supported_album_plan(plan).map_err(storage_error)?;
+                let scope = prepare_album_scope(plan, storage, &resources, &cancellation.cancelled).map_err(storage_error)?;
+                if !plan.request.settings.copy_mode
+                    && !matches!((&scope.execution_scope().source_root, &scope.execution_scope().target_root), (sorter_core::discovery::ObjectIdentity::Windows {volume:a,..},sorter_core::discovery::ObjectIdentity::Windows {volume:b,..}) if a == b)
+                {
+                    return Err(HostError::new("CROSS_VOLUME_MOVE_UNAVAILABLE", "העברה בין כוננים אינה זמינה עדיין. אפשר לבחור העתקה ולבדוק מחדש."));
+                }
+                return Ok(PreparedSelection {
+                    source: source.path.clone(), personal: personal.unwrap_or_default().to_vec(), ai,
+                    scope: PreparedScope::Album { target: target.path.clone(), scope: Box::new(scope) },
+                });
+            }
             supported_plan(plan).map_err(storage_error)?;
             let scope = prepare_scope(plan, storage, &resources, &cancellation.cancelled)
                 .map_err(storage_error)?;
@@ -318,6 +361,8 @@ mod selected {
                 source: source.selection.display_name.clone(),
                 target: target.map(|root| root.selection.display_name.clone()),
                 mode: plan.request.mode,
+                notice: selected.as_ref().filter(|selection| matches!(&selection.scope, PreparedScope::Album { .. }))
+                    .map(|_| "לפני מיון אלבומים, סגור תוכנות או סנכרון שעלולים לשנות את המקור או היעד עד לסיום הפעולה.".into()),
             }),
             selected,
         ))
@@ -476,6 +521,9 @@ mod selected {
                         cancellation,
                     );
                 }
+                PreparedScope::Album { target, scope } => {
+                    return self.execute_album(id, plan, &selected.source, &target, directory, &scope, recognition.as_mut(), cancellation);
+                }
                 PreparedScope::Sort { target, scope } => (target, scope),
             };
             // Startup profile access already established this application directory.
@@ -549,6 +597,7 @@ mod selected {
                 job.inspect_recovery(&recovery_scope)
                     .ok()
                     .map(|report| RecoveryInspection {
+                        pending_operations: vec![], directory_evidence: vec![], metadata_issues: None,
                         observed_directories: report.directories.observed.len(),
                         pending_directories: report.directories.pending.len(),
                         rejected_directories: report.directories.rejected.len(),
@@ -605,7 +654,7 @@ mod selected {
             Ok(())
         }
     }
-    fn status(result: &JobResult) -> &'static str {
+    pub(super) fn status(result: &JobResult) -> &'static str {
         match result.status {
             JobStatus::Complete => "complete",
             JobStatus::Partial => "partial",
@@ -613,7 +662,7 @@ mod selected {
             JobStatus::NeedsRecovery => "needs_recovery",
         }
     }
-    fn project(result: JobResult) -> ExecutionResult {
+    pub(super) fn project(result: JobResult) -> ExecutionResult {
         ExecutionResult {
             source_items: result.source_items,
             committed_destinations: result.committed_destinations,
@@ -623,6 +672,7 @@ mod selected {
             recovery_operations: result.recovery_operations,
             cancelled_operations: result.cancelled_operations,
             repair: None,
+            albums: None,
             items: result
                 .items
                 .into_iter()

@@ -24,6 +24,7 @@ from desktop_layout import check_native_layout, capture_platform_fonts, check_ph
 from desktop_ai import DesktopAI, ProtectedTrees, ai_mode, verify_package, REQUIRED_CHECKS
 from desktop_apply import exercise_apply
 from desktop_repair import exercise_repair
+from desktop_albums import exercise_albums
 from desktop_polish import exercise_information, set_developer_mode
 from driver_readiness import wait_driver_ready
 from desktop_stability import exercise_shell, exercise_result_stability
@@ -60,6 +61,7 @@ checks = []
 original_ai_checks = []
 apply_checks = []
 repair_checks = []
+album_checks = []
 
 def call(method, path, body=None, *, timeout=30):
     data = None if body is None else json.dumps(body).encode('utf-8')
@@ -300,12 +302,14 @@ try:
             checks.append('Real selected-root execution: ' + ', '.join(apply_checks))
             repair_checks = exercise_repair(command, script, click, fill, wait, capture, scratch / 'repair-cases', OUTPUT, ROOT.parents[1] / 'tests/fixtures/media/blank.mp3')
             checks.append('Real source-only repair: ' + ', '.join(repair_checks))
+            album_checks = exercise_albums(script, click, fill, wait, capture, scratch / 'album-cases', OUTPUT, ROOT.parents[1] / 'tests/fixtures/media/blank.mp3')
+            checks.append('Real album execution: ' + ', '.join(album_checks))
     assert not script("return !!document.querySelector('vite-error-overlay')")
     if package_guard:
         package_guard.verify()
         assert verify_package(BINARY.parent) == PACKAGE_MANIFEST_SHA256
         assert set(REQUIRED_CHECKS).issubset(original_ai_checks)
-    (OUTPUT / 'acceptance.json').write_text(json.dumps({'status':'passed','platform':'windows-native-tauri','binary_sha256':hashlib.sha256(BINARY.read_bytes()).hexdigest(),'ipc_mocked':False,'medium_integrity_verified':True,'ai_mode':AI_MODE,'package_sha256sums_sha256':PACKAGE_MANIFEST_SHA256,'original_ai_checks':original_ai_checks,'apply_mode':os.environ.get('SINGLES_DESKTOP_APPLY_EXPECTED','off'),'apply_checks':apply_checks,'repair_checks':repair_checks,'checks':checks,'remaining':['Narrator','200 percent DPI','Android SAF and physical ARM64','unsupported apply modes and process-restart recovery']},ensure_ascii=False,indent=2),encoding='utf-8')
+    (OUTPUT / 'acceptance.json').write_text(json.dumps({'status':'passed','platform':'windows-native-tauri','binary_sha256':hashlib.sha256(BINARY.read_bytes()).hexdigest(),'ipc_mocked':False,'medium_integrity_verified':True,'ai_mode':AI_MODE,'package_sha256sums_sha256':PACKAGE_MANIFEST_SHA256,'original_ai_checks':original_ai_checks,'apply_mode':os.environ.get('SINGLES_DESKTOP_APPLY_EXPECTED','off'),'apply_checks':apply_checks,'repair_checks':repair_checks,'album_checks':album_checks,'checks':checks,'remaining':['Narrator','200 percent DPI','Android SAF and physical ARM64','unsupported apply modes and process-restart recovery']},ensure_ascii=False,indent=2),encoding='utf-8')
 except Exception as error:
     snapshot(active_binary, OUTPUT, 'webdriver-failure')
     if session:

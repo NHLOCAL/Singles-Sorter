@@ -314,6 +314,9 @@ fn execute(options: &Options) -> Result<(), Failure> {
             &console_cancel::CANCEL,
             &AtomicBool::new(false),
             &mut |plan, _| {
+                if plan.operations.iter().any(|operation| matches!(operation.kind, sorter_core::job_plan::OperationKind::AlbumTransfer { .. })) {
+                    log(LogLevel::Warning, options.log_level, super::run_files::ALBUM_CONDITION)?;
+                }
                 if options.log_level == LogLevel::Debug {
                     describe(plan, &mut io::stderr().lock())?;
                 }

@@ -102,6 +102,7 @@ $('review-apply').addEventListener('click',()=>{
  $('apply-title').textContent=repairing?'תיקון שמות ותגיות':'ביצוע התוכנית';
  $('apply-target-label').hidden=repairing;
  $('apply-description').textContent=repairing?'תיקון שמות ותגיות בקבצים שברשימה. לפני החלפת תגיות נשמר עותק מקורי לצד הקובץ.':controller.state.developerMode?`${readiness.copy_mode?'העתקת':'העברת'} ${readiness.operation_count.toLocaleString('he-IL')} פעולות לפי התוכנית שהוצגה.`:readiness.copy_mode?'העתקת הקבצים שברשימה. קובצי המקור יישארו במקומם.':'העברת הקבצים שברשימה אל תיקיית היעד.';
+ if(readiness.notice)$('apply-description').append(document.createTextNode(' '+readiness.notice));
  $<HTMLInputElement>('apply-source').value=readiness.source;$<HTMLInputElement>('apply-target').value=readiness.target??'';
  openDialog('apply-dialog');$('apply-back').focus();
 });
@@ -128,7 +129,7 @@ function openRow(row:PlanRow,trigger:HTMLButtonElement,push=true){
   $('row-content').append(text('p',status,'detail-status'));
   for(const item of executionItems(row)){const repairReason=simpleRepairReason(item);if(repairReason)$('row-content').append(text('p',repairReason,'hint'));}
   const reason=simpleReason(row,controller.state.snapshot?.apply?.supported);if(reason&&!executionItems(row).length)$('row-content').append(text('p',reason,'hint'));
-  if(executionItems(row).some(item=>['failed','needs_recovery','source_retained'].includes(item.status)))$('row-content').append(text('p',row.kind==='FixNames'?'בדוק את הקובץ ואת הגיבוי בתיקיית המקור לפני ניסיון נוסף.':'בדוק את הקובץ בתיקיית המקור ובתיקיית היעד לפני ניסיון נוסף.','hint'));
+  if(executionItems(row).some(item=>['partial','failed','needs_recovery','source_retained'].includes(item.status)))$('row-content').append(text('p',row.kind==='FixNames'?'בדוק את הקובץ ואת הגיבוי בתיקיית המקור לפני ניסיון נוסף.':'בדוק את הקובץ בתיקיית המקור ובתיקיית היעד לפני ניסיון נוסף.','hint'));
   if(push)history.pushState({singlesView:'detail',jobId:controller.state.snapshot?.job_id,rowId:row.id},'');openDialog('row-dialog');return;
  }
 
@@ -174,7 +175,7 @@ $('previous').addEventListener('click',()=>void controller.changePage(Math.max(0
 $('next').addEventListener('click',()=>void controller.changePage(controller.state.offset+PAGE_SIZE));
 function text(tag:string,value:string,className?:string){const node=document.createElement(tag);node.textContent=value;if(className)node.className=className;return node;}
 const executionTitles:Record<string,string>={preparing:'מאמת את הקבצים לפני ביצוע…',running:'מבצע את התוכנית…',complete:'הביצוע הושלם',partial:'הביצוע הושלם חלקית',cancelled:'הביצוע נעצר',failed:'הביצוע לא הושלם',needs_recovery:'נדרשת בדיקת התאוששות'};
-function itemLabel(item:ExecutionItem){return ({complete:'בוצע',source_retained:'היעד נכתב; המקור נשמר',failed:'נכשל',cancelled:'בוטל',blocked:'לא בוצע',needs_recovery:'נדרשת בדיקה',unsupported_tags:'תגיות לא נתמכות',metadata_failure:'קריאת התגיות נכשלה'})[item.status];}
+function itemLabel(item:ExecutionItem){return ({partial:'בוצע חלקית',complete:'בוצע',source_retained:'היעד נכתב; המקור נשמר',failed:'נכשל',cancelled:'בוטל',blocked:'לא בוצע',needs_recovery:'נדרשת בדיקה',unsupported_tags:'תגיות לא נתמכות',metadata_failure:'קריאת התגיות נכשלה'})[item.status];}
 function executionItems(row:PlanRow):ExecutionItem[]{return controller.state.execution?.result?.items.filter(item=>row.operation_ids?.includes(item.operation))??[];}
 function rowStatus(row:PlanRow){
  const s=controller.state;

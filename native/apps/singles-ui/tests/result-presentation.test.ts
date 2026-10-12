@@ -89,3 +89,17 @@ describe('optional inactive rows',()=>{
   expect(simpleReason(row,true)).toContain('לא נמצא שינוי');
  });
 });
+
+describe('actual album result projection',()=>{
+ it('keeps partial child-name effects visible without claiming a moved file',()=>{
+  expect(simpleStatus({...row,kind:'Album'},[item('partial')],false)).toBe('בוצע חלקית');
+  const result={source_items:3,committed_destinations:0,moved_sources:0,failed_operations:0,blocked_operations:0,cancelled_operations:0,recovery_operations:0,items:[item('partial')],albums:{completed:0,child_names_changed:1,created_directories:1,removed_directories:0,retained_directories:0}};
+  const summary=simpleExecutionSummary({status:'partial',result},false);
+  expect(summary).toContain('0 קבצים הועברו');expect(summary).toContain('1 שמות באלבומים שונו');expect(summary).not.toContain('אלבומים הושלמו');
+ });
+ it('separates file effects, completed albums and retained source folders',()=>{
+  const result={source_items:5,committed_destinations:5,moved_sources:5,failed_operations:0,blocked_operations:0,cancelled_operations:0,recovery_operations:0,items:[],albums:{completed:1,child_names_changed:0,created_directories:2,removed_directories:0,retained_directories:1}};
+  const summary=simpleExecutionSummary({status:'partial',result},false);
+  expect(summary).toContain('5 קבצים הועברו');expect(summary).toContain('1 אלבומים הושלמו');expect(summary).toContain('נותרו תיקיות במקור');expect(summary).not.toContain('2');
+ });
+});

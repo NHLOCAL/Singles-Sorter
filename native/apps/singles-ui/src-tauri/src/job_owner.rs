@@ -787,11 +787,13 @@ fn real_plan(
     }
     request.adapter_versions.extend(model_adapters);
     #[cfg(all(windows, feature = "selected-windows-execution"))]
-    let desktop: Box<dyn ReadStorage> = if let Some(target) = target {
+    let desktop: Box<dyn ReadStorage + '_> = if let Some(target) = target {
         Box::new(
-            sorter_executor::windows_copy::WindowsPlanningStorage::for_preview(
+            sorter_executor::windows_copy::WindowsPlanningStorage::for_album_preview(
                 &source.path,
                 &target.path,
+                sorter_io::desktop::WindowsDirectoryReadLimits::ALBUM_DEFAULT,
+                &cancellation.cancelled,
             )
             .map_err(storage_error)?,
         )
@@ -1232,6 +1234,7 @@ mod tests {
                 recovery_operations: 0,
                 cancelled_operations: 0,
                 repair: None,
+                albums: None,
                 items: vec![ExecutionItem {
                     operation: 0,
                     status: "complete",

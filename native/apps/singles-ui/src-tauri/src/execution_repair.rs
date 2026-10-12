@@ -63,6 +63,7 @@ impl Host {
             match job.inspect_recovery(&cancellation.cancelled) {
                 Ok(report) => self.update_repair(id, |snapshot| {
                     snapshot.recovery = Some(RecoveryInspection {
+                        pending_operations: vec![], directory_evidence: vec![], metadata_issues: None,
                         observed_directories: 0,
                         pending_directories: 0,
                         rejected_directories: 0,
@@ -158,6 +159,7 @@ fn project(result: RepairResult) -> ExecutionResult {
             .filter(|item| item.status == RepairStatus::Cancelled)
             .count(),
         repair: Some(summary),
+        albums: None,
         items: result
             .items
             .into_iter()
