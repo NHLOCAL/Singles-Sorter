@@ -279,121 +279,129 @@ impl Id3StagedPlan {
 
 /// Shared exact-extent ID3 text transform. The container caller establishes its
 /// own media/chunk layout; this function never infers an MP3 from ID3 bytes.
-pub(crate) fn rewrite_id3_block(original: &[u8], repairs: &[FieldRepair], cancel: &AtomicBool) -> Result<Vec<u8>> {
+pub(crate) fn rewrite_id3_block(
+    original: &[u8],
+    repairs: &[FieldRepair],
+    cancel: &AtomicBool,
+) -> Result<Vec<u8>> {
     cancelled(cancel)?;
-    if original.len() < 10 { return Err(TagWriteError::Unsupported("truncated ID3 header")); }
-    let mut header: [u8;10] = original[..10].try_into().unwrap();
-    if &header[..3] != b"ID3" || !matches!(header[3],3|4) || header[4] != 0 || header[5] != 0 {
-        return Err(TagWriteError::Unsupported("only unflagged ID3v2.3/v2.4; no unsync, footer or extended header"));
+    if original.len() < 10 {
+        return Err(TagWriteError::Unsupported("truncated ID3 header"));
+    }
+    let mut header: [u8; 10] = original[..10].try_into().unwrap();
+    if &header[..3] != b"ID3" || !matches!(header[3], 3 | 4) || header[4] != 0 || header[5] != 0 {
+        return Err(TagWriteError::Unsupported(
+            "only unflagged ID3v2.3/v2.4; no unsync, footer or extended header",
+        ));
     }
     let size = sync_size(&header[6..10])?;
     if size > MAX_TAG || size.checked_add(10) != Some(original.len()) {
         return Err(TagWriteError::Unsupported("ID3 block extent or budget"));
     }
     let body = &original[10..];
-        let mut previous = None;
-        let mut repairs_by_id = Vec::new();
-        for repair in repairs {
-            let index = FIX_FIELDS
-                .iter()
-                .position(|f| *f == repair.field)
-                .ok_or(TagWriteError::Unsupported("repair field"))?;
-            if previous.is_some_and(|p| p >= index)
-                || repair.original == repair.replacement
-                || sorter_core::fix_jibrish(&repair.original, sorter_core::RepairMode::Hebrew)
-                    != repair.replacement
-            {
-                return Err(TagWriteError::Unsupported(
-                    "repair order or unchanged assignment",
-                ));
-            }
-            previous = Some(index);
-            repairs_by_id.push((frame_id(repair.field)?, repair));
-        }
-        let mut rebuilt = vec![];
-        let mut seen = HashSet::new();
-        let mut at = 0;
-        let mut count = 0;
-        while at < body.len() && body[at] != 0 {
-            cancelled(cancel)?;
-            count += 1;
-            if count > MAX_FRAMES || body.len() - at < 10 {
-                return Err(TagWriteError::Unsupported(
-                    "frame count or truncated header",
-                ));
-            }
-            let id: [u8; 4] = body[at..at + 4]
-                .try_into()
-                .map_err(|_| TagWriteError::Unsupported("frame ID"))?;
-            if !id
-                .iter()
-                .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit())
-                || body[at + 8] != 0
-                || body[at + 9] != 0
-            {
-                return Err(TagWriteError::Unsupported("frame ID or flags"));
-            }
-            let length = if header[3] == 4 {
-                sync_size(&body[at + 4..at + 8])?
-            } else {
-                u32::from_be_bytes(
-                    body[at + 4..at + 8]
-                        .try_into()
-                        .map_err(|_| TagWriteError::Unsupported("frame size"))?,
-                ) as usize
-            };
-            if length > body.len() - at - 10 {
-                return Err(TagWriteError::Unsupported("truncated frame"));
-            }
-            let payload = &body[at + 10..at + 10 + length];
-            if let Some((_, repair)) = repairs_by_id.iter().find(|(key, _)| *key == id) {
-                if !seen.insert(id) {
-                    return Err(TagWriteError::Unsupported("duplicate repaired frame"));
-                }
-                let values = id3_text(payload)
-                    .map_err(|_| TagWriteError::Unsupported("text representation"))?;
-                let projected = project(RawFamily::Id3, repair.field, values)
-                    .map_err(|_| TagWriteError::Unsupported("field projection"))?;
-                if projected.value != Ok(LegacyScalar::Text(repair.original.clone())) {
-                    return Err(TagWriteError::Stale);
-                }
-                let new_payload = encode_text(payload, &repair.replacement, header[3])?;
-                rebuilt.extend(id);
-                rebuilt.extend(if header[3] == 4 {
-                    write_sync_size(new_payload.len())?
-                } else {
-                    u32::try_from(new_payload.len())
-                        .map_err(|_| TagWriteError::Unsupported("frame size"))?
-                        .to_be_bytes()
-                });
-                rebuilt.extend([0, 0]);
-                rebuilt.extend(new_payload);
-            } else {
-                rebuilt.extend(&body[at..at + 10 + length]);
-            }
-            if rebuilt.len() > MAX_TAG {
-                return Err(TagWriteError::Unsupported("rewritten tag budget"));
-            }
-            at += 10 + length;
-        }
-        if body[at..].iter().any(|b| *b != 0) {
-            return Err(TagWriteError::Unsupported("nonzero padding"));
-        }
-        if seen.len() != repairs.len() {
-            return Err(TagWriteError::Stale);
-        }
-        // Keep the media start byte-for-byte at its original offset. Unknown
-        // preserved frames can contain absolute offsets; growing the tag would
-        // silently invalidate those references. Existing zero padding is space
-        // for larger Unicode text; insufficient padding is explicit unsupported.
-        if rebuilt.len() > body.len() {
+    let mut previous = None;
+    let mut repairs_by_id = Vec::new();
+    for repair in repairs {
+        let index = FIX_FIELDS
+            .iter()
+            .position(|f| *f == repair.field)
+            .ok_or(TagWriteError::Unsupported("repair field"))?;
+        if previous.is_some_and(|p| p >= index)
+            || repair.original == repair.replacement
+            || sorter_core::fix_jibrish(&repair.original, sorter_core::RepairMode::Hebrew)
+                != repair.replacement
+        {
             return Err(TagWriteError::Unsupported(
-                "insufficient existing padding for offset-preserving repair",
+                "repair order or unchanged assignment",
             ));
         }
-        rebuilt.resize(body.len(), 0);
-        header[6..10].copy_from_slice(&write_sync_size(rebuilt.len())?);
-        let mut repaired_header = header.to_vec();
-        repaired_header.extend(rebuilt);
-        Ok(repaired_header)
+        previous = Some(index);
+        repairs_by_id.push((frame_id(repair.field)?, repair));
+    }
+    let mut rebuilt = vec![];
+    let mut seen = HashSet::new();
+    let mut at = 0;
+    let mut count = 0;
+    while at < body.len() && body[at] != 0 {
+        cancelled(cancel)?;
+        count += 1;
+        if count > MAX_FRAMES || body.len() - at < 10 {
+            return Err(TagWriteError::Unsupported(
+                "frame count or truncated header",
+            ));
+        }
+        let id: [u8; 4] = body[at..at + 4]
+            .try_into()
+            .map_err(|_| TagWriteError::Unsupported("frame ID"))?;
+        if !id
+            .iter()
+            .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit())
+            || body[at + 8] != 0
+            || body[at + 9] != 0
+        {
+            return Err(TagWriteError::Unsupported("frame ID or flags"));
+        }
+        let length = if header[3] == 4 {
+            sync_size(&body[at + 4..at + 8])?
+        } else {
+            u32::from_be_bytes(
+                body[at + 4..at + 8]
+                    .try_into()
+                    .map_err(|_| TagWriteError::Unsupported("frame size"))?,
+            ) as usize
+        };
+        if length > body.len() - at - 10 {
+            return Err(TagWriteError::Unsupported("truncated frame"));
+        }
+        let payload = &body[at + 10..at + 10 + length];
+        if let Some((_, repair)) = repairs_by_id.iter().find(|(key, _)| *key == id) {
+            if !seen.insert(id) {
+                return Err(TagWriteError::Unsupported("duplicate repaired frame"));
+            }
+            let values =
+                id3_text(payload).map_err(|_| TagWriteError::Unsupported("text representation"))?;
+            let projected = project(RawFamily::Id3, repair.field, values)
+                .map_err(|_| TagWriteError::Unsupported("field projection"))?;
+            if projected.value != Ok(LegacyScalar::Text(repair.original.clone())) {
+                return Err(TagWriteError::Stale);
+            }
+            let new_payload = encode_text(payload, &repair.replacement, header[3])?;
+            rebuilt.extend(id);
+            rebuilt.extend(if header[3] == 4 {
+                write_sync_size(new_payload.len())?
+            } else {
+                u32::try_from(new_payload.len())
+                    .map_err(|_| TagWriteError::Unsupported("frame size"))?
+                    .to_be_bytes()
+            });
+            rebuilt.extend([0, 0]);
+            rebuilt.extend(new_payload);
+        } else {
+            rebuilt.extend(&body[at..at + 10 + length]);
+        }
+        if rebuilt.len() > MAX_TAG {
+            return Err(TagWriteError::Unsupported("rewritten tag budget"));
+        }
+        at += 10 + length;
+    }
+    if body[at..].iter().any(|b| *b != 0) {
+        return Err(TagWriteError::Unsupported("nonzero padding"));
+    }
+    if seen.len() != repairs.len() {
+        return Err(TagWriteError::Stale);
+    }
+    // Keep the media start byte-for-byte at its original offset. Unknown
+    // preserved frames can contain absolute offsets; growing the tag would
+    // silently invalidate those references. Existing zero padding is space
+    // for larger Unicode text; insufficient padding is explicit unsupported.
+    if rebuilt.len() > body.len() {
+        return Err(TagWriteError::Unsupported(
+            "insufficient existing padding for offset-preserving repair",
+        ));
+    }
+    rebuilt.resize(body.len(), 0);
+    header[6..10].copy_from_slice(&write_sync_size(rebuilt.len())?);
+    let mut repaired_header = header.to_vec();
+    repaired_header.extend(rebuilt);
+    Ok(repaired_header)
 }

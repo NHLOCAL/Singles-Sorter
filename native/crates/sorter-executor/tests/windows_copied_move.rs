@@ -1274,48 +1274,102 @@ fn restart_copied_strict_phase_parser_rejects_reframed_invalid_stream_history() 
 }
 
 fn one_eligible_duet_fixture() -> Fixture {
-    let mut fixture=Fixture::new(true);
+    let mut fixture = Fixture::new(true);
     std::fs::create_dir(fixture.target.join("אמן")).unwrap();
-    let mut request=fixture.plan.request.clone();request.settings.exist_only=true;
-    let mut reads=WindowsPlanningStorage::for_preview(&fixture.source,&fixture.target).unwrap();
-    fixture.plan=plan_job(&request,&mut reads,&mut Metadata,&mut Ai(true)).unwrap();
-    assert_eq!(fixture.plan.operations.len(),1,"{:?}",fixture.plan);
-    fixture.scope=prepare_copied_move_scope(&fixture.plan,&mut reads,&grants(&fixture.source,&fixture.target,&fixture.journal),&fixture.scope.execution_scope().resources,&AtomicBool::new(false)).unwrap();
+    let mut request = fixture.plan.request.clone();
+    request.settings.exist_only = true;
+    let mut reads = WindowsPlanningStorage::for_preview(&fixture.source, &fixture.target).unwrap();
+    fixture.plan = plan_job(&request, &mut reads, &mut Metadata, &mut Ai(true)).unwrap();
+    assert_eq!(fixture.plan.operations.len(), 1, "{:?}", fixture.plan);
+    fixture.scope = prepare_copied_move_scope(
+        &fixture.plan,
+        &mut reads,
+        &grants(&fixture.source, &fixture.target, &fixture.journal),
+        &fixture.scope.execution_scope().resources,
+        &AtomicBool::new(false),
+    )
+    .unwrap();
     fixture
 }
 #[test]
-fn intentional_exist_only_skip_allows_one_verified_destination_then_one_retirement(){
-    let fixture=one_eligible_duet_fixture();
+fn intentional_exist_only_skip_allows_one_verified_destination_then_one_retirement() {
+    let fixture = one_eligible_duet_fixture();
     assert!(fixture.plan.predicted_effects.iter().any(|effect|matches!(effect,PredictedEffect::DuetDeleteIntention{after_operations,..} if after_operations==&vec![0])));
-    let mut job=fixture.job().unwrap();let result=job.run(&AtomicBool::new(false),&mut |_|{}).unwrap();
-    assert_eq!(result.status,JobStatus::Complete,"{result:?}");
-    assert_eq!((result.committed_destinations,result.moved_sources),(1,1));
-    assert_eq!(result.committed_operations,vec![0]);
-    assert_eq!(result.effect_receipts.iter().map(|r|r.kind.as_str()).collect::<Vec<_>>(),vec!["file_published","source_retired"]);
-    assert!(!fixture.source.join("song.mp3").exists());fixture.verify_destination("אמן");assert!(!fixture.target.join("זמר").exists());
-    let report=job.inspect_recovery_controlled(&fixture.recovery(&job),&fresh_inspection_control()).unwrap();
-    assert!(report.transfers.unwrap().operations.iter().all(|op|op.status==RecoveryStatus::Committed));
+    let mut job = fixture.job().unwrap();
+    let result = job.run(&AtomicBool::new(false), &mut |_| {}).unwrap();
+    assert_eq!(result.status, JobStatus::Complete, "{result:?}");
+    assert_eq!(
+        (result.committed_destinations, result.moved_sources),
+        (1, 1)
+    );
+    assert_eq!(result.committed_operations, vec![0]);
+    assert_eq!(
+        result
+            .effect_receipts
+            .iter()
+            .map(|r| r.kind.as_str())
+            .collect::<Vec<_>>(),
+        vec!["file_published", "source_retired"]
+    );
+    assert!(!fixture.source.join("song.mp3").exists());
+    fixture.verify_destination("אמן");
+    assert!(!fixture.target.join("זמר").exists());
+    let report = job
+        .inspect_recovery_controlled(&fixture.recovery(&job), &fresh_inspection_control())
+        .unwrap();
+    assert!(
+        report
+            .transfers
+            .unwrap()
+            .operations
+            .iter()
+            .all(|op| op.status == RecoveryStatus::Committed)
+    );
 }
 #[test]
-fn zero_eligible_duet_never_acquires_mutation_authority_or_deletes_source(){
-    let fixture=Fixture::new(true);let mut request=fixture.plan.request.clone();request.settings.exist_only=true;
-    let before=inspection_tree(fixture._tree.path());
-    let mut reads=WindowsPlanningStorage::for_preview(&fixture.source,&fixture.target).unwrap();
-    let plan=plan_job(&request,&mut reads,&mut Metadata,&mut Ai(true)).unwrap();
+fn zero_eligible_duet_never_acquires_mutation_authority_or_deletes_source() {
+    let fixture = Fixture::new(true);
+    let mut request = fixture.plan.request.clone();
+    request.settings.exist_only = true;
+    let before = inspection_tree(fixture._tree.path());
+    let mut reads = WindowsPlanningStorage::for_preview(&fixture.source, &fixture.target).unwrap();
+    let plan = plan_job(&request, &mut reads, &mut Metadata, &mut Ai(true)).unwrap();
     assert!(plan.operations.is_empty());
     assert!(plan.predicted_effects.iter().any(|effect|matches!(effect,PredictedEffect::DuetDeleteIntention{after_operations,..} if after_operations.is_empty())));
     assert!(supported_copied_move_plan(&plan).is_err());
-    assert!(prepare_copied_move_scope(&plan,&mut reads,&grants(&fixture.source,&fixture.target,&fixture.journal),&fixture.scope.execution_scope().resources,&AtomicBool::new(false)).is_err());
-    drop(reads);assert_eq!(inspection_tree(fixture._tree.path()),before);
+    assert!(
+        prepare_copied_move_scope(
+            &plan,
+            &mut reads,
+            &grants(&fixture.source, &fixture.target, &fixture.journal),
+            &fixture.scope.execution_scope().resources,
+            &AtomicBool::new(false)
+        )
+        .is_err()
+    );
+    drop(reads);
+    assert_eq!(inspection_tree(fixture._tree.path()), before);
 }
 #[test]
-fn failed_required_single_eligible_destination_keeps_complete_duet_source(){
-    let fixture=one_eligible_duet_fixture();let mut job=fixture.job().unwrap();
-    let destination=fixture.target.join("אמן").join("song.mp3");std::fs::write(&destination,b"foreign").unwrap();
-    let result=job.run(&AtomicBool::new(false),&mut |_|{}).unwrap();
-    assert_ne!(result.status,JobStatus::Complete);assert_eq!((result.committed_destinations,result.moved_sources),(0,0));
-    assert_eq!(std::fs::read(destination).unwrap(),b"foreign");
-    assert_eq!(std::fs::read(fixture.source.join("song.mp3")).unwrap(),b"owned-main-audio");
-    assert_eq!(std::fs::read(fixture.source.join("song.mp3:notes")).unwrap(),b"owned-auxiliary");
+fn failed_required_single_eligible_destination_keeps_complete_duet_source() {
+    let fixture = one_eligible_duet_fixture();
+    let mut job = fixture.job().unwrap();
+    let destination = fixture.target.join("אמן").join("song.mp3");
+    std::fs::write(&destination, b"foreign").unwrap();
+    let result = job.run(&AtomicBool::new(false), &mut |_| {}).unwrap();
+    assert_ne!(result.status, JobStatus::Complete);
+    assert_eq!(
+        (result.committed_destinations, result.moved_sources),
+        (0, 0)
+    );
+    assert_eq!(std::fs::read(destination).unwrap(), b"foreign");
+    assert_eq!(
+        std::fs::read(fixture.source.join("song.mp3")).unwrap(),
+        b"owned-main-audio"
+    );
+    assert_eq!(
+        std::fs::read(fixture.source.join("song.mp3:notes")).unwrap(),
+        b"owned-auxiliary"
+    );
     assert!(!fixture.target.join("זמר").exists());
 }

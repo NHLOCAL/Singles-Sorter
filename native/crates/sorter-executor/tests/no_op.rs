@@ -1,7 +1,9 @@
 use sorter_core::{
     Settings,
     discovery::{Capabilities, EntryKind, EntryObservation, ObjectIdentity, StorageRef},
-    job_plan::{AiProfile, DecisionV2, JobMode, JobPlanV2, JobRequestV2, PredictedEffect, ReadPoint},
+    job_plan::{
+        AiProfile, DecisionV2, JobMode, JobPlanV2, JobRequestV2, PredictedEffect, ReadPoint,
+    },
     metadata::{FieldError, LegacyField, LegacyItem, MetadataError, MetadataObservation},
 };
 use sorter_executor::{digest, no_op::is_clean_sort_noop};
@@ -155,12 +157,18 @@ fn empty_duet() -> JobPlanV2 {
     plan.request.settings.copy_mode = false;
     plan.request.settings.duet_mode = true;
     plan.request.settings.exist_only = true;
-    let DecisionV2::Single { artists, .. } = &mut plan.decisions[0] else { panic!("fixture") };
+    let DecisionV2::Single { artists, .. } = &mut plan.decisions[0] else {
+        panic!("fixture")
+    };
     *artists = vec!["אמן".into(), "זמר".into()];
-    plan.predicted_effects.push(PredictedEffect::DuetDeleteIntention {
-        source: entry(), after_operations: vec![], blocked: true,
-    });
-    plan.blockers.push("HISTORICAL_DUET_DELETE_REQUIRES_VERIFIED_ALL_DESTINATIONS".into());
+    plan.predicted_effects
+        .push(PredictedEffect::DuetDeleteIntention {
+            source: entry(),
+            after_operations: vec![],
+            blocked: true,
+        });
+    plan.blockers
+        .push("HISTORICAL_DUET_DELETE_REQUIRES_VERIFIED_ALL_DESTINATIONS".into());
     seal(&mut plan);
     plan
 }
@@ -172,9 +180,11 @@ fn zero_eligible_historical_duet_is_only_a_source_retaining_noop() {
     assert!(plan.operations.is_empty());
     assert_eq!(plan.predicted_legacy_counters, Default::default());
     // Admission neither consumes the original evidence nor changes its blocker.
-    assert!(matches!(&plan.predicted_effects[0], PredictedEffect::DuetDeleteIntention {
+    assert!(
+        matches!(&plan.predicted_effects[0], PredictedEffect::DuetDeleteIntention {
         after_operations, blocked: true, ..
-    } if after_operations.is_empty()));
+    } if after_operations.is_empty())
+    );
 }
 
 #[test]
@@ -186,23 +196,50 @@ fn historical_noop_rejects_unmatched_nonempty_unblocked_and_failed_evidence() {
             1 => plan.request.settings.duet_mode = false,
             2 => plan.request.settings.exist_only = false,
             3 => {
-                let PredictedEffect::DuetDeleteIntention { after_operations, .. } = &mut plan.predicted_effects[0] else { panic!("fixture") };
+                let PredictedEffect::DuetDeleteIntention {
+                    after_operations, ..
+                } = &mut plan.predicted_effects[0]
+                else {
+                    panic!("fixture")
+                };
                 after_operations.push(0);
             }
             4 => {
-                let PredictedEffect::DuetDeleteIntention { blocked, .. } = &mut plan.predicted_effects[0] else { panic!("fixture") };
+                let PredictedEffect::DuetDeleteIntention { blocked, .. } =
+                    &mut plan.predicted_effects[0]
+                else {
+                    panic!("fixture")
+                };
                 *blocked = false;
             }
             5 => {
-                let PredictedEffect::DuetDeleteIntention { source, .. } = &mut plan.predicted_effects[0] else { panic!("fixture") };
-                source.identity = Some(ObjectIdentity::Test { id: "replacement".into() });
+                let PredictedEffect::DuetDeleteIntention { source, .. } =
+                    &mut plan.predicted_effects[0]
+                else {
+                    panic!("fixture")
+                };
+                source.identity = Some(ObjectIdentity::Test {
+                    id: "replacement".into(),
+                });
             }
-            6 => plan.predicted_effects.push(plan.predicted_effects[0].clone()),
+            6 => plan
+                .predicted_effects
+                .push(plan.predicted_effects[0].clone()),
             7 => plan.blockers.push("READ_FAILED".into()),
-            8 => plan.decisions.push(DecisionV2::ItemError { read: read(), error: "read failed".into() }),
+            8 => plan.decisions.push(DecisionV2::ItemError {
+                read: read(),
+                error: "read failed".into(),
+            }),
             9 => plan.predicted_legacy_counters.songs_sorted = 1,
-            10 => plan.predicted_effects.push(PredictedEffect::SourceUnavailable { operation: 0, source: entry().reference }),
-            11 => plan.blockers.retain(|blocker| blocker == "PHYSICAL_APPLY_UNAVAILABLE"),
+            10 => plan
+                .predicted_effects
+                .push(PredictedEffect::SourceUnavailable {
+                    operation: 0,
+                    source: entry().reference,
+                }),
+            11 => plan
+                .blockers
+                .retain(|blocker| blocker == "PHYSICAL_APPLY_UNAVAILABLE"),
             _ => unreachable!(),
         }
         seal(&mut plan);
@@ -215,8 +252,12 @@ fn second_duet_with_invalid_read_point_cannot_disappear_from_noop_bijection() {
     for dependency in [false, true] {
         let mut plan = empty_duet();
         let mut second = read();
-        second.source.reference = StorageRef::TestOpaque { id: "second".into() };
-        second.source.identity = Some(ObjectIdentity::Test { id: "second".into() });
+        second.source.reference = StorageRef::TestOpaque {
+            id: "second".into(),
+        };
+        second.source.identity = Some(ObjectIdentity::Test {
+            id: "second".into(),
+        });
         if dependency {
             second.depends_on.push(99);
         } else {
@@ -228,6 +269,9 @@ fn second_duet_with_invalid_read_point_cannot_disappear_from_noop_bijection() {
             artists: vec!["אמן אחר".into(), "זמר נוסף".into()],
         });
         seal(&mut plan);
-        assert!(!is_clean_sort_noop(&plan), "dependency variant {dependency}");
+        assert!(
+            !is_clean_sort_noop(&plan),
+            "dependency variant {dependency}"
+        );
     }
 }

@@ -2,11 +2,11 @@
 //! this wrapper only selects a format and enforces its publication boundary.
 use crate::{
     staged_flac::FlacStagedPlan,
-    staged_wavpack::WavPackStagedPlan,
     staged_id3_container::ContainerId3StagedPlan,
     staged_mp4::Mp4StagedPlan,
     staged_ogg::OggStagedPlan,
     staged_tags::{Id3StagedPlan, StagedTagEvidence, TagWriteError},
+    staged_wavpack::WavPackStagedPlan,
 };
 use sorter_core::fix_plan::FieldRepair;
 use std::{
@@ -51,10 +51,13 @@ impl StagedRepairPlan {
                 .map(|plan| Self(FormatPlan::Mp4(plan)))
         } else if filename.ends_with(".wv") {
             WavPackStagedPlan::inspect(input, source_length, repairs, cancel)
-                .map(|plan|Self(FormatPlan::WavPack(plan)))
-        } else if [".wav", ".aiff", ".dsf"].iter().any(|extension|filename.ends_with(extension)) {
+                .map(|plan| Self(FormatPlan::WavPack(plan)))
+        } else if [".wav", ".aiff", ".dsf"]
+            .iter()
+            .any(|extension| filename.ends_with(extension))
+        {
             ContainerId3StagedPlan::inspect(input, source_length, repairs, cancel)
-                .map(|plan|Self(FormatPlan::Id3Container(plan)))
+                .map(|plan| Self(FormatPlan::Id3Container(plan)))
         } else {
             Err(TagWriteError::Unsupported(
                 "physical tag format is not supported",

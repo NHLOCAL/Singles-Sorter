@@ -862,9 +862,11 @@ impl SelectedWindowsRepairJob {
             .map(RepairField::native)
             .collect::<Vec<_>>();
         let extension = op.intended_name.to_ascii_lowercase();
-        if ![".mp3", ".flac", ".ogg", ".opus", ".m4a", ".alac", ".wav", ".aiff", ".dsf", ".wv"]
-            .iter()
-            .any(|suffix| extension.ends_with(suffix))
+        if ![
+            ".mp3", ".flac", ".ogg", ".opus", ".m4a", ".alac", ".wav", ".aiff", ".dsf", ".wv",
+        ]
+        .iter()
+        .any(|suffix| extension.ends_with(suffix))
         {
             item.status = RepairStatus::UnsupportedTags;
             item.detail="Physical tag writing for this format is not yet supported; filename outcome is retained".into();

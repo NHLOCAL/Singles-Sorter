@@ -1,21 +1,244 @@
-use sorter_io::{staged_id3_container::ContainerId3StagedPlan,staged_tags::TagWriteError};
-use sorter_core::{fix_plan::{FieldRepair,FIX_FIELDS}};
-use sha2::{Digest,Sha256};
-use std::{io::{self,Cursor,Write},sync::atomic::{AtomicBool,Ordering}};
-#[path="../../../tests/staged_id3_container/fixture_support.rs"]mod media;
+use sha2::{Digest, Sha256};
+use sorter_core::fix_plan::{FIX_FIELDS, FieldRepair};
+use sorter_io::{staged_id3_container::ContainerId3StagedPlan, staged_tags::TagWriteError};
+use std::{
+    io::{self, Cursor, Write},
+    sync::atomic::{AtomicBool, Ordering},
+};
+#[path = "../../../tests/staged_id3_container/fixture_support.rs"]
+mod media;
 use media::*;
-fn hash(bytes:&[u8])->String{format!("{:x}",Sha256::digest(bytes))}
-fn requests()->Vec<FieldRepair>{FIX_FIELDS.iter().map(|field|FieldRepair{field:*field,original:"à".into(),replacement:"א".into()}).collect()}
-fn inspect(bytes:&[u8])->Result<ContainerId3StagedPlan,TagWriteError>{ContainerId3StagedPlan::inspect(&mut Cursor::new(bytes),bytes.len()as u64,&requests(),&AtomicBool::new(false))}
-fn stage(bytes:&[u8])->Vec<u8>{let plan=inspect(bytes).unwrap();let mut after=vec![];let evidence=plan.write_staged(&mut Cursor::new(bytes),&mut after,&hash(bytes),&AtomicBool::new(false)).unwrap();assert_eq!(after.len(),bytes.len());assert_eq!(evidence.staged_sha256,hash(&after));assert_eq!(evidence.source_sha256,hash(bytes));assert_eq!(evidence.changed_fields,FIX_FIELDS);after}
-#[test]fn all_containers_and_versions_preserve_every_byte_outside_tag(){for kind in KINDS{for version in [3,4]{let before=fixture(kind,version,512);let after=stage(&before);let(a,b)=tag_span(&before,kind);assert_eq!(&before[..a],&after[..a]);assert_eq!(&before[b..],&after[b..]);for value in [b"owned\0opaque\xff".as_slice(),b"retained-artwork".as_slice()]{assert!(after.windows(value.len()).any(|part|part==value));}}}}
-#[test]fn insufficient_padding_and_flags_refuse_before_output(){for kind in KINDS{let before=fixture(kind,3,0);assert!(matches!(inspect(&before),Err(TagWriteError::Unsupported(_))));let mut before=fixture(kind,4,512);let(a,_)=tag_span(&before,kind);before[a+5]=0x80;assert!(inspect(&before).is_err());}}
-#[test]fn duplicate_id3_chunks_refuse(){for kind in ["wav","aiff"]{let mut before=fixture(kind,4,512);append_chunk(&mut before,kind,b"ID3 ",&tag(4,512));assert!(matches!(inspect(&before),Err(TagWriteError::Unsupported("duplicate ID3 chunks"))));}}
-#[test]fn malformed_chunk_sizes_and_padding_refuse(){for kind in ["wav","aiff"]{let mut before=fixture(kind,4,512);before[4..8].fill(0xff);assert!(inspect(&before).is_err());let mut before=fixture(kind,4,512);before[16..20].fill(0xff);assert!(inspect(&before).is_err());}}
-#[test]fn dsf_pointer_overlap_nonterminal_and_data_extent_refuse(){for edit in [0,1,2]{let mut before=fixture("dsf",4,512);match edit{0=>before[20..28].copy_from_slice(&92u64.to_le_bytes()),1=>{before.push(1);let n=before.len()as u64;before[12..20].copy_from_slice(&n.to_le_bytes());},_=>before[84..92].copy_from_slice(&12u64.to_le_bytes())}assert!(inspect(&before).is_err());}}
-#[test]fn stale_field_and_source_hash_refuse(){let before=fixture("wav",4,512);let mut request=requests();request[0].original="á".into();assert!(ContainerId3StagedPlan::inspect(&mut Cursor::new(&before),before.len()as u64,&request,&AtomicBool::new(false)).is_err());let plan=inspect(&before).unwrap();assert_eq!(plan.write_staged(&mut Cursor::new(&before),&mut Vec::new(),&"0".repeat(64),&AtomicBool::new(false)),Err(TagWriteError::Stale));}
-#[test]fn source_growth_and_truncation_never_return_evidence(){let before=fixture("aiff",4,512);let plan=inspect(&before).unwrap();for changed in [before[..before.len()-1].to_vec(),[before.clone(),vec![1]].concat()]{assert!(plan.write_staged(&mut Cursor::new(changed),&mut Vec::new(),&hash(&before),&AtomicBool::new(false)).is_err());}}
-#[test]fn cancellation_and_output_error_are_reported(){struct Fail;impl Write for Fail{fn write(&mut self,_:&[u8])->io::Result<usize>{Err(io::Error::other("owned failure"))}fn flush(&mut self)->io::Result<()>{Ok(())}}let before=fixture("dsf",4,512);let plan=inspect(&before).unwrap();let flag=AtomicBool::new(true);assert_eq!(plan.write_staged(&mut Cursor::new(&before),&mut Vec::new(),&hash(&before),&flag),Err(TagWriteError::Cancelled));flag.store(false,Ordering::Release);assert_eq!(plan.write_staged(&mut Cursor::new(&before),&mut Fail,&hash(&before),&flag),Err(TagWriteError::Io));}
+fn hash(bytes: &[u8]) -> String {
+    format!("{:x}", Sha256::digest(bytes))
+}
+fn requests() -> Vec<FieldRepair> {
+    FIX_FIELDS
+        .iter()
+        .map(|field| FieldRepair {
+            field: *field,
+            original: "à".into(),
+            replacement: "א".into(),
+        })
+        .collect()
+}
+fn inspect(bytes: &[u8]) -> Result<ContainerId3StagedPlan, TagWriteError> {
+    ContainerId3StagedPlan::inspect(
+        &mut Cursor::new(bytes),
+        bytes.len() as u64,
+        &requests(),
+        &AtomicBool::new(false),
+    )
+}
+fn stage(bytes: &[u8]) -> Vec<u8> {
+    let plan = inspect(bytes).unwrap();
+    let mut after = vec![];
+    let evidence = plan
+        .write_staged(
+            &mut Cursor::new(bytes),
+            &mut after,
+            &hash(bytes),
+            &AtomicBool::new(false),
+        )
+        .unwrap();
+    assert_eq!(after.len(), bytes.len());
+    assert_eq!(evidence.staged_sha256, hash(&after));
+    assert_eq!(evidence.source_sha256, hash(bytes));
+    assert_eq!(evidence.changed_fields, FIX_FIELDS);
+    after
+}
+#[test]
+fn all_containers_and_versions_preserve_every_byte_outside_tag() {
+    for kind in KINDS {
+        for version in [3, 4] {
+            let before = fixture(kind, version, 512);
+            let after = stage(&before);
+            let (a, b) = tag_span(&before, kind);
+            assert_eq!(&before[..a], &after[..a]);
+            assert_eq!(&before[b..], &after[b..]);
+            for value in [
+                b"owned\0opaque\xff".as_slice(),
+                b"retained-artwork".as_slice(),
+            ] {
+                assert!(after.windows(value.len()).any(|part| part == value));
+            }
+        }
+    }
+}
+#[test]
+fn insufficient_padding_and_flags_refuse_before_output() {
+    for kind in KINDS {
+        let before = fixture(kind, 3, 0);
+        assert!(matches!(
+            inspect(&before),
+            Err(TagWriteError::Unsupported(_))
+        ));
+        let mut before = fixture(kind, 4, 512);
+        let (a, _) = tag_span(&before, kind);
+        before[a + 5] = 0x80;
+        assert!(inspect(&before).is_err());
+    }
+}
+#[test]
+fn duplicate_id3_chunks_refuse() {
+    for kind in ["wav", "aiff"] {
+        let mut before = fixture(kind, 4, 512);
+        append_chunk(&mut before, kind, b"ID3 ", &tag(4, 512));
+        assert!(matches!(
+            inspect(&before),
+            Err(TagWriteError::Unsupported("duplicate ID3 chunks"))
+        ));
+    }
+}
+#[test]
+fn malformed_chunk_sizes_and_padding_refuse() {
+    for kind in ["wav", "aiff"] {
+        let mut before = fixture(kind, 4, 512);
+        before[4..8].fill(0xff);
+        assert!(inspect(&before).is_err());
+        let mut before = fixture(kind, 4, 512);
+        before[16..20].fill(0xff);
+        assert!(inspect(&before).is_err());
+    }
+}
+#[test]
+fn dsf_pointer_overlap_nonterminal_and_data_extent_refuse() {
+    for edit in [0, 1, 2] {
+        let mut before = fixture("dsf", 4, 512);
+        match edit {
+            0 => before[20..28].copy_from_slice(&92u64.to_le_bytes()),
+            1 => {
+                before.push(1);
+                let n = before.len() as u64;
+                before[12..20].copy_from_slice(&n.to_le_bytes());
+            }
+            _ => before[84..92].copy_from_slice(&12u64.to_le_bytes()),
+        }
+        assert!(inspect(&before).is_err());
+    }
+}
+#[test]
+fn stale_field_and_source_hash_refuse() {
+    let before = fixture("wav", 4, 512);
+    let mut request = requests();
+    request[0].original = "á".into();
+    assert!(
+        ContainerId3StagedPlan::inspect(
+            &mut Cursor::new(&before),
+            before.len() as u64,
+            &request,
+            &AtomicBool::new(false)
+        )
+        .is_err()
+    );
+    let plan = inspect(&before).unwrap();
+    assert_eq!(
+        plan.write_staged(
+            &mut Cursor::new(&before),
+            &mut Vec::new(),
+            &"0".repeat(64),
+            &AtomicBool::new(false)
+        ),
+        Err(TagWriteError::Stale)
+    );
+}
+#[test]
+fn source_growth_and_truncation_never_return_evidence() {
+    let before = fixture("aiff", 4, 512);
+    let plan = inspect(&before).unwrap();
+    for changed in [
+        before[..before.len() - 1].to_vec(),
+        [before.clone(), vec![1]].concat(),
+    ] {
+        assert!(
+            plan.write_staged(
+                &mut Cursor::new(changed),
+                &mut Vec::new(),
+                &hash(&before),
+                &AtomicBool::new(false)
+            )
+            .is_err()
+        );
+    }
+}
+#[test]
+fn cancellation_and_output_error_are_reported() {
+    struct Fail;
+    impl Write for Fail {
+        fn write(&mut self, _: &[u8]) -> io::Result<usize> {
+            Err(io::Error::other("owned failure"))
+        }
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+    let before = fixture("dsf", 4, 512);
+    let plan = inspect(&before).unwrap();
+    let flag = AtomicBool::new(true);
+    assert_eq!(
+        plan.write_staged(
+            &mut Cursor::new(&before),
+            &mut Vec::new(),
+            &hash(&before),
+            &flag
+        ),
+        Err(TagWriteError::Cancelled)
+    );
+    flag.store(false, Ordering::Release);
+    assert_eq!(
+        plan.write_staged(&mut Cursor::new(&before), &mut Fail, &hash(&before), &flag),
+        Err(TagWriteError::Io)
+    );
+}
 #[cfg(native_metadata_bridge)]
-#[test]fn real_native_id3_projection_ignores_riff_info_and_reads_all_five_repairs(){use sorter_io::{metadata::MetadataReader,storage::ReadInput};for kind in KINDS{let before=fixture(kind,4,512);let after=stage(&before);for(bytes,value)in[(before,"à"),(after,"א")]{let n=bytes.len()as u64;let mut fields=MetadataReader.open(ReadInput::seekable(Cursor::new(bytes),n),&format!("owned.{kind}")).unwrap();for field in FIX_FIELDS{assert_eq!(fields.get(field).unwrap().value.unwrap(),sorter_core::metadata::LegacyScalar::Text(value.into()));}}}}
-#[test]fn ffmpeg_decodes_staged_wave_aiff_and_dsf_identically(){use std::process::Command;for kind in KINDS{let before=fixture(kind,4,512);let after=stage(&before);let tree=tempfile::tempdir().unwrap();let a=tree.path().join(format!("before.{kind}"));let b=tree.path().join(format!("after.{kind}"));std::fs::write(&a,before).unwrap();std::fs::write(&b,after).unwrap();let decode=|path:&std::path::Path|{let result=Command::new("ffmpeg").args(["-v","error","-i"]).arg(path).args(["-f","s16le","-"]).output().expect("FFmpeg required");assert!(result.status.success(),"{}",String::from_utf8_lossy(&result.stderr));assert!(!result.stdout.is_empty());result.stdout};assert_eq!(decode(&a),decode(&b));}}
+#[test]
+fn real_native_id3_projection_ignores_riff_info_and_reads_all_five_repairs() {
+    use sorter_io::{metadata::MetadataReader, storage::ReadInput};
+    for kind in KINDS {
+        let before = fixture(kind, 4, 512);
+        let after = stage(&before);
+        for (bytes, value) in [(before, "à"), (after, "א")] {
+            let n = bytes.len() as u64;
+            let mut fields = MetadataReader
+                .open(
+                    ReadInput::seekable(Cursor::new(bytes), n),
+                    &format!("owned.{kind}"),
+                )
+                .unwrap();
+            for field in FIX_FIELDS {
+                assert_eq!(
+                    fields.get(field).unwrap().value.unwrap(),
+                    sorter_core::metadata::LegacyScalar::Text(value.into())
+                );
+            }
+        }
+    }
+}
+#[test]
+fn ffmpeg_decodes_staged_wave_aiff_and_dsf_identically() {
+    use std::process::Command;
+    for kind in KINDS {
+        let before = fixture(kind, 4, 512);
+        let after = stage(&before);
+        let tree = tempfile::tempdir().unwrap();
+        let a = tree.path().join(format!("before.{kind}"));
+        let b = tree.path().join(format!("after.{kind}"));
+        std::fs::write(&a, before).unwrap();
+        std::fs::write(&b, after).unwrap();
+        let decode = |path: &std::path::Path| {
+            let result = Command::new("ffmpeg")
+                .args(["-v", "error", "-i"])
+                .arg(path)
+                .args(["-f", "s16le", "-"])
+                .output()
+                .expect("FFmpeg required");
+            assert!(
+                result.status.success(),
+                "{}",
+                String::from_utf8_lossy(&result.stderr)
+            );
+            assert!(!result.stdout.is_empty());
+            result.stdout
+        };
+        assert_eq!(decode(&a), decode(&b));
+    }
+}

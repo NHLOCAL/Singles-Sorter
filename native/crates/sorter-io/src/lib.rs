@@ -26,7 +26,7 @@ pub mod staged_ogg;
 
 mod staged_xiph;
 
+pub mod staged_id3_container;
 /// Exact-extent MP4 text repair on owned staging streams.
 pub mod staged_mp4;
 pub mod staged_wavpack;
-pub mod staged_id3_container;

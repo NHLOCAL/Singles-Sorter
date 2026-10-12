@@ -14,7 +14,10 @@ const HISTORICAL_DELETE: &str = "HISTORICAL_DUET_DELETE_REQUIRES_VERIFIED_ALL_DE
 /// as an executable effect. Every source must match its actual duet decision.
 fn only_empty_historical_duets(plan: &JobPlanV2) -> bool {
     if plan.predicted_effects.is_empty() {
-        return !plan.blockers.iter().any(|blocker| blocker == HISTORICAL_DELETE);
+        return !plan
+            .blockers
+            .iter()
+            .any(|blocker| blocker == HISTORICAL_DELETE);
     }
     let settings = &plan.request.settings;
     if settings.copy_mode || !settings.duet_mode || !settings.exist_only {
@@ -25,10 +28,14 @@ fn only_empty_historical_duets(plan: &JobPlanV2) -> bool {
         if let DecisionV2::Single { read, artists } = decision
             && artists.len() > 1
         {
-            if !read.virtually_present || read.after_operations != 0 || !read.depends_on.is_empty() {
+            if !read.virtually_present || read.after_operations != 0 || !read.depends_on.is_empty()
+            {
                 return false;
             }
-            if sources.insert(read.source.reference.clone(), &read.source).is_some() {
+            if sources
+                .insert(read.source.reference.clone(), &read.source)
+                .is_some()
+            {
                 return false;
             }
         }

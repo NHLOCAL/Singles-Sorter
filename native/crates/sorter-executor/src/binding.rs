@@ -370,7 +370,12 @@ fn validate_execution_domain_inner(
                 .map(|o| o.id)
                 .collect();
             if expected != *after_operations
-                || expected.len() < if domain == ExecutionDomain::SelectedWindowsCopiedMove { 1 } else { 2 }
+                || expected.len()
+                    < if domain == ExecutionDomain::SelectedWindowsCopiedMove {
+                        1
+                    } else {
+                        2
+                    }
                 || expected.iter().any(|i| {
                     let o = &operations[*i];
                     o.source.observation != *source
