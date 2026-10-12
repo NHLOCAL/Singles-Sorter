@@ -4,15 +4,19 @@ Evidence categories are intentionally separate: released-policy parity,
 read-only real-file behavior, physical execution, and actual product interaction.
 A green test in one column does not establish the others. New candidate checks
 below require final-head CI results; the presence of a test is not a passing run.
+The latest actual Windows sorting-settings checkpoint is the 66-case / 64-vector
+26e result at the end of this document. It supersedes the older 041 decision-
+trace/vector gap only for that bounded corpus; the older package measurements
+and unrelated product acceptance boundaries remain separate.
 
 | Released behavior / flow | Planning and compatibility | Physical/product boundary |
 | --- | --- | --- |
 | Copy / Move toggle | Exact boolean and v14 virtual effects retained | Delivered selected Windows multi-file Copy / same-volume rename; new copied-Move host candidate binds ordinary NTFS main and named streams at preview for cross-volume singles and exact nonempty eligible duet cohorts. The one-eligible/zero-eligible follow-up remains native/package-test pending |
 | Copy file attributes/timestamps | v14 uses `copy2` / `copytree` | Native Copy metadata preserves timestamps/readonly attributes; actual staged and extracted album-Copy fixtures passed at the desktop checkpoint below |
-| Main folder only / full tree | Original traversal/order retained | Selected plans validated whole; actual multi-file Windows gate required |
+| Main folder only / full tree | Original traversal/order retained | All 64 six-boolean vectors have bounded actual original/native Windows comparison at 26e; broader UI/library coverage remains separate |
 | Create singles folders | Original `סינגלים` destination component retained | Journaled directory creation; actual staged/extracted singles tests assert artist and `סינגלים` layout |
-| Alphabetic sort | Original letter hierarchy retained | Backend directories supported; requires expanded native UI acceptance matrix |
-| Existing folders only | Original skip/target policy retained | No fabricated missing artist destinations; explicit feature-specific runtime coverage still required |
+| Alphabetic sort | Original letter hierarchy retained | Bounded paired Windows matrix includes both states at 26e; full native UI combination coverage remains separate |
+| Existing folders only | Original skip/target policy retained | Bounded paired Windows matrix includes both states and no-transfer routes at 26e; source-retaining all-skipped no-op is separately tested, not covered by these 66 cases |
 | Duets, first artist | Original matching order retained | Ordinary single destination candidate supported |
 | Duets, every artist | Original ordered destinations and deletion intention retained | Copy supported where backend preflight accepts; new Move candidate verifies every destination before retiring the source once. One eligible original duet destination is a separate reviewed candidate; zero eligible destinations retain the source as an explicitly revalidated no-op. Failed required publication still retains the source. Ordinary same-volume singles in mixed jobs retain rename identity |
 | Original alias list + personal CSV | Ordered rows, duplicates, malformed-row diagnostics preserved | UI edit/import/delete/save/export and persistence baseline covered; no silent normalization |
@@ -357,7 +361,7 @@ stream and five Windows product cases (65 full repair cases), plus the actual
 Windows staged/extracted consumers, remain mandatory. No general APE, ID3v1
 mirror or tag-at-start support is claimed.
 
-## Actual Windows CLI consumer checkpoint: 2026-10-12, public 041f7039
+## Historical Windows CLI consumer checkpoint: 2026-10-12, public 041f7039
 
 [Windows CLI run 38209034534](https://github.com/NHLOCAL/Singles-Sorter/actions/runs/38209034534)
 passed the release, staged-package and consumer-extracted execution lanes.
@@ -405,3 +409,54 @@ not establish a speed or memory advantage. The package sizes above were measured
 directly from the authenticated ZIP. Keep functional evidence separate from
 pending comparable timing/peak-memory measurements and from the independently
 accepted earlier desktop checkpoint.
+
+
+## Actual paired Windows sorting checkpoint: 2026-10-12, public 26e812a9
+
+[Windows CLI run 38282703780](https://github.com/NHLOCAL/Singles-Sorter/actions/runs/38282703780)
+executed all **66 paired cases covering all 64 distinct six-boolean settings
+vectors** against the exact frozen v14 baseline. Its PR build source was
+`3f86423a5d6748e329962ce6fd3a9c00b6c651f4`; the observed native EXE SHA-256 was
+`5c47ec5b3eb927b3fed9fe1414a6588570cb949ae81eeb29bc823d0965a15055`.
+The authenticated paired-evidence ZIP SHA-256 is
+`517dc45eb81e85b96083111f4a182b9eceb84d26676cb4682a24c7e71db4e542`.
+
+Independent reconstruction from raw reports verifies:
+
+- Exact final media trees, original summary counters, committed byte coverage,
+  physical counts and accepted decision/route evidence agree in all 66 cases.
+- 380 fresh-preflight decisions and 234 routes include 56 routes with no admitted
+  transfer. These are fresh Apply-preflight decisions plus observed effects;
+  they do not claim equal interleaved decision scheduling.
+- 242 destinations, 103 removed sources and all 140 native journal chains are
+  accounted for. 38 copied source-retirement receipts match full identities.
+- 58 cases have exact effect order. Eight retain the documented atomic whole-
+  album grouping difference after equal final trees/counters/byte coverage;
+  no child transfer receipts are invented.
+- 34 cases execute the configured original models, with 234 recorded original
+  model calls. The remainder retain the specified disabled-AI path.
+
+This closes the historical 041 missing decision-trace and remaining 30-vector
+coverage gap for the authored corpus. It is not full v14 product acceptance:
+CSV editing/export, settings persistence, arbitrary media representations,
+interruption/fault boundaries, final package interaction and Android provider
+behavior require their own evidence. These cases contain no
+`fresh_noop_preflight` receipt; the safe source-retaining all-skipped duet case
+remains a separate acceptance requirement, rather than preserving the unsafe
+historical deletion.
+
+The same revision did not produce a newly accepted package: the cross-volume
+Album consumer stopped at an authored artist-folder expectation, the narrow
+About dialog stopped at a 36px icon target, and the native job reached its time
+limit while later Album cases were running. Their source-reviewed corrections
+are in the subsequent 2ec04c8 batch; passing that rerun is still required. The
+failed counter assertion did not retain its actual value, so the correction is
+based on an independently reproduced frozen-oracle expectation, not a guessed
+native result.
+
+Optional cold-original telemetry failed at a confined temporary-file creation
+inside a SciPy import; package-size telemetry had no package to inspect because
+the mandatory consumer gate had stopped. Functional reports were already saved.
+No comparable speed or memory advantage, nor a new package size, follows from
+these failed optional measurements. The exact earlier 041 package sizes above
+remain the measured consumer checkpoint.
