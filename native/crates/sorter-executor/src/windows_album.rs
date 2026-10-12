@@ -2585,6 +2585,7 @@ fn directory_parent_identity(
 #[cfg(test)]
 mod directory_receipt_tests {
     use super::*;
+    use std::path::Path;
 
     #[test]
     fn failed_directory_ack_retains_guard_without_summary_credit() {

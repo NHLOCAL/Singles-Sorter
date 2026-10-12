@@ -699,14 +699,13 @@ impl WholeAlbumJob {
             );
             if let Some(outcome) = self.outcomes.iter().find(|outcome| {
                 outcome.operation == album.operation && outcome.status == "complete"
-            }) {
-                if let Some(root) = &outcome.root {
-                    effect_receipts.push(crate::results::ObservedEffectReceipt {
-                        operation: album.operation,
-                        kind: "album_renamed".into(),
-                        identity: root.identity.clone(),
-                    });
-                }
+            }) && let Some(root) = &outcome.root
+            {
+                effect_receipts.push(crate::results::ObservedEffectReceipt {
+                    operation: album.operation,
+                    kind: "album_renamed".into(),
+                    identity: root.identity.clone(),
+                });
             }
         }
         if let Some(result) = &transfers {
