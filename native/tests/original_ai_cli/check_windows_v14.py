@@ -55,11 +55,29 @@ def cases():
         result.append({'id': f'duet-{"copy" if copying else "move"}-{"all" if duet else "first"}',
                        'group': 'duet', 'settings': dict(copy_mode=copying, main_folder_only=False,
                        abc_sort=False, singles_folder=False, exist_only=False, duet_mode=duet), 'ai': True})
+    # Keep the first 36 paired-041 fixtures unchanged. Only these two duet-enabled
+    # settings vectors were covered there; append every other enabled vector.
+    covered = {tuple(case['settings'][name] for name in SETTING_NAMES)
+               for case in result if case['settings']['duet_mode']}
+    for bits in itertools.product((False, True), repeat=len(SETTING_NAMES)):
+        if bits not in covered:
+            result.append({'id': 'duet-settings-' + ''.join(str(int(bit)) for bit in bits),
+                           'group': 'duet-settings',
+                           'settings': {**dict(zip(SETTING_NAMES, bits)), 'duet_mode': True}, 'ai': True})
     return result
 
 
 def snapshot(root):
     """Preserve OS encounter order; all raw relative names and file bytes are exact."""
+    return _snapshot_paths(root, (root/'source', root/'target'))
+
+
+def snapshot_tree(root):
+    """One supplied tree, including its root; do not append case-root roles."""
+    return _snapshot_paths(root, (root,))
+
+
+def _snapshot_paths(root, paths):
     rows = []
     def visit(path):
         info = path.lstat()
@@ -75,8 +93,8 @@ def snapshot(root):
             with os.scandir(path) as entries:
                 for entry in entries:
                     visit(Path(entry.path))
-    for name in ('source', 'target'):
-        visit(root/name)
+    for path in paths:
+        visit(path)
     return rows
 
 
@@ -104,6 +122,14 @@ def author_case(root, case):
     specs = []
     if case['group'] == 'duet':
         specs.append((DUET, '', '', '', ''))
+    elif case['group'] == 'duet-settings':
+        specs.extend((str(Path(prefix)/DUET), '', '', '', '')
+                     for prefix in ('', 'direct', 'direct/deeper'))
+        if case['settings']['exist_only']:
+            # The exact selected destination (including ABC/singles nesting) is
+            # present for the first real-model artist and absent for the second.
+            # Never exercise v14's excluded zero-eligible source deletion here.
+            artist_directory(root, 'ישראל כהן', case['settings']).mkdir(parents=True)
     else:
         # The deliberate creation order is retained, not alphabetically sorted.
         specs.extend([
@@ -484,9 +510,10 @@ def compare_case(case, original, native):
                                           native['result'].get(field), available=field in native['result']))
     else:
         comparisons.append(comparison('actual_execution_result', 'complete', None, available=False))
-    if case['group'] == 'duet':
+    if case['group'] in ('duet', 'duet-settings'):
         recognized = [row['result'] for row in original['ordered_decisions'] if row['kind'] == 'single']
-        require(len(recognized) == 1 and len(recognized[0] or []) >= 2,
+        expected_singles = 1 if case['group'] == 'duet' else 2 if case['settings']['main_folder_only'] else 3
+        require(len(recognized) == expected_singles and all(len(artists or []) >= 2 for artists in recognized),
                 'Duet did not exercise multiple actual original-model artists')
         require({row['method'] for row in original['model_calls']} == {'process_with_ner', 'verify_artist_with_sklearn'},
                 'Duet must execute both original models')
@@ -525,6 +552,18 @@ def compare_case(case, original, native):
 
 
 def verify_original_fixture_coverage(case, original):
+    if case['group'] == 'duet-settings':
+        singles = [row['source'] for row in original['ordered_decisions'] if row['kind'] == 'single']
+        for prefix in ('', 'direct'):
+            require(str(Path('source')/prefix/DUET) in singles, 'Original duet depth not exercised')
+        require((str(Path('source/direct/deeper')/DUET) in singles) == (not case['settings']['main_folder_only']),
+                'Original duet main-only/recursive distinction not exercised')
+        destinations = [row for row in original['ordered_trace'] if row['kind'] == 'destination_decision']
+        if case['settings']['exist_only']:
+            require(len(destinations) == len(singles)*2 and all(
+                row['is_directory'] == (row['artist'] == 'ישראל כהן') for row in destinations),
+                'Original duet must exercise exactly one eligible and one skipped destination')
+        return
     if case['group'] != 'settings':
         return
     albums = {row['source']: row['result'] for row in original['ordered_decisions'] if row['kind'] == 'album'}
@@ -550,6 +589,12 @@ def budget_remaining(deadline):
     if remaining <= 0:
         raise TimeoutError('Optional telemetry budget exhausted')
     return remaining
+
+
+def invocation_path(path):
+    # Freeze relative optional paths before original_oracle changes CWD. Missing
+    # paths remain an optional telemetry error after functional evidence persists.
+    return Path(os.path.abspath(path)) if path is not None else None
 
 
 def checked_digest(path, deadline=None):
@@ -633,12 +678,12 @@ def fresh_process_trial(binary, bundle, baseline, scratch, sources, deadline):
     original_record={'exit':original.returncode,'stdout':original.stdout.decode('utf-8'),'stderr':original.stderr.decode('utf-8'),'performance':timing}
     native=subprocess_record(binary,native_root,native_args(bundle,case),timeout=min(30,budget_remaining(deadline)))
     # Compare only actual media trees; code/models/logs remain separate evidence.
-    media=lambda root:[{'role':role,**row} for role in ('source','target') for row in comparable_snapshot(snapshot(root/role))]
+    media=lambda root:[{'role':role,**row} for role in ('source','target') for row in comparable_snapshot(snapshot_tree(root/role))]
     budget_remaining(deadline)
     actual_original,actual_native=media(original_root),media(native_root)
     budget_remaining(deadline)
-    expected_destinations={str(Path(artist)/DUET) for artist in ('ישראל כהן','חיים לוי')}
-    found={row['path'] for row in snapshot(original_root/'target') if row['kind']=='file'}
+    expected_destinations={'sentinel.bin', *(str(Path(artist)/DUET) for artist in ('ישראל כהן','חיים לוי'))}
+    found={row['path'] for row in snapshot_tree(original_root/'target') if row['kind']=='file'}
     functional=(original.returncode==0 and native['exit']==0 and actual_original==actual_native
                 and found==expected_destinations and 'Loaded NER model:' in original_record['stderr']
                 and 'Loaded sklearn model successfully' in original_record['stderr'])
@@ -655,6 +700,7 @@ def run(binary, bundle, baseline, report, package=None, archive=None):
     require(os.name == 'nt' and os.environ.get('GITHUB_ACTIONS') == 'true', 'Paired execution requires the owned actual Windows CI runner')
     require(__debug__, 'Paired execution requires Python assertions enabled')
     binary, bundle, baseline = (path.resolve(strict=True) for path in (binary, bundle, baseline))
+    package, archive = invocation_path(package), invocation_path(archive)
     require(platform.python_version() == '3.12.10', 'Expected pinned CPython 3.12.10')
     require(metadata.version('music-tag') == '0.4.3' and metadata.version('mutagen') == '1.47.0', 'Wrong metadata runtime')
     report = report.resolve()
@@ -671,7 +717,9 @@ def run(binary, bundle, baseline, report, package=None, archive=None):
               'performance_scope': 'Functional acceptance first. Warm shared-original and fresh-native rows are not comparable speed ratios. One separate fresh-process pair retains startup and same authored inputs; OS cache and tracing overhead remain explicit.',
               'package_size': {'status':'pending_functional_cases'},
               'fresh_process_trial': {'status':'pending_functional_cases'},
-              'coverage': {'settings_combinations': 32, 'real_model_duets': 4}, 'cases': [],
+              'coverage': {'distinct_settings_vectors': 64, 'duet_disabled_vectors': 32,
+                           'duet_enabled_vectors': 32, 'retained_first_windows_cases': 36,
+                           'additional_duet_vectors': 30, 'real_model_duet_cases': 34}, 'cases': [],
               'historical_unsafe_exceptions': [
                   {'id': 'historical-duet-skipped-source-loss', 'scope': 'v14 Move-all deletes a source even when every destination is skipped; never required future behavior.', 'actual_windows_exercised_here': False},
                   {'id': 'historical-failed-move-false-success', 'scope': 'v14 increments song/artist counters after a failed move; never relabel this as observed physical success.', 'actual_windows_exercised_here': False}],
@@ -763,7 +811,7 @@ def run(binary, bundle, baseline, report, package=None, archive=None):
             write_json(report, result)
         require(digest(binary) == binary_before, 'Selected executable changed')
         require({name: digest(bundle/name) for name in ASSETS} == bundle_before, 'Original model bundle changed')
-        require(len(result['cases']) == 36, 'Incomplete paired matrix')
+        require(len(result['cases']) == 66, 'Incomplete paired matrix')
         result['incomplete'] = False
         statuses = [row['status'] for row in result['cases']]
         result['result'] = 'ERROR' if 'ERROR' in statuses else 'MISMATCH' if 'MISMATCH' in statuses else 'OPEN' if 'OPEN' in statuses else 'MATCH'

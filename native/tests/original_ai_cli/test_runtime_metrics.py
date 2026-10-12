@@ -11,6 +11,69 @@ import windows_runtime_metrics as metrics
 
 
 class RuntimeMetricsTests(unittest.TestCase):
+    def test_optional_paths_bind_invocation_directory_before_oracle_chdir(self):
+        import check_windows_v14 as gate
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            original = Path.cwd()
+            try:
+                os.chdir(root)
+                package = gate.invocation_path(Path('package'))
+                archive = gate.invocation_path(Path('archive.zip'))
+                (root/'oracle-code').mkdir()
+                os.chdir(root/'oracle-code')
+                self.assertEqual(package, root/'package')
+                self.assertEqual(archive, root/'archive.zip')
+                self.assertIsNone(gate.invocation_path(None))
+            finally:
+                os.chdir(original)
+
+    def test_tree_snapshot_does_not_append_source_target_again(self):
+        import check_windows_v14 as gate
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root/'source').mkdir(); (root/'target').mkdir()
+            (root/'source'/'authored.wav').write_bytes(b'owned fixture')
+            (root/'target'/'sentinel.bin').write_bytes(b'unchanged')
+            source = gate.snapshot_tree(root/'source')
+            self.assertEqual([row['path'] for row in source], ['.', 'authored.wav'])
+            self.assertEqual([row['path'] for row in gate.snapshot(root)],
+                             ['source', str(Path('source/authored.wav')), 'target', str(Path('target/sentinel.bin'))])
+
+    def test_fresh_telemetry_compares_both_role_trees_and_preserves_sentinel(self):
+        # Exercise orchestration with fake process adapters, never Windows proof.
+        import check_windows_v14 as gate
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); native = root/'native'; bundle = root/'bundle'
+            native.mkdir(); bundle.mkdir()
+            lock = native/'probes/released-ner/released-ner-export/release-lock.json'
+            lock.parent.mkdir(parents=True); lock.write_text('{"source_files":{}}')
+            (bundle/'original-release.pkl').write_bytes(b'owned test placeholder')
+            def author(destination, case):
+                (destination/'source').mkdir(parents=True); (destination/'target').mkdir()
+                (destination/'source'/gate.DUET).write_bytes(b'owned test fixture')
+                (destination/'target'/'sentinel.bin').write_bytes(b'untouched')
+                for path in destination.rglob('*'):
+                    if path.is_file(): os.utime(path, ns=(gate.FIXED_MTIME_NS, gate.FIXED_MTIME_NS))
+            def copy_pair(destination):
+                import shutil
+                for artist in ('ישראל כהן', 'חיים לוי'):
+                    folder = destination/'target'/artist; folder.mkdir()
+                    shutil.copy2(destination/'source'/gate.DUET, folder/gate.DUET)
+            def original(command, *, cwd, **kwargs):
+                copy_pair(cwd)
+                return subprocess.CompletedProcess(command, 0, b'', b'Loaded NER model:\nLoaded sklearn model successfully'), {'elapsed_ns': 1}
+            def selected(binary, destination, arguments, **kwargs):
+                copy_pair(destination)
+                return {'exit': 0, 'performance': {'elapsed_ns': 2}}
+            with patch.object(gate, 'NATIVE', native), patch.object(gate, 'author_case', author), \
+                 patch.object(gate, 'measured_process', original), patch.object(gate, 'subprocess_record', selected), \
+                 patch.dict(os.environ, {'SystemRoot': str(root)}):
+                result = gate.fresh_process_trial(root/'app.exe', bundle, root/'baseline', root, {}, float('inf'))
+            self.assertEqual(result['status'], 'measured')
+            self.assertTrue(result['functional_media_match'])
+            self.assertTrue(any(row['path'] == 'sentinel.bin' for row in result['original_media']))
+
     def test_package_measurement_binds_exact_archive_and_unpacked_bytes(self):
         import check_windows_v14 as gate
         import check_execution

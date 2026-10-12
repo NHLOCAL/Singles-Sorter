@@ -1,6 +1,7 @@
 """Portable harness tests. These are not actual Windows parity evidence."""
 import copy
 import importlib.util
+import hashlib
 import itertools
 import json
 import os
@@ -19,13 +20,33 @@ class PairedWindowsContract(unittest.TestCase):
         cases = gate.cases()
         matrix = [case for case in cases if case['group'] == 'settings']
         duets = [case for case in cases if case['group'] == 'duet']
-        self.assertEqual(len(cases), 36)
-        self.assertEqual(len({case['id'] for case in cases}), 36)
+        expanded = [case for case in cases if case['group'] == 'duet-settings']
+        self.assertEqual(len(cases), 66)
+        self.assertEqual(len({case['id'] for case in cases}), 66)
+        self.assertEqual(len(expanded), 30)
+        self.assertEqual(len({tuple(case['settings'][key] for key in (*gate.SETTING_NAMES, 'duet_mode'))
+                              for case in cases}), 64)
+        self.assertTrue(all(case['settings']['duet_mode'] and case['ai'] for case in expanded))
         self.assertEqual({tuple(case['settings'][key] for key in gate.SETTING_NAMES) for case in matrix},
                          set(itertools.product((False, True), repeat=5)))
         self.assertEqual({(case['settings']['copy_mode'], case['settings']['duet_mode']) for case in duets},
                          set(itertools.product((False, True), repeat=2)))
         self.assertTrue(all(case['ai'] for case in duets))
+        self.assertEqual(hashlib.sha256(json.dumps(cases[:36], sort_keys=True).encode()).hexdigest(),
+                         '67155586ea56e0b7f9e0ba3c8d7c0052558b0e42ecae82cd330c679db7022839',
+                         'The original 36 paired-041 case definitions must remain exact')
+
+    @unittest.skipUnless(importlib.util.find_spec('music_tag'), 'Metadata fixture authoring requires pinned oracle packages')
+    def test_expanded_duets_keep_one_existing_route_and_required_depth(self):
+        for case in [case for case in gate.cases() if case['group'] == 'duet-settings']:
+            with self.subTest(case=case['id']), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)/'owned'
+                gate.author_case(root, case)
+                for prefix in ('', 'direct', 'direct/deeper'):
+                    self.assertTrue((root/'source'/prefix/gate.DUET).is_file())
+                self.assertEqual(gate.artist_directory(root, 'ישראל כהן', case['settings']).is_dir(),
+                                 case['settings']['exist_only'])
+                self.assertFalse(gate.artist_directory(root, 'חיים לוי', case['settings']).exists())
 
     def test_no_name_order_or_counter_tolerance(self):
         for expected, actual in [(['A', 'B'], ['B', 'A']), ('אב', 'באַ'), ('file.wav', 'File.wav'),

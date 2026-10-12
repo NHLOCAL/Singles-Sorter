@@ -109,7 +109,7 @@ handler behavior still needs its own actual console-signal acceptance case.
 ## Paired actual-Windows v14 diagnostics (not a parity approval)
 
 `check_windows_v14.py` is an additive diagnostic lane after all mandatory
-release proof, package and artifact steps. It refuses non-Windows/non-CI execution. Its 36 cases use two fresh owned
+release proof, package and artifact steps. It refuses non-Windows/non-CI execution. Its 66 cases use two fresh owned
 trees each, never the user's music or the reference checkout:
 
 - All 32 combinations of Copy/Move, main-only/recursive, abc, singles directory,
@@ -120,8 +120,15 @@ trees each, never the user's music or the reference checkout:
   album with three distinct artists and no 70% main artist.
 - Four real-original-model duet cases: Copy/Move × first/all artists. The duet
   must actually invoke original NER and the original classifier and return at
-  least two artists. Unsupported Move-all remains explicitly OPEN, not passing
-  parity. A crash or unrelated execution failure is not treated as unsupported.
+  least two artists. Any missing execution evidence remains explicitly OPEN,
+  not passing parity. A crash or unrelated execution failure is not treated as
+  unsupported.
+- Thirty additional duet-enabled settings vectors retain those first 36 cases
+  unchanged and complete all 64 distinct six-boolean settings vectors. They
+  exercise real-model duets at root, direct-child and deeper levels. Existing-only
+  cases provide exactly one eligible and one skipped singer destination, including
+  ABC and singles nesting. The historical zero-eligible source deletion is still
+  excluded; these cases never require or exercise it.
 
 The oracle reuses the authenticated model/source loader in `check_cli.py`. Its
 existing two-result interface and 44-route checks are unchanged; the new optional
@@ -190,13 +197,24 @@ cases continue. The initial OPEN/incomplete report is persisted before each
 case, and completed phases are checkpointed. An interrupted diagnostic remains
 explicitly incomplete; it cannot starve the preceding mandatory proof/package
 steps or change their already-uploaded artifacts. The summary binds each evidence file's SHA-256 and records all
-36 outcomes. Nonzero exit codes distinguish OPEN (2) and mismatch/harness error
+66 outcomes. Nonzero exit codes distinguish OPEN (2) and mismatch/harness error
 (1) from complete MATCH (0). The workflow deliberately marks this diagnostic
 step `continue-on-error`, limits it to eight minutes, and always uploads its evidence separately, including
 when other gates fail. A green enclosing workflow therefore does NOT establish
 v14 parity. No preview package is relabeled as parity-approved by this lane.
 No authored media, model pickle or original model assets are uploaded; only
 owned-fixture diagnostics are retained for seven days.
+
+Optional telemetry starts only after every functional case has been persisted.
+Package/archive arguments are made absolute in the invocation directory before
+the original oracle changes CWD. The fresh-process sample compares the actual
+source and target trees (including the unchanged sentinel), using a single-tree
+snapshot rather than appending source/target to an already selected tree. Its
+elapsed/peak-memory data remain explicitly fresh-process, uncontrolled disk-cache
+measurements; shared warm-oracle rows are not comparable speed ratios. Package
+bytes and archive hashes bind the exact supplied native package, not an inferred
+original or desktop package size. Optional telemetry retains its cooperative
+budget and cannot replace missing functional evidence.
 
 Reproduce on the owned Windows CI runner after the pinned export/build steps:
 
