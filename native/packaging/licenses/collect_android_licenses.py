@@ -24,14 +24,16 @@ NDK_FILES = {
 MAX_FILES, MAX_FILE, MAX_TOTAL, MAX_INVENTORY = 4096, 64 << 20, 256 << 20, 2 << 20
 
 
-def validate_files(files: list[dict]) -> None:
+def validate_files(files: list[dict], inventory_bytes: int = 0) -> None:
     common.require(isinstance(files, list), "Invalid notice file list")
     common.require(len(files) <= MAX_FILES, "Too many notice files")
-    seen, total = set(), 0
+    common.require(type(inventory_bytes) is int and 0 <= inventory_bytes <= MAX_INVENTORY,
+                   "Invalid inventory size")
+    seen, total = set(), inventory_bytes
     for entry in files:
         common.require(isinstance(entry, dict), "Invalid notice entry")
         path = entry.get("path")
-        common.require(isinstance(path, str) and all(
+        common.require(isinstance(path, str) and len(path) <= 512 and all(
             re.fullmatch(r"[A-Za-z0-9._-]+", segment) and segment not in (".", "..")
             for segment in path.split("/")), "Unsafe notice asset path")
         common.require(path not in seen and path != "inventory.json", "Duplicate/reserved notice asset")
@@ -66,7 +68,7 @@ def verified_snapshot(root: Path) -> list[tuple[str, bytes]]:
     common.require(type(inventory.get("schema_version")) is int and inventory["schema_version"] == 1,
                    "Unsupported notice inventory")
     files = inventory.get("files")
-    validate_files(files)
+    validate_files(files, len(raw))
     common.require(any(f["path"] == "index.html" for f in files), "Missing notice index")
     found = set()
     for path in root.rglob("*"):
@@ -220,6 +222,7 @@ def main() -> int:
                      "native_sources": native, "rust": rust, "files": sorted(collector.files, key=lambda f: f["path"])}
         data = (json.dumps(inventory, ensure_ascii=False, indent=2) + "\n").encode()
         common.require(len(data) <= MAX_INVENTORY, "Inventory exceeds viewer contract")
+        validate_files(collector.files, len(data))
         (stage / "inventory.json").write_bytes(data)
         stage.rename(output)
     print(json.dumps({"licenses": str(output), "files": len(collector.files)}))

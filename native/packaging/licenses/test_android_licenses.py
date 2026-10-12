@@ -30,7 +30,7 @@ class AndroidNoticeTests(unittest.TestCase):
         self.assertEqual(set(result), {"index.html", "inventory.json"})
 
     def test_unsafe_paths(self):
-        for value in ("", "/x", "../x", "x/./y", "x//y", "x/", "a\\b", "C:x", "x?y", "a b", "א"):
+        for value in ("", "/x", "../x", "x/./y", "x//y", "x/", "a\\b", "C:x", "x?y", "a b", "א", "a" * 513):
             with self.subTest(value=value), self.assertRaises(common.CollectionError):
                 android.validate_files([{**self.row, "path": value}])
 
@@ -52,6 +52,9 @@ class AndroidNoticeTests(unittest.TestCase):
             android.validate_files([self.row])
         with patch.object(android, "MAX_FILES", 0), self.assertRaises(common.CollectionError):
             android.validate_files([self.row])
+        with patch.object(android, "MAX_TOTAL", self.row["bytes"] + 1), self.assertRaises(common.CollectionError):
+            android.validate_files([self.row], inventory_bytes=2)
+        android.validate_files([{**self.row, "path": "a" * 512}])
 
     def test_altered_and_extra_files(self):
         (self.root / "index.html").write_bytes(b"x" * len(self.data))
