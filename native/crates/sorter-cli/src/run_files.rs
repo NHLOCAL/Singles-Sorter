@@ -108,6 +108,52 @@ fn execute() -> Result<(), Failure> {
 }
 #[cfg(all(windows, feature = "selected-windows-execution"))]
 fn execute() -> Result<(), Failure> {
+    use std::sync::{Arc, atomic::AtomicBool, mpsc};
+    let cancel = Arc::new(AtomicBool::new(false));
+    let reader_cancel = cancel.clone();
+    let (tx, rx) = mpsc::sync_channel(1);
+    let invalid_control = Arc::new(AtomicBool::new(false));
+    let reader_invalid = invalid_control.clone();
+    std::thread::Builder::new().name("execution-stdin".into()).spawn(move || {
+        let stdin = io::stdin();
+        read_requests(stdin.lock(), tx, &reader_cancel, &reader_invalid);
+    }).map_err(|e| Failure::new(1, "WORKER_FAILED", e.to_string()))?;
+    let request_bytes = rx.recv().map_err(|_| Failure::new(2, "INVALID_INPUT", "Expected a run-files request line"))??;
+    let request: Request = serde_json::from_slice(&request_bytes).map_err(|e| Failure::new(2, "INVALID_INPUT", e.to_string()))?;
+    let source = request.preview.source.clone();
+    let target = request.preview.target.clone();
+    let journal_directory = request.journal_directory.clone();
+    execute_request(request, &cancel, &invalid_control, &mut |plan, inference_executed| {
+        event("planned", json!({"plan":plan,"inference_executed":inference_executed,"apply_eligible":true,"source":source,"target":target,"journal_directory":journal_directory,"confirmation":{"action":"apply","plan_id":plan.binding_sha256}}))?;
+        let decision = rx.recv().map_err(|_| Failure::new(2, "CONFIRMATION_REQUIRED", "stdin ended before explicit confirmation; no files changed"))??;
+        match serde_json::from_slice::<Decision>(&decision).map_err(|e| Failure::new(2, "INVALID_CONFIRMATION", e.to_string()))? {
+            Decision::Cancel => Ok(false),
+            Decision::Apply { plan_id } if plan_id == plan.binding_sha256 => Ok(true),
+            Decision::Apply { .. } => Err(Failure::new(2, "PLAN_CHANGED", "Confirmation must identify the exact retained inspected plan")),
+        }
+    }, &mut event)
+}
+
+#[cfg(all(windows, feature = "selected-windows-execution"))]
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct Request {
+    pub schema_version: u16,
+    pub preview: super::plan_files::Request,
+    pub journal_directory: std::path::PathBuf,
+}
+
+// Both frontends use the same live retained plan, fresh resource check, root
+// grants and journaled backend. The positional invocation authorizes its own
+// freshly planned job; NDJSON still requires the exact inspected plan digest.
+#[cfg(all(windows, feature = "selected-windows-execution"))]
+pub(super) fn execute_request(
+    request: Request,
+    cancel: &std::sync::atomic::AtomicBool,
+    invalid_control: &std::sync::atomic::AtomicBool,
+    confirm: &mut dyn FnMut(&sorter_core::job_plan::JobPlanV2, bool) -> Result<bool, Failure>,
+    event: &mut dyn FnMut(&str, Value) -> Result<(), Failure>,
+) -> Result<(), Failure> {
     use super::plan_files;
     use sha2::{Digest, Sha256};
     use sorter_core::{
@@ -131,44 +177,9 @@ fn execute() -> Result<(), Failure> {
         },
         metadata::{MetadataReader, StorageMetadataProvider},
     };
-    use std::{
-        path::PathBuf,
-        sync::{
-            Arc,
-            atomic::{AtomicBool, Ordering},
-            mpsc,
-        },
-    };
-    #[derive(Deserialize)]
-    #[serde(deny_unknown_fields)]
-    struct Request {
-        schema_version: u16,
-        preview: plan_files::Request,
-        journal_directory: PathBuf,
-    }
-    let cancel = Arc::new(AtomicBool::new(false));
-    let reader_cancel = cancel.clone();
-    let (tx, rx) = mpsc::sync_channel(1);
-    let invalid_control = Arc::new(AtomicBool::new(false));
-    let reader_invalid = invalid_control.clone();
-    std::thread::Builder::new()
-        .name("execution-stdin".into())
-        .spawn(move || {
-            let stdin = io::stdin();
-            read_requests(stdin.lock(), tx, &reader_cancel, &reader_invalid);
-        })
-        .map_err(|e| Failure::new(1, "WORKER_FAILED", e.to_string()))?;
-    let request_bytes = rx
-        .recv()
-        .map_err(|_| Failure::new(2, "INVALID_INPUT", "Expected a run-files request line"))??;
-    let request: Request = serde_json::from_slice(&request_bytes)
-        .map_err(|e| Failure::new(2, "INVALID_INPUT", e.to_string()))?;
+    use std::sync::atomic::Ordering;
     if request.schema_version != 1 {
-        return Err(Failure::new(
-            2,
-            "UNSUPPORTED_SCHEMA",
-            "run-files requires schema_version 1",
-        ));
+        return Err(Failure::new(2, "UNSUPPORTED_SCHEMA", "run-files requires schema_version 1"));
     }
     plan_files::validate_path(&request.journal_directory)?;
     let planned = plan_files::execute_request(&request.preview)?;
@@ -228,10 +239,10 @@ fn execute() -> Result<(), Failure> {
     }
     let scope = if repairing {
         Scope::Repair(
-            prepare_repair_scope(&plan, &mut reads, &resources, &cancel).map_err(|e| fail(&e))?,
+            prepare_repair_scope(&plan, &mut reads, &resources, cancel).map_err(|e| fail(&e))?,
         )
     } else {
-        let scope = prepare_scope(&plan, &mut reads, &resources, &cancel).map_err(|e| fail(&e))?;
+        let scope = prepare_scope(&plan, &mut reads, &resources, cancel).map_err(|e| fail(&e))?;
         if !plan.request.settings.copy_mode
             && !matches!((&scope.source_root,&scope.target_root),(ObjectIdentity::Windows {volume:a,..},ObjectIdentity::Windows {volume:b,..}) if a==b)
         {
@@ -241,32 +252,9 @@ fn execute() -> Result<(), Failure> {
         }
         Scope::Sort(scope)
     };
-    event(
-        "planned",
-        json!({"plan":plan,"inference_executed":planned.inference_executed,"apply_eligible":true,"source":request.preview.source,"target":target,"journal_directory":request.journal_directory,"confirmation":{"action":"apply","plan_id":plan.binding_sha256}}),
-    )?;
-    let decision = rx.recv().map_err(|_| {
-        Failure::new(
-            2,
-            "CONFIRMATION_REQUIRED",
-            "stdin ended before explicit confirmation; no files changed",
-        )
-    })??;
-    match serde_json::from_slice::<Decision>(&decision)
-        .map_err(|e| Failure::new(2, "INVALID_CONFIRMATION", e.to_string()))?
-    {
-        Decision::Cancel => {
-            event("cancelled", json!({"before_apply":true}))?;
-            return Ok(());
-        }
-        Decision::Apply { plan_id } if plan_id == plan.binding_sha256 => {}
-        Decision::Apply { .. } => {
-            return Err(Failure::new(
-                2,
-                "PLAN_CHANGED",
-                "Confirmation must identify the exact retained inspected plan",
-            ));
-        }
+    if !confirm(&plan, planned.inference_executed)? {
+        event("cancelled", json!({"before_apply":true}))?;
+        return Ok(());
     }
     if cancel.load(Ordering::Acquire) {
         event("cancelled", json!({"before_apply":true}))?;
@@ -315,7 +303,7 @@ fn execute() -> Result<(), Failure> {
                 recognition.as_mut(),
                 &resources,
                 &scope,
-                &cancel,
+                cancel,
             )
             .map_err(|e| fail(&e))?;
             let native_id = job.job_id().to_owned();
@@ -324,7 +312,7 @@ fn execute() -> Result<(), Failure> {
                 json!({"job_id":native_id,"plan_id":plan.binding_sha256,"mode":"FixNames","journal_directory":request.journal_directory}),
             )?;
             let mut output_failed = false;
-            let result = job.run(&cancel, &mut |progress| {
+            let result = job.run(cancel, &mut |progress| {
                 if event("progress", json!({"job_id":native_id,"operation":progress.operation,"total_files":progress.total_files,"phase":progress.phase})).is_err() {
                     output_failed = true;
                     cancel.store(true, Ordering::Release);
@@ -333,7 +321,7 @@ fn execute() -> Result<(), Failure> {
             let (recovery, recovery_error) = if job.journal_locations().is_empty() {
                 (None, None)
             } else {
-                match job.inspect_recovery(&cancel) {
+                match job.inspect_recovery(cancel) {
                     Ok(report) => (Some(report), None),
                     Err(error) => (None, Some(error.to_string())),
                 }
@@ -395,7 +383,7 @@ fn execute() -> Result<(), Failure> {
         json!({"job_id":native_id,"plan_id":plan.binding_sha256,"journal_directory":request.journal_directory}),
     )?;
     let mut output_failed = false;
-    let result=job.run(&cancel,&mut |progress| {
+    let result=job.run(cancel,&mut |progress| {
         if event("progress",json!({"job_id":native_id,"operation":progress.operation,"bytes_written":progress.bytes_written,"source_length":progress.source_length})).is_err() {output_failed=true;cancel.store(true,Ordering::Release);}
     });
     match result {

@@ -1,0 +1,212 @@
+{
+  "source_commit": "78d001aee5ce49628bdffebd34540fa83ba32c12",
+  "source_sha256": "ec4a98ce29c431b5d46b59f11a531eaf8fb4f3c8c16248372771de630086fffa",
+  "source_bytes": 41353,
+  "arguments": [
+    {
+      "args": [
+        "source_dir"
+      ],
+      "kwargs": {
+        "help": "Path to the source directory"
+      }
+    },
+    {
+      "args": [
+        "target_dir"
+      ],
+      "kwargs": {
+        "nargs": "?",
+        "help": "Path to the target directory"
+      }
+    },
+    {
+      "args": [
+        "-c",
+        "--copy_mode"
+      ],
+      "kwargs": {
+        "help": "Enable copy mode (default is move mode)",
+        "action": "store_true"
+      }
+    },
+    {
+      "args": [
+        "-a",
+        "--abc_sort"
+      ],
+      "kwargs": {
+        "help": "Sort folders alphabetically (default: False)",
+        "action": "store_true"
+      }
+    },
+    {
+      "args": [
+        "-e",
+        "--exist_only"
+      ],
+      "kwargs": {
+        "help": "Transfer to existing folders only (default: False)",
+        "action": "store_true"
+      }
+    },
+    {
+      "args": [
+        "-n",
+        "--no_singles_dir"
+      ],
+      "kwargs": {
+        "help": "Do not create an internal 'singles' folder",
+        "action": "store_false",
+        "dest": "singles_folder",
+        "default": true
+      }
+    },
+    {
+      "args": [
+        "-m",
+        "--main_dir_only"
+      ],
+      "kwargs": {
+        "help": "Sort only the main folder (default: False)",
+        "action": "store_true",
+        "dest": "main_folder_only"
+      }
+    },
+    {
+      "args": [
+        "-d",
+        "--duet_mode"
+      ],
+      "kwargs": {
+        "help": "Copy to all singers' folders for duets (default: False)",
+        "action": "store_true"
+      }
+    },
+    {
+      "args": [
+        "-f",
+        "--fix_names"
+      ],
+      "kwargs": {
+        "action": "store_true",
+        "help": "Fix file names only without sorting files"
+      }
+    },
+    {
+      "args": [
+        "-l",
+        "--log_level"
+      ],
+      "kwargs": {
+        "help": "Set the logging level",
+        "choices": [
+          "DEBUG",
+          "INFO",
+          "WARNING",
+          "ERROR",
+          "CRITICAL"
+        ],
+        "default": "INFO"
+      }
+    }
+  ],
+  "probes": [
+    {
+      "argv": [
+        "source",
+        "target"
+      ],
+      "parsed": {
+        "source_dir": "source",
+        "target_dir": "target",
+        "copy_mode": false,
+        "abc_sort": false,
+        "exist_only": false,
+        "singles_folder": true,
+        "main_folder_only": false,
+        "duet_mode": false,
+        "fix_names": false,
+        "log_level": "INFO"
+      }
+    },
+    {
+      "argv": [
+        "source",
+        "-f"
+      ],
+      "parsed": {
+        "source_dir": "source",
+        "target_dir": null,
+        "copy_mode": false,
+        "abc_sort": false,
+        "exist_only": false,
+        "singles_folder": true,
+        "main_folder_only": false,
+        "duet_mode": false,
+        "fix_names": true,
+        "log_level": "INFO"
+      }
+    },
+    {
+      "argv": [
+        "source",
+        "target",
+        "-caenmd",
+        "-l",
+        "DEBUG"
+      ],
+      "parsed": {
+        "source_dir": "source",
+        "target_dir": "target",
+        "copy_mode": true,
+        "abc_sort": true,
+        "exist_only": true,
+        "singles_folder": false,
+        "main_folder_only": true,
+        "duet_mode": true,
+        "fix_names": false,
+        "log_level": "DEBUG"
+      }
+    },
+    {
+      "argv": [
+        "source",
+        "target",
+        "--copy_mode",
+        "--no_singles_dir"
+      ],
+      "parsed": {
+        "source_dir": "source",
+        "target_dir": "target",
+        "copy_mode": true,
+        "abc_sort": false,
+        "exist_only": false,
+        "singles_folder": false,
+        "main_folder_only": false,
+        "duet_mode": false,
+        "fix_names": false,
+        "log_level": "INFO"
+      }
+    },
+    {
+      "argv": [
+        "--",
+        "-source",
+        "target"
+      ],
+      "parsed": {
+        "source_dir": "-source",
+        "target_dir": "target",
+        "copy_mode": false,
+        "abc_sort": false,
+        "exist_only": false,
+        "singles_folder": true,
+        "main_folder_only": false,
+        "duet_mode": false,
+        "fix_names": false,
+        "log_level": "INFO"
+      }
+    }
+  ]
+}

@@ -1,4 +1,6 @@
 //! Versioned supplied-facts v1 and read-only real-file v2 CLI.
+mod legacy;
+mod legacy_args;
 mod plan_files;
 mod run_files;
 
@@ -23,11 +25,13 @@ JSON commands emit one versioned envelope to stdout; diagnostics go to stderr.
 The stdin request limit is 16 MiB (16,777,216 bytes), including whitespace.
 V1 executes no inference. V1 decisions and plan-files plans are non-executable.
 V2 original inference requires the original-ai build and an explicit verified bundle.
-Physical apply requires the selected-windows-execution Windows build and an explicit
-run-files inspect/apply handshake. plan-files remains read-only.
+Physical apply requires the selected-windows-execution Windows build and a live
+retained plan. run-files uses an explicit inspect/apply handshake; positional
+invocations authorize their own fresh plan. plan-files remains read-only.
 V2 previews use read-only traversal, CSV aliases and fixture-scoped metadata.
 Linux is a read-only test backend. Windows candidate gates and Android acceptance are separate.
-run-files NDJSON is a separate single-job protocol. Legacy positional flags remain unsupported.
+run-files NDJSON is a separate single-job protocol. Positional source/target commands
+use the retained planner/executor directly; --dry-run is an explicit read-only choice.
 Exit codes: 0 success; 1 processing/internal failure; 2 invalid request;
 3 unsupported capability. This slice is not the complete Windows/Android app.
 ";
@@ -127,7 +131,7 @@ struct Capabilities {
     directory_traversal: bool,
     album_execution: bool,
     physical_apply: bool,
-    upcoming: [&'static str; 2],
+    upcoming: [&'static str; 1],
     real_file_planning: serde_json::Value,
     #[serde(skip_serializing_if = "Option::is_none")]
     selected_execution: Option<serde_json::Value>,
@@ -148,7 +152,7 @@ impl Capabilities {
             directory_traversal: false,
             album_execution: false,
             physical_apply: false,
-            upcoming: ["ndjson_streaming", "legacy_positional_flags"],
+            upcoming: ["ndjson_streaming"],
             real_file_planning: plan_files::capabilities(),
             selected_execution: cfg!(all(windows,feature="selected-windows-execution")).then(||serde_json::json!({"command":"run-files --ndjson","scope":"single-process inspected-plan confirmation","modes":["Copy","same-volume Move","FixNames"],"tag_write_scope":"bounded unflagged MP3 ID3v2.3/v2.4; five released fields; retained original backup","automatic_backup_cleanup":false,"automatic_replay":false,"process_restart_recovery_ui":false})),
         }
@@ -356,6 +360,11 @@ fn main() -> ExitCode {
             );
         }
     };
+    if args.first().is_some_and(|arg| !matches!(arg.as_str(), "classify" | "plan" | "plan-files" | "run-files" | "capabilities"))
+        && !args.iter().take_while(|arg| arg.as_str() != "--").any(|arg| matches!(arg.as_str(), "--json" | "--ndjson"))
+    {
+        return legacy::run(&args);
+    }
     match dispatch(&args) {
         Ok(Invocation::Help) => {
             let mut stdout = io::stdout().lock();

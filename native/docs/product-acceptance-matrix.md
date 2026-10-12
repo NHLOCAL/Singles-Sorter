@@ -7,7 +7,8 @@ below require final-head CI results; the presence of a test is not a passing run
 
 | Released behavior / flow | Planning and compatibility | Physical/product boundary |
 | --- | --- | --- |
-| Copy / Move toggle | Exact boolean and v14 virtual effects retained | Selected Windows multi-file Copy / same-volume rename candidate; cross-volume Move blocked |
+| Copy / Move toggle | Exact boolean and v14 virtual effects retained | Delivered selected Windows multi-file Copy / same-volume rename; cross-volume Move blocked |
+| Copy file attributes/timestamps | v14 uses `copy2` / `copytree` | Current transfer proof covers content and names; full copied metadata preservation remains an explicit parity gap |
 | Main folder only / full tree | Original traversal/order retained | Selected plans validated whole; actual multi-file Windows gate required |
 | Create singles folders | Original `סינגלים` destination component retained | Journaled directory creation candidate; native UI test asserts physical layout |
 | Alphabetic sort | Original letter hierarchy retained | Backend directories supported; requires expanded native UI acceptance matrix |
@@ -27,7 +28,8 @@ below require final-head CI results; the presence of a test is not a passing run
 | Hebrew RTL compact layout / import editing | Existing shared UI and original labels preserved | UI unit/build checks; actual Windows screenshots required for new execution panel |
 | CLI supplied-facts v1 | Existing envelopes remain model-free and non-executable | No physical authorization granted |
 | CLI real-file v2 JSON | Same request fields and original planning policy | Read-only; optional selected planning adapter strengthens capability observations |
-| CLI NDJSON execution | New one-process inspected-digest handshake | Opt-in Windows candidate; legacy positional compatibility still unavailable |
+| CLI NDJSON execution | One-process inspected-digest handshake | Same selected Windows backend; machine protocol remains explicit |
+| CLI positional source/target and flags | Frozen v14 declarations/probes pinned, including all eight flags and default Move | Separate frontend candidate reuses retained planner/executor without an interactive JSON prompt; final native and extracted CLI package checks pending |
 | Android | Shared UI remains fail-closed without native apply eligibility | Separate Android workstream; Windows proof is not Android/provider/ARM64 proof |
 | Portable Windows artifact | Explicit original-AI + selected-execution feature profile | EXE-bound real Copy/Move/artist-folder plus source-only MP3 repair checks required on staged and extracted ZIP; package README and provenance identify supported mutations |
 
@@ -46,3 +48,51 @@ passes until the final-head Windows runs finish. Local frontend checks currently
 pass 107 tests/typecheck/build; independent Python ID3 fixture/parser and package
 gate tests also pass. Local Rust installation and Chromium rendering remain
 blocked; neither limitation is counted as a passing native or visual test.
+
+
+## Frozen v14 completeness checklist
+
+The reference is commit `78d001aee5ce49628bdffebd34540fa83ba32c12`, version
+14.0. Original defaults are Move, recursive traversal, inner `סינגלים` folder,
+first artist only, alphabetic sorting off and existing-only off. The complete CLI
+flag inventory is `-c/-a/-e/-n/-m/-d/-f/-l`, with the exact underscore long names
+recorded in [the CLI compatibility contract](legacy-cli.md). A frontend flag being
+parsed does not imply that every resulting operation is physically supported.
+
+| Decision/effect family | Preserved reference behavior | Outstanding physical or product proof |
+| --- | --- | --- |
+| Classification | Ordered filename aliases, metadata artist/title routes, Hebrew repairs, exact-name check, original NER/classifier fallback | Broader arbitrary-library representations; platform-specific inference acceptance remains separately recorded |
+| Filename cleanup | Original underscore/hyphen/substrings/whitespace and Windows-character sanitization, collision suffix order | Actual standalone positional Fix acceptance remains required |
+| Album handling | Single-keyword exclusions, track/album/artist inspection order, protected per-file errors, nested and mixed traversal timing | Album Copy/Move directory effects and cleanup are not enabled by the singles-only backend |
+| Duet effects | Original artist order and duplication; first/all-artist toggle | Multi-destination Move source-retirement cohort remains separate; no early source deletion |
+| Failures and cancellation | Planning metadata failures are not silently converted into success; native actual effects remain explicit | Read-only repair recovery must reconcile all valid selected-path spellings; process-kill/restart UI remains separate |
+| File lists and settings | Bundled/personal ordering, duplicate rows, CSV editing/import/export and every six-boolean setting | Expanded actual UI combination tests for alphabetic/existing-only/main-only/duet settings remain required |
+| User interface | Hebrew RTL, compact display, immediate help dismissal, richer About, default-minimal results and explicit developer mode | Actual Windows polish must pass the corrected closed/open/reclosed About layout gate |
+
+### All twelve released extensions
+
+Discovery and filename repair retain all twelve suffixes. The read bridge's
+frozen-fixture report is not a blanket arbitrary-file or platform compatibility
+claim. For metadata open failures, original rename-before-metadata ordering is
+preserved; a filename change does not imply a successful tag repair.
+
+| Extension | Frozen reference metadata-open fixture | Current physical tag repair boundary |
+| --- | --- | --- |
+| `.mp3` | Supported ID3 fixture classes | Bounded unflagged ID3v2.3/v2.4 with existing padding; five original fields; original backup retained. Unsupported flags/representations/insufficient padding stop tag publication explicitly |
+| `.m4a`, `.alac` | MP4 fixtures | Tag writes unavailable; filename repair can still complete |
+| `.wav` | WAVE ID3 fixtures | Tag writes unavailable; filename repair can still complete |
+| `.aiff` | AIFF fixtures | Tag writes unavailable; filename repair can still complete |
+| `.flac` | FLAC fixtures | Staged writer under separate development; not enabled by the MP3 candidate |
+| `.wv` | WavPack fixtures | Tag writes unavailable; filename repair can still complete |
+| `.ogg` | Ogg Vorbis fixtures | Tag writes unavailable; filename repair can still complete |
+| `.dsf` | DSF fixtures | Tag writes unavailable; filename repair can still complete |
+| `.opus` | Ogg Opus fixtures | Tag writes unavailable; filename repair can still complete |
+| `.wma` | Released metadata open rejects ASF | Preserve metadata-error outcome after any supported filename repair |
+| `.aac` | Released ADTS fixture rejects tags | Preserve metadata-error outcome after any supported filename repair |
+
+The initial f86 Windows run passed all 10 staged MP3 writer, 20 preservation,
+3 journal-boundary and 12 native repair product cases. The CLI's actual repair
+passed renamed/repaired counts, unchanged audio and exact retained-original bytes,
+but its read-only recovery report was absent, so that CLI test failed. The strict
+assertion and error diagnostics remain; this is not complete CLI acceptance.
+The current follow-up must pass fresh native, host and staged/extracted gates.

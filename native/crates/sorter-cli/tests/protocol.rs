@@ -178,7 +178,7 @@ fn capabilities_declares_every_phase_boundary_and_upcoming_protocols() {
     }
     assert_eq!(
         capabilities["upcoming"],
-        json!(["ndjson_streaming", "legacy_positional_flags"])
+        json!(["ndjson_streaming"])
     );
 }
 
@@ -372,7 +372,10 @@ fn duplicate_missing_or_unknown_command_arguments_are_invalid() {
 
 #[test]
 fn an_unknown_top_level_flag_is_invalid_rather_than_an_unsupported_operation() {
-    error(&["--bogus"], b"", 2, "INVALID_INPUT");
+    let legacy = run(&["--bogus"], b"", None);
+    assert_eq!(legacy.status.code(), Some(2));
+    assert!(legacy.stdout.is_empty());
+    assert!(String::from_utf8_lossy(&legacy.stderr).contains("unrecognized option"));
     error(&["--json"], b"", 2, "INVALID_INPUT");
 }
 
