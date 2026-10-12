@@ -2,6 +2,7 @@
 use super::*;
 use crate::transfer::{TransferStorage, source_expected};
 use sorter_storage_contracts::*;
+use std::collections::HashMap;
 use std::io::{self, Read, Seek, SeekFrom, Write};
 
 /// Retained in-process inspection, deliberately not Deserialize.
