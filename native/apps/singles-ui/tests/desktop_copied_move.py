@@ -2,6 +2,7 @@
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import tempfile
 import wave
@@ -15,7 +16,7 @@ SINGLE = 'אברהם פריד - שיר בודד.wav'
 ARTISTS = ('ישראל כהן', 'חיים לוי')
 AUXILIARY = b'owned auxiliary'
 CHECKS = {'actual-cross-volume-move', 'actual-original-ai-duet-move', 'actual-mixed-duet-and-rename',
-          'copied-move-main-and-named-streams', 'copied-move-source-retired-once',
+          'copied-move-main-and-named-streams', 'copied-move-final-source-absence',
           'copied-move-preview-and-review-no-effects', 'copied-move-stale-stream-no-effects',
           'copied-move-stale-target-no-effects', 'copied-move-cancel-before-effects'}
 
@@ -105,7 +106,11 @@ def exercise_copied_move(script, click, fill, wait, capture, root, output, secon
                 expected_auxiliary = b'changed stream!' if label == 'stale-stream' else AUXILIARY
                 assert all(auxiliary(path).read_bytes() == expected_auxiliary for path in paths)
                 capture('copied-move-refused-'+label)
-                receipts.append(dict(case=label, source_and_target_unchanged=True, auxiliary_unchanged=True, ipc_mocked=False))
+                summary = script("return document.querySelector('#execution-summary').textContent")
+                assert 'קבצים הועברו' not in summary and 'יעדים נכתבו' not in summary
+                receipts.append(dict(case=label, source_and_target_unchanged=True, auxiliary_unchanged=True,
+                                     observed_file_effects=dict(new_destinations=0, retired_sources=0),
+                                     native_result_counters=None, displayed_summary=summary, ipc_mocked=False))
                 continue
             expected = {(artist, DUET) for artist in ARTISTS} if configured else {('אברהם פריד', SINGLE)}
             if label == 'mixed': expected.add(('אברהם פריד', SINGLE))
@@ -120,12 +125,23 @@ def exercise_copied_move(script, click, fill, wait, capture, root, output, secon
                 if label == 'mixed' and name == SINGLE:
                     assert destination.stat().st_ino == identities[name], 'Ordinary same-volume file was copied instead of renamed'
                 observed.append(dict(artist=artist, name=name, sha256=digest(destination), auxiliary_sha256=digest(auxiliary(destination))))
-            assert not list(source.iterdir()), 'Original source must retire once only after all destinations'
+            assert not list(source.iterdir()), 'Original source still exists after all destinations completed'
             assert script("return document.querySelectorAll('#rows tr').length") == len(paths)
             assert script("return document.querySelector('#execution-recovery').hidden")
+            summary = script("return document.querySelector('#execution-summary').textContent")
+            assert 'מקובצי המקור נשמרו' not in summary
             capture('copied-move-complete-'+label)
-            receipts.append(dict(case=label, ai_profile=profile, cross_volume=cross_volume, source_items=len(paths),
-                                 committed_destinations=len(expected), moved_sources=len(paths),
+            set_developer_mode(script, click, wait, True)
+            details = script("return document.querySelector('#execution-summary').textContent")
+            match = re.fullmatch(r'(\d+) יעדים נכתבו · (\d+) קבצי מקור הועברו · (\d+) נכשלו · (\d+) לא בוצעו', details)
+            assert match, details
+            committed, moved, failed, blocked = map(int, match.groups())
+            assert (committed, moved, failed, blocked) == (len(expected), len(paths), 0, 0)
+            set_developer_mode(script, click, wait, False)
+            receipts.append(dict(case=label, ai_profile=profile, cross_volume=cross_volume,
+                                 expected_counts=dict(source_items=len(paths), committed_destinations=len(expected), moved_sources=len(paths)),
+                                 observed_displayed_counts=dict(committed_destinations=committed, moved_sources=moved, failed_operations=failed, blocked_operations=blocked),
+                                 displayed_summary=summary, displayed_details=details,
                                  original_sha256=before, destinations=observed, ipc_mocked=False))
     (Path(output) / 'copied-move-execution.json').write_text(json.dumps(dict(status='passed', checks=sorted(CHECKS), cases=receipts), ensure_ascii=False, indent=2), encoding='utf-8')
     return sorted(CHECKS)

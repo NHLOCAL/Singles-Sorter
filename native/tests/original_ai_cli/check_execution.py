@@ -237,6 +237,9 @@ def run(binary, bundle, report, package_root=None):
         require(not list(source.iterdir()), 'Copied Move source was not retired')
         require(actual['source_items'] == len(names) and actual['moved_sources'] == len(names) and actual['committed_destinations'] == len(expected), 'Copied Move physical counters differ')
         require(actual['legacy_summary']['songs_sorted'] == len(expected), 'Copied Move original destination credits differ')
+        effects = actual['effect_receipts']
+        require(sum(effect['kind'] == 'source_retired' for effect in effects) == 1, 'Copied source retirement was not acknowledged exactly once')
+        require(sum(effect['kind'] == 'file_renamed' for effect in effects) == (1 if label == 'mixed-duet-move' else 0), 'Ordinary same-volume rename receipt is missing or fabricated')
         receipts[-1].update(case=label, source_sha256=before, source_items=len(names), destinations=len(expected), named_streams_verified=True)
 
     audio=(ROOT/'native/tests/fixtures/media/blank.mp3').read_bytes()

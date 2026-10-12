@@ -77,7 +77,7 @@ export function simpleExecutionSummary(execution:Pick<ExecutionSnapshot,'status'
  else if(copy)parts.push(`נוצרו ${result.committed_destinations.toLocaleString('he-IL')} עותקים`);
  else{
   parts.push(`${result.moved_sources.toLocaleString('he-IL')} קבצים הועברו`);
-  if(result.committed_destinations>result.moved_sources)parts.push('חלק מקובצי המקור נשמרו');
+  if(result.items.some(item=>item.status==='source_retained'))parts.push('חלק מקובצי המקור נשמרו');
  }
  if(result.legacy_summary){
   const summary=result.legacy_summary;

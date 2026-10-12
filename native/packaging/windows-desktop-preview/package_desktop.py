@@ -50,7 +50,7 @@ ALBUM_CHECKS = {'actual-album-copy', 'actual-root-album-move', 'actual-mixed-alb
                 'album-review-no-effects', 'album-stale-membership-no-effects',
                 'album-terminal-simple-results'}
 COPIED_MOVE_CHECKS = {'actual-cross-volume-move', 'actual-original-ai-duet-move', 'actual-mixed-duet-and-rename',
-                      'copied-move-main-and-named-streams', 'copied-move-source-retired-once',
+                      'copied-move-main-and-named-streams', 'copied-move-final-source-absence',
                       'copied-move-preview-and-review-no-effects', 'copied-move-stale-stream-no-effects',
                       'copied-move-stale-target-no-effects', 'copied-move-cancel-before-effects'}
 DESKTOP_FEATURES = ['desktop', 'original-ai', 'selected-windows-execution', 'tauri/custom-protocol']

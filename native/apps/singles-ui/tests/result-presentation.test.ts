@@ -39,7 +39,7 @@ describe('ordinary result presentation',()=>{
   expect(simpleStatus({...row,kind:'Vanished'},[],false)).toBe('הקובץ לא נמצא');
  });
  it('counts copies rather than inventing distinct completed source files',()=>{
-  const execution:Pick<ExecutionSnapshot,'status'|'result'>={status:'partial',result:{source_items:1,committed_destinations:2,moved_sources:0,failed_operations:1,blocked_operations:0,cancelled_operations:0,recovery_operations:0,items:[]}};
+  const execution:Pick<ExecutionSnapshot,'status'|'result'>={status:'partial',result:{source_items:1,committed_destinations:2,moved_sources:0,failed_operations:1,blocked_operations:0,cancelled_operations:0,recovery_operations:0,items:[item('source_retained')]}};
   expect(simpleExecutionSummary(execution,true)).toBe('נוצרו 2 עותקים · 1 לא הושלמו');
   expect(simpleExecutionSummary(execution,false)).toContain('0 קבצים הועברו · חלק מקובצי המקור נשמרו');
  });
@@ -60,6 +60,11 @@ describe('ordinary result presentation',()=>{
   const summary=simpleExecutionSummary({status:'partial',result},false);
   expect(summary).toContain('2 שמות תוקנו');expect(summary).toContain('1 קבצים עם תגיות מתוקנות');expect(summary).toContain('1 עם תגיות שלא תוקנו');
   expect(summary).not.toContain('הועברו');expect(summary).not.toContain('עותקים');expect(summary).not.toContain('128');
+ });
+ it('does not infer retained sources from successful multi-destination Move',()=>{
+  const result={source_items:1,committed_destinations:2,moved_sources:1,failed_operations:0,blocked_operations:0,cancelled_operations:0,recovery_operations:0,items:[item('complete'),item('complete')]};
+  expect(simpleExecutionSummary({status:'complete',result},false)).toBe('1 קבצים הועברו');
+  expect(simpleExecutionSummary({status:'partial',result:{...result,moved_sources:0,items:[item('source_retained')]}},false)).toContain('חלק מקובצי המקור נשמרו');
  });
  it('does not claim zero effects from missing final counters or expose raw errors',()=>{
   expect(simpleExecutionSummary({status:'failed',result:null},false)).toContain('לא התקבל אישור');
