@@ -27,9 +27,15 @@ class DesktopPackageTests(unittest.TestCase):
         self.report=self.root/'report.json'
         self.data={'medium_integrity_verified':True,'status':'passed','platform':'windows-native-tauri','ipc_mocked':False,'ai_mode':'on',
                    'binary_sha256':p.digest(self.binary),'package_sha256sums_sha256':p.digest(self.pkg/'SHA256SUMS.txt'),
-                   'original_ai_checks':sorted(p.REQUIRED_CHECKS),'apply_mode':'on','apply_checks':sorted(p.APPLY_CHECKS),'repair_checks':sorted(p.REPAIR_CHECKS),'album_checks':sorted(p.ALBUM_CHECKS)}
+                   'original_ai_checks':sorted(p.REQUIRED_CHECKS),'apply_mode':'on','apply_checks':sorted(p.APPLY_CHECKS),'repair_checks':sorted(p.REPAIR_CHECKS),'flac_checks':sorted(p.FLAC_CHECKS),'album_checks':sorted(p.ALBUM_CHECKS)}
         self.save()
     def save(self): self.report.write_text(json.dumps(self.data),encoding='utf-8')
+    def test_each_flac_check_is_mandatory(self):
+        for missing in p.FLAC_CHECKS:
+            self.data['flac_checks'] = sorted(p.FLAC_CHECKS - {missing}); self.save()
+            with self.assertRaisesRegex(ValueError, 'FLAC'):
+                p.report_gate(self.report, self.binary, 'on', self.pkg)
+
     def test_each_album_check_is_mandatory(self):
         for missing in p.ALBUM_CHECKS:
             self.data['album_checks'] = sorted(p.ALBUM_CHECKS - {missing}); self.save()

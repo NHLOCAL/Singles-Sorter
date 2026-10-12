@@ -19,7 +19,7 @@ below require final-head CI results; the presence of a test is not a passing run
 | Original NER + secondary classifier | Both exact original assets validated; no fallback | CLI and Windows UI original-AI real-file preview baseline exists; new apply + AI composition requires final Windows gate |
 | Disabled AI | Explicit choice; no inference | Never silently substituted for configured unavailable models |
 | Albums | Original album recognition, metadata-error ordering and virtual transfer timeline | Separate candidate composes bounded original album plans, nested files/sidecars, root-album and mixed same-volume Move; actual new host/CLI/package gates pending |
-| Fix names / gibberish tags | Original planned rename/tag intentions retained | New source-only repair candidate: original filename policy across 12 extensions; bounded MP3 ID3v2.3/v2.4 five-field writes, retained original backup, explicit partial unsupported tag outcomes. MP3 physical repair, exact retained originals and media preservation passed actual Windows CLI and staged/extracted UI at 690194e; later format additions remain separate |
+| Fix names / gibberish tags | Original planned rename/tag intentions retained | New source-only repair candidate: original filename policy across 12 extensions; bounded MP3 ID3v2.3/v2.4 five-field writes, retained original backup, explicit partial unsupported tag outcomes. MP3 physical repair, exact retained originals and media preservation passed actual Windows CLI and staged/extracted UI at 690194e; the next candidate adds bounded native FLAC with dedicated physical and staged/extracted gates, not yet runtime-accepted |
 | Name collisions | Original reservation policy; exact plan revalidated | Identity-bound no-replace publication; changed destination stops execution |
 | Preview cancellation / Back / reload | Host owner remains busy until native terminal state | Existing lifecycle tests; no stale plan resurrection |
 | Apply review / repeat click | Host-selected paths and retained digest only | New UI/CLI candidate; cannot repeat consumed plan |
@@ -84,7 +84,7 @@ preserved; a filename change does not imply a successful tag repair.
 | `.m4a`, `.alac` | MP4 fixtures | Tag writes unavailable; filename repair can still complete |
 | `.wav` | WAVE ID3 fixtures | Tag writes unavailable; filename repair can still complete |
 | `.aiff` | AIFF fixtures | Tag writes unavailable; filename repair can still complete |
-| `.flac` | FLAC fixtures | Staged writer under separate development; not enabled by the MP3 candidate |
+| `.flac` | FLAC fixtures | Bounded native FLAC Vorbis comments are composed in the next candidate, including shorter metadata after duplicate collapse; pictures/vendor/unknown pairs/audio and original backup retained. Native and staged/extracted EXE gates are required; no runtime acceptance inferred from MP3 |
 | `.wv` | WavPack fixtures | Tag writes unavailable; filename repair can still complete |
 | `.ogg` | Ogg Vorbis fixtures | Tag writes unavailable; filename repair can still complete |
 | `.dsf` | DSF fixtures | Tag writes unavailable; filename repair can still complete |
