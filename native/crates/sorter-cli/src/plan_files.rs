@@ -39,6 +39,8 @@ pub(super) struct Request {
     pub(super) target: Option<PathBuf>,
     pub(super) settings: Settings,
     pub(super) ai_profile: RequestedAi,
+    #[serde(default)]
+    pub(super) primary_aliases: Option<PathBuf>,
     pub(super) personal_aliases: Option<PathBuf>,
 }
 #[cfg(feature = "original-ai")]
@@ -148,7 +150,7 @@ pub(super) fn resource_bytes(path: &Path) -> Result<Vec<u8>, Failure> {
         Failure::new(
             2,
             "RESOURCE_INVALID",
-            "Personal aliases must name a regular CSV file",
+            "Alias resource must name a regular CSV file",
         )
     })?;
     let read_error = |e: StorageError| Failure::new(1, "RESOURCE_READ_FAILED", e.to_string());
@@ -159,7 +161,7 @@ pub(super) fn resource_bytes(path: &Path) -> Result<Vec<u8>, Failure> {
         return Err(Failure::new(
             2,
             "RESOURCE_INVALID",
-            "Personal aliases must be a regular CSV file",
+            "Alias resource must be a regular CSV file",
         ));
     }
     let input = storage.open_read(&reference).map_err(read_error)?;
@@ -167,7 +169,7 @@ pub(super) fn resource_bytes(path: &Path) -> Result<Vec<u8>, Failure> {
         return Err(Failure::new(
             2,
             "RESOURCE_TOO_LARGE",
-            "Personal aliases exceed 16 MiB",
+            "Alias resource exceed 16 MiB",
         ));
     }
     let mut bytes = Vec::new();
@@ -179,7 +181,7 @@ pub(super) fn resource_bytes(path: &Path) -> Result<Vec<u8>, Failure> {
         return Err(Failure::new(
             2,
             "RESOURCE_TOO_LARGE",
-            "Personal aliases exceed 16 MiB",
+            "Alias resource exceed 16 MiB",
         ));
     }
     Ok(bytes)
@@ -285,18 +287,27 @@ pub(super) fn execute_request_controlled(request: &Request, cancel: &std::sync::
     ));
     #[cfg(any(windows, target_os = "linux"))]
     {
+        let primary = request
+            .primary_aliases
+            .as_deref()
+            .map(resource_bytes)
+            .transpose()?;
         let personal = request
             .personal_aliases
             .as_deref()
             .map(resource_bytes)
             .transpose()?;
-        let bundle = load_aliases(BUNDLED, personal.as_deref())
+        let bundle = load_aliases(primary.as_deref().unwrap_or(BUNDLED), personal.as_deref())
             .map_err(|e| Failure::new(2, "RESOURCE_INVALID", e.to_string()))?;
+        if bundle.ordered_rows.is_empty() {
+            return Err(Failure::new(2, "RESOURCE_INVALID", "No singer lists found."));
+        }
         let source_name = |s: AliasSource| match s {
             AliasSource::Bundled => "bundled",
             AliasSource::Personal => "personal",
         };
         let resources = json!({
+            "primary_origin": if primary.is_some() { "selected_csv" } else { "embedded_release" },
             "sources": bundle.source_hashes.iter().map(|s|json!({"source":source_name(s.source),"sha256":s.sha256,"bytes":s.bytes,"records":s.records})).collect::<Vec<_>>(),
             "diagnostics": bundle.diagnostics.iter().map(|d|json!({"code":d.code,"source":source_name(d.source),"index":d.index,"record":d.record,"width":d.width,"blocks_apply":d.blocks_apply})).collect::<Vec<_>>()
         });

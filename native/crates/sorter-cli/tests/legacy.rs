@@ -64,6 +64,28 @@ fn explicit_dry_run_uses_relative_paths_and_personal_csv_without_writes() {
     assert!(!root.path().join("logs").exists());
 }
 #[test]
+fn primary_csv_default_override_and_empty_lists_match_the_original_workflow() {
+    let root = tree();
+    fs::write(root.path().join("app/singer-list.csv"), "זמר בדיקה,ראשי מקומי\n").unwrap();
+    fs::write(root.path().join("custom.csv"), "זמר בדיקה,ראשי מפורש\n").unwrap();
+    for (extra, expected) in [(vec![], "ראשי מקומי"), (vec!["--singer-list", "custom.csv"], "ראשי מפורש")] {
+        let mut args = vec!["source", "target", "-cn", "--dry-run", "--no-ai", "-l", "ERROR"];
+        args.extend(extra);
+        let result = run(root.path(), &args);
+        assert!(result.status.success(), "{result:?}");
+        let output = String::from_utf8(result.stdout).unwrap();
+        assert!(output.contains(expected), "{output}");
+        assert!(!output.contains("אמן בדיקה"), "primary rows precede personal rows: {output}");
+    }
+    fs::write(root.path().join("app/singer-list.csv"), b"").unwrap();
+    fs::write(root.path().join("app/personal-singer-list.csv"), b"").unwrap();
+    let result = run(root.path(), &["source", "target", "--dry-run", "--no-ai"]);
+    assert_eq!(result.status.code(), Some(2), "{result:?}");
+    assert!(String::from_utf8_lossy(&result.stderr).contains("No singer lists found"));
+    assert_eq!(fs::read_dir(root.path().join("target")).unwrap().count(), 0);
+    assert!(!root.path().join("logs").exists());
+}
+#[test]
 fn argument_failures_never_start_jobs_and_help_does_not_read_stdin() {
     let root = tree();
     for args in [
@@ -107,6 +129,21 @@ fn feature_off_never_silently_converts_an_execution_invocation_to_dry_run() {
 #[cfg(all(windows, feature = "selected-windows-execution"))]
 mod selected {
     use super::*;
+    #[test]
+    fn actual_copy_uses_selected_primary_csv_before_personal_aliases() {
+        for explicit in [false, true] {
+            let root = tree();
+            fs::write(root.path().join("app/singer-list.csv"), "זמר בדיקה,ראשי מקומי\n").unwrap();
+            fs::write(root.path().join("custom.csv"), "זמר בדיקה,ראשי מפורש\n").unwrap();
+            let mut args = vec!["source", "target", "-cn", "--no-ai", "--journal-directory", "journal"];
+            if explicit { args.extend(["--singer-list", "custom.csv"]); }
+            let result = run(root.path(), &args);
+            assert!(result.status.success(), "{result:?}");
+            let artist = if explicit { "ראשי מפורש" } else { "ראשי מקומי" };
+            assert_eq!(fs::read(root.path().join("target").join(artist).join("זמר בדיקה - שיר.mp3")).unwrap(), include_bytes!("../../../tests/fixtures/media/blank.mp3"));
+            assert!(!root.path().join("target/אמן בדיקה").exists());
+        }
+    }
     #[test]
     fn positional_copy_and_move_execute_without_any_stdin_handshake() {
         for copying in [true, false] {

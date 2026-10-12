@@ -44,6 +44,7 @@ pub(super) struct Options {
     pub dry_run: bool,
     pub no_ai: bool,
     pub model_directory: Option<PathBuf>,
+    pub primary_aliases: Option<PathBuf>,
     pub personal_aliases: Option<PathBuf>,
     pub journal_directory: Option<PathBuf>,
 }
@@ -100,6 +101,7 @@ pub(super) fn parse(args: &[String]) -> Result<Parsed, String> {
         dry_run: false,
         no_ai: false,
         model_directory: None,
+        primary_aliases: None,
         personal_aliases: None,
         journal_directory: None,
     };
@@ -147,6 +149,10 @@ pub(super) fn parse(args: &[String]) -> Result<Parsed, String> {
                     }
                     "model-directory" => {
                         options.model_directory =
+                            Some(value(args, &mut index, attached, arg)?.into())
+                    }
+                    "singer-list" => {
+                        options.primary_aliases =
                             Some(value(args, &mut index, attached, arg)?.into())
                     }
                     "personal-aliases" => {
@@ -202,6 +208,13 @@ mod tests {
             Parsed::Run(options) => options,
             Parsed::Help => panic!("unexpected help"),
         }
+    }
+    #[test]
+    fn primary_override_is_explicit_and_does_not_change_original_abbreviations() {
+        let options = parsed(&["source", "target", "--singer-list=custom.csv", "--d"]);
+        assert_eq!(options.primary_aliases, Some(PathBuf::from("custom.csv")));
+        assert!(options.settings.duet_mode);
+        assert!(parse(&["source".into(), "--singer-list".into()]).is_err());
     }
     #[test]
     fn every_recorded_frozen_parser_probe_matches() {

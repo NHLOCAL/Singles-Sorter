@@ -30,6 +30,7 @@ CHECKS = {'positional-copy', 'positional-move', 'positional-original-ai-copy',
           'positional-album-copy', 'positional-root-album-move', 'positional-mixed-album-move',
           'positional-album-descendant-metadata', 'positional-album-dry-run-no-effects',
           'positional-flac-five-fields', 'positional-flac-shifted-audio', 'positional-flac-opaque-partial',
+          'positional-primary-resource-order',
           'retained-original-and-media', 'closed-stdin', 'no-developer-path',
           'explicit-dry-run-no-effects', 'overlap-rejected-no-effects', 'legacy-argument-exits'}
 
@@ -211,6 +212,21 @@ def run(binary, bundle, report, package_root=None):
             require(new_audio==audio_bytes and ((new_offset<offset) if duplicate else (new_offset==offset)),'FLAC audio or expected metadata offset differs')
         require(set(source.iterdir())=={current,*backups},'Unexpected FLAC staged or source files remain')
         receipts[-1].update(case=label,original_sha256=hashlib.sha256(before).hexdigest(),current_sha256=digest(current),backup_sha256=[digest(p) for p in backups])
+
+    for explicit in (False,True):
+        case=roots('primary-explicit' if explicit else 'primary-cwd')
+        (case/'app/singer-list.csv').write_text('זמר בדיקה,ראשי מקומי\n',encoding='utf-8')
+        (case/'primary.csv').write_text('זמר בדיקה,ראשי מפורש\n',encoding='utf-8')
+        (case/'app/personal-singer-list.csv').write_text('זמר בדיקה,אישי שני\n',encoding='utf-8')
+        name='זמר בדיקה - שיר.wav';write_wave(case/'source'/name);before=digest(case/'source'/name)
+        args=['source','target','-cn','--no-ai','--journal-directory','journal']
+        if explicit: args+=['--singer-list','primary.csv']
+        completed=invoke(case,args);actual=result_record(completed.stderr)
+        artist='ראשי מפורש' if explicit else 'ראשי מקומי'
+        require(actual['status']=='complete' and actual.get('recovery_error') is None,'Primary alias resource execution failed')
+        require(digest(case/'target'/artist/name)==before and digest(case/'source'/name)==before,'Selected primary aliases did not precede personal aliases')
+        require(not (case/'target/אישי שני').exists(),'Personal alias unexpectedly replaced the earlier primary row')
+        receipts[-1].update(case='primary-explicit' if explicit else 'primary-cwd',primary_first=True,source_sha256=before)
 
     case=roots('dry-run');write_wave(case/'source/אברהם פריד - בדיקה.wav');before=snapshot(case)
     completed=invoke(case,['source','target','-c','--no-ai','--dry-run','-l','ERROR'])

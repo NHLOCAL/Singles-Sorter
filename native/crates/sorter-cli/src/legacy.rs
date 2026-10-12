@@ -29,6 +29,7 @@ Additional explicit controls:
   --decision-only       Same read-only decision plan as --dry-run
   --no-ai               Explicitly disable recognition
   --model-directory DIR Use a verified original native model bundle
+  --singer-list CSV     Use this primary list instead of app/singer-list.csv or embedded aliases
   --personal-aliases CSV Use this personal list instead of app/personal-singer-list.csv
   --journal-directory DIR  Existing, separate journal root (default LOCALAPPDATA)
 
@@ -149,6 +150,10 @@ fn request(options: &Options) -> Result<plan_files::Request, Failure> {
             )
         })?)?)
     };
+    let primary_aliases = match &options.primary_aliases {
+        Some(path) => Some(absolute(path)?),
+        None => optional_existing(Path::new("app/singer-list.csv"))?,
+    };
     let personal_aliases = match &options.personal_aliases {
         Some(path) => Some(absolute(path)?),
         None => optional_existing(Path::new("app/personal-singer-list.csv"))?,
@@ -187,6 +192,7 @@ fn request(options: &Options) -> Result<plan_files::Request, Failure> {
         target,
         settings: options.settings.clone(),
         ai_profile,
+        primary_aliases,
         personal_aliases,
     })
 }

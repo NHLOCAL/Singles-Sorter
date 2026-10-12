@@ -34,6 +34,7 @@ EXECUTION_CHECKS = {'positional-copy', 'positional-move', 'positional-original-a
                     'positional-album-copy', 'positional-root-album-move', 'positional-mixed-album-move',
                     'positional-album-descendant-metadata', 'positional-album-dry-run-no-effects',
                     'positional-flac-five-fields', 'positional-flac-shifted-audio', 'positional-flac-opaque-partial',
+                    'positional-primary-resource-order',
                     'retained-original-and-media', 'closed-stdin', 'no-developer-path',
                     'explicit-dry-run-no-effects', 'overlap-rejected-no-effects', 'legacy-argument-exits'}
 CLI_FEATURES = ['original-ai', 'selected-windows-execution']

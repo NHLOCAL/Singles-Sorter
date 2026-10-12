@@ -27,9 +27,16 @@ preserved. New options need exact names so `--d` still means `--duet_mode`.
 without following symlinks to canonicalize selected roots; the native root walk
 still rejects reparse ancestors and pins exact identities.
 
-Original aliases remain embedded in their frozen order. The legacy personal list
+The primary alias order is selected explicitly with `--singer-list CSV`, otherwise
+loaded from the original CWD `app/singer-list.csv` when present, otherwise from
+the embedded frozen list. The native fallback keeps a self-contained package; a
+selected empty list is not silently replaced. The legacy personal list
 at `app/personal-singer-list.csv` is used when present; `--personal-aliases` selects
-an explicit alternative. Native original-model assets are discovered beside the
+an explicit alternative. Primary rows precede personal rows exactly as in v14.
+Both selected files use the existing bounded read adapter; fresh plan and resource
+hashes are validated again before execution. The additive v2 `primary_aliases`
+field exposes the same explicit resource selection to machine callers.
+Native original-model assets are discovered beside the
 executable at `models/original`, or selected with `--model-directory`.
 `--no-ai` is explicit. A present invalid model bundle fails closed rather than
 falling back. Arbitrary Python/pickle models from CWD are not loaded.
