@@ -1031,14 +1031,18 @@ mod selected {
                 abc_sort: false,
                 duet_mode: false,
             };
+            // The real command always includes profile bytes, even when empty.
             let id = host
-                .preview(PreviewRequest {
-                    mode: JobMode::Sort,
-                    source_token: s.token,
-                    target_token: Some(t.token),
-                    settings,
-                    ai_profile: RequestedAi::Disabled,
-                })
+                .preview_with_personal(
+                    PreviewRequest {
+                        mode: JobMode::Sort,
+                        source_token: s.token,
+                        target_token: Some(t.token),
+                        settings,
+                        ai_profile: RequestedAi::Disabled,
+                    },
+                    Some(vec![]),
+                )
                 .unwrap()
                 .job_id;
             let snapshot = host.snapshot(&id).unwrap();
@@ -1184,14 +1188,18 @@ mod selected {
                 abc_sort: false,
                 duet_mode: false,
             };
+            // The real command always includes profile bytes, even when empty.
             let id = host
-                .preview(PreviewRequest {
-                    mode: JobMode::Sort,
-                    source_token: selected_source.token,
-                    target_token: Some(selected_target.token),
-                    settings,
-                    ai_profile: RequestedAi::Disabled,
-                })
+                .preview_with_personal(
+                    PreviewRequest {
+                        mode: JobMode::Sort,
+                        source_token: selected_source.token,
+                        target_token: Some(selected_target.token),
+                        settings,
+                        ai_profile: RequestedAi::Disabled,
+                    },
+                    Some(vec![]),
+                )
                 .unwrap()
                 .job_id;
             let preview = host.snapshot(&id).unwrap();
@@ -1206,7 +1214,7 @@ mod selected {
             loop {
                 let execution = host.execution_snapshot(&id).unwrap();
                 if !execution.is_running() && !host.shared.busy.load(Ordering::Acquire) {
-                    assert_eq!(execution.status, "complete");
+                    assert_eq!(execution.status, "complete", "{execution:?}");
                     break;
                 }
                 assert!(std::time::Instant::now() < deadline);
@@ -1373,14 +1381,18 @@ mod selected {
                 abc_sort: false,
                 duet_mode: false,
             };
+            // The real command always includes profile bytes, even when empty.
             let id = host
-                .preview(PreviewRequest {
-                    mode: JobMode::FixNames,
-                    source_token: selected.token,
-                    target_token: None,
-                    settings,
-                    ai_profile: RequestedAi::Disabled,
-                })
+                .preview_with_personal(
+                    PreviewRequest {
+                        mode: JobMode::FixNames,
+                        source_token: selected.token,
+                        target_token: None,
+                        settings,
+                        ai_profile: RequestedAi::Disabled,
+                    },
+                    Some(vec![]),
+                )
                 .unwrap()
                 .job_id;
             let preview = host.snapshot(&id).unwrap();
@@ -1396,7 +1408,7 @@ mod selected {
             loop {
                 let execution = host.execution_snapshot(&id).unwrap();
                 if !execution.is_running() && !host.shared.busy.load(Ordering::Acquire) {
-                    assert_eq!(execution.status, "complete");
+                    assert_eq!(execution.status, "complete", "{execution:?}");
                     break;
                 }
                 assert!(std::time::Instant::now() < deadline);
