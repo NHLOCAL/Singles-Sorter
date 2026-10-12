@@ -195,6 +195,46 @@ pub(super) struct Request {
     pub journal_directory: std::path::PathBuf,
 }
 
+#[cfg(all(windows, feature = "selected-windows-execution"))]
+fn execution_resources(
+    plan: &sorter_core::job_plan::JobPlanV2,
+) -> Result<sorter_executor::binding::Resources, Failure> {
+    use sha2::{Digest, Sha256};
+    use sorter_core::job_plan::AiProfile;
+    use sorter_executor::binding::Resources;
+    let digest = |bytes: &[u8]| format!("{:x}", Sha256::digest(bytes));
+    let resource_hashes = plan
+        .request
+        .resource_ids
+        .iter()
+        .map(|id| {
+            id.rsplit_once(":sha256:")
+                .map(|(_, hash)| hash.to_owned())
+                .ok_or_else(|| Failure::new(1, "RESOURCE_INVALID", "Resource digest is missing"))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let models = plan
+        .request
+        .resource_ids
+        .iter()
+        .filter(|id| id.starts_with("original-"))
+        .collect::<Vec<_>>();
+    Ok(Resources {
+        resource_ids: plan.request.resource_ids.clone(),
+        adapter_versions: plan.request.adapter_versions.clone(),
+        ai_profile: plan.request.ai_profile.clone(),
+        resource_hashes,
+        adapter_hashes: plan
+            .request
+            .adapter_versions
+            .iter()
+            .map(|s| digest(s.as_bytes()))
+            .collect(),
+        model_hash: (!matches!(plan.request.ai_profile, AiProfile::Disabled))
+            .then(|| digest(&serde_json::to_vec(&models).expect("string IDs"))),
+    })
+}
+
 // Both frontends use the same live retained plan, fresh resource check, root
 // grants and journaled backend. The positional invocation authorizes its own
 // freshly planned job; NDJSON still requires the exact inspected plan digest.
@@ -207,13 +247,12 @@ pub(super) fn execute_request(
     event: &mut dyn FnMut(&str, Value) -> Result<(), Failure>,
 ) -> Result<(), Failure> {
     use super::plan_files;
-    use sha2::{Digest, Sha256};
     use sorter_core::{
         discovery::{ObjectIdentity, ReadStorage},
-        job_plan::{AiProfile, JobMode, OperationKind},
+        job_plan::{JobMode, OperationKind},
     };
     use sorter_executor::{
-        binding::{ExecutionScope, Resources, prepare_scope},
+        binding::{ExecutionScope, prepare_scope},
         results::{ItemStatus, JobStatus},
         windows_album::{
             AlbumScope, SelectedWindowsAlbumJob, prepare_album_move_streams, prepare_album_scope,
@@ -273,12 +312,60 @@ pub(super) fn execute_request(
                 "No-op confirmation was cancelled",
             ));
         }
+        let fresh_plan = fresh.plan.as_ref().expect("matching fresh plan checked");
+        let target = request.preview.target.as_ref().ok_or_else(|| {
+            Failure::new(2, "TARGET_REQUIRED", "Sort requires an existing target")
+        })?;
+        let reads = WindowsPlanningStorage::for_album_preview(
+            &request.preview.source,
+            target,
+            sorter_io::desktop::WindowsDirectoryReadLimits::ALBUM_DEFAULT,
+            cancel,
+        )
+        .map_err(|error| Failure::new(1, "EXECUTION_REFUSED", error.to_string()))?;
+        let mut reads = sorter_io::storage::SharedReadStorage::new(plan_files::ReadAdapter(
+            Box::new(reads),
+        ));
+        let mut metadata_reads = reads.clone();
+        let mut metadata = StorageMetadataProvider {
+            storage: &mut metadata_reads,
+            reader: MetadataReader,
+        };
+        let (mut recognition, _, recognition_resources, recognition_adapters) =
+            plan_files::recognition(&request.preview.ai_profile)?;
+        if !fresh_plan.request.resource_ids.ends_with(&recognition_resources)
+            || !fresh_plan.request.adapter_versions.ends_with(&recognition_adapters)
+        {
+            return Err(Failure::new(
+                1,
+                "PLAN_CHANGED",
+                "Recognition resources changed; inspect a fresh plan",
+            ));
+        }
+        let execution_decisions = sorter_executor::binding::validate_noop_execution_decisions(
+            &plan,
+            &mut reads,
+            &mut metadata,
+            recognition.as_mut(),
+            &execution_resources(fresh_plan)?,
+            &execution_resources(&plan)?,
+            cancel,
+        )
+        .map_err(|error| Failure::new(1, "EXECUTION_REFUSED", error.to_string()))?;
+        if cancel.load(Ordering::Acquire) || invalid_control.load(Ordering::Acquire) {
+            event("cancelled", json!({"before_apply":true}))?;
+            return Err(Failure::new(
+                1,
+                "EXECUTION_INCOMPLETE",
+                "No-op confirmation was cancelled",
+            ));
+        }
         // No mutation grant or journal is needed: the revalidated job has no
         // effects to perform. Never use this branch for an error/blocked plan.
         event(
             "result",
             json!({"job_id":format!("no-op-{}",plan.binding_sha256),
-            "plan_id":plan.binding_sha256,"status":"complete","no_op":true,
+            "plan_id":plan.binding_sha256,"status":"complete","no_op":true,"execution_decisions":execution_decisions,
             "source_items":0,"committed_destinations":0,"committed_operations":[],"effect_receipts":[],
             "moved_sources":0,"failed_operations":0,"blocked_operations":0,"recovery_operations":0,
             "cancelled_operations":0,"items":[],"journal_directory":null,"invalid_control":false,
@@ -320,37 +407,7 @@ pub(super) fn execute_request(
             .map_err(|e| fail(&e))?,
         )
     };
-    let digest = |bytes: &[u8]| format!("{:x}", Sha256::digest(bytes));
-    let resource_hashes = plan
-        .request
-        .resource_ids
-        .iter()
-        .map(|id| {
-            id.rsplit_once(":sha256:")
-                .map(|(_, hash)| hash.to_owned())
-                .ok_or_else(|| Failure::new(1, "RESOURCE_INVALID", "Resource digest is missing"))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-    let models = plan
-        .request
-        .resource_ids
-        .iter()
-        .filter(|id| id.starts_with("original-"))
-        .collect::<Vec<_>>();
-    let resources = Resources {
-        resource_ids: plan.request.resource_ids.clone(),
-        adapter_versions: plan.request.adapter_versions.clone(),
-        ai_profile: plan.request.ai_profile.clone(),
-        resource_hashes,
-        adapter_hashes: plan
-            .request
-            .adapter_versions
-            .iter()
-            .map(|s| digest(s.as_bytes()))
-            .collect(),
-        model_hash: (!matches!(plan.request.ai_profile, AiProfile::Disabled))
-            .then(|| digest(&serde_json::to_vec(&models).expect("string IDs"))),
-    };
+    let resources = execution_resources(&plan)?;
     enum Scope {
         Sort(ExecutionScope),
         CopiedMove(Box<CopiedMoveScope>, ObjectIdentity),
@@ -762,7 +819,7 @@ pub(super) fn execute_request(
             let items=result.items.iter().map(|item|json!({"operation":item.operation,"status":match item.status {ItemStatus::Complete=>"complete",ItemStatus::SourceRetained=>"source_retained",ItemStatus::Failed=>"failed",ItemStatus::Cancelled=>"cancelled",ItemStatus::Blocked=>"blocked",ItemStatus::NeedsRecovery=>"needs_recovery"},"detail":item.detail})).collect::<Vec<_>>();
             event(
                 "result",
-                json!({"job_id":native_id,"status":status,"source_items":result.source_items,"committed_destinations":result.committed_destinations,"committed_operations":result.committed_operations,"effect_receipts":result.effect_receipts,"legacy_summary":legacy_summary,"recovery":recovery,"recovery_error":recovery_error,"moved_sources":result.moved_sources,"failed_operations":result.failed_operations,"blocked_operations":result.blocked_operations,"recovery_operations":result.recovery_operations,"cancelled_operations":result.cancelled_operations,"items":items,"journal_directory":request.journal_directory,"invalid_control":invalid_control.load(Ordering::Acquire)}),
+                json!({"job_id":native_id,"status":status,"execution_decisions":job.execution_decisions(),"source_items":result.source_items,"committed_destinations":result.committed_destinations,"committed_operations":result.committed_operations,"effect_receipts":result.effect_receipts,"legacy_summary":legacy_summary,"recovery":recovery,"recovery_error":recovery_error,"moved_sources":result.moved_sources,"failed_operations":result.failed_operations,"blocked_operations":result.blocked_operations,"recovery_operations":result.recovery_operations,"cancelled_operations":result.cancelled_operations,"items":items,"journal_directory":request.journal_directory,"invalid_control":invalid_control.load(Ordering::Acquire)}),
             )?;
             if output_failed
                 || invalid_control.load(Ordering::Acquire)

@@ -205,7 +205,7 @@ pub(super) fn execute(
                 .sum::<usize>();
             event(
                 "result",
-                json!({"job_id":id,"status":actual,"source_items":source_items,
+                json!({"job_id":id,"status":actual,"execution_decisions":job.execution_decisions(),"source_items":source_items,
                 "committed_destinations":whole_files+result.transfers.as_ref().map_or(0,|r|r.committed_destinations),
                 "moved_sources":whole_files+result.transfers.as_ref().map_or(0,|r|r.moved_sources),
                 "albums_completed":result.albums_completed,"completed_album_operations":result.completed_album_operations,"artist_files":result.artist_files,

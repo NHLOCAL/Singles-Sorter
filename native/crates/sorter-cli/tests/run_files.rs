@@ -253,6 +253,27 @@ mod selected {
             .find(|event| event["event"] == "result")
             .unwrap();
         assert_eq!(result["data"]["status"], "complete");
+        let decisions = &result["data"]["execution_decisions"];
+        assert_eq!(decisions["schema_version"], 1);
+        assert_eq!(decisions["basis"], "fresh_apply_preflight");
+        assert_eq!(
+            decisions["plan_binding_sha256"],
+            planned["data"]["plan"]["binding_sha256"]
+        );
+        assert_eq!(
+            decisions["decisions"],
+            planned["data"]["plan"]["decisions"]
+        );
+        let routes = decisions["single_routes"].as_array().unwrap();
+        assert_eq!(routes.len(), 2);
+        for (id, route) in routes.iter().enumerate() {
+            assert_eq!(route["artist"], "אברהם פריד");
+            assert_eq!(route["operation_ids"], json!([id]));
+            assert_eq!(
+                route["source"],
+                planned["data"]["plan"]["operations"][id]["kind"]["SingleTransfer"]["source"]["reference"]
+            );
+        }
         assert_eq!(result["data"]["committed_destinations"], 2);
         assert_eq!(
             result["data"]["legacy_summary"],
@@ -328,6 +349,15 @@ mod selected {
                     .unwrap()["data"];
                 assert_eq!(result["status"], "complete");
                 assert_eq!(result["no_op"], true);
+                let decisions = &result["execution_decisions"];
+                assert_eq!(decisions["schema_version"], 1);
+                assert_eq!(decisions["basis"], "fresh_noop_preflight");
+                assert_eq!(decisions["plan_binding_sha256"], result["plan_id"]);
+                assert_eq!(
+            decisions["decisions"],
+            planned["data"]["plan"]["decisions"]
+        );
+                assert_eq!(decisions["single_routes"], json!([]));
                 assert_eq!(
                     result["legacy_summary"],
                     json!({"songs_sorted":0,"artist_folders_created":0,"albums_processed":0,"top_artists":[]})

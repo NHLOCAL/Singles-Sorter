@@ -289,7 +289,7 @@ jobs:
           include-hidden-files: false
           overwrite: false
 
-      - name: Diagnose paired actual-Windows frozen-v14 regression (32 settings and 4 duets)
+      - name: Diagnose paired actual-Windows frozen-v14 regression (66 cases, 64 settings vectors)
         if: runner.os == 'Windows' && !cancelled() && steps.build-selected-cli.outcome == 'success'
         continue-on-error: true
         timeout-minutes: 8
