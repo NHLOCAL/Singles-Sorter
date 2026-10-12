@@ -197,7 +197,9 @@ function renderExecution(){
   $('execution-summary').textContent=s.cancelRequested?'ממתין לעצירה בטוחה…':verificationProgressText(e.verification,developer);
  }
  const progress=$<HTMLProgressElement>('execution-progress');progress.hidden=!running;
- if(running&&e?.verification?.total_operations){progress.max=e.verification.total_operations;progress.value=Math.min(e.verification.completed_operations,e.verification.total_operations);}else if(e?.status==='running'&&e.source_length>0){progress.max=e.source_length;progress.value=Math.min(e.bytes_written,e.source_length);}else progress.removeAttribute('value');
+ if(running&&e?.verification){
+  if(e.verification.total_operations>0){progress.max=e.verification.total_operations;progress.value=Math.min(e.verification.completed_operations,e.verification.total_operations);}else progress.removeAttribute('value');
+ }else if(e?.status==='running'&&e.source_length>0){progress.max=e.source_length;progress.value=Math.min(e.bytes_written,e.source_length);}else progress.removeAttribute('value');
  const verification=verificationWarning(e,developer);
  $('execution-recovery').hidden=!verification&&(!e||!['needs_recovery','partial','cancelled','failed'].includes(e.status));
  $('execution-recovery').textContent=verification||(developer?(e?.status==='needs_recovery'?'היומן נשמר. אין להפעיל שוב את התוכנית או למחוק את היומן לפני בדיקת הקבצים. התאוששות אוטומטית אינה מופעלת.':'פעולות שהושלמו נשארות בתוקף. עיין בפרטי הקבצים וביומן לפני בדיקה חדשה.'):readiness?.mode==='FixNames'?'בדוק את הקבצים והגיבויים בתיקיית המקור לפני ניסיון נוסף.':'קבצים שכבר טופלו נשארים במקומם. בדוק את המקור והיעד לפני ניסיון נוסף.');
