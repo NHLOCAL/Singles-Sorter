@@ -302,6 +302,7 @@ impl RecoveryStorage for Fake {
 fn event(b: &ExecutionBinding, op: usize, phase: Phase, id: Option<ObjectIdentity>) -> Event {
     let o = &b.operations()[op];
     Event {
+        copy_metadata:None,
         operation: op,
         destination_id: o.destination.id.clone(),
         expected_source: o.source.observation.identity.clone().unwrap(),

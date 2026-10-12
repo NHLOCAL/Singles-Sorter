@@ -203,7 +203,7 @@ jobs:
         run: |
           $jobs = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_selected_job -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (@($jobs | Where-Object { $_ -match ': test$' }).Count -ne 7) { throw "Expected 7 selected-job cases" }
+          if (@($jobs | Where-Object { $_ -match ': test$' }).Count -ne 8) { throw "Expected 8 selected-job cases" }
           cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
@@ -235,6 +235,71 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if (@($repairJobs | Where-Object { $_ -match ': test$' }).Count -ne 13) { throw "Expected 13 product FixNames cases" }
           cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test bounded album planning reads
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib album_bounded_ -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 8) { throw "Expected 8 cases for --lib album_bounded_" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib album_bounded_ -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $cases = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_album_reads -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 5) { throw "Expected 5 cases for --test windows_album_reads" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_album_reads -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test native album source guards
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib album_directory_guard_tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 20) { throw "Expected 20 cases for --lib album_directory_guard_tests" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib album_directory_guard_tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test whole and ordered album rename scopes
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib album_rename::tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 15) { throw "Expected 15 cases for --lib album_rename::tests" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib album_rename::tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $cases = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib child_rename::tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 25) { throw "Expected 25 cases for --lib child_rename::tests" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib child_rename::tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test selected Copy metadata and old journal compatibility
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib copy_metadata::tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 23) { throw "Expected 23 cases for --lib copy_metadata::tests" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib copy_metadata::tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $cases = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib copy_metadata_ -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 6) { throw "Expected 6 cases for --lib copy_metadata_" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib copy_metadata_ -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test selected album product jobs
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_album -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 25) { throw "Expected 25 cases for --test windows_album" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_album -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Test native metadata with static Windows CRT

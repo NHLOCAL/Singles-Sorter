@@ -215,44 +215,129 @@ pub(super) fn windows_children(
     let ObjectIdentity::Windows { volume, .. } = parent_identity else {
         unreachable!("Windows identity")
     };
-    let mut result = vec![];
-    for record in directory_records(&directory)? {
-        let child_path = path.join(OsString::from_wide(&record.name)); // display/reference only, never opened
-        let reference = StorageRef::WindowsPath {
-            utf16: child_path.as_os_str().encode_wide().collect(),
-        };
-        let observed_id = ObjectIdentity::Windows {
-            volume,
-            file_id: record.file_id,
-        };
-        if record.attributes & FILE_ATTRIBUTE_REPARSE_POINT.0 != 0 {
-            result.push(EntryObservation {
-                reference,
-                identity: Some(observed_id),
-                parent_identity: Some(parent_identity.clone()),
-                name: String::from_utf16_lossy(&record.name),
-                kind: EntryKind::LinkOrReparse,
-                size: None,
-                modified: None,
-                capabilities: Capabilities::default(),
-            });
-            continue;
-        }
-        let child = open_child_impl(&directory, &record.name, false, true)?;
-        if identity(&child)? != observed_id {
-            return Err(error(
-                StorageErrorKind::Changed,
-                "enumerated child identity changed",
-            ));
-        }
-        let observation = backend.observe(&reference, &[directory.try_clone()?, child])?;
-        if observation.parent_identity != Some(parent_identity.clone()) {
-            return Err(error(
-                StorageErrorKind::Changed,
-                "enumerated parent identity changed",
-            ));
-        }
-        result.push(observation);
+    directory_records(&directory)?.into_iter().map(|record| {
+        windows_child_observation(backend, path, &directory, &parent_identity, volume, record)
+    }).collect()
+}
+fn windows_child_observation(
+    backend: &Backend, path: &Path, directory: &File,
+    parent_identity: &ObjectIdentity, volume: u64, record: DirectoryRecord,
+) -> Result<EntryObservation, StorageError> {
+    let child_path = path.join(OsString::from_wide(&record.name)); // display/reference only, never opened
+    let reference = StorageRef::WindowsPath {
+        utf16: child_path.as_os_str().encode_wide().collect(),
+    };
+    let observed_id = ObjectIdentity::Windows {
+        volume,
+        file_id: record.file_id,
+    };
+    if record.attributes & FILE_ATTRIBUTE_REPARSE_POINT.0 != 0 {
+        return Ok(EntryObservation {
+            reference,
+            identity: Some(observed_id),
+            parent_identity: Some(parent_identity.clone()),
+            name: String::from_utf16_lossy(&record.name),
+            kind: EntryKind::LinkOrReparse,
+            size: None,
+            modified: None,
+            capabilities: Capabilities::default(),
+        });
     }
-    Ok(result)
+    let child = open_child_impl(directory, &record.name, false, true)?;
+    if identity(&child)? != observed_id {
+        return Err(error(
+            StorageErrorKind::Changed,
+            "enumerated child identity changed",
+        ));
+    }
+    let observation = backend.observe(&reference, &[directory.try_clone()?, child])?;
+    if observation.parent_identity != Some(parent_identity.clone()) {
+        return Err(error(
+            StorageErrorKind::Changed,
+            "enumerated parent identity changed",
+        ));
+    }
+    Ok(observation)
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum BoundedReadCheckpoint { AfterBatch, BeforeChild }
+
+impl DesktopStorage {
+    /// Album-specific enumeration cap. Ordinary ReadStorage::children semantics
+    /// remain unchanged; every result is complete or an error, never a prefix.
+    pub fn children_bounded(
+        &mut self,
+        reference: &StorageRef,
+        limits: WindowsDirectoryReadLimits,
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> Result<Vec<EntryObservation>, StorageError> {
+        self.children_bounded_with(reference, limits, cancel, |_| Ok(()))
+    }
+    pub(super) fn children_bounded_with(
+        &mut self,
+        reference: &StorageRef,
+        limits: WindowsDirectoryReadLimits,
+        cancel: &std::sync::atomic::AtomicBool,
+        mut checkpoint: impl FnMut(BoundedReadCheckpoint) -> Result<(), StorageError>,
+    ) -> Result<Vec<EntryObservation>, StorageError> {
+        let check_cancel = || {
+            if cancel.load(std::sync::atomic::Ordering::Acquire) {
+                Err(error(StorageErrorKind::Cancelled, "bounded directory enumeration cancelled"))
+            } else { Ok(()) }
+        };
+        check_cancel()?; limits.validate()?;
+        let path = self.0.path(reference)?; let handles = self.0.checked(&path)?;
+        let observed = handles.last().expect("absolute selected path");
+        match kind(&observed.metadata()?) {
+            EntryKind::Directory => {}
+            EntryKind::LinkOrReparse => return Err(error(StorageErrorKind::UnsafeLink, "will not enumerate a reparse point")),
+            _ => return Err(error(StorageErrorKind::NotDirectory, "not a directory")),
+        }
+        check_cancel()?;
+        let directory = reopen_bound(&handles, &path)?;
+        if kind(&directory.metadata()?) != EntryKind::Directory {
+            return Err(error(StorageErrorKind::UnsafeLink, "bounded directory changed to reparse/non-directory"));
+        }
+        let parent_identity = identity(&directory)?;
+        let ObjectIdentity::Windows { volume, .. } = parent_identity else { unreachable!("Windows identity") };
+        let mut buffer = vec![0u64; 8192]; // Fixed 64 KiB, native record alignment.
+        let mut result = Vec::new(); let mut path_units = 0usize;
+        for batch in 0..limits.max_batches {
+            check_cancel()?; buffer.fill(0);
+            let read = unsafe { GetFileInformationByHandleEx(HANDLE(directory.as_raw_handle()),
+                if batch == 0 { FileIdExtdDirectoryRestartInfo } else { FileIdExtdDirectoryInfo },
+                buffer.as_mut_ptr().cast(), (buffer.len() * 8) as u32) };
+            match read {
+                Err(error) if error.code().0 as u32 & 0xffff == 18 => {
+                    check_cancel()?;
+                    if kind(&directory.metadata()?) != EntryKind::Directory || identity(&directory)? != parent_identity {
+                        return Err(super::error(StorageErrorKind::Changed, "bounded enumerated directory changed"));
+                    }
+                    return Ok(result);
+                }
+                Err(error) => return Err(win_error(error)),
+                Ok(()) => {}
+            }
+            checkpoint(BoundedReadCheckpoint::AfterBatch)?; check_cancel()?;
+            let bytes = unsafe { std::slice::from_raw_parts(buffer.as_ptr().cast::<u8>(), buffer.len() * 8) };
+            // Only this one fixed-size batch is parsed eagerly. No unbounded
+            // directory_records Vec exists on this route.
+            for record in parse_directory_records(bytes)? {
+                check_cancel()?;
+                if result.len() >= limits.max_entries {
+                    return Err(error(StorageErrorKind::BudgetExceeded, "directory entry budget exceeded"));
+                }
+                let child_path = path.join(OsString::from_wide(&record.name));
+                path_units = path_units.checked_add(child_path.as_os_str().encode_wide().count())
+                    .filter(|units| *units <= limits.max_path_units)
+                    .ok_or_else(|| error(StorageErrorKind::BudgetExceeded, "directory full-path UTF-16 budget exceeded"))?;
+                checkpoint(BoundedReadCheckpoint::BeforeChild)?; check_cancel()?;
+                let observation = windows_child_observation(&self.0, &path, &directory, &parent_identity, volume, record)?;
+                check_cancel()?;
+                result.push(observation);
+            }
+        }
+        Err(error(StorageErrorKind::BudgetExceeded, "directory native-batch budget exceeded before EOF"))
+    }
 }

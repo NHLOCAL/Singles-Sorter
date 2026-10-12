@@ -123,9 +123,9 @@ pub fn open_owned_rename_recovery(
     )
 }
 /// Read-only binding/root checks shared with Copy, with an exclusive rename domain.
-pub struct WindowsRenameRecovery(WindowsCopyRecovery);
-impl WindowsRenameRecovery {
-    pub fn new(owned: &WindowsRenameStorage, binding: &ExecutionBinding) -> Result<Self> {
+pub struct WindowsRenameRecovery<'a>(WindowsCopyRecovery<'a>);
+impl<'a> WindowsRenameRecovery<'a> {
+    pub fn new(owned: &'a WindowsRenameStorage, binding: &ExecutionBinding) -> Result<Self> {
         Ok(Self(WindowsCopyRecovery::new_domain(
             owned.owned(),
             binding,
@@ -133,7 +133,7 @@ impl WindowsRenameRecovery {
         )?))
     }
 }
-impl crate::recovery::RecoveryStorage for WindowsRenameRecovery {
+impl crate::recovery::RecoveryStorage for WindowsRenameRecovery<'_> {
     fn source(
         &mut self,
         reference: &StorageRef,

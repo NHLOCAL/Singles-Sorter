@@ -19,6 +19,34 @@ mod windows_read;
 #[cfg(windows)]
 use windows_read::*;
 
+/// Per-enumeration limits for the explicit Windows album planning route.
+/// The whole-tree collector still owns its separate aggregate budget.
+#[cfg(windows)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct WindowsDirectoryReadLimits {
+    pub max_entries: usize,
+    /// Sum of complete child reference lengths, measured in UTF-16 code units.
+    pub max_path_units: usize,
+    /// Includes the native call which establishes end-of-directory.
+    pub max_batches: usize,
+}
+#[cfg(windows)]
+impl WindowsDirectoryReadLimits {
+    pub const ALBUM_DEFAULT: Self = Self { max_entries: 100_000, max_path_units: 16 * 1024 * 1024, max_batches: 1024 };
+    pub fn validate(&self) -> Result<(), StorageError> {
+        if self.max_entries > Self::ALBUM_DEFAULT.max_entries
+            || self.max_path_units > Self::ALBUM_DEFAULT.max_path_units
+            || self.max_batches == 0 || self.max_batches > Self::ALBUM_DEFAULT.max_batches {
+            return Err(error(StorageErrorKind::BudgetExceeded, "album directory limits exceed the supported bounded domain"));
+        }
+        Ok(())
+    }
+}
+#[cfg(windows)]
+impl Default for WindowsDirectoryReadLimits {
+    fn default() -> Self { Self::ALBUM_DEFAULT }
+}
+
 fn error(kind: StorageErrorKind, detail: &str) -> StorageError {
     StorageError::new(kind, detail)
 }

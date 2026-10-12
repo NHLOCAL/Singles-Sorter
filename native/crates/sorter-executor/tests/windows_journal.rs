@@ -14,6 +14,7 @@ fn name(s: &str) -> MutationName {
 fn event(binding: &ExecutionBinding, phase: Phase) -> Event {
     let op = &binding.operations()[0];
     Event {
+        copy_metadata:None,
         operation: 0,
         destination_id: op.destination.id.clone(),
         expected_source: op.source.observation.identity.clone().unwrap(),

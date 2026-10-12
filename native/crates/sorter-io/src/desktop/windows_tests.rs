@@ -131,3 +131,104 @@ fn handle_directory_enumeration_advances_across_multiple_bounded_buffers() {
         native_order
     );
 }
+
+#[test]
+fn album_bounded_children_preserve_native_order_references_identities_and_capabilities() {
+    use std::os::windows::ffi::OsStringExt;
+    let tree = tempfile::tempdir().unwrap(); let root = tree.path();
+    fs::write(root.join("z.mp3"), b"z").unwrap(); fs::create_dir(root.join("disc")).unwrap();
+    fs::write(root.join(std::ffi::OsString::from_wide(&[0x5e9, 0xd800, 46, 109, 112, 51])), b"raw").unwrap();
+    let mut storage = DesktopStorage::new(&[root.to_path_buf()]).unwrap(); let reference = storage.reference(root).unwrap();
+    let ordinary = storage.children(&reference).unwrap();
+    let bounded = storage.children_bounded(&reference, WindowsDirectoryReadLimits::ALBUM_DEFAULT, &std::sync::atomic::AtomicBool::new(false)).unwrap();
+    assert_eq!(bounded, ordinary);
+    assert!(bounded.iter().all(|entry| entry.identity.is_some() && entry.parent_identity.is_some()));
+}
+
+#[test]
+fn album_bounded_entry_limit_stops_before_opening_the_excess_child() {
+    use std::cell::Cell;
+    let tree = tempfile::tempdir().unwrap(); for n in 0..4 { fs::write(tree.path().join(format!("{n}.mp3")), b"song").unwrap(); }
+    let mut storage = DesktopStorage::new(&[tree.path().to_path_buf()]).unwrap(); let reference = storage.reference(tree.path()).unwrap();
+    let count = Cell::new(0); let limits = WindowsDirectoryReadLimits { max_entries: 3, ..Default::default() };
+    let error = storage.children_bounded_with(&reference, limits, &std::sync::atomic::AtomicBool::new(false), |point| {
+        if point == BoundedReadCheckpoint::BeforeChild { count.set(count.get() + 1); } Ok(())
+    }).unwrap_err();
+    assert_eq!(error.kind, StorageErrorKind::BudgetExceeded); assert_eq!(count.get(), 3);
+    assert_eq!(storage.children(&reference).unwrap().len(), 4);
+}
+
+#[test]
+fn album_bounded_path_budget_counts_full_lossless_utf16_reference_units() {
+    let tree = tempfile::tempdir().unwrap(); let path = tree.path().join("שיר𐐀.mp3"); fs::write(&path, b"song").unwrap();
+    let mut storage = DesktopStorage::new(&[tree.path().to_path_buf()]).unwrap(); let reference = storage.reference(tree.path()).unwrap();
+    let units = path.as_os_str().encode_wide().count(); let cancel = std::sync::atomic::AtomicBool::new(false);
+    let limits = WindowsDirectoryReadLimits { max_path_units: units - 1, ..Default::default() };
+    assert_eq!(storage.children_bounded_with(&reference, limits, &cancel, |point| {
+        assert!(point != BoundedReadCheckpoint::BeforeChild, "over-budget path must not be opened"); Ok(())
+    }).unwrap_err().kind, StorageErrorKind::BudgetExceeded);
+    assert_eq!(storage.children_bounded(&reference, WindowsDirectoryReadLimits { max_path_units: units, ..limits }, &cancel).unwrap().len(), 1);
+}
+
+#[test]
+fn album_bounded_native_batch_cap_prevents_unlimited_enumeration() {
+    let tree = tempfile::tempdir().unwrap();
+    for n in 0..600 { fs::write(tree.path().join(format!("{n:04}-{}.mp3", "ש".repeat(80))), b"song").unwrap(); }
+    let mut storage = DesktopStorage::new(&[tree.path().to_path_buf()]).unwrap(); let reference = storage.reference(tree.path()).unwrap();
+    let cancel = std::sync::atomic::AtomicBool::new(false);
+    assert_eq!(storage.children_bounded(&reference, WindowsDirectoryReadLimits { max_batches: 1, ..Default::default() }, &cancel).unwrap_err().kind, StorageErrorKind::BudgetExceeded);
+    assert_eq!(storage.children_bounded(&reference, WindowsDirectoryReadLimits::ALBUM_DEFAULT, &cancel).unwrap().len(), 600);
+}
+
+#[test]
+fn album_bounded_cancellation_discards_partial_results_at_batch_and_record_boundaries() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    for boundary in [BoundedReadCheckpoint::AfterBatch, BoundedReadCheckpoint::BeforeChild] {
+        let tree = tempfile::tempdir().unwrap(); fs::write(tree.path().join("song.mp3"), b"song").unwrap();
+        let mut storage = DesktopStorage::new(&[tree.path().to_path_buf()]).unwrap(); let reference = storage.reference(tree.path()).unwrap();
+        let cancel = AtomicBool::new(false);
+        assert_eq!(storage.children_bounded_with(&reference, WindowsDirectoryReadLimits::ALBUM_DEFAULT, &cancel, |point| {
+            if point == boundary { cancel.store(true, Ordering::Release); } Ok(())
+        }).unwrap_err().kind, StorageErrorKind::Cancelled);
+        assert_eq!(storage.children_bounded(&reference, WindowsDirectoryReadLimits::ALBUM_DEFAULT, &cancel).unwrap_err().kind, StorageErrorKind::Cancelled);
+    }
+}
+
+#[test]
+fn album_bounded_child_identity_race_remains_changed_not_partial_success() {
+    let tree = tempfile::tempdir().unwrap(); let path = tree.path().join("song.mp3"); fs::write(&path, b"original").unwrap();
+    let mut storage = DesktopStorage::new(&[tree.path().to_path_buf()]).unwrap(); let reference = storage.reference(tree.path()).unwrap();
+    let mut changed = false;
+    let error = storage.children_bounded_with(&reference, WindowsDirectoryReadLimits::ALBUM_DEFAULT, &std::sync::atomic::AtomicBool::new(false), |point| {
+        if point == BoundedReadCheckpoint::BeforeChild && !changed {
+            fs::rename(&path, tree.path().join("retained.mp3")).unwrap(); fs::write(&path, b"foreign").unwrap(); changed = true;
+        } Ok(())
+    }).unwrap_err();
+    assert_eq!(error.kind, StorageErrorKind::Changed);
+    assert_eq!(fs::read(tree.path().join("retained.mp3")).unwrap(), b"original");
+}
+
+#[test]
+fn album_bounded_limits_cannot_expand_past_supported_defaults() {
+    let tree = tempfile::tempdir().unwrap(); let mut storage = DesktopStorage::new(&[tree.path().to_path_buf()]).unwrap(); let reference = storage.reference(tree.path()).unwrap();
+    let cancel = std::sync::atomic::AtomicBool::new(false);
+    for limits in [WindowsDirectoryReadLimits { max_entries: usize::MAX, ..Default::default() },
+        WindowsDirectoryReadLimits { max_path_units: usize::MAX, ..Default::default() },
+        WindowsDirectoryReadLimits { max_batches: 0, ..Default::default() }] {
+        assert_eq!(storage.children_bounded(&reference, limits, &cancel).unwrap_err().kind, StorageErrorKind::BudgetExceeded);
+    }
+    assert!(storage.children_bounded(&reference, WindowsDirectoryReadLimits { max_entries: 0, max_path_units: 0, ..Default::default() }, &cancel).unwrap().is_empty());
+}
+
+#[test]
+fn album_bounded_reparse_entries_match_ordinary_observations_without_following_links() {
+    let tree = tempfile::tempdir().unwrap(); let root = tree.path().join("root"); let outside = tree.path().join("outside");
+    fs::create_dir(&root).unwrap(); fs::create_dir(&outside).unwrap(); fs::create_dir(root.join("link")).unwrap();
+    fs::write(outside.join("sentinel.mp3"), b"outside").unwrap(); fixture::set_junction(&root.join("link"), &outside);
+    let mut storage = DesktopStorage::new(&[root.clone()]).unwrap(); let reference = storage.reference(&root).unwrap();
+    let ordinary = storage.children(&reference).unwrap();
+    let bounded = storage.children_bounded(&reference, WindowsDirectoryReadLimits::ALBUM_DEFAULT, &std::sync::atomic::AtomicBool::new(false)).unwrap();
+    assert_eq!(ordinary, bounded); assert_eq!(bounded.len(), 1); assert_eq!(bounded[0].kind, EntryKind::LinkOrReparse);
+    assert_eq!(fs::read(outside.join("sentinel.mp3")).unwrap(), b"outside");
+    drop(storage); fs::remove_dir(root.join("link")).unwrap();
+}

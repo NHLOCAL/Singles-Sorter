@@ -73,6 +73,8 @@ pub(crate) struct BindingData {
     pub schema: u16,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub album_context: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub copy_metadata_version: Option<u8>,
     pub plan_sha256: String,
     pub source_root: EntryObservation,
     pub target_root: EntryObservation,
@@ -337,6 +339,7 @@ pub(crate) fn validate_execution_domain(
         data: BindingData {
             schema: 2,
             album_context: None,
+            copy_metadata_version: if domain==ExecutionDomain::SelectedWindowsCopy{Some(1)}else{None},
             plan_sha256: plan.binding_sha256.clone(),
             source_root: root,
             target_root: target,
@@ -425,7 +428,7 @@ pub(crate) fn validate_plan_scope(
     )
 }
 #[allow(clippy::too_many_arguments)]
-fn validate_plan_scope_domain(
+pub(crate) fn validate_plan_scope_domain(
     plan: &JobPlanV2,
     storage: &mut dyn ReadStorage,
     metadata: &mut dyn MetadataProvider,
@@ -542,6 +545,7 @@ impl BindingData {
     }
     /// Domain evidence is necessary but never sufficient authority to execute.
     pub(crate) fn valid_domain(&self) -> bool {
+        if self.copy_metadata_version.is_some_and(|version|version!=1||!self.selected_windows_copy){return false;}
         if self.synthetic_only
             && !self.owned_windows_copy
             && !self.owned_windows_rename

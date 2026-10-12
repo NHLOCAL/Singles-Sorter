@@ -141,6 +141,8 @@ fn selected_copy_creates_artist_folder_and_runs_full_job() {
     assert_eq!(result.committed_destinations, 2);
     assert_eq!(result.moved_sources, 0);
     assert_eq!(job.journal_locations().len(), 2);
+    let recovery=RecoveryScope{original_scope:f.scope.clone(),inspected_binding_sha256:job.binding_sha256().unwrap()};
+    let report=job.inspect_recovery(&recovery).unwrap();assert!(report.transfers.unwrap().operations.iter().all(|operation|operation.status==sorter_executor::recovery::RecoveryStatus::Committed&&operation.copy_metadata==sorter_executor::recovery::CopyMetadataRecoveryStatus::Verified));
     drop(job);
     f.check_contents(true);
     assert!(f.tree.path().exists());
@@ -257,4 +259,15 @@ fn selected_job_read_only_recovery_checks_both_journals() {
             .read_selected_journal(locations[0].name(), locations[0].identity())
             .unwrap()
     );
+}
+
+#[test]
+fn selected_duet_copy_requires_metadata_at_every_distinct_destination(){
+    use std::os::windows::fs::MetadataExt;
+    let mut f=Fixture::new(true);for index in 0..2{std::fs::rename(f.source.join(format!("song-{index}-שלום.mp3")),f.source.join(format!("song other-{index}-שלום.mp3"))).unwrap();}
+    f.plan.request.settings.duet_mode=true;f.plan.request.alias_rows=vec![vec!["song".into(),"אמן".into()],vec!["other".into(),"זמר".into()]];
+    {let mut reads=WindowsPlanningStorage::for_preview(&f.source,&f.target).unwrap();f.plan=plan_job(&f.plan.request,&mut reads,&mut Metadata,&mut Ai).unwrap();f.scope=prepare_scope(&f.plan,&mut reads,&f.scope.resources,&AtomicBool::new(false)).unwrap();}
+    assert_eq!(f.plan.operations.len(),4);let mut job=f.job();let result=job.run(&AtomicBool::new(false),&mut |_|{}).unwrap();assert_eq!(result.status,JobStatus::Complete);assert_eq!(result.committed_destinations,4);assert_eq!(result.moved_sources,0);
+    let recovery=RecoveryScope{original_scope:f.scope.clone(),inspected_binding_sha256:job.binding_sha256().unwrap()};let report=job.inspect_recovery(&recovery).unwrap();let operations=report.transfers.unwrap().operations;assert_eq!(operations.len(),4);assert!(operations.iter().all(|operation|operation.status==sorter_executor::recovery::RecoveryStatus::Committed&&operation.copy_metadata==sorter_executor::recovery::CopyMetadataRecoveryStatus::Verified));
+    drop(job);for index in 0..2{let leaf=format!("song other-{index}-שלום.mp3");let original=f.source.join(&leaf);for artist in ["אמן","זמר"]{let copied=f.target.join(artist).join(&leaf);assert_eq!(std::fs::read(&copied).unwrap(),std::fs::read(&original).unwrap());assert_eq!(std::fs::metadata(&copied).unwrap().last_write_time(),std::fs::metadata(&original).unwrap().last_write_time());}}
 }
