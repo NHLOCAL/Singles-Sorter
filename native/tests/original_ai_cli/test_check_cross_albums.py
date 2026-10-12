@@ -17,9 +17,12 @@ class CrossAlbumReceipts(unittest.TestCase):
     def test_observed_physical_and_legacy_counts_are_separate(self):
         validate_effect_counts(self.fixture(), 5, False)
         mixed = self.fixture(); mixed.update(source_items=6, committed_destinations=6, moved_sources=6)
-        mixed['legacy_summary'].update(songs_sorted=1, artist_folders_created=1, top_artists=[[ARTIST, 5]])
+        mixed['legacy_summary'].update(songs_sorted=1, artist_folders_created=0, top_artists=[[ARTIST, 5]])
         mixed['effect_receipts'] += [dict(kind='file_published'), dict(kind='source_retired')]
         validate_effect_counts(mixed, 6, True)
+        mixed['legacy_summary']['artist_folders_created'] = 1
+        with self.assertRaisesRegex(ValueError, 'expected=.*artist_folders_created.*0.*actual=.*artist_folders_created.*1'):
+            validate_effect_counts(mixed, 6, True)
 
     def test_missing_effects_or_wrong_counter_refuse(self):
         original = self.fixture()

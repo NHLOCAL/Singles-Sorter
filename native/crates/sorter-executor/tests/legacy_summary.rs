@@ -127,6 +127,25 @@ fn album_mkdir_is_never_an_artist_folder_but_later_singles_leaf_is() {
     );
 }
 #[test]
+fn mixed_album_and_same_artist_single_reuse_the_album_created_parent() {
+    let operations = vec![
+        album(0, &["A", "album"]),
+        single(1, "A", &["A", "single.mp3"]),
+    ];
+    let summary = LegacySummary::from_receipts(
+        &operations,
+        &[0, 0, 0, 0, 0, 1],
+        &[reference(r"C:\target\A"), reference(r"C:\target\A\album")],
+        1,
+        &[("A".into(), 4)],
+    );
+    assert_eq!(summary.songs_sorted, 1);
+    assert_eq!(summary.artist_folders_created, 0);
+    assert_eq!(summary.albums_processed, 1);
+    assert_eq!(summary.top_artists, [("A".into(), 5)]);
+}
+
+#[test]
 fn top_five_ties_keep_actual_commit_order_after_original_album_artist() {
     let operations = (0..7)
         .map(|i| {

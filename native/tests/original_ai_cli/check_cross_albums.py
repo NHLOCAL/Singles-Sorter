@@ -26,10 +26,13 @@ def validate_effect_counts(actual, source_count, mixed):
     require(actual['albums_completed'] == 1 and actual['artist_files'] == [[ARTIST, 4]],
             'Cross-volume original album credits differ')
     legacy = actual['legacy_summary']
-    require(legacy['songs_sorted'] == int(mixed) and legacy['albums_processed'] == 1
-            and legacy['artist_folders_created'] == int(mixed)
-            and legacy['top_artists'] == [[ARTIST, 5 if mixed else 4]],
-            'Cross-volume original single and album counters differ')
+    # Frozen v14 handles the album before deferred singles. With -n, this
+    # same-artist single reuses the parent created by the album, so its loop
+    # never performs the mkdir that increments artist_folders_created.
+    expected = dict(songs_sorted=int(mixed), albums_processed=1,
+                    artist_folders_created=0, top_artists=[[ARTIST, 5 if mixed else 4]])
+    require(legacy == expected,
+            f'Cross-volume original single and album counters differ: expected={expected!r}, actual={legacy!r}')
     effects = actual['effect_receipts']
     require(sum(effect['kind'] == 'source_retired' for effect in effects) == source_count,
             'Cross-volume album lacks one retirement acknowledgement per file')
