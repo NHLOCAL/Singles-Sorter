@@ -21,6 +21,7 @@ public final class OriginalPlanning {
         if(input.length()>2*1024*1024||models.length()>4096||cache.length()>4096)throw new IllegalArgumentException("MANIFEST_LIMIT");
         byte[] bytes=plan0(id,models.getBytes(StandardCharsets.UTF_8),cache.getBytes(StandardCharsets.UTF_8),input.getBytes(StandardCharsets.UTF_8),provider);
         if(bytes==null)throw new IllegalStateException("JNI_RESULT_MISSING");
+        if(bytes.length>32*1024*1024)throw new IllegalStateException("JNI_RESULT_LIMIT");
         return new String(bytes,StandardCharsets.UTF_8);
     }
 }

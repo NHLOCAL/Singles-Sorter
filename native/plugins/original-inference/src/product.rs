@@ -8,7 +8,7 @@ use sorter_core::{
     Settings,
     discovery::*,
     job_plan::{
-        DisabledRecognition, JobMode, JobRequestV2, PlanningBoundary, PlanningControl,
+        DisabledRecognition, JobMode, JobRequestV2, OperationKind, PlanningBoundary, PlanningControl,
         plan_job_controlled,
     },
     metadata::{MetadataError, MetadataFields, MetadataProvider},
@@ -438,8 +438,40 @@ fn plan(
     if metadata.failed {
         return Err("SAF_SNAPSHOT_READ_FAILED".into());
     }
+    if plan.operations.len() > 10000 {
+        return Err("RETAINED_OPERATION_LIMIT".into());
+    }
+    let mut source_tokens = HashSet::new();
+    let mut bind_source = |entry: &EntryObservation| -> Result<(), String> {
+        if entry.kind == EntryKind::File {
+            let original = metadata
+                .entries
+                .get(&entry.reference)
+                .ok_or("SOURCE_NOT_CAPTURED")?;
+            source_tokens.insert(original.token.clone());
+        }
+        Ok(())
+    };
+    for operation in &plan.operations {
+        match &operation.kind {
+            OperationKind::SingleTransfer { source, .. } => bind_source(source)?,
+            OperationKind::AlbumTransfer {
+                source, children, ..
+            } => {
+                bind_source(source)?;
+                for child in children {
+                    bind_source(&child.source)?;
+                }
+            }
+            OperationKind::FixFile(fix) => bind_source(&fix.source)?,
+        }
+    }
+    let mut source_tokens: Vec<_> = source_tokens.into_iter().collect();
+    source_tokens.sort();
+    let retained = bounded_json(&plan, 8 * 1024 * 1024).map_err(|_| "RETAINED_PLAN_LIMIT")?;
+    let retained = String::from_utf8(retained).map_err(|_| "RETAINED_PLAN_ENCODING")?;
     Ok(
-        json!({"plan_id":plan.binding_sha256,"rows":plan_view::project_rows(&plan),"blockers":plan.blockers,"warnings":plan.warnings,"inference_executed":recognition.inference_executed(),"snapshot_hashes":metadata.hashes,"provider_snapshot_only":true,"executable":false}),
+        json!({"_source_tokens":source_tokens,"_retained_plan":retained,"plan_id":plan.binding_sha256,"rows":plan_view::project_rows(&plan),"blockers":plan.blockers,"warnings":plan.warnings,"inference_executed":recognition.inference_executed(),"snapshot_hashes":metadata.hashes,"provider_snapshot_only":true,"executable":false}),
     )
 }
 #[unsafe(no_mangle)]
@@ -501,6 +533,9 @@ mod tests {
         assert_eq!(parent_group(&a, &entries).unwrap(), None);
         let mut wrong = x.clone();
         wrong.authority = "other".into();
+        assert!(parent_group(&wrong, &entries).is_err());
+        wrong = x.clone();
+        wrong.tree_uri = "content://owned/tree/other".into();
         assert!(parent_group(&wrong, &entries).is_err());
         wrong = x.clone();
         wrong.parent = Some("missing".into());

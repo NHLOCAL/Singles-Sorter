@@ -151,14 +151,38 @@ fn bytes(
     }
     env.convert_byte_array(array).map_err(|_| "jni_bytes")
 }
+/// Bounds serialized output before allocating a JNI array or Java string.
+fn bounded_json(value: &impl serde::Serialize, limit: usize) -> Result<Vec<u8>, serde_json::Error> {
+    struct Bounded {
+        bytes: Vec<u8>,
+        limit: usize,
+    }
+    impl std::io::Write for Bounded {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            if bytes.len() > self.limit.saturating_sub(self.bytes.len()) {
+                return Err(std::io::Error::other("result_limit"));
+            }
+            self.bytes.extend_from_slice(bytes);
+            Ok(bytes.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    let mut out = Bounded {
+        bytes: Vec::new(),
+        limit,
+    };
+    serde_json::to_writer(&mut out, value)?;
+    Ok(out.bytes)
+}
 fn output(env: &mut JNIEnv<'_>, value: Value) -> jbyteArray {
     // Never call JNI with a pending exception. Let the original Java exception propagate.
     if env.exception_check().unwrap_or(true) {
         return std::ptr::null_mut();
     }
-    let Ok(data) = serde_json::to_vec(&value) else {
-        return std::ptr::null_mut();
-    };
+    let data = bounded_json(&value, 32 * 1024 * 1024)
+        .unwrap_or_else(|_| br#"{"ok":false,"error":"result_limit"}"#.to_vec());
     env.byte_array_from_slice(&data)
         .map(|a| a.into_raw())
         .unwrap_or(std::ptr::null_mut())
@@ -265,5 +289,17 @@ mod tests {
         cancel(id);
         assert!(!claim(second).unwrap().is_cancelled());
         drop(OwnedRun(second));
+    }
+}
+
+#[cfg(test)]
+mod output_limit_tests {
+    use super::*;
+    #[test]
+    fn exact_serialized_byte_bound_includes_escaping() {
+        assert_eq!(bounded_json(&"abc", 5).unwrap(), b"\"abc\"");
+        assert!(bounded_json(&"abc", 4).is_err());
+        assert!(bounded_json(&"\n", 3).is_err());
+        assert!(bounded_json(&vec!["x"; 100], 32).is_err());
     }
 }

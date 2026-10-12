@@ -22,6 +22,7 @@ final class AndroidHost implements AutoCloseable {
     private String source,target;private boolean closed;
     private File models;private long pendingPicker,pickerMessage;private String pickerRole;
     private CancellationSignal cancellation;private long nativeJob;private String jobId;
+    private RetainedPlan retainedPlan;
     private JSONObject snapshot;private JSONArray rows=new JSONArray();
     private boolean busy;
     AndroidHost(Activity activity,WebView view){this.activity=activity;this.view=view;storage=new SafReadStorage(activity);profile=new AndroidProfile(activity);csv=new AndroidCsv(activity);}
@@ -117,11 +118,11 @@ final class AndroidHost implements AutoCloseable {
         final String sourceRoot=source,targetRoot=mode.equals("Sort")?target:null,personalCsv=profile.personalCsv();
         cancellation=new CancellationSignal();final CancellationSignal signal=cancellation;
         final long nativeId=OriginalPlanning.begin();if(nativeId==0)throw new IllegalStateException("BUSY");
-        nativeJob=nativeId;jobId=Long.toString(nativeId);final String ownJob=jobId;busy=true;rows=new JSONArray();
+        nativeJob=nativeId;jobId=Long.toString(nativeId);final String ownJob=jobId;busy=true;rows=new JSONArray();retainedPlan=null;
         snapshot=new JSONObject().put("host_schema",1).put("job_id",jobId).put("status","running").put("plan_id",JSONObject.NULL).put("total_rows",0).put("blockers",new JSONArray()).put("warnings",new JSONArray());
         reply(message,true,new JSONObject().put("job_id",jobId));
         worker.execute(()->{
-            JSONObject completed=null;Throwable failure=null;
+            JSONObject completed=null;RetainedPlan retained=null;Throwable failure=null;
             try(SafSnapshot captured=new SafSnapshot(activity.getApplicationContext(),storage,signal)){
                 signal.throwIfCanceled();
                 if(models==null&&ai.equals("Configured"))models=OriginalAssets.prepare(activity.getApplicationContext(),signal::isCanceled);
@@ -133,6 +134,7 @@ final class AndroidHost implements AutoCloseable {
                 JSONObject result=new JSONObject(OriginalPlanning.run(nativeId,models==null?"/unconfigured":models.getAbsolutePath(),captured.directory.getAbsolutePath(),input.toString(),captured));
                 signal.throwIfCanceled();if(!result.getBoolean("ok"))throw new IllegalStateException(result.optString("error","PLANNING_FAILED"));
                 completed=result.getJSONObject("data");
+                retained=RetainedPlan.capture(ownJob,completed,captured,signal);
             }catch(Throwable e){failure=e;}
             finally{OriginalPlanning.abandon(nativeId);}
             // Resource cleanup has finished before terminal state is visible.
@@ -142,7 +144,7 @@ final class AndroidHost implements AutoCloseable {
                 try{
                     if(signal.isCanceled())snapshot.put("status","cancelled");
                     else if(failure!=null)snapshot.put("status","failed").put("error",failure.toString());
-                    else if(!closed&&completed!=null){rows=completed.getJSONArray("rows");snapshot.put("status","completed").put("plan_id",completed.getString("plan_id")).put("total_rows",rows.length()).put("blockers",completed.getJSONArray("blockers")).put("warnings",completed.getJSONArray("warnings"));}
+                    else if(!closed&&completed!=null&&retained!=null){retainedPlan=retained;rows=completed.getJSONArray("rows");snapshot.put("status","completed").put("plan_id",completed.getString("plan_id")).put("total_rows",rows.length()).put("blockers",completed.getJSONArray("blockers")).put("warnings",completed.getJSONArray("warnings"));}
                 }catch(Exception invalid){try{snapshot.put("status","failed").put("error","RESULT_INVALID");}catch(Exception ignored){}}
                 finally{busy=false;}
             }
@@ -178,7 +180,7 @@ final class AndroidHost implements AutoCloseable {
         });
     }
     @Override public synchronized void close(){
-        if(closed)return;closed=true;if(documentCancel!=null)documentCancel.cancel();if(cancellation!=null)cancellation.cancel();if(nativeJob!=0)OriginalPlanning.cancel(nativeJob);
+        if(closed)return;closed=true;retainedPlan=null;if(documentCancel!=null)documentCancel.cancel();if(cancellation!=null)cancellation.cancel();if(nativeJob!=0)OriginalPlanning.cancel(nativeJob);
         // Scope/asset cleanup is queued after active JNI/provider work, never under it.
         worker.execute(()->{csv.clear();if(exportBytes!=null)java.util.Arrays.fill(exportBytes,(byte)0);try{storage.close();}catch(Exception ignored){}if(models!=null)OriginalAssets.cleanup(models);});worker.shutdown();
     }
