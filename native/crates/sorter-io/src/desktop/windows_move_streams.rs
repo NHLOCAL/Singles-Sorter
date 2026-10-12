@@ -249,21 +249,30 @@ fn stream_digest_with(
     file: &File, length: u64, cancel: &AtomicBool, mut checkpoint: impl FnMut(u64),
 ) -> Result<ContentDigest, MutationError> {
     let mut reader = file;
-    reader.seek(SeekFrom::Start(0)).map_err(io_error)?;
-    let mut hash = Sha256::new();
-    let mut total = 0u64;
-    let mut buffer = [0u8; 64 * 1024];
-    loop {
-        cancelled(cancel)?;
-        let count = reader.read(&mut buffer).map_err(io_error)?;
-        if count == 0 { break; }
-        total = total.checked_add(count as u64).filter(|total| *total <= length)
-            .ok_or_else(|| err(MutationErrorKind::StalePlan, "named stream exceeds preview length"))?;
-        hash.update(&buffer[..count]);
-        checkpoint(total);
+    let original_position = reader.stream_position().map_err(io_error)?;
+    let result = (|| {
+        reader.seek(SeekFrom::Start(0)).map_err(io_error)?;
+        let mut hash = Sha256::new();
+        let mut total = 0u64;
+        let mut buffer = [0u8; 64 * 1024];
+        loop {
+            cancelled(cancel)?;
+            let count = reader.read(&mut buffer).map_err(io_error)?;
+            if count == 0 { break; }
+            total = total.checked_add(count as u64).filter(|total| *total <= length)
+                .ok_or_else(|| err(MutationErrorKind::StalePlan, "stream exceeds preview length"))?;
+            hash.update(&buffer[..count]);
+            checkpoint(total);
+        }
+        if total != length { return Err(err(MutationErrorKind::StalePlan, "stream length changed")); }
+        Ok(ContentDigest { length, sha256: hash.finalize().into() })
+    })();
+    let restored = reader.seek(SeekFrom::Start(original_position)).map_err(io_error);
+    match (result, restored) {
+        (Ok(digest), Ok(_)) => Ok(digest),
+        (Err(error), _) | (_, Err(error)) => Err(error),
     }
-    if total != length { return Err(err(MutationErrorKind::StalePlan, "named stream length changed")); }
-    Ok(ContentDigest { length, sha256: hash.finalize().into() })
+
 }
 fn open_named_stream(parent: &File, base: &[u16], suffix: &[u16], create: bool) -> Result<File, MutationError> {
     let mut name = base.iter().chain(suffix).copied().collect::<Vec<_>>();
@@ -606,6 +615,9 @@ impl WindowsMutationStorage {
         &mut self, temp: &mut WindowsCopiedMoveTemp, parent: &WindowsParent,
         name: &MutationName, cancel: &AtomicBool,
     ) -> MutationOutcome<WindowsCopiedMovePublished> {
+        if temp.main.copy_metadata.is_none() {
+            return MutationOutcome::NoEffect(err(MutationErrorKind::StalePlan, "copied metadata must be acknowledged before publication"));
+        }
         let Some(evidence) = temp.evidence.clone().filter(|_| !temp.poisoned) else {
             return MutationOutcome::NoEffect(err(MutationErrorKind::StalePlan, "stream stage unavailable"));
         };
@@ -706,10 +718,36 @@ mod move_stream_copy_tests {
         }
         fn temp(&mut self) -> WindowsCopiedMoveTemp {
             let mut temp = applied(self.storage.create_copied_move_temp(&self.target, "streams", &AtomicBool::new(false)));
-            temp.write_all(b"audio").unwrap();
+            self.source.seek(SeekFrom::Start(0)).unwrap();
+            assert_eq!(std::io::copy(&mut self.source, &mut temp).unwrap(), 5);
             temp.sync_data().unwrap();
             temp
         }
+    }
+
+    #[test]
+    fn acquisition_and_reverification_preserve_main_reader_position() {
+        let mut f = Fixture::new();
+        let mut first = [0u8; 2];
+        f.source.read_exact(&mut first).unwrap();
+        assert_eq!(&first, b"au");
+        f.storage.verify_copied_move_source(&f.source, &AtomicBool::new(false)).unwrap();
+        let mut rest = Vec::new();
+        f.source.read_to_end(&mut rest).unwrap();
+        assert_eq!(rest, b"dio");
+    }
+
+    #[test]
+    fn publication_refuses_missing_copied_metadata_without_namespace_effect() {
+        let mut f = Fixture::new();
+        let mut temp = f.temp();
+        let cancel = AtomicBool::new(false);
+        applied(f.storage.copy_bound_move_streams(&f.source, &mut temp, &cancel));
+        assert!(matches!(f.storage.publish_copied_move_no_replace(
+            &mut temp, &f.target, &MutationName::Windows("copy.mp3".encode_utf16().collect()), &cancel,
+        ), MutationOutcome::NoEffect(_)));
+        assert!(!f.path.join("target/copy.mp3").exists());
+        assert!(f.path.join("source/song.mp3").exists());
     }
 
     #[test]
@@ -758,6 +796,117 @@ mod move_stream_copy_tests {
                 assert_eq!(std::fs::read(f.path.join("source/song.mp3:notes")).unwrap(), b"notes");
             }
         }
+    }
+
+    fn publish(f: &mut Fixture, name: &str, sync: bool) -> WindowsCopiedMovePublished {
+        let mut temp = f.temp();
+        let cancel = AtomicBool::new(false);
+        applied(f.storage.copy_bound_move_streams(&f.source, &mut temp, &cancel));
+        applied(f.storage.finalize_copied_move_metadata(&f.source, &mut temp, &cancel));
+        let mut published = applied(f.storage.publish_copied_move_no_replace(
+            &mut temp, &f.target, &MutationName::Windows(name.encode_utf16().collect()), &cancel,
+        ));
+        if sync {
+            f.storage.sync_copied_move_publication(&mut published, &f.source.main.expected.digest, &cancel).unwrap();
+        }
+        published
+    }
+
+    #[test]
+    fn full_distinct_synced_cohort_is_required_before_exact_source_retirement() {
+        let mut f = Fixture::new();
+        f.source.required_destinations = 2;
+        let first = publish(&mut f, "first.mp3", true);
+        let mut second = publish(&mut f, "second.mp3", false);
+        let cancel = AtomicBool::new(false);
+        for cohort in [vec![&first], vec![&first, &first], vec![&first, &second]] {
+            assert!(matches!(f.storage.retire_copied_move_source(&mut f.source, &cohort, &cancel), MutationOutcome::NoEffect(_)));
+            assert!(f.path.join("source/song.mp3").exists());
+        }
+        f.storage.sync_copied_move_publication(&mut second, &f.source.main.expected.digest, &cancel).unwrap();
+        assert!(matches!(applied(f.storage.retire_copied_move_source(&mut f.source, &[&first, &second], &cancel)), RetirementOutcome::Retired(_)));
+        assert!(!f.path.join("source/song.mp3").exists());
+        drop(first); drop(second);
+        for name in ["first.mp3", "second.mp3"] {
+            assert_eq!(std::fs::read(f.path.join(format!("target/{name}"))).unwrap(), b"audio");
+            assert_eq!(std::fs::read(f.path.join(format!("target/{name}:notes"))).unwrap(), b"notes");
+            assert_eq!(std::fs::read(f.path.join(format!("target/{name}:Zone.Identifier"))).unwrap(), b"zone");
+        }
+    }
+
+    #[test]
+    fn retirement_faults_after_dispatch_never_report_no_effect_or_allow_replay() {
+        for point in ["before_disposition", "after_disposition", "before_close", "after_close", "before_namespace_check", "after_namespace_check"] {
+            for cancellation in [false, true] {
+                let mut f = Fixture::new();
+                let published = publish(&mut f, "copy.mp3", true);
+                let cancel = AtomicBool::new(false);
+                let mut closes = 0;
+                let result = f.storage.retire_copied_move_source_with(&mut f.source, &[&published], &cancel, |stage| {
+                    if stage == point {
+                        if cancellation { cancel.store(true, Ordering::Release); }
+                        return Err(err(MutationErrorKind::Io, "owned lost retirement response"));
+                    }
+                    Ok(())
+                }, |handle| {
+                    closes += 1;
+                    unsafe { windows::Win32::Foundation::CloseHandle(handle) }.map_err(win_error)
+                });
+                if point == "before_disposition" {
+                    assert!(matches!(result, MutationOutcome::NoEffect(_)));
+                    assert_eq!(closes, 0);
+                    assert!(f.path.join("source/song.mp3").exists());
+                } else {
+                    assert!(matches!(result, MutationOutcome::PendingUnknown(_)));
+                    assert_eq!(closes, 1);
+                    assert!(f.source.main.file.is_none());
+                    assert!(matches!(f.storage.retire_copied_move_source(&mut f.source, &[&published], &AtomicBool::new(false)), MutationOutcome::NoEffect(_)));
+                }
+                drop(published);
+                assert_eq!(std::fs::read(f.path.join("target/copy.mp3:notes")).unwrap(), b"notes");
+            }
+        }
+    }
+
+    #[test]
+    fn lost_close_response_consumes_handle_once_and_foreign_old_link_survives() {
+        let mut f = Fixture::new();
+        let published = publish(&mut f, "copy.mp3", true);
+        let source_path = f.path.join("source/song.mp3");
+        let mut closes = 0;
+        let result = f.storage.retire_copied_move_source_with(&mut f.source, &[&published], &AtomicBool::new(false), |stage| {
+            if stage == "after_close" { std::fs::write(&source_path, b"foreign").unwrap(); }
+            Ok(())
+        }, |handle| {
+            closes += 1;
+            unsafe { windows::Win32::Foundation::CloseHandle(handle) }.map_err(win_error)?;
+            Err(err(MutationErrorKind::UnknownOutcome, "owned lost close response"))
+        });
+        assert!(matches!(result, MutationOutcome::PendingUnknown(_)));
+        assert_eq!(closes, 1);
+        assert_eq!(std::fs::read(source_path).unwrap(), b"foreign");
+        drop(published);
+        assert_eq!(std::fs::read(f.path.join("target/copy.mp3:notes")).unwrap(), b"notes");
+    }
+
+    #[test]
+    fn late_source_stream_detected_at_final_retirement_check_retains_all_bytes() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let mut f = Fixture::new();
+        let published = publish(&mut f, "copy.mp3", true);
+        let extra = f.path.join("source/song.mp3:late");
+        let result = f.storage.retire_copied_move_source_with(&mut f.source, &[&published], &AtomicBool::new(false), |stage| {
+            if stage == "before_disposition" {
+                let mut file = std::fs::OpenOptions::new().write(true).create_new(true).share_mode(FILE_SHARE_DELETE.0).open(&extra).unwrap();
+                file.write_all(b"late source bytes").unwrap();
+                file.sync_all().unwrap();
+            }
+            Ok(())
+        }, |_| panic!("changed source must not reach close"));
+        assert!(matches!(result, MutationOutcome::NoEffect(_)));
+        drop(f.source);
+        assert_eq!(std::fs::read(extra).unwrap(), b"late source bytes");
+        assert_eq!(std::fs::read(f.path.join("source/song.mp3:notes")).unwrap(), b"notes");
     }
 
     #[test]
@@ -853,7 +1002,7 @@ impl WindowsMutationStorage {
                 unsafe { RtlNtStatusToDosError(status) } as i32,
             )));
         }
-        let mut uncertain = status.0 != 0;
+        let mut uncertain = status.0 != 0 || unsafe { ios.Anonymous.Status }.0 != 0;
         for stage in ["after_disposition", "before_close"] {
             if checkpoint(stage).and_then(|()| cancelled(cancel)).is_err() { uncertain = true; }
         }

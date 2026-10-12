@@ -402,7 +402,7 @@ jobs:
         run: |
           $cases = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib move_stream_ -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 10) { throw "Expected 10 copied Move stream inventory/copy cases" }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 16) { throw "Expected 16 copied Move stream inventory/copy/retirement cases" }
           cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib move_stream_ -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
