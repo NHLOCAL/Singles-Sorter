@@ -63,7 +63,7 @@ impl Host {
             match job.inspect_recovery(&cancellation.cancelled) {
                 Ok(report) => self.update_repair(id, |snapshot| {
                     snapshot.recovery = Some(RecoveryInspection {
-                        pending_operations: vec![], directory_evidence: vec![], metadata_issues: None,
+                        pending_operations: vec![], directory_evidence: vec![], metadata_issues: None, terminal_records_complete: None, append_blocked: None,
                         observed_directories: 0,
                         pending_directories: 0,
                         rejected_directories: 0,

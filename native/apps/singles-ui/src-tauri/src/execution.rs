@@ -126,6 +126,10 @@ pub struct RecoveryInspection {
     pub directory_evidence: Vec<RecoveryDirectory>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata_issues: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub terminal_records_complete: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub append_blocked: Option<bool>,
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct RecoveryItem {
@@ -597,7 +601,7 @@ mod selected {
                 job.inspect_recovery(&recovery_scope)
                     .ok()
                     .map(|report| RecoveryInspection {
-                        pending_operations: vec![], directory_evidence: vec![], metadata_issues: None,
+                        pending_operations: vec![], directory_evidence: vec![], metadata_issues: None, terminal_records_complete: None, append_blocked: None,
                         observed_directories: report.directories.observed.len(),
                         pending_directories: report.directories.pending.len(),
                         rejected_directories: report.directories.rejected.len(),

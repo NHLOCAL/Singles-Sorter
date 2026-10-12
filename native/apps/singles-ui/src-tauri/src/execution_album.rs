@@ -45,10 +45,9 @@ impl Host {
             match job.inspect_recovery(&cancellation.cancelled) {
                 Ok(report) => self.update_album(id, |snapshot| {
                     let inspection = recovery(report);
-                    if inspection.incomplete_tail || inspection.pending_directories > 0 || inspection.rejected_directories > 0
-                        || !inspection.pending_operations.is_empty() || inspection.metadata_issues.is_some_and(|count| count > 0)
-                        || inspection.transfers.iter().any(|item| !matches!(item.status.as_str(), "Committed" | "verified"))
-                    { snapshot.recovery_error = Some("ALBUM_RECONCILIATION_INCOMPLETE".into()); }
+                    if reconciliation_incomplete(&inspection) {
+                        snapshot.recovery_error = Some("ALBUM_RECONCILIATION_INCOMPLETE".into());
+                    }
                     snapshot.recovery = Some(inspection);
                 }),
                 Err(error) => self.update_album(id, |snapshot| snapshot.recovery_error = Some(error.to_string())),
@@ -143,6 +142,16 @@ fn record_directories(
         inspection.directory_evidence.push(RecoveryDirectory { reference: entry.reference, role, status: format!("{:?}", entry.status) });
     }
 }
+fn reconciliation_incomplete(inspection: &RecoveryInspection) -> bool {
+    inspection.terminal_records_complete != Some(true) || inspection.append_blocked == Some(true)
+        || inspection.incomplete_tail || inspection.pending_directories > 0 || inspection.rejected_directories > 0
+        || !inspection.pending_operations.is_empty() || inspection.metadata_issues.is_some_and(|count| count > 0)
+        || inspection.transfers.iter().any(|item| !matches!(item.status.as_str(), "Committed" | "verified"))
+}
+fn merge_terminal_evidence(inspection: &mut RecoveryInspection, finished: bool, append_blocked: bool) {
+    inspection.terminal_records_complete = Some(inspection.terminal_records_complete.unwrap_or(true) && finished);
+    inspection.append_blocked = Some(inspection.append_blocked.unwrap_or(false) || append_blocked);
+}
 fn recovery(report: SelectedAlbumRecovery) -> RecoveryInspection {
     let mut pending = report.pending_directories.into_iter().chain(report.pending_cleanup).chain(report.pending_metadata).collect::<std::collections::HashSet<_>>();
     let metadata_issues = report.directory_metadata_status.iter().filter(|(_, status)| status != "verified").count()
@@ -151,6 +160,8 @@ fn recovery(report: SelectedAlbumRecovery) -> RecoveryInspection {
     let mut inspection = RecoveryInspection {
         observed_directories: 0, pending_directories: 0, rejected_directories: 0,
         incomplete_tail: report.incomplete_tail, pending_operations: vec![], directory_evidence: vec![], metadata_issues: Some(metadata_issues),
+        terminal_records_complete: Some(report.manifest_finished),
+        append_blocked: Some(report.transfers.as_ref().is_some_and(|transfers| transfers.append_blocked)),
         transfers: report.transfers.map(|transfers| transfers.operations.into_iter().map(|operation| RecoveryItem {
             operation: operation.operation, status: format!("{:?}", operation.status),
         }).collect()).unwrap_or_default(),
@@ -158,6 +169,7 @@ fn recovery(report: SelectedAlbumRecovery) -> RecoveryInspection {
     record_directories(&mut inspection, "destination_directory", report.directories, &std::collections::HashSet::new());
     if let Some(whole) = report.whole {
         inspection.incomplete_tail |= whole.incomplete_tail;
+        merge_terminal_evidence(&mut inspection, whole.recorded_finished, false);
         // The dispatcher mirrors these paths in the outer report. Count exact
         // references once, while retaining every pending original operation ID.
         pending.extend(whole.pending_directories);
@@ -173,6 +185,7 @@ fn recovery(report: SelectedAlbumRecovery) -> RecoveryInspection {
             inspection.pending_directories += singles.pending_directories;
             inspection.rejected_directories += singles.rejected_directories;
             inspection.incomplete_tail |= singles.incomplete_tail;
+            merge_terminal_evidence(&mut inspection, singles.terminal_records_complete.unwrap_or(false), singles.append_blocked.unwrap_or(false));
             inspection.transfers.extend(singles.transfers);
             inspection.pending_operations.extend(singles.pending_operations);
             inspection.directory_evidence.extend(singles.directory_evidence);
@@ -208,13 +221,33 @@ mod tests {
         assert_eq!(result.items[0].operation, 0);
     }
     #[test]
+    fn committed_prefix_without_terminal_record_still_requires_verification() {
+        let mut inspection = RecoveryInspection { observed_directories: 1, pending_directories: 0, rejected_directories: 0,
+            incomplete_tail: false, transfers: vec![RecoveryItem { operation: 0, status: "Committed".into() }],
+            pending_operations: vec![], directory_evidence: vec![], metadata_issues: Some(0),
+            terminal_records_complete: Some(true), append_blocked: Some(false) };
+        assert!(!reconciliation_incomplete(&inspection));
+        // A whole manifest or its nested singles may end cleanly at a newline
+        // after Committed but before Finished. Physical effects remain observed.
+        merge_terminal_evidence(&mut inspection, false, false);
+        merge_terminal_evidence(&mut inspection, true, false);
+        assert_eq!(inspection.terminal_records_complete, Some(false));
+        assert!(reconciliation_incomplete(&inspection));
+        assert_eq!(inspection.transfers[0].status, "Committed");
+        inspection.terminal_records_complete = Some(true);
+        merge_terminal_evidence(&mut inspection, true, true);
+        merge_terminal_evidence(&mut inspection, true, false);
+        assert_eq!(inspection.append_blocked, Some(true));
+        assert!(reconciliation_incomplete(&inspection));
+    }
+    #[test]
     fn whole_recovery_keeps_replaced_roots_and_accepts_expected_source_absence() {
         use sorter_core::discovery::ObjectIdentity;
         use sorter_executor::windows_album::{AlbumDirectoryEvidence, AlbumDirectoryEvidenceStatus as Status};
         let identity = ObjectIdentity::Test { id: "owned".into() };
         let completed = [identity.clone()].into_iter().collect();
         let mut inspection = RecoveryInspection { observed_directories: 0, pending_directories: 1, rejected_directories: 0,
-            incomplete_tail: false, transfers: vec![], pending_operations: vec![7], directory_evidence: vec![], metadata_issues: Some(0) };
+            incomplete_tail: false, transfers: vec![], pending_operations: vec![7], directory_evidence: vec![], metadata_issues: Some(0), terminal_records_complete: Some(true), append_blocked: Some(false) };
         let entry = |status| AlbumDirectoryEvidence { reference: StorageRef::TestOpaque { id: "owned".into() }, expected_identity: identity.clone(), observed_identity: None, status };
         record_directories(&mut inspection, "source_album", vec![entry(Status::Absent)], &completed);
         assert_eq!(inspection.rejected_directories, 0);
