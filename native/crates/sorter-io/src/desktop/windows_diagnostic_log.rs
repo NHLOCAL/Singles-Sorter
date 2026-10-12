@@ -285,6 +285,38 @@ mod diagnostic_log_tests {
             std::fs::rename(selected, &moved).unwrap();
             std::fs::rename(&moved, selected).unwrap();
         }
+        let source = &exclusions[0];
+        let target = &exclusions[1];
+        let journal = &exclusions[2];
+        let track = source.join("track.mp3");
+        std::fs::write(&track, b"owned audio").unwrap();
+        let id = |path: &Path| identity(chain(path).unwrap().last().unwrap()).unwrap();
+        let grant = |path: &PathBuf| WindowsSelectedRootGrant::new(path.clone(), id(path)).unwrap();
+        let cancel = AtomicBool::new(false);
+        let mut album = WindowsMutationStorage::for_selected_album_root_rename(
+            grant(source), grant(target), grant(journal),
+            vec![WindowsAlbumTreeEntry {
+                relative: vec![MutationName::Windows("track.mp3".encode_utf16().collect())],
+                identity: id(&track),
+                kind: EntryKind::File,
+                digest: Some(ContentDigest {
+                    length: 11,
+                    sha256: Sha256::digest(b"owned audio").into(),
+                }),
+            }],
+            &cancel,
+        ).unwrap();
+        let parent = album.target_and_journal().selected_target_root().unwrap();
+        let publication = album.rename_album_directory(
+            &parent, &MutationName::Windows("album".encode_utf16().collect()), &cancel,
+        );
+        let MutationOutcome::Applied(publication) = publication else {
+            panic!("active diagnostic log blocked selected root album move");
+        };
+        assert!(!source.exists());
+        assert_eq!(publication.entries().len(), 1);
+        drop(publication);
+        assert_eq!(std::fs::read(target.join("album/track.mp3")).unwrap(), b"owned audio");
         drop(log);
     }
 
