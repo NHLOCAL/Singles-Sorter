@@ -32,7 +32,9 @@ executable size and file count. These are file-byte sizes, not allocated disk
 blocks. They are not the desktop package size or an inferred original release
 size. The final desktop artifact's separate hash inventory supplies its sizes.
 
-Telemetry/setup failures remain visible without aborting the existing functional
-comparison cases. Performance does not turn any `OPEN`, `MISMATCH` or missing
+All 36 functional cases are persisted before package sizing or the extra fresh-
+process pair starts. Optional telemetry has at most 60 seconds and uses only the
+remaining eight-minute lane budget, reserving 30 seconds for final report work.
+Telemetry/setup failures remain visible without aborting functional evidence. Performance does not turn any `OPEN`, `MISMATCH` or missing
 functional evidence into a parity pass. Authored tests and source review are not
 actual measured Windows results; the next existing lane must produce them.

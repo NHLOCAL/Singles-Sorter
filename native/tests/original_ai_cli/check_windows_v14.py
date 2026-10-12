@@ -19,6 +19,7 @@ import subprocess
 import sys
 import tempfile
 import traceback
+import time
 import zipfile
 
 from windows_runtime_metrics import measured_call, measured_process
@@ -145,10 +146,10 @@ def author_case(root, case):
             os.utime(path, ns=(FIXED_MTIME_NS, FIXED_MTIME_NS))
 
 
-def subprocess_record(binary, root, arguments, *, payload=None):
+def subprocess_record(binary, root, arguments, *, payload=None, timeout=180):
     env = dict(os.environ, PATH=str(Path(os.environ['SystemRoot'])/'System32'))
     data = json.dumps(payload, ensure_ascii=False).encode('utf-8') if payload is not None else None
-    result, performance = measured_process([str(binary), *arguments], cwd=root, env=env, payload=data)
+    result, performance = measured_process([str(binary), *arguments], cwd=root, env=env, payload=data, timeout=timeout)
     return {'arguments': arguments, 'exit': result.returncode,
             'stdout': result.stdout.decode('utf-8'), 'stderr': result.stderr.decode('utf-8'),
             'closed_stdin': payload is None, 'developer_path_removed': True, 'performance': performance}
@@ -525,7 +526,14 @@ def write_json(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
 
-def package_measurement(binary, package, archive):
+def budget_remaining(deadline):
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise TimeoutError('Optional telemetry budget exhausted')
+    return remaining
+
+
+def package_measurement(binary, package, archive, deadline=None):
     if package is None or archive is None:
         return {'status': 'unavailable', 'reason': 'Exact final package and archive paths were not supplied'}
     package, archive = package.resolve(strict=True), archive.resolve(strict=True)
@@ -538,9 +546,12 @@ def package_measurement(binary, package, archive):
         require(len({entry.filename for entry in members}) == len(members), 'Duplicate packaged ZIP entries')
         require({entry.filename for entry in members} == set(entries), 'Measured ZIP/package members differ')
         for entry in members:
+            if deadline is not None: budget_remaining(deadline)
             with zipped.open(entry) as stream:
                 value=hashlib.sha256()
-                for chunk in iter(lambda:stream.read(64*1024),b''): value.update(chunk)
+                for chunk in iter(lambda:stream.read(64*1024),b''):
+                    if deadline is not None: budget_remaining(deadline)
+                    value.update(chunk)
             require(value.hexdigest() == digest(entries[entry.filename]), 'Measured ZIP/package content differs')
     return {'status':'measured','archive_sha256':digest(archive),'compressed_bytes':archive.stat().st_size,
             'unpacked_file_bytes':sum(path.stat().st_size for path in entries.values()),
@@ -548,8 +559,9 @@ def package_measurement(binary, package, archive):
             'scope':'exact final native CLI package; not filesystem allocated blocks or the desktop package; no original distributable size inferred'}
 
 
-def fresh_process_trial(binary, bundle, baseline, scratch, sources):
+def fresh_process_trial(binary, bundle, baseline, scratch, sources, deadline):
     """One already-covered Copy-all duet, reused as a bounded startup sample."""
+    budget_remaining(deadline)
     trial=scratch/'fresh-process';trial.mkdir()
     code=trial/'code';code.mkdir()
     for name, expected in sources.items():
@@ -566,6 +578,7 @@ def fresh_process_trial(binary, bundle, baseline, scratch, sources):
     # before timing, so original relative paths resolve without aliases or links.
     lock=json.loads((NATIVE/'probes/released-ner/released-ner-export/release-lock.json').read_text(encoding='utf-8'))
     for name, expected in lock['source_files'].items():
+        budget_remaining(deadline)
         source=baseline/'src/core/models/singer_ner_he'/name
         require(digest(source)==expected,'Cold original model source changed')
         destination=original_root/'models/singer_ner_he'/name
@@ -573,9 +586,9 @@ def fresh_process_trial(binary, bundle, baseline, scratch, sources):
     classifier=original_root/'models/music_entity_clf/music_entity_clf.pkl'
     classifier.parent.mkdir(parents=True);shutil.copyfile(bundle/'original-release.pkl',classifier)
     env=dict(os.environ,PATH=str(Path(os.environ['SystemRoot'])/'System32'),PYTHONDONTWRITEBYTECODE='1',PYTHONIOENCODING='utf-8')
-    original,timing=measured_process([sys.executable,str(Path(__file__).with_name('cold_original.py')),str(original_root),str(code/'singles_sorter_v5.py')],cwd=original_root,env=env)
+    original,timing=measured_process([sys.executable,str(Path(__file__).with_name('cold_original.py')),str(original_root),str(code/'singles_sorter_v5.py')],cwd=original_root,env=env,timeout=min(30,budget_remaining(deadline)))
     original_record={'exit':original.returncode,'stdout':original.stdout.decode('utf-8'),'stderr':original.stderr.decode('utf-8'),'performance':timing}
-    native=subprocess_record(binary,native_root,native_args(bundle,case))
+    native=subprocess_record(binary,native_root,native_args(bundle,case),timeout=min(30,budget_remaining(deadline)))
     # Compare only actual media trees; code/models/logs remain separate evidence.
     media=lambda root:[{'role':role,**row} for role in ('source','target') for row in comparable_snapshot(snapshot(root/role))]
     actual_original,actual_native=media(original_root),media(native_root)
@@ -593,6 +606,7 @@ def fresh_process_trial(binary, bundle, baseline, scratch, sources):
 
 
 def run(binary, bundle, baseline, report, package=None, archive=None):
+    started = time.monotonic()
     require(os.name == 'nt' and os.environ.get('GITHUB_ACTIONS') == 'true', 'Paired execution requires the owned actual Windows CI runner')
     require(__debug__, 'Paired execution requires Python assertions enabled')
     binary, bundle, baseline = (path.resolve(strict=True) for path in (binary, bundle, baseline))
@@ -604,17 +618,14 @@ def run(binary, bundle, baseline, report, package=None, archive=None):
     scratch = Path(tempfile.mkdtemp(prefix='singles-v14-paired-')).resolve()
     bundle_before = {name: digest(bundle/name) for name in ASSETS}
     binary_before = digest(binary)
-    try:
-        package_size = package_measurement(binary, package, archive)
-    except Exception as error:
-        package_size = {'status':'unavailable','error':str(error)}
     result = {'schema_version': 1, 'result': 'OPEN', 'incomplete': True, 'actual_windows': True,
               'baseline': BASELINE, 'binary_sha256': binary_before,
               'runner': {'platform': platform.platform(), 'python': platform.python_version(),
                          'ci_run_id': os.environ.get('GITHUB_RUN_ID'), 'source_revision': os.environ.get('GITHUB_SHA')},
               'fixture_root': str(scratch), 'normalization': NORMALIZATION,
               'performance_scope': 'Functional acceptance first. Warm shared-original and fresh-native rows are not comparable speed ratios. One separate fresh-process pair retains startup and same authored inputs; OS cache and tracing overhead remain explicit.',
-              'package_size': package_size,
+              'package_size': {'status':'pending_functional_cases'},
+              'fresh_process_trial': {'status':'pending_functional_cases'},
               'coverage': {'settings_combinations': 32, 'real_model_duets': 4}, 'cases': [],
               'historical_unsafe_exceptions': [
                   {'id': 'historical-duet-skipped-source-loss', 'scope': 'v14 Move-all deletes a source even when every destination is skipped; never required future behavior.', 'actual_windows_exercised_here': False},
@@ -625,11 +636,6 @@ def run(binary, bundle, baseline, report, package=None, archive=None):
         with original_oracle(baseline, bundle, scratch, include_sorter=True) as (_, sources, template):
             require(sources['singles_sorter_v5.py'] == SOURCE_SHA256, 'Wrong frozen v14 sorter source')
             result['original_source_sha256'] = sources
-            try:
-                result['fresh_process_trial'] = fresh_process_trial(binary, bundle, baseline, scratch, sources)
-            except Exception as error:
-                result['fresh_process_trial'] = {'status':'ERROR','error':str(error),'traceback':traceback.format_exc()}
-            write_json(report, result)
             for case in cases():
                 row = {**case, 'status': 'OPEN', 'phase': 'running'}
                 result['cases'].append(row)
@@ -693,6 +699,22 @@ def run(binary, bundle, baseline, report, package=None, archive=None):
                     row['evidence'] = {'filename': evidence.name, 'sha256': digest(evidence)}
                     write_json(report, result)
                     print(case['id'], row['status'], flush=True)
+            # All functional evidence is already persisted before optional work.
+            # Reserve 30 seconds of the existing eight-minute step for final hashes
+            # and report upload; telemetry itself has at most 60 seconds total.
+            optional_deadline = min(started + 450, time.monotonic() + 60)
+            try:
+                budget_remaining(optional_deadline)
+                result['package_size'] = package_measurement(binary, package, archive, optional_deadline)
+            except Exception as error:
+                result['package_size'] = {'status':'unavailable','error':str(error)}
+            write_json(report, result)
+            try:
+                budget_remaining(optional_deadline)
+                result['fresh_process_trial'] = fresh_process_trial(binary, bundle, baseline, scratch, sources, optional_deadline)
+            except Exception as error:
+                result['fresh_process_trial'] = {'status':'ERROR','error':str(error),'traceback':traceback.format_exc()}
+            write_json(report, result)
         require(digest(binary) == binary_before, 'Selected executable changed')
         require({name: digest(bundle/name) for name in ASSETS} == bundle_before, 'Original model bundle changed')
         require(len(result['cases']) == 36, 'Incomplete paired matrix')

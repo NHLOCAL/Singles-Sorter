@@ -29,6 +29,13 @@ class RuntimeMetricsTests(unittest.TestCase):
                 with self.assertRaises(AssertionError): gate.package_measurement(binary,package,archive)
         self.assertEqual(gate.package_measurement(Path('unused'),None,None)['status'],'unavailable')
 
+    def test_expired_optional_budget_refuses_before_extra_work(self):
+        import check_windows_v14 as gate
+        with patch.object(gate.time,'monotonic',return_value=100):
+            with self.assertRaises(TimeoutError): gate.budget_remaining(100)
+            self.assertEqual(gate.budget_remaining(125),25)
+            with self.assertRaises(TimeoutError): gate.fresh_process_trial(None,None,None,None,None,99)
+
     def test_high_water_is_distinct_from_sampled_working_set(self):
         values = iter([{'working_set_bytes':20,'process_lifetime_peak_working_set_bytes':100},
                        {'working_set_bytes':30,'process_lifetime_peak_working_set_bytes':100}])
