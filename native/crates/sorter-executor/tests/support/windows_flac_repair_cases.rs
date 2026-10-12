@@ -658,3 +658,8 @@ fn real_taglib_provider_plans_rebinds_and_publishes_five_flac_fields() {
     assert_eq!(split(&after).1, split(&before).1);
     assert_eq!(std::fs::read(backup(&fixture)).unwrap(), before);
 }
+
+#[test]
+fn recorded_flac_restart_verifies_replacement_and_retained_original() {
+    assert_streaming_repair_restart(Fixture::new(&[("song__demo.flac", flac(true, None, false))], Metadata(Some("à"))));
+}

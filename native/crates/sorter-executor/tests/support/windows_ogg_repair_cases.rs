@@ -540,3 +540,10 @@ fn foreign_collision_after_backup_preserves_grown_stage_and_exact_original() {
     assert_eq!(std::fs::read(destination).unwrap(), b"foreign owner");
     assert_eq!(std::fs::read(backup(&fixture)).unwrap(), before);
 }
+
+#[test]
+fn recorded_ogg_restart_verifies_both_codec_replacements_and_backups() {
+    for opus in [false, true] {
+        assert_streaming_repair_restart(Fixture::new(&[(name(opus), ogg(opus, true, false))], Metadata(Some("à"))));
+    }
+}

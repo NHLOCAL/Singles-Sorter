@@ -280,7 +280,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $repairJobs = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (@($repairJobs | Where-Object { $_ -match ': test$' }).Count -ne 37) { throw "Expected 13 original, 13 FLAC and 11 Ogg product FixNames cases" }
+          if (@($repairJobs | Where-Object { $_ -match ': test$' }).Count -ne 44) { throw "Expected 37 product FixNames cases plus 7 controlled read-only restart cases" }
           cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

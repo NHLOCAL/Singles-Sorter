@@ -575,3 +575,145 @@ mod flac;
 
 #[path = "support/windows_ogg_repair_cases.rs"]
 mod ogg;
+
+fn restart_control() -> sorter_executor::inspection_control::InspectionControl<'static> {
+    sorter_executor::inspection_control::InspectionControl::new(std::sync::Arc::new(AtomicBool::new(false)), |_| {})
+}
+fn restart_journal(fixture: &Fixture) -> Vec<u8> {
+    let path = std::fs::read_dir(&fixture.journal).unwrap().next().unwrap().unwrap().path();
+    std::fs::read(path).unwrap()
+}
+fn repair_tree_snapshot(root: &std::path::Path) -> Vec<(PathBuf, EntryObservation, u32, u64, u64, Option<String>)> {
+    use std::os::windows::fs::MetadataExt;
+    let mut reads = DesktopStorage::new(&[root.to_path_buf()]).unwrap();
+    let mut pending = vec![root.to_path_buf()];
+    let mut result = Vec::new();
+    while let Some(path) = pending.pop() {
+        let metadata = std::fs::symlink_metadata(&path).unwrap();
+        assert!(!metadata.file_type().is_symlink());
+        let reference = reads.reference(&path).unwrap();
+        let observation = reads.stat(&reference).unwrap();
+        let content = metadata.is_file().then(|| digest(&std::fs::read(&path).unwrap()));
+        if metadata.is_dir() { pending.extend(std::fs::read_dir(&path).unwrap().map(|entry| entry.unwrap().path())); }
+        result.push((path.strip_prefix(root).unwrap().to_path_buf(), observation, metadata.file_attributes(), metadata.creation_time(), metadata.last_write_time(), content));
+    }
+    result.sort_by(|left, right| left.0.cmp(&right.0));
+    result
+}
+fn assert_streaming_repair_restart(fixture: Fixture) {
+    let mut job = fixture.job();
+    assert_eq!(job.run(&AtomicBool::new(false), &mut |_| {}).unwrap().status, RepairJobStatus::Complete);
+    drop(job);
+    let before = repair_tree_snapshot(fixture._tree.path());
+    let journal = restart_journal(&fixture);
+    let descriptor = inspect_recorded_repair_job(&journal, &restart_control()).unwrap();
+    assert_eq!(&descriptor.source_identity, fixture.scope.source_root());
+    assert_eq!(descriptor.operations.len(), fixture.plan.operations.len());
+    let json = serde_json::to_value(&descriptor).unwrap();
+    for field in ["observed_source", "scope", "recorded_complete", "binding"] { assert!(json.get(field).is_none()); }
+    let control = restart_control();
+    let report = recover_repair_journal_controlled(&fixture.roots(), &journal, &AtomicBool::new(false), &control, 0).unwrap();
+    assert!(report.recorded_finished && !report.incomplete_tail);
+    assert!(report.operations.iter().all(|operation| operation.recorded.as_ref().is_some_and(|item| item.status == RepairStatus::Complete)
+        && !operation.evidence.is_empty() && operation.evidence.iter().all(|evidence| matches!(evidence.status, RepairEvidenceStatus::Verified))));
+    assert!(control.snapshot().unwrap().bytes_read > 0);
+    assert_eq!(control.snapshot().unwrap().completed_operations, descriptor.operations.len());
+    assert_eq!(repair_tree_snapshot(fixture._tree.path()), before);
+}
+#[test]
+fn recorded_mp3_descriptor_rebinds_fresh_roots_and_keeps_original_backup() {
+    assert_streaming_repair_restart(Fixture::new_with_spelling(&[("song__demo.mp3", mp3())], Metadata(Some("àáøäí")), None));
+}
+#[test]
+fn controlled_repair_chunk_cancel_and_cursor_reinspection_never_reuse_old_hashes() {
+    use sorter_executor::inspection_control::InspectionControl;
+    use std::sync::{Arc, Mutex};
+    let fixture = Fixture::new(&[("song__one.mp3", mp3()), ("song__two.mp3", mp3())], Metadata(Some("àáøäí")));
+    let mut job = fixture.job(); job.run(&AtomicBool::new(false), &mut |_| {}).unwrap(); drop(job);
+    let before = repair_tree_snapshot(fixture._tree.path());
+    let journal = restart_journal(&fixture);
+    let cancel = Arc::new(AtomicBool::new(false));
+    let flag = cancel.clone();
+    let control = InspectionControl::with_progress_interval(cancel.clone(), std::time::Duration::ZERO, move |progress| {
+        if progress.bytes_read > 0 { flag.store(true, Ordering::Release); }
+    });
+    assert!(matches!(recover_repair_journal_controlled(&fixture.roots(), &journal, &cancel, &control, 0), Err(E::Cancelled)));
+    assert_eq!(control.snapshot().unwrap().completed_operations, 0);
+    let order = Arc::new(Mutex::new(Vec::new())); let seen = order.clone();
+    let control = InspectionControl::new(Arc::new(AtomicBool::new(false)), move |progress| {
+        if let Some(index) = progress.operation {
+            let mut seen = seen.lock().unwrap(); if seen.last() != Some(&index) { seen.push(index); }
+        }
+    });
+    let report = recover_repair_journal_controlled(&fixture.roots(), &journal, &AtomicBool::new(false), &control, 1).unwrap();
+    assert_eq!(*order.lock().unwrap(), vec![1, 0]);
+    assert_eq!(report.operations.iter().map(|item| item.operation).collect::<Vec<_>>(), vec![0, 1]);
+    assert!(report.operations.iter().flat_map(|item| &item.evidence).all(|e| matches!(e.status, RepairEvidenceStatus::Verified)));
+    assert_eq!(repair_tree_snapshot(fixture._tree.path()), before);
+    std::fs::write(fixture.source.join(fixture.final_name(0)), b"changed after successful inspection").unwrap();
+    let changed = repair_tree_snapshot(fixture._tree.path());
+    let report = recover_repair_journal_controlled(&fixture.roots(), &journal, &AtomicBool::new(false), &restart_control(), 1).unwrap();
+    assert!(report.operations[0].evidence.iter().any(|e| matches!(e.status, RepairEvidenceStatus::Changed)));
+    assert_eq!(repair_tree_snapshot(fixture._tree.path()), changed);
+}
+#[test]
+fn controlled_repair_preserves_interrupted_backup_and_publication_evidence() {
+    for boundary in ["original_backed_up", "staging_tags"] {
+        let fixture = Fixture::new(&[("song__demo.mp3", mp3())], Metadata(Some("àáøäí")));
+        let mut job = fixture.job(); let cancel = AtomicBool::new(false);
+        let result = job.run(&cancel, &mut |progress| { if progress.phase == boundary { cancel.store(true, Ordering::Release); } }).unwrap();
+        assert_ne!(result.status, RepairJobStatus::Complete); drop(job);
+        let before = repair_tree_snapshot(fixture._tree.path());
+        let journal = restart_journal(&fixture);
+        assert!(inspect_recorded_repair_job(&journal, &restart_control()).is_ok());
+        let report = recover_repair_journal_controlled(&fixture.roots(), &journal, &AtomicBool::new(false), &restart_control(), 0).unwrap();
+        assert!(report.operations.iter().any(|item| item.recorded.as_ref().is_none_or(|recorded| recorded.status != RepairStatus::Complete)));
+        if boundary == "original_backed_up" {
+            assert!(report.operations[0].evidence.iter().any(|e| e.role == "backup" && matches!(e.status, RepairEvidenceStatus::Verified)));
+        }
+        assert_eq!(repair_tree_snapshot(fixture._tree.path()), before);
+    }
+}
+#[test]
+fn repair_descriptor_frames_do_not_claim_strict_phase_or_current_file_verification() {
+    #[derive(serde::Serialize, serde::Deserialize)]
+    struct Body { sequence: u64, previous: String, job_id: String, operation: Option<usize>, phase: String, payload: serde_json::Value }
+    #[derive(serde::Serialize, serde::Deserialize)]
+    struct Envelope { body: Body, sha256: String }
+    let fixture = Fixture::new(&[("song.mp3", mp3())], Metadata(Some("שלום")));
+    let mut job = fixture.job(); job.run(&AtomicBool::new(false), &mut |_| {}).unwrap(); drop(job);
+    let original = restart_journal(&fixture);
+    let mut previous = String::new(); let mut edited = Vec::new();
+    for line in original.split(|byte| *byte == b'\n').filter(|line| !line.is_empty()) {
+        let mut envelope: Envelope = serde_json::from_slice(line).unwrap();
+        if envelope.body.phase == "OperationPrepared" { envelope.body.phase = "TempObserved".into(); }
+        envelope.body.previous = previous;
+        envelope.sha256 = digest(&serde_json::to_vec(&envelope.body).unwrap()); previous = envelope.sha256.clone();
+        edited.extend(serde_json::to_vec(&envelope).unwrap()); edited.push(b'\n');
+    }
+    assert!(inspect_recorded_repair_job(&edited, &restart_control()).is_ok());
+    assert!(matches!(recover_repair_journal_controlled(&fixture.roots(), &edited, &AtomicBool::new(false), &restart_control(), 0), Err(E::CorruptJournal)));
+    let mut corrupt = original.clone(); corrupt[10] ^= 1;
+    assert!(inspect_recorded_repair_job(&corrupt, &restart_control()).is_err());
+    let mut torn = original.clone(); torn.extend(b"{incomplete");
+    assert!(inspect_recorded_repair_job(&torn, &restart_control()).unwrap().incomplete_tail);
+    let mut excessive = original; excessive.extend(std::iter::repeat_n(b'\n', 65_537));
+    assert!(matches!(inspect_recorded_repair_job(&excessive, &restart_control()), Err(E::Unsupported)));
+}
+#[test]
+fn repair_restart_rejects_replaced_source_root_and_streams_ordinary_large_jobs() {
+    let mut bytes = mp3(); bytes.resize(35 * 1024 * 1024, 0);
+    let fixture = Fixture::new(&[("song__one.mp3", bytes.clone()), ("song__two.mp3", bytes)], Metadata(Some("שלום")));
+    let mut job = fixture.job();
+    assert_eq!(job.run(&AtomicBool::new(false), &mut |_| {}).unwrap().status, RepairJobStatus::Complete); drop(job);
+    let journal = restart_journal(&fixture); let control = restart_control();
+    let before = repair_tree_snapshot(fixture._tree.path());
+    let report = recover_repair_journal_controlled(&fixture.roots(), &journal, &AtomicBool::new(false), &control, 0).unwrap();
+    assert!(report.operations.iter().flat_map(|item| &item.evidence).all(|e| matches!(e.status, RepairEvidenceStatus::Verified)));
+    assert_eq!(control.snapshot().unwrap().bytes_read, 70 * 1024 * 1024);
+    assert_eq!(repair_tree_snapshot(fixture._tree.path()), before);
+    let old = fixture.source.with_file_name("old-source"); std::fs::rename(&fixture.source, &old).unwrap(); std::fs::create_dir(&fixture.source).unwrap();
+    assert!(inspect_recorded_repair_job(&journal, &restart_control()).is_ok());
+    assert!(matches!(recover_repair_journal_controlled(&fixture.roots(), &journal, &AtomicBool::new(false), &restart_control(), 0), Err(E::Scope)));
+    assert!(old.exists());
+}

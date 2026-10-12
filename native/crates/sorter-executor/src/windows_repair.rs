@@ -5,6 +5,7 @@ use crate::{
     ExecutionError as E, Result,
     binding::{Resources, SourceEvidence},
     physical_journal::JournalStore,
+    inspection_control::InspectionControl,
     windows_copy::WindowsPlanningStorage,
     windows_journal::WindowsJournalStore,
 };
@@ -104,6 +105,36 @@ fn checked(cancel: &AtomicBool) -> Result<()> {
     } else {
         Ok(())
     }
+}
+fn checked_inspection(cancel: &AtomicBool, control: Option<&InspectionControl>) -> Result<()> {
+    checked(cancel)?;
+    control.map_or(Ok(()), InspectionControl::checkpoint)
+}
+fn inspection_probe<T>(cancel: &AtomicBool, control: Option<&InspectionControl>, action: impl FnOnce() -> Result<T>) -> Result<T> {
+    checked_inspection(cancel, control)?;
+    if let Some(control) = control { control.observation()?; }
+    checked_inspection(cancel, control)?;
+    let result = action();
+    checked_inspection(cancel, control)?;
+    result
+}
+const MAX_RESTART_RECORD: usize = 4 * 1024 * 1024;
+const MAX_RESTART_RECORDS: usize = 65_536;
+const MAX_RESTART_OPERATIONS: usize = 4_096;
+fn check_inspection_input(bytes: &[u8], control: &InspectionControl) -> Result<()> {
+    if bytes.len() > MAX_JOURNAL { return Err(E::Unsupported); }
+    let mut records = 0usize;
+    let mut length = 0usize;
+    for chunk in bytes.chunks(65_536) {
+        control.checkpoint()?;
+        for byte in chunk {
+            length += 1;
+            if length > MAX_RESTART_RECORD { return Err(E::Unsupported); }
+            if *byte == b'\n' { records += 1; length = 0; }
+            if records > MAX_RESTART_RECORDS { return Err(E::Unsupported); }
+        }
+    }
+    control.checkpoint()
 }
 fn digest_value(text: &str, length: u64) -> Result<ContentDigest> {
     if !valid_hash(text) {
@@ -1320,6 +1351,81 @@ impl SelectedWindowsRepairJob {
         recover_repair_journal(self.storage.roots(), &bytes, cancel)
     }
 }
+/// Display-only header/framing evidence. Physical phase replay remains pending
+/// until fresh root identity supplies the observed (never serialized) root alias.
+#[derive(Clone, Debug, Serialize)]
+pub struct RecordedRepairJob {
+    pub job_id: String,
+    pub source: StorageRef,
+    pub source_identity: ObjectIdentity,
+    pub operations: Vec<RecordedRepairOperation>,
+    pub incomplete_tail: bool,
+}
+#[derive(Clone, Debug, Serialize)]
+pub struct RecordedRepairOperation {
+    pub operation: usize,
+    pub source: StorageRef,
+    pub intended_name: String,
+}
+pub fn inspect_recorded_repair_job(bytes: &[u8], control: &InspectionControl) -> Result<RecordedRepairJob> {
+    control.stage("journals")?;
+    check_inspection_input(bytes, control)?;
+    let mut offset = 0usize;
+    let mut sequence = 0u64;
+    let mut previous = String::new();
+    let mut header: Option<Header> = None;
+    let mut incomplete_tail = false;
+    while offset < bytes.len() {
+        control.checkpoint()?;
+        let Some(end) = bytes[offset..].iter().position(|byte| *byte == b'\n') else { incomplete_tail = true; break; };
+        let envelope: Envelope = serde_json::from_slice(&bytes[offset..offset + end]).map_err(|_| E::CorruptJournal)?;
+        offset += end + 1;
+        if envelope.body.sequence != sequence || envelope.body.previous != previous || crate::hash(&envelope.body)? != envelope.sha256 { return Err(E::CorruptJournal); }
+        let record = envelope.body;
+        if sequence == 0 {
+            if record.phase != Phase::Header || record.operation.is_some() { return Err(E::CorruptJournal); }
+            let value: Header = decode(&record.payload)?;
+            if value.operations.len() > MAX_RESTART_OPERATIONS { return Err(E::Unsupported); }
+            if !matches!(value.schema, 1 | 2) || value.job_id != record.job_id || value.job_id.is_empty()
+                || value.job_id.len() > 100 || !value.job_id.bytes().all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+                || !valid_hash(&value.plan_sha256) || value.operations.is_empty()
+                || !matches!(value.source_identity, ObjectIdentity::Windows { .. })
+            { return Err(E::CorruptJournal); }
+            let root = comparable_path(&value.source)?;
+            if !root.is_absolute() { return Err(E::Scope); }
+            let mut seen = HashSet::new();
+            for (index, operation) in value.operations.iter().enumerate() {
+                control.checkpoint()?;
+                if operation.id != index || operation.depends_on.iter().any(|id| *id >= index)
+                    || !valid_hash(&operation.source.sha256) || operation.source.observation.size.is_none()
+                    || !matches!(operation.source.observation.identity, Some(ObjectIdentity::Windows { .. }))
+                    || !matches!(operation.source.observation.parent_identity, Some(ObjectIdentity::Windows { .. }))
+                    || !comparable_path(&operation.source.observation.reference)?.starts_with(&root)
+                    || !seen.insert(operation.source.observation.reference.clone())
+                    || operation.intended_name.is_empty() || operation.intended_name.contains(['/', '\\', ':', '\0'])
+                    || operation.intended_name == "." || operation.intended_name == ".."
+                { return Err(E::CorruptJournal); }
+            }
+            header = Some(value);
+        } else {
+            let header = header.as_ref().ok_or(E::CorruptJournal)?;
+            if record.job_id != header.job_id || record.phase == Phase::Header
+                || record.operation.is_some_and(|id| id >= header.operations.len())
+            { return Err(E::CorruptJournal); }
+        }
+        sequence = sequence.checked_add(1).ok_or(E::Unsupported)?;
+        previous = envelope.sha256;
+        control.record()?;
+    }
+    let header = header.ok_or(E::CorruptJournal)?;
+    let mut operations = Vec::new();
+    for operation in header.operations {
+        control.checkpoint()?;
+        operations.push(RecordedRepairOperation { operation: operation.id, source: operation.source.observation.reference, intended_name: operation.intended_name });
+    }
+    control.checkpoint()?;
+    Ok(RecordedRepairJob { job_id: header.job_id, source: header.source, source_identity: header.source_identity, operations, incomplete_tail })
+}
 /// Fresh explicitly granted repair roots are mandatory; serialized evidence
 /// reconstructs only read-only reconciliation, never an executable job.
 pub fn recover_repair_journal(
@@ -1327,6 +1433,23 @@ pub fn recover_repair_journal(
     bytes: &[u8],
     cancel: &AtomicBool,
 ) -> Result<RepairRecoveryReport> {
+    recover_repair_journal_inner(roots, bytes, cancel, None, 0)
+}
+/// Read-only interval observations. Cursor reorders fresh reads, never IDs or
+/// strict phase replay, and never imports prior hash verification as current.
+pub fn recover_repair_journal_controlled(
+    roots: &WindowsMutationStorage, bytes: &[u8], cancel: &AtomicBool,
+    control: &InspectionControl, start_operation: usize,
+) -> Result<RepairRecoveryReport> {
+    control.stage("journals")?;
+    check_inspection_input(bytes, control)?;
+    recover_repair_journal_inner(roots, bytes, cancel, Some(control), start_operation)
+}
+fn recover_repair_journal_inner(
+    roots: &WindowsMutationStorage, bytes: &[u8], cancel: &AtomicBool,
+    control: Option<&InspectionControl>, start_operation: usize,
+) -> Result<RepairRecoveryReport> {
+    checked_inspection(cancel, control)?;
     if bytes.len() > MAX_JOURNAL {
         return Err(E::Unsupported);
     }
@@ -1343,7 +1466,7 @@ pub fn recover_repair_journal(
     let mut active = 0usize;
     let mut stopped = false;
     while offset < bytes.len() {
-        checked(cancel)?;
+        checked_inspection(cancel, control)?;
         let Some(end) = bytes[offset..].iter().position(|b| *b == b'\n') else {
             incomplete_tail = true;
             break;
@@ -1359,6 +1482,7 @@ pub fn recover_repair_journal(
             return Err(E::CorruptJournal);
         }
         sequence += 1;
+        if let Some(control) = control { control.record()?; }
         previous = envelope.sha256;
         let record = envelope.body;
         if record.phase == Phase::Header {
@@ -1366,27 +1490,24 @@ pub fn recover_repair_journal(
                 return Err(E::CorruptJournal);
             }
             let mut value: Header = decode(&record.payload)?;
+            if control.is_some() && value.operations.len() > MAX_RESTART_OPERATIONS { return Err(E::Unsupported); }
             if !matches!(value.schema, 1 | 2)
                 || value.job_id != record.job_id
                 || value.operations.is_empty()
                 || !valid_hash(&value.plan_sha256)
-                || value.source != roots.selected_repair_reference().map_err(|_| E::Scope)?
+                || value.source != inspection_probe(cancel, control, || roots.selected_repair_reference().map_err(|_| E::Scope))?
                 || &value.source_identity
-                    != roots
-                        .selected_repair_root()
-                        .map_err(|_| E::Scope)?
-                        .identity()
+                    != inspection_probe(cancel, control, || roots.selected_repair_root().map_err(|_| E::Scope))?.identity()
             {
                 return Err(E::Scope);
             }
             value.observed_source = Some(
-                roots
-                    .selected_repair_observed_reference()
-                    .map_err(|_| E::Scope)?,
+                inspection_probe(cancel, control, || roots.selected_repair_observed_reference().map_err(|_| E::Scope))?,
             );
             let root = comparable_path(&value.source)?;
             let mut seen = HashSet::new();
             for (index, op) in value.operations.iter().enumerate() {
+                checked_inspection(cancel, control)?;
                 if op.id != index
                     || !valid_hash(&op.source.sha256)
                     || op.source.observation.size.is_none()
@@ -1417,10 +1538,11 @@ pub fn recover_repair_journal(
                 return Err(E::CorruptJournal);
             }
             let result: RepairResult = decode(&record.payload)?;
-            let recorded = states
-                .iter()
-                .filter_map(|s| s.recorded.clone())
-                .collect::<Vec<_>>();
+            let mut recorded = Vec::new();
+            for state in &states {
+                checked_inspection(cancel, control)?;
+                if let Some(item) = &state.recorded { recorded.push(item.clone()); }
+            }
             if result.total_files != header.operations.len()
                 || result.items.len() != recorded.len()
                 || result.items.len() > header.operations.len()
@@ -1672,9 +1794,16 @@ pub fn recover_repair_journal(
         state.phase = Some(record.phase);
     }
     let header = header.ok_or(E::CorruptJournal)?;
-    let mut reads = WindowsPlanningStorage::for_repair(roots)?;
-    let mut operations = Vec::new();
-    for (op, state) in header.operations.iter().zip(states) {
+    let mut reads = inspection_probe(cancel, control, || WindowsPlanningStorage::for_repair(roots))?;
+    let total = header.operations.len();
+    if start_operation > total { return Err(E::Scope); }
+    if let Some(control) = control { control.operations(total)?; }
+    let mut operations = vec![None; total];
+    for index in (start_operation..total).chain(0..start_operation) {
+        checked_inspection(cancel, control)?;
+        let op = &header.operations[index];
+        let state = &states[index];
+        if let Some(control) = control { control.begin_operation(op.id)?; }
         let mut evidence = Vec::new();
         if let Some(current) = &state.current {
             let expected = if state.replacement_identity.as_ref() == Some(&current.identity) {
@@ -1683,7 +1812,7 @@ pub fn recover_repair_journal(
                 Some(op.source.sha256.as_str())
             };
             evidence.push(inspect_evidence(
-                &mut reads, &header, "current", current, expected, cancel,
+                &mut reads, &header, "current", current, expected, cancel, control,
             )?)
         }
         if let Some(backup) = &state.backup {
@@ -1694,6 +1823,7 @@ pub fn recover_repair_journal(
                 backup,
                 Some(&op.source.sha256),
                 cancel,
+                control,
             )?)
         }
         if let Some(staged) = &state.staged {
@@ -1704,6 +1834,7 @@ pub fn recover_repair_journal(
                 staged,
                 state.staged_hash.as_deref(),
                 cancel,
+                control,
             )?)
         }
         if state.current.is_none() && state.backup.is_none() {
@@ -1722,6 +1853,7 @@ pub fn recover_repair_journal(
                 &original,
                 Some(&op.source.sha256),
                 cancel,
+                control,
             )?)
         }
         // Journal intents name candidates even if dispatch response was lost.
@@ -1769,10 +1901,11 @@ pub fn recover_repair_journal(
                     op.intended_name.clone(),
                     identity.clone(),
                     state.staged_hash.as_deref(),
-                    replacement_length(&state)?,
+                    replacement_length(state)?,
                 ));
             }
             for (role, leaf, identity, hash, length) in candidates {
+                checked_inspection(cancel, control)?;
                 let candidate = path(&original.reference)?
                     .parent()
                     .ok_or(E::CorruptJournal)?
@@ -1790,18 +1923,21 @@ pub fn recover_repair_journal(
                     e.reference == expected.reference && e.expected_identity == expected.identity
                 }) {
                     evidence.push(inspect_evidence(
-                        &mut reads, &header, role, &expected, hash, cancel,
+                        &mut reads, &header, role, &expected, hash, cancel, control,
                     )?);
                 }
             }
         }
-        operations.push(RepairRecoveryItem {
+        operations[index] = Some(RepairRecoveryItem {
             operation: op.id,
             last_phase: format!("{:?}", state.phase),
-            recorded: state.recorded,
+            recorded: state.recorded.clone(),
             evidence,
         });
+        if let Some(control) = control { control.complete_operation()?; }
     }
+    checked_inspection(cancel, control)?;
+    let operations = operations.into_iter().collect::<Option<Vec<_>>>().ok_or(E::NeedsRecovery)?;
     Ok(RepairRecoveryReport {
         job_id: header.job_id,
         recorded_finished: finished,
@@ -1816,8 +1952,9 @@ fn inspect_evidence(
     expected: &MutationObservation,
     sha: Option<&str>,
     cancel: &AtomicBool,
+    control: Option<&InspectionControl>,
 ) -> Result<RepairRecoveryEvidence> {
-    checked(cancel)?;
+    checked_inspection(cancel, control)?;
     let mut value = RepairRecoveryEvidence {
         role: role.into(),
         reference: expected.reference.clone(),
@@ -1830,12 +1967,15 @@ fn inspect_evidence(
         header.observed_source.as_ref(),
         &expected.reference,
     )?;
-    let observed = match reads.stat(&read_reference) {
-        Ok(v) => v,
-        Err(error) if error.kind == StorageErrorKind::NotFound => {
-            value.status = RepairEvidenceStatus::Missing;
-            return Ok(value);
-        }
+    let observed = inspection_probe(cancel, control, || match reads.stat(&read_reference) {
+        Ok(value) => Ok(Some(value)),
+        Err(error) if error.kind == StorageErrorKind::NotFound => Ok(None),
+        Err(_) => Err(E::Io),
+    });
+    let observed = match observed {
+        Ok(Some(observed)) => observed,
+        Ok(None) => { value.status = RepairEvidenceStatus::Missing; return Ok(value); }
+        Err(E::Cancelled) => return Err(E::Cancelled),
         Err(_) => return Ok(value),
     };
     value.observed_identity = observed.identity.clone();
@@ -1848,8 +1988,9 @@ fn inspect_evidence(
         return Ok(value);
     }
     let Some(sha) = sha else { return Ok(value) };
-    let mut input = match reads.open_read(&read_reference) {
-        Ok(v) => v,
+    let mut input = match inspection_probe(cancel, control, || reads.open_read(&read_reference).map_err(|_| E::Io)) {
+        Ok(input) => input,
+        Err(E::Cancelled) => return Err(E::Cancelled),
         Err(_) => return Ok(value),
     };
     if input
@@ -1862,11 +2003,15 @@ fn inspect_evidence(
     let mut length = 0u64;
     let mut buffer = [0; 65536];
     loop {
-        checked(cancel)?;
-        let n = match input.read(&mut buffer) {
-            Ok(n) => n,
-            Err(_) => return Ok(value),
-        };
+        checked_inspection(cancel, control)?;
+        let amount = if control.is_some() { (observed.size.ok_or(E::Stale)? - length).min(buffer.len() as u64) as usize } else { buffer.len() };
+        if amount == 0 { break; }
+        if let Some(control) = control { control.observation()?; }
+        checked_inspection(cancel, control)?;
+        let read = input.read(&mut buffer[..amount]);
+        if let (Some(control), Ok(count)) = (control, &read) { control.bytes(*count)?; }
+        checked_inspection(cancel, control)?;
+        let n = match read { Ok(count) => count, Err(_) => return Ok(value) };
         if n == 0 {
             break;
         }
@@ -1876,16 +2021,25 @@ fn inspect_evidence(
         }
         hash.update(&buffer[..n]);
     }
-    value.status = if Some(length) == observed.size
-        && format!("{:x}", hash.finalize()) == sha
-        && reads
-            .stat(&read_reference)
-            .is_ok_and(|again| again == observed)
-    {
-        RepairEvidenceStatus::Verified
-    } else {
-        RepairEvidenceStatus::Changed
-    };
+    if control.is_some() {
+        checked_inspection(cancel, control)?;
+        if let Some(control) = control { control.observation()?; }
+        let mut extra = [0u8; 1];
+        checked_inspection(cancel, control)?;
+        let read = input.read(&mut extra);
+        if let (Some(control), Ok(count)) = (control, &read) { control.bytes(*count)?; }
+        checked_inspection(cancel, control)?;
+        if !matches!(read, Ok(0)) { return Ok(value); }
+    }
+    let unchanged = if Some(length) == observed.size && format!("{:x}", hash.finalize()) == sha {
+        match inspection_probe(cancel, control, || reads.stat(&read_reference).map_err(|_| E::Io)) {
+            Ok(again) => again == observed,
+            Err(E::Cancelled) => return Err(E::Cancelled),
+            Err(_) => false,
+        }
+    } else { false };
+    value.status = if unchanged { RepairEvidenceStatus::Verified } else { RepairEvidenceStatus::Changed };
+    checked_inspection(cancel, control)?;
     Ok(value)
 }
 
