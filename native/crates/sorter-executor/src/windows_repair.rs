@@ -1615,15 +1615,15 @@ pub fn recover_repair_journal(
                     Some(op.source.sha256.as_str()),
                 ));
             }
-            if effective_phase == Some(Phase::PublishPrepared) {
-                if let Some(identity) = &state.replacement_identity {
-                    candidates.push((
-                        "published_candidate",
-                        op.intended_name.clone(),
-                        identity.clone(),
-                        state.staged_hash.as_deref(),
-                    ));
-                }
+            if effective_phase == Some(Phase::PublishPrepared)
+                && let Some(identity) = &state.replacement_identity
+            {
+                candidates.push((
+                    "published_candidate",
+                    op.intended_name.clone(),
+                    identity.clone(),
+                    state.staged_hash.as_deref(),
+                ));
             }
             for (role, leaf, identity, hash) in candidates {
                 let candidate = path(&original.reference)?
