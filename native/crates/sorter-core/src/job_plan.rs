@@ -542,7 +542,11 @@ pub fn plan_job_controlled(
     if request.alias_rows.iter().any(|r| r.len() != 2) {
         blockers.push("MALFORMED_ALIAS_ROWS".into());
     }
-    blockers.extend(audit_observations(&observations));
+    blockers.extend(audit_observations(
+        &observations,
+        &request.source,
+        request.target.as_ref(),
+    ));
     blockers.sort();
     blockers.dedup();
     let clock = std::rc::Rc::new(std::cell::Cell::new(0));
@@ -608,10 +612,11 @@ pub fn plan_job_controlled(
     state.plan.predicted_legacy_counters.top_artists = state.artist_counts;
     state.plan.predicted_legacy_counters.artist_folders_created = state.created_artists.len();
     state.plan.metadata_observations = recorded.take();
-    state
-        .plan
-        .blockers
-        .extend(audit_observations(&state.plan.observations));
+    state.plan.blockers.extend(audit_observations(
+        &state.plan.observations,
+        &request.source,
+        request.target.as_ref(),
+    ));
     if observed_overlap(
         &state.plan.observations,
         &request.source,
@@ -666,7 +671,11 @@ fn observed_overlap(
     };
     reaches(a, b) || reaches(b, a)
 }
-fn audit_observations(observations: &[EntryObservation]) -> Vec<String> {
+fn audit_observations(
+    observations: &[EntryObservation],
+    source: &StorageRef,
+    target: Option<&StorageRef>,
+) -> Vec<String> {
     let mut blockers = vec![];
     let mut names = std::collections::HashMap::new();
     let mut cases = std::collections::HashMap::new();
@@ -684,7 +693,12 @@ fn audit_observations(observations: &[EntryObservation]) -> Vec<String> {
         {
             blockers.push("UNKNOWN_CAPABILITY".into());
         }
-        if names
+        // Selected roots are scope boundaries, not siblings in one observed parent.
+        // Their labels cannot establish overlap; observed_overlap and the platform
+        // executor must still establish reference/identity/ancestry independently.
+        let selected_root = &e.reference == source || target == Some(&e.reference);
+        if !selected_root
+            && names
             .insert(
                 (e.parent_identity.clone(), e.name.clone()),
                 e.reference.clone(),
@@ -693,7 +707,8 @@ fn audit_observations(observations: &[EntryObservation]) -> Vec<String> {
         {
             blockers.push("AMBIGUOUS_DISPLAY_NAME".into());
         }
-        if cases
+        if !selected_root
+            && cases
             .insert(
                 (e.parent_identity.clone(), e.name.to_lowercase()),
                 e.name.clone(),
@@ -738,3 +753,6 @@ pub fn verify_job_plan_binding(plan: &JobPlanV2) -> Result<(), JobError> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod root_audit_tests;
