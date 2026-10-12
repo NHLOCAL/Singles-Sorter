@@ -233,7 +233,12 @@ mod selected {
             .collect::<Vec<_>>();
         assert_eq!(backups.len(), 1);
         assert_eq!(fs::read(&backups[0]).unwrap(), original);
-        assert!(result["recovery"]["recorded_finished"].as_bool().unwrap());
+        assert_eq!(
+            result["recovery"]["recorded_finished"],
+            true,
+            "repair recovery must verify the journal; result={result}; planned={planned}"
+        );
+        assert!(result["recovery_error"].is_null(), "{result}");
     }
     #[test]
     fn actual_source_only_repair_preserves_original_and_audio() {

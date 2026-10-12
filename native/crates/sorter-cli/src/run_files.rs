@@ -330,17 +330,20 @@ fn execute() -> Result<(), Failure> {
                     cancel.store(true, Ordering::Release);
                 }
             });
-            let recovery = if job.journal_locations().is_empty() {
-                None
+            let (recovery, recovery_error) = if job.journal_locations().is_empty() {
+                (None, None)
             } else {
-                job.inspect_recovery(&cancel).ok()
+                match job.inspect_recovery(&cancel) {
+                    Ok(report) => (Some(report), None),
+                    Err(error) => (None, Some(error.to_string())),
+                }
             };
             match result {
                 Ok(result) => {
                     let complete = result.status == RepairJobStatus::Complete;
                     event(
                         "result",
-                        json!({"job_id":native_id,"mode":"FixNames","status":result.status,"repair":result,"recovery":recovery,"journal_directory":request.journal_directory,"invalid_control":invalid_control.load(Ordering::Acquire)}),
+                        json!({"job_id":native_id,"mode":"FixNames","status":result.status,"repair":result,"recovery":recovery,"recovery_error":recovery_error,"journal_directory":request.journal_directory,"invalid_control":invalid_control.load(Ordering::Acquire)}),
                     )?;
                     if output_failed || invalid_control.load(Ordering::Acquire) || !complete {
                         return Err(Failure::new(
@@ -354,7 +357,7 @@ fn execute() -> Result<(), Failure> {
                 Err(error) => {
                     event(
                         "result",
-                        json!({"job_id":native_id,"mode":"FixNames","status":if job.journal_locations().is_empty() && cancel.load(Ordering::Acquire) {"cancelled"} else {"needs_recovery"},"error":error.to_string(),"recovery":recovery,"journal_directory":request.journal_directory}),
+                        json!({"job_id":native_id,"mode":"FixNames","status":if job.journal_locations().is_empty() && cancel.load(Ordering::Acquire) {"cancelled"} else {"needs_recovery"},"error":error.to_string(),"recovery":recovery,"recovery_error":recovery_error,"journal_directory":request.journal_directory}),
                     )?;
                     return Err(Failure::new(
                         1,
