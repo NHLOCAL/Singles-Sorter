@@ -98,3 +98,29 @@ fn selected_root_identity_and_ancestry_overlap_checks_remain() {
     let blockers = audit_observations(&observations, &source.reference, Some(&target.reference));
     assert!(blockers.iter().any(|b| b == "LINK_OR_REPARSE"));
 }
+
+#[test]
+fn root_overlap_requires_reference_identity_or_observed_ancestry() {
+    let mut source = entry("primary:one", "primary:one", "same");
+    let mut target = entry("primary:two", "primary:two", "same");
+    let observations = vec![source.clone(), target.clone()];
+    assert!(!observed_overlap(
+        &observations,
+        &source.reference,
+        Some(&target.reference)
+    ));
+    assert!(observed_overlap(
+        &observations,
+        &source.reference,
+        Some(&source.reference)
+    ));
+    assert!(!observed_overlap(&observations, &source.reference, None));
+    source.identity = Some(ObjectIdentity::Test { id: "one".into() });
+    target.identity = Some(ObjectIdentity::Test { id: "two".into() });
+    let observations = vec![source.clone(), target.clone()];
+    assert!(!observed_overlap(
+        &observations,
+        &source.reference,
+        Some(&target.reference)
+    ));
+}

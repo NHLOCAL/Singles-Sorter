@@ -649,6 +649,15 @@ fn observed_overlap(
     let Some(b) = observations.iter().find(|e| &e.reference == target) else {
         return false;
     };
+    // Equal scope references or observed object identities overlap even when
+    // neither root has an observed parent. Missing identities are not equal.
+    if source == target
+        || a.identity
+            .as_ref()
+            .is_some_and(|id| b.identity.as_ref() == Some(id))
+    {
+        return true;
+    }
     let reaches = |child: &EntryObservation, ancestor: &EntryObservation| {
         let Some(goal) = &ancestor.identity else {
             return false;
