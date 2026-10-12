@@ -75,7 +75,8 @@ impl ExecutionDecisions {
                 });
             }
         }
-        if operations.values().any(|ids| !ids.is_empty()) || (no_op && !plan.operations.is_empty()) {
+        if operations.values().any(|ids| !ids.is_empty()) || (no_op && !plan.operations.is_empty())
+        {
             return Err(E::InvalidBinding);
         }
         Ok(Self {

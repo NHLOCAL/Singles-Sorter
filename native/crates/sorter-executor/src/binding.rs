@@ -528,7 +528,8 @@ pub(crate) fn validate_plan_scope_domain(
         resources,
         scope,
         (domain, None),
-    ).map(|(source, target, _)| (source, target))
+    )
+    .map(|(source, target, _)| (source, target))
 }
 fn check_binding_cancel(cancel: Option<&std::sync::atomic::AtomicBool>) -> Result<()> {
     if cancel.is_some_and(|flag| flag.load(std::sync::atomic::Ordering::Acquire)) {
@@ -551,7 +552,11 @@ pub(crate) fn validate_plan_scope_inner(
     resources: &Resources,
     scope: &ExecutionScope,
     control: (ExecutionDomain, Option<&std::sync::atomic::AtomicBool>),
-) -> Result<(EntryObservation, EntryObservation, crate::execution_decisions::ExecutionDecisions)> {
+) -> Result<(
+    EntryObservation,
+    EntryObservation,
+    crate::execution_decisions::ExecutionDecisions,
+)> {
     let (domain, cancel) = control;
     check_binding_cancel(cancel)?;
     verify_job_plan_binding(plan).map_err(|_| E::InvalidBinding)?;
@@ -645,7 +650,8 @@ pub(crate) fn validate_plan_scope_inner(
         return Err(E::Scope);
     }
     check_binding_cancel(cancel)?;
-    let execution_decisions = crate::execution_decisions::ExecutionDecisions::fresh(&fresh, false, cancel)?;
+    let execution_decisions =
+        crate::execution_decisions::ExecutionDecisions::fresh(&fresh, false, cancel)?;
     check_binding_cancel(cancel)?;
     Ok((root, target, execution_decisions))
 }
@@ -954,7 +960,11 @@ pub fn prepare_scope(
     })
 }
 
-fn validate_resources(plan: &JobPlanV2, resources: &Resources, inspected_resources: &Resources) -> Result<()> {
+fn validate_resources(
+    plan: &JobPlanV2,
+    resources: &Resources,
+    inspected_resources: &Resources,
+) -> Result<()> {
     if resources != inspected_resources
         || resources.resource_ids != plan.request.resource_ids
         || resources.adapter_versions != plan.request.adapter_versions
@@ -992,25 +1002,49 @@ pub fn validate_noop_execution_decisions(
     cancel: &std::sync::atomic::AtomicBool,
 ) -> Result<crate::execution_decisions::ExecutionDecisions> {
     check_binding_cancel(Some(cancel))?;
-    if !crate::no_op::is_clean_sort_noop(plan) { return Err(E::Unsupported); }
+    if !crate::no_op::is_clean_sort_noop(plan) {
+        return Err(E::Unsupported);
+    }
     validate_resources(plan, resources, inspected_resources)?;
     let target = plan.request.target.as_ref().ok_or(E::InvalidBinding)?;
     let expected = |reference: &StorageRef| -> Result<&EntryObservation> {
-        let mut entries = plan.observations.iter().filter(|entry| &entry.reference == reference);
+        let mut entries = plan
+            .observations
+            .iter()
+            .filter(|entry| &entry.reference == reference);
         let entry = entries.next().ok_or(E::Scope)?;
-        if entries.next().is_some() || entry.identity.is_none() || entry.kind != EntryKind::Directory {
+        if entries.next().is_some()
+            || entry.identity.is_none()
+            || entry.kind != EntryKind::Directory
+        {
             return Err(E::Scope);
         }
         Ok(entry)
     };
     let source_root = expected(&plan.request.source)?;
     let target_root = expected(target)?;
-    let mut checked = CheckedRecognition { inner: recognition, failed: false };
+    let mut checked = CheckedRecognition {
+        inner: recognition,
+        failed: false,
+    };
     let fresh = plan_job_controlled(
-        &plan.request, storage, metadata, &mut checked, &BindingPlanningControl(Some(cancel)),
-    ).map_err(|_| if check_binding_cancel(Some(cancel)).is_err() { E::Cancelled } else { E::Stale })?;
+        &plan.request,
+        storage,
+        metadata,
+        &mut checked,
+        &BindingPlanningControl(Some(cancel)),
+    )
+    .map_err(|_| {
+        if check_binding_cancel(Some(cancel)).is_err() {
+            E::Cancelled
+        } else {
+            E::Stale
+        }
+    })?;
     check_binding_cancel(Some(cancel))?;
-    if checked.failed { return Err(E::Unsupported); }
+    if checked.failed {
+        return Err(E::Unsupported);
+    }
     if fresh.binding_sha256 != plan.binding_sha256 || !crate::no_op::is_clean_sort_noop(&fresh) {
         return Err(E::Stale);
     }
@@ -1018,10 +1052,13 @@ pub fn validate_noop_execution_decisions(
     check_binding_cancel(Some(cancel))?;
     let target_result = storage.stat(target);
     check_binding_cancel(Some(cancel))?;
-    if source_result.map_err(|_| E::Stale)? != *source_root || target_result.map_err(|_| E::Stale)? != *target_root {
+    if source_result.map_err(|_| E::Stale)? != *source_root
+        || target_result.map_err(|_| E::Stale)? != *target_root
+    {
         return Err(E::Scope);
     }
-    let receipt = crate::execution_decisions::ExecutionDecisions::fresh(&fresh, true, Some(cancel))?;
+    let receipt =
+        crate::execution_decisions::ExecutionDecisions::fresh(&fresh, true, Some(cancel))?;
     check_binding_cancel(Some(cancel))?;
     Ok(receipt)
 }

@@ -35,17 +35,32 @@ fn distinct_root_case_labels_do_not_bypass_real_child_collisions() {
     let source = entry("primary:one/artist", "primary:one/artist", "Artist");
     let target = entry("primary:two/artist", "primary:two/artist", "artist");
     let mut first = entry("primary:one/artist", "primary:one/artist/a", "same.wav");
-    first.parent_identity = Some(ObjectIdentity::Test { id: "parent".into() });
+    first.parent_identity = Some(ObjectIdentity::Test {
+        id: "parent".into(),
+    });
     let mut second = first.clone();
     second.reference = entry("primary:one/artist", "primary:one/artist/b", "same.wav").reference;
-    let observations = vec![source.clone(), target.clone(), first.clone(), second.clone()];
+    let observations = vec![
+        source.clone(),
+        target.clone(),
+        first.clone(),
+        second.clone(),
+    ];
     let blockers = audit_observations(&observations, &source.reference, Some(&target.reference));
     assert!(blockers.iter().any(|b| b == "AMBIGUOUS_DISPLAY_NAME"));
-    assert!(!blockers.iter().any(|b| b == "CASE_COLLISION_REQUIRES_PROVIDER_RESOLUTION"));
+    assert!(
+        !blockers
+            .iter()
+            .any(|b| b == "CASE_COLLISION_REQUIRES_PROVIDER_RESOLUTION")
+    );
     second.name = "SAME.WAV".into();
     let observations = vec![source.clone(), target.clone(), first, second];
     let blockers = audit_observations(&observations, &source.reference, Some(&target.reference));
-    assert!(blockers.iter().any(|b| b == "CASE_COLLISION_REQUIRES_PROVIDER_RESOLUTION"));
+    assert!(
+        blockers
+            .iter()
+            .any(|b| b == "CASE_COLLISION_REQUIRES_PROVIDER_RESOLUTION")
+    );
 }
 
 #[test]
@@ -55,13 +70,29 @@ fn selected_root_identity_and_ancestry_overlap_checks_remain() {
     let mut target = entry("primary:alias", "primary:alias", "same");
     target.identity = source.identity.clone();
     let observations = vec![source.clone(), target.clone()];
-    assert!(observed_overlap(&observations, &source.reference, Some(&target.reference)));
-    assert!(observed_overlap(&observations, &source.reference, Some(&source.reference)));
+    assert!(observed_overlap(
+        &observations,
+        &source.reference,
+        Some(&target.reference)
+    ));
+    assert!(observed_overlap(
+        &observations,
+        &source.reference,
+        Some(&source.reference)
+    ));
     target.identity = Some(ObjectIdentity::Test { id: "child".into() });
     target.parent_identity = source.identity.clone();
     let observations = vec![source.clone(), target.clone()];
-    assert!(observed_overlap(&observations, &source.reference, Some(&target.reference)));
-    assert!(observed_overlap(&observations, &target.reference, Some(&source.reference)));
+    assert!(observed_overlap(
+        &observations,
+        &source.reference,
+        Some(&target.reference)
+    ));
+    assert!(observed_overlap(
+        &observations,
+        &target.reference,
+        Some(&source.reference)
+    ));
     source.kind = EntryKind::LinkOrReparse;
     let observations = vec![source.clone(), target.clone()];
     let blockers = audit_observations(&observations, &source.reference, Some(&target.reference));

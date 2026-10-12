@@ -699,21 +699,21 @@ fn audit_observations(
         let selected_root = &e.reference == source || target == Some(&e.reference);
         if !selected_root
             && names
-            .insert(
-                (e.parent_identity.clone(), e.name.clone()),
-                e.reference.clone(),
-            )
-            .is_some_and(|old| old != e.reference)
+                .insert(
+                    (e.parent_identity.clone(), e.name.clone()),
+                    e.reference.clone(),
+                )
+                .is_some_and(|old| old != e.reference)
         {
             blockers.push("AMBIGUOUS_DISPLAY_NAME".into());
         }
         if !selected_root
             && cases
-            .insert(
-                (e.parent_identity.clone(), e.name.to_lowercase()),
-                e.name.clone(),
-            )
-            .is_some_and(|old| old != e.name)
+                .insert(
+                    (e.parent_identity.clone(), e.name.to_lowercase()),
+                    e.name.clone(),
+                )
+                .is_some_and(|old| old != e.name)
         {
             blockers.push("CASE_COLLISION_REQUIRES_PROVIDER_RESOLUTION".into());
         }

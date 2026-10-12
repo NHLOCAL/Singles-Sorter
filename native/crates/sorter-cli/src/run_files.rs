@@ -334,8 +334,14 @@ pub(super) fn execute_request(
             };
             let (mut recognition, _, recognition_resources, recognition_adapters) =
                 plan_files::recognition(&request.preview.ai_profile)?;
-            if !fresh_plan.request.resource_ids.ends_with(&recognition_resources)
-                || !fresh_plan.request.adapter_versions.ends_with(&recognition_adapters)
+            if !fresh_plan
+                .request
+                .resource_ids
+                .ends_with(&recognition_resources)
+                || !fresh_plan
+                    .request
+                    .adapter_versions
+                    .ends_with(&recognition_adapters)
             {
                 return Err(Failure::new(
                     1,

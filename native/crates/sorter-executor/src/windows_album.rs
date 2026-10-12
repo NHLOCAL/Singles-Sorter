@@ -3533,7 +3533,10 @@ impl SelectedWindowsAlbumJob {
                 roots, &validated, cancel,
             )?))
         };
-        Ok(Self { inner, execution_decisions })
+        Ok(Self {
+            inner,
+            execution_decisions,
+        })
     }
     pub fn job_id(&self) -> &str {
         match &self.inner {

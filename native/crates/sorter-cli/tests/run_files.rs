@@ -260,10 +260,7 @@ mod selected {
             decisions["plan_binding_sha256"],
             planned["data"]["plan"]["binding_sha256"]
         );
-        assert_eq!(
-            decisions["decisions"],
-            planned["data"]["plan"]["decisions"]
-        );
+        assert_eq!(decisions["decisions"], planned["data"]["plan"]["decisions"]);
         let routes = decisions["single_routes"].as_array().unwrap();
         assert_eq!(routes.len(), 2);
         for (id, route) in routes.iter().enumerate() {
@@ -353,10 +350,7 @@ mod selected {
                 assert_eq!(decisions["schema_version"], 1);
                 assert_eq!(decisions["basis"], "fresh_noop_preflight");
                 assert_eq!(decisions["plan_binding_sha256"], result["plan_id"]);
-                assert_eq!(
-                    decisions["decisions"],
-                    planned["data"]["plan"]["decisions"]
-                );
+                assert_eq!(decisions["decisions"], planned["data"]["plan"]["decisions"]);
                 assert_eq!(decisions["single_routes"], json!([]));
                 assert_eq!(
                     result["legacy_summary"],
