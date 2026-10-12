@@ -8,8 +8,8 @@ use sorter_core::{
     Settings,
     discovery::*,
     job_plan::{
-        DisabledRecognition, JobMode, JobRequestV2, OperationKind, PlanningBoundary, PlanningControl,
-        plan_job_controlled,
+        DisabledRecognition, JobMode, JobRequestV2, OperationKind, PlanningBoundary,
+        PlanningControl, plan_job_controlled,
     },
     metadata::{MetadataError, MetadataFields, MetadataProvider},
 };
@@ -110,7 +110,8 @@ fn parent_group(
         return Ok(None);
     };
     let parent = entries.get(token.as_str()).ok_or("missing_parent")?;
-    if !parent.directory || parent.authority != entry.authority || parent.tree_uri != entry.tree_uri {
+    if !parent.directory || parent.authority != entry.authority || parent.tree_uri != entry.tree_uri
+    {
         return Err("invalid_parent_scope".into());
     }
     Ok(Some(ObjectIdentity::Android {

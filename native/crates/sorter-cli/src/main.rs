@@ -360,8 +360,15 @@ fn main() -> ExitCode {
             );
         }
     };
-    if args.first().is_some_and(|arg| !matches!(arg.as_str(), "classify" | "plan" | "plan-files" | "run-files" | "capabilities"))
-        && !args.iter().take_while(|arg| arg.as_str() != "--").any(|arg| matches!(arg.as_str(), "--json" | "--ndjson"))
+    if args.first().is_some_and(|arg| {
+        !matches!(
+            arg.as_str(),
+            "classify" | "plan" | "plan-files" | "run-files" | "capabilities"
+        )
+    }) && !args
+        .iter()
+        .take_while(|arg| arg.as_str() != "--")
+        .any(|arg| matches!(arg.as_str(), "--json" | "--ndjson"))
     {
         return legacy::run(&args);
     }

@@ -75,7 +75,9 @@ impl Host {
                                 status: operation
                                     .evidence
                                     .iter()
-                                    .map(|evidence| format!("{}:{:?}", evidence.role, evidence.status))
+                                    .map(|evidence| {
+                                        format!("{}:{:?}", evidence.role, evidence.status)
+                                    })
                                     .collect::<Vec<_>>()
                                     .join(", "),
                             })

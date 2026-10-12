@@ -114,24 +114,51 @@ fn execute() -> Result<(), Failure> {
     let (tx, rx) = mpsc::sync_channel(1);
     let invalid_control = Arc::new(AtomicBool::new(false));
     let reader_invalid = invalid_control.clone();
-    std::thread::Builder::new().name("execution-stdin".into()).spawn(move || {
-        let stdin = io::stdin();
-        read_requests(stdin.lock(), tx, &reader_cancel, &reader_invalid);
-    }).map_err(|e| Failure::new(1, "WORKER_FAILED", e.to_string()))?;
-    let request_bytes = rx.recv().map_err(|_| Failure::new(2, "INVALID_INPUT", "Expected a run-files request line"))??;
-    let request: Request = serde_json::from_slice(&request_bytes).map_err(|e| Failure::new(2, "INVALID_INPUT", e.to_string()))?;
+    std::thread::Builder::new()
+        .name("execution-stdin".into())
+        .spawn(move || {
+            let stdin = io::stdin();
+            read_requests(stdin.lock(), tx, &reader_cancel, &reader_invalid);
+        })
+        .map_err(|e| Failure::new(1, "WORKER_FAILED", e.to_string()))?;
+    let request_bytes = rx
+        .recv()
+        .map_err(|_| Failure::new(2, "INVALID_INPUT", "Expected a run-files request line"))??;
+    let request: Request = serde_json::from_slice(&request_bytes)
+        .map_err(|e| Failure::new(2, "INVALID_INPUT", e.to_string()))?;
     let source = request.preview.source.clone();
     let target = request.preview.target.clone();
     let journal_directory = request.journal_directory.clone();
-    execute_request(request, &cancel, &invalid_control, &mut |plan, inference_executed| {
-        event("planned", json!({"plan":plan,"inference_executed":inference_executed,"apply_eligible":true,"source":source,"target":target,"journal_directory":journal_directory,"confirmation":{"action":"apply","plan_id":plan.binding_sha256}}))?;
-        let decision = rx.recv().map_err(|_| Failure::new(2, "CONFIRMATION_REQUIRED", "stdin ended before explicit confirmation; no files changed"))??;
-        match serde_json::from_slice::<Decision>(&decision).map_err(|e| Failure::new(2, "INVALID_CONFIRMATION", e.to_string()))? {
-            Decision::Cancel => Ok(false),
-            Decision::Apply { plan_id } if plan_id == plan.binding_sha256 => Ok(true),
-            Decision::Apply { .. } => Err(Failure::new(2, "PLAN_CHANGED", "Confirmation must identify the exact retained inspected plan")),
-        }
-    }, &mut event)
+    execute_request(
+        request,
+        &cancel,
+        &invalid_control,
+        &mut |plan, inference_executed| {
+            event(
+                "planned",
+                json!({"plan":plan,"inference_executed":inference_executed,"apply_eligible":true,"source":source,"target":target,"journal_directory":journal_directory,"confirmation":{"action":"apply","plan_id":plan.binding_sha256}}),
+            )?;
+            let decision = rx.recv().map_err(|_| {
+                Failure::new(
+                    2,
+                    "CONFIRMATION_REQUIRED",
+                    "stdin ended before explicit confirmation; no files changed",
+                )
+            })??;
+            match serde_json::from_slice::<Decision>(&decision)
+                .map_err(|e| Failure::new(2, "INVALID_CONFIRMATION", e.to_string()))?
+            {
+                Decision::Cancel => Ok(false),
+                Decision::Apply { plan_id } if plan_id == plan.binding_sha256 => Ok(true),
+                Decision::Apply { .. } => Err(Failure::new(
+                    2,
+                    "PLAN_CHANGED",
+                    "Confirmation must identify the exact retained inspected plan",
+                )),
+            }
+        },
+        &mut event,
+    )
 }
 
 #[cfg(all(windows, feature = "selected-windows-execution"))]
@@ -179,7 +206,11 @@ pub(super) fn execute_request(
     };
     use std::sync::atomic::Ordering;
     if request.schema_version != 1 {
-        return Err(Failure::new(2, "UNSUPPORTED_SCHEMA", "run-files requires schema_version 1"));
+        return Err(Failure::new(
+            2,
+            "UNSUPPORTED_SCHEMA",
+            "run-files requires schema_version 1",
+        ));
     }
     plan_files::validate_path(&request.journal_directory)?;
     let planned = plan_files::execute_request(&request.preview)?;

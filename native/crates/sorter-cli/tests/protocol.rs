@@ -176,10 +176,7 @@ fn capabilities_declares_every_phase_boundary_and_upcoming_protocols() {
     ] {
         assert_eq!(capabilities[feature], false, "{feature}");
     }
-    assert_eq!(
-        capabilities["upcoming"],
-        json!(["ndjson_streaming"])
-    );
+    assert_eq!(capabilities["upcoming"], json!(["ndjson_streaming"]));
 }
 
 #[test]
