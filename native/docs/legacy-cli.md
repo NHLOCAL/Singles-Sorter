@@ -47,9 +47,27 @@ or child directory is created before selected-root validation. The actual locati
 is reported. Journals and original repair backups are retained without automatic
 replay, cleanup or rollback.
 
-Log levels filter stderr diagnostics. `--dry-run` writes its requested decisions
-to stdout. Unlike v14's implicit `logs/` directory, no log file is created by
-default; shell redirection can capture the output. Exit codes distinguish success
+Windows positional execution restores v14's UTF-8 file and stderr handlers.
+The selected log level filters both; record format is
+`YYYY-MM-DD HH:MM:SS - MusicSorter - LEVEL - message`, using local Windows time.
+The log is `logs/music_sorter_YYYYMMDD_HHMMSS_PID.log` under CWD. A separate
+identity-pinned diagnostic sink holds that parent and exclusively creates the
+file. Existing files are never adopted or truncated, and write/sync uncertainty
+is an explicit failure. The log capability grants no media or journal authority.
+`--dry-run` remains an explicit read-only addition and creates no log; its
+decisions go to stdout. Machine JSON/NDJSON protocols, help and invalid argument
+handling do not create logs. Non-Windows builds currently expose read-only
+preview and retain their stderr-only diagnostic format.
+
+Before creating a log, pinned ancestry checks refuse intersections between
+CWD/logs and the selected source, target or journal roots. Run from a separate
+working directory in that case. No log is created inside a music tree and then
+silently excluded from original album policy. Invalid/unverifiable selected
+paths are reported on stderr before file logging begins. Log creation itself can
+fail after leaving a new directory or empty file; the error does not claim a
+clean no-effect result, and no automatic cleanup follows. The no-effect acceptance
+exception names only the newly observed log and optional literal logs directory,
+never an arbitrary subtree. Exit codes distinguish success
 (0), processing/partial failure (1), argument error (2), unavailable capability
 (3), and cooperative cancellation (130). V14 sometimes swallowed per-file errors
 and returned 0; this frontend reports incomplete work with a nonzero exit.
@@ -65,7 +83,11 @@ The ABI follows [Microsoft's console handler documentation](https://learn.micros
 Parser fixtures and authored subprocess tests are required on final CI. Actual
 Windows tests cover default batch Copy/Move with closed stdin, relative paths,
 personal CSV, default and explicit existing journal roots, and rejection of an
-overlapping journal. These are source tests until the exact candidate passes.
+overlapping journal. The two logging subprocess cases additionally cover all five
+levels, exact UTF-8 stderr/file agreement, pre-create source/target/journal
+overlap refusal and missing selected roots. Both staged and extracted consumer
+EXEs repeat the logging/overlap checks. These are source tests until the exact
+candidate passes.
 The CLI package profile must enable selected execution and independently exercise
 the extracted executable before it can be called an executable legacy replacement.
 Album execution, cross-volume Move, duet source retirement and unsupported tag

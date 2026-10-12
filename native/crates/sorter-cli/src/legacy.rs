@@ -3,6 +3,7 @@ use super::{
     Failure,
     legacy_args::{self, LogLevel, Options, Parsed},
     plan_files,
+    legacy_log::Logger,
 };
 use sorter_core::job_plan::{JobMode, JobPlanV2, OperationKind};
 use std::{
@@ -41,25 +42,15 @@ Unsupported plans are refused before mutation. Completed partial work is reporte
 retained repair backups and journals are never automatically deleted or replayed.
 Exit codes: 0 complete; 1 processing/partial failure; 2 invalid arguments;
 3 unavailable capability; 130 cooperative Ctrl-C cancellation.
-Diagnostics go to stderr; --dry-run decisions go to stdout. No log file is created
-implicitly. The supplied-facts and real-file machine protocols remain separate:
+Windows execution logs to stderr and a new UTF-8 logs/music_sorter_TIMESTAMP_PID.log
+under the current directory. This logs directory must be separate from selected
+media and journal roots. --dry-run decisions go to stdout without a log file.
+The supplied-facts and real-file machine protocols remain separate:
 classify --json; plan --json; plan-files --json; run-files --ndjson;
 capabilities --json. The supplied-facts commands never perform physical changes;
 unsupported capabilities fail closed.
 ";
 
-fn log(level: LogLevel, threshold: LogLevel, message: &str) -> Result<(), Failure> {
-    if level < threshold {
-        return Ok(());
-    }
-    writeln!(
-        io::stderr().lock(),
-        "{} - MusicSorter - {}",
-        level.name(),
-        message
-    )
-    .map_err(|e| Failure::new(1, "OUTPUT_ERROR", e.to_string()))
-}
 fn absolute(path: &Path) -> Result<PathBuf, Failure> {
     if path.as_os_str().is_empty() || path.to_str().is_none_or(|s| s.contains('\0')) {
         return Err(Failure::new(
@@ -245,7 +236,33 @@ fn describe(plan: &JobPlanV2, output: &mut impl Write) -> Result<(), Failure> {
     }
     Ok(())
 }
-fn execute(options: &Options) -> Result<(), Failure> {
+#[cfg(all(windows, feature = "selected-windows-execution"))]
+fn journal_directory(options: &Options) -> Result<PathBuf, Failure> {
+    match &options.journal_directory {
+            Some(path) => absolute(path),
+            None => absolute(&PathBuf::from(
+                std::env::var_os("LOCALAPPDATA").ok_or_else(|| {
+                    Failure::new(
+                        2,
+                        "JOURNAL_REQUIRED",
+                        "LOCALAPPDATA is unavailable; provide an existing --journal-directory",
+                    )
+                })?,
+            )),
+    }
+}
+fn log_exclusions(options: &Options) -> Result<Vec<PathBuf>, Failure> {
+    #[cfg(all(windows, feature = "selected-windows-execution"))]
+    if !options.dry_run {
+        let request = request(options)?;
+        let mut roots = vec![request.source, journal_directory(options)?];
+        if let Some(target) = request.target { roots.push(target); }
+        return Ok(roots);
+    }
+    let _ = options;
+    Ok(vec![])
+}
+fn execute(options: &Options, logger: &Logger) -> Result<(), Failure> {
     if !options.dry_run && !cfg!(all(windows, feature = "selected-windows-execution")) {
         return Err(Failure::unsupported(
             "This build cannot execute positional jobs; use --dry-run for an explicit read-only plan or the Windows selected-execution build",
@@ -253,15 +270,13 @@ fn execute(options: &Options) -> Result<(), Failure> {
     }
     let request = request(options)?;
     if options.dry_run && options.journal_directory.is_some() {
-        log(
+        logger.emit(
             LogLevel::Debug,
-            options.log_level,
             "Dry run does not open or create journals",
         )?;
     }
-    log(
+    logger.emit(
         LogLevel::Info,
-        options.log_level,
         if options.fix_names {
             "Starting filename and metadata repair"
         } else {
@@ -269,9 +284,8 @@ fn execute(options: &Options) -> Result<(), Failure> {
         },
     )?;
     if matches!(request.ai_profile, plan_files::RequestedAi::Disabled) {
-        log(
+        logger.emit(
             LogLevel::Info,
-            options.log_level,
             "AI disabled; using the released alias and metadata rules",
         )?;
     }
@@ -281,9 +295,8 @@ fn execute(options: &Options) -> Result<(), Failure> {
             .plan
             .ok_or_else(|| Failure::new(1, "PLAN_MISSING", "No complete plan was produced"))?;
         describe(&plan, &mut io::stdout().lock())?;
-        log(
+        logger.emit(
             LogLevel::Info,
-            options.log_level,
             "Dry run complete; no files changed",
         )?;
         return Ok(());
@@ -291,23 +304,11 @@ fn execute(options: &Options) -> Result<(), Failure> {
     #[cfg(all(windows, feature = "selected-windows-execution"))]
     {
         use std::sync::atomic::{AtomicBool, Ordering};
-        let journal_directory = match &options.journal_directory {
-            Some(path) => absolute(path)?,
-            None => absolute(&PathBuf::from(
-                std::env::var_os("LOCALAPPDATA").ok_or_else(|| {
-                    Failure::new(
-                        2,
-                        "JOURNAL_REQUIRED",
-                        "LOCALAPPDATA is unavailable; provide an existing --journal-directory",
-                    )
-                })?,
-            ))?,
-        };
+        let journal_directory = journal_directory(options)?;
         // No mkdir: all journal paths must already exist, pass the same pinned
         // root observations and be disjoint from the selected source/target.
-        log(
+        logger.emit(
             LogLevel::Info,
-            options.log_level,
             &format!("Journal directory: {}", journal_directory.display()),
         )?;
         let _handler = console_cancel::Registration::install()?;
@@ -326,25 +327,27 @@ fn execute(options: &Options) -> Result<(), Failure> {
                         sorter_core::job_plan::OperationKind::AlbumTransfer { .. }
                     )
                 }) {
-                    log(
+                    logger.emit(
                         LogLevel::Warning,
-                        options.log_level,
                         super::run_files::ALBUM_CONDITION,
                     )?;
                 }
                 if options.log_level == LogLevel::Debug {
-                    describe(plan, &mut io::stderr().lock())?;
+                    let mut description = Vec::new();
+                    describe(plan, &mut description)?;
+                    for line in String::from_utf8_lossy(&description).lines() {
+                        logger.emit(LogLevel::Debug, line)?;
+                    }
                 }
                 Ok(!console_cancel::CANCEL.load(Ordering::Acquire))
             },
             &mut |kind, data| {
-                log(
+                logger.emit(
                     if kind == "progress" {
                         LogLevel::Debug
                     } else {
                         LogLevel::Info
                     },
-                    options.log_level,
                     &format!("{kind}: {data}"),
                 )
             },
@@ -380,17 +383,32 @@ pub(super) fn run(args: &[String]) -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    match execute(&options) {
-        Ok(()) => ExitCode::SUCCESS,
+    let exclusions = match log_exclusions(&options) {
+        Ok(roots) => roots,
         Err(failure) => {
-            let _ = log(
-                LogLevel::Error,
-                options.log_level,
-                &format!("{}: {}", failure.error.code, failure.error.message),
-            );
-            ExitCode::from(failure.exit)
+            let _ = writeln!(io::stderr().lock(), "singles-sorter: {}: {}", failure.error.code, failure.error.message);
+            return ExitCode::from(failure.exit);
         }
+    };
+    let logger = match Logger::new(options.log_level, options.dry_run, &exclusions) {
+        Ok(logger) => logger,
+        Err(failure) => {
+            let _ = writeln!(io::stderr().lock(), "singles-sorter: {}: {}", failure.error.code, failure.error.message);
+            return ExitCode::from(failure.exit);
+        }
+    };
+    let result = logger.announce().and_then(|()| execute(&options, &logger));
+    if let Err(failure) = &result
+        && let Err(log_failure) = logger.emit(LogLevel::Error, &format!("{}: {}", failure.error.code, failure.error.message))
+    {
+        let _ = writeln!(io::stderr().lock(), "singles-sorter: {}: {}; original failure: {}: {}", log_failure.error.code, log_failure.error.message, failure.error.code, failure.error.message);
     }
+    if let Err(failure) = logger.finish() {
+        let _ = writeln!(io::stderr().lock(), "singles-sorter: {}: {}", failure.error.code, failure.error.message);
+        return ExitCode::from(failure.exit);
+    }
+    match result { Ok(()) => ExitCode::SUCCESS, Err(failure) => ExitCode::from(failure.exit) }
+
 }
 
 #[cfg(all(windows, feature = "selected-windows-execution"))]

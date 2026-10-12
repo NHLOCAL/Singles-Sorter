@@ -10,6 +10,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -34,6 +35,7 @@ CHECKS = {'positional-copy', 'positional-move', 'positional-original-ai-copy',
           'positional-primary-resource-order',
           'positional-vorbis-five-fields', 'positional-opus-five-fields',
           'positional-ogg-packets-backup-preserved', 'positional-ogg-chained-refused',
+          'legacy-utf8-file-logging', 'legacy-log-levels', 'diagnostic-overlap-no-effects',
           'retained-original-and-media', 'closed-stdin', 'no-developer-path',
           'explicit-dry-run-no-effects', 'overlap-rejected-no-effects', 'legacy-argument-exits'}
 
@@ -63,9 +65,46 @@ def snapshot(root):
 
 
 def result_record(stderr):
-    records = [json.loads(line.split('result: ', 1)[1]) for line in stderr.splitlines() if ' - MusicSorter - result: ' in line]
+    records = [json.loads(match.group(1)) for line in stderr.splitlines()
+               if (match := re.fullmatch(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} - MusicSorter - INFO - result: (.*)', line))]
     if len(records) != 1: raise AssertionError(f'Expected one native result: {stderr}')
     return records[0]
+
+
+def log_inventory(root):
+    logs = root/'logs'
+    if not logs.exists(): return {}
+    require(logs.is_dir() and not logs.is_symlink(), 'Unexpected diagnostic log parent')
+    entries = {}
+    for path in logs.rglob('*'):
+        info = path.lstat()
+        require(not path.is_symlink(), 'Diagnostic history contains an unexpected link')
+        entries[path.relative_to(logs).as_posix()] = (info.st_mode, info.st_size, info.st_mtime_ns, digest(path) if path.is_file() else None)
+    return entries
+
+
+def verify_new_log(root, before, stderr):
+    after = log_inventory(root)
+    added = set(after)-set(before)
+    require(len(added)==1 and all(after.get(name)==value for name,value in before.items()), 'Logging changed an existing file or did not create exactly one file')
+    name = next(iter(added))
+    require(re.fullmatch(r'music_sorter_\d{8}_\d{6}_[1-9]\d*\.log',name), 'Unexpected diagnostic log filename')
+    path = root/'logs'/name
+    require(path.read_bytes()==stderr.encode('utf-8'), 'UTF-8 file and stderr log records differ')
+    return dict(relative_path='logs/'+name,sha256=digest(path),bytes=path.stat().st_size)
+
+
+def no_effect_except_observed_log(before, after, log):
+    old={row[0]:row[1:] for row in before}; new={row[0]:row[1:] for row in after}
+    created_parent='logs' not in old
+    expected={log['relative_path']}|({'logs'} if created_parent else set())
+    require(set(new)-set(old)==expected and not (set(old)-set(new)), 'Rejected execution changed more than its one diagnostic log')
+    for name,value in old.items():
+        if name=='logs' or (name=='.' and created_parent):
+            require(value[0]==new[name][0], 'Diagnostic logging changed directory kind or mode')
+        else:
+            require(new[name]==value, 'Rejected execution changed existing entry: '+name)
+    require(new[log['relative_path']][-1]==log['sha256'], 'Observed diagnostic log content changed')
 
 
 def require_album_recovery(report):
@@ -106,11 +145,16 @@ def run(binary, bundle, report, package_root=None):
     # Keep failed evidence until runner disposal; never remove an unrelated tree.
     scratch=Path(tempfile.mkdtemp(prefix='singles-cli-execution-'))
 
-    def invoke(cwd, args, expected=0):
+    def invoke(cwd, args, expected=0, expect_log=True):
+        before_logs=log_inventory(cwd)
         completed=subprocess.run([str(binary),*args],cwd=cwd,env=env,stdin=subprocess.DEVNULL,
                                  stdout=subprocess.PIPE,stderr=subprocess.PIPE,encoding='utf-8',timeout=120)
         receipts.append(dict(args=args,exit=completed.returncode,stdout=completed.stdout,stderr=completed.stderr))
         if completed.returncode != expected: raise AssertionError(receipts[-1])
+        if not expect_log or expected==2 or '--help' in args or '--dry-run' in args or '--decision-only' in args:
+            require(log_inventory(cwd)==before_logs,'Read-only/help/invalid invocation changed diagnostic logs')
+        else:
+            receipts[-1]['log']=verify_new_log(cwd,before_logs,completed.stderr)
         return completed
 
     def roots(label):
@@ -250,11 +294,31 @@ def run(binary, bundle, report, package_root=None):
         require(set(source.iterdir())=={current,*backups},'Unexpected Ogg staged or source files remain')
         receipts[-1].update(case=label,original_sha256=hashlib.sha256(before).hexdigest(),current_sha256=digest(current),backup_sha256=[digest(p) for p in backups])
 
+    for level in ('DEBUG','INFO','WARNING','ERROR','CRITICAL'):
+        case=roots('log-level-'+level.lower());name='אברהם פריד - בדיקה.wav'
+        write_wave(case/'source'/name);before=digest(case/'source'/name)
+        completed=invoke(case,['source','target','-cn','--no-ai','--journal-directory','journal','-l',level])
+        require(digest(case/'target/אברהם פריד'/name)==before,'Logging trial did not execute its copy')
+        if level in ('DEBUG','INFO'):
+            require(result_record(completed.stderr)['status']=='complete','Logging trial result incomplete')
+            require((' - MusicSorter - DEBUG - ' in completed.stderr)==(level=='DEBUG'),'Debug filtering differs from selected log level')
+        else:
+            require(completed.stderr=='','High log level emitted lower-level records')
+        receipts[-1].update(case='log-level-'+level.lower(),level=level)
+
+    for selected_cwd in ('source','source/nested','target/nested','journal/nested'):
+        case=roots('log-overlap-'+selected_cwd.replace('/','-'))
+        for directory in ('source/nested','target/nested','journal/nested'): (case/directory).mkdir()
+        write_wave(case/'source/אברהם פריד - בדיקה.wav');before=snapshot(case)
+        completed=invoke(case/selected_cwd,[str(case/'source'),str(case/'target'),'-cn','--no-ai','--journal-directory',str(case/'journal')],1,expect_log=False)
+        require('LOG_CREATE_FAILED' in completed.stderr and snapshot(case)==before,'Diagnostic overlap was not refused before effects')
+        receipts[-1].update(case='log-overlap-'+selected_cwd,no_effects=True)
+
     case=roots('dry-run');write_wave(case/'source/אברהם פריד - בדיקה.wav');before=snapshot(case)
     completed=invoke(case,['source','target','-c','--no-ai','--dry-run','-l','ERROR'])
     require('predictions only' in completed.stdout and completed.stderr=='' and snapshot(case)==before, 'Explicit dry-run changed files or output contract')
     completed=invoke(case,['source','target','-c','--no-ai','--journal-directory','source'],1)
-    require(snapshot(case)==before, 'Rejected overlapping journal selection changed files')
+    no_effect_except_observed_log(before,snapshot(case),receipts[-1]['log'])
     if package_root:
         package.verify_package(package_root)
         require(digest(package_root/'SHA256SUMS.txt')==manifest_hash, 'Application changed the package manifest')

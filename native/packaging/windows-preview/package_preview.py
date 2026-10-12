@@ -37,6 +37,7 @@ EXECUTION_CHECKS = {'positional-copy', 'positional-move', 'positional-original-a
                     'positional-primary-resource-order',
                     'positional-vorbis-five-fields', 'positional-opus-five-fields',
                     'positional-ogg-packets-backup-preserved', 'positional-ogg-chained-refused',
+                    'legacy-utf8-file-logging', 'legacy-log-levels', 'diagnostic-overlap-no-effects',
                     'retained-original-and-media', 'closed-stdin', 'no-developer-path',
                     'explicit-dry-run-no-effects', 'overlap-rejected-no-effects', 'legacy-argument-exits'}
 CLI_FEATURES = ['original-ai', 'selected-windows-execution']

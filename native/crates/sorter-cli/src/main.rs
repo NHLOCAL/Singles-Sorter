@@ -1,6 +1,7 @@
 //! Versioned supplied-facts v1 and read-only real-file v2 CLI.
 mod legacy;
 mod legacy_args;
+mod legacy_log;
 mod plan_files;
 mod run_files;
 

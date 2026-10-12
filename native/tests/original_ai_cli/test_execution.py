@@ -15,7 +15,7 @@ class ExecutionContractTests(unittest.TestCase):
 
     def test_native_result_requires_one_actual_result_line(self):
         result = {'status': 'complete', 'recovery_error': None}
-        line = 'INFO - MusicSorter - result: ' + json.dumps(result)
+        line = '2026-10-12 02:00:00 - MusicSorter - INFO - result: ' + json.dumps(result)
         self.assertEqual(execution.result_record('INFO - MusicSorter - starting\n' + line), result)
         for invalid in ['', 'INFO - MusicSorter - progress: {}', line + '\n' + line]:
             with self.subTest(stderr=invalid), self.assertRaises(AssertionError):
@@ -23,7 +23,7 @@ class ExecutionContractTests(unittest.TestCase):
 
     def test_malformed_native_result_is_not_accepted(self):
         with self.assertRaises(json.JSONDecodeError):
-            execution.result_record('INFO - MusicSorter - result: {')
+            execution.result_record('2026-10-12 02:00:00 - MusicSorter - INFO - result: {')
 
     def test_authored_audio_and_tree_digest_detect_effects(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -70,6 +70,25 @@ class ExecutionContractTests(unittest.TestCase):
         for status in ('Absent','Replaced','Unverified'):
             report=copy.deepcopy(valid);report['directories'][0]['status']=status
             with self.assertRaises(ValueError): execution.require_album_recovery(report)
+
+    def test_negative_trial_exempts_only_its_new_log_and_parent(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'source').mkdir();(root/'source/track').write_bytes(b'owned')
+            before=execution.snapshot(root)
+            (root/'logs').mkdir();log=root/'logs/music_sorter_20261012_020000_123.log'
+            text='2026-10-12 02:00:00 - MusicSorter - ERROR - refused\n';log.write_text(text,encoding='utf-8')
+            receipt=execution.verify_new_log(root,{},text)
+            execution.no_effect_except_observed_log(before,execution.snapshot(root),receipt)
+            (root/'source/extra').mkdir()
+            with self.assertRaises(ValueError): execution.no_effect_except_observed_log(before,execution.snapshot(root),receipt)
+
+    def test_diagnostic_log_never_exempts_changes_to_existing_logs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'logs').mkdir();old=root/'logs/old.log';old.write_bytes(b'keep')
+            before=execution.log_inventory(root)
+            (root/'logs/music_sorter_20261012_020000_123.log').write_text('new',encoding='utf-8')
+            old.write_bytes(b'changed')
+            with self.assertRaises(ValueError): execution.verify_new_log(root,before,'new')
 
     def test_unconditional_guard(self):
         with self.assertRaisesRegex(ValueError, 'physical proof'):
