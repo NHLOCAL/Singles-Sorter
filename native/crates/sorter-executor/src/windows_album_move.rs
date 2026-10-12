@@ -1712,6 +1712,7 @@ fn derive_singles_job(
         albums: vec![],
     };
     let subset = ValidatedAlbumExecution {
+        execution_decisions: validated.execution_decisions.clone(),
         plan: validated.plan.clone(),
         scope,
         source: validated.source.clone(),
