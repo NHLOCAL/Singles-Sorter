@@ -663,6 +663,6 @@ fn real_taglib_provider_plans_rebinds_and_publishes_five_flac_fields() {
 fn recorded_flac_restart_verifies_replacement_and_retained_original() {
     assert_streaming_repair_restart(Fixture::new(
         &[("song__demo.flac", flac(true, None, false))],
-        Metadata(Some("à")),
+        Metadata(Some("à, á")),
     ));
 }

@@ -627,12 +627,8 @@ fn repair_tree_snapshot(
 }
 fn assert_streaming_repair_restart(fixture: Fixture) {
     let mut job = fixture.job();
-    assert_eq!(
-        job.run(&AtomicBool::new(false), &mut |_| {})
-            .unwrap()
-            .status,
-        RepairJobStatus::Complete
-    );
+    let result = job.run(&AtomicBool::new(false), &mut |_| {}).unwrap();
+    assert_eq!(result.status, RepairJobStatus::Complete, "{result:?}");
     drop(job);
     let before = repair_tree_snapshot(fixture._tree.path());
     let journal = restart_journal(&fixture);

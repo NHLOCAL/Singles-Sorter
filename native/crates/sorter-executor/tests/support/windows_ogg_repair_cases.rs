@@ -546,7 +546,7 @@ fn recorded_ogg_restart_verifies_both_codec_replacements_and_backups() {
     for opus in [false, true] {
         assert_streaming_repair_restart(Fixture::new(
             &[(name(opus), ogg(opus, true, false))],
-            Metadata(Some("à")),
+            Metadata(Some("à, á")),
         ));
     }
 }
