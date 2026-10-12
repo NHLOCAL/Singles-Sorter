@@ -437,9 +437,14 @@ mod tests {
     #[test]
     fn relative_and_dot_paths_are_lexical_not_canonicalized() {
         let cwd = std::env::current_dir().unwrap();
-        assert_eq!(absolute(Path::new(".")).unwrap(), cwd);
         assert_eq!(
-            absolute(Path::new("missing/../song")).unwrap(),
+            absolute(Path::new("."))
+                .unwrap_or_else(|failure| panic!("{}", failure.error.message)),
+            cwd
+        );
+        assert_eq!(
+            absolute(Path::new("missing/../song"))
+                .unwrap_or_else(|failure| panic!("{}", failure.error.message)),
             cwd.join("song")
         );
         assert!(absolute(Path::new("")).is_err());
