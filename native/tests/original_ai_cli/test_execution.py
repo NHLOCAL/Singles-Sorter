@@ -59,7 +59,7 @@ class ExecutionContractTests(unittest.TestCase):
 
     def test_album_terminal_evidence_is_required_even_after_committed_files(self):
         import copy
-        valid = dict(manifest_finished=True,incomplete_tail=False,pending_directories=[],pending_cleanup=[],pending_metadata=[],directory_metadata_status=[],
+        valid = dict(manifest_finished=True,incomplete_tail=False,pending_directories=[],pending_cleanup=[],pending_metadata=[],directory_metadata_status=[],directories=[{'status':'SameIdentity'}],
                      transfers={'append_blocked':False,'operations':[{'status':'Committed','copy_metadata':'Verified'}]},whole=None)
         execution.require_album_recovery(valid)
         for key in ('manifest_finished','incomplete_tail'):
@@ -67,6 +67,9 @@ class ExecutionContractTests(unittest.TestCase):
             with self.assertRaises(ValueError): execution.require_album_recovery(report)
         report=copy.deepcopy(valid);report['transfers']['append_blocked']=True
         with self.assertRaises(ValueError): execution.require_album_recovery(report)
+        for status in ('Absent','Replaced','Unverified'):
+            report=copy.deepcopy(valid);report['directories'][0]['status']=status
+            with self.assertRaises(ValueError): execution.require_album_recovery(report)
 
     def test_unconditional_guard(self):
         with self.assertRaisesRegex(ValueError, 'physical proof'):

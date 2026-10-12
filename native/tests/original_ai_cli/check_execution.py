@@ -69,6 +69,7 @@ def require_album_recovery(report):
     for key in ('pending_directories', 'pending_cleanup', 'pending_metadata'):
         require(not report[key], 'Album reconciliation contains pending effects: ' + key)
     require(all(status == 'verified' for _, status in report['directory_metadata_status']), 'Album directory metadata was not verified')
+    require(all(entry['status'] == 'SameIdentity' for entry in report['directories']), 'Album destination directory identity differs or is unverified')
     transfers = report.get('transfers')
     if transfers:
         require(not transfers['append_blocked'], 'Transfer journal cannot accept a safe terminal append')
