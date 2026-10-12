@@ -1318,7 +1318,9 @@ mod tests {
                 })
                 .collect();
         }
-        let first = host.page_view_options(&job.job_id, 0, 1, false, true).unwrap();
+        let first = host
+            .page_view_options(&job.job_id, 0, 1, false, true)
+            .unwrap();
         assert_eq!(first.total, 3);
         assert_eq!(first.skipped, 1);
         assert_eq!(first.rows[0].id, "row-30");
@@ -1346,7 +1348,9 @@ mod tests {
         let technical = host.page_view(&job.job_id, 0, 200, true).unwrap();
         assert_eq!(technical.total, 120);
         assert_eq!(technical.skipped, 118);
-        let active = host.page_view_options(&job.job_id, 0, 1, false, false).unwrap();
+        let active = host
+            .page_view_options(&job.job_id, 0, 1, false, false)
+            .unwrap();
         assert_eq!(active.total, 2);
         assert_eq!(active.skipped, 1);
         assert_eq!(active.rows[0].kind, "ItemError");
@@ -1491,7 +1495,9 @@ mod tests {
             assert!(!project_rows(&plan)[0].no_action);
             if let OperationKind::FixFile(fix) = &mut plan.operations[0].kind {
                 fix.rename_intended = false;
-                fix.failure = Some(FixFailure::Open(sorter_core::metadata::MetadataError::Parser));
+                fix.failure = Some(FixFailure::Open(
+                    sorter_core::metadata::MetadataError::Parser,
+                ));
             }
             assert!(!project_rows(&plan)[0].no_action);
         }

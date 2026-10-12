@@ -13,7 +13,13 @@ pub trait RecoveryStorage {
     fn source(&mut self, reference: &StorageRef) -> Result<Option<ObservedObject>>;
     fn destination(&mut self, destination: &DestinationEvidence) -> Result<Option<ObservedObject>>;
     /// A recorded receipt does not imply that target metadata still matches.
-    fn verify_copy_metadata(&mut self,_destination:&DestinationEvidence,_expected:&CopyMetadataEvidence)->Result<bool>{Err(E::Unsupported)}
+    fn verify_copy_metadata(
+        &mut self,
+        _destination: &DestinationEvidence,
+        _expected: &CopyMetadataEvidence,
+    ) -> Result<bool> {
+        Err(E::Unsupported)
+    }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RecoveryStatus {
@@ -24,11 +30,16 @@ pub enum RecoveryStatus {
     EffectProvenAwaitingJournal,
     NeedsRecovery,
 }
-#[derive(Clone,Copy,Debug,PartialEq,Eq)]
-pub enum CopyMetadataRecoveryStatus{NotRequested,Unverified,Verified,Mismatch}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CopyMetadataRecoveryStatus {
+    NotRequested,
+    Unverified,
+    Verified,
+    Mismatch,
+}
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OperationRecovery {
-    pub copy_metadata:CopyMetadataRecoveryStatus,
+    pub copy_metadata: CopyMetadataRecoveryStatus,
     pub operation: usize,
     pub status: RecoveryStatus,
 }
@@ -57,11 +68,18 @@ pub fn recover_job(
             .filter(|e| e.operation == op.id)
             .collect();
         // Probe metadata before content reads can themselves update access time.
-        let mut copy_metadata=CopyMetadataRecoveryStatus::NotRequested;
-        if binding.data.copy_metadata_version==Some(1){
-            copy_metadata=CopyMetadataRecoveryStatus::Unverified;
-            if let Some(expected)=history.iter().find_map(|event|event.copy_metadata.as_ref()){
-                copy_metadata=match storage.verify_copy_metadata(&op.destination,expected){Ok(true)=>CopyMetadataRecoveryStatus::Verified,Ok(false)=>CopyMetadataRecoveryStatus::Mismatch,Err(_)=>CopyMetadataRecoveryStatus::Unverified};
+        let mut copy_metadata = CopyMetadataRecoveryStatus::NotRequested;
+        if binding.data.copy_metadata_version == Some(1) {
+            copy_metadata = CopyMetadataRecoveryStatus::Unverified;
+            if let Some(expected) = history
+                .iter()
+                .find_map(|event| event.copy_metadata.as_ref())
+            {
+                copy_metadata = match storage.verify_copy_metadata(&op.destination, expected) {
+                    Ok(true) => CopyMetadataRecoveryStatus::Verified,
+                    Ok(false) => CopyMetadataRecoveryStatus::Mismatch,
+                    Err(_) => CopyMetadataRecoveryStatus::Unverified,
+                };
             }
         }
         let source = storage.source(&op.source.observation.reference);
@@ -138,7 +156,15 @@ pub fn recover_job(
                 }
             }
         }
-        if binding.data.copy_metadata_version==Some(1)&&matches!(status,RecoveryStatus::Committed|RecoveryStatus::EffectProvenAwaitingJournal)&&copy_metadata!=CopyMetadataRecoveryStatus::Verified{status=RecoveryStatus::NeedsRecovery;}
+        if binding.data.copy_metadata_version == Some(1)
+            && matches!(
+                status,
+                RecoveryStatus::Committed | RecoveryStatus::EffectProvenAwaitingJournal
+            )
+            && copy_metadata != CopyMetadataRecoveryStatus::Verified
+        {
+            status = RecoveryStatus::NeedsRecovery;
+        }
         report.operations.push(OperationRecovery {
             copy_metadata,
             operation: op.id,

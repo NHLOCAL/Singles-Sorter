@@ -339,7 +339,11 @@ pub(crate) fn validate_execution_domain(
         data: BindingData {
             schema: 2,
             album_context: None,
-            copy_metadata_version: if domain==ExecutionDomain::SelectedWindowsCopy{Some(1)}else{None},
+            copy_metadata_version: if domain == ExecutionDomain::SelectedWindowsCopy {
+                Some(1)
+            } else {
+                None
+            },
             plan_sha256: plan.binding_sha256.clone(),
             source_root: root,
             target_root: target,
@@ -545,7 +549,12 @@ impl BindingData {
     }
     /// Domain evidence is necessary but never sufficient authority to execute.
     pub(crate) fn valid_domain(&self) -> bool {
-        if self.copy_metadata_version.is_some_and(|version|version!=1||!self.selected_windows_copy){return false;}
+        if self
+            .copy_metadata_version
+            .is_some_and(|version| version != 1 || !self.selected_windows_copy)
+        {
+            return false;
+        }
         if self.synthetic_only
             && !self.owned_windows_copy
             && !self.owned_windows_rename

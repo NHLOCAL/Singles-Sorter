@@ -470,7 +470,10 @@ impl WindowsMutationStorage {
         self.check_role(&parent, RootRole::Target)?;
         let observed = observe(parent.handle(), &parent)?;
         if observed.identity != parent.identity {
-            return Err(err(MutationErrorKind::StalePlan, "observed target root identity changed"));
+            return Err(err(
+                MutationErrorKind::StalePlan,
+                "observed target root identity changed",
+            ));
         }
         self.check_role(&parent, RootRole::Target)?;
         Ok(observed.reference)
@@ -1332,7 +1335,9 @@ impl WindowsOwnedTemp {
             .as_ref()
             .ok_or_else(|| err(MutationErrorKind::StalePlan, "temp consumed"))?;
         ensure_regular(file)?;
-        if let Some(state) = &self.copy_metadata { state.check(file)?; }
+        if let Some(state) = &self.copy_metadata {
+            state.check(file)?;
+        }
         let observed = observe(file, &self.parent)?;
         if observed.identity != self.identity
             || observed.actual_name != self.observation.actual_name
@@ -1343,7 +1348,9 @@ impl WindowsOwnedTemp {
                 "temp identity/name/content changed",
             ));
         }
-        if let Some(state) = &self.copy_metadata { state.check(file)?; }
+        if let Some(state) = &self.copy_metadata {
+            state.check(file)?;
+        }
         Ok(observed)
     }
     pub fn observation(&self) -> &MutationObservation {
@@ -1556,7 +1563,9 @@ impl MutationStorage for WindowsMutationStorage {
             )
             .with_observation(obs));
         }
-        if let Some(state) = &published.copy_metadata { state.check(&published.file)?; }
+        if let Some(state) = &published.copy_metadata {
+            state.check(&published.file)?;
+        }
         Ok(obs)
     }
     fn retire_source(
@@ -1608,7 +1617,9 @@ impl MutationStorage for WindowsMutationStorage {
     ) -> Result<MutationObservation, MutationError> {
         self.check_role(&published.parent, RootRole::Target)?;
         ensure_regular(&published.file)?;
-        if let Some(state) = &published.copy_metadata { state.check(&published.file)?; }
+        if let Some(state) = &published.copy_metadata {
+            state.check(&published.file)?;
+        }
         let obs = observe(&published.file, &published.parent)?;
         if obs.identity != published.observation.identity
             || obs.actual_name != published.observation.actual_name
@@ -4415,7 +4426,10 @@ impl WindowsMutationStorage {
         let name = observe(parent.handle(), parent)?.actual_name;
         let upstream = match parent.ancestors.len() {
             0 => parent.root._ancestors.last().ok_or_else(|| {
-                err(MutationErrorKind::Unsupported, "source root has no held parent")
+                err(
+                    MutationErrorKind::Unsupported,
+                    "source root has no held parent",
+                )
             })?,
             1 => &parent.root.directory,
             n => &parent.ancestors[n - 2],
@@ -4426,7 +4440,10 @@ impl WindowsMutationStorage {
         let directory = super::open_child(upstream, units(&name)?, true).map_err(read_error)?;
         ensure_directory(&directory)?;
         if identity(&directory).map_err(read_error)? != parent.identity {
-            return Err(err(MutationErrorKind::StalePlan, "listed directory identity changed"));
+            return Err(err(
+                MutationErrorKind::StalePlan,
+                "listed directory identity changed",
+            ));
         }
         let members = directory_members_with_limits(&directory, cancel, 100_000, 1024)?;
         cancelled(cancel)?;
@@ -4452,10 +4469,15 @@ impl WindowsMutationStorage {
             self.check_role(parent, RootRole::Source)?;
             units(name)?;
             if !matches!(expected, ObjectIdentity::Windows { .. }) {
-                return Err(err(MutationErrorKind::Unsupported, "full Windows directory identity required"));
+                return Err(err(
+                    MutationErrorKind::Unsupported,
+                    "full Windows directory identity required",
+                ));
             }
-            Err::<(), _>(err(MutationErrorKind::Unsupported,
-                "empty-directory deletion is disabled: concurrent ADS/EA preservation is unproven"))
+            Err::<(), _>(err(
+                MutationErrorKind::Unsupported,
+                "empty-directory deletion is disabled: concurrent ADS/EA preservation is unproven",
+            ))
         })();
         MutationOutcome::NoEffect(check.expect_err("cleanup gate cannot dispatch"))
     }
@@ -4468,7 +4490,10 @@ fn directory_members_with_limits(
     max_batches: usize,
 ) -> Result<Vec<WindowsDirectoryMember>, MutationError> {
     let ObjectIdentity::Windows { volume, .. } = identity(directory).map_err(read_error)? else {
-        return Err(err(MutationErrorKind::Unsupported, "Windows directory identity required"));
+        return Err(err(
+            MutationErrorKind::Unsupported,
+            "Windows directory identity required",
+        ));
     };
     // Keep this album-only scan bounded without changing general read behavior.
     // At most 1024 native 64-KiB batches and 100,000 records are admitted. The
@@ -4483,8 +4508,13 @@ fn directory_members_with_limits(
         let result = unsafe {
             GetFileInformationByHandleEx(
                 HANDLE(directory.as_raw_handle()),
-                if batch == 0 { FileIdExtdDirectoryRestartInfo } else { FileIdExtdDirectoryInfo },
-                buffer.as_mut_ptr().cast(), (buffer.len() * 8) as u32,
+                if batch == 0 {
+                    FileIdExtdDirectoryRestartInfo
+                } else {
+                    FileIdExtdDirectoryInfo
+                },
+                buffer.as_mut_ptr().cast(),
+                (buffer.len() * 8) as u32,
             )
         };
         match result {
@@ -4492,16 +4522,27 @@ fn directory_members_with_limits(
             Err(error) => return Err(win_error(error)),
             Ok(()) => {}
         }
-        let bytes = unsafe { std::slice::from_raw_parts(buffer.as_ptr().cast::<u8>(), buffer.len() * 8) };
+        let bytes =
+            unsafe { std::slice::from_raw_parts(buffer.as_ptr().cast::<u8>(), buffer.len() * 8) };
         let records = super::parse_directory_records(bytes).map_err(read_error)?;
         if records.len() > max_entries.saturating_sub(members.len()) {
-            return Err(err(MutationErrorKind::Unsupported, "album directory inventory exceeds entry limit"));
+            return Err(err(
+                MutationErrorKind::Unsupported,
+                "album directory inventory exceeds entry limit",
+            ));
         }
-        members.try_reserve(records.len()).map_err(|error| err(MutationErrorKind::Io, &error.to_string()))?;
-        names.try_reserve(records.len()).map_err(|error| err(MutationErrorKind::Io, &error.to_string()))?;
+        members
+            .try_reserve(records.len())
+            .map_err(|error| err(MutationErrorKind::Io, &error.to_string()))?;
+        names
+            .try_reserve(records.len())
+            .map_err(|error| err(MutationErrorKind::Io, &error.to_string()))?;
         for record in records {
             if record.file_id == [0; 16] || !names.insert(record.name.clone()) {
-                return Err(err(MutationErrorKind::StalePlan, "directory inventory has missing identity or repeated name"));
+                return Err(err(
+                    MutationErrorKind::StalePlan,
+                    "directory inventory has missing identity or repeated name",
+                ));
             }
             let kind = if record.attributes & FILE_ATTRIBUTE_REPARSE_POINT.0 != 0 {
                 EntryKind::LinkOrReparse
@@ -4512,12 +4553,18 @@ fn directory_members_with_limits(
             };
             members.push(WindowsDirectoryMember {
                 name: MutationName::Windows(record.name),
-                identity: ObjectIdentity::Windows { volume, file_id: record.file_id },
+                identity: ObjectIdentity::Windows {
+                    volume,
+                    file_id: record.file_id,
+                },
                 kind,
             });
         }
     }
-    Err(err(MutationErrorKind::Unsupported, "album directory inventory exceeds native batch limit"))
+    Err(err(
+        MutationErrorKind::Unsupported,
+        "album directory inventory exceeds native batch limit",
+    ))
 }
 
 #[cfg(test)]
@@ -4528,11 +4575,12 @@ mod album_directory_guard_tests;
 mod album_rename;
 pub use album_rename::{
     WindowsAlbumChildRename, WindowsAlbumChildRenameObservation, WindowsAlbumChildRenameScope,
-    WindowsAlbumRootChildRenameSession,
-    WindowsAlbumDirectoryLease, WindowsAlbumPublication, WindowsAlbumRootRenameSession, WindowsAlbumTreeEntry,
-    WindowsAlbumTreeObservation,
+    WindowsAlbumDirectoryLease, WindowsAlbumPublication, WindowsAlbumRootChildRenameSession,
+    WindowsAlbumRootRenameSession, WindowsAlbumTreeEntry, WindowsAlbumTreeObservation,
 };
 
 #[path = "windows_copy_metadata.rs"]
 mod copy_metadata;
-pub use copy_metadata::{WindowsCopyMetadataEvidence, WindowsCopyMetadataObservation, WindowsCreatedCopyDirectory};
+pub use copy_metadata::{
+    WindowsCopyMetadataEvidence, WindowsCopyMetadataObservation, WindowsCreatedCopyDirectory,
+};

@@ -209,11 +209,27 @@ pub(crate) fn destination_parent(
     Ok(parent)
 }
 impl TransferStorage for WindowsMutationStorage {
-    #[cfg(feature="selected-windows-execution")]
-    fn finalize_selected_copy_metadata(&mut self,source:&WindowsSourceLease,temp:&mut WindowsOwnedTemp,cancel:&std::sync::atomic::AtomicBool)->MutationOutcome<crate::physical_journal::CopyMetadataEvidence>{
-        match WindowsMutationStorage::finalize_selected_copy_metadata(self,source,temp,cancel){
-            MutationOutcome::Applied(value)=>MutationOutcome::Applied(crate::physical_journal::CopyMetadataEvidence{source_identity:value.source_identity,destination_identity:value.destination_identity,access_time:value.access_time,write_time:value.write_time,readonly:value.readonly,retained_creation_time:value.retained_creation_time,retained_attributes:value.retained_attributes}),
-            MutationOutcome::NoEffect(error)=>MutationOutcome::NoEffect(error),MutationOutcome::PendingUnknown(error)=>MutationOutcome::PendingUnknown(error),
+    #[cfg(feature = "selected-windows-execution")]
+    fn finalize_selected_copy_metadata(
+        &mut self,
+        source: &WindowsSourceLease,
+        temp: &mut WindowsOwnedTemp,
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> MutationOutcome<crate::physical_journal::CopyMetadataEvidence> {
+        match WindowsMutationStorage::finalize_selected_copy_metadata(self, source, temp, cancel) {
+            MutationOutcome::Applied(value) => {
+                MutationOutcome::Applied(crate::physical_journal::CopyMetadataEvidence {
+                    source_identity: value.source_identity,
+                    destination_identity: value.destination_identity,
+                    access_time: value.access_time,
+                    write_time: value.write_time,
+                    readonly: value.readonly,
+                    retained_creation_time: value.retained_creation_time,
+                    retained_attributes: value.retained_attributes,
+                })
+            }
+            MutationOutcome::NoEffect(error) => MutationOutcome::NoEffect(error),
+            MutationOutcome::PendingUnknown(error) => MutationOutcome::PendingUnknown(error),
         }
     }
 
@@ -339,7 +355,7 @@ pub(crate) fn open_owned_recovery_domain(
 /// Read-only observations limited to one recovered binding and its freshly checked
 /// owned roots. It cannot resume, publish, delete, append or adopt a found temp.
 pub struct WindowsCopyRecovery<'a> {
-    owned:&'a WindowsMutationStorage,
+    owned: &'a WindowsMutationStorage,
     binding: ExecutionBinding,
     reads: DesktopStorage,
     roots: [PathBuf; 2],
@@ -451,12 +467,52 @@ impl<'a> WindowsCopyRecovery<'a> {
     }
 }
 impl crate::recovery::RecoveryStorage for WindowsCopyRecovery<'_> {
-    fn verify_copy_metadata(&mut self,destination:&DestinationEvidence,expected:&crate::physical_journal::CopyMetadataEvidence)->Result<bool>{
-        if !self.binding.operations().iter().any(|op|op.destination==*destination&&op.source.observation.identity.as_ref()==Some(&expected.source_identity)){return Err(E::Scope)}
-        let parent=destination_parent(self.owned,destination,self.binding.data.target_root.identity.as_ref().ok_or(E::Scope)?).map_err(|_|E::Stale)?;
-        let leaf=MutationName::Windows(destination.components.last().ok_or(E::Scope)?.encode_utf16().collect());
-        let actual=self.owned.inspect_selected_copy_metadata(&parent,&leaf,&expected.destination_identity,EntryKind::File).map_err(|_|E::Stale)?;
-        Ok(actual.is_some_and(|actual|actual.creation_time==expected.retained_creation_time&&actual.access_time==expected.access_time&&actual.write_time==expected.write_time&&actual.readonly==expected.readonly&&actual.retained_attributes==expected.retained_attributes))
+    fn verify_copy_metadata(
+        &mut self,
+        destination: &DestinationEvidence,
+        expected: &crate::physical_journal::CopyMetadataEvidence,
+    ) -> Result<bool> {
+        if !self.binding.operations().iter().any(|op| {
+            op.destination == *destination
+                && op.source.observation.identity.as_ref() == Some(&expected.source_identity)
+        }) {
+            return Err(E::Scope);
+        }
+        let parent = destination_parent(
+            self.owned,
+            destination,
+            self.binding
+                .data
+                .target_root
+                .identity
+                .as_ref()
+                .ok_or(E::Scope)?,
+        )
+        .map_err(|_| E::Stale)?;
+        let leaf = MutationName::Windows(
+            destination
+                .components
+                .last()
+                .ok_or(E::Scope)?
+                .encode_utf16()
+                .collect(),
+        );
+        let actual = self
+            .owned
+            .inspect_selected_copy_metadata(
+                &parent,
+                &leaf,
+                &expected.destination_identity,
+                EntryKind::File,
+            )
+            .map_err(|_| E::Stale)?;
+        Ok(actual.is_some_and(|actual| {
+            actual.creation_time == expected.retained_creation_time
+                && actual.access_time == expected.access_time
+                && actual.write_time == expected.write_time
+                && actual.readonly == expected.readonly
+                && actual.retained_attributes == expected.retained_attributes
+        }))
     }
 
     fn source(
@@ -512,8 +568,14 @@ impl OwnedCopyReadStorage {
         cancel: &'a AtomicBool,
     ) -> Result<WindowsAlbumPlanningStorage<'a>> {
         limits.validate().map_err(|_| E::Unsupported)?;
-        if cancel.load(Ordering::Acquire) { return Err(E::Cancelled); }
-        Ok(WindowsAlbumPlanningStorage { inner: Self::for_preview(source, target)?, limits, cancel })
+        if cancel.load(Ordering::Acquire) {
+            return Err(E::Cancelled);
+        }
+        Ok(WindowsAlbumPlanningStorage {
+            inner: Self::for_preview(source, target)?,
+            limits,
+            cancel,
+        })
     }
     pub fn for_album<'a>(
         owned: &WindowsMutationStorage,
@@ -523,8 +585,14 @@ impl OwnedCopyReadStorage {
         cancel: &'a AtomicBool,
     ) -> Result<WindowsAlbumPlanningStorage<'a>> {
         limits.validate().map_err(|_| E::Unsupported)?;
-        if cancel.load(Ordering::Acquire) { return Err(E::Cancelled); }
-        Ok(WindowsAlbumPlanningStorage { inner: Self::new(owned, source, target)?, limits, cancel })
+        if cancel.load(Ordering::Acquire) {
+            return Err(E::Cancelled);
+        }
+        Ok(WindowsAlbumPlanningStorage {
+            inner: Self::new(owned, source, target)?,
+            limits,
+            cancel,
+        })
     }
     /// Probes read/list/seek availability; grants no mutation authority.
     pub fn for_preview(source: &Path, target: &Path) -> Result<Self> {
@@ -715,10 +783,17 @@ pub struct WindowsAlbumPlanningStorage<'a> {
     limits: WindowsDirectoryReadLimits,
     cancel: &'a AtomicBool,
 }
-fn check_album_read_cancel(limits: Option<(WindowsDirectoryReadLimits, &AtomicBool)>) -> std::result::Result<(), StorageError> {
+fn check_album_read_cancel(
+    limits: Option<(WindowsDirectoryReadLimits, &AtomicBool)>,
+) -> std::result::Result<(), StorageError> {
     if limits.is_some_and(|(_, cancel)| cancel.load(Ordering::Acquire)) {
-        Err(StorageError::new(StorageErrorKind::Cancelled, "album planning read cancelled"))
-    } else { Ok(()) }
+        Err(StorageError::new(
+            StorageErrorKind::Cancelled,
+            "album planning read cancelled",
+        ))
+    } else {
+        Ok(())
+    }
 }
 impl WindowsAlbumPlanningStorage<'_> {
     pub fn reference(&mut self, path: &Path) -> std::result::Result<StorageRef, StorageError> {
@@ -727,20 +802,35 @@ impl WindowsAlbumPlanningStorage<'_> {
     }
 }
 impl ReadStorage for WindowsAlbumPlanningStorage<'_> {
-    fn stat(&mut self, reference: &StorageRef) -> std::result::Result<EntryObservation, StorageError> {
-        let bounds = Some((self.limits, self.cancel)); check_album_read_cancel(bounds)?;
+    fn stat(
+        &mut self,
+        reference: &StorageRef,
+    ) -> std::result::Result<EntryObservation, StorageError> {
+        let bounds = Some((self.limits, self.cancel));
+        check_album_read_cancel(bounds)?;
         within_roots(reference, &self.inner.roots)?;
         let observed = self.inner.reads.stat(reference)?;
         self.inner.establish_with_limits(observed, bounds)
     }
-    fn children(&mut self, reference: &StorageRef) -> std::result::Result<Vec<EntryObservation>, StorageError> {
-        let bounds = Some((self.limits, self.cancel)); check_album_read_cancel(bounds)?;
+    fn children(
+        &mut self,
+        reference: &StorageRef,
+    ) -> std::result::Result<Vec<EntryObservation>, StorageError> {
+        let bounds = Some((self.limits, self.cancel));
+        check_album_read_cancel(bounds)?;
         within_roots(reference, &self.inner.roots)?;
         let entries = self.inner.children_with_limits(reference, bounds)?;
-        entries.into_iter().map(|entry| self.inner.establish_with_limits(entry, bounds)).collect()
+        entries
+            .into_iter()
+            .map(|entry| self.inner.establish_with_limits(entry, bounds))
+            .collect()
     }
-    fn open_read(&mut self, reference: &StorageRef) -> std::result::Result<ReadInput, StorageError> {
-        let bounds = Some((self.limits, self.cancel)); check_album_read_cancel(bounds)?;
+    fn open_read(
+        &mut self,
+        reference: &StorageRef,
+    ) -> std::result::Result<ReadInput, StorageError> {
+        let bounds = Some((self.limits, self.cancel));
+        check_album_read_cancel(bounds)?;
         within_roots(reference, &self.inner.roots)?;
         let result = self.inner.reads.open_read(reference)?;
         check_album_read_cancel(bounds)?;

@@ -293,7 +293,7 @@ pub fn validate_album_copy(
             source: source.clone(),
             directories,
             transfers: BindingData {
-                copy_metadata_version:None,
+                copy_metadata_version: None,
                 schema: 2,
                 album_context: Some(context),
                 plan_sha256: plan.binding_sha256.clone(),

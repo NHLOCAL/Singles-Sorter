@@ -32,19 +32,30 @@ pub struct WindowsDirectoryReadLimits {
 }
 #[cfg(windows)]
 impl WindowsDirectoryReadLimits {
-    pub const ALBUM_DEFAULT: Self = Self { max_entries: 100_000, max_path_units: 16 * 1024 * 1024, max_batches: 1024 };
+    pub const ALBUM_DEFAULT: Self = Self {
+        max_entries: 100_000,
+        max_path_units: 16 * 1024 * 1024,
+        max_batches: 1024,
+    };
     pub fn validate(&self) -> Result<(), StorageError> {
         if self.max_entries > Self::ALBUM_DEFAULT.max_entries
             || self.max_path_units > Self::ALBUM_DEFAULT.max_path_units
-            || self.max_batches == 0 || self.max_batches > Self::ALBUM_DEFAULT.max_batches {
-            return Err(error(StorageErrorKind::BudgetExceeded, "album directory limits exceed the supported bounded domain"));
+            || self.max_batches == 0
+            || self.max_batches > Self::ALBUM_DEFAULT.max_batches
+        {
+            return Err(error(
+                StorageErrorKind::BudgetExceeded,
+                "album directory limits exceed the supported bounded domain",
+            ));
         }
         Ok(())
     }
 }
 #[cfg(windows)]
 impl Default for WindowsDirectoryReadLimits {
-    fn default() -> Self { Self::ALBUM_DEFAULT }
+    fn default() -> Self {
+        Self::ALBUM_DEFAULT
+    }
 }
 
 fn error(kind: StorageErrorKind, detail: &str) -> StorageError {

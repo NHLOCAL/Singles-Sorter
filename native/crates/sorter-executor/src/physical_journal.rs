@@ -25,18 +25,22 @@ pub enum Phase {
     Cancelled,
     NeedsRecovery,
 }
-#[derive(Clone,Debug,PartialEq,Eq,Serialize,Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct CopyMetadataEvidence{
-    pub source_identity:ObjectIdentity,pub destination_identity:ObjectIdentity,
-    pub access_time:i64,pub write_time:i64,pub readonly:bool,
-    pub retained_creation_time:i64,pub retained_attributes:u32,
+pub struct CopyMetadataEvidence {
+    pub source_identity: ObjectIdentity,
+    pub destination_identity: ObjectIdentity,
+    pub access_time: i64,
+    pub write_time: i64,
+    pub readonly: bool,
+    pub retained_creation_time: i64,
+    pub retained_attributes: u32,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Event {
-    #[serde(default,skip_serializing_if="Option::is_none")]
-    pub copy_metadata:Option<CopyMetadataEvidence>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub copy_metadata: Option<CopyMetadataEvidence>,
     pub operation: usize,
     pub destination_id: String,
     pub expected_source: ObjectIdentity,
@@ -129,7 +133,9 @@ impl PhysicalJournalV2 {
     /// `job_id` and the freshly host-authorized binding must match the header.
     /// An incomplete final record is retained byte-for-byte and blocks append.
     pub fn open(binding: &ExecutionBinding, job_id: &str, bytes: &[u8]) -> Result<Self> {
-        if !binding.data.valid_domain(){return Err(E::InvalidBinding)}
+        if !binding.data.valid_domain() {
+            return Err(E::InvalidBinding);
+        }
         let end = bytes
             .iter()
             .rposition(|b| *b == b'\n')
@@ -318,13 +324,30 @@ impl PhysicalJournalV2 {
         if !valid {
             return Err(E::InvalidTransition);
         }
-        let metadata_required=self.binding.data.copy_metadata_version==Some(1);
-        if matches!(event.phase,CopyMetadataPrepared|CopyMetadataObserved)&&!metadata_required{return Err(E::InvalidTransition)}
-        if event.phase==DestinationPublishPrepared&&metadata_required&&last!=Some(CopyMetadataObserved){return Err(E::InvalidTransition)}
-        if event.phase==CopyMetadataObserved{
-            let evidence=event.copy_metadata.as_ref().ok_or(E::InvalidTransition)?;
-            if evidence.source_identity!=event.expected_source||Some(&evidence.destination_identity)!=event.observed_identity.as_ref()||evidence.access_time<=0||evidence.write_time<=0||evidence.retained_attributes&0x81!=0{return Err(E::InvalidTransition)}
-        }else if event.copy_metadata.is_some(){return Err(E::InvalidTransition)}
+        let metadata_required = self.binding.data.copy_metadata_version == Some(1);
+        if matches!(event.phase, CopyMetadataPrepared | CopyMetadataObserved) && !metadata_required
+        {
+            return Err(E::InvalidTransition);
+        }
+        if event.phase == DestinationPublishPrepared
+            && metadata_required
+            && last != Some(CopyMetadataObserved)
+        {
+            return Err(E::InvalidTransition);
+        }
+        if event.phase == CopyMetadataObserved {
+            let evidence = event.copy_metadata.as_ref().ok_or(E::InvalidTransition)?;
+            if evidence.source_identity != event.expected_source
+                || Some(&evidence.destination_identity) != event.observed_identity.as_ref()
+                || evidence.access_time <= 0
+                || evidence.write_time <= 0
+                || evidence.retained_attributes & 0x81 != 0
+            {
+                return Err(E::InvalidTransition);
+            }
+        } else if event.copy_metadata.is_some() {
+            return Err(E::InvalidTransition);
+        }
 
         // Gate new effects, not observations of already-issued effects. The
         // distinct intent phases make that distinction durable across crashes.
@@ -491,52 +514,288 @@ mod copy_metadata_compatibility_tests {
     use super::*;
     const OLD: &[u8] = include_bytes!("../tests/fixtures/physical-copy-v2-before-metadata.jsonl");
     fn old_binding() -> ExecutionBinding {
-        let first=OLD.split(|byte|*byte==b'\n').next().unwrap();
-        let header:Envelope<Header>=serde_json::from_slice(first).unwrap();
-        ExecutionBinding{data:header.body.binding,recovery_only:true}
+        let first = OLD.split(|byte| *byte == b'\n').next().unwrap();
+        let header: Envelope<Header> = serde_json::from_slice(first).unwrap();
+        ExecutionBinding {
+            data: header.body.binding,
+            recovery_only: true,
+        }
     }
     #[test]
     fn golden_old_copy_journal_remains_byte_compatible_without_metadata_claim() {
-        assert_eq!(crate::digest(OLD),"e6ed3bafe8538bb1b4ccc755cdc494157a1810d4a858c26b1bfb40e9b27d6c2b");
-        let binding=old_binding();assert_eq!(binding.data.copy_metadata_version,None);
-        let journal=PhysicalJournalV2::open(&binding,"old-copy-v2",OLD).unwrap();
-        assert_eq!(journal.events().len(),9);assert_eq!(journal.events().last().unwrap().phase,Phase::Committed);
-        assert!(journal.events().iter().all(|event|event.copy_metadata.is_none()));
-        for line in OLD.split(|byte|*byte==b'\n').skip(1).filter(|line|!line.is_empty()){
-            let envelope:Envelope<Record>=serde_json::from_slice(line).unwrap();assert_eq!(serde_json::to_vec(&envelope).unwrap(),line);
+        assert_eq!(
+            crate::digest(OLD),
+            "e6ed3bafe8538bb1b4ccc755cdc494157a1810d4a858c26b1bfb40e9b27d6c2b"
+        );
+        let binding = old_binding();
+        assert_eq!(binding.data.copy_metadata_version, None);
+        let journal = PhysicalJournalV2::open(&binding, "old-copy-v2", OLD).unwrap();
+        assert_eq!(journal.events().len(), 9);
+        assert_eq!(journal.events().last().unwrap().phase, Phase::Committed);
+        assert!(
+            journal
+                .events()
+                .iter()
+                .all(|event| event.copy_metadata.is_none())
+        );
+        for line in OLD
+            .split(|byte| *byte == b'\n')
+            .skip(1)
+            .filter(|line| !line.is_empty())
+        {
+            let envelope: Envelope<Record> = serde_json::from_slice(line).unwrap();
+            assert_eq!(serde_json::to_vec(&envelope).unwrap(), line);
         }
     }
     #[test]
     fn unknown_or_inconsistent_copy_metadata_requirement_is_invalid() {
-        for version in [1,2,255]{let mut binding=old_binding();binding.data.copy_metadata_version=Some(version);assert!(!binding.data.valid_domain());assert!(PhysicalJournalV2::open(&binding,"old-copy-v2",OLD).is_err());}
-        let mut raw=serde_json::to_value(&old_binding().data).unwrap();raw["copy_metadata_version"]=serde_json::json!("required");assert!(serde_json::from_value::<BindingData>(raw).is_err());
+        for version in [1, 2, 255] {
+            let mut binding = old_binding();
+            binding.data.copy_metadata_version = Some(version);
+            assert!(!binding.data.valid_domain());
+            assert!(PhysicalJournalV2::open(&binding, "old-copy-v2", OLD).is_err());
+        }
+        let mut raw = serde_json::to_value(&old_binding().data).unwrap();
+        raw["copy_metadata_version"] = serde_json::json!("required");
+        assert!(serde_json::from_value::<BindingData>(raw).is_err());
     }
     #[test]
     fn old_binding_cannot_acquire_metadata_claim_from_an_event() {
-        let binding=old_binding();let journal=PhysicalJournalV2::open(&binding,"old-copy-v2",OLD).unwrap();let mut event=journal.events()[4].clone();event.phase=Phase::CopyMetadataPrepared;assert!(journal.validate(&event).is_err());
-        event.phase=Phase::Committed;event.copy_metadata=Some(CopyMetadataEvidence{source_identity:event.expected_source.clone(),destination_identity:event.observed_identity.clone().unwrap(),access_time:1,write_time:1,readonly:false,retained_creation_time:1,retained_attributes:0});assert!(journal.validate(&event).is_err());
+        let binding = old_binding();
+        let journal = PhysicalJournalV2::open(&binding, "old-copy-v2", OLD).unwrap();
+        let mut event = journal.events()[4].clone();
+        event.phase = Phase::CopyMetadataPrepared;
+        assert!(journal.validate(&event).is_err());
+        event.phase = Phase::Committed;
+        event.copy_metadata = Some(CopyMetadataEvidence {
+            source_identity: event.expected_source.clone(),
+            destination_identity: event.observed_identity.clone().unwrap(),
+            access_time: 1,
+            write_time: 1,
+            readonly: false,
+            retained_creation_time: 1,
+            retained_attributes: 0,
+        });
+        assert!(journal.validate(&event).is_err());
     }
 }
 
-#[cfg(all(test,windows,feature="selected-windows-execution"))]
+#[cfg(all(test, windows, feature = "selected-windows-execution"))]
 mod selected_copy_metadata_transition_tests {
     use super::*;
     #[derive(Default)]
     struct Sink(Vec<u8>);
-    impl JournalStore for Sink{fn read_all(&mut self)->Result<Vec<u8>>{Ok(self.0.clone())}fn append(&mut self,bytes:&[u8])->Result<()>{self.0.extend_from_slice(bytes);Ok(())}fn sync(&mut self)->Result<()>{Ok(())}}
-    fn identity(byte:u8)->sorter_core::discovery::ObjectIdentity{ObjectIdentity::Windows{volume:1,file_id:[byte;16]}}
-    fn binding()->ExecutionBinding{
-        let first=include_bytes!("../tests/fixtures/physical-copy-v2-before-metadata.jsonl").split(|byte|*byte==b'\n').next().unwrap();let header:serde_json::Value=serde_json::from_slice(first).unwrap();let mut data=header["body"]["binding"].clone();
-        fn convert(value:&mut serde_json::Value){match value{serde_json::Value::Object(map)=>{if let Some(inner)=map.remove("Test"){let id=inner["id"].as_str().unwrap();let byte=match id{"source"=>1,"target"=>2,"song"=>3,_=>4};*value=serde_json::to_value(identity(byte)).unwrap();}else if let Some(inner)=map.remove("TestOpaque"){let id=inner["id"].as_str().unwrap();let path=if id=="song"{r"C:\fixture\source\song".to_owned()}else{format!(r"C:\fixture\{id}")};*value=serde_json::to_value(sorter_core::discovery::StorageRef::WindowsPath{utf16:path.encode_utf16().collect()}).unwrap();}else{for child in map.values_mut(){convert(child);}}},serde_json::Value::Array(items)=>{for child in items{convert(child);}},_=>{}}}
-        convert(&mut data);data["synthetic_only"]=serde_json::json!(false);data["selected_windows_copy"]=serde_json::json!(true);data["copy_metadata_version"]=serde_json::json!(1);let data:BindingData=serde_json::from_value(data).unwrap();assert!(data.valid_domain());ExecutionBinding{data,recovery_only:false}
+    impl JournalStore for Sink {
+        fn read_all(&mut self) -> Result<Vec<u8>> {
+            Ok(self.0.clone())
+        }
+        fn append(&mut self, bytes: &[u8]) -> Result<()> {
+            self.0.extend_from_slice(bytes);
+            Ok(())
+        }
+        fn sync(&mut self) -> Result<()> {
+            Ok(())
+        }
     }
-    fn event(binding:&ExecutionBinding,phase:Phase)->Event{let op=&binding.operations()[0];Event{copy_metadata:None,operation:0,destination_id:op.destination.id.clone(),expected_source:op.source.observation.identity.clone().unwrap(),observed_identity:if matches!(phase,Phase::Prepared|Phase::TempAllocationPrepared){None}else{Some(identity(9))},sha256:op.source.sha256.clone(),phase}}
-    fn ready()->(ExecutionBinding,PhysicalJournalV2,Sink){let binding=binding();let mut sink=Sink::default();let mut journal=PhysicalJournalV2::create(&binding,"metadata-transition",&mut sink).unwrap();for phase in [Phase::Prepared,Phase::TempAllocationPrepared,Phase::TempAllocated,Phase::BytesWritePrepared,Phase::BytesSynced]{journal.append(&mut sink,event(&binding,phase)).unwrap();}(binding,journal,sink)}
-    fn observed(binding:&ExecutionBinding)->Event{let mut event=event(binding,Phase::CopyMetadataObserved);event.copy_metadata=Some(CopyMetadataEvidence{source_identity:event.expected_source.clone(),destination_identity:identity(9),access_time:10,write_time:20,readonly:true,retained_creation_time:30,retained_attributes:0x20});event}
+    fn identity(byte: u8) -> sorter_core::discovery::ObjectIdentity {
+        ObjectIdentity::Windows {
+            volume: 1,
+            file_id: [byte; 16],
+        }
+    }
+    fn binding() -> ExecutionBinding {
+        let first = include_bytes!("../tests/fixtures/physical-copy-v2-before-metadata.jsonl")
+            .split(|byte| *byte == b'\n')
+            .next()
+            .unwrap();
+        let header: serde_json::Value = serde_json::from_slice(first).unwrap();
+        let mut data = header["body"]["binding"].clone();
+        fn convert(value: &mut serde_json::Value) {
+            match value {
+                serde_json::Value::Object(map) => {
+                    if let Some(inner) = map.remove("Test") {
+                        let id = inner["id"].as_str().unwrap();
+                        let byte = match id {
+                            "source" => 1,
+                            "target" => 2,
+                            "song" => 3,
+                            _ => 4,
+                        };
+                        *value = serde_json::to_value(identity(byte)).unwrap();
+                    } else if let Some(inner) = map.remove("TestOpaque") {
+                        let id = inner["id"].as_str().unwrap();
+                        let path = if id == "song" {
+                            r"C:\fixture\source\song".to_owned()
+                        } else {
+                            format!(r"C:\fixture\{id}")
+                        };
+                        *value =
+                            serde_json::to_value(sorter_core::discovery::StorageRef::WindowsPath {
+                                utf16: path.encode_utf16().collect(),
+                            })
+                            .unwrap();
+                    } else {
+                        for child in map.values_mut() {
+                            convert(child);
+                        }
+                    }
+                }
+                serde_json::Value::Array(items) => {
+                    for child in items {
+                        convert(child);
+                    }
+                }
+                _ => {}
+            }
+        }
+        convert(&mut data);
+        data["synthetic_only"] = serde_json::json!(false);
+        data["selected_windows_copy"] = serde_json::json!(true);
+        data["copy_metadata_version"] = serde_json::json!(1);
+        let data: BindingData = serde_json::from_value(data).unwrap();
+        assert!(data.valid_domain());
+        ExecutionBinding {
+            data,
+            recovery_only: false,
+        }
+    }
+    fn event(binding: &ExecutionBinding, phase: Phase) -> Event {
+        let op = &binding.operations()[0];
+        Event {
+            copy_metadata: None,
+            operation: 0,
+            destination_id: op.destination.id.clone(),
+            expected_source: op.source.observation.identity.clone().unwrap(),
+            observed_identity: if matches!(phase, Phase::Prepared | Phase::TempAllocationPrepared) {
+                None
+            } else {
+                Some(identity(9))
+            },
+            sha256: op.source.sha256.clone(),
+            phase,
+        }
+    }
+    fn ready() -> (ExecutionBinding, PhysicalJournalV2, Sink) {
+        let binding = binding();
+        let mut sink = Sink::default();
+        let mut journal =
+            PhysicalJournalV2::create(&binding, "metadata-transition", &mut sink).unwrap();
+        for phase in [
+            Phase::Prepared,
+            Phase::TempAllocationPrepared,
+            Phase::TempAllocated,
+            Phase::BytesWritePrepared,
+            Phase::BytesSynced,
+        ] {
+            journal.append(&mut sink, event(&binding, phase)).unwrap();
+        }
+        (binding, journal, sink)
+    }
+    fn observed(binding: &ExecutionBinding) -> Event {
+        let mut event = event(binding, Phase::CopyMetadataObserved);
+        event.copy_metadata = Some(CopyMetadataEvidence {
+            source_identity: event.expected_source.clone(),
+            destination_identity: identity(9),
+            access_time: 10,
+            write_time: 20,
+            readonly: true,
+            retained_creation_time: 30,
+            retained_attributes: 0x20,
+        });
+        event
+    }
     #[test]
-    fn selected_metadata_transition_requires_intent_observation_and_matching_evidence(){let(binding,mut journal,mut sink)=ready();assert!(journal.validate(&event(&binding,Phase::DestinationPublishPrepared)).is_err());assert!(journal.validate(&observed(&binding)).is_err());journal.append(&mut sink,event(&binding,Phase::CopyMetadataPrepared)).unwrap();assert!(journal.validate(&event(&binding,Phase::CopyMetadataObserved)).is_err());for bad in 0..4{let mut observation=observed(&binding);let evidence=observation.copy_metadata.as_mut().unwrap();match bad{0=>evidence.source_identity=identity(77),1=>evidence.destination_identity=identity(78),2=>evidence.access_time=0,_=>evidence.retained_attributes|=1}assert!(journal.validate(&observation).is_err());}journal.append(&mut sink,observed(&binding)).unwrap();journal.append(&mut sink,event(&binding,Phase::DestinationPublishPrepared)).unwrap();assert!(PhysicalJournalV2::open(&binding,"metadata-transition",&sink.0).is_ok());}
+    fn selected_metadata_transition_requires_intent_observation_and_matching_evidence() {
+        let (binding, mut journal, mut sink) = ready();
+        assert!(
+            journal
+                .validate(&event(&binding, Phase::DestinationPublishPrepared))
+                .is_err()
+        );
+        assert!(journal.validate(&observed(&binding)).is_err());
+        journal
+            .append(&mut sink, event(&binding, Phase::CopyMetadataPrepared))
+            .unwrap();
+        assert!(
+            journal
+                .validate(&event(&binding, Phase::CopyMetadataObserved))
+                .is_err()
+        );
+        for bad in 0..4 {
+            let mut observation = observed(&binding);
+            let evidence = observation.copy_metadata.as_mut().unwrap();
+            match bad {
+                0 => evidence.source_identity = identity(77),
+                1 => evidence.destination_identity = identity(78),
+                2 => evidence.access_time = 0,
+                _ => evidence.retained_attributes |= 1,
+            }
+            assert!(journal.validate(&observation).is_err());
+        }
+        journal.append(&mut sink, observed(&binding)).unwrap();
+        journal
+            .append(
+                &mut sink,
+                event(&binding, Phase::DestinationPublishPrepared),
+            )
+            .unwrap();
+        assert!(PhysicalJournalV2::open(&binding, "metadata-transition", &sink.0).is_ok());
+    }
     #[test]
-    fn selected_metadata_transition_rejects_rehashed_missing_acknowledgment(){let(binding,mut journal,mut sink)=ready();journal.append(&mut sink,event(&binding,Phase::CopyMetadataPrepared)).unwrap();journal.append(&mut sink,observed(&binding)).unwrap();journal.append(&mut sink,event(&binding,Phase::DestinationPublishPrepared)).unwrap();let mut lines=sink.0.split(|byte|*byte==b'\n');let head=lines.next().unwrap();let envelope:Envelope<Header>=serde_json::from_slice(head).unwrap();let mut previous=envelope.sha256;let mut bytes=head.to_vec();bytes.push(b'\n');let mut sequence=1;for line in lines.filter(|line|!line.is_empty()){let mut envelope:Envelope<Record>=serde_json::from_slice(line).unwrap();if envelope.body.event.phase==Phase::CopyMetadataObserved{continue}envelope.body.sequence=sequence;sequence+=1;envelope.body.previous=previous;envelope.sha256=hash(&envelope.body).unwrap();previous=envelope.sha256.clone();bytes.extend(serde_json::to_vec(&envelope).unwrap());bytes.push(b'\n');}assert!(matches!(PhysicalJournalV2::open(&binding,"metadata-transition",&bytes),Err(E::CorruptJournal)));}
+    fn selected_metadata_transition_rejects_rehashed_missing_acknowledgment() {
+        let (binding, mut journal, mut sink) = ready();
+        journal
+            .append(&mut sink, event(&binding, Phase::CopyMetadataPrepared))
+            .unwrap();
+        journal.append(&mut sink, observed(&binding)).unwrap();
+        journal
+            .append(
+                &mut sink,
+                event(&binding, Phase::DestinationPublishPrepared),
+            )
+            .unwrap();
+        let mut lines = sink.0.split(|byte| *byte == b'\n');
+        let head = lines.next().unwrap();
+        let envelope: Envelope<Header> = serde_json::from_slice(head).unwrap();
+        let mut previous = envelope.sha256;
+        let mut bytes = head.to_vec();
+        bytes.push(b'\n');
+        let mut sequence = 1;
+        for line in lines.filter(|line| !line.is_empty()) {
+            let mut envelope: Envelope<Record> = serde_json::from_slice(line).unwrap();
+            if envelope.body.event.phase == Phase::CopyMetadataObserved {
+                continue;
+            }
+            envelope.body.sequence = sequence;
+            sequence += 1;
+            envelope.body.previous = previous;
+            envelope.sha256 = hash(&envelope.body).unwrap();
+            previous = envelope.sha256.clone();
+            bytes.extend(serde_json::to_vec(&envelope).unwrap());
+            bytes.push(b'\n');
+        }
+        assert!(matches!(
+            PhysicalJournalV2::open(&binding, "metadata-transition", &bytes),
+            Err(E::CorruptJournal)
+        ));
+    }
     #[test]
-    fn selected_metadata_transition_retains_pending_intent_without_publication(){let(binding,mut journal,mut sink)=ready();journal.append(&mut sink,event(&binding,Phase::CopyMetadataPrepared)).unwrap();let recovered=PhysicalJournalV2::open(&binding,"metadata-transition",&sink.0).unwrap();assert_eq!(recovered.events().last().unwrap().phase,Phase::CopyMetadataPrepared);assert!(recovered.events().iter().all(|event|event.copy_metadata.is_none()&&event.phase!=Phase::DestinationPublishPrepared));}
+    fn selected_metadata_transition_retains_pending_intent_without_publication() {
+        let (binding, mut journal, mut sink) = ready();
+        journal
+            .append(&mut sink, event(&binding, Phase::CopyMetadataPrepared))
+            .unwrap();
+        let recovered = PhysicalJournalV2::open(&binding, "metadata-transition", &sink.0).unwrap();
+        assert_eq!(
+            recovered.events().last().unwrap().phase,
+            Phase::CopyMetadataPrepared
+        );
+        assert!(
+            recovered
+                .events()
+                .iter()
+                .all(|event| event.copy_metadata.is_none()
+                    && event.phase != Phase::DestinationPublishPrepared)
+        );
+    }
 }

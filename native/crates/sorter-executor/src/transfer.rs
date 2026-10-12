@@ -52,8 +52,18 @@ pub trait TransferStorage: MutationStorage {
     ) -> std::result::Result<MutationObservation, MutationError>;
     /// Required only by a freshly validated selected Windows Copy v1 binding.
     /// The default refuses; no adapter can silently substitute a metadata no-op.
-    #[cfg(all(windows,feature="selected-windows-execution"))]
-    fn finalize_selected_copy_metadata(&mut self,_source:&Self::SourceLease,_temp:&mut Self::OwnedTemp,_cancel:&AtomicBool)->MutationOutcome<CopyMetadataEvidence>{MutationOutcome::NoEffect(error(MutationErrorKind::Unsupported,"selected Copy metadata unavailable"))}
+    #[cfg(all(windows, feature = "selected-windows-execution"))]
+    fn finalize_selected_copy_metadata(
+        &mut self,
+        _source: &Self::SourceLease,
+        _temp: &mut Self::OwnedTemp,
+        _cancel: &AtomicBool,
+    ) -> MutationOutcome<CopyMetadataEvidence> {
+        MutationOutcome::NoEffect(error(
+            MutationErrorKind::Unsupported,
+            "selected Copy metadata unavailable",
+        ))
+    }
     /// Positive, lease-derived same-volume evidence. False uses the copy path.
     fn rename_eligible(&self, source: &Self::SourceLease, parent: &Self::Parent) -> bool;
     /// Narrow contract: a write-through, pre/post-flushed same-volume rename.
@@ -140,7 +150,7 @@ fn record(
     journal.append(
         sink,
         Event {
-            copy_metadata:None,
+            copy_metadata: None,
             operation: op.id,
             destination_id: op.destination.id.clone(),
             expected_source: op
@@ -321,11 +331,28 @@ pub fn run_job<S: TransferStorage>(
 }
 /// Selected albums enforce their planned-content protocol in a private adapter.
 /// Return the original held guards through outer-journal finalization.
-type CommitHook<'a,S>=dyn FnMut(usize,&mut S)->MutationOutcome<()>+'a;
+type CommitHook<'a, S> = dyn FnMut(usize, &mut S) -> MutationOutcome<()> + 'a;
 #[cfg(all(windows, feature = "selected-windows-execution"))]
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn run_selected_album_transfers<S: TransferStorage>(binding:&ExecutionBinding,storage:&mut S,journal:&mut PhysicalJournalV2,sink:&mut dyn JournalStore,flag:&AtomicBool,progress:&mut dyn FnMut(TransferProgress),after_commit:&mut CommitHook<'_,S>)->Result<(JobResult,HeldTransferGuards<S>)>{
-    run_job_inner(binding,storage,journal,sink,flag,progress,None,Some(after_commit))
+pub(crate) fn run_selected_album_transfers<S: TransferStorage>(
+    binding: &ExecutionBinding,
+    storage: &mut S,
+    journal: &mut PhysicalJournalV2,
+    sink: &mut dyn JournalStore,
+    flag: &AtomicBool,
+    progress: &mut dyn FnMut(TransferProgress),
+    after_commit: &mut CommitHook<'_, S>,
+) -> Result<(JobResult, HeldTransferGuards<S>)> {
+    run_job_inner(
+        binding,
+        storage,
+        journal,
+        sink,
+        flag,
+        progress,
+        None,
+        Some(after_commit),
+    )
 }
 /// Only the album driver can supply its freshly held destination identity.
 pub(crate) fn run_album_transfers<S: TransferStorage>(
@@ -357,7 +384,7 @@ fn run_job_inner<S: TransferStorage>(
     flag: &AtomicBool,
     progress: &mut dyn FnMut(TransferProgress),
     album_parent: Option<&ObjectIdentity>,
-    mut after_commit:Option<&mut CommitHook<'_,S>>,
+    mut after_commit: Option<&mut CommitHook<'_, S>>,
 ) -> Result<(JobResult, HeldTransferGuards<S>)> {
     if binding.data.album_context.is_some() != album_parent.is_some() {
         return Err(E::Scope);
@@ -411,7 +438,12 @@ fn run_job_inner<S: TransferStorage>(
             runner.items.push(item);
             continue;
         }
-        let executed=runner.execute(op,&mut item).and_then(|()|match after_commit.as_mut(){Some(hook)=>outcome(hook(op.id,runner.storage)),None=>Ok(())});
+        let executed = runner
+            .execute(op, &mut item)
+            .and_then(|()| match after_commit.as_mut() {
+                Some(hook) => outcome(hook(op.id, runner.storage)),
+                None => Ok(()),
+            });
         if let Err(failure) = executed {
             if let Some(observation) = failure.error.observed.as_deref() {
                 item.observations.push(observation.clone())
@@ -732,12 +764,43 @@ impl<S: TransferStorage> Runner<'_, S> {
             Some(expected.digest.length),
         )?;
         self.append(op, Phase::BytesSynced, Some(temp_observed.identity.clone()))?;
-        #[cfg(all(windows,feature="selected-windows-execution"))]
-        if self.binding.data.copy_metadata_version==Some(1){
+        #[cfg(all(windows, feature = "selected-windows-execution"))]
+        if self.binding.data.copy_metadata_version == Some(1) {
             self.check_cancel()?;
-            self.append(op,Phase::CopyMetadataPrepared,Some(temp_observed.identity.clone()))?;
-            let evidence=outcome(self.storage.finalize_selected_copy_metadata(self.sources.get(reference).ok_or_else(||Failure::pending(error(MutationErrorKind::StalePlan,"missing held Copy source")))?,&mut temp,self.flag))?;
-            self.journal.append(self.sink,Event{copy_metadata:Some(evidence),operation:op.id,destination_id:op.destination.id.clone(),expected_source:expected.identity.clone(),observed_identity:Some(temp_observed.identity.clone()),sha256:op.source.sha256.clone(),phase:Phase::CopyMetadataObserved}).map_err(|error|Failure::pending(crate::transfer::error(MutationErrorKind::UnknownOutcome,format!("Copy metadata journal: {error}"))))?;
+            self.append(
+                op,
+                Phase::CopyMetadataPrepared,
+                Some(temp_observed.identity.clone()),
+            )?;
+            let evidence = outcome(self.storage.finalize_selected_copy_metadata(
+                self.sources.get(reference).ok_or_else(|| {
+                    Failure::pending(error(
+                        MutationErrorKind::StalePlan,
+                        "missing held Copy source",
+                    ))
+                })?,
+                &mut temp,
+                self.flag,
+            ))?;
+            self.journal
+                .append(
+                    self.sink,
+                    Event {
+                        copy_metadata: Some(evidence),
+                        operation: op.id,
+                        destination_id: op.destination.id.clone(),
+                        expected_source: expected.identity.clone(),
+                        observed_identity: Some(temp_observed.identity.clone()),
+                        sha256: op.source.sha256.clone(),
+                        phase: Phase::CopyMetadataObserved,
+                    },
+                )
+                .map_err(|error| {
+                    Failure::pending(crate::transfer::error(
+                        MutationErrorKind::UnknownOutcome,
+                        format!("Copy metadata journal: {error}"),
+                    ))
+                })?;
         }
 
         self.check_cancel()?;

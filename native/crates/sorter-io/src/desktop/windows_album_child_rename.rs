@@ -30,21 +30,45 @@ pub struct WindowsAlbumChildRenameScope {
     stopped: bool,
 }
 impl WindowsAlbumChildRenameScope {
-    pub fn observation(&self) -> &MutationObservation { self.source.observation() }
-    pub fn ordered_children(&self) -> &[WindowsAlbumChildRename] { &self.ordered }
-    pub fn current_tree(&self) -> &[WindowsAlbumTreeEntry] { &self.source.tree.entries }
-    pub fn is_stopped(&self) -> bool { self.stopped }
-    pub fn is_complete(&self) -> bool { !self.stopped && self.cursor == self.ordered.len() }
+    pub fn observation(&self) -> &MutationObservation {
+        self.source.observation()
+    }
+    pub fn ordered_children(&self) -> &[WindowsAlbumChildRename] {
+        &self.ordered
+    }
+    pub fn current_tree(&self) -> &[WindowsAlbumTreeEntry] {
+        &self.source.tree.entries
+    }
+    pub fn is_stopped(&self) -> bool {
+        self.stopped
+    }
+    pub fn is_complete(&self) -> bool {
+        !self.stopped && self.cursor == self.ordered.len()
+    }
     pub fn next_child_rename(&self) -> Option<(usize, &WindowsAlbumChildRename)> {
-        if self.stopped { None } else { self.ordered.get(self.cursor).map(|item| (self.cursor, item)) }
+        if self.stopped {
+            None
+        } else {
+            self.ordered
+                .get(self.cursor)
+                .map(|item| (self.cursor, item))
+        }
     }
     /// An incomplete/stopped conversion returns the whole scope, retaining its
     /// root pin for partial-outcome inspection. No fallible handle transition.
     pub fn into_album_directory_lease(self) -> Result<WindowsAlbumDirectoryLease, Box<Self>> {
-        if self.is_complete() { Ok(self.source) } else { Err(Box::new(self)) }
+        if self.is_complete() {
+            Ok(self.source)
+        } else {
+            Err(Box::new(self))
+        }
     }
     fn advance_unchanged(&mut self) {
-        while self.ordered.get(self.cursor).is_some_and(|item| item.source == item.destination) {
+        while self
+            .ordered
+            .get(self.cursor)
+            .is_some_and(|item| item.source == item.destination)
+        {
             self.cursor += 1;
         }
     }
@@ -100,13 +124,22 @@ impl WindowsMutationStorage {
         parent: &WindowsParent,
         name: &MutationName,
         cancel: &AtomicBool,
-        execution: (bool, impl FnMut(AlbumRenameCheckpoint) -> Result<(), MutationError>),
+        execution: (
+            bool,
+            impl FnMut(AlbumRenameCheckpoint) -> Result<(), MutationError>,
+        ),
     ) -> MutationOutcome<WindowsAlbumPublication> {
         if !scope.is_complete() {
-            return MutationOutcome::NoEffect(err(MutationErrorKind::StalePlan, "album child cursor is incomplete or stopped"));
+            return MutationOutcome::NoEffect(err(
+                MutationErrorKind::StalePlan,
+                "album child cursor is incomplete or stopped",
+            ));
         }
-        let outcome = self.rename_album_directory_with(&mut scope.source, parent, name, cancel, execution);
-        if matches!(&outcome, MutationOutcome::PendingUnknown(_)) { scope.stopped = true; }
+        let outcome =
+            self.rename_album_directory_with(&mut scope.source, parent, name, cancel, execution);
+        if matches!(&outcome, MutationOutcome::PendingUnknown(_)) {
+            scope.stopped = true;
+        }
         outcome
     }
 
@@ -152,40 +185,90 @@ impl WindowsMutationStorage {
         let preflight = (|| {
             cancelled(cancel)?;
             if self.domain == WindowsMutationDomain::SelectedRepair {
-                return Err(err(MutationErrorKind::Unsupported, "repair cannot rename album children"));
+                return Err(err(
+                    MutationErrorKind::Unsupported,
+                    "repair cannot rename album children",
+                ));
             }
             scope.source.scope.check(self, root_session)?;
-            let (index, rename) = scope.next_child_rename().ok_or_else(|| err(MutationErrorKind::StalePlan, "child rename scope stopped or complete"))?;
+            let (index, rename) = scope.next_child_rename().ok_or_else(|| {
+                err(
+                    MutationErrorKind::StalePlan,
+                    "child rename scope stopped or complete",
+                )
+            })?;
             let rename = rename.clone();
-            let root = scope.source.file.as_ref().ok_or_else(|| err(MutationErrorKind::StalePlan, "album root consumed"))?;
+            let root = scope
+                .source
+                .file
+                .as_ref()
+                .ok_or_else(|| err(MutationErrorKind::StalePlan, "album root consumed"))?;
             checkpoint(ChildRenameCheckpoint::BeforeFinalVerification)?;
             let observed = album_observe(root, scope.source.scope.parent_identity())?;
-            if observed.identity != scope.source.original.identity || observed.actual_name != scope.source.original.actual_name {
-                return Err(err(MutationErrorKind::StalePlan, "album root changed before child rename").with_observation(observed));
+            if observed.identity != scope.source.original.identity
+                || observed.actual_name != scope.source.original.actual_name
+            {
+                return Err(err(
+                    MutationErrorKind::StalePlan,
+                    "album root changed before child rename",
+                )
+                .with_observation(observed));
             }
             verify_album_tree(root, &scope.source.tree, cancel)?;
             require_absent_child(root, &rename.destination)?;
             let candidate = renamed_tree(&scope.source, &rename)?;
-            let entry = scope.source.tree.entries.iter().find(|entry| entry.relative.len() == 1 && entry.relative[0] == rename.source)
-                .ok_or_else(|| err(MutationErrorKind::StalePlan, "next child is missing from current tree"))?;
+            let entry = scope
+                .source
+                .tree
+                .entries
+                .iter()
+                .find(|entry| entry.relative.len() == 1 && entry.relative[0] == rename.source)
+                .ok_or_else(|| {
+                    err(
+                        MutationErrorKind::StalePlan,
+                        "next child is missing from current tree",
+                    )
+                })?;
             if entry.identity != rename.identity {
-                return Err(err(MutationErrorKind::StalePlan, "next child identity differs from bound order"));
+                return Err(err(
+                    MutationErrorKind::StalePlan,
+                    "next child identity differs from bound order",
+                ));
             }
-            let child = open_album_relative(root, units(&rename.source)?,
+            let child = open_album_relative(
+                root,
+                units(&rename.source)?,
                 DELETE | FILE_GENERIC_READ,
-                FILE_WRITE_THROUGH | if entry.kind == EntryKind::Directory { FILE_DIRECTORY_FILE } else { FILE_NON_DIRECTORY_FILE },
-                FILE_SHARE_MODE(0))?;
+                FILE_WRITE_THROUGH
+                    | if entry.kind == EntryKind::Directory {
+                        FILE_DIRECTORY_FILE
+                    } else {
+                        FILE_NON_DIRECTORY_FILE
+                    },
+                FILE_SHARE_MODE(0),
+            )?;
             let observation = album_observe(&child, &scope.source.original.identity)?;
-            if observation.identity != rename.identity || observation.actual_name != rename.source
-                || kind(&child.metadata().map_err(io_error)?) != entry.kind {
-                return Err(err(MutationErrorKind::StalePlan, "opened child differs from bound identity/name/kind").with_observation(observation));
+            if observation.identity != rename.identity
+                || observation.actual_name != rename.source
+                || kind(&child.metadata().map_err(io_error)?) != entry.kind
+            {
+                return Err(err(
+                    MutationErrorKind::StalePlan,
+                    "opened child differs from bound identity/name/kind",
+                )
+                .with_observation(observation));
             }
             if let Some(digest) = &entry.digest {
                 ensure_regular(&child)?;
                 if album_digest(&child, digest.length, cancel)? != *digest {
-                    return Err(err(MutationErrorKind::StalePlan, "held child content differs before rename"));
+                    return Err(err(
+                        MutationErrorKind::StalePlan,
+                        "held child content differs before rename",
+                    ));
                 }
-            } else { ensure_directory(&child)?; }
+            } else {
+                ensure_directory(&child)?;
+            }
             scope.source.scope.check(self, root_session)?;
             checkpoint(ChildRenameCheckpoint::BeforeRename)?;
             cancelled(cancel)?;
@@ -222,10 +305,24 @@ impl WindowsMutationStorage {
             scope.source.scope.check(self, root_session)?;
             let root = scope.source.file.as_ref().expect("retained album root");
             let entries = verify_album_tree(root, &candidate, cancel)?;
-            let observation = entries.iter().find(|entry| entry.relative.len() == 1 && entry.relative[0] == rename.destination)
-                .ok_or_else(|| err(MutationErrorKind::VerificationFailed, "renamed child observation missing"))?.observation.clone();
-            if observation.identity != rename.identity || observation.actual_name != rename.destination {
-                return Err(err(MutationErrorKind::VerificationFailed, "renamed child observation differs"));
+            let observation = entries
+                .iter()
+                .find(|entry| entry.relative.len() == 1 && entry.relative[0] == rename.destination)
+                .ok_or_else(|| {
+                    err(
+                        MutationErrorKind::VerificationFailed,
+                        "renamed child observation missing",
+                    )
+                })?
+                .observation
+                .clone();
+            if observation.identity != rename.identity
+                || observation.actual_name != rename.destination
+            {
+                return Err(err(
+                    MutationErrorKind::VerificationFailed,
+                    "renamed child observation differs",
+                ));
             }
             checkpoint(ChildRenameCheckpoint::AfterVerification)?;
             cancelled(cancel)?;
@@ -238,42 +335,87 @@ impl WindowsMutationStorage {
                 scope.cursor += 1;
                 scope.advance_unchanged();
                 scope.stopped = false;
-                MutationOutcome::Applied(WindowsAlbumChildRenameObservation { planner_index: index, rename, observation, entries })
+                MutationOutcome::Applied(WindowsAlbumChildRenameObservation {
+                    planner_index: index,
+                    rename,
+                    observation,
+                    entries,
+                })
             }
             Err(error) => child_pending(error, scope.observation()),
         }
     }
 }
 
-fn check_child_scope_root(storage: &WindowsMutationStorage, scope: &WindowsAlbumChildRenameScope, root_session: bool) -> Result<(), MutationError> {
+fn check_child_scope_root(
+    storage: &WindowsMutationStorage,
+    scope: &WindowsAlbumChildRenameScope,
+    root_session: bool,
+) -> Result<(), MutationError> {
     scope.source.scope.check(storage, root_session)?;
-    let root = scope.source.file.as_ref().ok_or_else(|| err(MutationErrorKind::StalePlan, "album root consumed"))?;
+    let root = scope
+        .source
+        .file
+        .as_ref()
+        .ok_or_else(|| err(MutationErrorKind::StalePlan, "album root consumed"))?;
     ensure_directory(root)?;
     let observed = album_observe(root, scope.source.scope.parent_identity())?;
-    if observed.identity != scope.source.original.identity || observed.actual_name != scope.source.original.actual_name {
-        return Err(err(MutationErrorKind::StalePlan, "retained album root changed").with_observation(observed));
+    if observed.identity != scope.source.original.identity
+        || observed.actual_name != scope.source.original.actual_name
+    {
+        return Err(
+            err(MutationErrorKind::StalePlan, "retained album root changed")
+                .with_observation(observed),
+        );
     }
     Ok(())
 }
-fn verify_child_scope_tree(storage: &WindowsMutationStorage, scope: &WindowsAlbumChildRenameScope, root_session: bool, cancel: &AtomicBool) -> Result<Vec<WindowsAlbumTreeObservation>, MutationError> {
+fn verify_child_scope_tree(
+    storage: &WindowsMutationStorage,
+    scope: &WindowsAlbumChildRenameScope,
+    root_session: bool,
+    cancel: &AtomicBool,
+) -> Result<Vec<WindowsAlbumTreeObservation>, MutationError> {
     cancelled(cancel)?;
     check_child_scope_root(storage, scope, root_session)?;
-    let entries = verify_album_tree(scope.source.file.as_ref().expect("checked root"), &scope.source.tree, cancel)?;
+    let entries = verify_album_tree(
+        scope.source.file.as_ref().expect("checked root"),
+        &scope.source.tree,
+        cancel,
+    )?;
     check_child_scope_root(storage, scope, root_session)?;
     cancelled(cancel)?;
     Ok(entries)
 }
-fn inspect_child_scope_location(storage: &WindowsMutationStorage, scope: &WindowsAlbumChildRenameScope, root_session: bool, planner_index: usize, at_destination: bool) -> Result<Option<MutationObservation>, MutationError> {
+fn inspect_child_scope_location(
+    storage: &WindowsMutationStorage,
+    scope: &WindowsAlbumChildRenameScope,
+    root_session: bool,
+    planner_index: usize,
+    at_destination: bool,
+) -> Result<Option<MutationObservation>, MutationError> {
     check_child_scope_root(storage, scope, root_session)?;
-    let binding = scope.ordered.get(planner_index).ok_or_else(|| err(MutationErrorKind::InvalidName, "child observation index is outside the bound planner order"))?;
-    let leaf = if at_destination { &binding.destination } else { &binding.source };
+    let binding = scope.ordered.get(planner_index).ok_or_else(|| {
+        err(
+            MutationErrorKind::InvalidName,
+            "child observation index is outside the bound planner order",
+        )
+    })?;
+    let leaf = if at_destination {
+        &binding.destination
+    } else {
+        &binding.source
+    };
     let root = scope.source.file.as_ref().expect("checked root");
     let result = match super::super::super::open_child(root, units(leaf)?, false) {
         Err(error) if error.kind == crate::storage::StorageErrorKind::NotFound => None,
         Err(error) => return Err(read_error(error)),
         Ok(file) => {
             if kind(&file.metadata().map_err(io_error)?) == EntryKind::LinkOrReparse {
-                return Err(err(MutationErrorKind::UnsafeReparse, "bound child location is now reparse"));
+                return Err(err(
+                    MutationErrorKind::UnsafeReparse,
+                    "bound child location is now reparse",
+                ));
             }
             Some(album_observe(&file, &scope.source.original.identity)?)
         }
@@ -282,7 +424,10 @@ fn inspect_child_scope_location(storage: &WindowsMutationStorage, scope: &Window
     Ok(result)
 }
 
-fn child_pending(error: MutationError, root: &MutationObservation) -> MutationOutcome<WindowsAlbumChildRenameObservation> {
+fn child_pending(
+    error: MutationError,
+    root: &MutationObservation,
+) -> MutationOutcome<WindowsAlbumChildRenameObservation> {
     MutationOutcome::PendingUnknown(err(MutationErrorKind::UnknownOutcome,
         &format!("album child rename dispatched; original container retained, reconcile without replay: {error:?}"))
         .with_observation(root.clone()))
@@ -297,14 +442,22 @@ fn require_absent_child(root: &File, name: &MutationName) -> Result<(), Mutation
     match super::super::super::open_child(root, units(name)?, false) {
         Err(error) if error.kind == crate::storage::StorageErrorKind::NotFound => Ok(()),
         Err(error) => Err(read_error(error)),
-        Ok(_) => Err(err(MutationErrorKind::StalePlan, "child rename target is occupied or aliases an existing leaf")),
+        Ok(_) => Err(err(
+            MutationErrorKind::StalePlan,
+            "child rename target is occupied or aliases an existing leaf",
+        )),
     }
 }
 
-fn renamed_tree(source: &WindowsAlbumDirectoryLease, rename: &WindowsAlbumChildRename) -> Result<AlbumTree, MutationError> {
+fn renamed_tree(
+    source: &WindowsAlbumDirectoryLease,
+    rename: &WindowsAlbumChildRename,
+) -> Result<AlbumTree, MutationError> {
     let mut entries = source.tree.entries.clone();
     for entry in &mut entries {
-        if entry.relative[0] == rename.source { entry.relative[0] = rename.destination.clone(); }
+        if entry.relative[0] == rename.source {
+            entry.relative[0] = rename.destination.clone();
+        }
     }
     validate_album_tree(&source.original.identity, entries)
 }
@@ -314,9 +467,17 @@ fn bind_child_renames(
     ordered: Vec<WindowsAlbumChildRename>,
     cancel: &AtomicBool,
 ) -> Result<WindowsAlbumChildRenameScope, MutationError> {
-    let expected = source.tree.children.get(&Vec::new()).map(Vec::as_slice).unwrap_or(&[]);
+    let expected = source
+        .tree
+        .children
+        .get(&Vec::new())
+        .map(Vec::as_slice)
+        .unwrap_or(&[]);
     if ordered.len() != expected.len() {
-        return Err(err(MutationErrorKind::StalePlan, "child order must cover every direct child, including unchanged leaves"));
+        return Err(err(
+            MutationErrorKind::StalePlan,
+            "child order must cover every direct child, including unchanged leaves",
+        ));
     }
     let mut remaining = BTreeMap::new();
     for index in expected {
@@ -327,27 +488,48 @@ fn bind_child_renames(
         cancelled(cancel)?;
         units(&rename.destination)?;
         if remaining.remove(units(&rename.source)?) != Some(&rename.identity) {
-            return Err(err(MutationErrorKind::StalePlan, "child order repeats, omits or changes an exact source identity"));
+            return Err(err(
+                MutationErrorKind::StalePlan,
+                "child order repeats, omits or changes an exact source identity",
+            ));
         }
     }
     reject_ordinal_collisions(&ordered, cancel)?;
     let root = source.file.as_ref().expect("new album lease");
-    for rename in ordered.iter().filter(|item| item.source != item.destination) {
+    for rename in ordered
+        .iter()
+        .filter(|item| item.source != item.destination)
+    {
         cancelled(cancel)?;
         require_absent_child(root, &rename.destination)?;
     }
     verify_album_tree(root, &source.tree, cancel)?;
-    let mut scope = WindowsAlbumChildRenameScope { source, ordered, cursor: 0, stopped: false };
+    let mut scope = WindowsAlbumChildRenameScope {
+        source,
+        ordered,
+        cursor: 0,
+        stopped: false,
+    };
     scope.advance_unchanged();
     Ok(scope)
 }
 
 // Fallible merge sort of indices keeps the complete policy order untouched and
 // bounds admission to O(n log n), rather than pairwise comparisons of big albums.
-fn reject_ordinal_collisions(ordered: &[WindowsAlbumChildRename], cancel: &AtomicBool) -> Result<(), MutationError> {
+fn reject_ordinal_collisions(
+    ordered: &[WindowsAlbumChildRename],
+    cancel: &AtomicBool,
+) -> Result<(), MutationError> {
     let compare = |a: usize, b: usize| -> Result<i32, MutationError> {
         cancelled(cancel)?;
-        let result = unsafe { CompareStringOrdinal(units(&ordered[a].destination)?, units(&ordered[b].destination)?, true) }.0;
+        let result = unsafe {
+            CompareStringOrdinal(
+                units(&ordered[a].destination)?,
+                units(&ordered[b].destination)?,
+                true,
+            )
+        }
+        .0;
         match result {
             1..=3 => Ok(result),
             _ => Err(io_error(io::Error::last_os_error())),
@@ -364,8 +546,12 @@ fn reject_ordinal_collisions(ordered: &[WindowsAlbumChildRename], cancel: &Atomi
             let (mut left, mut right) = (start, middle);
             for slot in &mut buffer[start..end] {
                 if left < middle && (right == end || compare(indices[left], indices[right])? <= 2) {
-                    *slot = indices[left]; left += 1;
-                } else { *slot = indices[right]; right += 1; }
+                    *slot = indices[left];
+                    left += 1;
+                } else {
+                    *slot = indices[right];
+                    right += 1;
+                }
             }
         }
         std::mem::swap(&mut indices, &mut buffer);
@@ -374,7 +560,10 @@ fn reject_ordinal_collisions(ordered: &[WindowsAlbumChildRename], cancel: &Atomi
     for pair in indices.windows(2) {
         cancelled(cancel)?;
         if compare(pair[0], pair[1])? == 2 {
-            return Err(err(MutationErrorKind::StalePlan, "planned child destinations are ordinal case-insensitive aliases"));
+            return Err(err(
+                MutationErrorKind::StalePlan,
+                "planned child destinations are ordinal case-insensitive aliases",
+            ));
         }
     }
     Ok(())
@@ -386,17 +575,42 @@ pub struct WindowsAlbumRootChildRenameSession {
     scope: WindowsAlbumChildRenameScope,
 }
 impl WindowsAlbumRootChildRenameSession {
-    pub fn selected_source_reference(&self) -> &StorageRef { &self.source_reference }
-    pub fn selected_source_identity(&self) -> &ObjectIdentity { &self.scope.observation().identity }
-    pub fn source_observation(&self) -> &MutationObservation { self.scope.observation() }
-    pub fn target_and_journal(&self) -> &WindowsMutationStorage { &self.target_and_journal }
-    pub fn ordered_children(&self) -> &[WindowsAlbumChildRename] { self.scope.ordered_children() }
-    pub fn current_tree(&self) -> &[WindowsAlbumTreeEntry] { self.scope.current_tree() }
-    pub fn is_stopped(&self) -> bool { self.scope.is_stopped() }
-    pub fn is_complete(&self) -> bool { self.scope.is_complete() }
-    pub fn next_child_rename(&self) -> Option<(usize, &WindowsAlbumChildRename)> { self.scope.next_child_rename() }
-    pub fn rename_next_album_child(&mut self, cancel: &AtomicBool) -> MutationOutcome<WindowsAlbumChildRenameObservation> {
-        self.target_and_journal.rename_next_album_child_with(&mut self.scope, cancel, (true, |_| Ok(()), close_child_once))
+    pub fn selected_source_reference(&self) -> &StorageRef {
+        &self.source_reference
+    }
+    pub fn selected_source_identity(&self) -> &ObjectIdentity {
+        &self.scope.observation().identity
+    }
+    pub fn source_observation(&self) -> &MutationObservation {
+        self.scope.observation()
+    }
+    pub fn target_and_journal(&self) -> &WindowsMutationStorage {
+        &self.target_and_journal
+    }
+    pub fn ordered_children(&self) -> &[WindowsAlbumChildRename] {
+        self.scope.ordered_children()
+    }
+    pub fn current_tree(&self) -> &[WindowsAlbumTreeEntry] {
+        self.scope.current_tree()
+    }
+    pub fn is_stopped(&self) -> bool {
+        self.scope.is_stopped()
+    }
+    pub fn is_complete(&self) -> bool {
+        self.scope.is_complete()
+    }
+    pub fn next_child_rename(&self) -> Option<(usize, &WindowsAlbumChildRename)> {
+        self.scope.next_child_rename()
+    }
+    pub fn rename_next_album_child(
+        &mut self,
+        cancel: &AtomicBool,
+    ) -> MutationOutcome<WindowsAlbumChildRenameObservation> {
+        self.target_and_journal.rename_next_album_child_with(
+            &mut self.scope,
+            cancel,
+            (true, |_| Ok(()), close_child_once),
+        )
     }
     pub fn rename_completed_album_children(
         &mut self,
@@ -404,23 +618,51 @@ impl WindowsAlbumRootChildRenameSession {
         name: &MutationName,
         cancel: &AtomicBool,
     ) -> MutationOutcome<WindowsAlbumPublication> {
-        self.target_and_journal.rename_completed_album_children_with(&mut self.scope, parent, name, cancel, (true, |_| Ok(())))
+        self.target_and_journal
+            .rename_completed_album_children_with(
+                &mut self.scope,
+                parent,
+                name,
+                cancel,
+                (true, |_| Ok(())),
+            )
     }
     pub fn inspect_original_location(&self) -> Result<Option<MutationObservation>, MutationError> {
-        self.scope.source.scope.check(&self.target_and_journal, true)?;
+        self.scope
+            .source
+            .scope
+            .check(&self.target_and_journal, true)?;
         inspect_album_original_location(&self.scope.source)
     }
-    pub fn verify_current_tree(&self, cancel: &AtomicBool) -> Result<Vec<WindowsAlbumTreeObservation>, MutationError> {
+    pub fn verify_current_tree(
+        &self,
+        cancel: &AtomicBool,
+    ) -> Result<Vec<WindowsAlbumTreeObservation>, MutationError> {
         verify_child_scope_tree(&self.target_and_journal, &self.scope, true, cancel)
     }
-    pub fn inspect_child_location(&self, planner_index: usize, at_destination: bool) -> Result<Option<MutationObservation>, MutationError> {
-        inspect_child_scope_location(&self.target_and_journal, &self.scope, true, planner_index, at_destination)
+    pub fn inspect_child_location(
+        &self,
+        planner_index: usize,
+        at_destination: bool,
+    ) -> Result<Option<MutationObservation>, MutationError> {
+        inspect_child_scope_location(
+            &self.target_and_journal,
+            &self.scope,
+            true,
+            planner_index,
+            at_destination,
+        )
     }
     pub fn into_root_rename_session(self) -> Result<WindowsAlbumRootRenameSession, Box<Self>> {
         if self.scope.is_complete() {
-            Ok(WindowsAlbumRootRenameSession { target_and_journal: self.target_and_journal,
-                source_reference: self.source_reference, source: self.scope.source })
-        } else { Err(Box::new(self)) }
+            Ok(WindowsAlbumRootRenameSession {
+                target_and_journal: self.target_and_journal,
+                source_reference: self.source_reference,
+                source: self.scope.source,
+            })
+        } else {
+            Err(Box::new(self))
+        }
     }
 }
 impl WindowsMutationStorage {
@@ -432,10 +674,14 @@ impl WindowsMutationStorage {
         ordered: Vec<WindowsAlbumChildRename>,
         cancel: &AtomicBool,
     ) -> Result<WindowsAlbumRootChildRenameSession, MutationError> {
-        let session = Self::for_selected_album_root_rename(source, target, journal, entries, cancel)?;
+        let session =
+            Self::for_selected_album_root_rename(source, target, journal, entries, cancel)?;
         let scope = bind_child_renames(session.source, ordered, cancel)?;
-        Ok(WindowsAlbumRootChildRenameSession { target_and_journal: session.target_and_journal,
-            source_reference: session.source_reference, scope })
+        Ok(WindowsAlbumRootChildRenameSession {
+            target_and_journal: session.target_and_journal,
+            source_reference: session.source_reference,
+            scope,
+        })
     }
 }
 

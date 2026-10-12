@@ -269,7 +269,7 @@ fn recovery_without_replay(
     ));
     let op = &binding.operations()[0];
     let event = Event {
-        copy_metadata:None,
+        copy_metadata: None,
         operation: op.id,
         destination_id: op.destination.id.clone(),
         expected_source: op.source.observation.identity.clone().unwrap(),
@@ -1137,7 +1137,7 @@ fn copy_crossover_mixed_domains_and_rehashed_forgery_cannot_mint_rename_authorit
     }
     let op = &f.binding.operations()[0];
     let event = |phase| Event {
-        copy_metadata:None,
+        copy_metadata: None,
         operation: op.id,
         destination_id: op.destination.id.clone(),
         expected_source: op.source.observation.identity.clone().unwrap(),
