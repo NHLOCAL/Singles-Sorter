@@ -137,12 +137,12 @@ mod tests {
     }
     impl Drop for OwnedDirectory { fn drop(&mut self) { let _ = std::fs::remove_dir_all(&self.0); } }
     fn fixture() -> Vec<u8> {
-        let payload=b"\x00old";let mut body=b"TPE1".to_vec();body.extend((payload.len() as u32).to_be_bytes());body.extend([0,0]);body.extend(payload);body.extend([0;64]);
+        let payload=b"\x01\xff\xfe\xe0\x00";let mut body=b"TPE1".to_vec();body.extend((payload.len() as u32).to_be_bytes());body.extend([0,0]);body.extend(payload);body.extend([0;64]);
         let mut file=vec![b'I',b'D',b'3',3,0,0,0,0,0,body.len() as u8];file.extend(body);
         let original=include_bytes!("../../../tests/fixtures/media/tagged.mp3");let header=original[6..10].iter().fold(0usize,|n,b|(n<<7)|usize::from(*b));file.extend(&original[10+header..]);file
     }
     fn prepared(directory:&OwnedDirectory) -> (Vec<u8>,Value) {
-        use sha2::{Digest,Sha256};let before=fixture();std::fs::write(directory.0.join("source.bin"),&before).unwrap();let mut value=request();value["source_bytes"]=json!(before.len());value["source_sha256"]=json!(format!("{:x}",Sha256::digest(&before)));(before,value)
+        use sha2::{Digest,Sha256};let before=fixture();std::fs::write(directory.0.join("source.bin"),&before).unwrap();let mut value=request();value["source_bytes"]=json!(before.len());value["source_sha256"]=json!(format!("{:x}",Sha256::digest(&before)));value["repairs"][0]["original"]=json!("à");value["repairs"][0]["replacement"]=json!("א");(before,value)
     }
     #[test]
     fn staged_composition_preserves_source_and_reports_actual_output() {
@@ -151,11 +151,11 @@ mod tests {
     }
     #[test]
     fn existing_output_is_refused_without_changes() {
-        let directory=OwnedDirectory::new();let (before,value)=prepared(&directory);std::fs::write(directory.0.join("staged.bin"),b"owned sentinel").unwrap();assert!(directory.run(&value,false).is_err());assert_eq!(std::fs::read(directory.0.join("staged.bin")).unwrap(),b"owned sentinel");assert_eq!(std::fs::read(directory.0.join("source.bin")).unwrap(),before);
+        let directory=OwnedDirectory::new();let (before,value)=prepared(&directory);std::fs::write(directory.0.join("staged.bin"),b"owned sentinel").unwrap();assert_eq!(directory.run(&value,false).unwrap_err(),"staged_create");assert_eq!(std::fs::read(directory.0.join("staged.bin")).unwrap(),b"owned sentinel");assert_eq!(std::fs::read(directory.0.join("source.bin")).unwrap(),before);
     }
     #[test]
     fn wrong_hash_never_returns_success_and_preserves_input() {
-        let directory=OwnedDirectory::new();let (before,mut value)=prepared(&directory);value["source_sha256"]=json!("00".repeat(32));assert!(directory.run(&value,false).is_err());assert_eq!(std::fs::read(directory.0.join("source.bin")).unwrap(),before);
+        let directory=OwnedDirectory::new();let (before,mut value)=prepared(&directory);value["source_sha256"]=json!("00".repeat(32));assert_eq!(directory.run(&value,false).unwrap_err(),"Stale");assert_eq!(std::fs::read(directory.0.join("source.bin")).unwrap(),before);
     }
     #[test]
     fn cancelled_before_create_leaves_no_output() {
@@ -164,6 +164,6 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn symlink_source_is_refused() {
-        let directory=OwnedDirectory::new();let (before,value)=prepared(&directory);std::fs::rename(directory.0.join("source.bin"),directory.0.join("real.bin")).unwrap();std::os::unix::fs::symlink("real.bin",directory.0.join("source.bin")).unwrap();assert!(directory.run(&value,false).is_err());assert!(!directory.0.join("staged.bin").exists());assert_eq!(std::fs::read(directory.0.join("real.bin")).unwrap(),before);
+        let directory=OwnedDirectory::new();let (before,value)=prepared(&directory);std::fs::rename(directory.0.join("source.bin"),directory.0.join("real.bin")).unwrap();std::os::unix::fs::symlink("real.bin",directory.0.join("source.bin")).unwrap();assert_eq!(directory.run(&value,false).unwrap_err(),"snapshot_open");assert!(!directory.0.join("staged.bin").exists());assert_eq!(std::fs::read(directory.0.join("real.bin")).unwrap(),before);
     }
 }
