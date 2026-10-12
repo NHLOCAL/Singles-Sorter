@@ -60,12 +60,12 @@ original_ai_checks = []
 apply_checks = []
 repair_checks = []
 
-def call(method, path, body=None):
+def call(method, path, body=None, *, timeout=30):
     data = None if body is None else json.dumps(body).encode('utf-8')
     req = urllib.request.Request(BASE + path, data=data, method=method, headers={'Content-Type':'application/json; charset=utf-8'})
     # Local native test driver only; do not inherit an external proxy.
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-    with opener.open(req, timeout=30) as response:
+    with opener.open(req, timeout=timeout) as response:
         result = json.loads(response.read())
     value = result.get('value')
     if isinstance(value, dict) and value.get('error'):

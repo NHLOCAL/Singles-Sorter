@@ -19,10 +19,12 @@ def wait_driver_ready(call, process, timeout=45):
         if code is not None:
             raise RuntimeError(f'Tauri driver exited before readiness (exit {code})')
         try:
-            status = call('GET', '/status')
+            status = call('GET', '/status', timeout=max(.001, deadline-time.monotonic()))
             if isinstance(status, dict) and status.get('ready') is True:
                 return status
             last = repr(status)
+        except urllib.error.HTTPError:
+            raise
         except (urllib.error.URLError, http.client.RemoteDisconnected) as error:
             last = f'{type(error).__name__}: {error}'
         time.sleep(.2)

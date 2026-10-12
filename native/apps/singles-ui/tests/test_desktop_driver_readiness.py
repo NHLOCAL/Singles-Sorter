@@ -16,7 +16,10 @@ class DriverReadinessTests(unittest.TestCase):
         call = Mock(side_effect=[urllib.error.URLError('connection refused'), http.client.RemoteDisconnected('empty proxy'), {'ready':False}, {'ready':True}])
         self.assertTrue(self.run_probe(call)['ready'])
         self.assertEqual(call.call_count, 4)
-        for args in call.call_args_list: self.assertEqual(args.args, ('GET', '/status'))
+        for args in call.call_args_list:
+            self.assertEqual(args.args, ('GET', '/status'))
+            self.assertGreater(args.kwargs['timeout'], 0)
+            self.assertLessEqual(args.kwargs['timeout'], 1)
 
     def test_persistent_disconnect_is_bounded_and_reported(self):
         call = Mock(side_effect=http.client.RemoteDisconnected('empty proxy'))
@@ -33,6 +36,11 @@ class DriverReadinessTests(unittest.TestCase):
     def test_protocol_error_is_not_retried(self):
         call = Mock(side_effect=http.client.BadStatusLine('malformed'))
         with self.assertRaises(http.client.BadStatusLine): self.run_probe(call)
+        self.assertEqual(call.call_count, 1)
+
+    def test_http_error_is_not_a_startup_transport_race(self):
+        call = Mock(side_effect=urllib.error.HTTPError('http://127.0.0.1/status', 500, 'server error', {}, None))
+        with self.assertRaises(urllib.error.HTTPError): self.run_probe(call)
         self.assertEqual(call.call_count, 1)
 
     def test_ready_must_be_true_boolean(self):
