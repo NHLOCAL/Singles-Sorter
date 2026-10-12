@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 import tempfile
+import subprocess
 import unittest
 from unittest.mock import patch
 from desktop_layout import check_phone_layout, check_native_layout, assert_editor_actions, assert_layout
@@ -51,9 +52,9 @@ class SelectedResultsBudgetTests(unittest.TestCase):
                       chrome={'header':rect(0, 0, 1000, 56), 'footer':rect(0, 612, 1000, 38)},
                       results=rect(24, 72, 952, 524), resultsBody=rect(43, 303.203125, 914, 277.796875),
                       resultsOverflow='auto', rowHeights=[44.5], controls={'review-apply':button},
-                      executionPanel={'rect':rect(43, 225.203125, 914, 68), 'parentIsResults':True,
+                      executionPanel={'rect':rect(43, 225.203125, 914, 68), 'parentIsResults':True, 'visible':True,
                                       'marginTop':0, 'marginBottom':10, 'expectedActions':['review-apply'],
-                                      'actions':[{'id':'review-apply','rect':button}]})
+                                      'actions':[{'id':'review-apply','rect':button,'visible':True}]})
         if not panel:
             result['executionPanel'] = None
             result['controls'] = {}
@@ -68,7 +69,7 @@ class SelectedResultsBudgetTests(unittest.TestCase):
         with self.assertRaises(AssertionError): assert_layout(metrics)
 
     def test_reservation_requires_visible_nonoverlapping_owned_card_and_actions(self):
-        for change in ['foreign_parent','overlap','negative_margin','nonfinite_margin','action_outside','action_missing','action_hidden']:
+        for change in ['foreign_parent','overlap','negative_margin','nonfinite_margin','action_outside','action_missing','action_hidden','invisible_panel','invisible_action']:
             metrics = self.metrics(); panel = metrics['executionPanel']
             if change == 'foreign_parent': panel['parentIsResults'] = False
             if change == 'overlap': panel['rect']['bottom'] += 2
@@ -77,6 +78,8 @@ class SelectedResultsBudgetTests(unittest.TestCase):
             if change == 'action_outside': panel['actions'][0]['rect']['y'] = panel['rect']['y'] - 1
             if change == 'action_missing': metrics['controls'] = {}
             if change == 'action_hidden': panel['actions'] = []
+            if change == 'invisible_panel': panel['visible'] = False
+            if change == 'invisible_action': panel['actions'][0]['visible'] = False
             with self.subTest(change=change), self.assertRaises(AssertionError): assert_layout(metrics)
 
     def test_large_panel_cannot_justify_collapsed_list(self):
@@ -105,12 +108,35 @@ class SelectedResultsBudgetTests(unittest.TestCase):
             if change == 'control_offscreen': metrics['controls']['review-apply']['right'] = 1002
             with self.subTest(change=change), self.assertRaises(AssertionError): assert_layout(metrics)
 
+    def test_metric_visibility_rejects_hidden_collapsed_and_transparent_ancestors(self):
+        # Exercise the exact collected JS predicate against isolated DOM-shaped
+        # values; this does not substitute for actual WebView layout evidence.
+        source = Path(__file__).with_name('layout_metrics.js').read_text()
+        predicate = source.split(' const renderedVisible=', 1)[1].split(';\n', 1)[0]
+        program = "const getComputedStyle = node => node.style; const visible = " + predicate + r""";
+const element = (visibility='visible',opacity='1',parentElement=null,rects=1) => ({
+ style:{visibility,opacity},parentElement,getClientRects:()=>Array(rects)});
+const result = [visible(element()), visible(element('hidden')), visible(element('collapse')),
+ visible(element('visible','0')),visible(element('visible','0.0')),
+ visible(element('visible','1',element('visible','0'))),
+ visible(element('visible','1',element('hidden'))),visible(element('visible','1',null,0)),
+ visible(element('visible','0.5'))];
+process.stdout.write(JSON.stringify(result));
+"""
+        result = subprocess.run(['node', '-e', program], capture_output=True, text=True, check=True, timeout=10)
+        self.assertEqual(json.loads(result.stdout), [True,False,False,False,False,False,False,False,True])
+
     def test_runtime_collects_actual_panel_and_apply_cancel_controls(self):
         source = Path(__file__).with_name('layout_metrics.js').read_text()
         self.assertIn("'review-apply','cancel-apply'", source)
         self.assertIn('panel.getClientRects().length>0', source)
         self.assertIn('parseFloat(panelStyle.marginBottom)', source)
         self.assertIn('executionPanel,', source)
+        self.assertIn("style.visibility!=='visible'", source)
+        self.assertIn('parseFloat(style.opacity)>0', source)
+        self.assertIn('node=node.parentElement', source)
+        self.assertIn('visible:renderedVisible(panel)', source)
+        self.assertIn('visible:renderedVisible(el)', source)
 
 
 if __name__ == '__main__': unittest.main()

@@ -28,7 +28,7 @@ def assert_execution_space(metrics):
         return 0
     box, card, body = panel['rect'], metrics['results'], metrics['resultsBody']
     top, bottom = panel['marginTop'], panel['marginBottom']
-    assert panel['parentIsResults'], panel
+    assert panel['parentIsResults'] and panel['visible'] is True, panel
     assert all(isinstance(value, (int, float)) and math.isfinite(value) and value >= 0
                for value in [box['height'], top, bottom]), panel
     assert box['height'] > 0 and abs(box['bottom'] - box['y'] - box['height']) <= 1, panel
@@ -41,6 +41,7 @@ def assert_execution_space(metrics):
     assert box['bottom'] + bottom <= body['y'] + 1, (panel, body)
     for action in panel['actions']:
         control = action['rect']
+        assert action['visible'] is True, action
         assert control['height'] > 0, action
         assert box['x'] <= control['x'] and control['right'] <= box['right'] + 1, action
         assert box['y'] <= control['y'] and control['bottom'] <= box['bottom'] + 1, action

@@ -1,5 +1,6 @@
 return (() => {
  const rect = el => {const r=el.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,bottom:r.bottom,right:r.right};};
+ const renderedVisible=el=>{if(!el.getClientRects().length)return false;for(let node=el;node;node=node.parentElement){const style=getComputedStyle(node);if(style.visibility!=='visible'||!(parseFloat(style.opacity)>0))return false;}return true;};
  const scrollParent=el=>{for(let p=el.parentElement;p&&p.tagName!=='DIALOG';p=p.parentElement)if(['auto','scroll'].includes(getComputedStyle(p).overflowY))return {rect:rect(p),scrollTop:p.scrollTop,scrollHeight:p.scrollHeight};return null;};
  const setupIds=['source','target','source-picker','target-picker','copy_mode','main_folder_only','singles_folder','abc_sort','exist_only','advanced','save-settings','sort','fix'];
  const app=document.getElementById('app');const ids=app.dataset.view==='results'?['back-setup','review-apply','cancel-apply',...(!document.getElementById('pagination').hidden?['previous','next']:[])]:setupIds;
@@ -7,7 +8,7 @@ return (() => {
  const body=document.getElementById('results-body'),panel=document.getElementById('execution-panel');
  const panelVisible=panel.getClientRects().length>0;
  const panelStyle=getComputedStyle(panel);
- const executionPanel=panelVisible?{rect:rect(panel),parentIsResults:panel.parentElement===document.getElementById('results'),marginTop:parseFloat(panelStyle.marginTop),marginBottom:parseFloat(panelStyle.marginBottom),expectedActions:Array.from(panel.querySelectorAll('button')).filter(el=>!el.hidden).map(el=>el.id),actions:Array.from(panel.querySelectorAll('button')).filter(el=>el.getClientRects().length).map(el=>({id:el.id,rect:rect(el)}))}:null;
+ const executionPanel=panelVisible?{rect:rect(panel),visible:renderedVisible(panel),parentIsResults:panel.parentElement===document.getElementById('results'),marginTop:parseFloat(panelStyle.marginTop),marginBottom:parseFloat(panelStyle.marginBottom),expectedActions:Array.from(panel.querySelectorAll('button')).filter(el=>!el.hidden).map(el=>el.id),actions:Array.from(panel.querySelectorAll('button')).filter(el=>el.getClientRects().length).map(el=>({id:el.id,rect:rect(el),visible:renderedVisible(el)}))}:null;
  return {view:app.dataset.view,setupVisible:!document.getElementById('setup-screen').hidden,resultsVisible:!document.getElementById('results').hidden,innerWidth,innerHeight,dpr:devicePixelRatio,screenWidth:screen.width,screenHeight:screen.height,
   reflow:app.classList.contains('reflow')||innerWidth<=740||innerHeight<=560,
   pageWidth:document.documentElement.scrollWidth,pageHeight:document.documentElement.scrollHeight,
