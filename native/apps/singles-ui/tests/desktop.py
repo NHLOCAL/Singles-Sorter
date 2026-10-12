@@ -253,6 +253,9 @@ try:
         click('#back-setup')
         wait(lambda:script("return document.querySelector('#app').dataset.view === 'setup'"))
         # Task 2 uses a separate development profile. The runner has no user profile.
+        # Back preserves the selected Fix tab, which correctly hides Copy settings.
+        click('#tab-mode-sort')
+        wait(lambda: script("return document.querySelector('#app').dataset.workMode === 'sort' && document.querySelector('#copy_mode').getClientRects().length > 0"))
         assert script("return !!document.querySelector('#save-settings')"), "Task 2 preferences UI is missing; stale binary cannot pass"
         click('#copy_mode'); click('#save-settings')
         wait(lambda: text('#settings-notice') == 'נשמר')
