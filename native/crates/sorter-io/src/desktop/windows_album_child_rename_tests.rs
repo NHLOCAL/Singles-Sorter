@@ -387,27 +387,50 @@ fn future_absent_ordinal_aliases_are_rejected_without_rewriting_names() {
 
 #[test]
 fn changed_membership_content_or_identity_stops_before_child_dispatch() {
-    for change in 0..3 {
+    for change in 0..2 {
         let f = Fixture::new();
         let cancel = AtomicBool::new(false);
         let mut scope = f.acquire(&cancel);
         let original = scope.current_tree().to_vec();
-        match change {
-            0 => std::fs::write(f.path.join("source/album/late.txt"), b"late").unwrap(),
-            1 => std::fs::write(f.path.join("source/album/old.mp3"), b"different").unwrap(),
-            _ => {
-                std::fs::rename(
-                    f.path.join("source/album/old.mp3"),
-                    f.path.join("source/album/retained.mp3"),
-                )
-                .unwrap();
-                std::fs::write(f.path.join("source/album/old.mp3"), b"song").unwrap();
-            }
+        if change == 0 {
+            std::fs::write(f.path.join("source/album/late.txt"), b"late").unwrap();
+        } else {
+            std::fs::write(f.path.join("source/album/old.mp3"), b"different").unwrap();
         }
         no_effect(f.storage.rename_next_album_child(&mut scope, &cancel));
         assert!(!f.path.join("source/album/song.mp3").exists());
         assert_eq!(scope.current_tree(), original);
     }
+    // Windows protects pathname replacement while the exclusive album lease
+    // exists. After releasing it, the unchanged snapshot must reject a new ID.
+    let f = Fixture::new();
+    let scope = f.acquire(&AtomicBool::new(false));
+    let original = f.path.join("source/album/old.mp3");
+    let retained = f.path.join("source/retained.mp3");
+    assert_eq!(
+        std::fs::rename(&original, &retained)
+            .unwrap_err()
+            .raw_os_error(),
+        Some(32)
+    );
+    drop(scope);
+    std::fs::rename(&original, &retained).unwrap();
+    std::fs::write(&original, b"song").unwrap();
+    assert!(
+        f.storage
+            .acquire_album_directory_for_child_renames(
+                &f.source,
+                &name("album"),
+                &f.expected,
+                f.entries.clone(),
+                ordered(&f.entries),
+                &AtomicBool::new(false),
+            )
+            .is_err()
+    );
+    assert!(!f.path.join("source/album/song.mp3").exists());
+    assert_eq!(std::fs::read(&original).unwrap(), b"song");
+    assert_eq!(std::fs::read(&retained).unwrap(), b"song");
 }
 
 #[test]

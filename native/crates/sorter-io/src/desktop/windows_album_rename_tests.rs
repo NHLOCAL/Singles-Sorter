@@ -141,6 +141,7 @@ fn child_album_moves_same_tree_container_streams_and_eas_without_recreating_obje
         applied(storage.rename_album_directory(&mut lease, &target, &name("new album"), &cancel));
     assert!(lease.file.is_none());
     assert_eq!(published.observation().identity, expected);
+    assert_eq!(published.observation().size, None);
     assert_eq!(published.entries().len(), entries.len());
     assert_eq!(
         storage
@@ -156,6 +157,10 @@ fn child_album_moves_same_tree_container_streams_and_eas_without_recreating_obje
             .find(|entry| entry.relative == expected_entry.relative)
             .unwrap();
         assert_eq!(actual.observation.identity, expected_entry.identity);
+        assert_eq!(
+            actual.observation.size,
+            expected_entry.digest.as_ref().map(|digest| digest.length)
+        );
     }
     assert!(check_repair_extended_attributes(&published.file).is_err());
     assert!(!path.join("source/album").exists());

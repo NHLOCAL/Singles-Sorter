@@ -649,16 +649,21 @@ fn copied_file_metadata_probe_matches_live_receipt_after_publication_guard_relea
             f.storage
                 .publish_no_replace(&mut temp, &f.target, &name("song.mp3"), &cancel),
         );
-    assert!(
-        f.storage
-            .inspect_selected_copy_metadata(
-                &f.target,
-                &name("song.mp3"),
-                &evidence.destination_identity,
-                EntryKind::File
-            )
-            .is_err()
-    );
+    // Attribute-only observation is compatible with the publication lease.
+    let held = f
+        .storage
+        .inspect_selected_copy_metadata(
+            &f.target,
+            &name("song.mp3"),
+            &evidence.destination_identity,
+            EntryKind::File,
+        )
+        .unwrap()
+        .unwrap();
+    assert_eq!(held.observation.identity, evidence.destination_identity);
+    assert_eq!(held.access_time, evidence.access_time);
+    assert_eq!(held.write_time, evidence.write_time);
+    assert_eq!(held.readonly, evidence.readonly);
     drop(publication);
     let observed = f
         .storage

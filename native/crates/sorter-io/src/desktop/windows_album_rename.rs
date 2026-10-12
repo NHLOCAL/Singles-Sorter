@@ -151,7 +151,7 @@ impl WindowsMutationStorage {
         let tree = validate_album_tree(expected, entries)?;
         let file = open_album_directory(parent.handle(), units(name)?, true)?;
         ensure_directory(&file)?;
-        let original = observe(&file, parent)?;
+        let original = album_observe(&file, &parent.identity)?;
         if original.identity != *expected || original.actual_name != *name {
             return Err(err(
                 MutationErrorKind::StalePlan,
@@ -252,7 +252,7 @@ impl WindowsMutationStorage {
             checkpoint(AlbumRenameCheckpoint::AfterRename)?;
             cancelled(cancel)?;
             self.check_role(parent, RootRole::Target)?;
-            let root = observe(&file, parent)?;
+            let root = album_observe(&file, &parent.identity)?;
             observed = Some(root.clone());
             if root.identity != source.original.identity || root.actual_name != *name {
                 return Err(err(
@@ -278,7 +278,7 @@ impl WindowsMutationStorage {
                 },
             }),
             Err(error) => {
-                let observation = observe(&file, parent)
+                let observation = album_observe(&file, &parent.identity)
                     .ok()
                     .or(observed)
                     .unwrap_or_else(|| source.original.clone());
@@ -312,7 +312,7 @@ impl WindowsMutationStorage {
         cancel: &AtomicBool,
     ) -> Result<Vec<WindowsAlbumTreeObservation>, MutationError> {
         self.check_role(&published.parent, RootRole::Target)?;
-        let root = observe(&published.file, &published.parent)?;
+        let root = album_observe(&published.file, &published.parent.identity)?;
         if root.identity != published.root.identity
             || root.actual_name != published.root.actual_name
         {
@@ -754,12 +754,13 @@ fn album_observe(
         .next()
         .ok_or_else(|| err(MutationErrorKind::Io, "album observed leaf missing"))?
         .to_vec();
+    let metadata = file.metadata().map_err(io_error)?;
     Ok(MutationObservation {
         identity: identity(file).map_err(read_error)?,
         parent_identity: parent_identity.clone(),
         actual_name: MutationName::Windows(name),
         reference: StorageRef::WindowsPath { utf16: path },
-        size: Some(file.metadata().map_err(io_error)?.len()),
+        size: (!metadata.is_dir()).then_some(metadata.len()),
     })
 }
 
