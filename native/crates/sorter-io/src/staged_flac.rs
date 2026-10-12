@@ -3,14 +3,11 @@
 //! encoded media tail are copied exactly. Metadata size may change; see
 //! `native/docs/staged-flac-repair.md` for the offset and compatibility contract.
 use crate::{
-    staged_xiph::{CommentKind, rewrite_comments, validate_repairs},
     staged_tags::{StagedTagEvidence, TagWriteError},
+    staged_xiph::{CommentKind, rewrite_comments, validate_repairs},
 };
 use sha2::{Digest, Sha256};
-use sorter_core::{
-    fix_plan::FieldRepair,
-    metadata::LegacyField,
-};
+use sorter_core::{fix_plan::FieldRepair, metadata::LegacyField};
 use std::{
     io::{Read, Seek, SeekFrom, Write},
     sync::atomic::{AtomicBool, Ordering},
@@ -47,7 +44,6 @@ fn read_checked(input: &mut impl Read, bytes: &mut [u8], flag: &AtomicBool) -> R
     cancelled(flag)
 }
 
-
 impl FlacStagedPlan {
     /// Inspect native, offset-zero `fLaC` and validate every comment before any
     /// output exists. Repairs must be the ordered subset of FIX_FIELDS produced
@@ -59,14 +55,22 @@ impl FlacStagedPlan {
         cancel: &AtomicBool,
     ) -> Result<Self> {
         cancelled(cancel)?;
-        if input.seek(SeekFrom::End(0)).map_err(|_| TagWriteError::Io)? != source_length {
+        if input
+            .seek(SeekFrom::End(0))
+            .map_err(|_| TagWriteError::Io)?
+            != source_length
+        {
             return Err(TagWriteError::Stale);
         }
-        input.seek(SeekFrom::Start(0)).map_err(|_| TagWriteError::Io)?;
+        input
+            .seek(SeekFrom::Start(0))
+            .map_err(|_| TagWriteError::Io)?;
         let mut magic = [0; 4];
         read_checked(input, &mut magic, cancel)?;
         if &magic != b"fLaC" {
-            return Err(TagWriteError::Unsupported("only offset-zero native FLAC is supported"));
+            return Err(TagWriteError::Unsupported(
+                "only offset-zero native FLAC is supported",
+            ));
         }
         validate_repairs(repairs, MAX_BLOCK, cancel)?;
         let mut original_header = magic.to_vec();
@@ -77,14 +81,24 @@ impl FlacStagedPlan {
             let mut header = [0; 4];
             read_checked(input, &mut header, cancel)?;
             let kind = header[0] & 0x7f;
-            let size = (usize::from(header[1]) << 16) | (usize::from(header[2]) << 8) | usize::from(header[3]);
-            if kind == 127 || (index == 0 && kind != 0) || (kind == 0 && (index != 0 || size != 34)) {
-                return Err(TagWriteError::Unsupported("invalid FLAC metadata block sequence"));
+            let size = (usize::from(header[1]) << 16)
+                | (usize::from(header[2]) << 8)
+                | usize::from(header[3]);
+            if kind == 127 || (index == 0 && kind != 0) || (kind == 0 && (index != 0 || size != 34))
+            {
+                return Err(TagWriteError::Unsupported(
+                    "invalid FLAC metadata block sequence",
+                ));
             }
-            let end = original_header.len().checked_add(4).and_then(|n| n.checked_add(size))
+            let end = original_header
+                .len()
+                .checked_add(4)
+                .and_then(|n| n.checked_add(size))
                 .ok_or(TagWriteError::Unsupported("metadata length overflow"))?;
             if end > MAX_METADATA || end as u64 > source_length {
-                return Err(TagWriteError::Unsupported("metadata budget or source length"));
+                return Err(TagWriteError::Unsupported(
+                    "metadata budget or source length",
+                ));
             }
             if kind == 4 && comment_seen {
                 return Err(TagWriteError::Unsupported("duplicate Vorbis comment block"));
@@ -95,14 +109,22 @@ impl FlacStagedPlan {
                 0 => {
                     let min = u16::from_be_bytes([body[0], body[1]]);
                     let max = u16::from_be_bytes([body[2], body[3]]);
-                    let rate = (u32::from(body[10]) << 12) | (u32::from(body[11]) << 4) | (u32::from(body[12]) >> 4);
+                    let rate = (u32::from(body[10]) << 12)
+                        | (u32::from(body[11]) << 4)
+                        | (u32::from(body[12]) >> 4);
                     let bits = ((body[12] & 1) << 4) | (body[13] >> 4);
                     if min < 16 || max < min || rate == 0 || bits < 3 {
                         return Err(TagWriteError::Unsupported("invalid audio STREAMINFO"));
                     }
                 }
-                1 if body.iter().any(|b| *b != 0) => return Err(TagWriteError::Unsupported("nonzero FLAC padding")),
-                2 if size < 4 => return Err(TagWriteError::Unsupported("truncated APPLICATION identifier")),
+                1 if body.iter().any(|b| *b != 0) => {
+                    return Err(TagWriteError::Unsupported("nonzero FLAC padding"));
+                }
+                2 if size < 4 => {
+                    return Err(TagWriteError::Unsupported(
+                        "truncated APPLICATION identifier",
+                    ));
+                }
                 3 => {
                     if seektable_seen || !size.is_multiple_of(18) {
                         return Err(TagWriteError::Unsupported("invalid or duplicate SEEKTABLE"));
@@ -113,18 +135,34 @@ impl FlacStagedPlan {
             }
             let replacement = if kind == 4 {
                 comment_seen = true;
-                Some(rewrite_comments(&body, repairs, CommentKind::Flac, MAX_BLOCK, cancel)?)
+                Some(rewrite_comments(
+                    &body,
+                    repairs,
+                    CommentKind::Flac,
+                    MAX_BLOCK,
+                    cancel,
+                )?)
             } else {
                 None
             };
             original_header.extend(header);
             original_header.extend_from_slice(&body);
             let new_body = replacement.as_deref().unwrap_or(&body);
-            if repaired_header.len().checked_add(4).and_then(|n| n.checked_add(new_body.len())).is_none_or(|n| n > MAX_METADATA) {
+            if repaired_header
+                .len()
+                .checked_add(4)
+                .and_then(|n| n.checked_add(new_body.len()))
+                .is_none_or(|n| n > MAX_METADATA)
+            {
                 return Err(TagWriteError::Unsupported("rewritten metadata budget"));
             }
             let length = new_body.len();
-            repaired_header.extend([header[0], (length >> 16) as u8, (length >> 8) as u8, length as u8]);
+            repaired_header.extend([
+                header[0],
+                (length >> 16) as u8,
+                (length >> 8) as u8,
+                length as u8,
+            ]);
             repaired_header.extend_from_slice(new_body);
             if header[0] & 0x80 != 0 {
                 break;
@@ -142,15 +180,26 @@ impl FlacStagedPlan {
         }
         let mut frame = [0; 4];
         read_checked(input, &mut frame, cancel)?;
-        if frame[0] != 0xff || frame[1] & 0xfe != 0xf8 || frame[2] >> 4 == 0
-            || frame[2] & 15 == 15 || frame[3] >> 4 > 10 || frame[3] & 1 != 0 || (frame[3] >> 1) & 7 == 3
+        if frame[0] != 0xff
+            || frame[1] & 0xfe != 0xf8
+            || frame[2] >> 4 == 0
+            || frame[2] & 15 == 15
+            || frame[3] >> 4 > 10
+            || frame[3] & 1 != 0
+            || (frame[3] >> 1) & 7 == 3
         {
             return Err(TagWriteError::Unsupported("FLAC frame header required"));
         }
         // Reject known nonnative tag mirrors instead of changing only one copy.
-        for (distance, signature) in [(128, &b"TAG"[..]), (32, &b"APETAGEX"[..]), (160, &b"APETAGEX"[..])] {
+        for (distance, signature) in [
+            (128, &b"TAG"[..]),
+            (32, &b"APETAGEX"[..]),
+            (160, &b"APETAGEX"[..]),
+        ] {
             if source_length >= distance {
-                input.seek(SeekFrom::Start(source_length - distance)).map_err(|_| TagWriteError::Io)?;
+                input
+                    .seek(SeekFrom::Start(source_length - distance))
+                    .map_err(|_| TagWriteError::Io)?;
                 let mut bytes = vec![0; signature.len()];
                 read_checked(input, &mut bytes, cancel)?;
                 if bytes == signature {
@@ -158,7 +207,8 @@ impl FlacStagedPlan {
                 }
             }
         }
-        let output_length = media_length.checked_add(repaired_header.len() as u64)
+        let output_length = media_length
+            .checked_add(repaired_header.len() as u64)
             .ok_or(TagWriteError::Unsupported("staged length overflow"))?;
         cancelled(cancel)?;
         Ok(Self {
@@ -213,7 +263,9 @@ impl FlacStagedPlan {
         cancel: &AtomicBool,
     ) -> Result<StagedTagEvidence> {
         cancelled(cancel)?;
-        input.seek(SeekFrom::Start(0)).map_err(|_| TagWriteError::Io)?;
+        input
+            .seek(SeekFrom::Start(0))
+            .map_err(|_| TagWriteError::Io)?;
         let mut original = vec![0; self.original_header.len()];
         read_checked(input, &mut original, cancel)?;
         if original != self.original_header {
@@ -237,7 +289,9 @@ impl FlacStagedPlan {
             read_checked(input, &mut buffer[..amount], cancel)?;
             source.update(&buffer[..amount]);
             media.update(&buffer[..amount]);
-            output.write_all(&buffer[..amount]).map_err(|_| TagWriteError::Io)?;
+            output
+                .write_all(&buffer[..amount])
+                .map_err(|_| TagWriteError::Io)?;
             staged.update(&buffer[..amount]);
             remaining -= amount as u64;
         }

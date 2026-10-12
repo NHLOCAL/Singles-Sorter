@@ -262,7 +262,10 @@ fn execute() -> Result<ResultPayload, Failure> {
 pub(super) fn execute_request(request: &Request) -> Result<ResultPayload, Failure> {
     execute_request_controlled(request, &std::sync::atomic::AtomicBool::new(false))
 }
-pub(super) fn execute_request_controlled(request: &Request, cancel: &std::sync::atomic::AtomicBool) -> Result<ResultPayload, Failure> {
+pub(super) fn execute_request_controlled(
+    request: &Request,
+    cancel: &std::sync::atomic::AtomicBool,
+) -> Result<ResultPayload, Failure> {
     if request.schema_version != 2 {
         return Err(Failure::new(
             2,
@@ -300,7 +303,11 @@ pub(super) fn execute_request_controlled(request: &Request, cancel: &std::sync::
         let bundle = load_aliases(primary.as_deref().unwrap_or(BUNDLED), personal.as_deref())
             .map_err(|e| Failure::new(2, "RESOURCE_INVALID", e.to_string()))?;
         if bundle.ordered_rows.is_empty() {
-            return Err(Failure::new(2, "RESOURCE_INVALID", "No singer lists found."));
+            return Err(Failure::new(
+                2,
+                "RESOURCE_INVALID",
+                "No singer lists found.",
+            ));
         }
         let source_name = |s: AliasSource| match s {
             AliasSource::Bundled => "bundled",
@@ -391,7 +398,10 @@ pub(super) fn execute_request_controlled(request: &Request, cancel: &std::sync::
         }
         core.resource_ids.extend(recognition_resources);
         core.adapter_versions.extend(recognition_adapters);
-        let control = HostControl { inner: control.as_ref(), cancel };
+        let control = HostControl {
+            inner: control.as_ref(),
+            cancel,
+        };
         let outcome = plan_job_controlled(
             &core,
             &mut storage,
@@ -515,7 +525,10 @@ struct HostControl<'a> {
     cancel: &'a std::sync::atomic::AtomicBool,
 }
 impl PlanningControl for HostControl<'_> {
-    fn checkpoint(&self, boundary: PlanningBoundary) -> Result<(), sorter_core::job_plan::PlanningAbort> {
+    fn checkpoint(
+        &self,
+        boundary: PlanningBoundary,
+    ) -> Result<(), sorter_core::job_plan::PlanningAbort> {
         if self.cancel.load(std::sync::atomic::Ordering::Acquire) {
             return Err(sorter_core::job_plan::PlanningAbort::cancelled());
         }
@@ -529,7 +542,16 @@ mod cancellation_tests {
     #[test]
     fn retained_execution_cancellation_also_stops_planning_checkpoints() {
         let cancel = std::sync::atomic::AtomicBool::new(true);
-        let control = HostControl { inner: &UncontrolledPlanning, cancel: &cancel };
-        assert_eq!(control.checkpoint(PlanningBoundary::Collection).unwrap_err().kind, sorter_core::job_plan::AbortKind::Cancelled);
+        let control = HostControl {
+            inner: &UncontrolledPlanning,
+            cancel: &cancel,
+        };
+        assert_eq!(
+            control
+                .checkpoint(PlanningBoundary::Collection)
+                .unwrap_err()
+                .kind,
+            sorter_core::job_plan::AbortKind::Cancelled
+        );
     }
 }

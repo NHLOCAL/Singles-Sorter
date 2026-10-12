@@ -106,9 +106,15 @@ mod selected {
         if action != "apply" {
             if action == "stale_primary" {
                 assert!(!status.success(), "{events:?}");
-                assert!(events.iter().any(|event| event["event"] == "error" && event["data"]["code"] == "PLAN_CHANGED"), "{events:?}");
+                assert!(
+                    events.iter().any(|event| event["event"] == "error"
+                        && event["data"]["code"] == "PLAN_CHANGED"),
+                    "{events:?}"
+                );
                 assert_eq!(fs::read_dir(&journal).unwrap().count(), 0);
-                for name in names { assert_eq!(fs::read(source.join(name)).unwrap(), bytes); }
+                for name in names {
+                    assert_eq!(fs::read(source.join(name)).unwrap(), bytes);
+                }
             }
             if action == "journal_missing" {
                 assert!(!journal.exists());

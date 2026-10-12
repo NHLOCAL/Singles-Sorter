@@ -195,9 +195,12 @@ pub(super) fn execute_request(
     use sorter_executor::{
         binding::{ExecutionScope, Resources, prepare_scope},
         results::{ItemStatus, JobStatus},
+        windows_album::{
+            AlbumScope, SelectedWindowsAlbumJob, prepare_album_scope, supported_album_plan,
+            validate_album_execution,
+        },
         windows_copy::WindowsPlanningStorage,
         windows_job::{SelectedWindowsJob, supported_plan},
-        windows_album::{AlbumScope, prepare_album_scope, supported_album_plan, validate_album_execution, SelectedWindowsAlbumJob},
         windows_repair::{
             RepairJobStatus, RepairScope, SelectedWindowsRepairJob, prepare_repair_scope,
             supported_repair_plan,
@@ -226,18 +229,33 @@ pub(super) fn execute_request(
     let fail = |e: &dyn std::fmt::Display| Failure::new(1, "EXECUTION_REFUSED", e.to_string());
     let target = request.preview.target.as_ref();
     let repairing = plan.request.mode == JobMode::FixNames;
-    let album = plan.operations.iter().any(|operation| matches!(operation.kind, OperationKind::AlbumTransfer { .. }));
+    let album = plan
+        .operations
+        .iter()
+        .any(|operation| matches!(operation.kind, OperationKind::AlbumTransfer { .. }));
     let mut reads: Box<dyn ReadStorage + '_> = if repairing {
         supported_repair_plan(&plan).map_err(|e| fail(&e))?;
-        Box::new(WindowsPlanningStorage::for_repair_preview(&request.preview.source).map_err(|e| fail(&e))?)
+        Box::new(
+            WindowsPlanningStorage::for_repair_preview(&request.preview.source)
+                .map_err(|e| fail(&e))?,
+        )
     } else {
-        if album { supported_album_plan(&plan).map_err(|e| fail(&e))?; }
-        else { supported_plan(&plan).map_err(|e| fail(&e))?; }
-        Box::new(WindowsPlanningStorage::for_album_preview(
-            &request.preview.source,
-            target.ok_or_else(|| Failure::new(2, "TARGET_REQUIRED", "Sort execution requires a target"))?,
-            sorter_io::desktop::WindowsDirectoryReadLimits::ALBUM_DEFAULT, cancel,
-        ).map_err(|e| fail(&e))?)
+        if album {
+            supported_album_plan(&plan).map_err(|e| fail(&e))?;
+        } else {
+            supported_plan(&plan).map_err(|e| fail(&e))?;
+        }
+        Box::new(
+            WindowsPlanningStorage::for_album_preview(
+                &request.preview.source,
+                target.ok_or_else(|| {
+                    Failure::new(2, "TARGET_REQUIRED", "Sort execution requires a target")
+                })?,
+                sorter_io::desktop::WindowsDirectoryReadLimits::ALBUM_DEFAULT,
+                cancel,
+            )
+            .map_err(|e| fail(&e))?,
+        )
     };
     let digest = |bytes: &[u8]| format!("{:x}", Sha256::digest(bytes));
     let resource_hashes = plan
@@ -277,12 +295,16 @@ pub(super) fn execute_request(
     }
     let scope = if repairing {
         Scope::Repair(
-            prepare_repair_scope(&plan, reads.as_mut(), &resources, cancel).map_err(|e| fail(&e))?,
+            prepare_repair_scope(&plan, reads.as_mut(), &resources, cancel)
+                .map_err(|e| fail(&e))?,
         )
     } else if album {
-        Scope::Album(Box::new(prepare_album_scope(&plan, reads.as_mut(), &resources, cancel).map_err(|e| fail(&e))?))
+        Scope::Album(Box::new(
+            prepare_album_scope(&plan, reads.as_mut(), &resources, cancel).map_err(|e| fail(&e))?,
+        ))
     } else {
-        let scope = prepare_scope(&plan, reads.as_mut(), &resources, cancel).map_err(|e| fail(&e))?;
+        let scope =
+            prepare_scope(&plan, reads.as_mut(), &resources, cancel).map_err(|e| fail(&e))?;
         if !plan.request.settings.copy_mode
             && !matches!((&scope.source_root,&scope.target_root),(ObjectIdentity::Windows {volume:a,..},ObjectIdentity::Windows {volume:b,..}) if a==b)
         {
@@ -329,21 +351,52 @@ pub(super) fn execute_request(
     let scope = match scope {
         Scope::Album(scope) => {
             let validated = {
-                let mut metadata = StorageMetadataProvider { storage: &mut reads, reader: MetadataReader };
-                validate_album_execution(&plan, &mut metadata, recognition.as_mut(), &resources, &scope, cancel).map_err(|e| fail(&e))?
+                let mut metadata = StorageMetadataProvider {
+                    storage: &mut reads,
+                    reader: MetadataReader,
+                };
+                validate_album_execution(
+                    &plan,
+                    &mut metadata,
+                    recognition.as_mut(),
+                    &resources,
+                    &scope,
+                    cancel,
+                )
+                .map_err(|e| fail(&e))?
             };
             // Relinquish every source read pin before exact whole-album authority.
             drop(reads);
             drop(journal_reads);
             let mut job = SelectedWindowsAlbumJob::prepare(
-                grant(request.preview.source.clone(), scope.execution_scope().source_root.clone())?,
-                grant(target.expect("album target checked").clone(), scope.execution_scope().target_root.clone())?,
-                grant(request.journal_directory.clone(), journal_identity)?, validated, cancel,
-            ).map_err(|e| fail(&e))?;
-            return albums::execute(&mut job, &plan.binding_sha256, &request.journal_directory, scope.execution_scope().inspected_sources.len(), cancel, invalid_control, event);
+                grant(
+                    request.preview.source.clone(),
+                    scope.execution_scope().source_root.clone(),
+                )?,
+                grant(
+                    target.expect("album target checked").clone(),
+                    scope.execution_scope().target_root.clone(),
+                )?,
+                grant(request.journal_directory.clone(), journal_identity)?,
+                validated,
+                cancel,
+            )
+            .map_err(|e| fail(&e))?;
+            return albums::execute(
+                &mut job,
+                &plan.binding_sha256,
+                &request.journal_directory,
+                scope.execution_scope().inspected_sources.len(),
+                cancel,
+                invalid_control,
+                event,
+            );
         }
         Scope::Repair(scope) => {
-            let mut metadata = StorageMetadataProvider { storage: &mut reads, reader: MetadataReader };
+            let mut metadata = StorageMetadataProvider {
+                storage: &mut reads,
+                reader: MetadataReader,
+            };
             let roots = WindowsMutationStorage::for_selected_repair_roots(
                 grant(request.preview.source.clone(), scope.source_root().clone())?,
                 grant(request.journal_directory.clone(), journal_identity)?,
@@ -410,7 +463,10 @@ pub(super) fn execute_request(
         }
         Scope::Sort(scope) => scope,
     };
-    let mut metadata = StorageMetadataProvider { storage: &mut reads, reader: MetadataReader };
+    let mut metadata = StorageMetadataProvider {
+        storage: &mut reads,
+        reader: MetadataReader,
+    };
     let roots = WindowsMutationStorage::for_selected_roots(
         grant(request.preview.source.clone(), scope.source_root.clone())?,
         grant(

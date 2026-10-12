@@ -56,7 +56,8 @@ fn cancel(id: i64) {
         && job.id == id
     {
         job.cancel.cancel();
-        job.repair_cancel.store(true, std::sync::atomic::Ordering::Release);
+        job.repair_cancel
+            .store(true, std::sync::atomic::Ordering::Release);
     }
 }
 fn claim(id: i64) -> Result<JobCancellation, &'static str> {
@@ -283,7 +284,15 @@ mod tests {
         assert!(claim(id).is_err());
         cancel(id);
         assert!(token.is_cancelled());
-        assert!(JOBS.lock().unwrap().job.as_ref().unwrap().repair_cancel.load(std::sync::atomic::Ordering::Acquire));
+        assert!(
+            JOBS.lock()
+                .unwrap()
+                .job
+                .as_ref()
+                .unwrap()
+                .repair_cancel
+                .load(std::sync::atomic::Ordering::Acquire)
+        );
         assert!(
             execute(id, b"/does-not-exist", br#"{"texts":["test"]}"#, token)
                 .unwrap_err()

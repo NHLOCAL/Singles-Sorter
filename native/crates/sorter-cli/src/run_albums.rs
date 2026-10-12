@@ -1,13 +1,21 @@
 //! Technical CLI projection of observed album effects. No deserialized authority.
 use super::*;
 use sorter_executor::{
-    results::{JobResult, JobStatus, ItemStatus},
+    results::{ItemStatus, JobResult, JobStatus},
     windows_album::{SelectedAlbumRecovery, SelectedWindowsAlbumJob},
 };
-use std::{path::Path, sync::atomic::{AtomicBool, Ordering}};
+use std::{
+    path::Path,
+    sync::atomic::{AtomicBool, Ordering},
+};
 
 fn status(status: JobStatus) -> &'static str {
-    match status { JobStatus::Complete => "complete", JobStatus::Partial => "partial", JobStatus::Cancelled => "cancelled", JobStatus::NeedsRecovery => "needs_recovery" }
+    match status {
+        JobStatus::Complete => "complete",
+        JobStatus::Partial => "partial",
+        JobStatus::Cancelled => "cancelled",
+        JobStatus::NeedsRecovery => "needs_recovery",
+    }
 }
 fn transfers(result: &JobResult) -> Value {
     json!({"status":status(result.status),"source_items":result.source_items,
@@ -35,11 +43,20 @@ fn recovery(report: SelectedAlbumRecovery) -> Value {
             "singles":whole.singles.map(|singles|recovery(*singles))}))})
 }
 #[allow(clippy::too_many_arguments)]
-pub(super) fn execute(job: &mut SelectedWindowsAlbumJob, plan_id: &str, directory: &Path,
-    source_items: usize, cancel: &AtomicBool, invalid_control: &AtomicBool,
-    event: &mut dyn FnMut(&str, Value) -> Result<(), Failure>) -> Result<(), Failure> {
+pub(super) fn execute(
+    job: &mut SelectedWindowsAlbumJob,
+    plan_id: &str,
+    directory: &Path,
+    source_items: usize,
+    cancel: &AtomicBool,
+    invalid_control: &AtomicBool,
+    event: &mut dyn FnMut(&str, Value) -> Result<(), Failure>,
+) -> Result<(), Failure> {
     let id = job.job_id().to_owned();
-    event("started",json!({"job_id":id,"plan_id":plan_id,"mode":"Sort","album_execution":true,"journal_directory":directory}))?;
+    event(
+        "started",
+        json!({"job_id":id,"plan_id":plan_id,"mode":"Sort","album_execution":true,"journal_directory":directory}),
+    )?;
     let mut output_failed = false;
     let result = job.run(cancel, &mut |progress| {
         if event("progress",json!({"job_id":id,"operation":progress.operation,"bytes_written":progress.bytes_written,"source_length":progress.source_length})).is_err() {
@@ -47,15 +64,34 @@ pub(super) fn execute(job: &mut SelectedWindowsAlbumJob, plan_id: &str, director
             cancel.store(true,Ordering::Release);
         }
     });
-    let (inspection, recovery_error) = if job.journal_locations().is_empty() || cancel.load(Ordering::Acquire) { (None,None) }
-        else { match job.inspect_recovery(cancel) { Ok(report)=>(Some(recovery(report)),None), Err(error)=>(None,Some(error.to_string())) } };
+    let (inspection, recovery_error) =
+        if job.journal_locations().is_empty() || cancel.load(Ordering::Acquire) {
+            (None, None)
+        } else {
+            match job.inspect_recovery(cancel) {
+                Ok(report) => (Some(recovery(report)), None),
+                Err(error) => (None, Some(error.to_string())),
+            }
+        };
     match result {
         Ok(result) => {
             let actual = status(result.status);
             // Whole directory receipts and per-file transfer receipts are disjoint.
-            let whole_files = result.whole_albums.iter().filter(|album|album.status=="complete")
-                .map(|album|album.descendants.iter().filter(|(_,observed)|observed.size.is_some()).count()).sum::<usize>();
-            event("result",json!({"job_id":id,"status":actual,"source_items":source_items,
+            let whole_files = result
+                .whole_albums
+                .iter()
+                .filter(|album| album.status == "complete")
+                .map(|album| {
+                    album
+                        .descendants
+                        .iter()
+                        .filter(|(_, observed)| observed.size.is_some())
+                        .count()
+                })
+                .sum::<usize>();
+            event(
+                "result",
+                json!({"job_id":id,"status":actual,"source_items":source_items,
                 "committed_destinations":whole_files+result.transfers.as_ref().map_or(0,|r|r.committed_destinations),
                 "moved_sources":whole_files+result.transfers.as_ref().map_or(0,|r|r.moved_sources),
                 "albums_completed":result.albums_completed,"artist_files":result.artist_files,
@@ -63,16 +99,28 @@ pub(super) fn execute(job: &mut SelectedWindowsAlbumJob, plan_id: &str, director
                 "child_renames":result.child_renames,"created_directories":result.created_directories,
                 "removed_directories":result.removed_directories,"retained_directories":result.retained_directories,
                 "detail":result.detail,"recovery":inspection,"recovery_error":recovery_error,
-                "journal_directory":directory,"invalid_control":invalid_control.load(Ordering::Acquire)}))?;
+                "journal_directory":directory,"invalid_control":invalid_control.load(Ordering::Acquire)}),
+            )?;
             if output_failed || invalid_control.load(Ordering::Acquire) || actual != "complete" {
-                return Err(Failure::new(1,"EXECUTION_INCOMPLETE","Inspect actual album effects and retained journals before retrying"));
+                return Err(Failure::new(
+                    1,
+                    "EXECUTION_INCOMPLETE",
+                    "Inspect actual album effects and retained journals before retrying",
+                ));
             }
             Ok(())
         }
         Err(error) => {
-            event("result",json!({"job_id":id,"status":if job.journal_locations().is_empty()&&cancel.load(Ordering::Acquire){"cancelled"}else{"needs_recovery"},
-                "error":error.to_string(),"recovery":inspection,"recovery_error":recovery_error,"journal_directory":directory}))?;
-            Err(Failure::new(1,"EXECUTION_INCOMPLETE","Inspect the album journal; no automatic replay or cleanup was attempted"))
+            event(
+                "result",
+                json!({"job_id":id,"status":if job.journal_locations().is_empty()&&cancel.load(Ordering::Acquire){"cancelled"}else{"needs_recovery"},
+                "error":error.to_string(),"recovery":inspection,"recovery_error":recovery_error,"journal_directory":directory}),
+            )?;
+            Err(Failure::new(
+                1,
+                "EXECUTION_INCOMPLETE",
+                "Inspect the album journal; no automatic replay or cleanup was attempted",
+            ))
         }
     }
 }

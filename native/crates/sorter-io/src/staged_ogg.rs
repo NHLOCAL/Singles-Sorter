@@ -19,7 +19,10 @@ const CHUNK: usize = 64 * 1024;
 type Result<T> = std::result::Result<T, TagWriteError>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Codec { Vorbis, Opus }
+enum Codec {
+    Vorbis,
+    Opus,
+}
 
 #[derive(Clone, Debug)]
 pub struct OggStagedPlan {
@@ -36,7 +39,11 @@ pub struct OggStagedPlan {
 }
 
 fn cancelled(flag: &AtomicBool) -> Result<()> {
-    if flag.load(Ordering::Acquire) { Err(TagWriteError::Cancelled) } else { Ok(()) }
+    if flag.load(Ordering::Acquire) {
+        Err(TagWriteError::Cancelled)
+    } else {
+        Ok(())
+    }
 }
 fn read_checked(input: &mut impl Read, bytes: &mut [u8], flag: &AtomicBool) -> Result<()> {
     for chunk in bytes.chunks_mut(CHUNK) {
@@ -52,27 +59,41 @@ fn eof(input: &mut impl Read, flag: &AtomicBool) -> Result<()> {
     }
     cancelled(flag)
 }
-fn word(bytes: &[u8]) -> u32 { u32::from_le_bytes(bytes.try_into().expect("fixed Ogg word")) }
+fn word(bytes: &[u8]) -> u32 {
+    u32::from_le_bytes(bytes.try_into().expect("fixed Ogg word"))
+}
 
 // RFC 3533 non-reflected CRC, initial value zero, polynomial 0x04c11db7.
 // The stored checksum field is treated as zero without changing input bytes.
 fn checksum(bytes: &[u8], flag: &AtomicBool) -> Result<u32> {
     let mut crc = 0u32;
     for (i, b) in bytes.iter().enumerate() {
-        if i.is_multiple_of(2048) { cancelled(flag)?; }
+        if i.is_multiple_of(2048) {
+            cancelled(flag)?;
+        }
         let byte = if (22..26).contains(&i) { 0 } else { *b };
         crc ^= u32::from(byte) << 24;
         for _ in 0..8 {
-            crc = (crc << 1) ^ if crc & 0x8000_0000 != 0 { 0x04c1_1db7 } else { 0 };
+            crc = (crc << 1)
+                ^ if crc & 0x8000_0000 != 0 {
+                    0x04c1_1db7
+                } else {
+                    0
+                };
         }
     }
     Ok(crc)
 }
 #[derive(Debug)]
-struct Page { bytes: Vec<u8>, body: usize }
+struct Page {
+    bytes: Vec<u8>,
+    body: usize,
+}
 impl Page {
     fn read(input: &mut impl Read, remaining: u64, flag: &AtomicBool) -> Result<Self> {
-        if remaining < 27 { return Err(TagWriteError::Unsupported("truncated Ogg page")); }
+        if remaining < 27 {
+            return Err(TagWriteError::Unsupported("truncated Ogg page"));
+        }
         let mut header = [0; 27];
         read_checked(input, &mut header, flag)?;
         if &header[..4] != b"OggS" || header[4] != 0 || header[5] & !7 != 0 {
@@ -80,13 +101,17 @@ impl Page {
         }
         let body = 27 + usize::from(header[26]);
         if header[26] == 0 || body as u64 > remaining {
-            return Err(TagWriteError::Unsupported("empty or truncated Ogg segment table"));
+            return Err(TagWriteError::Unsupported(
+                "empty or truncated Ogg segment table",
+            ));
         }
         let mut bytes = header.to_vec();
         bytes.resize(body, 0);
         read_checked(input, &mut bytes[27..], flag)?;
         let size = body + bytes[27..].iter().map(|b| usize::from(*b)).sum::<usize>();
-        if size as u64 > remaining { return Err(TagWriteError::Unsupported("truncated Ogg page body")); }
+        if size as u64 > remaining {
+            return Err(TagWriteError::Unsupported("truncated Ogg page body"));
+        }
         bytes.resize(size, 0);
         read_checked(input, &mut bytes[body..], flag)?;
         if checksum(&bytes, flag)? != word(&bytes[22..26]) {
@@ -94,14 +119,30 @@ impl Page {
         }
         Ok(Self { bytes, body })
     }
-    fn flags(&self) -> u8 { self.bytes[5] }
-    fn serial(&self) -> u32 { word(&self.bytes[14..18]) }
-    fn sequence(&self) -> u32 { word(&self.bytes[18..22]) }
-    fn granule(&self) -> u64 { u64::from_le_bytes(self.bytes[6..14].try_into().expect("granule word")) }
-    fn lacing(&self) -> &[u8] { &self.bytes[27..self.body] }
-    fn payload(&self) -> &[u8] { &self.bytes[self.body..] }
-    fn completed(&self) -> usize { self.lacing().iter().filter(|b| **b < 255).count() }
-    fn continues(&self) -> bool { self.lacing().last() == Some(&255) }
+    fn flags(&self) -> u8 {
+        self.bytes[5]
+    }
+    fn serial(&self) -> u32 {
+        word(&self.bytes[14..18])
+    }
+    fn sequence(&self) -> u32 {
+        word(&self.bytes[18..22])
+    }
+    fn granule(&self) -> u64 {
+        u64::from_le_bytes(self.bytes[6..14].try_into().expect("granule word"))
+    }
+    fn lacing(&self) -> &[u8] {
+        &self.bytes[27..self.body]
+    }
+    fn payload(&self) -> &[u8] {
+        &self.bytes[self.body..]
+    }
+    fn completed(&self) -> usize {
+        self.lacing().iter().filter(|b| **b < 255).count()
+    }
+    fn continues(&self) -> bool {
+        self.lacing().last() == Some(&255)
+    }
     fn shift_sequence(&mut self, delta: u32, flag: &AtomicBool) -> Result<()> {
         if delta != 0 {
             let sequence = self.sequence().wrapping_add(delta);
@@ -113,14 +154,23 @@ impl Page {
     }
 }
 
-struct StreamState { serial: u32, next: u32, continued: bool, ended: bool }
+struct StreamState {
+    serial: u32,
+    next: u32,
+    continued: bool,
+    ended: bool,
+}
 impl StreamState {
     fn accept(&mut self, page: &Page) -> Result<()> {
         if self.ended || page.flags() & 2 != 0 || page.serial() != self.serial {
-            return Err(TagWriteError::Unsupported("chained, multiplexed or repeated BOS Ogg stream"));
+            return Err(TagWriteError::Unsupported(
+                "chained, multiplexed or repeated BOS Ogg stream",
+            ));
         }
         if page.sequence() != self.next || (page.flags() & 1 != 0) != self.continued {
-            return Err(TagWriteError::Unsupported("Ogg sequence or continuation mismatch"));
+            return Err(TagWriteError::Unsupported(
+                "Ogg sequence or continuation mismatch",
+            ));
         }
         self.next = self.next.wrapping_add(1);
         self.continued = page.continues();
@@ -134,16 +184,25 @@ impl StreamState {
 
 fn identify(packet: &[u8]) -> Result<Codec> {
     if packet.starts_with(b"\x01vorbis") {
-        if packet.len() != 30 || word(&packet[7..11]) != 0 || packet[11] == 0
-            || word(&packet[12..16]) == 0 || !(6..=13).contains(&(packet[28] & 15))
-            || !(6..=13).contains(&(packet[28] >> 4)) || (packet[28] & 15) > (packet[28] >> 4)
-            || packet[29] & 1 == 0 {
-            return Err(TagWriteError::Unsupported("invalid Vorbis identification header"));
+        if packet.len() != 30
+            || word(&packet[7..11]) != 0
+            || packet[11] == 0
+            || word(&packet[12..16]) == 0
+            || !(6..=13).contains(&(packet[28] & 15))
+            || !(6..=13).contains(&(packet[28] >> 4))
+            || (packet[28] & 15) > (packet[28] >> 4)
+            || packet[29] & 1 == 0
+        {
+            return Err(TagWriteError::Unsupported(
+                "invalid Vorbis identification header",
+            ));
         }
         Ok(Codec::Vorbis)
     } else if packet.starts_with(b"OpusHead") {
         if packet.len() < 19 || packet[8] != 1 || packet[9] == 0 {
-            return Err(TagWriteError::Unsupported("unsupported Opus identification version"));
+            return Err(TagWriteError::Unsupported(
+                "unsupported Opus identification version",
+            ));
         }
         let channels = usize::from(packet[9]);
         match packet[18] {
@@ -151,28 +210,57 @@ fn identify(packet: &[u8]) -> Result<Codec> {
             1 if channels <= 8 && packet.len() == 21 + channels => {
                 let streams = u16::from(packet[19]);
                 let coupled = u16::from(packet[20]);
-                if streams == 0 || coupled > streams || streams + coupled > 255
-                    || packet[21..].iter().any(|b| *b != 255 && u16::from(*b) >= streams + coupled) {
+                if streams == 0
+                    || coupled > streams
+                    || streams + coupled > 255
+                    || packet[21..]
+                        .iter()
+                        .any(|b| *b != 255 && u16::from(*b) >= streams + coupled)
+                {
                     return Err(TagWriteError::Unsupported("invalid Opus channel mapping"));
                 }
             }
-            _ => return Err(TagWriteError::Unsupported("unsupported Opus mapping or header size")),
+            _ => {
+                return Err(TagWriteError::Unsupported(
+                    "unsupported Opus mapping or header size",
+                ));
+            }
         }
         Ok(Codec::Opus)
     } else {
-        Err(TagWriteError::Unsupported("only Ogg Vorbis and Opus are supported"))
+        Err(TagWriteError::Unsupported(
+            "only Ogg Vorbis and Opus are supported",
+        ))
     }
 }
 
-struct Headers { original: Vec<u8>, first_page: Vec<u8>, packets: Vec<Vec<u8>>, state: StreamState, codec: Codec, pages: u32 }
+struct Headers {
+    original: Vec<u8>,
+    first_page: Vec<u8>,
+    packets: Vec<Vec<u8>>,
+    state: StreamState,
+    codec: Codec,
+    pages: u32,
+}
 fn headers(input: &mut impl Read, source_length: u64, flag: &AtomicBool) -> Result<Headers> {
     let first = Page::read(input, source_length, flag)?;
-    if first.flags() != 2 || first.sequence() != 0 || first.granule() != 0
-        || first.completed() != 1 || first.continues() {
-        return Err(TagWriteError::Unsupported("identification must be alone on first Ogg BOS page"));
+    if first.flags() != 2
+        || first.sequence() != 0
+        || first.granule() != 0
+        || first.completed() != 1
+        || first.continues()
+    {
+        return Err(TagWriteError::Unsupported(
+            "identification must be alone on first Ogg BOS page",
+        ));
     }
     let codec = identify(first.payload())?;
-    let mut state = StreamState { serial: first.serial(), next: 1, continued: false, ended: false };
+    let mut state = StreamState {
+        serial: first.serial(),
+        next: 1,
+        continued: false,
+        ended: false,
+    };
     let first_page = first.bytes;
     let mut original = first_page.clone();
     let mut packets = Vec::new();
@@ -181,16 +269,27 @@ fn headers(input: &mut impl Read, source_length: u64, flag: &AtomicBool) -> Resu
     let mut pages = 1;
     while packets.len() < required {
         cancelled(flag)?;
-        if pages >= MAX_HEADER_PAGES { return Err(TagWriteError::Unsupported("Ogg header page budget")); }
+        if pages >= MAX_HEADER_PAGES {
+            return Err(TagWriteError::Unsupported("Ogg header page budget"));
+        }
         let page = Page::read(input, source_length - original.len() as u64, flag)?;
         state.accept(&page)?;
-        if state.ended { return Err(TagWriteError::Unsupported("EOS before Ogg audio")); }
+        if state.ended {
+            return Err(TagWriteError::Unsupported("EOS before Ogg audio"));
+        }
         let granule = page.granule();
         if (page.completed() > 0 && granule != 0)
-            || (page.completed() == 0 && granule != u64::MAX && !(codec == Codec::Vorbis && granule == 0)) {
+            || (page.completed() == 0
+                && granule != u64::MAX
+                && !(codec == Codec::Vorbis && granule == 0))
+        {
             return Err(TagWriteError::Unsupported("invalid Ogg header granule"));
         }
-        if original.len().checked_add(page.bytes.len()).is_none_or(|n| n > MAX_HEADERS) {
+        if original
+            .len()
+            .checked_add(page.bytes.len())
+            .is_none_or(|n| n > MAX_HEADERS)
+        {
             return Err(TagWriteError::Unsupported("Ogg header byte budget"));
         }
         let mut at = 0;
@@ -200,7 +299,9 @@ fn headers(input: &mut impl Read, source_length: u64, flag: &AtomicBool) -> Resu
             packet.extend_from_slice(&page.payload()[at..end]);
             at = end;
             if *segment < 255 {
-                if packet.is_empty() { return Err(TagWriteError::Unsupported("empty Ogg header packet")); }
+                if packet.is_empty() {
+                    return Err(TagWriteError::Unsupported("empty Ogg header packet"));
+                }
                 packets.push(std::mem::take(&mut packet));
                 if packets.len() == required && i + 1 != page.lacing().len() {
                     return Err(TagWriteError::Unsupported("audio shares Ogg header page"));
@@ -210,18 +311,37 @@ fn headers(input: &mut impl Read, source_length: u64, flag: &AtomicBool) -> Resu
         original.extend_from_slice(&page.bytes);
         pages += 1;
     }
-    let signature: &[u8] = if codec == Codec::Vorbis { b"\x03vorbis" } else { b"OpusTags" };
+    let signature: &[u8] = if codec == Codec::Vorbis {
+        b"\x03vorbis"
+    } else {
+        b"OpusTags"
+    };
     if !packets[0].starts_with(signature)
-        || (codec == Codec::Vorbis && (!packets[1].starts_with(b"\x05vorbis") || packets[1].len() <= 7)) {
+        || (codec == Codec::Vorbis
+            && (!packets[1].starts_with(b"\x05vorbis") || packets[1].len() <= 7))
+    {
         return Err(TagWriteError::Unsupported("invalid Ogg codec header order"));
     }
-    Ok(Headers { original, first_page, packets, state, codec, pages })
+    Ok(Headers {
+        original,
+        first_page,
+        packets,
+        state,
+        codec,
+        pages,
+    })
 }
 
 // Write each remaining codec header packet on its own bounded page sequence.
 // Exact multiples of 255 include their mandatory terminating zero lace, even
 // when this requires another continued page. No audio packet is repaginated.
-fn paginate(packet: &[u8], serial: u32, sequence: &mut u32, output: &mut Vec<u8>, flag: &AtomicBool) -> Result<()> {
+fn paginate(
+    packet: &[u8],
+    serial: u32,
+    sequence: &mut u32,
+    output: &mut Vec<u8>,
+    flag: &AtomicBool,
+) -> Result<()> {
     let segments = packet.len() / 255 + 1;
     let mut offset = 0;
     for base in (0..segments).step_by(255) {
@@ -237,7 +357,11 @@ fn paginate(packet: &[u8], serial: u32, sequence: &mut u32, output: &mut Vec<u8>
         page.push((end - base) as u8);
         let mut size = 0;
         for i in base..end {
-            let lace = if i + 1 == segments { (packet.len() % 255) as u8 } else { 255 };
+            let lace = if i + 1 == segments {
+                (packet.len() % 255) as u8
+            } else {
+                255
+            };
             page.push(lace);
             size += usize::from(lace);
         }
@@ -245,37 +369,60 @@ fn paginate(packet: &[u8], serial: u32, sequence: &mut u32, output: &mut Vec<u8>
         offset += size;
         let crc = checksum(&page, flag)?;
         page[22..26].copy_from_slice(&crc.to_le_bytes());
-        if output.len().checked_add(page.len()).is_none_or(|n| n > MAX_HEADERS) {
+        if output
+            .len()
+            .checked_add(page.len())
+            .is_none_or(|n| n > MAX_HEADERS)
+        {
             return Err(TagWriteError::Unsupported("rewritten Ogg header budget"));
         }
         output.extend(page);
-        *sequence = sequence.checked_add(1).ok_or(TagWriteError::Unsupported("Ogg header sequence overflow"))?;
+        *sequence = sequence
+            .checked_add(1)
+            .ok_or(TagWriteError::Unsupported("Ogg header sequence overflow"))?;
     }
     Ok(())
 }
 
 #[derive(Default)]
-struct AudioState { packet_length: u64, packets: u64, last_granule: u64 }
+struct AudioState {
+    packet_length: u64,
+    packets: u64,
+    last_granule: u64,
+}
 impl AudioState {
     fn accept(&mut self, page: &Page, codec: Codec, flag: &AtomicBool) -> Result<()> {
         let completed = page.completed();
         let granule = page.granule();
         if (completed == 0 && granule != u64::MAX)
-            || (completed != 0 && (granule > i64::MAX as u64 || granule < self.last_granule)) {
+            || (completed != 0 && (granule > i64::MAX as u64 || granule < self.last_granule))
+        {
             return Err(TagWriteError::Unsupported("invalid Ogg audio granule"));
         }
-        if completed != 0 { self.last_granule = granule; }
+        if completed != 0 {
+            self.last_granule = granule;
+        }
         let mut at = 0;
         for segment in page.lacing() {
             cancelled(flag)?;
-            if self.packet_length == 0 && *segment > 0 && codec == Codec::Vorbis && page.payload()[at] & 1 != 0 {
-                return Err(TagWriteError::Unsupported("unexpected Vorbis header in audio"));
+            if self.packet_length == 0
+                && *segment > 0
+                && codec == Codec::Vorbis
+                && page.payload()[at] & 1 != 0
+            {
+                return Err(TagWriteError::Unsupported(
+                    "unexpected Vorbis header in audio",
+                ));
             }
             self.packet_length += u64::from(*segment);
-            if self.packet_length > MAX_AUDIO_PACKET { return Err(TagWriteError::Unsupported("Ogg audio packet budget")); }
+            if self.packet_length > MAX_AUDIO_PACKET {
+                return Err(TagWriteError::Unsupported("Ogg audio packet budget"));
+            }
             at += usize::from(*segment);
             if *segment < 255 {
-                if self.packet_length == 0 { return Err(TagWriteError::Unsupported("zero-length Ogg audio packet")); }
+                if self.packet_length == 0 {
+                    return Err(TagWriteError::Unsupported("zero-length Ogg audio packet"));
+                }
                 self.packets += 1;
                 self.packet_length = 0;
             }
@@ -284,7 +431,9 @@ impl AudioState {
     }
     fn finish(&self, state: &StreamState) -> Result<()> {
         if !state.ended || state.continued || self.packet_length != 0 || self.packets == 0 {
-            return Err(TagWriteError::Unsupported("missing Ogg EOS or complete audio packets"));
+            return Err(TagWriteError::Unsupported(
+                "missing Ogg EOS or complete audio packets",
+            ));
         }
         Ok(())
     }
@@ -293,21 +442,49 @@ impl AudioState {
 impl OggStagedPlan {
     /// Full sequential preflight before output exists. Buffers only bounded codec
     /// headers and one page; rejects other logical streams anywhere in the file.
-    pub fn inspect(input: &mut (impl Read + Seek), source_length: u64, repairs: &[FieldRepair], cancel: &AtomicBool) -> Result<Self> {
+    pub fn inspect(
+        input: &mut (impl Read + Seek),
+        source_length: u64,
+        repairs: &[FieldRepair],
+        cancel: &AtomicBool,
+    ) -> Result<Self> {
         cancelled(cancel)?;
         validate_repairs(repairs, MAX_HEADERS, cancel)?;
-        if input.seek(SeekFrom::End(0)).map_err(|_| TagWriteError::Io)? != source_length { return Err(TagWriteError::Stale); }
-        input.seek(SeekFrom::Start(0)).map_err(|_| TagWriteError::Io)?;
+        if input
+            .seek(SeekFrom::End(0))
+            .map_err(|_| TagWriteError::Io)?
+            != source_length
+        {
+            return Err(TagWriteError::Stale);
+        }
+        input
+            .seek(SeekFrom::Start(0))
+            .map_err(|_| TagWriteError::Io)?;
         let mut h = headers(input, source_length, cancel)?;
-        let (prefix, kind) = match h.codec { Codec::Vorbis => (7, CommentKind::Vorbis), Codec::Opus => (8, CommentKind::Opus) };
-        let comment = rewrite_comments(&h.packets[0][prefix..], repairs, kind, MAX_HEADERS - prefix, cancel)?;
+        let (prefix, kind) = match h.codec {
+            Codec::Vorbis => (7, CommentKind::Vorbis),
+            Codec::Opus => (8, CommentKind::Opus),
+        };
+        let comment = rewrite_comments(
+            &h.packets[0][prefix..],
+            repairs,
+            kind,
+            MAX_HEADERS - prefix,
+            cancel,
+        )?;
         let mut replacement = h.packets[0][..prefix].to_vec();
         replacement.extend(comment);
         h.packets[0] = replacement;
         let mut repaired = h.first_page;
         let mut sequence = 1;
-        if repairs.is_empty() { repaired = h.original.clone(); sequence = h.pages; }
-        else { for packet in &h.packets { paginate(packet, h.state.serial, &mut sequence, &mut repaired, cancel)?; } }
+        if repairs.is_empty() {
+            repaired = h.original.clone();
+            sequence = h.pages;
+        } else {
+            for packet in &h.packets {
+                paginate(packet, h.state.serial, &mut sequence, &mut repaired, cancel)?;
+            }
+        }
         let serial = h.state.serial;
         let mut source = Sha256::new();
         source.update(&h.original);
@@ -322,34 +499,65 @@ impl OggStagedPlan {
         }
         audio.finish(&h.state)?;
         eof(input, cancel)?;
-        let output_length = (source_length - h.original.len() as u64).checked_add(repaired.len() as u64)
+        let output_length = (source_length - h.original.len() as u64)
+            .checked_add(repaired.len() as u64)
             .ok_or(TagWriteError::Unsupported("Ogg staged length overflow"))?;
         // One extra page can separate Vorbis comment/setup; policy text cannot grow.
         if output_length > source_length.saturating_add(27) {
-            return Err(TagWriteError::Unsupported("Ogg output exceeds policy growth bound"));
+            return Err(TagWriteError::Unsupported(
+                "Ogg output exceeds policy growth bound",
+            ));
         }
-        Ok(Self { original_header: h.original, repaired_header: repaired, source_length,
-            source_sha256: format!("{:x}", source.finalize()), output_length,
-            header_pages: h.pages, sequence_delta: sequence.wrapping_sub(h.pages), serial, codec: h.codec,
-            changed_fields: repairs.iter().map(|r| r.field).collect() })
+        Ok(Self {
+            original_header: h.original,
+            repaired_header: repaired,
+            source_length,
+            source_sha256: format!("{:x}", source.finalize()),
+            output_length,
+            header_pages: h.pages,
+            sequence_delta: sequence.wrapping_sub(h.pages),
+            serial,
+            codec: h.codec,
+            changed_fields: repairs.iter().map(|r| r.field).collect(),
+        })
     }
-    pub fn changes_bytes(&self) -> bool { self.original_header != self.repaired_header }
-    pub fn staged_length(&self) -> u64 { self.output_length }
+    pub fn changes_bytes(&self) -> bool {
+        self.original_header != self.repaired_header
+    }
+    pub fn staged_length(&self) -> u64 {
+        self.output_length
+    }
 
     /// The caller owns an empty staging stream. Any failure makes its bytes
     /// untrusted; discard, never publish. Evidence hashes emitted bytes, not
     /// persistence. Independent readback, durable journal and publication remain
     /// the platform's responsibility.
-    pub fn write_staged(&self, input: &mut (impl Read + Seek), output: &mut impl Write, expected_source_sha256: &str, cancel: &AtomicBool) -> Result<StagedTagEvidence> {
+    pub fn write_staged(
+        &self,
+        input: &mut (impl Read + Seek),
+        output: &mut impl Write,
+        expected_source_sha256: &str,
+        cancel: &AtomicBool,
+    ) -> Result<StagedTagEvidence> {
         cancelled(cancel)?;
-        if expected_source_sha256 != self.source_sha256 || input.seek(SeekFrom::End(0)).map_err(|_| TagWriteError::Io)? != self.source_length {
+        if expected_source_sha256 != self.source_sha256
+            || input
+                .seek(SeekFrom::End(0))
+                .map_err(|_| TagWriteError::Io)?
+                != self.source_length
+        {
             return Err(TagWriteError::Stale);
         }
-        input.seek(SeekFrom::Start(0)).map_err(|_| TagWriteError::Io)?;
+        input
+            .seek(SeekFrom::Start(0))
+            .map_err(|_| TagWriteError::Io)?;
         let mut original = vec![0; self.original_header.len()];
         read_checked(input, &mut original, cancel)?;
-        if original != self.original_header { return Err(TagWriteError::Stale); }
-        let mut source = Sha256::new(); source.update(&original);
+        if original != self.original_header {
+            return Err(TagWriteError::Stale);
+        }
+        let mut source = Sha256::new();
+        source.update(&original);
         let mut staged = Sha256::new();
         let mut media = Sha256::new();
         for chunk in self.repaired_header.chunks(CHUNK) {
@@ -359,7 +567,12 @@ impl OggStagedPlan {
         }
         let mut consumed = original.len() as u64;
         let mut media_length = 0u64;
-        let mut state = StreamState { serial: self.serial, next: self.header_pages, continued: false, ended: false };
+        let mut state = StreamState {
+            serial: self.serial,
+            next: self.header_pages,
+            continued: false,
+            ended: false,
+        };
         let mut audio = AudioState::default();
         while consumed < self.source_length {
             let mut page = Page::read(input, self.source_length - consumed, cancel)?;
@@ -371,16 +584,25 @@ impl OggStagedPlan {
             media_length += page.payload().len() as u64;
             page.shift_sequence(self.sequence_delta, cancel)?;
             cancelled(cancel)?;
-            output.write_all(&page.bytes).map_err(|_| TagWriteError::Io)?;
+            output
+                .write_all(&page.bytes)
+                .map_err(|_| TagWriteError::Io)?;
             staged.update(&page.bytes);
         }
         audio.finish(&state)?;
         eof(input, cancel)?;
         let source_sha256 = format!("{:x}", source.finalize());
-        if source_sha256 != expected_source_sha256 { return Err(TagWriteError::Stale); }
+        if source_sha256 != expected_source_sha256 {
+            return Err(TagWriteError::Stale);
+        }
         cancelled(cancel)?;
-        Ok(StagedTagEvidence { source_sha256, staged_sha256: format!("{:x}", staged.finalize()),
-            media_sha256: format!("{:x}", media.finalize()), media_length,
-            staged_length: self.output_length, changed_fields: self.changed_fields.clone() })
+        Ok(StagedTagEvidence {
+            source_sha256,
+            staged_sha256: format!("{:x}", staged.finalize()),
+            media_sha256: format!("{:x}", media.finalize()),
+            media_length,
+            staged_length: self.output_length,
+            changed_fields: self.changed_fields.clone(),
+        })
     }
 }

@@ -31,15 +31,19 @@ impl StagedRepairPlan {
     ) -> Result<Self, TagWriteError> {
         let filename = filename.to_ascii_lowercase();
         if filename.ends_with(".mp3") {
-            Id3StagedPlan::inspect(input, source_length, repairs, cancel).map(|plan| Self(FormatPlan::Mp3(plan)))
+            Id3StagedPlan::inspect(input, source_length, repairs, cancel)
+                .map(|plan| Self(FormatPlan::Mp3(plan)))
         } else if filename.ends_with(".flac") {
             let plan = FlacStagedPlan::inspect(input, source_length, repairs, cancel)?;
             plan.check_product_preservation()?;
             Ok(Self(FormatPlan::Flac(plan)))
         } else if filename.ends_with(".ogg") || filename.ends_with(".opus") {
-            OggStagedPlan::inspect(input, source_length, repairs, cancel).map(|plan| Self(FormatPlan::Ogg(plan)))
+            OggStagedPlan::inspect(input, source_length, repairs, cancel)
+                .map(|plan| Self(FormatPlan::Ogg(plan)))
         } else {
-            Err(TagWriteError::Unsupported("physical tag format is not supported"))
+            Err(TagWriteError::Unsupported(
+                "physical tag format is not supported",
+            ))
         }
     }
 
@@ -67,9 +71,15 @@ impl StagedRepairPlan {
         cancel: &AtomicBool,
     ) -> Result<StagedTagEvidence, TagWriteError> {
         match &self.0 {
-            FormatPlan::Mp3(plan) => plan.write_staged(input, output, expected_source_sha256, cancel),
-            FormatPlan::Flac(plan) => plan.write_staged(input, output, expected_source_sha256, cancel),
-            FormatPlan::Ogg(plan) => plan.write_staged(input, output, expected_source_sha256, cancel),
+            FormatPlan::Mp3(plan) => {
+                plan.write_staged(input, output, expected_source_sha256, cancel)
+            }
+            FormatPlan::Flac(plan) => {
+                plan.write_staged(input, output, expected_source_sha256, cancel)
+            }
+            FormatPlan::Ogg(plan) => {
+                plan.write_staged(input, output, expected_source_sha256, cancel)
+            }
         }
     }
 }

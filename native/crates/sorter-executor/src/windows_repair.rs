@@ -17,9 +17,7 @@ use sorter_core::{
     metadata::{LegacyField, MetadataProvider},
 };
 use sorter_io::{
-    desktop::windows_mutation::*,
-    staged_repair::StagedRepairPlan,
-    staged_tags::TagWriteError,
+    desktop::windows_mutation::*, staged_repair::StagedRepairPlan, staged_tags::TagWriteError,
 };
 use sorter_storage_contracts::{
     ContentDigest, ExpectedSource, MutationError, MutationErrorKind, MutationName,
@@ -818,7 +816,10 @@ impl SelectedWindowsRepairJob {
             .map(RepairField::native)
             .collect::<Vec<_>>();
         let extension = op.intended_name.to_ascii_lowercase();
-        if ![".mp3", ".flac", ".ogg", ".opus"].iter().any(|suffix| extension.ends_with(suffix)) {
+        if ![".mp3", ".flac", ".ogg", ".opus"]
+            .iter()
+            .any(|suffix| extension.ends_with(suffix))
+        {
             item.status = RepairStatus::UnsupportedTags;
             item.detail="Physical tag writing for this format is not yet supported; filename outcome is retained".into();
             return journal.append(Some(op.id), Phase::Stopped, item);
@@ -831,23 +832,22 @@ impl SelectedWindowsRepairJob {
             item.detail = error.detail;
             return journal.append(Some(op.id), Phase::Stopped, item);
         }
-        let staged_plan =
-            match StagedRepairPlan::inspect(
-                &op.intended_name,
-                &mut source,
-                expected.digest.length,
-                &repairs,
-                cancel,
-            ) {
-                Ok(v) => v,
-                Err(TagWriteError::Unsupported(reason)) => {
-                    item.status = RepairStatus::UnsupportedTags;
-                    item.detail = reason.into();
-                    return journal.append(Some(op.id), Phase::Stopped, item);
-                }
-                Err(TagWriteError::Cancelled) => return Err(E::Cancelled),
-                Err(_) => return Err(E::Stale),
-            };
+        let staged_plan = match StagedRepairPlan::inspect(
+            &op.intended_name,
+            &mut source,
+            expected.digest.length,
+            &repairs,
+            cancel,
+        ) {
+            Ok(v) => v,
+            Err(TagWriteError::Unsupported(reason)) => {
+                item.status = RepairStatus::UnsupportedTags;
+                item.detail = reason.into();
+                return journal.append(Some(op.id), Phase::Stopped, item);
+            }
+            Err(TagWriteError::Cancelled) => return Err(E::Cancelled),
+            Err(_) => return Err(E::Stale),
+        };
         // Compute immutable replacement evidence without creating any file.
         // This also rechecks the complete original before the staging intent.
         let planned = match staged_plan.write_staged(
@@ -1215,7 +1215,11 @@ fn validate_terminal(
                 &op.source.observation.name
             };
             check_observation(
-                header, op, current, leaf, Some(source_id),
+                header,
+                op,
+                current,
+                leaf,
+                Some(source_id),
                 ObservationLength::Exact(original_length(op)?),
             )?;
         } else if after_publish && state.replacement_identity.as_ref() == Some(&current.identity) {
@@ -1487,7 +1491,8 @@ pub fn recover_repair_journal(
                 } else {
                     let intent: TempPreparedV2 = decode(&record.payload)?;
                     let length = intent.replacement_length;
-                    if !valid_hash(&intent.replacement_sha256) || !valid_hash(&intent.media_sha256) {
+                    if !valid_hash(&intent.replacement_sha256) || !valid_hash(&intent.media_sha256)
+                    {
                         return Err(E::CorruptJournal);
                     }
                     let extension = op.intended_name.to_ascii_lowercase();
@@ -1495,14 +1500,19 @@ pub fn recover_repair_journal(
                     // Ogg can add at most one 27-byte header page when separating
                     // Vorbis comment/setup. The exact planned length and hashes
                     // are independently bound to every later replacement record.
-                    if serde_json::to_value(&intent.source).map_err(|_| E::Io)? != original || length == 0
+                    if serde_json::to_value(&intent.source).map_err(|_| E::Io)? != original
+                        || length == 0
                         || if extension.ends_with(".mp3") {
                             length != original_length(op)?
                         } else if extension.ends_with(".flac") {
                             length > original_length(op)?
                         } else if extension.ends_with(".ogg") || extension.ends_with(".opus") {
-                            original_length(op)?.checked_add(27).is_none_or(|maximum| length > maximum)
-                        } else { true }
+                            original_length(op)?
+                                .checked_add(27)
+                                .is_none_or(|maximum| length > maximum)
+                        } else {
+                            true
+                        }
                     {
                         return Err(E::CorruptJournal);
                     }
@@ -1536,7 +1546,10 @@ pub fn recover_repair_journal(
                     || Some(&observation.identity) != state.staged.as_ref().map(|o| &o.identity)
                     || observation.size != record.payload["length"].as_u64()
                     || observation.size != state.replacement_length
-                    || state.planned_hash.as_deref().is_some_and(|planned| planned != sha)
+                    || state
+                        .planned_hash
+                        .as_deref()
+                        .is_some_and(|planned| planned != sha)
                     || state.planned_media_hash.as_deref().is_some_and(|planned| {
                         record.payload["media_sha256"].as_str() != Some(planned)
                     })
@@ -1566,7 +1579,10 @@ pub fn recover_repair_journal(
                 if header.schema == 2 {
                     let source = observed(&record.payload["source"])?;
                     check_observation(
-                        header, op, &source, &op.intended_name,
+                        header,
+                        op,
+                        &source,
+                        &op.intended_name,
                         op.source.observation.identity.as_ref(),
                         ObservationLength::Exact(original_length(op)?),
                     )?;
@@ -1591,7 +1607,8 @@ pub fn recover_repair_journal(
                     || header.schema == 2
                         && record.payload["replacement_length"].as_u64() != state.replacement_length
                     || header.schema == 2
-                        && record.payload["staged"] != serde_json::to_value(&state.staged).map_err(|_| E::Io)?
+                        && record.payload["staged"]
+                            != serde_json::to_value(&state.staged).map_err(|_| E::Io)?
                 {
                     return Err(E::CorruptJournal);
                 }
@@ -1609,7 +1626,8 @@ pub fn recover_repair_journal(
                 if record.payload["sha256"].as_str() != state.staged_hash.as_deref()
                     || record.payload["original_sha256"] != op.source.sha256
                     || header.schema == 2
-                        && record.payload["backup"] != serde_json::to_value(&state.backup).map_err(|_| E::Io)?
+                        && record.payload["backup"]
+                            != serde_json::to_value(&state.backup).map_err(|_| E::Io)?
                 {
                     return Err(E::CorruptJournal);
                 }

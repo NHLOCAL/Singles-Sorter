@@ -3,11 +3,11 @@
 use super::*;
 use sorter_core::discovery::{ReadInput, StorageError};
 #[cfg(all(windows, feature = "selected-windows-execution"))]
-#[path = "execution_repair.rs"]
-mod repair;
-#[cfg(all(windows, feature = "selected-windows-execution"))]
 #[path = "execution_album.rs"]
 mod album;
+#[cfg(all(windows, feature = "selected-windows-execution"))]
+#[path = "execution_repair.rs"]
+mod repair;
 
 pub(super) struct ReadAdapter<'a>(pub Box<dyn ReadStorage + 'a>);
 impl ReadStorage for ReadAdapter<'_> {
@@ -201,8 +201,8 @@ mod selected {
     use sorter_executor::{
         binding::{ExecutionScope, Resources, prepare_scope},
         results::{ItemStatus, JobResult, JobStatus},
-        windows_job::{SelectedWindowsJob, supported_plan},
         windows_album::{AlbumScope, prepare_album_scope, supported_album_plan},
+        windows_job::{SelectedWindowsJob, supported_plan},
         windows_repair::{RepairScope, prepare_repair_scope, supported_repair_plan},
     };
     use sorter_io::desktop::windows_mutation::{WindowsMutationStorage, WindowsSelectedRootGrant};
@@ -219,7 +219,10 @@ mod selected {
             target: PathBuf,
             scope: ExecutionScope,
         },
-        Album { target: PathBuf, scope: Box<AlbumScope> },
+        Album {
+            target: PathBuf,
+            scope: Box<AlbumScope>,
+        },
         Repair(RepairScope),
     }
     impl PreparedSelection {
@@ -305,17 +308,31 @@ mod selected {
             }
             let target =
                 target.ok_or_else(|| HostError::new("TARGET_REQUIRED", "בחר תיקיית יעד למיון."))?;
-            if plan.operations.iter().any(|operation| matches!(operation.kind, sorter_core::job_plan::OperationKind::AlbumTransfer { .. })) {
+            if plan.operations.iter().any(|operation| {
+                matches!(
+                    operation.kind,
+                    sorter_core::job_plan::OperationKind::AlbumTransfer { .. }
+                )
+            }) {
                 supported_album_plan(plan).map_err(storage_error)?;
-                let scope = prepare_album_scope(plan, storage, &resources, &cancellation.cancelled).map_err(storage_error)?;
+                let scope = prepare_album_scope(plan, storage, &resources, &cancellation.cancelled)
+                    .map_err(storage_error)?;
                 if !plan.request.settings.copy_mode
                     && !matches!((&scope.execution_scope().source_root, &scope.execution_scope().target_root), (sorter_core::discovery::ObjectIdentity::Windows {volume:a,..},sorter_core::discovery::ObjectIdentity::Windows {volume:b,..}) if a == b)
                 {
-                    return Err(HostError::new("CROSS_VOLUME_MOVE_UNAVAILABLE", "העברה בין כוננים אינה זמינה עדיין. אפשר לבחור העתקה ולבדוק מחדש."));
+                    return Err(HostError::new(
+                        "CROSS_VOLUME_MOVE_UNAVAILABLE",
+                        "העברה בין כוננים אינה זמינה עדיין. אפשר לבחור העתקה ולבדוק מחדש.",
+                    ));
                 }
                 return Ok(PreparedSelection {
-                    source: source.path.clone(), personal: personal.unwrap_or_default().to_vec(), ai,
-                    scope: PreparedScope::Album { target: target.path.clone(), scope: Box::new(scope) },
+                    source: source.path.clone(),
+                    personal: personal.unwrap_or_default().to_vec(),
+                    ai,
+                    scope: PreparedScope::Album {
+                        target: target.path.clone(),
+                        scope: Box::new(scope),
+                    },
                 });
             }
             supported_plan(plan).map_err(storage_error)?;
@@ -526,7 +543,16 @@ mod selected {
                     );
                 }
                 PreparedScope::Album { target, scope } => {
-                    return self.execute_album(id, plan, &selected.source, &target, directory, &scope, recognition.as_mut(), cancellation);
+                    return self.execute_album(
+                        id,
+                        plan,
+                        &selected.source,
+                        &target,
+                        directory,
+                        &scope,
+                        recognition.as_mut(),
+                        cancellation,
+                    );
                 }
                 PreparedScope::Sort { target, scope } => (target, scope),
             };
@@ -601,7 +627,11 @@ mod selected {
                 job.inspect_recovery(&recovery_scope)
                     .ok()
                     .map(|report| RecoveryInspection {
-                        pending_operations: vec![], directory_evidence: vec![], metadata_issues: None, terminal_records_complete: None, append_blocked: None,
+                        pending_operations: vec![],
+                        directory_evidence: vec![],
+                        metadata_issues: None,
+                        terminal_records_complete: None,
+                        append_blocked: None,
                         observed_directories: report.directories.observed.len(),
                         pending_directories: report.directories.pending.len(),
                         rejected_directories: report.directories.rejected.len(),
