@@ -1031,7 +1031,7 @@ mod copied_move_journal_tests {
     fn copied_move_record_budget_refusal_preserves_prefix_and_poison() {
         for line_budget in [true, false] {
             let (binding, mut journal, mut sink) = ready();
-            let prefix = sink.0.clone();
+            let prefix = sink.read_all().unwrap();
             let events = journal.events().to_vec();
             journal.test_record_budget = Some(if line_budget {
                 (0, usize::MAX)
@@ -1043,7 +1043,7 @@ mod copied_move_journal_tests {
                 journal.append(&mut sink, next.clone()),
                 Err(E::NeedsRecovery)
             );
-            assert_eq!(sink.0, prefix);
+            assert_eq!(sink.read_all().unwrap(), prefix);
             assert_eq!(journal.events(), events);
             assert!(journal.poisoned);
             let control = InspectionControl::new(
@@ -1061,7 +1061,7 @@ mod copied_move_journal_tests {
             assert_eq!(reopened.events().last().unwrap().phase, Phase::BytesSynced);
             journal.test_record_budget = None;
             assert_eq!(journal.append(&mut sink, next), Err(E::NeedsRecovery));
-            assert_eq!(sink.0, prefix);
+            assert_eq!(sink.read_all().unwrap(), prefix);
             assert_eq!(journal.events(), events);
         }
     }

@@ -751,8 +751,8 @@ fn inspect_recovery_inner(
                 {
                     return Err(E::Scope);
                 }
-                if let Some(roots) = roots {
-                    if probe(control, || {
+                if let Some(roots) = roots
+                    && (probe(control, || {
                         roots.selected_source_reference().map_err(|_| E::Scope)
                     })? != header.source_root.reference
                         || probe(control, || {
@@ -767,10 +767,9 @@ fn inspect_recovery_inner(
                             roots.selected_target_root().map_err(|_| E::Scope)
                         })?
                         .identity()
-                            != &scope.original_scope.target_root
-                    {
-                        return Err(E::Scope);
-                    }
+                            != &scope.original_scope.target_root)
+                {
+                    return Err(E::Scope);
                 }
                 binding = Some(header);
             }
@@ -846,23 +845,23 @@ fn inspect_recovery_inner(
     // Pin matched created directories across all later content observations.
     let mut held_directories = Vec::new();
     let mut observation_limit_reached = false;
-    if let Some(roots) = roots {
-        if control.is_some() || options.restart {
-            for (index, (reference, expected)) in report.observed.iter().enumerate() {
-                checkpoint(control)?;
-                if options.bounded && index >= MAX_RESTART_OBSERVATIONS {
-                    observation_limit_reached = true;
-                    report.unverified.push(reference.clone());
-                    continue;
-                }
-                match probe(control, || {
-                    roots.parent_reference(reference).map_err(|_| E::Stale)
-                }) {
-                    Ok(parent) if parent.identity() == expected => held_directories.push(parent),
-                    Err(E::Cancelled) => return Err(E::Cancelled),
-                    _ if options.restart => report.unverified.push(reference.clone()),
-                    _ => return Err(E::Stale),
-                }
+    if let Some(roots) = roots
+        && (control.is_some() || options.restart)
+    {
+        for (index, (reference, expected)) in report.observed.iter().enumerate() {
+            checkpoint(control)?;
+            if options.bounded && index >= MAX_RESTART_OBSERVATIONS {
+                observation_limit_reached = true;
+                report.unverified.push(reference.clone());
+                continue;
+            }
+            match probe(control, || {
+                roots.parent_reference(reference).map_err(|_| E::Stale)
+            }) {
+                Ok(parent) if parent.identity() == expected => held_directories.push(parent),
+                Err(E::Cancelled) => return Err(E::Cancelled),
+                _ if options.restart => report.unverified.push(reference.clone()),
+                _ => return Err(E::Stale),
             }
         }
     }
