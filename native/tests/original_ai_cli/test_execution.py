@@ -37,6 +37,15 @@ class ExecutionContractTests(unittest.TestCase):
             path.write_bytes(path.read_bytes() + b'changed')
             self.assertNotEqual(execution.snapshot(root), before)
 
+    def test_no_effect_snapshot_detects_empty_directory_creation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            before = execution.snapshot(root)
+            (root / 'unexpected-empty-directory').mkdir()
+            after = execution.snapshot(root)
+            self.assertNotEqual(after, before)
+            self.assertTrue(any(row[0] == 'unexpected-empty-directory' for row in after))
+
     def test_gate_rejects_optimized_parser_and_emits_no_report(self):
         with tempfile.TemporaryDirectory() as directory:
             report = Path(directory) / 'report.json'

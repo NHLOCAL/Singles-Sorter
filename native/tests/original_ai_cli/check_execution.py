@@ -2,7 +2,7 @@
 
 Disposable authored audio only. This is CI code, never an application dependency.
 A report is emitted only after independent byte/layout checks, not inferred from
-logs. Package contents are hash-checked before and after each executable trial.
+logs. Package contents are hash-checked before and after the acceptance run.
 """
 from __future__ import annotations
 import argparse
@@ -44,7 +44,12 @@ def write_wave(path):
 
 
 def snapshot(root):
-    return {p.relative_to(root).as_posix():digest(p) for p in root.rglob('*') if p.is_file()}
+    result = []
+    for path in sorted([root, *root.rglob('*')]):
+        info = path.lstat()
+        result.append((path.relative_to(root).as_posix(), info.st_mode, info.st_size,
+                       info.st_mtime_ns, digest(path) if path.is_file() else None))
+    return result
 
 
 def result_record(stderr):
