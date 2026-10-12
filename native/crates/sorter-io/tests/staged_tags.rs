@@ -294,7 +294,7 @@ fn real_native_reader_observes_repaired_field_and_preserved_other_fields() {
     let plan = Id3StagedPlan::inspect(
         &mut Cursor::new(&before),
         before.len() as u64,
-        &[request.clone()],
+        std::slice::from_ref(&request),
         &AtomicBool::new(false),
     )
     .unwrap();
