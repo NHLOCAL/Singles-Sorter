@@ -40,14 +40,16 @@ staged/extracted original-AI Copy/Move gates. Its ZIP SHA-256 is
 `bf90d51cc5e98bcd16102f898c497cc9083297bfbbf88d742dba543b4d0b02f5`;
 that evidence does not cover later UI polish or repair changes.
 
-The current repair candidate adds 12 backend product cases, 3 journal boundary
-cases, 20 native preservation cases, 10 staged tag transformer cases, real
-source-only CLI subprocess cases,
-and actual staged/extracted UI cases. These are required checks, not claimed
-passes until the final-head Windows runs finish. Local frontend checks currently
-pass 107 tests/typecheck/build; independent Python ID3 fixture/parser and package
-gate tests also pass. Local Rust installation and Chromium rendering remain
-blocked; neither limitation is counted as a passing native or visual test.
+The 690194e Windows checkpoint passed the existing 13 native repair product,
+4 journal-boundary, 20 preservation, 10 staged MP3 transformer, 6 NDJSON CLI
+and 5 positional CLI cases. Its product run also passed real staged/extracted
+MP3 repair. The native job's overall formatter failure was recorded separately;
+physical/runtime passes are not described as an all-green final build.
+
+The later inactive-filter/footer UI and album activation require new final-head
+results. Local frontend/unit checks and portable fixture tests are useful source
+evidence, not native or visual acceptance. Local Rust installation and Chromium
+rendering remain blocked; actual Windows CI supplies those checks.
 
 
 ## Frozen v14 completeness checklist
@@ -67,7 +69,7 @@ parsed does not imply that every resulting operation is physically supported.
 | Duet effects | Original artist order and duplication; first/all-artist toggle | Multi-destination Move source-retirement cohort remains separate; no early source deletion |
 | Failures and cancellation | Planning metadata failures are not silently converted into success; native actual effects remain explicit | Read-only repair recovery now passes both ordinary and short Windows path spellings; process-kill/restart UI remains separate |
 | File lists and settings | Bundled/personal ordering, duplicate rows, CSV editing/import/export and every six-boolean setting | Expanded actual UI combination tests for alphabetic/existing-only/main-only/duet settings remain required |
-| User interface | Hebrew RTL, compact display, immediate help dismissal, richer About, default-minimal results and explicit developer mode | Actual Windows polish must pass the corrected closed/open/reclosed About layout gate |
+| User interface | Hebrew RTL, compact display, immediate help dismissal, richer About, default-minimal results and explicit developer mode | Latest actual UI gate checks advanced-Settings developer placement, independent inactive filtering, long-name bounds and stable footer; fresh Windows evidence is required |
 
 ### All twelve released extensions
 
@@ -90,13 +92,11 @@ preserved; a filename change does not imply a successful tag repair.
 | `.wma` | Released metadata open rejects ASF | Preserve metadata-error outcome after any supported filename repair |
 | `.aac` | Released ADTS fixture rejects tags | Preserve metadata-error outcome after any supported filename repair |
 
-The initial f86 Windows run passed all 10 staged MP3 writer, 20 preservation,
-3 journal-boundary and 12 native repair product cases. The CLI's actual repair
-passed renamed/repaired counts, unchanged audio and exact retained-original bytes,
-but its read-only recovery report was absent, so that CLI test failed. The strict
-assertion and error diagnostics remain; this is not complete CLI acceptance.
-The current follow-up must pass fresh native, host and staged/extracted gates.
-
+The initial f86 run found a real read-only recovery failure after physical repair:
+short Windows ancestor spelling differed from the held object's long spelling.
+The identity-bound correction subsequently passed actual CLI reconciliation at
+9776 and 690. The diagnostic assertion was preserved; neither the earlier
+physical effect nor that earlier failed reconciliation was relabeled.
 
 ## Observed Windows repair checkpoint and next album scope
 
