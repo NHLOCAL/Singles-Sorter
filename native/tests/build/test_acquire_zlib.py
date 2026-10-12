@@ -3,6 +3,8 @@ import io
 import json
 from pathlib import Path
 import tempfile
+import sys
+import time
 import unittest
 import urllib.error
 import acquire_zlib as a
@@ -104,6 +106,22 @@ class Acquisition(unittest.TestCase):
         op = Opener()
         with self.assertRaises(RuntimeError): self.run_acquire(op, clock=lambda: next(values))
         self.assertEqual(op.calls, 0)
+
+    def test_outer_deadline_kills_trickling_worker(self):
+        start = time.monotonic()
+        with self.assertRaises(RuntimeError):
+            a.run_bounded([sys.executable, "-c",
+                           "import time; [(time.sleep(.01)) for _ in range(10000)]"],
+                          self.evidence, timeout=.15)
+        self.assertLess(time.monotonic() - start, 5)
+        receipt = json.loads((self.evidence / "outer-timeout.json").read_text())
+        self.assertFalse(receipt["verified"])
+        self.assertEqual(receipt["timeout_seconds"], .15)
+
+    def test_outer_worker_failure_is_not_success(self):
+        import subprocess
+        with self.assertRaises(subprocess.CalledProcessError):
+            a.run_bounded([sys.executable, "-c", "raise SystemExit(7)"], self.evidence)
 
     def test_cache_race_does_not_overwrite(self):
         class Race(Opener):

@@ -7,6 +7,8 @@ import base64
 import hashlib
 import json
 import os
+import subprocess
+import sys
 from pathlib import Path
 import tempfile
 import time
@@ -96,10 +98,29 @@ def acquire(cache, evidence, opener=None, expected=SHA256, clock=time.monotonic,
     raise RuntimeError('Official zlib acquisition failed; retained bounded response receipts')
 
 
+def run_bounded(command, evidence, timeout=100):
+    """The parent kills and reaps a stalled worker, including trickling reads."""
+    try:
+        subprocess.run(command, check=True, timeout=timeout)
+    except subprocess.TimeoutExpired as error:
+        evidence = Path(evidence)
+        evidence.mkdir(parents=True, exist_ok=True)
+        (evidence / "outer-timeout.json").write_text(json.dumps({
+            "verified": False, "error": "worker exceeded total wall-clock bound",
+            "timeout_seconds": timeout, "expected_sha256": SHA256, "url": URL,
+        }, indent=2) + "\n")
+        raise RuntimeError("Official acquisition worker exceeded wall-clock bound") from error
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--evidence', type=Path, required=True)
+    parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
+    if not args.worker:
+        run_bounded([sys.executable, str(Path(__file__).resolve()), "--worker",
+                     "--evidence", str(args.evidence)], args.evidence)
+        return
     lock = json.loads((Path(__file__).resolve().parents[2] / 'crates/sorter-io/dependencies/lock.json').read_text())['dependencies']['zlib']
     if lock['url'] != URL or lock['archive_sha256'] != SHA256 or lock['version'] != '1.3.1':
         raise ValueError('Acquisition helper differs from reviewed source lock')
