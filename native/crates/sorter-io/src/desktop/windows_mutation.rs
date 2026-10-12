@@ -207,6 +207,7 @@ struct Root {
     _ownership: RootOwnership,
     album_cleanup: bool,
     album_cleanup_original: Option<MutationObservation>,
+    album_membership_cursor: std::sync::Mutex<()>,
 }
 #[derive(Clone)]
 pub struct WindowsParent {
@@ -340,6 +341,7 @@ fn pin_root(
         _ownership: ownership,
         album_cleanup: false,
         album_cleanup_original: None,
+        album_membership_cursor: std::sync::Mutex::new(()),
     }))
 }
 fn ensure_disjoint_roots(a: &Root, b: &Root) -> Result<(), MutationError> {
@@ -4732,6 +4734,44 @@ impl WindowsMutationStorage {
             1 => &parent.root.directory,
             n => &parent.ancestors[n - 2],
         };
+        if parent.root.album_cleanup && parent.ancestors.is_empty() {
+            // This root already has listing rights and an exclusive DELETE lease.
+            // Reopening would violate that lease. Serialize its enumeration cursor;
+            // contention/poison refuses rather than returning partial membership.
+            let _cursor = parent
+                .root
+                .album_membership_cursor
+                .try_lock()
+                .map_err(|_| {
+                    err(
+                        MutationErrorKind::Locked,
+                        "album root membership cursor is busy",
+                    )
+                })?;
+            cancelled(cancel)?;
+            let expected = parent.root.album_cleanup_original.as_ref().ok_or_else(|| {
+                err(
+                    MutationErrorKind::StalePlan,
+                    "album root observation missing",
+                )
+            })?;
+            let check = || {
+                self.check_role(parent, RootRole::Source)?;
+                let parent_identity = identity(upstream).map_err(read_error)?;
+                if album_rename::album_observe(parent.handle(), &parent_identity)? != *expected {
+                    return Err(err(
+                        MutationErrorKind::StalePlan,
+                        "album root location changed",
+                    ));
+                }
+                Ok(())
+            };
+            check()?;
+            let members = directory_members_with_limits(parent.handle(), cancel, 100_000, 1024)?;
+            check()?;
+            cancelled(cancel)?;
+            return Ok(members);
+        }
         // The ordinary pins have traverse/attribute rights, not listing rights.
         // Reopen only this one directory relative to its still-held parent, check
         // its full identity, and give each call an independent enumeration cursor.

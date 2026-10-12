@@ -108,6 +108,7 @@ impl WindowsMutationStorage {
             _ownership: RootOwnership::Selected,
             album_cleanup: true,
             album_cleanup_original: Some(original),
+            album_membership_cursor: std::sync::Mutex::new(()),
         });
         let target = pin_root(
             target.path,
@@ -491,6 +492,66 @@ mod album_cleanup_tests {
             MutationOutcome::Applied(value) => value,
             _ => panic!("expected acknowledged cleanup"),
         }
+    }
+    #[test]
+    fn exclusive_cleanup_root_membership_restarts_and_serializes_held_cursor() {
+        let fixture = Fixture::new();
+        std::fs::write(fixture.source.join("track.mp3"), b"owned audio").unwrap();
+        std::fs::create_dir(fixture.source.join("disc")).unwrap();
+        let storage = fixture.storage();
+        let root = storage.selected_source_root().unwrap();
+        let cancel = AtomicBool::new(false);
+        let first = storage
+            .source_directory_members_with_cancel(&root, &cancel)
+            .unwrap();
+        assert_eq!(first.len(), 2);
+        let second = storage
+            .source_directory_members_with_cancel(&root, &cancel)
+            .unwrap();
+        assert_eq!(first, second);
+        let cursor = root.root.album_membership_cursor.lock().unwrap();
+        assert_eq!(
+            storage
+                .source_directory_members_with_cancel(&root, &cancel)
+                .unwrap_err()
+                .kind,
+            MutationErrorKind::Locked
+        );
+        cancel.store(true, std::sync::atomic::Ordering::Release);
+        assert_eq!(
+            storage
+                .source_directory_members_with_cancel(&root, &cancel)
+                .unwrap_err()
+                .kind,
+            MutationErrorKind::Cancelled
+        );
+        drop(cursor);
+        cancel.store(false, std::sync::atomic::Ordering::Release);
+        assert_eq!(
+            storage
+                .source_directory_members_with_cancel(&root, &cancel)
+                .unwrap(),
+            first
+        );
+        std::fs::write(fixture.source.join("late.txt"), b"late child").unwrap();
+        let changed = storage
+            .source_directory_members_with_cancel(&root, &cancel)
+            .unwrap();
+        assert_eq!(changed.len(), 3);
+        assert!(first.iter().all(|member| changed.contains(member)));
+        drop(root);
+        drop(storage);
+        assert_eq!(
+            std::fs::read(fixture.source.join("track.mp3")).unwrap(),
+            b"owned audio"
+        );
+        assert_eq!(
+            std::fs::read(fixture.source.join("late.txt")).unwrap(),
+            b"late child"
+        );
+        assert!(fixture.source.join("disc").is_dir());
+        assert_eq!(std::fs::read_dir(&fixture.target).unwrap().count(), 0);
+        assert_eq!(std::fs::read_dir(&fixture.journal).unwrap().count(), 0);
     }
     #[test]
     fn exact_root_handle_cleanup_keeps_readonly_original_leaf_probe() {
