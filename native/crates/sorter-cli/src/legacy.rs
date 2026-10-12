@@ -438,8 +438,7 @@ mod tests {
     fn relative_and_dot_paths_are_lexical_not_canonicalized() {
         let cwd = std::env::current_dir().unwrap();
         assert_eq!(
-            absolute(Path::new("."))
-                .unwrap_or_else(|failure| panic!("{}", failure.error.message)),
+            absolute(Path::new(".")).unwrap_or_else(|failure| panic!("{}", failure.error.message)),
             cwd
         );
         assert_eq!(
