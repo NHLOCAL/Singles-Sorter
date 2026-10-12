@@ -413,6 +413,7 @@ impl Host {
             selected: None,
             cancellation: cancellation.clone(),
         });
+        let journal_directory = inner.journal_directory.clone();
         drop(inner);
         let host = self.clone();
         let id = job_id.clone();
@@ -427,6 +428,7 @@ impl Host {
                         request,
                         Some(&personal),
                         host.model_directory.as_deref(),
+                        journal_directory.as_deref(),
                         &cancellation,
                     )
                 }))
@@ -537,12 +539,14 @@ impl Host {
         let (source, target) = self.prepare(&request)?;
         let job_id = self.next("job");
         let cancellation = Cancellation::default();
+        let journal_directory = self.lock()?.journal_directory.clone();
         let result = real_plan(
             &source,
             target.as_ref(),
             request,
             personal.as_deref(),
             self.model_directory.as_deref(),
+            journal_directory.as_deref(),
             &cancellation,
         );
         self.finish(&job_id, result, cancellation)?;
@@ -748,6 +752,7 @@ fn real_plan(
     request: PreviewRequest,
     personal: Option<&[u8]>,
     model_directory: Option<&Path>,
+    journal_directory: Option<&Path>,
     cancellation: &Cancellation,
 ) -> Result<Planned> {
     let mut roots = vec![source.path.clone()];
@@ -850,12 +855,13 @@ fn real_plan(
         target,
         personal,
         requested_ai,
+        journal_directory,
         &mut storage,
         cancellation,
     )?;
     #[cfg(not(all(windows, feature = "selected-windows-execution")))]
     let apply = {
-        let _ = requested_ai;
+        let _ = (requested_ai, journal_directory);
         None
     };
     Ok(Planned {
@@ -873,6 +879,7 @@ fn real_plan(
     _request: PreviewRequest,
     _personal: Option<&[u8]>,
     _model_directory: Option<&Path>,
+    _journal_directory: Option<&Path>,
     _cancellation: &Cancellation,
 ) -> Result<Planned> {
     Err(HostError::new(

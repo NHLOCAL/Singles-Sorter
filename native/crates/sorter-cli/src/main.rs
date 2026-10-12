@@ -155,7 +155,7 @@ impl Capabilities {
             physical_apply: false,
             upcoming: ["ndjson_streaming"],
             real_file_planning: plan_files::capabilities(),
-            selected_execution: cfg!(all(windows,feature="selected-windows-execution")).then(||serde_json::json!({"command":"run-files --ndjson","scope":"single-process inspected-plan confirmation","modes":["Copy","same-volume Move","FixNames"],"album_execution":"bounded same-volume Move and Copy; original planner order; nested files and sidecars","tag_write_scope":"bounded unflagged MP3 ID3v2.3/v2.4 , native FLAC and single-stream Ogg Vorbis/Opus comments; five released fields; retained original backup","automatic_backup_cleanup":false,"automatic_replay":false,"process_restart_recovery_ui":false})),
+            selected_execution: cfg!(all(windows,feature="selected-windows-execution")).then(||serde_json::json!({"command":"run-files --ndjson","scope":"single-process inspected-plan confirmation","modes":["Copy","same-volume Move","bounded copied Move","FixNames"],"copied_move_scope":"ordinary quiescent NTFS singles across volumes or complete multi-target duet cohorts; main and named streams retained from preview; ordinary same-volume singles remain rename","album_execution":"bounded same-volume Move and Copy; original planner order; nested files and sidecars","tag_write_scope":"bounded unflagged MP3 ID3v2.3/v2.4 , native FLAC and single-stream Ogg Vorbis/Opus comments; five released fields; retained original backup","automatic_backup_cleanup":false,"automatic_replay":false,"process_restart_recovery_ui":false})),
         }
     }
 }

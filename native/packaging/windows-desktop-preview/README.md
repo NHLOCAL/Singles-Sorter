@@ -29,8 +29,11 @@ the desktop notice inventory must cover that exact component and applicable
 redistribution terms. Do not claim this executable contains no Microsoft code.
 No installer/signing, clean-machine, network-isolated WebView2, Narrator, 200% DPI,
 Android acceptance claim is made here. Physical execution support is limited to
-the package-proven selected Copy/same-volume Move paths; albums, tag writes,
-cross-volume Move and duet source retirement stay explicitly unavailable.
+the exact feature paths checked by that artifact's receipts. New builds require
+album, bounded MP3/FLAC/Ogg repair and copied-Move receipts in addition to the
+original selected Copy/same-volume Move proof. Copied Move covers ordinary
+quiescent local NTFS cross-volume singles and complete multi-target duets;
+cross-volume albums and incomplete eligible cohorts remain unavailable.
 
 Source archives are generated into the artifact only, never Git. Original model
 pickle, Python/oracle environments/corpora, private data, node_modules, build

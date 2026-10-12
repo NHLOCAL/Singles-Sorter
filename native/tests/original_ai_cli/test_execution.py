@@ -71,6 +71,20 @@ class ExecutionContractTests(unittest.TestCase):
             report=copy.deepcopy(valid);report['directories'][0]['status']=status
             with self.assertRaises(ValueError): execution.require_album_recovery(report)
 
+    def test_copied_move_recovery_requires_terminal_metadata_evidence(self):
+        import copy
+        valid = dict(directories=dict(complete=True,incomplete_tail=False,pending=[],rejected=[],observed=[['target/artist', {'Test': {'id': 'owned'}}]]),
+                     transfers=dict(append_blocked=False,operations=[dict(status='Committed',copy_metadata='Verified')]))
+        execution.require_copied_recovery(valid)
+        for key, value in [('complete',False),('incomplete_tail',True),('pending',['target/artist']),('rejected',['target/artist'])]:
+            report=copy.deepcopy(valid);report['directories'][key]=value
+            with self.assertRaises(ValueError): execution.require_copied_recovery(report)
+        for status in ('Mismatch','Unverified'):
+            report=copy.deepcopy(valid);report['transfers']['operations'][0]['copy_metadata']=status
+            with self.assertRaises(ValueError): execution.require_copied_recovery(report)
+        report=copy.deepcopy(valid);report['transfers']['append_blocked']=True
+        with self.assertRaises(ValueError): execution.require_copied_recovery(report)
+
     def test_negative_trial_exempts_only_its_new_log_and_parent(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);(root/'source').mkdir();(root/'source/track').write_bytes(b'owned')

@@ -49,6 +49,10 @@ ALBUM_CHECKS = {'actual-album-copy', 'actual-root-album-move', 'actual-mixed-alb
                 'album-nested-files-and-sidecars', 'album-copy-metadata',
                 'album-review-no-effects', 'album-stale-membership-no-effects',
                 'album-terminal-simple-results'}
+COPIED_MOVE_CHECKS = {'actual-cross-volume-move', 'actual-original-ai-duet-move', 'actual-mixed-duet-and-rename',
+                      'copied-move-main-and-named-streams', 'copied-move-source-retired-once',
+                      'copied-move-preview-and-review-no-effects', 'copied-move-stale-stream-no-effects',
+                      'copied-move-stale-target-no-effects', 'copied-move-cancel-before-effects'}
 DESKTOP_FEATURES = ['desktop', 'original-ai', 'selected-windows-execution', 'tauri/custom-protocol']
 require, digest = cli.require, cli.digest
 
@@ -66,6 +70,7 @@ def report_gate(path, binary, mode, package=None):
         require(FLAC_CHECKS <= set(report.get('flac_checks', [])), 'incomplete actual FLAC FixNames acceptance')
         require(OGG_CHECKS <= set(report.get('ogg_checks', [])), 'incomplete actual Ogg FixNames acceptance')
         require(ALBUM_CHECKS <= set(report.get('album_checks', [])), 'incomplete actual album acceptance')
+        require(COPIED_MOVE_CHECKS <= set(report.get('copied_move_checks', [])), 'incomplete actual copied-Move acceptance')
         require(package is not None and report.get('package_sha256sums_sha256') == digest(package / 'SHA256SUMS.txt'), 'acceptance not bound to exact package')
     return report
 
@@ -187,8 +192,8 @@ def build(args):
             'crt_linkage':'dynamic MSVC; Microsoft runtime DLLs not bundled',
             'webview2_sdk_loader':'Microsoft SDK static loader; exact SDK license/notices included in licenses',
             'clean_machine_without_prerequisites_tested':False, 'physical_apply':True,
-            'supported_apply':['selected-root Copy', 'selected-root same-volume rename Move', 'required artist and singles directories', 'bounded album Copy and same-volume whole-directory Move', 'Copy file and album directory timestamps/attributes', 'selected-source filename repair', 'bounded ID3v2.3/v2.4 , native FLAC and single-stream Ogg Vorbis/Opus five-field tag repair with original backup'],
-            'unsupported_apply':['tag representations outside supported MP3/native FLAC/single-stream Ogg Vorbis/Opus bounds', 'cross-volume Move', 'Move duet retirement'],
+            'supported_apply':['selected-root Copy', 'selected-root same-volume rename Move', 'bounded cross-volume singles Move and complete duet Move cohorts with named-stream preservation', 'required artist and singles directories', 'bounded album Copy and same-volume whole-directory Move', 'Copy file and album directory timestamps/attributes', 'selected-source filename repair', 'bounded ID3v2.3/v2.4 , native FLAC and single-stream Ogg Vorbis/Opus five-field tag repair with original backup'],
+            'unsupported_apply':['tag representations outside supported MP3/native FLAC/single-stream Ogg Vorbis/Opus bounds', 'cross-volume album Move', 'duet Move with fewer than two eligible destinations', 'copied Move outside ordinary quiescent local NTFS'],
             'model_execution':'local native; no Python or model network', 'webview_network_isolation_tested':False,
             'baseline_commit':cli.BASELINE, 'bundle_id':'original-v14-ner-3.7.5',
             'assets_sha256':assets, 'assets_bytes':{n:(models/n).stat().st_size for n in cli.ASSETS},

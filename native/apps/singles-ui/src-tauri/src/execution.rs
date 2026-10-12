@@ -208,7 +208,10 @@ mod selected {
         binding::{ExecutionScope, Resources, prepare_scope},
         results::{ItemStatus, JobResult, JobStatus},
         windows_album::{AlbumScope, prepare_album_scope, supported_album_plan},
-        windows_job::{SelectedWindowsJob, supported_plan},
+        windows_job::{
+            CopiedMoveScope, SelectedWindowsJob, prepare_copied_move_scope,
+            supported_copied_move_plan, supported_plan,
+        },
         windows_repair::{RepairScope, prepare_repair_scope, supported_repair_plan},
     };
     use sorter_io::desktop::windows_mutation::{WindowsMutationStorage, WindowsSelectedRootGrant};
@@ -229,6 +232,12 @@ mod selected {
             target: PathBuf,
             scope: ExecutionScope,
         },
+        CopiedMove {
+            target: PathBuf,
+            journal: PathBuf,
+            journal_identity: sorter_core::discovery::ObjectIdentity,
+            scope: Box<CopiedMoveScope>,
+        },
         Album {
             target: PathBuf,
             scope: Box<AlbumScope>,
@@ -240,6 +249,7 @@ mod selected {
             match &self.scope {
                 PreparedScope::Noop { resources, .. } => resources,
                 PreparedScope::Sort { scope, .. } => &scope.resources,
+                PreparedScope::CopiedMove { scope, .. } => &scope.execution_scope().resources,
                 PreparedScope::Repair(scope) => scope.resources(),
                 PreparedScope::Album { scope, .. } => scope.resources(),
             }
@@ -294,12 +304,15 @@ mod selected {
                 .then(|| digest(&serde_json::to_vec(&models).expect("string identifiers"))),
         })
     }
+    pub(super) const COPIED_MOVE_NOTICE: &str = "סגור תוכנות או סנכרון שמשנים את המקור או היעד עד סיום ההעברה. המקור יוסר רק לאחר אימות כל היעדים של אותו קובץ.";
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn inspect_selection(
         plan: &JobPlanV2,
         source: &Root,
         target: Option<&Root>,
         personal: Option<&[u8]>,
         ai: RequestedAi,
+        journal_directory: Option<&Path>,
         storage: &mut dyn ReadStorage,
         cancellation: &Cancellation,
     ) -> Result<(Option<ApplyReadiness>, Option<PreparedSelection>)> {
@@ -357,7 +370,40 @@ mod selected {
                     },
                 });
             }
-            supported_plan(plan).map_err(storage_error)?;
+            if supported_plan(plan).is_err() {
+                supported_copied_move_plan(plan).map_err(storage_error)?;
+                let journal = journal_directory.ok_or_else(|| {
+                    HostError::new("JOURNAL_UNAVAILABLE", "Application journal directory is unavailable")
+                })?;
+                let journal_identity = inspect_root(journal)?.identity.ok_or_else(|| {
+                    HostError::new("JOURNAL_UNAVAILABLE", "Journal root identity missing")
+                })?;
+                let grant = |path: &Path, identity: Option<sorter_core::discovery::ObjectIdentity>| {
+                    WindowsSelectedRootGrant::new(
+                        path.to_owned(),
+                        identity.ok_or_else(|| HostError::new("ROOT_CHANGED", "Selected root identity missing"))?,
+                    ).map_err(storage_error)
+                };
+                let roots = WindowsMutationStorage::for_selected_roots(
+                    grant(&source.path, source.observed.identity.clone())?,
+                    grant(&target.path, target.observed.identity.clone())?,
+                    grant(journal, Some(journal_identity.clone()))?,
+                ).map_err(storage_error)?;
+                let scope = prepare_copied_move_scope(
+                    plan, storage, &roots, &resources, &cancellation.cancelled,
+                ).map_err(storage_error)?;
+                return Ok(PreparedSelection {
+                    source: source.path.clone(),
+                    personal: personal.unwrap_or_default().to_vec(),
+                    ai,
+                    scope: PreparedScope::CopiedMove {
+                        target: target.path.clone(),
+                        journal: journal.to_owned(),
+                        journal_identity,
+                        scope: Box::new(scope),
+                    },
+                });
+            }
             let scope = prepare_scope(plan, storage, &resources, &cancellation.cancelled)
                 .map_err(storage_error)?;
             if !plan.request.settings.copy_mode
@@ -404,8 +450,11 @@ mod selected {
                 source: source.selection.display_name.clone(),
                 target: target.map(|root| root.selection.display_name.clone()),
                 mode: plan.request.mode,
-                notice: selected.as_ref().filter(|selection| matches!(&selection.scope, PreparedScope::Album { .. }))
-                    .map(|_| "לפני מיון אלבומים, סגור תוכנות או סנכרון שעלולים לשנות את המקור או היעד עד לסיום הפעולה.".into()),
+                notice: selected.as_ref().and_then(|selection| match &selection.scope {
+                    PreparedScope::Album { .. } => Some("לפני מיון אלבומים, סגור תוכנות או סנכרון שעלולים לשנות את המקור או היעד עד לסיום הפעולה.".into()),
+                    PreparedScope::CopiedMove { .. } => Some(COPIED_MOVE_NOTICE.into()),
+                    _ => None,
+                }),
             }),
             selected,
         ))
@@ -552,7 +601,7 @@ mod selected {
                     "Resources changed; inspect a fresh plan",
                 ));
             }
-            let (target, scope) = match selected.scope {
+            let (target, scope, copied) = match selected.scope {
                 PreparedScope::Noop { target, .. } => {
                     let reads =
                         sorter_executor::windows_copy::WindowsPlanningStorage::for_album_preview(
@@ -639,7 +688,13 @@ mod selected {
                         cancellation,
                     );
                 }
-                PreparedScope::Sort { target, scope } => (target, scope),
+                PreparedScope::Sort { target, scope } => (target, scope, None),
+                PreparedScope::CopiedMove { target, journal, journal_identity, scope } => {
+                    if directory != journal || inspect_root(&directory)?.identity.as_ref() != Some(&journal_identity) {
+                        return Err(HostError::new("JOURNAL_CHANGED", "Journal storage changed; inspect a fresh plan"));
+                    }
+                    (target, scope.execution_scope().clone(), Some(scope))
+                }
             };
             // Startup profile access already established this application directory.
             // Never create a path selected relative to a music tree here.
@@ -667,15 +722,21 @@ mod selected {
                 storage: &mut reads,
                 reader: MetadataReader,
             };
-            let mut job = SelectedWindowsJob::prepare(
-                roots,
-                plan,
-                &mut metadata,
-                recognition.as_mut(),
-                &scope.resources,
-                &scope,
-            )
-            .map_err(storage_error)?;
+            let prepared_job = if let Some(copied) = &copied {
+                SelectedWindowsJob::prepare_copied_move(
+                    roots, plan, &mut metadata, recognition.as_mut(), &scope.resources,
+                    copied, &cancellation.cancelled,
+                )
+            } else {
+                SelectedWindowsJob::prepare(
+                    roots, plan, &mut metadata, recognition.as_mut(), &scope.resources, &scope,
+                )
+            };
+            if cancellation.is_cancelled() {
+                self.execution_error(id, "cancelled", "הביצוע בוטל לפני תחילת ההעברה.");
+                return Ok(());
+            }
+            let mut job = prepared_job.map_err(storage_error)?;
             let journal_path = directory.to_string_lossy().into_owned();
             let recovery_scope = sorter_executor::binding::RecoveryScope {
                 original_scope: scope.clone(),
@@ -706,35 +767,25 @@ mod selected {
                     }
                 }
             });
-            let recovered = if job.journal_locations().is_empty() {
-                None
+            let (recovered, recovery_error) = if job.journal_locations().is_empty()
+                || cancellation.is_cancelled()
+            {
+                (None, None)
             } else {
-                job.inspect_recovery(&recovery_scope)
-                    .ok()
-                    .map(|report| RecoveryInspection {
-                        pending_operations: vec![],
-                        directory_evidence: vec![],
-                        metadata_issues: None,
-                        terminal_records_complete: None,
-                        append_blocked: None,
-                        observed_directories: report.directories.observed.len(),
-                        pending_directories: report.directories.pending.len(),
-                        rejected_directories: report.directories.rejected.len(),
-                        incomplete_tail: report.directories.incomplete_tail,
-                        transfers: report
-                            .transfers
-                            .map(|transfers| {
-                                transfers
-                                    .operations
-                                    .into_iter()
-                                    .map(|operation| RecoveryItem {
-                                        operation: operation.operation,
-                                        status: format!("{:?}", operation.status),
-                                    })
-                                    .collect()
-                            })
-                            .unwrap_or_default(),
-                    })
+                match job.inspect_recovery(&recovery_scope) {
+                    Ok(report) => {
+                        let inspection = project_recovery(report);
+                        let incomplete = !inspection.pending_operations.is_empty()
+                            || inspection.pending_directories > 0
+                            || inspection.rejected_directories > 0
+                            || inspection.incomplete_tail
+                            || inspection.terminal_records_complete != Some(true)
+                            || inspection.append_blocked == Some(true)
+                            || inspection.metadata_issues.is_some_and(|count| count > 0);
+                        (Some(inspection), incomplete.then(|| "TRANSFER_RECONCILIATION_INCOMPLETE".into()))
+                    }
+                    Err(error) => (None, Some(error.to_string())),
+                }
             };
             if let Ok(mut inner) = self.lock() {
                 if let Some(e) = inner
@@ -744,6 +795,7 @@ mod selected {
                     .and_then(|j| j.execution.as_mut())
                 {
                     e.recovery = recovered;
+                    e.recovery_error = recovery_error;
                 }
             }
             match result {
@@ -784,6 +836,33 @@ mod selected {
                 ),
             }
             Ok(())
+        }
+    }
+    fn project_recovery(report: sorter_executor::windows_job::SelectedRecoveryReport) -> RecoveryInspection {
+        use sorter_executor::recovery::{CopyMetadataRecoveryStatus, RecoveryStatus};
+        let append_blocked = report.transfers.as_ref().is_none_or(|transfer| transfer.append_blocked);
+        let mut pending_operations = vec![];
+        let mut metadata_issues = 0;
+        let transfers = report.transfers.map(|transfer| transfer.operations.into_iter().map(|operation| {
+            if operation.status != RecoveryStatus::Committed {
+                pending_operations.push(operation.operation);
+            }
+            if !matches!(operation.copy_metadata, CopyMetadataRecoveryStatus::NotRequested | CopyMetadataRecoveryStatus::Verified) {
+                metadata_issues += 1;
+            }
+            RecoveryItem { operation: operation.operation, status: format!("{:?}", operation.status) }
+        }).collect()).unwrap_or_default();
+        RecoveryInspection {
+            pending_operations,
+            directory_evidence: vec![],
+            metadata_issues: Some(metadata_issues),
+            terminal_records_complete: Some(report.directories.complete),
+            append_blocked: Some(append_blocked),
+            observed_directories: report.directories.observed.len(),
+            pending_directories: report.directories.pending.len(),
+            rejected_directories: report.directories.rejected.len(),
+            incomplete_tail: report.directories.incomplete_tail,
+            transfers,
         }
     }
     pub(super) fn status(result: &JobResult) -> &'static str {
@@ -832,3 +911,7 @@ pub(super) use selected::{PreparedSelection, inspect_selection};
 #[cfg(all(test, windows, feature = "selected-windows-execution"))]
 #[path = "execution_noop_tests.rs"]
 mod no_op_tests;
+
+#[cfg(all(test, windows, feature = "selected-windows-execution"))]
+#[path = "execution_copied_move_tests.rs"]
+mod copied_move_tests;

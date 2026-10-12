@@ -317,13 +317,8 @@ fn execute(options: &Options, logger: &Logger) -> Result<(), Failure> {
             &console_cancel::CANCEL,
             &AtomicBool::new(false),
             &mut |plan, _| {
-                if plan.operations.iter().any(|operation| {
-                    matches!(
-                        operation.kind,
-                        sorter_core::job_plan::OperationKind::AlbumTransfer { .. }
-                    )
-                }) {
-                    logger.emit(LogLevel::Warning, super::run_files::ALBUM_CONDITION)?;
+                if let Some(condition) = super::run_files::execution_condition(plan) {
+                    logger.emit(LogLevel::Warning, condition)?;
                 }
                 if options.log_level == LogLevel::Debug {
                     let mut description = Vec::new();

@@ -5,6 +5,19 @@ use super::{Failure, MAX_INPUT_BYTES};
 mod albums;
 #[cfg(all(windows, feature = "selected-windows-execution"))]
 pub(super) const ALBUM_CONDITION: &str = "Album execution requires that no other application or sync process changes the selected source or target until completion";
+#[cfg(all(windows, feature = "selected-windows-execution"))]
+pub(super) fn execution_condition(plan: &sorter_core::job_plan::JobPlanV2) -> Option<&'static str> {
+    use sorter_core::job_plan::{JobMode, OperationKind};
+    if plan.operations.iter().any(|operation| matches!(operation.kind, OperationKind::AlbumTransfer { .. })) {
+        Some(ALBUM_CONDITION)
+    } else if plan.request.mode == JobMode::Sort && !plan.request.settings.copy_mode
+        && sorter_executor::windows_job::supported_plan(plan).is_err()
+    {
+        Some("Copied Move requires ordinary local NTFS storage and no concurrent writers; each source is retired only after every bound destination is verified")
+    } else {
+        None
+    }
+}
 #[cfg(any(test, all(windows, feature = "selected-windows-execution")))]
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -141,7 +154,7 @@ fn execute() -> Result<(), Failure> {
         &mut |plan, inference_executed| {
             event(
                 "planned",
-                json!({"plan":plan,"execution_condition":plan.operations.iter().any(|operation|matches!(operation.kind,sorter_core::job_plan::OperationKind::AlbumTransfer{..})).then_some(ALBUM_CONDITION),"inference_executed":inference_executed,"apply_eligible":true,"source":source,"target":target,"journal_directory":journal_directory,"confirmation":{"action":"apply","plan_id":plan.binding_sha256}}),
+                json!({"plan":plan,"execution_condition":execution_condition(plan),"inference_executed":inference_executed,"apply_eligible":true,"source":source,"target":target,"journal_directory":journal_directory,"confirmation":{"action":"apply","plan_id":plan.binding_sha256}}),
             )?;
             let decision = rx.recv().map_err(|_| {
                 Failure::new(
@@ -200,7 +213,10 @@ pub(super) fn execute_request(
             validate_album_execution,
         },
         windows_copy::WindowsPlanningStorage,
-        windows_job::{SelectedWindowsJob, supported_plan},
+        windows_job::{
+            CopiedMoveScope, SelectedWindowsJob, prepare_copied_move_scope,
+            supported_copied_move_plan, supported_plan,
+        },
         windows_repair::{
             RepairJobStatus, RepairScope, SelectedWindowsRepairJob, prepare_repair_scope,
             supported_repair_plan,
@@ -270,6 +286,7 @@ pub(super) fn execute_request(
         .operations
         .iter()
         .any(|operation| matches!(operation.kind, OperationKind::AlbumTransfer { .. }));
+    let copied_move = !repairing && !album && supported_plan(&plan).is_err();
     let mut reads: Box<dyn ReadStorage + '_> = if repairing {
         supported_repair_plan(&plan).map_err(|e| fail(&e))?;
         Box::new(
@@ -279,6 +296,8 @@ pub(super) fn execute_request(
     } else {
         if album {
             supported_album_plan(&plan).map_err(|e| fail(&e))?;
+        } else if copied_move {
+            supported_copied_move_plan(&plan).map_err(|e| fail(&e))?;
         } else {
             supported_plan(&plan).map_err(|e| fail(&e))?;
         }
@@ -327,6 +346,7 @@ pub(super) fn execute_request(
     };
     enum Scope {
         Sort(ExecutionScope),
+        CopiedMove(Box<CopiedMoveScope>, ObjectIdentity),
         Repair(RepairScope),
         Album(Box<AlbumScope>),
     }
@@ -339,6 +359,28 @@ pub(super) fn execute_request(
         Scope::Album(Box::new(
             prepare_album_scope(&plan, reads.as_mut(), &resources, cancel).map_err(|e| fail(&e))?,
         ))
+    } else if copied_move {
+        // Preview only: every root is independently pinned, but no journal/file
+        // is created. Auxiliary-stream evidence is retained through confirmation.
+        let mut journal_reads = DesktopStorage::new(std::slice::from_ref(&request.journal_directory))
+            .map_err(|e| fail(&e))?;
+        let journal_ref = journal_reads.reference(&request.journal_directory).map_err(|e| fail(&e))?;
+        let journal_identity = journal_reads.stat(&journal_ref).map_err(|e| fail(&e))?.identity
+            .ok_or_else(|| Failure::new(1, "JOURNAL_UNAVAILABLE", "Journal identity missing"))?;
+        let source_identity = reads.stat(&plan.request.source).map_err(|e| fail(&e))?.identity
+            .ok_or_else(|| Failure::new(1, "ROOT_CHANGED", "Source identity missing"))?;
+        let target_reference = plan.request.target.as_ref().ok_or_else(|| Failure::new(2, "TARGET_REQUIRED", "Sort requires target"))?;
+        let target_identity = reads.stat(target_reference).map_err(|e| fail(&e))?.identity
+            .ok_or_else(|| Failure::new(1, "ROOT_CHANGED", "Target identity missing"))?;
+        let grant = |path, identity| WindowsSelectedRootGrant::new(path, identity).map_err(|e| fail(&e));
+        let roots = WindowsMutationStorage::for_selected_roots(
+            grant(request.preview.source.clone(), source_identity)?,
+            grant(target.expect("copied target checked").clone(), target_identity)?,
+            grant(request.journal_directory.clone(), journal_identity.clone())?,
+        ).map_err(|e| fail(&e))?;
+        Scope::CopiedMove(Box::new(prepare_copied_move_scope(
+            &plan, reads.as_mut(), &roots, &resources, cancel,
+        ).map_err(|e| fail(&e))?), journal_identity)
     } else {
         let scope =
             prepare_scope(&plan, reads.as_mut(), &resources, cancel).map_err(|e| fail(&e))?;
@@ -385,7 +427,7 @@ pub(super) fn execute_request(
     let grant =
         |path, identity| WindowsSelectedRootGrant::new(path, identity).map_err(|e| fail(&e));
     let mut reads = plan_files::ReadAdapter(reads);
-    let scope = match scope {
+    let (scope, copied) = match scope {
         Scope::Album(scope) => {
             let validated = {
                 let mut metadata = StorageMetadataProvider {
@@ -498,7 +540,13 @@ pub(super) fn execute_request(
                 }
             }
         }
-        Scope::Sort(scope) => scope,
+        Scope::Sort(scope) => (scope, None),
+        Scope::CopiedMove(scope, expected_journal) => {
+            if journal_identity != expected_journal {
+                return Err(Failure::new(1, "JOURNAL_CHANGED", "Journal storage changed; inspect a fresh plan"));
+            }
+            (scope.execution_scope().clone(), Some(scope))
+        }
     };
     let mut metadata = StorageMetadataProvider {
         storage: &mut reads,
@@ -515,15 +563,19 @@ pub(super) fn execute_request(
         grant(request.journal_directory.clone(), journal_identity)?,
     )
     .map_err(|e| fail(&e))?;
-    let mut job = SelectedWindowsJob::prepare(
-        roots,
-        &plan,
-        &mut metadata,
-        recognition.as_mut(),
-        &resources,
-        &scope,
-    )
-    .map_err(|e| fail(&e))?;
+    let mut job = if let Some(copied) = &copied {
+        SelectedWindowsJob::prepare_copied_move(
+            roots, &plan, &mut metadata, recognition.as_mut(), &resources, copied, cancel,
+        )
+    } else {
+        SelectedWindowsJob::prepare(
+            roots, &plan, &mut metadata, recognition.as_mut(), &resources, &scope,
+        )
+    }.map_err(|e| fail(&e))?;
+    let recovery_scope = sorter_executor::binding::RecoveryScope {
+        original_scope: scope,
+        inspected_binding_sha256: job.binding_sha256().map_err(|e| fail(&e))?,
+    };
     let native_id = job.job_id().to_owned();
     event(
         "started",
@@ -533,6 +585,36 @@ pub(super) fn execute_request(
     let result=job.run(cancel,&mut |progress| {
         if event("progress",json!({"job_id":native_id,"operation":progress.operation,"bytes_written":progress.bytes_written,"source_length":progress.source_length})).is_err() {output_failed=true;cancel.store(true,Ordering::Release);}
     });
+    let (recovery, recovery_error) = if copied.is_none() || job.journal_locations().is_empty()
+        || cancel.load(Ordering::Acquire)
+    {
+        (None, None)
+    } else {
+        match job.inspect_recovery(&recovery_scope) {
+            Ok(report) => {
+                use sorter_executor::recovery::{CopyMetadataRecoveryStatus, RecoveryStatus};
+                let verified = report.directories.complete
+                    && !report.directories.incomplete_tail
+                    && report.directories.pending.is_empty()
+                    && report.directories.rejected.is_empty()
+                    && report.transfers.as_ref().is_some_and(|transfer| !transfer.append_blocked
+                        && transfer.operations.iter().all(|operation| operation.status == RecoveryStatus::Committed
+                            && matches!(operation.copy_metadata, CopyMetadataRecoveryStatus::NotRequested | CopyMetadataRecoveryStatus::Verified)));
+                let transfer = report.transfers.map(|transfer| json!({
+                    "append_blocked":transfer.append_blocked,
+                    "operations":transfer.operations.iter().map(|operation| json!({
+                        "operation":operation.operation,"status":format!("{:?}",operation.status),
+                        "copy_metadata":format!("{:?}",operation.copy_metadata),
+                    })).collect::<Vec<_>>(),
+                }));
+                (Some(json!({"directories":{"observed":report.directories.observed,
+                    "pending":report.directories.pending,"rejected":report.directories.rejected,
+                    "complete":report.directories.complete,"incomplete_tail":report.directories.incomplete_tail},
+                    "transfers":transfer})), (!verified).then(|| "TRANSFER_RECONCILIATION_INCOMPLETE".to_owned()))
+            }
+            Err(error) => (None, Some(error.to_string())),
+        }
+    };
     match result {
         Ok(result) => {
             let legacy_summary = sorter_executor::legacy_summary::LegacySummary::from_receipts(
@@ -554,9 +636,9 @@ pub(super) fn execute_request(
             let items=result.items.iter().map(|item|json!({"operation":item.operation,"status":match item.status {ItemStatus::Complete=>"complete",ItemStatus::SourceRetained=>"source_retained",ItemStatus::Failed=>"failed",ItemStatus::Cancelled=>"cancelled",ItemStatus::Blocked=>"blocked",ItemStatus::NeedsRecovery=>"needs_recovery"},"detail":item.detail})).collect::<Vec<_>>();
             event(
                 "result",
-                json!({"job_id":native_id,"status":status,"source_items":result.source_items,"committed_destinations":result.committed_destinations,"committed_operations":result.committed_operations,"effect_receipts":result.effect_receipts,"legacy_summary":legacy_summary,"moved_sources":result.moved_sources,"failed_operations":result.failed_operations,"blocked_operations":result.blocked_operations,"recovery_operations":result.recovery_operations,"cancelled_operations":result.cancelled_operations,"items":items,"journal_directory":request.journal_directory,"invalid_control":invalid_control.load(Ordering::Acquire)}),
+                json!({"job_id":native_id,"status":status,"source_items":result.source_items,"committed_destinations":result.committed_destinations,"committed_operations":result.committed_operations,"effect_receipts":result.effect_receipts,"legacy_summary":legacy_summary,"recovery":recovery,"recovery_error":recovery_error,"moved_sources":result.moved_sources,"failed_operations":result.failed_operations,"blocked_operations":result.blocked_operations,"recovery_operations":result.recovery_operations,"cancelled_operations":result.cancelled_operations,"items":items,"journal_directory":request.journal_directory,"invalid_control":invalid_control.load(Ordering::Acquire)}),
             )?;
-            if output_failed || invalid_control.load(Ordering::Acquire) || status != "complete" {
+            if output_failed || invalid_control.load(Ordering::Acquire) || status != "complete" || recovery_error.is_some() {
                 return Err(Failure::new(
                     1,
                     "EXECUTION_INCOMPLETE",
@@ -567,7 +649,7 @@ pub(super) fn execute_request(
         Err(error) => {
             event(
                 "result",
-                json!({"job_id":native_id,"status":if job.journal_locations().is_empty() && cancel.load(Ordering::Acquire) {"cancelled"} else {"needs_recovery"},"error":error.to_string(),"journal_directory":request.journal_directory}),
+                json!({"job_id":native_id,"status":if job.journal_locations().is_empty() && cancel.load(Ordering::Acquire) {"cancelled"} else {"needs_recovery"},"error":error.to_string(),"recovery":recovery,"recovery_error":recovery_error,"journal_directory":request.journal_directory}),
             )?;
             return Err(Failure::new(
                 1,

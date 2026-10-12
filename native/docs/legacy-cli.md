@@ -90,5 +90,10 @@ EXEs repeat the logging/overlap checks. These are source tests until the exact
 candidate passes.
 The CLI package profile must enable selected execution and independently exercise
 the extracted executable before it can be called an executable legacy replacement.
-Album execution, cross-volume Move, duet source retirement and unsupported tag
-formats remain the same backend boundaries as desktop; flags never bypass them.
+Bounded album Copy/same-volume Move and MP3/FLAC/Ogg repair reuse the desktop
+backend. The new copied-Move candidate additionally admits ordinary local NTFS
+cross-volume singles and complete multi-target duet cohorts with preview-bound
+main/named streams. It preserves ordinary same-volume rename in mixed jobs.
+Cross-volume albums, incomplete eligible duet cohorts and unsupported tag
+representations still refuse; flags never bypass backend admission. The fresh
+copied-Move staged/extracted gates remain required before runtime acceptance.

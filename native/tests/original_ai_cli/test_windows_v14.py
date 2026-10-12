@@ -91,6 +91,21 @@ class PairedWindowsContract(unittest.TestCase):
         result['effect_receipts'].append(result['effect_receipts'][0])
         with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(Path('/owned'),result,{},commits)
 
+    def test_cross_volume_move_preserves_publish_receipt_and_requires_retirement(self):
+        source = {'Test': {'id': 'source'}}; destination = {'Test': {'id': 'destination'}}
+        entry = dict(kind='move',source='source/a',destination='target/a',observed_identity=destination,
+                     copied_move=True,source_identity=source,source_retired=True,retirement_operation=0)
+        streams = [{'journal':'one','ordered_commits':[entry]}]
+        result = {'effect_receipts':[{'operation':0,'kind':'file_published','identity':destination},
+                                     {'operation':0,'kind':'source_retired','identity':source}]}
+        value = gate.acknowledged_transfer_order(Path('/owned'),result,{},streams)
+        self.assertEqual((value[0]['kind'],value[0]['receipt_kind']), ('move','file_published'))
+        for field, invalid in [('copied_move',False),('source_retired',False),('source_identity',destination),('retirement_operation',1)]:
+            wrong=copy.deepcopy(streams);wrong[0]['ordered_commits'][0][field]=invalid
+            with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(Path('/owned'),result,{},wrong)
+        for wrong in [result['effect_receipts'][:1],list(reversed(result['effect_receipts'])),result['effect_receipts']+[result['effect_receipts'][1]]]:
+            with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(Path('/owned'),{'effect_receipts':wrong},{},streams)
+
     def test_whole_rename_stays_one_real_event_instead_of_per_file_moves(self):
         def reference(path):
             raw=path.encode('utf-16-le')

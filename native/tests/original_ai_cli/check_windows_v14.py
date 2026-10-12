@@ -234,10 +234,23 @@ def physical_commit_streams(root, journals):
             source = reference_path(root, operation['source']['observation']['reference'])
             destination_root = reference_path(root, operation['destination']['root'])
             destination = str(Path(destination_root).joinpath(*operation['destination']['components']))
+            copied_sources = header['binding'].get('copied_move_sources') or []
+            copied_source = [value for value in copied_sources
+                             if value['source'] == operation['source']['observation']['reference']
+                             and value['identity'] == operation['source']['observation']['identity']]
+            require(len(copied_source) <= 1, 'Ambiguous bound copied-Move source evidence')
+            retired = [value['body'] for value in records[1:]
+                       if value['body']['event']['phase'] == 'SourceRetired'
+                       and bound[value['body']['event']['operation']]['source']['observation']['reference'] == operation['source']['observation']['reference']
+                       and value['body']['event'].get('observed_identity') == operation['source']['observation']['identity']]
             operations.append({'kind': 'copy' if operation['copy_effect'] else 'move',
                                'source': source, 'destination': destination,
                                'sha256': event['sha256'], 'sequence': body['sequence'],
-                               'operation': event['operation'], 'observed_identity': event.get('observed_identity')})
+                               'operation': event['operation'], 'observed_identity': event.get('observed_identity'),
+                               'copied_move': bool(copied_source),
+                               'source_identity': operation['source']['observation']['identity'],
+                               'source_retired': len(retired) == 1,
+                               'retirement_operation': retired[0]['event']['operation'] if len(retired) == 1 else None})
         streams.append({'journal': journal['path'], 'ordered_commits': operations})
     return streams
 
@@ -278,6 +291,18 @@ def acknowledged_transfer_order(root, result, plan, streams):
             entry = matches[0]
             seen_files.add(key(identity))
             expected_kind = 'copy' if kind == 'file_published' else 'move'
+            if kind == 'file_published' and entry['kind'] == 'move':
+                # Cross-volume Move publishes a copy and retires the source.
+                # Preserve that physical receipt kind; the semantic Move comes
+                # only from its original binding plus exact durable retirement.
+                retirements = [(position, value) for position, value in enumerate(result['effect_receipts'])
+                               if value['kind'] == 'source_retired'
+                               and value['identity'] == entry.get('source_identity')
+                               and value['operation'] == entry.get('retirement_operation')]
+                require(entry.get('copied_move') and entry.get('source_retired')
+                        and len(retirements) == 1 and retirements[0][0] > index,
+                        'Published Move lacks bound copied-domain and later source-retirement evidence')
+                expected_kind = 'move'
             require(entry['kind'] == expected_kind, 'Namespace effect and committed transfer mode differ')
             event = {key: entry[key] for key in ('kind', 'source', 'destination')}
         elif kind == 'album_renamed':
@@ -471,13 +496,7 @@ def compare_case(case, original, native):
     if original['error']:
         comparisons.append(comparison('original_error', None, original['error']))
     if native['execution']['exit'] != 0:
-        move_all = (case['group'] == 'duet' and not case['settings']['copy_mode'] and case['settings']['duet_mode']
-                    and 'EXECUTION_REFUSED: Unsupported' in native['execution']['stderr']
-                    and comparable_snapshot(native['before']) == comparable_snapshot(native['after']))
-        comparisons.append(comparison('move_all_execution' if move_all else 'native_exit', 0,
-                                      native['execution']['exit'], available=not move_all))
-        if move_all:
-            comparisons[-1]['gap'] = 'Move-all is OPEN until an actual backend executes the cohort; refusal is not passing parity.'
+        comparisons.append(comparison('native_exit', 0, native['execution']['exit']))
     if native['observed_physical']['changed_existing_files']:
         comparisons.append(comparison('existing_file_bytes', [], native['observed_physical']['changed_existing_files']))
     # Actual skip receipts are distinct from read-only planner decisions.

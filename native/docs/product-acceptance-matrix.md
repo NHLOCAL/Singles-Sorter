@@ -7,14 +7,14 @@ below require final-head CI results; the presence of a test is not a passing run
 
 | Released behavior / flow | Planning and compatibility | Physical/product boundary |
 | --- | --- | --- |
-| Copy / Move toggle | Exact boolean and v14 virtual effects retained | Delivered selected Windows multi-file Copy / same-volume rename; cross-volume Move blocked |
+| Copy / Move toggle | Exact boolean and v14 virtual effects retained | Delivered selected Windows multi-file Copy / same-volume rename; new copied-Move host candidate binds ordinary NTFS main and named streams at preview for cross-volume singles and complete duet cohorts. Actual new host/package gates pending |
 | Copy file attributes/timestamps | v14 uses `copy2` / `copytree` | New native Copy metadata contract and album host candidate preserve timestamps/readonly attributes; final-head native and staged/extracted metadata checks remain required |
 | Main folder only / full tree | Original traversal/order retained | Selected plans validated whole; actual multi-file Windows gate required |
 | Create singles folders | Original `סינגלים` destination component retained | Journaled directory creation candidate; native UI test asserts physical layout |
 | Alphabetic sort | Original letter hierarchy retained | Backend directories supported; requires expanded native UI acceptance matrix |
 | Existing folders only | Original skip/target policy retained | No fabricated missing artist destinations; explicit feature-specific runtime coverage still required |
 | Duets, first artist | Original matching order retained | Ordinary single destination candidate supported |
-| Duets, every artist | Original ordered destinations and deletion intention retained | Copy supported where backend preflight accepts; Move retirement cohort not enabled in first candidate |
+| Duets, every artist | Original ordered destinations and deletion intention retained | Copy supported where backend preflight accepts; new Move candidate verifies every destination before retiring the source once. Fewer than two eligible duet destinations remain refused; ordinary same-volume singles in mixed jobs retain rename identity |
 | Original alias list + personal CSV | Ordered rows, duplicates, malformed-row diagnostics preserved | UI edit/import/delete/save/export and persistence baseline covered; no silent normalization |
 | Original NER + secondary classifier | Both exact original assets validated; no fallback | CLI and Windows UI original-AI real-file preview baseline exists; new apply + AI composition requires final Windows gate |
 | Disabled AI | Explicit choice; no inference | Never silently substituted for configured unavailable models |
@@ -67,7 +67,7 @@ parsed does not imply that every resulting operation is physically supported.
 | Classification | Ordered filename aliases, metadata artist/title routes, Hebrew repairs, exact-name check, original NER/classifier fallback | Broader arbitrary-library representations; platform-specific inference acceptance remains separately recorded |
 | Filename cleanup | Original underscore/hyphen/substrings/whitespace and Windows-character sanitization, collision suffix order | Positional source-only MP3 Fix passed the actual Windows subprocess gate; standalone consumer package checks remain required |
 | Album handling | Single-keyword exclusions, track/album/artist inspection order, protected per-file errors, nested and mixed traversal timing | Album host/CLI candidate now composes the separately reviewed driver; new actual product gates must pass before package acceptance |
-| Duet effects | Original artist order and duplication; first/all-artist toggle | Multi-destination Move source-retirement cohort remains separate; no early source deletion |
+| Duet effects | Original artist order and duplication; first/all-artist toggle | New copied-Move candidate composes complete multi-destination cohorts with the existing original-order runner; no early source deletion. Incomplete eligible cohorts and cross-volume albums remain unsupported here |
 | Failures and cancellation | Planning metadata failures are not silently converted into success; native actual effects remain explicit | Read-only repair recovery now passes both ordinary and short Windows path spellings; process-kill/restart UI remains separate |
 | File lists and settings | Bundled/personal ordering, duplicate rows, CSV editing/import/export and every six-boolean setting | Expanded actual UI combination tests for alphabetic/existing-only/main-only/duet settings remain required |
 | User interface | Hebrew RTL, compact display, immediate help dismissal, richer About, default-minimal results and explicit developer mode | Latest actual UI gate checks advanced-Settings developer placement, independent inactive filtering, long-name bounds and stable footer; fresh Windows evidence is required |
@@ -132,3 +132,35 @@ Neither completed graph review nor authored physical tests imply package runtime
 acceptance. The next candidate also restores file logging; the paired reader
 accepts its exact timestamp/level envelope without substituting predictions for
 missing execution-derived counters.
+
+## Copied-Move activation checkpoint
+
+The new host/CLI candidate retains a data-only `CopiedMoveScope` during the
+read-only preview, including each copied source's named-stream inventory, lengths
+and hashes. Its explicit application journal root is identity-bound at that same
+point. Fresh Apply revalidates the exact retained plan, resources, roots and all
+stream evidence before effects. It does not collect a newly trusted inventory at
+confirmation. Ordinary same-volume single transfers keep write-through rename;
+only cross-volume singles and actual multi-target duet sources use copied Move.
+The domain is ordinary local NTFS with no concurrent source/target writers.
+Cross-volume albums and incomplete eligible duet cohorts remain unavailable.
+
+Mandatory new staged and extracted UI/CLI checks use two actual existing CI
+volumes, real original-model duets, mixed ordinary/duet jobs, named streams,
+metadata, exact source retirement, and reconciliation. UI acceptance additionally
+checks no-effect review, changed auxiliary content with restored primary mtime,
+changed target, and cooperative cancellation. These are authored gates, not
+runtime acceptance. The paired v14 Move-all case now requires actual execution;
+refusal is a mismatch rather than the earlier explicitly open capability gap.
+Raw cross-volume receipts remain `file_published` plus `source_retired` and are
+never relabeled as physical rename events.
+
+At f18100d, actual Windows native gates passed six summary tests, ten positional
+CLI cases, seven NDJSON cases, eight logging sink cases, 25 album cases and all
+37 MP3/FLAC/Ogg repair product cases. The overall native job failed a separate
+known test lint. Its real staged renderer passed the latest help/About, advanced
+developer setting, independent inactive rows, long-name width and stable-footer
+checks, selected Copy/Move and MP3/FLAC/Ogg checks, then stopped on the completed
+root-album descendant display assertion. That exact projection defect is fixed
+in the subsequent reviewed source. The current package is not accepted until the
+fresh staged and extracted gates finish; no paired-Windows result is inferred.

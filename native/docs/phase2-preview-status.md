@@ -28,12 +28,15 @@ typed metadata, album/fix virtual timelines and optional verified original AI.
 ## Remaining product gates
 
 See [the feature-by-feature matrix](product-acceptance-matrix.md) and
-[desktop/CLI execution contract](desktop-cli-execution.md). First-candidate
-selected execution covers supported single transfers only. Full album physical
-execution, non-MP3/unsupported tag saving, cross-volume Move, Move duet retirement,
-process-restart recovery UI, complete legacy CLI compatibility and arbitrary
-music-library acceptance remain separate unfinished gates. Android provider and
-physical ARM64 acceptance cannot be inferred from Windows or Linux tests.
+[desktop/CLI execution contract](desktop-cli-execution.md). Current source composes
+selected singles, bounded albums, MP3/FLAC/Ogg repair, positional CLI and exact
+execution-derived summaries. A separately gated host candidate admits bounded
+cross-volume singles and complete duet Move cohorts with preview-bound named
+streams. Actual complete staged/extracted and paired-v14 acceptance remains
+required; authored tests and successful native slices do not establish all-feature
+parity. Cross-volume albums, other tag representations and practical process-
+restart recovery across all job families remain ongoing work. Android provider
+and physical ARM64 acceptance cannot be inferred from Windows or Linux tests.
 
 Linux is a read-only test adapter. Access times may change during inspection.
 A plan digest binds observations, not future audio bytes; selected execution

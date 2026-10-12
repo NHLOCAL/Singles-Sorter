@@ -21,13 +21,16 @@ import wave
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / 'native/apps/singles-ui/tests'))
 from desktop_albums import fixture as album_fixture, metadata as album_metadata, files as album_files, ARTIST, ALBUM
+from desktop_copied_move import DUET, SINGLE, ARTISTS, AUXILIARY, auxiliary
 from desktop_ogg import generated_ogg, verify_repaired as verify_ogg_repaired
 from desktop_flac import generated_flac, inspect_flac, FIELDS as FLAC_FIELDS, UNKNOWN as FLAC_UNKNOWN
 from desktop_repair import generated_mp3, inspect_mp3, FIELDS  # Independent fixture parser.
 
 spec = importlib.util.spec_from_file_location('execution_package_contract', ROOT / 'native/packaging/windows-preview/package_preview.py')
 package = importlib.util.module_from_spec(spec); spec.loader.exec_module(package)
-CHECKS = {'positional-copy', 'positional-move', 'positional-original-ai-copy',
+CHECKS = {'positional-cross-volume-move', 'positional-original-ai-duet-move', 'positional-mixed-duet-and-rename',
+          'positional-copied-move-named-streams', 'positional-copied-move-fresh-reconciliation',
+          'positional-copy', 'positional-move', 'positional-original-ai-copy',
           'positional-fix-id3v23', 'positional-fix-id3v24', 'positional-fix-partial',
           'positional-album-copy', 'positional-root-album-move', 'positional-mixed-album-move',
           'positional-album-descendant-metadata', 'positional-album-dry-run-no-effects',
@@ -127,6 +130,15 @@ def require_album_recovery(report):
             require_album_recovery(whole['singles'])
 
 
+def require_copied_recovery(report):
+    require(report and report['directories']['complete'] and not report['directories']['incomplete_tail'], 'Copied Move directory journal lacks its terminal record')
+    require(not report['directories']['pending'] and not report['directories']['rejected'], 'Copied Move directory evidence is uncertain')
+    require(all(len(entry) == 2 and entry[1] for entry in report['directories']['observed']), 'Copied Move observed directory identity is missing')
+    transfers = report['transfers']
+    require(transfers and not transfers['append_blocked'], 'Copied Move transfer journal is incomplete')
+    require(transfers['operations'] and all(item['status'] == 'Committed' and item['copy_metadata'] in ('Verified', 'NotRequested') for item in transfers['operations']), 'Copied Move transfer or metadata reconciliation failed')
+
+
 def run(binary, bundle, report, package_root=None):
     # The reused independent media parser contains assertions. Never accept a
     # receipt from an interpreter that has disabled those structural checks.
@@ -188,6 +200,44 @@ def run(binary, bundle, report, package_root=None):
             require(digest(original)==before, 'Copy changed source bytes')
         require(list((case/'journal').glob('*.jsonl')), 'Missing retained native journals')
         receipts[-1].update(case=label,source_sha256=before,destination_sha256=digest(destination),source_retained=copying)
+
+    # C: owns the temporary source; the existing CI checkout supplies D:.
+    # No mounts, security changes, or synthetic volume identifiers are used.
+    other = Path(tempfile.mkdtemp(prefix='singles-cli-copied-target-', dir=ROOT))
+    require(scratch.stat().st_dev != other.stat().st_dev, 'Copied Move gate needs two actual Windows volumes')
+    for label in ('cross-volume', 'duet-move', 'mixed-duet-move'):
+        case = roots(label); source = case/'source'
+        target = other/label if label == 'cross-volume' else case/'target'
+        if label == 'cross-volume': target.mkdir()
+        configured = label != 'cross-volume'
+        names = [DUET] if configured else [SINGLE]
+        if label == 'mixed-duet-move': names.append(SINGLE)
+        before = {}; identities = {}
+        for name in names:
+            path = source/name; write_wave(path); auxiliary(path).write_bytes(AUXILIARY)
+            os.utime(path, ns=(1_700_000_000_000_000_000, 1_700_000_000_000_000_000))
+            before[name] = digest(path); identities[name] = path.stat().st_ino
+        args = ['source', str(target), '-n', '--journal-directory', 'journal']
+        if configured:
+            args += ['-d']
+            if not package_root: args += ['--model-directory', str(bundle)]
+        else: args += ['--no-ai']
+        completed = invoke(case, args); actual = result_record(completed.stderr)
+        require(actual['status'] == 'complete' and actual.get('recovery_error') is None, 'Copied Move did not complete and reconcile')
+        require_copied_recovery(actual['recovery'])
+        expected = {(artist, DUET) for artist in ARTISTS} if configured else {('אברהם פריד', SINGLE)}
+        if label == 'mixed-duet-move': expected.add(('אברהם פריד', SINGLE))
+        require({(path.parent.name, path.name) for path in target.rglob('*.wav')} == expected, 'Actual copied Move destinations differ')
+        for artist, name in expected:
+            path = target/artist/name
+            require(digest(path) == before[name] and auxiliary(path).read_bytes() == AUXILIARY, 'Copied Move main/named-stream bytes differ')
+            require(path.stat().st_mtime_ns == 1_700_000_000_000_000_000, 'Copied Move timestamp differs')
+            if label == 'mixed-duet-move' and name == SINGLE:
+                require(path.stat().st_ino == identities[name], 'Ordinary same-volume file did not retain rename identity')
+        require(not list(source.iterdir()), 'Copied Move source was not retired')
+        require(actual['source_items'] == len(names) and actual['moved_sources'] == len(names) and actual['committed_destinations'] == len(expected), 'Copied Move physical counters differ')
+        require(actual['legacy_summary']['songs_sorted'] == len(expected), 'Copied Move original destination credits differ')
+        receipts[-1].update(case=label, source_sha256=before, source_items=len(names), destinations=len(expected), named_streams_verified=True)
 
     audio=(ROOT/'native/tests/fixtures/media/blank.mp3').read_bytes()
     for version,unsupported in [(3,False),(4,False),(4,True)]:

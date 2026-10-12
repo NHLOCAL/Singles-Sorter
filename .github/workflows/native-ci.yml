@@ -216,6 +216,10 @@ jobs:
       - name: Exercise inspected CLI execution protocol on owned Windows files
         if: ${{ !cancelled() && runner.os == 'Windows' }}
         run: |
+          $protocol = cargo +1.99.0 test --locked -p sorter-cli --features selected-windows-execution --test run_files -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $protocolCases = @($protocol | Where-Object { $_ -match ': test$' })
+          if ($protocolCases.Count -ne 8) { throw "Expected all 8 inspected CLI product cases; found $($protocolCases.Count)" }
           cargo +1.99.0 test --locked -p sorter-cli --features selected-windows-execution --test run_files -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $legacy = cargo +1.99.0 test --locked -p sorter-cli --features selected-windows-execution --test legacy -- --list

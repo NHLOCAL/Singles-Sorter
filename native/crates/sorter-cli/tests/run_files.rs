@@ -40,6 +40,69 @@ mod selected {
         bytes.resize(44 + samples as usize, 0);
         bytes
     }
+    #[test]
+    fn copied_move_revalidates_auxiliary_streams_and_journal_after_confirmation() {
+        for action in ["apply", "stale_stream", "stale_journal", "cancel"] {
+            let root = tempfile::tempdir().unwrap();
+            let target_tree = tempfile::tempdir_in(std::env::current_dir().unwrap()).unwrap();
+            let source = root.path().canonicalize().unwrap().join("source");
+            let journal = root.path().canonicalize().unwrap().join("journal");
+            let target = target_tree.path().canonicalize().unwrap().join("target");
+            for path in [&source, &target, &journal] { fs::create_dir(path).unwrap(); }
+            let name = "אברהם פריד - copied.wav";
+            let file = source.join(name);
+            let stream = source.join(format!("{name}:notes"));
+            let bytes = wave();
+            fs::write(&file, &bytes).unwrap();
+            fs::write(&stream, b"owned auxiliary").unwrap();
+            let mut child = Command::new(env!("CARGO_BIN_EXE_singles-sorter"))
+                .args(["run-files", "--ndjson"]).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().unwrap();
+            let mut stdin = child.stdin.take().unwrap();
+            let mut output = BufReader::new(child.stdout.take().unwrap());
+            let request = json!({"schema_version":1,"journal_directory":journal,"preview":{"schema_version":2,"mode":"Sort","source":source,"target":target,"settings":{"copy_mode":false,"main_folder_only":true,"singles_folder":false,"exist_only":false,"abc_sort":false,"duet_mode":false},"ai_profile":"Disabled","personal_aliases":null}});
+            writeln!(stdin, "{request}").unwrap(); stdin.flush().unwrap();
+            let mut line = String::new(); output.read_line(&mut line).unwrap();
+            let planned: Value = serde_json::from_str(&line).unwrap();
+            assert_eq!(planned["event"], "planned", "{planned}");
+            assert!(planned["data"]["execution_condition"].as_str().is_some());
+            let plan = &planned["data"]["plan"];
+            let observations = plan["observations"].as_array().unwrap();
+            let volume = |role: &str| observations.iter().find(|entry| entry["reference"] == plan["request"][role]).unwrap()["identity"]["Windows"]["volume"].as_u64().unwrap();
+            assert_ne!(volume("source"), volume("target"), "CI must exercise two actual volumes");
+            assert_eq!(fs::read_dir(&target).unwrap().count(), 0);
+            assert_eq!(fs::read_dir(&journal).unwrap().count(), 0);
+            if action == "stale_stream" {
+                let modified = fs::metadata(&file).unwrap().modified().unwrap();
+                fs::write(&stream, b"changed stream!").unwrap();
+                fs::File::options().write(true).open(&file).unwrap().set_times(fs::FileTimes::new().set_modified(modified)).unwrap();
+            } else if action == "stale_journal" {
+                fs::rename(&journal, root.path().join("old-journal")).unwrap(); fs::create_dir(&journal).unwrap();
+            }
+            let decision = if action == "cancel" { json!({"action":"cancel"}) }
+                else { json!({"action":"apply","plan_id":plan["binding_sha256"]}) };
+            writeln!(stdin, "{decision}").unwrap(); stdin.flush().unwrap();
+            let events = output.lines().map(|line| serde_json::from_str::<Value>(&line.unwrap()).unwrap()).collect::<Vec<_>>();
+            let status = child.wait().unwrap();
+            if action == "apply" {
+                assert!(status.success(), "{events:?}");
+                let result = &events.iter().find(|event| event["event"] == "result").unwrap()["data"];
+                assert_eq!(result["status"], "complete");
+                assert_eq!(result["moved_sources"], 1);
+                assert_eq!(result["committed_destinations"], 1);
+                assert!(result["recovery_error"].is_null(), "{result}");
+                assert_eq!(result["recovery"]["transfers"]["operations"][0]["status"], "Committed");
+                assert_eq!(fs::read(target.join("אברהם פריד").join(name)).unwrap(), bytes);
+                assert_eq!(fs::read(target.join("אברהם פריד").join(format!("{name}:notes"))).unwrap(), b"owned auxiliary");
+                assert!(!file.exists());
+            } else {
+                assert_eq!(status.success(), action == "cancel", "{events:?}");
+                assert_eq!(fs::read(&file).unwrap(), bytes);
+                assert_eq!(fs::read_dir(&target).unwrap().count(), 0);
+                assert_eq!(fs::read_dir(&journal).unwrap().count(), 0);
+                if action == "stale_journal" { assert_eq!(fs::read_dir(root.path().join("old-journal")).unwrap().count(), 0); }
+            }
+        }
+    }
     fn run_case(copy: bool, action: &str) {
         let root = tempfile::tempdir().unwrap();
         let source = root.path().join("מקור");
