@@ -8,6 +8,11 @@ final class RecoveryAcceptancePolicyTest {
   if(RecoveryAcceptancePolicy.matches(RecoveryAcceptancePolicy.POLICY,true,false,false,expected,expected))throw new AssertionError();checks++;
   if(RecoveryAcceptancePolicy.matches(RecoveryAcceptancePolicy.POLICY,true,true,true,expected,expected))throw new AssertionError();checks++;
   if(RecoveryAcceptancePolicy.matches(RecoveryAcceptancePolicy.POLICY,true,true,false,expected,new String[0]))throw new AssertionError();checks++;
+  String[] fix=expected.clone();fix[7]="";
+  if(!RecoveryAcceptancePolicy.matchesMode(true,RecoveryAcceptancePolicy.FIX_POLICY,true,true,false,fix,fix))throw new AssertionError();checks++;
+  if(RecoveryAcceptancePolicy.matchesMode(true,RecoveryAcceptancePolicy.POLICY,true,true,false,fix,fix))throw new AssertionError();checks++;
+  if(RecoveryAcceptancePolicy.matches(RecoveryAcceptancePolicy.FIX_POLICY,true,true,false,fix,fix))throw new AssertionError();checks++;
+  String[] different=fix.clone();different[7]="target";if(RecoveryAcceptancePolicy.matchesMode(true,RecoveryAcceptancePolicy.FIX_POLICY,true,true,false,fix,different))throw new AssertionError();checks++;
   System.out.println(checks+" exact retained-effects acceptance policy checks passed");
  }
 }

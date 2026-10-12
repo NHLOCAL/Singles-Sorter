@@ -99,7 +99,7 @@ final class AndroidHost implements AutoCloseable {
                             if(!profile.personal().getString("revision").equals(previewPersonalRevision))throw new IllegalArgumentException("PERSONAL_LIST_CHANGED");
                             JSONObject originalSettings=new JSONObject(previewStoredSettings),currentSettings=profile.settings();
                             for(String key:new String[]{"copy_mode","main_folder_only","singles_folder","exist_only","abc_sort","duet_mode"})if(originalSettings.getBoolean(key)!=currentSettings.getBoolean(key))throw new IllegalArgumentException("SETTINGS_CHANGED");
-                            ProviderReferences currentReferences=new ProviderReferences(activity,authorized,storage,source,target);
+                            ProviderReferences currentReferences=new ProviderReferences(activity,authorized,storage,source,"FixNames".equals(authorized.planCopy().getJSONObject("request").getString("mode"))?null:target);
                             String execution=LifecycleAcceptance.accept(AndroidHost.this,()->closed,()->{String accepted=ProviderExecutionOwner.start(activity,authorized,currentReferences);ownedExecution=accepted;return accepted;});
                             value=new JSONObject().put("job_id",execution);break;
                         case "save_main_settings":retainedPlan=null;value=profile.save(args.getJSONObject("settings"));break;
@@ -156,10 +156,11 @@ final class AndroidHost implements AutoCloseable {
                 signal.throwIfCanceled();
                 if(models==null&&ai.equals("Configured"))models=OriginalAssets.prepare(activity.getApplicationContext(),signal::isCanceled);
                 signal.throwIfCanceled();
-                captured.capture(sourceRoot,true,!settings.getBoolean("main_folder_only"));
+                // Sort may lazily inspect direct Albums even in main-folder-only mode.
+                captured.capture(sourceRoot,true,mode.equals("Sort")||!settings.getBoolean("main_folder_only"));
                 if(targetRoot!=null)captured.capture(targetRoot,false,true);
                 signal.throwIfCanceled();
-                JSONObject input=new JSONObject().put("schema",1).put("mode",mode).put("source",sourceRoot).put("target",targetRoot==null?JSONObject.NULL:targetRoot).put("settings",settings).put("ai_profile",ai).put("personal_csv",personalCsv).put("entries",captured.entries);
+                JSONObject input=new JSONObject().put("schema",1).put("mode",mode).put("source",sourceRoot).put("target",targetRoot==null?JSONObject.NULL:targetRoot).put("settings",settings).put("ai_profile",ai).put("personal_csv",personalCsv).put("entries",captured.retainedReferences());
                 JSONObject result=new JSONObject(OriginalPlanning.run(nativeId,models==null?"/unconfigured":models.getAbsolutePath(),captured.directory.getAbsolutePath(),input.toString(),captured));
                 signal.throwIfCanceled();if(!result.getBoolean("ok"))throw new IllegalStateException(result.optString("error","PLANNING_FAILED"));
                 completed=result.getJSONObject("data");
@@ -180,7 +181,7 @@ final class AndroidHost implements AutoCloseable {
                     else if(!closed&&completed!=null&&retained!=null){retainedPlan=retained;rows=completed.getJSONArray("rows");snapshot.put("status","completed").put("plan_id",completed.getString("plan_id")).put("total_rows",rows.length()).put("blockers",completed.getJSONArray("blockers")).put("warnings",completed.getJSONArray("warnings"));snapshot.put("apply",applyReadiness==null?JSONObject.NULL:applyReadiness);
                         if(applyReadiness!=null&&applyReadiness.getBoolean("supported"))for(int n=0;n<rows.length();n++){
                             JSONObject row=rows.getJSONObject(n);JSONArray original=row.getJSONArray("blockers"),effective=new JSONArray();
-                            for(int b=0;b<original.length();b++){String blocker=original.getString(b);if(!blocker.equals("PHYSICAL_APPLY_UNAVAILABLE")&&!blocker.equals("MISSING_IDENTITY")&&!blocker.equals("UNKNOWN_CAPABILITY"))effective.put(blocker);}
+                            for(int b=0;b<original.length();b++){String blocker=original.getString(b);if(!blocker.equals("PHYSICAL_APPLY_UNAVAILABLE")&&!blocker.equals("MISSING_IDENTITY")&&!blocker.equals("UNKNOWN_CAPABILITY")&&!("FixNames".equals(mode)&&blocker.matches("Observation\\((PhysicalApplyUnavailable|MissingIdentity|UnknownCapability)\\)|RenameMustSucceedAndRebindOriginal")))effective.put(blocker);}
                             row.put("effective_blockers",effective);
                         }}
                 }catch(Exception invalid){try{snapshot.put("status","failed").put("error","RESULT_INVALID");}catch(Exception ignored){}}
@@ -191,13 +192,16 @@ final class AndroidHost implements AutoCloseable {
     private JSONObject readiness(RetainedPlan retained,String selectedSource,String selectedTarget,CancellationSignal signal)throws Exception{
         JSONObject request=retained.planCopy().getJSONObject("request");
         JSONObject result=new JSONObject().put("supported",false).put("reason",JSONObject.NULL).put("operation_count",0).put("copy_mode",request.getJSONObject("settings").getBoolean("copy_mode")).put("source",storage.inspect(selectedSource,signal).displayName).put("target",selectedTarget==null?"":storage.inspect(selectedTarget,signal).displayName);
+        String phase="reference-binding";String mode=request.getString("mode");result.put("mode",mode);
         try{
-            signal.throwIfCanceled();ProviderReferences references=new ProviderReferences(activity,retained,storage,selectedSource,selectedTarget);NativeTransferPlan plan;
+            signal.throwIfCanceled();ProviderReferences references=new ProviderReferences(activity,retained,storage,selectedSource,selectedTarget);int count;
             try(DiagnosticReadGate.Lease lease=ProviderExecutionOwner.beginDiagnosticRead()){
-                lease.check();PreviewGeneration.PROCESS.require(retained.recoveryGeneration);RecoveryAdmission.require(activity,references,signal);plan=NativeTransferPlan.prepare(retained,references);signal.throwIfCanceled();
+                lease.check();PreviewGeneration.PROCESS.require(retained.recoveryGeneration);phase="recovery-admission";RecoveryAdmission.require(activity,references,signal);phase="original-plan-projection";
+                if(mode.equals("FixNames")){NativeFixPlan plan=NativeFixPlan.prepare(retained,references,signal::isCanceled);phase="fix-admission-budget";FixAdmissionBounds.require(retained,plan,signal::isCanceled);phase="retained-namespace-admission";ReservedProviderObjects reserved=ReservedProviderObjects.load(activity,signal);for(NativeFixPlan.Fix fix:plan.operations)reserved.require(references.uri(fix.source()));count=plan.operations.size();}
+                else{NativeTransferPlan plan=NativeTransferPlan.prepare(retained,references);NativeAlbumPlan albums=NativeAlbumPlan.prepare(retained,references,signal::isCanceled);AlbumAdmissionBounds.require(retained,plan,albums,signal::isCanceled);phase="retained-namespace-admission";ReservedProviderObjects reserved=ReservedProviderObjects.load(activity,signal);for(NativeTransferPlan.Transfer transfer:plan.operations)reserved.require(references.uri(transfer.source()));for(NativeAlbumPlan.Album album:albums.operations)reserved.requireSubtree(references.uri(album.source.reference()));count=plan.operations.size()+albums.operations.size();}signal.throwIfCanceled();
             }
-            result.put("supported",true).put("recovery_scope_admitted",true).put("operation_count",plan.operations.size()).put("reason","יש להשאיר את התיקיות ללא שינויים במהלך הביצוע. במקרה של הפרעה, הביצוע ייעצר והקבצים שכבר נוצרו יישמרו.");
-        }catch(Exception unavailable){result.put("reason","לא ניתן לבצע תוכנית זו במכשיר או בהרשאות הנוכחיות. יש לבחור תיקיות מקומיות ולבדוק מחדש.");}
+            result.put("supported",true).put("recovery_scope_admitted",true).put("operation_count",count).put("reason","יש להשאיר את התיקיות ללא שינויים במהלך הביצוע. במקרה של הפרעה, הביצוע ייעצר והקבצים שכבר נוצרו יישמרו.");
+        }catch(Exception unavailable){result.put("reason","לא ניתן לבצע תוכנית זו במכשיר או בהרשאות הנוכחיות. יש לבחור תיקיות מקומיות ולבדוק מחדש. ["+phase+"/"+ReadinessDiagnostic.code(unavailable)+"]").put("diagnostic",new JSONObject().put("phase",phase).put("code",ReadinessDiagnostic.code(unavailable)));}
         return result;
     }
     void pickerResult(int resultCode,Intent data){

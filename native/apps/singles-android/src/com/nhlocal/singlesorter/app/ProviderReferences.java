@@ -19,10 +19,11 @@ final class ProviderReferences {
     private final Context context;
     private final HashMap<String,JSONObject> byReference=new HashMap<>(),byToken=new HashMap<>();
     private final JSONObject bindings;
-    final Uri sourceTree,targetTree;
+    final Uri sourceTree,targetTree;final boolean fixMode;
     ProviderReferences(Context context,RetainedPlan retained,SafReadStorage current,String sourceToken,String targetToken)throws Exception{
         this.context=context.getApplicationContext();bindings=retained.bindingsCopy();
         JSONObject plan=retained.planCopy(),request=plan.getJSONObject("request");
+        String mode=request.getString("mode");if(!mode.equals("Sort")&&!mode.equals("FixNames"))throw new IllegalArgumentException("EXECUTION_MODE");fixMode=mode.equals("FixNames");if(fixMode!=request.isNull("target"))throw new IllegalArgumentException("EXECUTION_ROOT_MODE");
         JSONArray entries=retained.referencesCopy();if(entries.length()>2000)throw new IllegalArgumentException("REFERENCE_LIMIT");
         for(int n=0;n<entries.length();n++){
             JSONObject entry=entries.getJSONObject(n);String token=entry.getString("token");
@@ -59,6 +60,8 @@ final class ProviderReferences {
         for(UriPermission grant:context.getContentResolver().getPersistedUriPermissions())if(tree.equals(grant.getUri())&&grant.isReadPermission()&&(!write||grant.isWritePermission()))return;
         throw new SecurityException("PICKER_WRITE_GRANT_REQUIRED");
     }
+    void requireSelectedRoots()throws Exception{if(fixMode){if(targetTree!=null)throw new SecurityException("FIX_TARGET");requireWritable(sourceTree);}else requireDisjointRoots();}
+    Uri[] selectedRoots(){return fixMode?new Uri[]{sourceTree}:new Uri[]{sourceTree,targetTree};}
     void requireDisjointRoots()throws Exception{
         requireReadable(sourceTree);requireWritable(targetTree);
         String sourceId=DocumentsContract.getTreeDocumentId(sourceTree),targetId=DocumentsContract.getTreeDocumentId(targetTree);
