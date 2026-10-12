@@ -585,8 +585,13 @@ mod selected {
                 self.execution_error(id, "cancelled", "הביצוע בוטל לפני הפעלתו.");
                 return Ok(());
             }
-            let (mut recognition, model_resources, _) =
-                recognition(&selected.ai, self.model_directory.as_deref(), cancellation)?;
+            let recognition_result =
+                recognition(&selected.ai, self.model_directory.as_deref(), cancellation);
+            if cancellation.is_cancelled() {
+                self.execution_error(id, "cancelled", "הביצוע בוטל לפני תחילת ההעברה.");
+                return Ok(());
+            }
+            let (mut recognition, model_resources, _) = recognition_result?;
             let aliases = load_aliases(BUNDLED, Some(&selected.personal)).map_err(storage_error)?;
             let mut ids = aliases
                 .source_hashes
