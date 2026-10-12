@@ -14,6 +14,8 @@ import stat
 import time
 import wave
 
+from desktop_polish import set_developer_mode
+
 MODEL_FILES = ('manifest.json', 'tensors.f32', 'tokenizer.json',
                'classifier-v14.weights.bin', 'classifier-v14.vocab.txt')
 AI_NAME = 'ישראל כהן - שיר חדש.wav'
@@ -30,6 +32,14 @@ REQUIRED_CHECKS = ('original-models-executed', 'disabled-no-inference',
 def require(value, message):
     if not value:
         raise AssertionError(message)
+
+
+def assert_feature_off_message(text, developer):
+    expected = 'מודל הזיהוי הדרוש אינו זמין. הבדיקה לא הופעלה.'
+    if developer:
+        expected += ' (RECOGNITION_UNAVAILABLE)'
+    require(text.strip() == expected,
+            f'Feature-off UI error projection differs for developer={developer}: {text!r}')
 
 
 def digest(path):
@@ -434,8 +444,15 @@ const invoke = (name, args) => window.__TAURI_INTERNALS__.invoke(name, args);
                 self.setup(source, target, 'Configured', False)
                 self.click('#sort')
                 self.wait(lambda: self.script('return !document.querySelector("#sort").disabled && !document.querySelector("#error").hidden'))
-                require('RECOGNITION_UNAVAILABLE' in self.script('return document.querySelector("#error").textContent'),
-                        'Feature-off UI did not show the explicit unavailable error')
+                require(self.script('return document.querySelector("#app").dataset.developerMode') == 'false',
+                        'Feature-off ordinary error check requires developer mode off')
+                assert_feature_off_message(self.script('return document.querySelector("#error").textContent'), False)
+                self.capture('08-feature-off-ordinary-failure')
+                set_developer_mode(self.script, self.click, self.wait, True)
+                assert_feature_off_message(self.script('return document.querySelector("#error").textContent'), True)
+                self.capture('08-feature-off-developer-failure')
+                set_developer_mode(self.script, self.click, self.wait, False)
+                assert_feature_off_message(self.script('return document.querySelector("#error").textContent'), False)
                 require(self.script('return document.querySelectorAll("#rows tr").length===0'), 'Feature-off request showed stale rows')
                 self.capture('08-feature-off-explicit-failure')
                 checks.append('feature-off-fail-closed')

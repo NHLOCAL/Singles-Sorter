@@ -81,6 +81,15 @@ class DesktopAIContracts(unittest.TestCase):
         self.assertEqual(receipt['raw_observations']['target'][0]['win32_handle_attributes'], 17)
         self.assertIn('APIs disagree', receipt['error'])
 
+    def test_unavailable_ui_keeps_human_message_and_explicit_developer_code(self):
+        ordinary = 'מודל הזיהוי הדרוש אינו זמין. הבדיקה לא הופעלה.'
+        advanced = ordinary + ' (RECOGNITION_UNAVAILABLE)'
+        ai.assert_feature_off_message(ordinary, False)
+        ai.assert_feature_off_message(advanced, True)
+        for text, developer in ((advanced, False), (ordinary, True), ('RECOGNITION_UNAVAILABLE', False), ('Other failure', True)):
+            with self.assertRaises(AssertionError):
+                ai.assert_feature_off_message(text, developer)
+
     def test_explicit_feature_mode_rejects_unrecognized_values(self):
         self.assertEqual(ai.ai_mode({}), 'off')
         self.assertEqual(ai.ai_mode({'SINGLES_DESKTOP_AI_EXPECTED': 'on'}), 'on')
