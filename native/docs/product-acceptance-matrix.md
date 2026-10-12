@@ -29,7 +29,7 @@ separate.
 | Preview cancellation / Back / reload | Host owner remains busy until native terminal state | Existing lifecycle tests; no stale plan resurrection |
 | Apply review / repeat click | Host-selected paths and retained digest only | New UI/CLI candidate; cannot repeat consumed plan |
 | Apply progress / cancellation | Actual bytes; predicted rows stay predictions | Native result distinguishes committed, blocked, cancelled, partial and recovery |
-| Recovery | Hash-chained journal and identity-bound reconciliation | Source-reviewed read-only restart for singles/duets, Fix and file-Album is integrated; final native/package acceptance remains pending. Whole-Album restart is a separate source-reviewed candidate |
+| Recovery | Hash-chained journal and identity-bound reconciliation | Read-only restart for singles/duets, Fix, file-Album and Whole-Album is integrated and passes the actual dfae native/selected-host checkpoint below. Real GUI and staged/extracted restart consumers remain pending; historical Whole verification covers recorded main bytes, identity and membership, without an ADS baseline |
 | Hebrew RTL compact layout / import editing | Shared UI and original labels preserved | The earlier [result/viewport checkpoint](ui-results-layout.md) passed actual staged/extracted Windows checks for action-only defaults, independent inactive rows, advanced developer settings, long-name width and stationary footer. The later user redesign is preserved and requires its own current runtime acceptance; the observed About icon target was corrected after 26e. Android evidence remains platform-specific |
 | CLI supplied-facts v1 | Existing envelopes remain model-free and non-executable | No physical authorization granted |
 | CLI real-file v2 JSON | Same request fields and original planning policy | Read-only; optional selected planning adapter strengthens capability observations |
@@ -517,3 +517,36 @@ harness tried to click the correctly hidden Copy control while Fix mode remained
 selected. A real Sort-tab navigation correction is reviewed for the next run.
 Full current desktop interaction, file/Whole restart consumers and Android
 provider acceptance remain distinct requirements.
+
+
+## Actual dfae native restart checkpoint
+
+The public source `dfae0191b628119cf4ce7336dbcea2a000236144` has tree
+`b3e82b3ab970c17c26ec833a555f1deea8a6e124`. The actual Windows
+[native run](https://github.com/NHLOCAL/Singles-Sorter/actions/runs/38298338524)
+passed the strict 71-case Album/restart, 37-case read-owner and 13-case retained-
+parent suites. Its full native job succeeded.
+
+The matching [desktop run](https://github.com/NHLOCAL/Singles-Sorter/actions/runs/38298338592)
+ran the selected original-AI host tests independently of the renderer result:
+79 passed, none failed and one release-only case was initially ignored. The
+separate release-only gate subsequently passed. Exact ordinary Single,
+file-Album, Whole-Album and Fix restart filters also passed. This includes the
+real cross-volume Album completion and deterministic post-release verification
+cancellation fixture, as well as the fresh-host Whole inspection fixture.
+These are actual native host calls against owned files, not renderer or
+packaged-application interaction.
+
+Whole inspection retains its stated scope:
+`recorded_main_hash_identity_membership`. Historical Whole journals contain no
+named-stream digest baseline; verified descendant inspection rows are not
+fabricated child-transfer receipts. Missing or contradictory root, directory,
+child-location, membership or per-file evidence prevents an all-clear result.
+
+The desktop job as a whole failed in its separate feature-off CSV Export test:
+the automation's Save edit read back the requested path, but the application
+reported the dialog's original default path. The strict owned-path/export check
+rejected that result. The later keyboard-input correction requires its own
+actual rerun. Current user-interface and staged/extracted restart consumer
+acceptance therefore remain pending; the passing native suites do not close
+those product gates. Historical checkpoint sections above remain dated evidence.
