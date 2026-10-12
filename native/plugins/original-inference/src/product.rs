@@ -99,6 +99,25 @@ impl ReadStorage for SnapshotStorage {
         ))
     }
 }
+/// A provider-scoped directory equality key for planning name groups only.
+/// This is not a held object, stable inode, content binding or mutation authority.
+/// Own identity remains absent, so original MISSING_IDENTITY blockers remain.
+fn parent_group(
+    entry: &Entry,
+    entries: &HashMap<&str, &Entry>,
+) -> Result<Option<ObjectIdentity>, String> {
+    let Some(token) = &entry.parent else {
+        return Ok(None);
+    };
+    let parent = entries.get(token.as_str()).ok_or("missing_parent")?;
+    if !parent.directory || parent.authority != entry.authority || parent.tree_uri != entry.tree_uri {
+        return Err("invalid_parent_scope".into());
+    }
+    Ok(Some(ObjectIdentity::Android {
+        authority: parent.authority.clone(),
+        document_id: parent.document_id.clone(),
+    }))
+}
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Captured {
@@ -266,6 +285,11 @@ fn plan(
     if !directory.is_absolute() {
         return Err("invalid_cache_path".into());
     }
+    let manifest_by_token: HashMap<_, _> = manifest
+        .entries
+        .iter()
+        .map(|e| (e.token.as_str(), e))
+        .collect();
     let mut observations = HashMap::new();
     let mut by_token = HashMap::new();
     let mut originals = HashMap::new();
@@ -288,7 +312,7 @@ fn plan(
         let observation = EntryObservation {
             reference: reference.clone(),
             identity: None,
-            parent_identity: None,
+            parent_identity: parent_group(e, &manifest_by_token)?,
             name: e.name.clone(),
             kind: if e.directory {
                 EntryKind::Directory
@@ -452,6 +476,38 @@ pub extern "system" fn Java_com_nhlocal_singlesorter_inference_OriginalPlanning_
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn parent_groups_are_scoped_references_not_held_file_identity() {
+        let make = |token: &str, parent: Option<&str>, directory| Entry {
+            token: token.into(),
+            parent: parent.map(str::to_owned),
+            tree_uri: "content://owned/tree/root".into(),
+            authority: "owned".into(),
+            document_id: token.into(),
+            name: "same name.wav".into(),
+            directory,
+            observed_size: None,
+            observed_modified: None,
+        };
+        let a = make("a", None, true);
+        let b = make("b", None, true);
+        let x = make("x", Some("a"), false);
+        let y = make("y", Some("b"), false);
+        let entries = HashMap::from([("a", &a), ("b", &b)]);
+        assert_ne!(
+            parent_group(&x, &entries).unwrap(),
+            parent_group(&y, &entries).unwrap()
+        );
+        assert_eq!(parent_group(&a, &entries).unwrap(), None);
+        let mut wrong = x.clone();
+        wrong.authority = "other".into();
+        assert!(parent_group(&wrong, &entries).is_err());
+        wrong = x.clone();
+        wrong.parent = Some("missing".into());
+        assert!(parent_group(&wrong, &entries).is_err());
+        let not_directory = make("a", None, false);
+        assert!(parent_group(&x, &HashMap::from([("a", &not_directory)])).is_err());
+    }
     #[test]
     fn settings_are_complete_and_strict() {
         let full = json!({"copy_mode":false,"main_folder_only":false,"singles_folder":true,"exist_only":false,"abc_sort":false,"duet_mode":false});
