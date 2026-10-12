@@ -421,7 +421,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $cases = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib copied_move_journal_tests -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 6) { throw "Expected six copied Move journal cases" }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 7) { throw "Expected seven copied Move journal cases" }
           cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib copied_move_journal_tests -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $cases = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_copied_move -- --list

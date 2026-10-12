@@ -91,6 +91,8 @@ pub struct PhysicalJournalV2 {
     previous: String,
     tail: Vec<u8>,
     poisoned: bool,
+    #[cfg(test)]
+    test_record_budget: Option<(usize, usize)>,
 }
 fn line<T: Serialize>(body: T) -> Result<(Vec<u8>, String)> {
     let sha256 = hash(&body)?;
@@ -138,6 +140,8 @@ impl PhysicalJournalV2 {
             previous,
             tail: vec![],
             poisoned: false,
+            #[cfg(test)]
+            test_record_budget: None,
         })
     }
     /// `job_id` and the freshly host-authorized binding must match the header.
@@ -179,6 +183,8 @@ impl PhysicalJournalV2 {
             previous: head.sha256,
             tail: bytes[end..].to_vec(),
             poisoned: false,
+            #[cfg(test)]
+            test_record_budget: None,
         };
         // The terminated input has one final empty split. Avoid collecting a
         // second record vector and check cancellation while consuming each line.
@@ -294,6 +300,10 @@ impl PhysicalJournalV2 {
         if self.binding.data.copied_move_sources.is_some() {
             let total = self.bytes.len().checked_add(bytes.len()).ok_or(E::NeedsRecovery)?;
             let records = self.events.len().checked_add(2).ok_or(E::NeedsRecovery)?;
+            #[cfg(test)]
+            if self.test_record_budget.is_some_and(|(line, budget)| bytes.len() > line || total > budget) {
+                return Err(E::NeedsRecovery);
+            }
             crate::inspection_control::check_recorded_write(bytes.len(), total, records).map_err(|_| E::NeedsRecovery)?;
         }
 
@@ -905,6 +915,23 @@ mod copied_move_journal_tests {
             journal.append(&mut sink, event(&binding, phase)).unwrap();
         }
         (binding, journal, sink)
+    }
+    #[test]
+    fn copied_move_record_budget_refusal_preserves_prefix_and_poison() {
+        for line_budget in [true, false] {
+            let (binding, mut journal, mut sink) = ready();
+            let prefix = sink.0.clone(); let events = journal.events().to_vec();
+            journal.test_record_budget = Some(if line_budget { (0, usize::MAX) } else { (usize::MAX, prefix.len()) });
+            let next = event(&binding, Phase::AuxiliaryStreamsPrepared);
+            assert_eq!(journal.append(&mut sink, next.clone()), Err(E::NeedsRecovery));
+            assert_eq!(sink.0, prefix); assert_eq!(journal.events(), events); assert!(journal.poisoned);
+            let control = InspectionControl::new(std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)), |_| {});
+            let reopened = PhysicalJournalV2::open_controlled(&binding, "copied-move-phases", &prefix, &control).unwrap();
+            assert_eq!(reopened.events(), events); assert_eq!(reopened.events().last().unwrap().phase, Phase::BytesSynced);
+            journal.test_record_budget = None;
+            assert_eq!(journal.append(&mut sink, next), Err(E::NeedsRecovery));
+            assert_eq!(sink.0, prefix); assert_eq!(journal.events(), events);
+        }
     }
     #[test]
     fn copied_move_requires_auxiliary_ack_before_metadata_and_publication() {
