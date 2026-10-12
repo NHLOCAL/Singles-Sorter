@@ -81,6 +81,23 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip freeze
 
+      - name: Require FFmpeg for owned Ogg decoder comparisons
+        run: |
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+            if ($IsWindows) {
+              choco install ffmpeg --yes --no-progress
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            } elseif ($IsLinux) {
+              sudo apt-get update
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              sudo apt-get install --yes ffmpeg
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            } else { throw "Unsupported decoder-test runner" }
+          }
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) { throw "FFmpeg must be available; decoder tests cannot be skipped" }
+          ffmpeg -version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Verify exporters and regenerate only exact original assets
         run: |
           python -O crates/sorter-classifier/tools/test_export_auth.py
