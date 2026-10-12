@@ -72,7 +72,8 @@ def verify_repaired(before, after, duplicate):
 
 
 def exercise_ogg(script, click, fill, wait, capture, root, output):
-    assert __debug__, 'Physical acceptance requires enabled assertions'
+    if not __debug__:
+        raise RuntimeError('Physical acceptance requires Python assertions enabled')
     root = Path(root); root.mkdir(); receipts = []
     for opus, duplicate, chained in [(False, False, False), (True, True, False), (False, True, True), (True, True, True)]:
         extension = 'opus' if opus else 'ogg'; label = extension + ('-chained' if chained else '-repair')

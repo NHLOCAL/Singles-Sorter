@@ -20,12 +20,18 @@ class AssertionGuard(unittest.TestCase):
             self.assertIn('requires Python assertions enabled', result.stderr)
             self.assertFalse(output.exists())
 
+    def test_optimized_standalone_ogg_helper_refuses_before_file_creation(self):
+        self.check_helper('ogg')
+
     def test_optimized_standalone_flac_helper_refuses_before_file_creation(self):
+        self.check_helper('flac')
+
+    def check_helper(self, kind):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / 'uncreated-source'
             code = ('import sys;sys.path.insert(0,' + repr(str(HERE)) + ');'
-                    'from desktop_flac import exercise_flac;'
-                    'exercise_flac(None,None,None,None,None,' + repr(str(root)) + ',None)')
+                    f'from desktop_{kind} import exercise_{kind};'
+                    f'exercise_{kind}(None,None,None,None,None,' + repr(str(root)) + ',None)')
             result = subprocess.run([sys.executable, '-O', '-c', code],
                                     capture_output=True, text=True, timeout=30)
             self.assertNotEqual(result.returncode, 0)
