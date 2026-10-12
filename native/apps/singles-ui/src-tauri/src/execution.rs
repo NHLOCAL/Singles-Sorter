@@ -481,6 +481,20 @@ mod selected {
             selected,
         ))
     }
+    pub(super) fn journal_grant(
+        directory: PathBuf,
+        retained_identity: Option<sorter_core::discovery::ObjectIdentity>,
+    ) -> Result<WindowsSelectedRootGrant> {
+        // A copied job already bound this role at preview. Never adopt a newly
+        // observed identity between its comparison and the native root open.
+        let identity = match retained_identity {
+            Some(identity) => identity,
+            None => inspect_root(&directory)?.identity.ok_or_else(|| {
+                HostError::new("JOURNAL_UNAVAILABLE", "Journal root identity missing")
+            })?,
+        };
+        WindowsSelectedRootGrant::new(directory, identity).map_err(storage_error)
+    }
     impl Host {
         pub fn start_apply(
             &self,
@@ -629,7 +643,7 @@ mod selected {
                     "Resources changed; inspect a fresh plan",
                 ));
             }
-            let (target, scope, copied) = match selected.scope {
+            let (target, scope, copied, retained_journal) = match selected.scope {
                 PreparedScope::Noop { target, .. } => {
                     let reads =
                         sorter_executor::windows_copy::WindowsPlanningStorage::for_album_preview(
@@ -716,7 +730,7 @@ mod selected {
                         cancellation,
                     );
                 }
-                PreparedScope::Sort { target, scope } => (target, scope, None),
+                PreparedScope::Sort { target, scope } => (target, scope, None, None),
                 PreparedScope::CopiedMove {
                     target,
                     journal,
@@ -731,24 +745,19 @@ mod selected {
                             "Journal storage changed; inspect a fresh plan",
                         ));
                     }
-                    (target, scope.execution_scope().clone(), Some(scope))
+                    (target, scope.execution_scope().clone(), Some(scope), Some(journal_identity))
                 }
             };
             // Startup profile access already established this application directory.
             // Never create a path selected relative to a music tree here.
-            let journal = inspect_root(&directory)?;
+            let journal = journal_grant(directory.clone(), retained_journal)?;
             let grant = |path, identity| {
                 WindowsSelectedRootGrant::new(path, identity).map_err(storage_error)
             };
             let roots = WindowsMutationStorage::for_selected_roots(
                 grant(selected.source.clone(), scope.source_root.clone())?,
                 grant(target.clone(), scope.target_root.clone())?,
-                grant(
-                    directory.clone(),
-                    journal.identity.ok_or_else(|| {
-                        HostError::new("JOURNAL_UNAVAILABLE", "Journal root identity missing")
-                    })?,
-                )?,
+                journal,
             )
             .map_err(storage_error)?;
             let mut reads = sorter_executor::windows_copy::WindowsPlanningStorage::for_preview(

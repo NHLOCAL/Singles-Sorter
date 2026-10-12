@@ -313,3 +313,30 @@ fn stopping_final_host_verification_preserves_completed_move_and_releases_busy_o
         std::thread::sleep(std::time::Duration::from_millis(10));
     }
 }
+
+#[test]
+fn retained_journal_identity_survives_replacement_after_comparison() {
+    use sorter_io::desktop::windows_mutation::{WindowsMutationStorage, WindowsSelectedRootGrant};
+    let owned = tempfile::tempdir().unwrap();
+    let source = owned.path().join("source");
+    let target = owned.path().join("target");
+    let journal = owned.path().join("journal");
+    let original_journal = owned.path().join("original-journal");
+    for path in [&source, &target, &journal] { std::fs::create_dir(path).unwrap(); }
+    let retained = inspect_root(&journal).unwrap().identity.unwrap();
+    // This is the exact successful comparison formerly followed by a second
+    // observation. Replace only the disposable root before the real grant/open.
+    assert_eq!(inspect_root(&journal).unwrap().identity.as_ref(), Some(&retained));
+    std::fs::rename(&journal, &original_journal).unwrap();
+    std::fs::create_dir(&journal).unwrap();
+    assert_ne!(inspect_root(&journal).unwrap().identity.as_ref(), Some(&retained));
+    let grant = |path: &Path| WindowsSelectedRootGrant::new(path.to_owned(), inspect_root(path).unwrap().identity.unwrap()).unwrap();
+    let actual = WindowsMutationStorage::for_selected_roots(
+        grant(&source), grant(&target), selected::journal_grant(journal.clone(), Some(retained)).unwrap(),
+    );
+    assert!(actual.is_err(), "A replacement journal root must not be adopted");
+    for path in [&source, &target, &journal, &original_journal] {
+        assert!(path.is_dir());
+        assert_eq!(std::fs::read_dir(path).unwrap().count(), 0);
+    }
+}
