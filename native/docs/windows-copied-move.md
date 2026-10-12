@@ -38,8 +38,8 @@ cohort. A source link present after a retirement receipt is a recovery condition
 including a foreign replacement which is never deleted. Reconciliation supplies
 no automatic retry, resume, cleanup or deletion authority.
 
-The candidate adds one native read-only inventory test (17 primitive cases total),
-five journal phase/marker cases and nine actual Windows job cases. The latter
+The candidate adds two native read-only/cancellable-verification tests (18 primitive cases total),
+five journal phase/marker cases and ten actual Windows job cases. The latter
 include real duet routing, stale auxiliary preview, cancellation during the second
 destination, no-overwrite collision, source reappearance, changed destination ADS,
 one-shot execution and a strict distinct-volume case. That case uses owned TEMP
@@ -47,3 +47,13 @@ and checkout subdirectories, asserts their volume identities differ and never
 substitutes same-volume evidence. All are authored and unrun locally. Product
 host/CLI selection, independent composition review and actual Windows acceptance
 remain required before activating this path for users.
+
+Admission is checked against the freshly held root volume identities: same-volume
+non-duet operations remain on the existing exact-object rename path. This copied
+domain admits same-volume genuine duet cohorts and distinct-volume file Moves.
+A mixed same-volume plan containing both routes currently refuses as a whole;
+operations are neither dropped nor split into reordered jobs. A per-operation
+route composition is still required for that case. Native full-stream publication
+verification now uses the actual execution cancellation flag and preserves cursor
+positions at each bounded hash chunk; metadata/namespace inspection does not hide
+an uncancellable full-file hash. Existing generic adapters are unchanged.

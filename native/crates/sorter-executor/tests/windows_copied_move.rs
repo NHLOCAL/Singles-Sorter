@@ -23,7 +23,7 @@ struct Fixture {
     plan: JobPlanV2, scope: CopiedMoveScope, duet: bool,
 }
 impl Fixture {
-    fn new(duet: bool) -> Self { Self::with_second_volume(duet, false) }
+    fn new(duet: bool) -> Self { Self::with_second_volume(duet, !duet) }
     fn with_second_volume(duet: bool, second_volume: bool) -> Self {
         let tree = tempfile::tempdir().unwrap();
         let root = tree.path().canonicalize().unwrap();
@@ -158,4 +158,20 @@ fn actual_distinct_ntfs_volumes_move_main_and_named_streams() {
     assert_eq!(result.moved_sources, 1);
     assert!(!f.source.join("song.mp3").exists()); f.verify_destination("אמן");
     assert_eq!(job.inspect_recovery(&f.recovery(&job)).unwrap().transfers.unwrap().operations[0].status, RecoveryStatus::Committed);
+}
+
+#[test]
+fn same_volume_single_is_not_admitted_to_copied_move() {
+    let f = Fixture::new(true);
+    let mut reads = WindowsPlanningStorage::for_preview(&f.source, &f.target).unwrap();
+    let mut request = f.plan.request.clone();
+    request.alias_rows = vec![vec!["song".into(), "אמן".into()]];
+    request.ai_profile = AiProfile::Disabled;
+    let plan = plan_job(&request, &mut reads, &mut Metadata, &mut Ai(false)).unwrap();
+    assert_eq!(plan.operations.len(), 1);
+    let mut resources = f.scope.execution_scope().resources.clone();
+    resources.ai_profile = AiProfile::Disabled; resources.model_hash = None;
+    assert!(matches!(prepare_copied_move_scope(&plan, &mut reads, &grants(&f.source, &f.target, &f.journal), &resources, &AtomicBool::new(false)), Err(sorter_executor::ExecutionError::Unsupported)));
+    assert_eq!(std::fs::read_dir(&f.target).unwrap().count(), 0);
+    assert_eq!(std::fs::read_dir(&f.journal).unwrap().count(), 0);
 }

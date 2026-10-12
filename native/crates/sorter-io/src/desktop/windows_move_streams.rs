@@ -696,15 +696,32 @@ impl WindowsMutationStorage {
         }
     }
 
+    /// Namespace/metadata observation only; full hashes require cancellable verification.
+    pub fn inspect_copied_move_publication(&mut self, published: &WindowsCopiedMovePublished) -> Result<MutationObservation, MutationError> {
+        if published.poisoned { return Err(err(MutationErrorKind::UnknownOutcome, "copied Move publication poisoned")); }
+        self.inspect(&published.main)
+    }
+
     pub fn verify_copied_move_publication(
         &mut self, published: &WindowsCopiedMovePublished, digest: &ContentDigest,
         cancel: &AtomicBool,
     ) -> Result<MutationObservation, MutationError> {
+        self.verify_copied_move_publication_with(published, digest, cancel, |_| {})
+    }
+    fn verify_copied_move_publication_with(
+        &mut self, published: &WindowsCopiedMovePublished, digest: &ContentDigest,
+        cancel: &AtomicBool, checkpoint: impl FnMut(u64),
+    ) -> Result<MutationObservation, MutationError> {
         if published.poisoned { return Err(err(MutationErrorKind::UnknownOutcome, "copied Move publication poisoned")); }
-        let observation = self.verify(&published.main, digest)?;
-        verify_bound_streams(&published.main.file, &published.named, &published.evidence, cancel)?;
+        cancelled(cancel)?;
+        let observation = self.inspect(&published.main)?;
+        if published.main_digest() != *digest {
+            return Err(err(MutationErrorKind::VerificationFailed, "bound published main digest differs"));
+        }
+        verify_bound_streams_with(&published.main.file, &published.named, &published.evidence, cancel, checkpoint)?;
         // Named-stream readback cannot silently change the copied file metadata.
-        self.verify(&published.main, digest)?;
+        self.inspect(&published.main)?;
+        cancelled(cancel)?;
         Ok(observation)
     }
 
@@ -718,25 +735,44 @@ impl WindowsMutationStorage {
             cancelled(cancel)?;
             unsafe { FlushFileBuffers(HANDLE(file.as_raw_handle())) }.map_err(win_error)?;
         }
-        let acknowledgment = self.sync_published_file(&mut published.main, digest, cancel)?;
-        let observation = acknowledgment.observation().clone();
-        verify_bound_streams(&published.main.file, &published.named, &published.evidence, cancel)?;
+        cancelled(cancel)?;
+        published.main.sync_poisoned = true;
+        unsafe { FlushFileBuffers(HANDLE(published.main.file.as_raw_handle())) }.map_err(win_error)?;
+        // Full post-flush verification remains chunk-cancellable. Once flush was
+        // dispatched, every failure keeps both private publication guards poisoned.
         published.poisoned = false;
-        published.synced = true;
-        Ok(observation)
+        let checked = self.verify_copied_move_publication(published, digest, cancel);
+        match checked {
+            Ok(observation) => {
+                published.main.sync_poisoned = false;
+                published.synced = true;
+                Ok(observation)
+            }
+            Err(error) => { published.poisoned = true; Err(error) }
+        }
     }
 }
 fn verify_bound_streams(
     main: &File, named: &[File], evidence: &WindowsMoveSourceEvidence, cancel: &AtomicBool,
 ) -> Result<(), MutationError> {
+    verify_bound_streams_with(main, named, evidence, cancel, |_| {})
+}
+fn verify_bound_streams_with(
+    main: &File, named: &[File], evidence: &WindowsMoveSourceEvidence, cancel: &AtomicBool,
+    mut checkpoint: impl FnMut(u64),
+) -> Result<(), MutationError> {
     let expected = evidence.streams.iter().map(|stream| (stream.name.clone(), stream.length)).collect::<Vec<_>>();
     if stream_inventory(main)? != expected || named.len() + 1 != expected.len() {
         return Err(err(MutationErrorKind::VerificationFailed, "destination stream membership differs"));
     }
+    let expected_main = evidence.streams.first().ok_or_else(|| err(MutationErrorKind::VerificationFailed, "missing bound main stream"))?;
+    if stream_digest_with(main, expected_main.length, cancel, &mut checkpoint)?.sha256 != expected_main.sha256 {
+        return Err(err(MutationErrorKind::VerificationFailed, "destination main content differs"));
+    }
     let main_id = identity(main).map_err(read_error)?;
     for (file, expected) in named.iter().zip(evidence.streams.iter().skip(1)) {
         move_representation(file)?;
-        if identity(file).map_err(read_error)? != main_id || stream_digest(file, expected.length, cancel)?.sha256 != expected.sha256 {
+        if identity(file).map_err(read_error)? != main_id || stream_digest_with(file, expected.length, cancel, &mut checkpoint)?.sha256 != expected.sha256 {
             return Err(err(MutationErrorKind::VerificationFailed, "destination stream identity/content differs"));
         }
     }
@@ -783,6 +819,25 @@ mod move_stream_copy_tests {
             temp.sync_data().unwrap();
             temp
         }
+    }
+
+    #[test]
+    fn publication_full_stream_verification_honors_mid_read_cancellation() {
+        let mut f = Fixture::new();
+        let mut temp = f.temp();
+        applied(f.storage.copy_bound_move_streams(&f.source, &mut temp, &AtomicBool::new(false)));
+        applied(f.storage.finalize_copied_move_metadata(&f.source, &mut temp, &AtomicBool::new(false)));
+        let published = applied(f.storage.publish_copied_move_no_replace(&mut temp, &f.target, &MutationName::Windows("song.mp3".encode_utf16().collect()), &AtomicBool::new(false)));
+        let cancel = AtomicBool::new(false);
+        let mut bytes = 0;
+        let error = f.storage.verify_copied_move_publication_with(&published, &f.source.main.expected.digest, &cancel, |count| {
+            bytes += count;
+            cancel.store(true, Ordering::Release);
+        }).unwrap_err();
+        assert_eq!(error.kind, MutationErrorKind::Cancelled);
+        assert_eq!(bytes, 5);
+        assert!(f.path.join("source/song.mp3").exists());
+        assert!(matches!(f.storage.retire_copied_move_source(&mut f.source, &[&published], &cancel), MutationOutcome::NoEffect(_)));
     }
 
     #[test]

@@ -17,7 +17,7 @@ impl CopiedMoveScope {
 
 pub fn supported_copied_move_plan(plan: &JobPlanV2) -> Result<()> {
     if plan.request.mode != JobMode::Sort || plan.request.settings.copy_mode || plan.operations.is_empty()
-        || plan.blockers.iter().any(|blocker| blocker != "PHYSICAL_APPLY_UNAVAILABLE")
+        || plan.blockers.iter().any(|blocker| blocker != "PHYSICAL_APPLY_UNAVAILABLE" && blocker != "HISTORICAL_DUET_DELETE_REQUIRES_VERIFIED_ALL_DESTINATIONS")
     { return Err(E::Unsupported); }
     for operation in &plan.operations {
         match &operation.kind {
@@ -33,6 +33,21 @@ pub fn supported_copied_move_plan(plan: &JobPlanV2) -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn admission(roots: &WindowsMutationStorage, plan: &JobPlanV2) -> Result<()> {
+    let source = roots.selected_source_root().map_err(|_| E::Scope)?;
+    let target = roots.selected_target_root().map_err(|_| E::Scope)?;
+    let (ObjectIdentity::Windows { volume: source_volume, .. }, ObjectIdentity::Windows { volume: target_volume, .. }) =
+        (source.identity(), target.identity()) else { return Err(E::Scope); };
+    if source_volume == target_volume && plan.operations.iter().any(|operation|
+        !matches!(&operation.kind, OperationKind::SingleTransfer { transfer, .. } if transfer.copy)) {
+        return Err(E::Unsupported);
+    }
+    Ok(())
+}
+fn preparation_error(error: MutationError) -> E {
+    match error.kind { MutationErrorKind::Cancelled => E::Cancelled, MutationErrorKind::Unsupported => E::Unsupported, _ => E::Stale }
 }
 
 fn native_evidence(source: &CopiedMoveSourceEvidence) -> WindowsMoveSourceEvidence {
@@ -70,6 +85,7 @@ pub fn prepare_copied_move_scope(
         || roots.selected_source_reference().map_err(|_| E::Scope)? != plan.request.source
         || Some(roots.selected_target_reference().map_err(|_| E::Scope)?) != plan.request.target
     { return Err(E::Scope); }
+    admission(roots, plan)?;
     let execution = prepare_scope(plan, reads, resources, cancel)?;
     if roots.selected_source_root().map_err(|_| E::Scope)?.identity() != &execution.source_root
         || roots.selected_target_root().map_err(|_| E::Scope)?.identity() != &execution.target_root
@@ -79,7 +95,7 @@ pub fn prepare_copied_move_scope(
         if cancel.load(Ordering::Acquire) { return Err(E::Cancelled); }
         let source_path = path(&source.observation.reference)?;
         let parent = roots.parent_reference(&reference(source_path.parent().ok_or(E::Scope)?)).map_err(|_| E::Stale)?;
-        let evidence = roots.inspect_copied_move_source(&parent, &expected(source)?, cancel).map_err(|_| E::Stale)?;
+        let evidence = roots.inspect_copied_move_source(&parent, &expected(source)?, cancel).map_err(preparation_error)?;
         sources.push(bound_evidence(source.observation.reference.clone(), &evidence));
     }
     Ok(CopiedMoveScope { execution, sources })
@@ -98,6 +114,7 @@ impl SelectedWindowsJob {
             || roots.selected_source_reference().map_err(|_| E::Scope)? != plan.request.source
             || Some(roots.selected_target_reference().map_err(|_| E::Scope)?) != plan.request.target
         { return Err(E::Scope); }
+        admission(&roots, plan)?;
         let mut reads = OwnedCopyReadStorage::new(&roots, &plan.request.source, plan.request.target.as_ref().ok_or(E::Scope)?)?;
         let mut binding = validate_execution_domain(plan, &mut reads, metadata, recognition, resources, &scope.execution, ExecutionDomain::SelectedWindowsCopiedMove)?;
         binding.data.copied_move_sources = Some(scope.sources.clone());
@@ -113,7 +130,7 @@ impl SelectedWindowsJob {
             let source_path = path(&source.source)?;
             let parent = roots.parent_reference(&reference(source_path.parent().ok_or(E::Scope)?)).map_err(|_| E::Stale)?;
             let required = binding.required_destinations(&source.source).len();
-            let lease = roots.acquire_copied_move_source(&parent, &source_expected(operation)?, &native_evidence(source), required, cancel).map_err(|_| E::Stale)?;
+            let lease = roots.acquire_copied_move_source(&parent, &source_expected(operation)?, &native_evidence(source), required, cancel).map_err(preparation_error)?;
             held.push((source.source.clone(), lease));
         }
         static NEXT: AtomicU64 = AtomicU64::new(0);
@@ -162,13 +179,14 @@ impl MutationStorage for CopiedMoveStorage {
         MutationOutcome::NoEffect(MutationError::new(MutationErrorKind::Unsupported, "copied Move never selects rename fallback"))
     }
     fn verify(&mut self, published: &Self::Published, digest: &ContentDigest) -> std::result::Result<MutationObservation, MutationError> {
-        self.roots.verify_copied_move_publication(published, digest, &AtomicBool::new(false))
+        let _ = (published, digest);
+        Err(MutationError::new(MutationErrorKind::Unsupported, "copied Move verification requires execution cancellation"))
     }
     fn retire_source(&mut self, _: &mut Self::SourceLease, _: &AtomicBool) -> MutationOutcome<RetirementOutcome> {
         MutationOutcome::NoEffect(MutationError::new(MutationErrorKind::Unsupported, "copied Move requires complete bound cohort hook"))
     }
     fn inspect(&mut self, published: &Self::Published) -> std::result::Result<MutationObservation, MutationError> {
-        self.roots.verify_copied_move_publication(published, &published.main_digest(), &AtomicBool::new(false))
+        self.roots.inspect_copied_move_publication(published)
     }
 }
 impl TransferStorage for CopiedMoveStorage {
@@ -189,6 +207,10 @@ impl TransferStorage for CopiedMoveStorage {
     fn verify_temp(&mut self, temp: &Self::OwnedTemp, digest: &ContentDigest) -> std::result::Result<MutationObservation, MutationError> { temp.verify_content(digest) }
     fn rename_eligible(&self, _: &Self::SourceLease, _: &WindowsParent) -> bool { false }
     fn selected_copied_move_contract(&self) -> bool { true }
+    fn verify_selected_copied_move(&mut self, published: &Self::Published, digest: &ContentDigest, cancel: &AtomicBool) -> std::result::Result<MutationObservation, MutationError> {
+        self.roots.verify_copied_move_publication(published, digest, cancel)
+    }
+
     fn copy_selected_move_streams(&mut self, source: &Self::SourceLease, temp: &mut Self::OwnedTemp, cancel: &AtomicBool) -> MutationOutcome<CopiedMoveSourceEvidence> {
         let Some(expected) = self.sources.iter().find(|bound| bound.identity == source.evidence().identity) else {
             return MutationOutcome::NoEffect(MutationError::new(MutationErrorKind::StalePlan, "copied source not in binding"));

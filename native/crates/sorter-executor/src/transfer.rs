@@ -82,6 +82,10 @@ pub trait TransferStorage: MutationStorage {
     ) -> MutationOutcome<RetirementOutcome> {
         MutationOutcome::NoEffect(error(MutationErrorKind::Unsupported, "scoped copied Move retirement unavailable"))
     }
+    #[cfg(all(windows, feature = "selected-windows-execution"))]
+    fn verify_selected_copied_move(&mut self, _published: &Self::Published, _digest: &ContentDigest, _cancel: &AtomicBool) -> std::result::Result<MutationObservation, MutationError> {
+        Err(error(MutationErrorKind::Unsupported, "cancellable copied Move verification unavailable"))
+    }
     /// Positive, lease-derived same-volume evidence. False uses the copy path.
     fn rename_eligible(&self, source: &Self::SourceLease, parent: &Self::Parent) -> bool;
     /// Narrow contract: a write-through, pre/post-flushed same-volume rename.
@@ -111,6 +115,13 @@ pub struct TransferProgress {
     pub operation: usize,
     pub bytes_written: u64,
     pub source_length: u64,
+}
+
+fn verify_with_control<S: TransferStorage>(storage: &mut S, copied_move: bool, published: &S::Published, digest: &ContentDigest, cancel: &AtomicBool) -> std::result::Result<MutationObservation, MutationError> {
+    #[cfg(all(windows, feature = "selected-windows-execution"))]
+    if copied_move { return storage.verify_selected_copied_move(published, digest, cancel); }
+    let _ = (copied_move, cancel);
+    storage.verify(published, digest)
 }
 
 fn error(kind: MutationErrorKind, detail: impl Into<String>) -> MutationError {
@@ -704,9 +715,7 @@ impl<S: TransferStorage> Runner<'_, S> {
                     .with_observation(observed),
                 ));
             }
-            let verified = self
-                .storage
-                .verify(&published, &expected.digest)
+            let verified = verify_with_control(self.storage, self.binding.data.copied_move_sources.is_some(), &published, &expected.digest, self.flag)
                 .map_err(Failure::pending)?;
             check_observation(
                 &verified,
@@ -891,9 +900,7 @@ impl<S: TransferStorage> Runner<'_, S> {
                 )));
             }
         }
-        let verified = self
-            .storage
-            .verify(&published, &expected.digest)
+        let verified = verify_with_control(self.storage, self.binding.data.copied_move_sources.is_some(), &published, &expected.digest, self.flag)
             .map_err(Failure::pending)?;
         check_observation(
             &verified,
@@ -929,9 +936,7 @@ impl<S: TransferStorage> Runner<'_, S> {
         // source lease remain held. One failed verification preserves the source.
         for prior in required {
             let (published, observed) = &self.published[&prior.id];
-            let verified = self
-                .storage
-                .verify(published, &expected.digest)
+            let verified = verify_with_control(self.storage, self.binding.data.copied_move_sources.is_some(), published, &expected.digest, self.flag)
                 .map_err(Failure::pending)?;
             check_observation(
                 &verified,
