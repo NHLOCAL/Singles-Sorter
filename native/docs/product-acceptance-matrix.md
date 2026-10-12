@@ -5,13 +5,14 @@ read-only real-file behavior, physical execution, and actual product interaction
 A green test in one column does not establish the others. New candidate checks
 below require final-head CI results; the presence of a test is not a passing run.
 The latest actual Windows sorting-settings checkpoint is the 66-case / 64-vector
-26e result at the end of this document. It supersedes the older 041 decision-
-trace/vector gap only for that bounded corpus; the older package measurements
-and unrelated product acceptance boundaries remain separate.
+26e result, repeated at 2ec. The 2ec CLI consumer checkpoint below also passes
+58 real staged/extracted subprocess cases. These supersede the older 041 gaps
+only within their stated bounds; desktop and unrelated product acceptance remain
+separate.
 
 | Released behavior / flow | Planning and compatibility | Physical/product boundary |
 | --- | --- | --- |
-| Copy / Move toggle | Exact boolean and v14 virtual effects retained | Delivered selected Windows multi-file Copy / same-volume rename; new copied-Move host candidate binds ordinary NTFS main and named streams at preview for cross-volume singles and exact nonempty eligible duet cohorts. The one-eligible/zero-eligible follow-up remains native/package-test pending |
+| Copy / Move toggle | Exact boolean and v14 virtual effects retained | Delivered selected Windows multi-file Copy / same-volume rename; new copied-Move host candidate binds ordinary NTFS main and named streams at preview for cross-volume singles and exact nonempty eligible duet cohorts. The one-eligible/zero-eligible follow-up passes the actual 2ec staged/extracted CLI cases; desktop consumer acceptance remains pending |
 | Copy file attributes/timestamps | v14 uses `copy2` / `copytree` | Native Copy metadata preserves timestamps/readonly attributes; actual staged and extracted album-Copy fixtures passed at the desktop checkpoint below |
 | Main folder only / full tree | Original traversal/order retained | All 64 six-boolean vectors have bounded actual original/native Windows comparison at 26e; broader UI/library coverage remains separate |
 | Create singles folders | Original `סינגלים` destination component retained | Journaled directory creation; actual staged/extracted singles tests assert artist and `סינגלים` layout |
@@ -22,8 +23,8 @@ and unrelated product acceptance boundaries remain separate.
 | Original alias list + personal CSV | Ordered rows, duplicates, malformed-row diagnostics preserved | UI edit/import/delete/save/export and persistence baseline covered; no silent normalization |
 | Original NER + secondary classifier | Both exact original assets validated; no fallback | Actual staged/extracted Windows UI runs both original assets and original-AI selected Copy; unavailable/corrupt assets still fail closed |
 | Disabled AI | Explicit choice; no inference | Never silently substituted for configured unavailable models |
-| Albums | Original album recognition, metadata-error ordering and virtual transfer timeline | Actual staged/extracted Windows UI passed bounded album Copy, root-album and mixed same-volume Move with nested files/sidecars; cross-volume album activation remains separate |
-| Fix names / gibberish tags | Original planned rename/tag intentions retained | Original filename policy across 12 extensions; bounded MP3 ID3v2.3/v2.4, native FLAC and single-stream Ogg Vorbis/Opus five-field writes. Actual staged/extracted Windows gates passed exact retained originals/media, partial unsupported representations and stale-plan refusal; other tag formats remain open |
+| Albums | Original album recognition, metadata-error ordering and virtual transfer timeline | Actual staged/extracted Windows UI passed bounded album Copy, root-album and mixed same-volume Move with nested files/sidecars; cross-volume albums pass the actual 2ec staged/extracted CLI cases; desktop acceptance remains pending |
+| Fix names / gibberish tags | Original planned rename/tag intentions retained | Original filename policy across 12 extensions; bounded MP3 ID3v2.3/v2.4, native FLAC and single-stream Ogg Vorbis/Opus five-field writes. Actual staged/extracted Windows gates passed exact retained originals/media, partial unsupported representations and stale-plan refusal; bounded MP4, existing ID3 in WAVE/AIFF/DSF, and terminal WavPack APEv2 also pass actual 2ec CLI consumers; their desktop consumers remain pending |
 | Name collisions | Original reservation policy; exact plan revalidated | Identity-bound no-replace publication; changed destination stops execution |
 | Preview cancellation / Back / reload | Host owner remains busy until native terminal state | Existing lifecycle tests; no stale plan resurrection |
 | Apply review / repeat click | Host-selected paths and retained digest only | New UI/CLI candidate; cannot repeat consumed plan |
@@ -86,13 +87,13 @@ preserved; a filename change does not imply a successful tag repair.
 | Extension | Frozen reference metadata-open fixture | Current physical tag repair boundary |
 | --- | --- | --- |
 | `.mp3` | Supported ID3 fixture classes | Bounded unflagged ID3v2.3/v2.4 with existing padding; five original fields; original backup retained. Unsupported flags/representations/insufficient padding stop tag publication explicitly |
-| `.m4a`, `.alac` | MP4 AAC/ALAC fixtures | Exact-extent UTF-8 five-field repair candidate; main media/chunk offsets/fast-start and opaque ordinary items retained, exact original backup. Duplicate outer text fields are combined in original order, including a later-only changed value; unsupported structures refuse tag writes. Native/staged/extracted acceptance pending |
-| `.wav` | WAVE ID3 fixtures | Candidate: existing unflagged ID3v2.3/v2.4 in ordinary PCM/float RIFF; exact file/chunk/media extents and INFO bytes retained. Native/package acceptance pending |
-| `.aiff` | AIFF fixtures | Candidate: existing unflagged ID3v2.3/v2.4 in ordinary AIFF, exact COMM/SSND and unknown chunks retained; AIFC and insufficient padding refuse tags. Native/package acceptance pending |
+| `.m4a`, `.alac` | MP4 AAC/ALAC fixtures | Exact-extent UTF-8 five-field repair candidate; main media/chunk offsets/fast-start and opaque ordinary items retained, exact original backup. Duplicate outer text fields are combined in original order, including a later-only changed value; unsupported structures refuse tag writes. Actual 2ec staged/extracted CLI cases passed; desktop consumer acceptance pending |
+| `.wav` | WAVE ID3 fixtures | Candidate: existing unflagged ID3v2.3/v2.4 in ordinary PCM/float RIFF; exact file/chunk/media extents and INFO bytes retained. Actual 2ec staged/extracted CLI cases passed; desktop consumer acceptance pending |
+| `.aiff` | AIFF fixtures | Candidate: existing unflagged ID3v2.3/v2.4 in ordinary AIFF, exact COMM/SSND and unknown chunks retained; AIFC and insufficient padding refuse tags. Actual 2ec staged/extracted CLI cases passed; desktop consumer acceptance pending |
 | `.flac` | FLAC fixtures | Bounded native FLAC Vorbis comments, including shifted audio after shorter metadata; pictures/vendor/unknown pairs/audio and original backup retained. Dedicated staged/extracted Windows cases passed; opaque-offset representations explicitly remain partial |
-| `.wv` | WavPack fixtures | Candidate: existing terminal APEv2 UTF-8 five-field patches, original NUL scalar, exact block/tag layout and unknown binary/artwork retained; read-only/binary/external repaired items and ambiguous layouts refuse. Native/package acceptance pending |
+| `.wv` | WavPack fixtures | Candidate: existing terminal APEv2 UTF-8 five-field patches, original NUL scalar, exact block/tag layout and unknown binary/artwork retained; read-only/binary/external repaired items and ambiguous layouts refuse. Actual 2ec staged/extracted CLI cases passed; desktop consumer acceptance pending |
 | `.ogg` | Ogg Vorbis fixtures | Bounded single-logical-stream Vorbis writes preserve encoded packets/timing/vendor/artwork/unknown pairs. Dedicated staged/extracted Windows cases passed; chained/multiplexed/other-codec layouts refused |
-| `.dsf` | DSF fixtures | Candidate: existing terminal ID3v2.3/v2.4 in ordinary DSF, exact metadata pointer/header/media extents retained. Native/package acceptance pending |
+| `.dsf` | DSF fixtures | Candidate: existing terminal ID3v2.3/v2.4 in ordinary DSF, exact metadata pointer/header/media extents retained. Actual 2ec staged/extracted CLI cases passed; desktop consumer acceptance pending |
 | `.opus` | Ogg Opus fixtures | Bounded ordinary single-logical-stream Opus writes; dedicated staged/extracted Windows byte, timing and retained-backup cases passed, with the same representation limits as Vorbis |
 | `.wma` | Released metadata open rejects ASF | Preserve metadata-error outcome after any supported filename repair |
 | `.aac` | Released ADTS fixture rejects tags | Preserve metadata-error outcome after any supported filename repair |
@@ -461,3 +462,58 @@ the mandatory consumer gate had stopped. Functional reports were already saved.
 No comparable speed or memory advantage, nor a new package size, follows from
 these failed optional measurements. The exact earlier 041 package sizes above
 remain the measured consumer checkpoint.
+
+
+## Actual Windows CLI consumer checkpoint: 2026-10-12, public 2ec04c8
+
+[Windows CLI run 38286628344](https://github.com/NHLOCAL/Singles-Sorter/actions/runs/38286628344)
+passed release, staged-package and ZIP-extracted consumer execution. Its package
+provenance binds PR build source `e8e67f92008194589d23bdb23a3511926e2fad63`,
+tree `60137d5efac2dea0d52983a7d1ddb8ab6b88cd12`, matching the public 2ec04c8
+source tree. This package does not contain the later Whole-Album restart host.
+
+| Measured artifact | Exact value |
+| --- | --- |
+| Inner CLI ZIP | 12,381,484 bytes |
+| ZIP SHA-256 | `ad9959b7fe38241c1dff81256fd16c13228c3f82f9dd7f0c4a44346d1b936bdb` |
+| Inventory | 144 files and one explicit empty directory; all 143 manifest entries rehashed |
+| Unpacked logical file bytes | 34,793,504, excluding filesystem allocation overhead |
+| `singles-sorter.exe` | 6,069,760 bytes; SHA-256 `3d48be3f71a2d1f8a52b5dce644147c55e6e4dd5971f92de59d9135819e0a381` |
+| Manifest SHA-256 | `c18368f72f577ac04ccf4b580046df7c84c5590d41ca7dc1435690ac87312586` |
+
+Both actual execution receipts have **58 subprocess cases and 56 required
+checks**, with closed stdin and developer tools removed from the child PATH.
+Both bind the same EXE and package manifest. Independent inspection rechecked
+all retained case records, matching UTF-8 diagnostic log hashes to stderr,
+original backups or unsupported-container byte preservation, physical counts,
+source cleanup identities, and strict reconciliation status. Packaged notice
+inventory and actual PE imports also match their reviewed contracts. This audit
+reads authenticated runtime evidence; it does not rerun the Windows EXE on Linux.
+
+New bounded consumer proof includes:
+
+- Root cross-volume Album Move: 5 destinations and 5 moved files; original
+  summary 0 songs, 0 artist folders, 1 album, top artist credit 4.
+- Mixed cross-volume Album Move: 6 destinations and 6 moved files; original
+  summary 1 song, 0 artist folders, 1 album, top artist credit 5. Both cases have
+  verified named streams, three exact source-directory removals and no recovery
+  error. This supplies the actual value missing from the prior failed assertion.
+- One eligible original-model duet destination commits and retires one source.
+  Zero eligible destinations return the explicit fresh-preflight no-op with
+  zero counters and preserve the source, rather than performing the unsafe
+  historical all-skipped deletion.
+- Bounded MP4 AAC/ALAC (including duplicate outer-field consolidation), existing
+  ID3 in WAVE/AIFF/DSF, and terminal UTF-8 WavPack APEv2 repairs now pass both
+  consumer lanes, alongside the earlier MP3/FLAC/Ogg cases. Unsupported
+  representations remain explicit partial results with unchanged tag bytes.
+
+The separate read-only PowerShell smoke has 12 checks. It does not claim physical
+mutation or graceful Ctrl-C proof. The paired 66-case / 64-vector corpus also
+passes again at this revision; its timing observations retain a separate audit.
+
+This is CLI consumer acceptance. The same revision's desktop run passed native
+layout/About/help and real Sort/Fix preview, then stopped because the settings
+harness tried to click the correctly hidden Copy control while Fix mode remained
+selected. A real Sort-tab navigation correction is reviewed for the next run.
+Full current desktop interaction, file/Whole restart consumers and Android
+provider acceptance remain distinct requirements.
