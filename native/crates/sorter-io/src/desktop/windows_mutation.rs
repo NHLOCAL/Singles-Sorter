@@ -2868,11 +2868,13 @@ fn only_unnamed_stream(bytes: &[u8]) -> Result<(), MutationError> {
             .checked_add(length)
             .filter(|end| *end <= bytes.len())
             .ok_or_else(invalid)?;
-        if length % 2 != 0 {
+        if !length.is_multiple_of(2) {
             return Err(invalid());
         }
         let name: Vec<u16> = bytes[start..end]
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|u| u16::from_le_bytes([u[0], u[1]]))
             .collect();
         if name != "::$DATA".encode_utf16().collect::<Vec<_>>() || count != 0 {
@@ -2885,7 +2887,7 @@ fn only_unnamed_stream(bytes: &[u8]) -> Result<(), MutationError> {
         if next == 0 {
             return Ok(());
         }
-        if next % 8 != 0 || next < header + length {
+        if !next.is_multiple_of(8) || next < header + length {
             return Err(invalid());
         }
         offset = offset.checked_add(next).ok_or_else(invalid)?;
@@ -3299,28 +3301,27 @@ impl WindowsRepairStorage {
         name: &MutationName,
         cancel: &AtomicBool,
     ) -> MutationOutcome<WindowsSourceLease> {
-        if let Some(snapshot) = &source.repair {
-            if let Err(error) = source
+        if let Some(snapshot) = &source.repair
+            && let Err(error) = source
                 .file
                 .as_ref()
                 .ok_or_else(|| err(MutationErrorKind::StalePlan, "source consumed"))
                 .and_then(|file| snapshot.check_original(file))
-            {
-                return MutationOutcome::NoEffect(error);
-            }
+        {
+            return MutationOutcome::NoEffect(error);
         }
         let parent = source.parent.clone();
         let mut expected = source.expected.clone();
         let snapshot = source.repair.clone();
         match self.rename.rename_no_replace(source, &parent, name, cancel) {
             MutationOutcome::Applied(published) => {
-                if let Some(snapshot) = &snapshot {
-                    if let Err(error) = snapshot.check_original(&published.file) {
-                        return MutationOutcome::PendingUnknown(repair_pending(
-                            error,
-                            &published.observation,
-                        ));
-                    }
+                if let Some(snapshot) = &snapshot
+                    && let Err(error) = snapshot.check_original(&published.file)
+                {
+                    return MutationOutcome::PendingUnknown(repair_pending(
+                        error,
+                        &published.observation,
+                    ));
                 }
                 expected.name = name.clone();
                 expected.parent_identity = parent.identity.clone();
