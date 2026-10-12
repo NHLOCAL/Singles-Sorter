@@ -69,9 +69,10 @@ class PairedWindowsContract(unittest.TestCase):
             relative(root, str(root)+'2'+os.sep+'A')
 
     def test_result_duplicate_is_error_and_absence_not_success(self):
-        line = 'INFO - MusicSorter - result: {"status":"complete"}'
+        line = '2026-10-12 02:00:00 - MusicSorter - INFO - result: {"status":"complete"}'
         self.assertEqual(gate.result_record(line), {'status': 'complete'})
         self.assertIsNone(gate.result_record('error only'))
+        self.assertIsNone(gate.result_record('DEBUG - MusicSorter - INFO - result: {}'))
         with self.assertRaises(AssertionError):
             gate.result_record(line+'\n'+line)
 

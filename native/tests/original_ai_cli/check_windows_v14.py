@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -170,8 +171,8 @@ def native_args(bundle, case):
 
 
 def result_record(stderr):
-    rows = [json.loads(line.split(' - MusicSorter - result: ', 1)[1])
-            for line in stderr.splitlines() if ' - MusicSorter - result: ' in line]
+    rows = [json.loads(match.group(1)) for line in stderr.splitlines()
+            if (match := re.fullmatch(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} - MusicSorter - INFO - result: (.*)', line))]
     require(len(rows) <= 1, 'Native emitted duplicate result records')
     return rows[0] if rows else None
 
