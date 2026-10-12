@@ -199,7 +199,13 @@ fn tree(scope: &AlbumScope, album: &AlbumGroup) -> Result<Vec<WindowsAlbumTreeEn
     Ok(entries)
 }
 pub(super) fn eligible(plan: &JobPlanV2, scope: &AlbumScope) -> bool {
-    if plan.request.settings.copy_mode {
+    if plan.request.settings.copy_mode
+        || !matches!(
+            (&scope.execution.source_root, &scope.execution.target_root),
+            (ObjectIdentity::Windows { volume: source, .. }, ObjectIdentity::Windows { volume: target, .. })
+                if source == target
+        )
+    {
         return false;
     }
     let mut singles_started = false;

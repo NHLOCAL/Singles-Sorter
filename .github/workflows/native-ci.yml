@@ -540,7 +540,7 @@ jobs:
         run: |
           $cases = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_album -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 38) { throw "Expected 38 cases for --test windows_album" }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 39) { throw "Expected 39 cases for --test windows_album" }
           cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_album -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

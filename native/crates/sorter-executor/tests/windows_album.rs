@@ -1813,3 +1813,32 @@ fn selected_root_short_leaf_alias_recovers_against_native_long_leaf() {
     drop(job);
     verify_cross_volume_album(&fixture);
 }
+
+#[test]
+fn album_dispatch_preserves_same_volume_rename_and_cross_volume_copy_retire() {
+    for root_album in [false, true] {
+        let same = Fixture::new(false, root_album);
+        let mut job = same.job();
+        let result = job.run(&AtomicBool::new(false), &mut |_| {}).unwrap();
+        assert_eq!(result.status, JobStatus::Complete, "{result:?}");
+        assert_eq!(result.whole_albums.len(), 1);
+        assert!(result.transfers.is_none());
+        assert_eq!(result.albums_completed, 1);
+        drop(job);
+        assert!(!same.album.exists());
+        assert!(same.destination().join("1-שיר.mp3").is_file());
+
+        let (cross, _target) = cross_volume_album(root_album);
+        let mut job = cross.job();
+        let result = job.run(&AtomicBool::new(false), &mut |_| {}).unwrap();
+        assert_eq!(result.status, JobStatus::Complete, "{result:?}");
+        assert!(result.whole_albums.is_empty());
+        let transfers = result.transfers.as_ref().unwrap();
+        assert_eq!(transfers.committed_destinations, 5);
+        assert_eq!(transfers.moved_sources, 5);
+        assert_eq!(result.albums_completed, 1);
+        drop(job);
+        assert!(!cross.album.exists());
+        verify_cross_volume_album(&cross);
+    }
+}
