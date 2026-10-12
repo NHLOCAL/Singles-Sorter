@@ -52,9 +52,11 @@ final class AndroidHost implements AutoCloseable {
                     int offset=args.getInt("offset"),limit=args.getInt("limit");
                     if(args.has("developerMode")&&!(args.get("developerMode") instanceof Boolean))throw new IllegalArgumentException("DEVELOPER_MODE");
                     boolean developerMode=args.optBoolean("developerMode",false);
+                    if(args.has("showInactive")&&!(args.get("showInactive") instanceof Boolean))throw new IllegalArgumentException("SHOW_INACTIVE");
+                    boolean showInactive=args.optBoolean("showInactive",developerMode);
                     boolean[] developerOnly=new boolean[rows.length()],skippedRows=new boolean[rows.length()];
-                    for(int n=0;n<rows.length();n++){JSONObject row=rows.getJSONObject(n);developerOnly[n]=row.getBoolean("developer_only");skippedRows[n]="Single".equals(row.getString("kind"))&&row.getJSONArray("operation_ids").length()==0;}
-                    PlanPageSelection selection=PlanPageSelection.select(developerOnly,skippedRows,developerMode,offset,limit);
+                    for(int n=0;n<rows.length();n++){JSONObject row=rows.getJSONObject(n);developerOnly[n]=row.getBoolean("developer_only");skippedRows[n]=row.getBoolean("no_action");}
+                    PlanPageSelection selection=PlanPageSelection.select(developerOnly,skippedRows,developerMode,showInactive,offset,limit);
                     JSONArray page=new JSONArray();for(int index:selection.indices)page.put(rows.get(index));
                     reply(id,true,new JSONObject().put("rows",page).put("total",selection.total).put("skipped",selection.skipped));return;
                 default:break;

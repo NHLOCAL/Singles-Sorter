@@ -15,6 +15,7 @@ pub struct DisplayRow {
     pub operation_ids: Vec<usize>,
     pub artist: Option<String>,
     pub developer_only: bool,
+    pub no_action: bool,
 }
 fn entry_display(entry: &EntryObservation) -> String {
     match &entry.reference {
@@ -49,6 +50,15 @@ fn routine_inspection(decision: &DecisionV2, operation_ids: &[usize]) -> bool {
     }
 }
 
+fn inactive_decision(decision: &DecisionV2, operation_ids: &[usize]) -> bool {
+    operation_ids.is_empty()
+        && match decision {
+            DecisionV2::Single { .. } => true,
+            DecisionV2::Album { decision, .. } => !decision.trace.iter().any(album_read_error),
+            DecisionV2::ItemError { .. } | DecisionV2::Vanished { .. } => false,
+        }
+}
+
 pub fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
     if plan.request.mode == JobMode::FixNames {
         return plan
@@ -60,6 +70,7 @@ pub fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
                     operation_ids: vec![op.id],
                     artist: None,
                     developer_only: false,
+                    no_action: !f.rename_intended && f.repairs.is_empty() && f.failure.is_none(),
                     source: entry_display(&f.source),
                     kind: "FixNames".into(),
                     destination: f.intended_name.clone(),
@@ -132,6 +143,7 @@ pub fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
                 .map(|op| op.id)
                 .collect();
             let developer_only = routine_inspection(d, &operation_ids);
+            let no_action = inactive_decision(d, &operation_ids);
             let mut destinations = vec![];
             let mut blockers = vec![];
             if let DecisionV2::Album { decision, .. } = d
@@ -167,6 +179,7 @@ pub fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
                 operation_ids,
                 artist,
                 developer_only,
+                no_action,
                 source: entry_display(&read.source),
                 kind: kind.into(),
                 destination: (!destinations.is_empty()).then(|| destinations.join("; ")),
@@ -214,6 +227,8 @@ mod tests {
             read: read.clone(),
             decision: album.clone(),
         };
+        assert!(inactive_decision(&decision, &[]));
+        assert!(!inactive_decision(&decision, &[7]));
         assert!(routine_inspection(&decision, &[]));
         assert!(!routine_inspection(&decision, &[7]));
         album.is_album = true;
@@ -240,6 +255,24 @@ mod tests {
             kind: "metadata".into(),
         }];
         assert!(album_read_error(&album.trace[0]));
+        assert!(!inactive_decision(
+            &DecisionV2::Album {
+                read: read.clone(),
+                decision: album.clone(),
+            },
+            &[],
+        ));
+        assert!(!inactive_decision(
+            &DecisionV2::Vanished { read: read.clone() },
+            &[],
+        ));
+        assert!(!inactive_decision(
+            &DecisionV2::ItemError {
+                read: read.clone(),
+                error: "failed".into(),
+            },
+            &[],
+        ));
         assert!(!routine_inspection(
             &DecisionV2::Album {
                 read: read.clone(),
