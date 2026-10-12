@@ -86,6 +86,8 @@ class PairedWindowsContract(unittest.TestCase):
         self.assertEqual([row['source'] for row in order],['source/b','source/a'])
         for invalid in [[], commits+commits]:
             with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(Path('/owned'),result,{},invalid)
+        truncated=copy.deepcopy(result);truncated['effect_receipts']=truncated['effect_receipts'][:1]
+        with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(Path('/owned'),truncated,{},commits)
         result['effect_receipts'].append(result['effect_receipts'][0])
         with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(Path('/owned'),result,{},commits)
 
@@ -99,6 +101,8 @@ class PairedWindowsContract(unittest.TestCase):
         plan={'operations':[{'id':0,'kind':{'AlbumTransfer':{'source':{'identity':identity,'reference':reference('/owned/source/album')}}}}]}
         order=gate.acknowledged_transfer_order(Path('/owned'),result,plan,[])
         self.assertEqual([(r['kind'],r['source'],r['destination']) for r in order],[('move','source/album','target/album')])
+        omitted=copy.deepcopy(result);omitted['effect_receipts']=[]
+        with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(Path('/owned'),omitted,plan,[])
         result['whole_albums'][0]['status']='partial'
         with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(Path('/owned'),result,plan,[])
         result['whole_albums'][0]['status']='complete'; plan['operations'][0]['kind']['AlbumTransfer']['source']['identity']={'Test':{'id':'other'}}
@@ -121,6 +125,43 @@ class PairedWindowsContract(unittest.TestCase):
         rows={row['field']:row for row in gate.compare_case(gate.cases()[0],original,native)}
         self.assertEqual(rows['actual_transfer_order']['status'],'MISMATCH')
         self.assertEqual(len(rows['actual_transfer_order']['actual']),1)
+
+    def test_verified_final_parity_classifies_only_atomic_granularity_as_observed_difference(self):
+        path=lambda *parts:os.sep.join(parts)
+        before=[{'path':path('source','album',name),'kind':'file','bytes':1,'sha256':name} for name in ('a','b')]
+        after=[{'path':path('target','album',name),'kind':'file','bytes':1,'sha256':name} for name in ('a','b')]
+        summary={'songs_sorted':0,'artist_folders_created':0,'albums_processed':1,'top_artists':[['artist',2]]}
+        original={'before':before,'after':after,'legacy_summary':summary,'ordered_operations':[
+            {'kind':'move','source':path('source','album',name),'destination':path('target','album',name)} for name in ('a','b')],
+            'ordered_decisions':[],'error':None}
+        native={'before':before,'after':after,'result':{'status':'complete','legacy_summary':copy.deepcopy(summary),'committed_destinations':2,'moved_sources':2},
+            'execution':{'exit':0},'observed_physical':gate.physical_observations(before,after),
+            'committed_destination_mapping':[{'destination':row['path'],'verified_bytes':True} for row in after],
+            'acknowledged_transfer_order':[{'kind':'move','source':path('source','album'),'destination':path('target','album'),'receipt_kind':'album_renamed'}]}
+        def order(value):
+            return next(row for row in gate.compare_case(gate.cases()[0],original,value) if row['field']=='actual_transfer_order')
+        self.assertEqual(order(native)['status'],'OBSERVED_DIFFERENCE')
+        self.assertEqual(order(native)['scope'],'physical_operation_granularity')
+        for field in ('legacy_summary','committed_destinations'):
+            changed=copy.deepcopy(native);changed['result'][field]={} if field=='legacy_summary' else 0
+            self.assertEqual(order(changed)['status'],'MISMATCH')
+        changed=copy.deepcopy(native);changed['committed_destination_mapping'][0]['verified_bytes']=False
+        self.assertEqual(order(changed)['status'],'MISMATCH')
+        changed=copy.deepcopy(native);changed['after'][0]['sha256']='different'
+        self.assertEqual(order(changed)['status'],'MISMATCH')
+
+    def test_atomic_granularity_recognizer_never_hides_single_order_or_path_changes(self):
+        path=lambda *parts:os.sep.join(parts)
+        expected=[{'kind':'move','source':path('source','album',name),'destination':path('target','album',name)} for name in ('a','b')]
+        single={'kind':'copy','source':path('source','single'),'destination':path('target','single')}
+        expected.append(single)
+        actual=[{'kind':'move','source':path('source','album'),'destination':path('target','album'),'receipt_kind':'album_renamed'},
+                {**single,'receipt_kind':'file_published'}]
+        self.assertTrue(gate.only_atomic_album_granularity(expected,actual))
+        self.assertFalse(gate.only_atomic_album_granularity(expected,list(reversed(actual))))
+        changed=copy.deepcopy(expected);changed[-1]['destination']+='wrong'
+        self.assertFalse(gate.only_atomic_album_granularity(changed,actual))
+        self.assertFalse(gate.only_atomic_album_granularity(expected,actual[:1]))
 
     def test_physical_counts_are_independent_observed_files(self):
         def row(path, value):

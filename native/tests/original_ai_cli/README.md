@@ -156,8 +156,12 @@ transfer order for older results. New `effect_receipts` supply the actual cross-
 journal namespace order: each file publish/rename must match exactly one committed
 identity, and each whole-directory rename must match the returned completed root
 and the retained source identity. A whole rename stays one directory event. It is
-never expanded to mimic the original per-child calls, so a granularity/order
-difference is an explicit MISMATCH rather than a fabricated pass. Source
+never expanded to mimic the original per-child calls. When exact final
+names/bytes/counters and complete receipt coverage match, only a whole rename
+replacing the contiguous direct-child Move calls may be classified as
+`OBSERVED_DIFFERENCE` in physical operation granularity, without failing the
+overall sorting-result comparison. The surrounding ordinary transfer order must
+still match. All other order/path/counter differences remain MISMATCH. Source
 retirement and child-name receipts remain in the raw stream, outside the narrowly
 named original copy/move-call comparison. Missing ordered evidence remains OPEN.
 All traces remain in encounter order, including ties and skips.

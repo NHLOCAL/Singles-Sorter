@@ -251,8 +251,17 @@ def acknowledged_transfer_order(root, result, plan, streams):
         return None
     commits = [entry for stream in streams for entry in stream['ordered_commits']]
     operations = {operation['id']: operation for operation in (plan or {}).get('operations', [])}
+    completed_roots = [album['root']['identity'] for album in result.get('whole_albums', [])
+                       if album['status'] == 'complete' and album.get('root')]
+    key = lambda identity: json.dumps(identity, sort_keys=True, separators=(',', ':'))
+    require(all(entry.get('observed_identity') is not None for entry in commits), 'Committed transfer lacks observed identity')
+    expected_files = {key(entry['observed_identity']) for entry in commits}
+    expected_roots = {key(identity) for identity in completed_roots}
+    require(len(expected_files) == len(commits), 'Committed file identities are ambiguous')
+    require(len(expected_roots) == len(completed_roots), 'Completed whole root identities are ambiguous')
     observed = []
     used = set()
+    seen_files, seen_roots = set(), set()
     for index, receipt in enumerate(result['effect_receipts']):
         kind, identity = receipt['kind'], receipt['identity']
         require(identity is not None, 'Namespace receipt lacks observed identity')
@@ -262,6 +271,7 @@ def acknowledged_transfer_order(root, result, plan, streams):
             matches = [entry for entry in commits if entry.get('observed_identity') == identity]
             require(len(matches) == 1, 'Namespace file receipt lacks one exact committed identity')
             entry = matches[0]
+            seen_files.add(key(identity))
             expected_kind = 'copy' if kind == 'file_published' else 'move'
             require(entry['kind'] == expected_kind, 'Namespace effect and committed transfer mode differ')
             event = {key: entry[key] for key in ('kind', 'source', 'destination')}
@@ -270,6 +280,7 @@ def acknowledged_transfer_order(root, result, plan, streams):
                        if album['operation'] == receipt['operation'] and album['status'] == 'complete'
                        and album.get('root') and album['root']['identity'] == identity]
             require(len(matches) == 1, 'Whole rename lacks one completed matching root receipt')
+            seen_roots.add(key(identity))
             operation = operations.get(receipt['operation'], {}).get('kind', {}).get('AlbumTransfer')
             require(operation and operation['source'].get('identity') == identity,
                     'Whole rename does not match its retained observed source identity')
@@ -277,11 +288,13 @@ def acknowledged_transfer_order(root, result, plan, streams):
                      'destination': reference_path(root, matches[0]['root']['reference'])}
         else:
             raise AssertionError('Unknown namespace receipt kind: ' + kind)
-        key = (event['kind'], event['source'], event['destination'])
-        require(key not in used, 'Duplicate acknowledged transfer receipt')
-        used.add(key)
+        event_key = (event['kind'], event['source'], event['destination'])
+        require(event_key not in used, 'Duplicate acknowledged transfer receipt')
+        used.add(event_key)
         observed.append({**event, 'receipt_index': index, 'receipt_kind': kind,
                          'operation': receipt['operation'], 'identity': identity})
+    require(seen_files == expected_files and seen_roots == expected_roots,
+            'Ordered namespace receipts omit committed transfers or completed whole roots')
     return observed
 
 
@@ -365,6 +378,36 @@ def comparison(name, expected, actual, *, available=True):
             'expected': expected, 'actual': actual}
 
 
+def only_atomic_album_granularity(expected, acknowledged):
+    """Recognize only a whole root replacing its contiguous direct-child moves.
+
+    The raw lists remain untouched. Ordinary file order must still match exactly;
+    final names, bytes, summary and physical receipt coverage are checked separately.
+    """
+    cursor, whole = 0, False
+    for actual in acknowledged:
+        value = {key: actual[key] for key in ('kind', 'source', 'destination')}
+        if actual['receipt_kind'] != 'album_renamed':
+            if cursor >= len(expected) or expected[cursor] != value:
+                return False
+            cursor += 1
+            continue
+        whole = True
+        start = cursor
+        def direct_child(path, parent):
+            prefix = parent + os.sep
+            return path.startswith(prefix) and bool(path[len(prefix):]) and os.sep not in path[len(prefix):]
+        while cursor < len(expected):
+            item = expected[cursor]
+            if not (item['kind'] == 'move' and direct_child(item['source'], actual['source'])
+                    and direct_child(item['destination'], actual['destination'])):
+                break
+            cursor += 1
+        if cursor == start:
+            return False
+    return whole and cursor == len(expected)
+
+
 def compare_case(case, original, native):
     comparisons = [comparison('post_execution_tree_in_encounter_order',
                               comparable_snapshot(original['after']), comparable_snapshot(native['after']))]
@@ -438,6 +481,21 @@ def compare_case(case, original, native):
                                   actual_decisions, available=actual_decisions is not None))
     if actual_decisions is None:
         comparisons[-1]['gap'] = 'Original actual decisions/destination eligibility and native raw preview decisions are retained. Native final result has no execution-derived skip-decision trace.'
+    statuses = {row['field']: row['status'] for row in comparisons}
+    required = ('post_execution_tree_in_encounter_order', 'actual_legacy_summary',
+                'physical_committed_destinations', 'physical_moved_sources',
+                'committed_receipt_bytes', 'committed_receipt_coverage', 'unique_committed_receipts')
+    if (statuses['actual_transfer_order'] == 'MISMATCH' and acknowledged is not None
+            and all(statuses.get(field) == 'MATCH' for field in required)
+            and original['error'] is None and native['execution']['exit'] == 0
+            and not native['observed_physical']['changed_existing_files']
+            and only_atomic_album_granularity(expected_order, acknowledged)):
+        order = next(row for row in comparisons if row['field'] == 'actual_transfer_order')
+        order['status'] = 'OBSERVED_DIFFERENCE'
+        order['scope'] = 'physical_operation_granularity'
+        order['detail'] = ('Verified whole-album atomic rename replaces the original direct-child moves. '
+                           'Final names, bytes, counters and receipt coverage match; interruption granularity differs. '
+                           'Raw event lists are retained; no per-file native moves are fabricated.')
     return comparisons
 
 
@@ -539,6 +597,7 @@ def run(binary, bundle, baseline, report):
                     statuses = [item['status'] for item in data['comparisons']]
                     row['status'] = 'MISMATCH' if 'MISMATCH' in statuses else 'OPEN' if 'OPEN' in statuses else 'MATCH'
                     row['open_outcomes'] = [item['field'] for item in data['comparisons'] if item['status'] == 'OPEN']
+                    row['observed_differences'] = [item['field'] for item in data['comparisons'] if item['status'] == 'OBSERVED_DIFFERENCE']
                     row['comparisons'] = [{'field': item['field'], 'status': item['status']} for item in data['comparisons']]
                 except Exception as error:
                     row['status'] = 'ERROR'
