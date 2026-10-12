@@ -233,7 +233,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $repairJobs = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (@($repairJobs | Where-Object { $_ -match ': test$' }).Count -ne 25) { throw "Expected 13 original and 12 FLAC product FixNames cases" }
+          if (@($repairJobs | Where-Object { $_ -match ': test$' }).Count -ne 26) { throw "Expected 13 original and 13 FLAC product FixNames cases" }
           cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
@@ -267,7 +267,8 @@ jobs:
             'coherent_rehashed_wrong_sizes_and_foreign_identical_bytes_never_verify',
             'legacy_v1_mp3_journal_reopens_without_new_evidence_or_rewriting_bytes',
             'v1_journal_cannot_claim_v2_length_changing_evidence',
-            'foreign_collision_after_backup_never_overwrites_or_loses_shorter_stage'
+            'foreign_collision_after_backup_never_overwrites_or_loses_shorter_stage',
+            'real_taglib_provider_plans_rebinds_and_publishes_five_flac_fields'
           )
           foreach ($case in $cases) {
             $exact = "flac::$case"
