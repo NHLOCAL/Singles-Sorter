@@ -3,14 +3,13 @@
 //! encoded media tail are copied exactly. Metadata size may change; see
 //! `native/docs/staged-flac-repair.md` for the offset and compatibility contract.
 use crate::{
-    metadata::{RawFamily, RawValue, project},
+    staged_xiph::{CommentKind, rewrite_comments, validate_repairs},
     staged_tags::{StagedTagEvidence, TagWriteError},
 };
 use sha2::{Digest, Sha256};
 use sorter_core::{
-    RepairMode, fix_jibrish,
-    fix_plan::{FIX_FIELDS, FieldRepair},
-    metadata::{LegacyField, LegacyScalar},
+    fix_plan::FieldRepair,
+    metadata::LegacyField,
 };
 use std::{
     io::{Read, Seek, SeekFrom, Write},
@@ -20,7 +19,6 @@ use std::{
 const MAX_METADATA: usize = 64 * 1024 * 1024;
 const MAX_BLOCK: usize = 0x00ff_ffff;
 const MAX_BLOCKS: usize = 4096;
-const MAX_COMMENTS: usize = 4096;
 const CHUNK: usize = 64 * 1024;
 type Result<T> = std::result::Result<T, TagWriteError>;
 
@@ -49,107 +47,6 @@ fn read_checked(input: &mut impl Read, bytes: &mut [u8], flag: &AtomicBool) -> R
     cancelled(flag)
 }
 
-fn key(field: LegacyField) -> Result<&'static str> {
-    match field {
-        LegacyField::Artist => Ok("artist"),
-        LegacyField::AlbumArtist => Ok("albumartist"),
-        LegacyField::Title => Ok("title"),
-        LegacyField::Album => Ok("album"),
-        LegacyField::Genre => Ok("genre"),
-        _ => Err(TagWriteError::Unsupported("field is outside released repair policy")),
-    }
-}
-
-fn word(bytes: &[u8], at: &mut usize) -> Result<usize> {
-    let end = at.checked_add(4).ok_or(TagWriteError::Unsupported("comment length overflow"))?;
-    let value = bytes.get(*at..end).ok_or(TagWriteError::Unsupported("truncated comment length"))?;
-    *at = end;
-    Ok(u32::from_le_bytes(value.try_into().map_err(|_| TagWriteError::Unsupported("comment length"))?) as usize)
-}
-
-fn vector<'a>(bytes: &'a [u8], at: &mut usize) -> Result<&'a [u8]> {
-    let size = word(bytes, at)?;
-    let end = at.checked_add(size).ok_or(TagWriteError::Unsupported("comment vector overflow"))?;
-    let value = bytes.get(*at..end).ok_or(TagWriteError::Unsupported("truncated comment vector"))?;
-    *at = end;
-    Ok(value)
-}
-
-fn put_vector(out: &mut Vec<u8>, value: &[u8]) -> Result<()> {
-    if out.len().checked_add(4).and_then(|n| n.checked_add(value.len())).is_none_or(|n| n > MAX_BLOCK) {
-        return Err(TagWriteError::Unsupported("rewritten comment exceeds FLAC block limit"));
-    }
-    out.extend(u32::try_from(value.len()).map_err(|_| TagWriteError::Unsupported("comment vector length"))?.to_le_bytes());
-    out.extend_from_slice(value);
-    Ok(())
-}
-
-fn rewrite_comments(bytes: &[u8], repairs: &[FieldRepair], flag: &AtomicBool) -> Result<Vec<u8>> {
-    let mut at = 0;
-    let vendor = vector(bytes, &mut at)?;
-    std::str::from_utf8(vendor).map_err(|_| TagWriteError::Unsupported("vendor is not UTF-8"))?;
-    let count = word(bytes, &mut at)?;
-    if count > MAX_COMMENTS {
-        return Err(TagWriteError::Unsupported("comment count budget"));
-    }
-    let mut comments = Vec::with_capacity(count);
-    for _ in 0..count {
-        cancelled(flag)?;
-        let raw = vector(bytes, &mut at)?;
-        let text = std::str::from_utf8(raw).map_err(|_| TagWriteError::Unsupported("comment is not UTF-8"))?;
-        let (name, value) = text.split_once('=').ok_or(TagWriteError::Unsupported("comment has no separator"))?;
-        if name.is_empty() || !name.bytes().all(|b| (0x20..=0x7e).contains(&b) && b != b'=') {
-            return Err(TagWriteError::Unsupported("invalid comment field name"));
-        }
-        comments.push((raw, name, value));
-    }
-    // FLAC has neither Vorbis's packet prefix nor its framing bit. Reject a
-    // trailer instead of normalizing it or interpreting it as more comments.
-    if at != bytes.len() {
-        return Err(TagWriteError::Unsupported("trailing comment bytes"));
-    }
-    for repair in repairs {
-        cancelled(flag)?;
-        let name = key(repair.field)?;
-        let values = comments.iter().filter(|(_, k, _)| k.eq_ignore_ascii_case(name))
-            .map(|(_, _, v)| RawValue::Text((*v).to_owned())).collect::<Vec<_>>();
-        if values.is_empty() {
-            return Err(TagWriteError::Stale);
-        }
-        // Use raw values, including empty duplicates, not TagLib's addField
-        // normalization. A lossy native-reader plan must fail this comparison.
-        let projected = project(RawFamily::Xiph, repair.field, values)
-            .map_err(|_| TagWriteError::Unsupported("field projection"))?;
-        if projected.value != Ok(LegacyScalar::Text(repair.original.clone())) {
-            return Err(TagWriteError::Stale);
-        }
-    }
-    let mut preserved = Vec::with_capacity(count);
-    for (raw, name, _) in comments {
-        if !repairs.iter().any(|r| key(r.field).is_ok_and(|k| name.eq_ignore_ascii_case(k))) {
-            preserved.push(raw);
-        }
-    }
-    let output_count = preserved.len() + repairs.len();
-    let mut out = Vec::new();
-    put_vector(&mut out, vendor)?;
-    if out.len() > MAX_BLOCK - 4 {
-        return Err(TagWriteError::Unsupported("rewritten comment count exceeds block limit"));
-    }
-    out.extend((output_count as u32).to_le_bytes());
-    for raw in preserved {
-        cancelled(flag)?;
-        put_vector(&mut out, raw)?;
-    }
-    // music-tag FlacFile + Mutagen VCommentDict assignment removes all matching
-    // pairs, then appends one lowercase key. Released field order is observable.
-    for repair in repairs {
-        cancelled(flag)?;
-        let value = format!("{}={}", key(repair.field)?, repair.replacement);
-        put_vector(&mut out, value.as_bytes())?;
-    }
-    Ok(out)
-}
 
 impl FlacStagedPlan {
     /// Inspect native, offset-zero `fLaC` and validate every comment before any
@@ -171,28 +68,7 @@ impl FlacStagedPlan {
         if &magic != b"fLaC" {
             return Err(TagWriteError::Unsupported("only offset-zero native FLAC is supported"));
         }
-        if repairs.len() > FIX_FIELDS.len() {
-            return Err(TagWriteError::Unsupported("repair count"));
-        }
-        let mut previous = None;
-        for repair in repairs {
-            cancelled(cancel)?;
-            let index = FIX_FIELDS.iter().position(|f| *f == repair.field)
-                .ok_or(TagWriteError::Unsupported("repair field"))?;
-            if previous.is_some_and(|p| p >= index)
-                || repair.original.len() > MAX_BLOCK || repair.replacement.len() > MAX_BLOCK
-                || repair.original == repair.replacement
-                || fix_jibrish(&repair.original, RepairMode::Hebrew) != repair.replacement
-            {
-                return Err(TagWriteError::Unsupported("repair order or nonpolicy assignment"));
-            }
-            // Native UTF-8/NUL interoperability is not established for repaired
-            // values. Unknown/unassigned values containing NUL are preserved.
-            if repair.original.contains('\0') {
-                return Err(TagWriteError::Unsupported("embedded NUL in repaired field"));
-            }
-            previous = Some(index);
-        }
+        validate_repairs(repairs, MAX_BLOCK, cancel)?;
         let mut original_header = magic.to_vec();
         let mut repaired_header = magic.to_vec();
         let mut comment_seen = false;
@@ -237,7 +113,7 @@ impl FlacStagedPlan {
             }
             let replacement = if kind == 4 {
                 comment_seen = true;
-                Some(rewrite_comments(&body, repairs, cancel)?)
+                Some(rewrite_comments(&body, repairs, CommentKind::Flac, MAX_BLOCK, cancel)?)
             } else {
                 None
             };

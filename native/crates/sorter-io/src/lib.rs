@@ -20,3 +20,8 @@ pub mod staged_flac;
 
 /// Product dispatch shared by platform backends; no filesystem authority.
 pub mod staged_repair;
+
+/// Stream-only single-logical-stream Ogg Vorbis/Opus tag repair.
+pub mod staged_ogg;
+
+mod staged_xiph;

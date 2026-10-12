@@ -44,6 +44,23 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo +1.99.0 --version
 
+      - name: Require FFmpeg for owned Ogg decoder comparisons
+        run: |
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+            if ($IsWindows) {
+              choco install ffmpeg --yes --no-progress
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            } elseif ($IsLinux) {
+              sudo apt-get update
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              sudo apt-get install --yes ffmpeg
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            } else { throw "Unsupported decoder-test runner" }
+          }
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) { throw "FFmpeg must be available; decoder tests cannot be skipped" }
+          ffmpeg -version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Test all-scope formatter diagnostic orchestration
         run: python tests/build/test_rust_format_diagnostics.py
 
@@ -251,6 +268,23 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if (@($repairJobs | Where-Object { $_ -match ': test$' }).Count -ne 26) { throw "Expected 13 original and 13 FLAC product FixNames cases" }
           cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require Ogg stream and native reader plus actual decoder gates
+        if: ${{ !cancelled() }}
+        run: |
+          $listing = cargo +1.99.0 test --locked -p sorter-io --test staged_ogg -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($listing | Where-Object { $_ -match ': test$' }).Count -ne 17) { throw "Expected all 17 Ogg stream/native/decoder cases" }
+          $cases = @('real_native_reader_roundtrip_matches_five_ogg_assignments_and_track', 'ffmpeg_decodes_real_staged_vorbis_and_opus_to_identical_pcm')
+          foreach ($case in $cases) {
+            $exact = cargo +1.99.0 test --locked -p sorter-io --test staged_ogg $case -- --exact --list
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            if (@($exact | Where-Object { $_ -eq "${case}: test" }).Count -ne 1) { throw "Missing mandatory Ogg case: $case" }
+            cargo +1.99.0 test --locked -p sorter-io --test staged_ogg $case -- --exact --test-threads=1 --nocapture
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          cargo +1.99.0 test --locked -p sorter-io --test staged_ogg -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Require FLAC stream dispatch and native metadata roundtrip
