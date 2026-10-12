@@ -22,7 +22,8 @@ jobs:
       matrix:
         os: [windows-2025, ubuntu-24.04]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    # Full Windows native safety suites now exceed the former 20-minute build budget.
+    timeout-minutes: ${{ matrix.os == 'windows-2025' && 40 || 20 }}
     defaults:
       run:
         shell: pwsh
