@@ -233,9 +233,50 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $repairJobs = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (@($repairJobs | Where-Object { $_ -match ': test$' }).Count -ne 13) { throw "Expected 13 product FixNames cases" }
+          if (@($repairJobs | Where-Object { $_ -match ': test$' }).Count -ne 25) { throw "Expected 13 original and 12 FLAC product FixNames cases" }
           cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require FLAC stream dispatch and native metadata roundtrip
+        if: ${{ !cancelled() }}
+        run: |
+          $listing = cargo +1.99.0 test --locked -p sorter-io --test staged_flac -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($listing | Where-Object { $_ -match ': test$' }).Count -ne 14) { throw "Expected all 14 FLAC stream/dispatch/native cases" }
+          $nativeCase = 'real_native_reader_roundtrip_matches_all_five_assignments_and_untouched_track'
+          $nativeListing = cargo +1.99.0 test --locked -p sorter-io --test staged_flac $nativeCase -- --exact --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($nativeListing | Where-Object { $_ -eq "${nativeCase}: test" }).Count -ne 1) { throw "Native FLAC bridge roundtrip must not be compiled out" }
+          cargo +1.99.0 test --locked -p sorter-io --test staged_flac $nativeCase -- --exact --test-threads=1 --nocapture
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 test --locked -p sorter-io --test staged_flac -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require each exact Windows FLAC product and length-binding case
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        run: |
+          $cases = @(
+            'five_fields_shrink_preserves_picture_vendor_unknowns_audio_and_exact_backup',
+            'unchanged_flac_tags_keep_identity_without_stage_or_backup',
+            'opaque_application_and_reserved_blocks_reject_shift_after_filename_repair',
+            'equal_length_flac_repair_keeps_opaque_block_bytes',
+            'cancellation_during_flac_stage_preserves_original_and_forbids_replay',
+            'cancellation_and_lost_backup_response_keep_distinct_original_and_stage_lengths',
+            'lost_publication_response_reopens_with_replacement_length_and_original_backup',
+            'rehashed_original_replacement_length_or_hash_substitution_is_rejected',
+            'coherent_rehashed_wrong_sizes_and_foreign_identical_bytes_never_verify',
+            'legacy_v1_mp3_journal_reopens_without_new_evidence_or_rewriting_bytes',
+            'v1_journal_cannot_claim_v2_length_changing_evidence',
+            'foreign_collision_after_backup_never_overwrites_or_loses_shorter_stage'
+          )
+          foreach ($case in $cases) {
+            $exact = "flac::$case"
+            $listing = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair $exact -- --exact --list
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            if (@($listing | Where-Object { $_ -eq "${exact}: test" }).Count -ne 1) { throw "Missing exact FLAC product case: $exact" }
+            cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair $exact -- --exact --test-threads=1 --nocapture
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
 
       - name: Test bounded album planning reads
         if: ${{ !cancelled() && runner.os == 'Windows' }}
