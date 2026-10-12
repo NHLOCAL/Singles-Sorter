@@ -89,3 +89,9 @@ export function simpleError(message:string):string{
  if(userFacingMessages.has(human))return human;
  return 'הפעולה לא הושלמה. בדוק שהתיקיות זמינות ושהקבצים לא השתנו.';
 }
+
+/** Reconciliation uncertainty never rewrites observed mutation counters. */
+export function verificationWarning(execution:Pick<ExecutionSnapshot,'recovery_error'>|null,developer=false):string{
+ if(!execution?.recovery_error)return '';
+ return developer?`בדיקת היומן לא הושלמה: ${execution.recovery_error}. תוצאות הביצוע נשמרו; יש לבדוק את הקבצים והגיבויים לפני ניסיון נוסף.`:'הבדיקה הסופית לא הושלמה. בדוק את הקבצים והגיבויים לפני ניסיון נוסף.';
+}

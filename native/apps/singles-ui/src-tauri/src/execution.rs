@@ -89,6 +89,8 @@ pub struct ExecutionSnapshot {
     pub error: Option<String>,
     pub result: Option<ExecutionResult>,
     pub recovery: Option<RecoveryInspection>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recovery_error: Option<String>,
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct RecoveryInspection {
@@ -381,6 +383,7 @@ mod selected {
                 error: None,
                 result: None,
                 recovery: None,
+                recovery_error: None,
             });
             drop(inner);
             let host = self.clone();

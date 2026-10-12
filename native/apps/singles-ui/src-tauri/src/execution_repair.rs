@@ -59,30 +59,35 @@ impl Host {
                 snapshot.operation = Some(progress.operation);
             });
         });
-        if !job.journal_locations().is_empty()
-            && let Ok(report) = job.inspect_recovery(&cancellation.cancelled)
-        {
-            self.update_repair(id, |snapshot| {
-                snapshot.recovery = Some(RecoveryInspection {
-                    observed_directories: 0,
-                    pending_directories: 0,
-                    rejected_directories: 0,
-                    incomplete_tail: report.incomplete_tail,
-                    transfers: report
-                        .operations
-                        .into_iter()
-                        .map(|operation| RecoveryItem {
-                            operation: operation.operation,
-                            status: operation
-                                .evidence
-                                .iter()
-                                .map(|evidence| format!("{}:{:?}", evidence.role, evidence.status))
-                                .collect::<Vec<_>>()
-                                .join(", "),
-                        })
-                        .collect(),
-                });
-            });
+        if !job.journal_locations().is_empty() && !cancellation.is_cancelled() {
+            match job.inspect_recovery(&cancellation.cancelled) {
+                Ok(report) => self.update_repair(id, |snapshot| {
+                    snapshot.recovery = Some(RecoveryInspection {
+                        observed_directories: 0,
+                        pending_directories: 0,
+                        rejected_directories: 0,
+                        incomplete_tail: report.incomplete_tail,
+                        transfers: report
+                            .operations
+                            .into_iter()
+                            .map(|operation| RecoveryItem {
+                                operation: operation.operation,
+                                status: operation
+                                    .evidence
+                                    .iter()
+                                    .map(|evidence| format!("{}:{:?}", evidence.role, evidence.status))
+                                    .collect::<Vec<_>>()
+                                    .join(", "),
+                            })
+                            .collect(),
+                    });
+                }),
+                Err(error) => self.update_repair(id, |snapshot| {
+                    // This reports failed reconciliation, not a fictional failed
+                    // mutation. Observed repair counters remain unchanged.
+                    snapshot.recovery_error = Some(error.to_string());
+                }),
+            }
         }
         match result {
             Ok(result) => self.update_repair(id, |snapshot| {
