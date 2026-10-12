@@ -141,7 +141,7 @@ jobs:
         run: |
           $cases = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib diagnostic_log_tests -- --list
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 6) { throw "Expected 6 diagnostic log cases" }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 8) { throw "Expected 8 diagnostic log cases" }
           cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib diagnostic_log_tests -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
