@@ -116,15 +116,14 @@ impl Host {
     }
     #[cfg(any(test, all(windows, feature = "selected-windows-execution")))]
     pub(super) fn update_recovery_progress(&self, id: &str, progress: RecoveryProgress) {
-        if let Ok(mut inner) = self.lock() {
-            if let Some(run) = inner
+        if let Ok(mut inner) = self.lock()
+            && let Some(run) = inner
                 .recovery
                 .run
                 .as_mut()
                 .filter(|run| run.snapshot.run_id == id && run.snapshot.running())
-            {
-                run.snapshot.progress = progress;
-            }
+        {
+            run.snapshot.progress = progress;
         }
     }
     #[cfg(any(test, all(windows, feature = "selected-windows-execution")))]

@@ -30,10 +30,13 @@ use std::{
 
 #[path = "execution.rs"]
 mod execution;
-pub use execution::{ApplyReadiness, ExecutionSnapshot, RetainedExecution};
+#[cfg(feature = "desktop")]
+pub use execution::RetainedExecution;
+pub use execution::{ApplyReadiness, ExecutionSnapshot};
 #[path = "recovery_owner.rs"]
 mod recovery_owner;
-pub use recovery_owner::{RecoveryPage, RecoveryReport, RecoveryRunId, RecoverySnapshot};
+#[cfg(feature = "desktop")]
+pub use recovery_owner::{RecoveryRunId, RecoverySnapshot};
 
 const BUNDLED: &[u8] =
     include_bytes!("../../../../tests/fixtures/full_contract/released-singer-list.csv");
@@ -340,12 +343,11 @@ impl Host {
             if let Some(probe) = &inner.model_probe {
                 probe.cancel();
             }
-            if let Some(job) = &inner.job {
-                if job.snapshot.status == "running"
-                    || job.execution.as_ref().is_some_and(|e| e.is_running())
-                {
-                    job.cancellation.cancel();
-                }
+            if let Some(job) = &inner.job
+                && (job.snapshot.status == "running"
+                    || job.execution.as_ref().is_some_and(|e| e.is_running()))
+            {
+                job.cancellation.cancel();
             }
         }
     }
@@ -1188,6 +1190,70 @@ fn project_rows(plan: &JobPlanV2) -> Vec<DisplayRow> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_fresh_host_has_no_retained_execution() {
+        let host = super::Host::default();
+        assert!(host.latest_execution().unwrap().is_none());
+    }
+
+    #[test]
+    #[cfg(not(all(windows, feature = "selected-windows-execution")))]
+    fn feature_off_execution_and_recovery_refuse_without_effects_or_busy_leaks() {
+        use super::{Host, Role};
+        let directory = tempfile::tempdir().unwrap();
+        let host = Host::default();
+        host.set_journal_directory(directory.path().into()).unwrap();
+        assert_eq!(
+            host.execution_snapshot("absent").unwrap_err().code,
+            "UNKNOWN_JOB"
+        );
+        assert_eq!(host.cancel_apply("absent").unwrap_err().code, "UNKNOWN_JOB");
+        assert_eq!(
+            host.start_apply("absent", "absent", Vec::new(), host.claim().unwrap())
+                .err()
+                .expect("feature-off apply must refuse")
+                .code,
+            "APPLY_UNAVAILABLE"
+        );
+        assert_eq!(
+            host.start_recovery_list(0, 10, host.claim().unwrap())
+                .unwrap_err()
+                .code,
+            "RECOVERY_UNAVAILABLE"
+        );
+        assert_eq!(
+            host.start_recovery_inspection(
+                "record".into(),
+                "source".into(),
+                None,
+                None,
+                host.claim().unwrap()
+            )
+            .unwrap_err()
+            .code,
+            "RECOVERY_UNAVAILABLE"
+        );
+        assert_eq!(
+            host.select_recovery_parent_path("record", directory.path().into())
+                .unwrap_err()
+                .code,
+            "RECOVERY_UNAVAILABLE"
+        );
+        assert_eq!(
+            host.select_recovery_path(Role::Source, directory.path().into())
+                .unwrap_err()
+                .code,
+            "RECOVERY_UNAVAILABLE"
+        );
+        assert!(host.claim().is_ok());
+        assert!(
+            std::fs::read_dir(directory.path())
+                .unwrap()
+                .next()
+                .is_none()
+        );
+    }
+
     #[test]
     fn recovery_commands_have_matching_manifest_handlers_and_exact_grants() {
         let manifest = include_str!("../build.rs");

@@ -54,9 +54,14 @@ pub struct RecoveryReport {
 }
 #[path = "recovery_run.rs"]
 mod run;
-#[cfg(any(test, all(windows, feature = "selected-windows-execution")))]
+#[cfg(all(windows, feature = "selected-windows-execution"))]
 use run::RecoveryOutput;
-pub use run::{RecoveryProgress, RecoveryRunId, RecoverySnapshot};
+pub use run::RecoveryRunId;
+#[cfg(any(
+    feature = "desktop",
+    all(windows, feature = "selected-windows-execution")
+))]
+pub use run::RecoverySnapshot;
 #[derive(Default)]
 pub(super) struct RecoveryState {
     pub(super) run: Option<run::RecoveryRun>,
