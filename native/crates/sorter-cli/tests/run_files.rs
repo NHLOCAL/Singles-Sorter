@@ -60,6 +60,10 @@ mod selected {
         for name in names {
             fs::write(source.join(name), &bytes).unwrap();
         }
+        let primary = root.path().join("selected-primary.csv");
+        if action == "stale_primary" {
+            fs::write(&primary, "אברהם פריד,אברהם פריד\n").unwrap();
+        }
         let expected = Sha256::digest(&bytes);
         let mut child = Command::new(env!("CARGO_BIN_EXE_singles-sorter"))
             .args(["run-files", "--ndjson"])
@@ -70,7 +74,10 @@ mod selected {
             .unwrap();
         let mut stdin = child.stdin.take().unwrap();
         let mut output = BufReader::new(child.stdout.take().unwrap());
-        let request = json!({"schema_version":1,"journal_directory":journal,"preview":{"schema_version":2,"mode":"Sort","source":source,"target":target,"settings":{"copy_mode":copy,"main_folder_only":false,"singles_folder":true,"exist_only":false,"abc_sort":false,"duet_mode":false},"ai_profile":"Disabled","personal_aliases":null}});
+        let mut request = json!({"schema_version":1,"journal_directory":journal,"preview":{"schema_version":2,"mode":"Sort","source":source,"target":target,"settings":{"copy_mode":copy,"main_folder_only":false,"singles_folder":true,"exist_only":false,"abc_sort":false,"duet_mode":false},"ai_profile":"Disabled","personal_aliases":null}});
+        if action == "stale_primary" {
+            request["preview"]["primary_aliases"] = json!(primary);
+        }
         writeln!(stdin, "{request}").unwrap();
         stdin.flush().unwrap();
         let mut line = String::new();
@@ -80,6 +87,9 @@ mod selected {
         assert!(fs::read_dir(&target).unwrap().next().is_none());
         if action == "stale" {
             fs::write(source.join(names[0]), b"changed after inspected preview").unwrap();
+        }
+        if action == "stale_primary" {
+            fs::write(&primary, "אברהם פריד,יעד שהשתנה\n").unwrap();
         }
         let decision = if action == "cancel" {
             json!({"action":"cancel"})
@@ -94,6 +104,12 @@ mod selected {
             .collect::<Vec<_>>();
         let status = child.wait().unwrap();
         if action != "apply" {
+            if action == "stale_primary" {
+                assert!(!status.success(), "{events:?}");
+                assert!(events.iter().any(|event| event["event"] == "error"), "{events:?}");
+                assert_eq!(fs::read_dir(&journal).unwrap().count(), 0);
+                for name in names { assert_eq!(fs::read(source.join(name)).unwrap(), bytes); }
+            }
             if action == "journal_missing" {
                 assert!(!journal.exists());
             }
@@ -129,6 +145,7 @@ mod selected {
     fn cancel_and_changed_source_never_apply_inspected_plan() {
         run_case(true, "cancel");
         run_case(true, "stale");
+        run_case(true, "stale_primary");
     }
     #[test]
     fn capability_report_identifies_repair_scope_without_cleanup_authority() {
