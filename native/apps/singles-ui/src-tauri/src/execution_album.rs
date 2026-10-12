@@ -1011,12 +1011,22 @@ mod tests {
                 data.modified().unwrap(),
                 data.permissions().readonly(),
                 if data.is_file() {
-                    std::fs::read(path).unwrap()
+                    std::fs::read(path).unwrap_or_else(|error| {
+                        panic!(
+                            "Read-only inspection snapshot could not read {}: {error}",
+                            path.display()
+                        )
+                    })
                 } else {
                     vec![]
                 },
                 if data.is_file() && auxiliary.exists() {
-                    Some(std::fs::read(auxiliary).unwrap())
+                    Some(std::fs::read(&auxiliary).unwrap_or_else(|error| {
+                        panic!(
+                            "Read-only inspection snapshot could not read {}: {error}",
+                            auxiliary.display()
+                        )
+                    }))
                 } else {
                     None
                 },
@@ -1138,6 +1148,10 @@ mod tests {
                 let cancel_id = job.job_id.clone();
                 host.verification_observer = Some(Arc::new(move |progress| {
                     if progress.stage == "album_journals" && progress.bytes_read == 0 {
+                        // This stage is emitted after mutation leases are
+                        // released, before any read-only journal/media bytes.
+                        // Independent std reads must work here; do not mask a
+                        // sharing failure or omit files from the baseline.
                         *before.lock().unwrap() = Some(
                             paths
                                 .iter()
