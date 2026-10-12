@@ -112,9 +112,25 @@ jobs:
 
       - name: Install pinned official Rust
         run: |
+          # Keep the official pinned toolchain separate from mutable runner-image
+          # components. RUSTUP_HOME is job-owned; never delete the runner's home.
+          # https://rust-lang.github.io/rustup/devel/environment-variables.html
+          if ($IsLinux) {
+            $isolatedHome = Join-Path $env:RUNNER_TEMP ("singles-cli-rustup-" + [guid]::NewGuid().ToString("N"))
+            New-Item -ItemType Directory -Path $isolatedHome -ErrorAction Stop | Out-Null
+            $env:RUSTUP_HOME = $isolatedHome
+            Add-Content -LiteralPath $env:GITHUB_ENV -Value "RUSTUP_HOME=$isolatedHome" -Encoding utf8
+            Write-Host "Using job-owned RUSTUP_HOME: $isolatedHome"
+          }
           rustup toolchain install 1.99.0 --profile minimal --component rustfmt --component clippy
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo +1.99.0 --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          rustup which --toolchain 1.99.0 rustc
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 clippy --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 fmt --version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Record exact Windows CLI profiles for selected-execution notice review
