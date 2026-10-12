@@ -745,7 +745,12 @@ mod selected {
                             "Journal storage changed; inspect a fresh plan",
                         ));
                     }
-                    (target, scope.execution_scope().clone(), Some(scope), Some(journal_identity))
+                    (
+                        target,
+                        scope.execution_scope().clone(),
+                        Some(scope),
+                        Some(journal_identity),
+                    )
                 }
             };
             // Startup profile access already established this application directory.

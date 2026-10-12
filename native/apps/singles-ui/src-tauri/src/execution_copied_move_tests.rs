@@ -322,21 +322,40 @@ fn retained_journal_identity_survives_replacement_after_comparison() {
     let target = owned.path().join("target");
     let journal = owned.path().join("journal");
     let original_journal = owned.path().join("original-journal");
-    for path in [&source, &target, &journal] { std::fs::create_dir(path).unwrap(); }
+    for path in [&source, &target, &journal] {
+        std::fs::create_dir(path).unwrap();
+    }
     let retained = inspect_root(&journal).unwrap().identity.unwrap();
     // This is the exact successful comparison formerly followed by a second
     // observation. Replace only the disposable root before the real grant/open.
-    assert_eq!(inspect_root(&journal).unwrap().identity.as_ref(), Some(&retained));
+    assert_eq!(
+        inspect_root(&journal).unwrap().identity.as_ref(),
+        Some(&retained)
+    );
     std::fs::rename(&journal, &original_journal).unwrap();
     std::fs::create_dir(&journal).unwrap();
-    assert_ne!(inspect_root(&journal).unwrap().identity.as_ref(), Some(&retained));
-    let grant = |path: &Path| WindowsSelectedRootGrant::new(path.to_owned(), inspect_root(path).unwrap().identity.unwrap()).unwrap();
+    assert_ne!(
+        inspect_root(&journal).unwrap().identity.as_ref(),
+        Some(&retained)
+    );
+    let grant = |path: &Path| {
+        WindowsSelectedRootGrant::new(
+            path.to_owned(),
+            inspect_root(path).unwrap().identity.unwrap(),
+        )
+        .unwrap()
+    };
     let actual = WindowsMutationStorage::for_selected_roots(
-        grant(&source), grant(&target), selected::journal_grant(journal.clone(), Some(retained)).unwrap(),
+        grant(&source),
+        grant(&target),
+        selected::journal_grant(journal.clone(), Some(retained)).unwrap(),
     );
     match actual {
         Ok(_) => panic!("A replacement journal root must not be adopted"),
-        Err(error) => assert_eq!(error.kind, sorter_io::mutation::MutationErrorKind::StalePlan),
+        Err(error) => assert_eq!(
+            error.kind,
+            sorter_io::mutation::MutationErrorKind::StalePlan
+        ),
     }
     for path in [&source, &target, &journal, &original_journal] {
         assert!(path.is_dir());
