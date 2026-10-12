@@ -443,6 +443,7 @@ impl WholeAlbumJob {
             previous: String::new(),
             bytes: 0,
             poisoned: false,
+            controlled: false,
         };
         manifest.append("Header", &self.header)?;
         let mut status = JobStatus::Complete;

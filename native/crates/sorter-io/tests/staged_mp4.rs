@@ -454,9 +454,9 @@ fn ffmpeg_decodes_actual_staged_aac_and_alac_with_fast_start_unchanged() {
                 "artist=à".as_ref(),
             ];
             if front {
-                args.extend(["-movflags".as_ref(), "+faststart".as_ref()]);
+                args.extend([OsStr::new("-movflags"), OsStr::new("+faststart")]);
             }
-            args.extend(["-y".as_ref(), input.as_os_str()]);
+            args.extend([OsStr::new("-y"), input.as_os_str()]);
             run(&args);
             let before = std::fs::read(&input).unwrap();
             let after = stage(&before, &[repair(LegacyField::Artist, "à")]);
