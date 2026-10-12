@@ -59,6 +59,18 @@ jobs:
         with:
           python-version: '3.12.10'
 
+      - name: Require FFmpeg and FFprobe before owned media helper tests
+        run: |
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+            choco install ffmpeg --yes --no-progress
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          foreach ($tool in @('ffmpeg', 'ffprobe')) {
+            if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) { throw "$tool must be available; decoder tests cannot be skipped" }
+            & $tool -version
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
       - name: Test bounded startup and original-AI driver contracts before heavy builds
         run: |
           python -m unittest discover -s tests -p 'test_desktop*.py' -v
