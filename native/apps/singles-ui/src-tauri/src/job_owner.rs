@@ -595,11 +595,12 @@ impl Host {
                 "Only completed jobs have result pages",
             ));
         }
+        let effects = DisplayEffects::from_execution(job.execution.as_ref());
         let projected: Vec<_> = job
             .rows
             .iter()
             .filter(|row| developer_mode || !row.developer_only)
-            .map(|row| (row, display_no_action(row, job.execution.as_ref())))
+            .map(|row| (row, effects.inactive(row)))
             .collect();
         let skipped = projected.iter().filter(|(_, no_action)| *no_action).count();
         let visible: Vec<_> = projected
@@ -629,37 +630,53 @@ impl Host {
         })
     }
 }
-// Keep incomplete/uncertain attempts visible. Only observed no-effect outcomes
-// disappear; missing result items never prove that a file was untouched.
-fn display_no_action(row: &DisplayRow, execution: Option<&ExecutionSnapshot>) -> bool {
-    let Some(execution) = execution.filter(|value| !value.is_running()) else {
-        return row.no_action;
-    };
-    let Some(result) = &execution.result else {
-        return false;
-    };
-    if row.operation_ids.is_empty() {
-        return row.no_action;
+// This is display evidence, never an execution grant. Build once per page so a
+// large terminal job does not rescan every item for every row under the host lock.
+enum DisplayEffects {
+    Preview,
+    Unknown,
+    Observed(std::collections::HashMap<usize, bool>),
+}
+impl DisplayEffects {
+    fn from_execution(execution: Option<&ExecutionSnapshot>) -> Self {
+        let Some(execution) = execution.filter(|value| !value.is_running()) else {
+            return Self::Preview;
+        };
+        let Some(result) = &execution.result else {
+            return Self::Unknown;
+        };
+        let mut operations = std::collections::HashMap::new();
+        for item in &result.items {
+            let changed = item
+                .repair
+                .as_ref()
+                .is_some_and(|repair| repair.renamed || repair.repaired);
+            let inactive = !changed
+                && (item.status == "blocked"
+                    || (item.status == "complete" && item.repair.is_some()));
+            operations
+                .entry(item.operation)
+                .and_modify(|all: &mut bool| *all &= inactive)
+                .or_insert(inactive);
+        }
+        Self::Observed(operations)
     }
-    row.operation_ids.iter().all(|operation| {
-        let items: Vec<_> = result
-            .items
-            .iter()
-            .filter(|item| item.operation == *operation)
-            .collect();
-        !items.is_empty()
-            && items.iter().all(|item| {
-                if item
-                    .repair
-                    .as_ref()
-                    .is_some_and(|repair| repair.renamed || repair.repaired)
-                {
-                    return false;
+    fn inactive(&self, row: &DisplayRow) -> bool {
+        match self {
+            Self::Preview => row.no_action,
+            Self::Unknown => false,
+            Self::Observed(operations) => {
+                if row.operation_ids.is_empty() {
+                    return row.no_action;
                 }
-                item.status == "blocked"
-                    || (item.status == "complete" && item.repair.is_some())
-            })
-    })
+                // Missing items never prove no effects. Multiple items for one
+                // operation must all have observed no-effect outcomes.
+                row.operation_ids
+                    .iter()
+                    .all(|operation| operations.get(operation) == Some(&true))
+            }
+        }
+    }
 }
 fn validate_path(path: &Path) -> Result<()> {
     let bad = path.to_str().is_none_or(|raw| {
@@ -1227,7 +1244,10 @@ mod tests {
                 }],
             }),
         };
-        assert!(display_no_action(&row, Some(&snapshot)));
+        let inactive = |row: &DisplayRow, snapshot: &ExecutionSnapshot| {
+            DisplayEffects::from_execution(Some(snapshot)).inactive(row)
+        };
+        assert!(inactive(&row, &snapshot));
         for status in [
             "failed",
             "cancelled",
@@ -1237,27 +1257,32 @@ mod tests {
             "metadata_failure",
         ] {
             snapshot.result.as_mut().unwrap().items[0].status = status;
-            assert!(!display_no_action(&row, Some(&snapshot)), "{status}");
+            assert!(!inactive(&row, &snapshot), "{status}");
         }
         snapshot.result.as_mut().unwrap().items[0].status = "blocked";
-        assert!(display_no_action(&row, Some(&snapshot)));
+        assert!(inactive(&row, &snapshot));
+        let mut attempted = snapshot.result.as_ref().unwrap().items[0].clone();
+        attempted.status = "failed";
+        snapshot.result.as_mut().unwrap().items.push(attempted);
+        assert!(!inactive(&row, &snapshot));
+        snapshot.result.as_mut().unwrap().items.pop();
         snapshot.result.as_mut().unwrap().items[0].status = "complete";
         snapshot.result.as_mut().unwrap().items[0]
             .repair
             .as_mut()
             .unwrap()
             .renamed = true;
-        assert!(!display_no_action(&row, Some(&snapshot)));
+        assert!(!inactive(&row, &snapshot));
         snapshot.result.as_mut().unwrap().items[0].status = "blocked";
-        assert!(!display_no_action(&row, Some(&snapshot)));
+        assert!(!inactive(&row, &snapshot));
         snapshot.result.as_mut().unwrap().items[0].status = "complete";
         snapshot.result.as_mut().unwrap().items[0].repair = None;
-        assert!(!display_no_action(&row, Some(&snapshot)));
+        assert!(!inactive(&row, &snapshot));
         row.operation_ids.push(1);
-        assert!(!display_no_action(&row, Some(&snapshot)));
+        assert!(!inactive(&row, &snapshot));
         snapshot.result = None;
         row.no_action = true;
-        assert!(!display_no_action(&row, Some(&snapshot)));
+        assert!(!inactive(&row, &snapshot));
     }
     #[cfg(any(windows, target_os = "linux"))]
     #[test]
