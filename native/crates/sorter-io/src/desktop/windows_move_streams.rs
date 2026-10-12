@@ -375,3 +375,322 @@ mod move_stream_inventory_tests {
         assert!(parse_inventory(&duplicate).is_err());
     }
 }
+
+/// A temp with private named-stream handles. Its ordinary main stream is the
+/// only writer exposed to the transfer driver; named writes use the bound copy.
+pub struct WindowsCopiedMoveTemp {
+    main: WindowsOwnedTemp,
+    named: Vec<File>,
+    evidence: Option<WindowsMoveSourceEvidence>,
+    poisoned: bool,
+}
+pub struct WindowsCopiedMovePublished {
+    main: WindowsPublished,
+    named: Vec<File>,
+    evidence: WindowsMoveSourceEvidence,
+    poisoned: bool,
+}
+impl Write for WindowsCopiedMoveTemp {
+    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+        if self.poisoned || self.evidence.is_some() {
+            return Err(io::Error::other("copied Move temp is frozen or poisoned"));
+        }
+        self.main.write(bytes)
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        self.main.flush()
+    }
+}
+impl WindowsCopiedMoveTemp {
+    pub fn observation(&self) -> &MutationObservation { self.main.observation() }
+    pub fn sync_data(&self) -> Result<(), MutationError> { self.main.sync_data() }
+    pub fn verify_content(&self, digest: &ContentDigest) -> Result<MutationObservation, MutationError> {
+        if self.poisoned { return Err(err(MutationErrorKind::UnknownOutcome, "copied Move temp poisoned")); }
+        self.main.verify_content(digest)
+    }
+}
+impl WindowsCopiedMovePublished {
+    pub fn observation(&self) -> &MutationObservation { self.main.observation() }
+}
+
+impl WindowsMutationStorage {
+    pub fn create_copied_move_temp(
+        &mut self, parent: &WindowsParent, job_id: &str, cancel: &AtomicBool,
+    ) -> MutationOutcome<WindowsCopiedMoveTemp> {
+        match self.create_temp(parent, job_id, cancel) {
+            MutationOutcome::Applied(main) => MutationOutcome::Applied(WindowsCopiedMoveTemp {
+                main, named: Vec::new(), evidence: None, poisoned: false,
+            }),
+            MutationOutcome::NoEffect(error) => MutationOutcome::NoEffect(error),
+            MutationOutcome::PendingUnknown(error) => MutationOutcome::PendingUnknown(error),
+        }
+    }
+
+    /// Must follow a synced auxiliary-stream write intent binding the complete
+    /// preview and this owned temp identity. Any dispatched failure is uncertain.
+    pub fn copy_bound_move_streams(
+        &self, source: &WindowsCopiedMoveSource, temp: &mut WindowsCopiedMoveTemp,
+        cancel: &AtomicBool,
+    ) -> MutationOutcome<WindowsMoveSourceEvidence> {
+        self.copy_bound_move_streams_with(source, temp, cancel, |_| Ok(()))
+    }
+
+    fn copy_bound_move_streams_with(
+        &self, source: &WindowsCopiedMoveSource, temp: &mut WindowsCopiedMoveTemp,
+        cancel: &AtomicBool, mut checkpoint: impl FnMut(&str) -> Result<(), MutationError>,
+    ) -> MutationOutcome<WindowsMoveSourceEvidence> {
+        let before = (|| {
+            checkpoint("before")?;
+            if temp.poisoned || temp.evidence.is_some() {
+                return Err(err(MutationErrorKind::StalePlan, "copied Move stream stage already attempted"));
+            }
+            self.verify_copied_move_source(source, cancel)?;
+            self.check_role(&temp.main.parent, RootRole::Target)?;
+            temp.main.verify_content(&source.main.expected.digest)?;
+            let file = temp.main.file.as_ref().ok_or_else(|| err(MutationErrorKind::StalePlan, "temp consumed"))?;
+            if stream_inventory(file)? != vec![(unnamed(), source.main.expected.digest.length)] {
+                return Err(err(MutationErrorKind::StalePlan, "fresh temp has unexpected streams"));
+            }
+            Ok(())
+        })();
+        if let Err(error) = before { return MutationOutcome::NoEffect(error); }
+        temp.poisoned = true;
+        let staged = (|| {
+            for (source_file, expected) in source.named.iter().zip(source.evidence.streams.iter().skip(1)) {
+                cancelled(cancel)?;
+                let mut destination = open_named_stream(
+                    temp.main.parent.handle(), units(&temp.main.observation.actual_name)?, &expected.name, true,
+                )?;
+                checkpoint("after_create")?;
+                if identity(&destination).map_err(read_error)? != temp.main.identity {
+                    return Err(err(MutationErrorKind::VerificationFailed, "created stream belongs to another temp"));
+                }
+                let mut reader = source_file;
+                reader.seek(SeekFrom::Start(0)).map_err(io_error)?;
+                let mut bytes = [0u8; 64 * 1024];
+                let mut total = 0u64;
+                let mut hash = Sha256::new();
+                loop {
+                    cancelled(cancel)?;
+                    let count = reader.read(&mut bytes).map_err(io_error)?;
+                    if count == 0 { break; }
+                    total = total.checked_add(count as u64).filter(|n| *n <= expected.length)
+                        .ok_or_else(|| err(MutationErrorKind::StalePlan, "source named stream grew"))?;
+                    destination.write_all(&bytes[..count]).map_err(io_error)?;
+                    hash.update(&bytes[..count]);
+                }
+                checkpoint("after_write")?;
+                let actual: [u8; 32] = hash.finalize().into();
+                if total != expected.length || actual != expected.sha256 {
+                    return Err(err(MutationErrorKind::StalePlan, "source named stream changed during copy"));
+                }
+                unsafe { FlushFileBuffers(HANDLE(destination.as_raw_handle())) }.map_err(win_error)?;
+                // Freeze close-time access/write updates on every held stream,
+                // before the shared file metadata finalizer sets copied times.
+                let freeze = FILETIME { dwLowDateTime: u32::MAX, dwHighDateTime: u32::MAX };
+                unsafe { SetFileTime(HANDLE(destination.as_raw_handle()), None, Some(&freeze), Some(&freeze)) }.map_err(win_error)?;
+                if stream_digest(&destination, expected.length, cancel)?.sha256 != expected.sha256 {
+                    return Err(err(MutationErrorKind::VerificationFailed, "named stream readback differs"));
+                }
+                unsafe { FlushFileBuffers(HANDLE(destination.as_raw_handle())) }.map_err(win_error)?;
+                temp.named.push(destination);
+                checkpoint("after_flush")?;
+            }
+            checkpoint("before_verify")?;
+            self.verify_copied_move_source(source, cancel)?;
+            verify_bound_streams(temp.main.file.as_ref().expect("retained temp"), &temp.named, &source.evidence, cancel)?;
+            Ok(())
+        })();
+        if let Err(error) = staged {
+            return MutationOutcome::PendingUnknown(err(
+                MutationErrorKind::UnknownOutcome,
+                &format!("auxiliary stream stage dispatched; reconcile retained source/temp: {error:?}"),
+            ).with_observation(temp.main.observation.clone()));
+        }
+        temp.evidence = Some(source.evidence.clone());
+        temp.poisoned = false;
+        MutationOutcome::Applied(source.evidence.clone())
+    }
+
+    pub fn finalize_copied_move_metadata(
+        &self, source: &WindowsCopiedMoveSource, temp: &mut WindowsCopiedMoveTemp,
+        cancel: &AtomicBool,
+    ) -> MutationOutcome<WindowsCopyMetadataEvidence> {
+        if temp.poisoned || temp.evidence.as_ref() != Some(&source.evidence) {
+            return MutationOutcome::NoEffect(err(MutationErrorKind::StalePlan, "auxiliary streams not verified"));
+        }
+        self.finalize_selected_copy_metadata(&source.main, &mut temp.main, cancel)
+    }
+
+    pub fn publish_copied_move_no_replace(
+        &mut self, temp: &mut WindowsCopiedMoveTemp, parent: &WindowsParent,
+        name: &MutationName, cancel: &AtomicBool,
+    ) -> MutationOutcome<WindowsCopiedMovePublished> {
+        let Some(evidence) = temp.evidence.clone().filter(|_| !temp.poisoned) else {
+            return MutationOutcome::NoEffect(err(MutationErrorKind::StalePlan, "stream stage unavailable"));
+        };
+        let checked = (|| {
+            let file = temp.main.file.as_ref().ok_or_else(|| err(MutationErrorKind::StalePlan, "temp consumed"))?;
+            verify_bound_streams(file, &temp.named, &evidence, cancel)
+        })();
+        if let Err(error) = checked { return MutationOutcome::NoEffect(error); }
+        temp.poisoned = true;
+        match self.publish_no_replace(&mut temp.main, parent, name, cancel) {
+            MutationOutcome::Applied(main) => MutationOutcome::Applied(WindowsCopiedMovePublished {
+                main, named: std::mem::take(&mut temp.named), evidence, poisoned: false,
+            }),
+            MutationOutcome::NoEffect(error) => MutationOutcome::NoEffect(error),
+            MutationOutcome::PendingUnknown(error) => MutationOutcome::PendingUnknown(error),
+        }
+    }
+
+    pub fn verify_copied_move_publication(
+        &mut self, published: &WindowsCopiedMovePublished, digest: &ContentDigest,
+        cancel: &AtomicBool,
+    ) -> Result<MutationObservation, MutationError> {
+        if published.poisoned { return Err(err(MutationErrorKind::UnknownOutcome, "copied Move publication poisoned")); }
+        let observation = self.verify(&published.main, digest)?;
+        verify_bound_streams(&published.main.file, &published.named, &published.evidence, cancel)?;
+        // Named-stream readback cannot silently change the copied file metadata.
+        self.verify(&published.main, digest)?;
+        Ok(observation)
+    }
+
+    pub fn sync_copied_move_publication(
+        &mut self, published: &mut WindowsCopiedMovePublished, digest: &ContentDigest,
+        cancel: &AtomicBool,
+    ) -> Result<MutationObservation, MutationError> {
+        self.verify_copied_move_publication(published, digest, cancel)?;
+        published.poisoned = true;
+        for file in &published.named {
+            cancelled(cancel)?;
+            unsafe { FlushFileBuffers(HANDLE(file.as_raw_handle())) }.map_err(win_error)?;
+        }
+        let acknowledgment = self.sync_published_file(&mut published.main, digest, cancel)?;
+        let observation = acknowledgment.observation().clone();
+        verify_bound_streams(&published.main.file, &published.named, &published.evidence, cancel)?;
+        published.poisoned = false;
+        Ok(observation)
+    }
+}
+fn verify_bound_streams(
+    main: &File, named: &[File], evidence: &WindowsMoveSourceEvidence, cancel: &AtomicBool,
+) -> Result<(), MutationError> {
+    let expected = evidence.streams.iter().map(|stream| (stream.name.clone(), stream.length)).collect::<Vec<_>>();
+    if stream_inventory(main)? != expected || named.len() + 1 != expected.len() {
+        return Err(err(MutationErrorKind::VerificationFailed, "destination stream membership differs"));
+    }
+    let main_id = identity(main).map_err(read_error)?;
+    for (file, expected) in named.iter().zip(evidence.streams.iter().skip(1)) {
+        if identity(file).map_err(read_error)? != main_id || stream_digest(file, expected.length, cancel)?.sha256 != expected.sha256 {
+            return Err(err(MutationErrorKind::VerificationFailed, "destination stream identity/content differs"));
+        }
+    }
+    cancelled(cancel)
+}
+
+#[cfg(test)]
+mod move_stream_copy_tests {
+    use super::*;
+    fn applied<T>(outcome: MutationOutcome<T>) -> T {
+        match outcome { MutationOutcome::Applied(value) => value, _ => panic!("expected applied owned effect") }
+    }
+    struct Fixture {
+        storage: WindowsMutationStorage,
+        source: WindowsCopiedMoveSource,
+        target: WindowsParent,
+        path: PathBuf,
+    }
+    impl Fixture {
+        fn new() -> Self {
+            let root = tempfile::tempdir().unwrap();
+            let path = root.path().to_path_buf();
+            std::fs::create_dir(path.join("source")).unwrap();
+            std::fs::create_dir(path.join("target")).unwrap();
+            std::fs::write(path.join("source/song.mp3"), b"audio").unwrap();
+            std::fs::write(path.join("source/song.mp3:notes"), b"notes").unwrap();
+            std::fs::write(path.join("source/song.mp3:Zone.Identifier"), b"zone").unwrap();
+            let storage = WindowsMutationStorage::for_owned_synthetic_tree(root).unwrap();
+            let parent = storage.parent(Path::new("source")).unwrap();
+            let target = storage.parent(Path::new("target")).unwrap();
+            let expected = ExpectedSource {
+                identity: identity(chain(&path.join("source/song.mp3")).unwrap().last().unwrap()).unwrap(),
+                parent_identity: parent.identity().clone(), name: MutationName::Windows("song.mp3".encode_utf16().collect()),
+                size: Some(5), modified: None, digest: ContentDigest { length: 5, sha256: Sha256::digest(b"audio").into() },
+            };
+            let preview = storage.inspect_copied_move_source(&parent, &expected, &AtomicBool::new(false)).unwrap();
+            let source = storage.acquire_copied_move_source(&parent, &expected, &preview, &AtomicBool::new(false)).unwrap();
+            Self { storage, source, target, path }
+        }
+        fn temp(&mut self) -> WindowsCopiedMoveTemp {
+            let mut temp = applied(self.storage.create_copied_move_temp(&self.target, "streams", &AtomicBool::new(false)));
+            temp.write_all(b"audio").unwrap();
+            temp.sync_data().unwrap();
+            temp
+        }
+    }
+
+    #[test]
+    fn named_streams_survive_verified_publication_metadata_and_handle_close() {
+        let mut f = Fixture::new();
+        let mut temp = f.temp();
+        let cancel = AtomicBool::new(false);
+        let evidence = applied(f.storage.copy_bound_move_streams(&f.source, &mut temp, &cancel));
+        assert_eq!(evidence, *f.source.evidence());
+        applied(f.storage.finalize_copied_move_metadata(&f.source, &mut temp, &cancel));
+        let mut published = applied(f.storage.publish_copied_move_no_replace(
+            &mut temp, &f.target, &MutationName::Windows("copy.mp3".encode_utf16().collect()), &cancel,
+        ));
+        f.storage.sync_copied_move_publication(&mut published, &f.source.main.expected.digest, &cancel).unwrap();
+        f.storage.verify_copied_move_publication(&published, &f.source.main.expected.digest, &cancel).unwrap();
+        drop(published);
+        assert_eq!(std::fs::read(f.path.join("target/copy.mp3")).unwrap(), b"audio");
+        assert_eq!(std::fs::read(f.path.join("target/copy.mp3:notes")).unwrap(), b"notes");
+        assert_eq!(std::fs::read(f.path.join("target/copy.mp3:Zone.Identifier")).unwrap(), b"zone");
+        drop(f.source);
+        assert_eq!(std::fs::read(f.path.join("source/song.mp3:notes")).unwrap(), b"notes");
+    }
+
+    #[test]
+    fn stream_stage_faults_and_cancellation_keep_source_and_block_publication() {
+        for point in ["before", "after_create", "after_write", "after_flush", "before_verify"] {
+            for cancellation in [false, true] {
+                let mut f = Fixture::new();
+                let mut temp = f.temp();
+                let cancel = AtomicBool::new(false);
+                let outcome = f.storage.copy_bound_move_streams_with(&f.source, &mut temp, &cancel, |stage| {
+                    if stage == point {
+                        if cancellation { cancel.store(true, Ordering::Release); }
+                        return Err(err(MutationErrorKind::Io, "owned lost stream response"));
+                    }
+                    Ok(())
+                });
+                if point == "before" { assert!(matches!(outcome, MutationOutcome::NoEffect(_))); }
+                else { assert!(matches!(outcome, MutationOutcome::PendingUnknown(_))); }
+                assert!(matches!(f.storage.publish_copied_move_no_replace(
+                    &mut temp, &f.target, &MutationName::Windows("copy.mp3".encode_utf16().collect()), &cancel,
+                ), MutationOutcome::NoEffect(_)));
+                assert!(!f.path.join("target/copy.mp3").exists());
+                drop(f.source);
+                assert_eq!(std::fs::read(f.path.join("source/song.mp3")).unwrap(), b"audio");
+                assert_eq!(std::fs::read(f.path.join("source/song.mp3:notes")).unwrap(), b"notes");
+            }
+        }
+    }
+
+    #[test]
+    fn collision_preserves_foreign_object_and_all_source_streams() {
+        let mut f = Fixture::new();
+        std::fs::write(f.path.join("target/copy.mp3"), b"foreign").unwrap();
+        let mut temp = f.temp();
+        let cancel = AtomicBool::new(false);
+        applied(f.storage.copy_bound_move_streams(&f.source, &mut temp, &cancel));
+        applied(f.storage.finalize_copied_move_metadata(&f.source, &mut temp, &cancel));
+        assert!(!matches!(f.storage.publish_copied_move_no_replace(
+            &mut temp, &f.target, &MutationName::Windows("copy.mp3".encode_utf16().collect()), &cancel,
+        ), MutationOutcome::Applied(_)));
+        assert_eq!(std::fs::read(f.path.join("target/copy.mp3")).unwrap(), b"foreign");
+        drop(f.source);
+        assert_eq!(std::fs::read(f.path.join("source/song.mp3:notes")).unwrap(), b"notes");
+    }
+}

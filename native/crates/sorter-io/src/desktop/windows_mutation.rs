@@ -4591,4 +4591,4 @@ pub use diagnostic_log::WindowsDiagnosticLog;
 
 #[path = "windows_move_streams.rs"]
 mod move_streams;
-pub use move_streams::{WindowsCopiedMoveSource, WindowsMoveSourceEvidence, WindowsMoveStreamEvidence};
+pub use move_streams::{WindowsCopiedMoveSource, WindowsCopiedMoveTemp, WindowsCopiedMovePublished, WindowsMoveSourceEvidence, WindowsMoveStreamEvidence};
