@@ -87,6 +87,8 @@ WHOLE_ALBUM_RECOVERY_CHECKS = {'whole-album-root-restarted-with-fresh-parent', '
                                 'whole-album-single-atomic-receipt-retained', 'whole-album-deferred-single-covered',
                                 'whole-album-parent-refusal', 'whole-album-restart-no-effects',
                                 'whole-album-main-content-change-detected', 'whole-album-extra-member-detected'}
+METADATA_READINESS_CHECKS = {'mixed-103-file-normal-apply-visible', 'mixed-metadata-review-no-effects',
+                             'unsupported-metadata-normal-reason-and-relative-file', 'metadata-refusal-no-effects'}
 SETTINGS_CHECKS = {'all-main-settings-explicit-save-and-restart',
                    'unsaved-main-draft-not-persisted-by-immediate-duet',
                    'personal-csv-export-exact-ordered-rows', 'settings-baseline-restored'}
@@ -110,6 +112,7 @@ def report_gate(path, binary, mode, package=None):
         require(MP4_CHECKS <= set(report.get('mp4_checks', [])), 'incomplete actual MP4 FixNames acceptance')
         require(ID3_CONTAINER_CHECKS <= set(report.get('id3_container_checks', [])), 'incomplete actual container ID3 FixNames acceptance')
         require(WAVPACK_CHECKS <= set(report.get('wavpack_checks', [])), 'incomplete actual WavPack FixNames acceptance')
+        require(METADATA_READINESS_CHECKS <= set(report.get('metadata_readiness_checks', [])), 'incomplete actual metadata readiness acceptance')
         require(ALBUM_CHECKS <= set(report.get('album_checks', [])), 'incomplete actual album acceptance')
         require(CROSS_ALBUM_CHECKS <= set(report.get('cross_album_checks', [])), 'incomplete actual cross-volume album acceptance')
         require(COPIED_MOVE_CHECKS <= set(report.get('copied_move_checks', [])), 'incomplete actual copied-Move acceptance')

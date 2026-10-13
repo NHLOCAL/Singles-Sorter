@@ -39,6 +39,7 @@ from desktop_id3_container import exercise_id3_containers
 from desktop_wavpack import exercise_wavpack
 from desktop_copied_move import exercise_copied_move
 from desktop_albums import exercise_albums
+from desktop_metadata_readiness import exercise_metadata_readiness
 from desktop_cross_albums import exercise_cross_albums
 from desktop_polish import exercise_information, set_developer_mode
 from driver_readiness import wait_driver_ready
@@ -88,6 +89,7 @@ wavpack_checks = []
 album_checks = []
 cross_album_checks = []
 copied_move_checks = []
+metadata_readiness_checks = []
 settings_checks = []
 with BINARY.open('rb') as stream:
     progress_binary_sha256 = hashlib.file_digest(stream, 'sha256').hexdigest()
@@ -397,6 +399,9 @@ try:
             progress.phase('copied-move')
             copied_move_checks = exercise_copied_move(script, click, fill, wait, capture, scratch / 'copied-move-cases', OUTPUT, ROOT)
             checks.append('Real copied Move: ' + ', '.join(copied_move_checks))
+            progress.phase('metadata-readiness')
+            metadata_readiness_checks = exercise_metadata_readiness(script, click, fill, wait, capture, scratch / 'metadata-readiness', OUTPUT, ROOT.parents[1] / 'tests/fixtures/media/blank.mp3')
+            checks.append('Real metadata readiness and refusal: ' + ', '.join(metadata_readiness_checks))
             progress.phase('mp3-repair')
             repair_checks = exercise_repair(command, script, click, fill, wait, capture, scratch / 'repair-cases', OUTPUT, ROOT.parents[1] / 'tests/fixtures/media/blank.mp3')
             checks.append('Real source-only repair: ' + ', '.join(repair_checks))
@@ -446,7 +451,7 @@ try:
         package_guard.verify()
         assert verify_package(BINARY.parent) == PACKAGE_MANIFEST_SHA256
         assert set(REQUIRED_CHECKS).issubset(original_ai_checks)
-    (OUTPUT / 'acceptance.json').write_text(json.dumps({'status':'passed','platform':'windows-native-tauri','binary_sha256':hashlib.sha256(BINARY.read_bytes()).hexdigest(),'ipc_mocked':False,'medium_integrity_verified':True,'ai_mode':AI_MODE,'package_sha256sums_sha256':PACKAGE_MANIFEST_SHA256,'original_ai_checks':original_ai_checks,'settings_checks':settings_checks,'apply_mode':os.environ.get('SINGLES_DESKTOP_APPLY_EXPECTED','off'),'apply_checks':apply_checks,'recovery_checks':recovery_checks,'album_recovery_checks':album_recovery_checks,'whole_album_recovery_checks':whole_album_recovery_checks,'repair_checks':repair_checks,'flac_checks':flac_checks,'ogg_checks':ogg_checks,'mp4_checks':mp4_checks,'id3_container_checks':id3_container_checks,'wavpack_checks':wavpack_checks,'album_checks':album_checks,'cross_album_checks':cross_album_checks,'copied_move_checks':copied_move_checks,'checks':checks,'remaining':['Narrator','200 percent DPI','Android SAF and physical ARM64','unsupported apply modes, automatic replay, and unrecorded historical whole-Album named-stream baselines']},ensure_ascii=False,indent=2),encoding='utf-8')
+    (OUTPUT / 'acceptance.json').write_text(json.dumps({'status':'passed','platform':'windows-native-tauri','binary_sha256':hashlib.sha256(BINARY.read_bytes()).hexdigest(),'ipc_mocked':False,'medium_integrity_verified':True,'ai_mode':AI_MODE,'package_sha256sums_sha256':PACKAGE_MANIFEST_SHA256,'original_ai_checks':original_ai_checks,'settings_checks':settings_checks,'apply_mode':os.environ.get('SINGLES_DESKTOP_APPLY_EXPECTED','off'),'apply_checks':apply_checks,'recovery_checks':recovery_checks,'album_recovery_checks':album_recovery_checks,'whole_album_recovery_checks':whole_album_recovery_checks,'repair_checks':repair_checks,'flac_checks':flac_checks,'ogg_checks':ogg_checks,'mp4_checks':mp4_checks,'id3_container_checks':id3_container_checks,'wavpack_checks':wavpack_checks,'album_checks':album_checks,'cross_album_checks':cross_album_checks,'copied_move_checks':copied_move_checks,'metadata_readiness_checks':metadata_readiness_checks,'checks':checks,'remaining':['Narrator','200 percent DPI','Android SAF and physical ARM64','unsupported apply modes, automatic replay, and unrecorded historical whole-Album named-stream baselines']},ensure_ascii=False,indent=2),encoding='utf-8')
     progress.finish(True)
 except Exception as error:
     progress.finish(False, error)
