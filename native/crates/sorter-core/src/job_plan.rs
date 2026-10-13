@@ -5,6 +5,7 @@ use crate::metadata::MetadataProvider;
 use crate::{ClassifierFact, Settings};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashSet};
+pub mod album_projection;
 mod control;
 pub use control::*;
 mod singles;

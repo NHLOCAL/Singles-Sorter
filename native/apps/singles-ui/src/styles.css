@@ -730,6 +730,15 @@ legend {
   margin-top: 10px;
 }
 
+#select-album-source-parent {
+  white-space: normal;
+}
+
+#album-source-parent-help {
+  margin: 8px 0 0;
+  overflow-wrap: anywhere;
+}
+
 .execution-item {
   padding: 8px;
   background: #f4f7fb;

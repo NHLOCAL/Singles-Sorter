@@ -1,4 +1,5 @@
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
+vi.mock('@tauri-apps/api/core',()=>({invoke:vi.fn()}));
 let windowMock: Record<string,unknown>, close:()=>void;
 beforeEach(()=>{vi.resetModules();windowMock={addEventListener:(_event:string,callback:()=>void)=>{close=callback;}};vi.stubGlobal('window',windowMock);});
 afterEach(()=>vi.unstubAllGlobals());
@@ -8,6 +9,23 @@ describe('owned Android transport',()=>{
  it('surfaces native errors without treating them as success',async()=>{windowMock.SinglesAndroid={invoke:()=>{}};const t=await import('../src/android-transport');const result=t.androidInvoke('get_settings');(windowMock.__singlesAndroidReply as Function)(1,false,{code:'BUSY'});await expect(result).rejects.toEqual({code:'BUSY'});});
  it('bounds pending work and rejects all owned requests on view close',async()=>{windowMock.SinglesAndroid={invoke:()=>{}};const t=await import('../src/android-transport');const pending=Array.from({length:64},()=>t.androidInvoke('get_settings').catch(e=>e));await expect(t.androidInvoke('get_settings')).rejects.toThrow('Too many');close();expect((await Promise.all(pending)).every(e=>e instanceof Error&&e.message==='View closed')).toBe(true);});
  it('releases pending slot when native invocation throws',async()=>{windowMock.SinglesAndroid={invoke:()=>{throw new Error('closed');}};const t=await import('../src/android-transport');for(let i=0;i<70;i++)await expect(t.androidInvoke('get_settings')).rejects.toThrow('closed');});
+});
+
+describe('Android-only Album source-parent bridge',()=>{
+ it('exposes no parent selection method to non-Android hosts',async()=>{
+  const {nativeHost}=await import('../src/host');expect(nativeHost.selectAlbumSourceParent).toBeUndefined();
+ });
+ it('sends the exact retained IDs only, never a renderer URI or desktop IPC',async()=>{
+  let sent:any;windowMock.SinglesAndroid={invoke:(request:string)=>{sent=JSON.parse(request);}};
+  const {nativeHost}=await import('../src/host');const {invoke}=await import('@tauri-apps/api/core');
+  const pending=nativeHost.selectAlbumSourceParent!('retained-job','retained-plan');
+  expect(sent).toEqual({id:1,command:'select_album_source_parent',args:{jobId:'retained-job',planId:'retained-plan'}});
+  (windowMock.__singlesAndroidReply as Function)(sent.id,true,null);expect(await pending).toBeNull();expect(invoke).not.toHaveBeenCalled();
+ });
+ it('does not fall back to desktop IPC if the Android bridge disappears',async()=>{
+  windowMock.SinglesAndroid={invoke:()=>{}};const {nativeHost}=await import('../src/host');const {invoke}=await import('@tauri-apps/api/core');
+  delete windowMock.SinglesAndroid;await expect(nativeHost.selectAlbumSourceParent!('job','plan')).rejects.toThrow('Android host unavailable');expect(invoke).not.toHaveBeenCalled();
+ });
 });
 
 describe('Android WebView 83 compatibility',()=>{

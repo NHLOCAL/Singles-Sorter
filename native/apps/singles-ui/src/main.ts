@@ -23,6 +23,8 @@ const navigation=new WorkspaceNavigation();
 const recovery=new RecoveryController(nativeRecoveryHost);
 let detailTrigger:HTMLButtonElement|null=null;
 let resultsScroll=0;
+let viewRevision=0;
+window.addEventListener('pagehide',()=>{viewRevision++;controller.discardAlbumSourceParentSelection();});
 
 const app=document.querySelector<HTMLDivElement>('#app')!;
 // Static trusted markup only. Every host/file value is rendered with textContent.
@@ -108,12 +110,12 @@ target.addEventListener('input',()=>controller.editRoot('Target',target.value));
 $('source-picker').addEventListener('click',()=>void controller.selectRoot('Source'));
 $('target-picker').addEventListener('click',()=>void controller.selectRoot('Target'));
 function hasResults(){return controller.state.snapshot?.status==='completed'&&!!controller.state.page;}
-function showSetup(){if(controller.state.activity==='apply')return;if(controller.state.activity==='preview'){controller.cancelPreview();return;}if(navigation.screen==='results')resultsScroll=$('results-body').scrollTop;navigation.setup();render();source.focus();}
+function showSetup(){if(controller.state.activity==='apply'||controller.state.activity==='album-parent')return;if(controller.state.activity==='preview'){controller.cancelPreview();return;}if(navigation.screen==='results')resultsScroll=$('results-body').scrollTop;navigation.setup();render();source.focus();}
 function showResults(push=true){navigation.results(hasResults());if(push)history.pushState({singlesView:'results',jobId:controller.state.snapshot?.job_id},'');render();$('results-heading').focus();requestAnimationFrame(()=>{$('results-body').scrollTop=resultsScroll;});}
-function backToSetup(){if(history.state?.singlesView==='results')history.back();else showSetup();}
+function backToSetup(){if(controller.state.activity==='album-parent')return;if(history.state?.singlesView==='results')history.back();else showSetup();}
 history.replaceState({singlesView:'setup'},'');
 window.addEventListener('popstate',()=>{
- if(controller.state.activity==='apply'){history.replaceState({singlesView:'results',jobId:controller.state.snapshot?.job_id},'');return;}
+ if(controller.state.activity==='apply'||controller.state.activity==='album-parent'){history.replaceState({singlesView:'results',jobId:controller.state.snapshot?.job_id},'');return;}
  if(controller.state.activity==='preview'){controller.cancelPreview();history.replaceState({singlesView:'setup'},'');return;}
  const valid=hasResults()&&history.state?.jobId===controller.state.snapshot?.job_id;
  if($<HTMLDialogElement>('row-dialog').open){
@@ -136,6 +138,7 @@ $('review-apply').addEventListener('click',()=>{
  $('apply-title').textContent=repairing?'תיקון שמות ותגיות':'ביצוע התוכנית';
  $('apply-target-label').hidden=repairing;
  $('apply-description').textContent=repairing?REPAIR_REVIEW_TEXT:readiness.operation_count===0?'לא בוצעו שינויים. קובצי המקור יישארו במקומם; הבדיקה החוזרת תאמת שאין פעולות לביצוע.':controller.state.developerMode?`${readiness.copy_mode?'העתקת':'העברת'} ${readiness.operation_count.toLocaleString('he-IL')} פעולות לפי התוכנית שהוצגה.`:readiness.copy_mode?'העתקת הקבצים שברשימה. קובצי המקור יישארו במקומם.':'העברת הקבצים שברשימה אל תיקיית היעד.';
+ if(readiness.duet_groups&&readiness.operation_count>0)$('apply-description').append(document.createTextNode(' בדואטים, המקור יימחק רק לאחר אימות כל העותקים הנדרשים בתוכנית. מקור ללא יעד מתאים יישמר.'));
  if(readiness.notice)$('apply-description').append(document.createTextNode(' '+readiness.notice));
  if(controller.state.model?.platform==='android'&&readiness.reason)$('apply-description').append(document.createTextNode(' '+readiness.reason));
  $<HTMLInputElement>('apply-source').value=readiness.source;$<HTMLInputElement>('apply-target').value=readiness.target??'';
@@ -144,6 +147,15 @@ $('review-apply').addEventListener('click',()=>{
 for(const id of ['apply-dismiss','apply-back'])$(id).addEventListener('click',()=>{$<HTMLDialogElement>('apply-dialog').close();$('review-apply').focus();});
 $('confirm-apply').addEventListener('click',async()=>{$<HTMLDialogElement>('apply-dialog').close();await controller.apply();$('execution-title').tabIndex=-1;$('execution-title').focus();});
 $('cancel-apply').addEventListener('click',()=>controller.cancelApply());
+$('select-album-source-parent').addEventListener('click',async()=>{
+ if(personal.busy||!controller.canSelectAlbumSourceParent)return;
+ const revision=viewRevision;
+ const selected=await controller.selectAlbumSourceParent();
+ if(revision!==viewRevision)return;
+ if(selected)await runPreview('Sort');
+ else if(controller.state.error)$('error').focus();
+ else if(controller.canSelectAlbumSourceParent)$('select-album-source-parent').focus();
+});
 $('reopen-results').addEventListener('click',()=>showResults());
 async function runPreview(mode:Mode){
  if(controller.state.busy||personal.busy||!navigation.start(mode))return;
@@ -222,14 +234,18 @@ function rowStatus(row:PlanRow){
 function renderExecution(){
  const s=controller.state,e=s.execution,readiness=s.snapshot?.apply;
  $('execution-panel').hidden=!readiness&&!e;$('results').dataset.executionVisible=String(!!readiness||!!e);
- $('review-apply').hidden=!!e||!readiness?.supported;$<HTMLButtonElement>('review-apply').disabled=!controller.canApply;
+ $('review-apply').hidden=!!e||!readiness?.supported||readiness.source_parent_selection_required===true;$<HTMLButtonElement>('review-apply').disabled=!controller.canApply;
+ const parentNeeded=controller.needsAlbumSourceParent,parentPending=s.activity==='album-parent';
+ $('select-album-source-parent').hidden=!parentNeeded;$<HTMLButtonElement>('select-album-source-parent').disabled=!controller.canSelectAlbumSourceParent;
+ $('album-source-parent-help').hidden=!parentNeeded;
  const running=s.activity==='apply';$('cancel-apply').hidden=!running;$<HTMLButtonElement>('cancel-apply').disabled=s.cancelRequested;
- $<HTMLButtonElement>('back-setup').disabled=running;
+ $<HTMLButtonElement>('back-setup').disabled=running||parentPending;
  $('execution-title').textContent=e?e.status==='complete'&&e.recovery_error?'הקבצים טופלו; נדרשת בדיקה':executionTitles[e.status]:running?'מאמת את הקבצים לפני ביצוע…':readiness?.supported?'התוכנית מוכנה לביצוע':'התוכנית זמינה לתצוגה בלבד';
  const r=e?.result;
  const developer=s.developerMode;
- $('execution-summary').textContent=developer?(r?r.repair?`${r.repair.renamed_files} שמות תוקנו · ${r.repair.repaired_files} תגיות תוקנו · ${r.repair.unchanged_files} ללא שינוי בתגיות · ${r.repair.unsupported_files} לא נתמכים · ${r.repair.retained_backup_bytes.toLocaleString('he-IL')} בתים נשמרו בגיבוי`:`${r.committed_destinations.toLocaleString('he-IL')} יעדים נכתבו · ${r.moved_sources.toLocaleString('he-IL')} קבצי מקור הועברו · ${r.failed_operations.toLocaleString('he-IL')} נכשלו · ${r.blocked_operations.toLocaleString('he-IL')} לא בוצעו`:s.cancelRequested&&running?'ממתין לעצירה בטוחה…':e?.status==='running'&&e.operation!==null?`פעולה ${e.operation+1} מתוך ${e.operation_count} · ${executionBytesText(e.bytes_written,e.source_length)}`:e&&!['preparing','running'].includes(e.status)?(e.error??'לא התקבלו מוני ביצוע מאומתים. יש לבדוק את היומן.'):readiness?.supported?executionReadinessText(readiness,true):readiness?.reason??''):(e?simpleExecutionSummary(e,readiness?.copy_mode??s.settings.copy_mode):readiness?.supported?executionReadinessText(readiness,false):'לא בוצעו שינויים בקבצים.');
+ $('execution-summary').textContent=developer?(r?r.repair?`${r.repair.renamed_files} שמות תוקנו · ${r.repair.repaired_files} תגיות תוקנו · ${r.repair.unchanged_files} ללא שינוי בתגיות · ${r.repair.unsupported_files} לא נתמכים · ${r.repair.retained_backup_bytes.toLocaleString('he-IL')} בתים נשמרו בגיבוי`:r.duets?simpleExecutionSummary(e!,readiness?.copy_mode??s.settings.copy_mode):`${r.committed_destinations.toLocaleString('he-IL')} יעדים נכתבו · ${r.moved_sources.toLocaleString('he-IL')} קבצי מקור הועברו · ${r.failed_operations.toLocaleString('he-IL')} נכשלו · ${r.blocked_operations.toLocaleString('he-IL')} לא בוצעו`:s.cancelRequested&&running?'ממתין לעצירה בטוחה…':e?.status==='running'&&e.operation!==null?`פעולה ${e.operation+1} מתוך ${e.operation_count} · ${executionBytesText(e.bytes_written,e.source_length)}`:e&&!['preparing','running'].includes(e.status)?(e.error??'לא התקבלו מוני ביצוע מאומתים. יש לבדוק את היומן.'):readiness?.supported?executionReadinessText(readiness,true):readiness?.reason??''):(e?simpleExecutionSummary(e,readiness?.copy_mode??s.settings.copy_mode):readiness?.supported?executionReadinessText(readiness,false):'לא בוצעו שינויים בקבצים.');
  if(!developer&&running)$('execution-summary').textContent=s.cancelRequested?'ממתין לעצירה בטוחה…':e?.operation!==null&&e?.operation!==undefined?`התקדמות: ${e.operation+1} מתוך ${e.operation_count}`:'בודק שהקבצים מוכנים…';
+ if(parentNeeded){$('execution-title').textContent='נדרשת בחירה מפורשת של תיקיית האב';$('execution-summary').textContent=parentPending?'ממתין לבחירת תיקיית האב…':'לאחר הבחירה תופעל בדיקת מיון חדשה. עדיין לא יבוצעו שינויים בקבצים.';}
  if(running&&e?.verification){
   $('execution-title').textContent='בודק את תוצאות הביצוע';
   $('execution-summary').textContent=s.cancelRequested?'ממתין לעצירה בטוחה…':verificationProgressText(e.verification,developer);
@@ -277,7 +293,7 @@ function render(){
  $('open-recovery').hidden=!hasAndroidHost()||!s.recoveryNotice;$<HTMLButtonElement>('open-recovery').disabled=s.busy;
  $('settings-label').textContent=controller.settingsDirty?'שינויים שלא נשמרו':'ההגדרות שלך';$('settings-notice').textContent=noticeLabel(controller.savedNotice);$<HTMLButtonElement>('save-settings').disabled=blocked;$('settings-error').hidden=!s.error;$('settings-error').textContent=s.error?(developer?s.error:simpleError(s.error)):'';
  $<HTMLButtonElement>('cancel-preview').disabled=!s.busy||s.cancelRequested;
- $('busy').textContent=s.cancelRequested&&s.activity==='preview'?'מבטל את הבדיקה…':s.activity==='settings'?'שומר הגדרות…':s.activity==='page'?'טוען עמוד תוצאות…':'קורא ומנתח את הקבצים…';
+ $('busy').textContent=s.cancelRequested&&s.activity==='preview'?'מבטל את הבדיקה…':s.activity==='settings'?'שומר הגדרות…':s.activity==='page'?'טוען עמוד תוצאות…':s.activity==='album-parent'?'ממתין לבחירת תיקיית האב…':'קורא ומנתח את הקבצים…';
  $('busy').hidden=!s.busy;$('results').setAttribute('aria-busy',String(s.busy));
  $('error').hidden=!s.error;$('error').textContent=s.error?(developer?s.error:simpleError(s.error)):'';$('error').tabIndex=-1;
  const ready=s.snapshot?.status==='completed'&&!!s.page;
@@ -292,7 +308,7 @@ function render(){
   const origin=document.createElement('td');origin.className='file-name';const name=text('bdi',filename,'source-name');name.dir='auto';name.title=developer?row.source:filename;origin.append(name);tr.append(origin);
   const action=text('td',developer?(items.length?items.map(itemLabel).join(' · '):kindLabel(row.kind)):(row.artist??''),'row-action');action.dir='auto';tr.append(action);
   const reason=document.createElement('td');reason.className='row-reason';reason.append(text('span',developer?`${kindLabel(row.kind)} · `:row.artist?`${row.artist} · `:'','mobile-action'),text('span',developer?developerRowSummary(row,rowStatus(row),items.length>0||!!s.execution&&!['preparing','running'].includes(s.execution.status)):rowStatus(row)));tr.append(reason);
-  const detail=document.createElement('td');detail.className='row-detail';const button=document.createElement('button');button.className='icon-button detail-button';button.dataset.rowId=row.id;button.setAttribute('aria-label',`פרטים: ${filename}`);button.append(iconElement('info'));button.addEventListener('click',()=>openRow(row,button));detail.append(button);tr.append(detail);$('rows').append(tr);
+  const detail=document.createElement('td');detail.className='row-detail';const button=document.createElement('button');button.className='icon-button detail-button';button.disabled=s.activity==='album-parent';button.dataset.rowId=row.id;button.setAttribute('aria-label',`פרטים: ${filename}`);button.append(iconElement('info'));button.addEventListener('click',()=>openRow(row,button));detail.append(button);tr.append(detail);$('rows').append(tr);
  }
  studio.filterRows();
  $('warnings').replaceChildren();$('technical-notices').replaceChildren();

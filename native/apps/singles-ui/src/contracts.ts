@@ -23,6 +23,8 @@ export interface Host {
   cancelPreview(jobId:string):Promise<void>;
   snapshot(jobId:string):Promise<Snapshot>;
   page(jobId:string,offset:number,limit:number,developerMode?:boolean,showInactive?:boolean):Promise<PlanPage>;
+  /** Explicit Android picker for a retained Album's exact source parent; never a Source/Target role. */
+  selectAlbumSourceParent?(jobId:string,planId:string):Promise<RootSelection|null>;
   startApply?(jobId:string,planId:string):Promise<{job_id:string}>;
   executionSnapshot?(jobId:string):Promise<ExecutionSnapshot>;
   cancelApply?(jobId:string):Promise<void>;
@@ -50,15 +52,15 @@ export interface ProfileHost {
 }
 
 /** Apply eligibility is granted by retained native evidence, never inferred from rows. */
-export interface ApplyReadiness {supported:boolean;recovery_scope_admitted?:boolean;reason:string|null;operation_count:number;copy_mode:boolean;source:string;target:string|null;mode?:Mode;notice?:string|null}
+export interface ApplyReadiness {duet_groups?:number;supported:boolean;recovery_scope_admitted?:boolean;source_parent_selection_required?:boolean;reason:string|null;operation_count:number;copy_mode:boolean;source:string;target:string|null;mode?:Mode;notice?:string|null}
 export type ExecutionStatus='preparing'|'running'|'complete'|'partial'|'cancelled'|'failed'|'needs_recovery';
 export type ItemStatus='partial'|'complete'|'source_retained'|'failed'|'cancelled'|'blocked'|'needs_recovery'|'unsupported_tags'|'metadata_failure';
 /** Optional display-only observed leaf; older/Android hosts may omit it. */
 export interface RepairOutcome {renamed:boolean;repaired:boolean;unchanged:boolean;observed_filename?:string|null}
 export interface RepairSummary {total_files:number;processed_files:number;renamed_files:number;repaired_files:number;unchanged_files:number;unsupported_files:number;failed_files:number;retained_backup_bytes:number}
-export interface ExecutionItem {operation:number;status:ItemStatus;detail:string;repair?:RepairOutcome|null}
+export interface ExecutionItem {duet_retirement_status?:'pending'|'retired'|'needs_recovery';operation:number;status:ItemStatus;detail:string;repair?:RepairOutcome|null}
 export interface LegacySummary {songs_sorted:number;artist_folders_created:number;albums_processed:number;top_artists:[string,number][]}
-export interface ExecutionResult {no_op?:boolean;legacy_summary?:LegacySummary|null;source_items:number;committed_destinations:number;moved_sources:number;failed_operations:number;blocked_operations:number;recovery_operations:number;cancelled_operations:number;items:ExecutionItem[];repair?:RepairSummary|null;albums?:{completed:number;child_names_changed:number;created_directories:number;removed_directories:number;retained_directories:number}|null}
+export interface ExecutionResult {duets?:{retired_sources:number;no_action_sources:number;unfinished_retirements:number}|null;no_op?:boolean;legacy_summary?:LegacySummary|null;source_items:number;committed_destinations:number;moved_sources:number;failed_operations:number;blocked_operations:number;recovery_operations:number;cancelled_operations:number;items:ExecutionItem[];repair?:RepairSummary|null;albums?:{completed:number;child_names_changed:number;created_directories:number;removed_directories:number;retained_directories:number}|null}
 export interface VerificationProgress {completed_operations:number;total_operations:number;bytes_read:number;elapsed_ms:number}
 export interface ExecutionSnapshot {verification?:VerificationProgress|null;host_schema:1;job_id:string;plan_id:string;status:ExecutionStatus;operation_count:number;operation:number|null;bytes_written:number;source_length:number;journal_path:string|null;error:string|null;result:ExecutionResult|null;recovery_error?:string|null;recovery?:{observed_directories:number;pending_directories:number;rejected_directories:number;incomplete_tail:boolean;transfers:{operation:number;status:string}[];pending_operations?:number[];directory_evidence?:{reference:unknown;role:string;status:string}[];metadata_issues?:number|null;terminal_records_complete?:boolean|null;append_blocked?:boolean|null}|null}
 

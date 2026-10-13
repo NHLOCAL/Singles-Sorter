@@ -26,6 +26,10 @@ final class ProviderEffectJournal {
         JSONObject header=new JSONObject().put("schema",1).put("execution_id",id).put("job_id",retained.jobId).put("plan_id",retained.planId)
             .put("original_plan",retained.planCopy()).put("source_bindings",retained.bindingsCopy()).put("references",retained.referencesCopy())
             .put("provider_quiescence_required",true).put("provider_atomic_batch",false);
+        if("FixNames".equals(retained.planCopy().getJSONObject("request").getString("mode")))header.put("fix_protocol",1).put("fix_backup_leaf",FixProtocol.BACKUP_LEAF);
+        if(!"FixNames".equals(retained.planCopy().getJSONObject("request").getString("mode"))&&retained.albumProjectionCopy().getJSONArray("operations").length()>0)header.put("album_protocol",1).put("album_projection",retained.albumProjectionCopy());
+        if(retained.albumRootParentCopy()!=null)header.put("album_root_parent",retained.albumRootParentCopy());
+        if(!"FixNames".equals(retained.planCopy().getJSONObject("request").getString("mode"))&&!NativeDuetPlan.inspectOriginal(retained.planCopy(),()->false).groups.isEmpty())header.put("duet_protocol",1);
         String authorityHash=write(new File(directory,"authority.json"),header,16*1024*1024);
         stateFile=new File(directory,"state.json");indexFile=new File(directory,"index.json");state=new JSONObject().put("schema",1).put("execution_id",id).put("job_id",retained.jobId).put("plan_id",retained.planId).put("status","running").put("authority_sha256",authorityHash).put("events",events);
         persist();writeIndex();
@@ -34,7 +38,7 @@ final class ProviderEffectJournal {
         if(events.length()>=10000||detail.toString().getBytes(StandardCharsets.UTF_8).length>65536)throw new IOException("JOURNAL_BUDGET");
         if(phase.equals("intent")){pendingEffects=true;anyEffects=true;}
         events.put(new JSONObject().put("sequence",events.length()).put("phase",phase).put("operation",operation).put("detail",detail));persist();
-        if(phase.equals("verified"))pendingEffects=false;
+        if(phase.equals("verified")||phase.equals("album-verified")||phase.equals("duet-verified"))pendingEffects=false;
     }
     void finish(String status)throws Exception{
         if(!status.equals("completed")&&!status.equals("cancelled")&&!status.equals("partial")&&!status.equals("uncertain")&&!status.equals("failed"))throw new IllegalArgumentException("status");

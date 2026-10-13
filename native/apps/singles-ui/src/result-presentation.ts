@@ -38,6 +38,8 @@ export function simpleStatus(row:PlanRow,items:ExecutionItem[],copy:boolean,cont
   if(items.some(item=>item.status==='failed'))return completed?'בוצע חלקית':'לא הושלם';
   if(items.some(item=>item.status==='cancelled'))return completed?'בוצע חלקית':'נעצר';
   if(items.some(item=>item.status==='blocked'))return completed?'בוצע חלקית':'לא בוצע';
+  if(items.some(item=>item.duet_retirement_status==='needs_recovery'))return 'העותקים אומתו; המקור דורש בדיקה';
+  if(items.some(item=>item.duet_retirement_status==='pending'))return 'הועתק; המקור נשמר';
   if(items.some(item=>item.status==='source_retained'))return 'הועתק; המקור נשמר';
   if(row.kind==='FixNames'){
    if(items.some(item=>item.repair?.renamed||item.repair?.repaired))return 'תוקן';
@@ -87,6 +89,14 @@ export function simpleExecutionSummary(execution:Pick<ExecutionSnapshot,'status'
   if(repair.repaired_files)parts.push(`${repair.repaired_files.toLocaleString('he-IL')} קבצים עם תגיות מתוקנות`);
   if(!repair.renamed_files&&!repair.repaired_files&&repair.unchanged_files)parts.push(`${repair.unchanged_files.toLocaleString('he-IL')} ללא שינוי`);
   if(repair.unsupported_files)parts.push(`${repair.unsupported_files.toLocaleString('he-IL')} עם תגיות שלא תוקנו`);
+ }
+ else if(result.duets){
+  parts.push(`${result.committed_destinations.toLocaleString('he-IL')} יעדים אומתו`);
+  if(result.duets.retired_sources)parts.push(`${result.duets.retired_sources.toLocaleString('he-IL')} מקורות דואט נמחקו לאחר אימות כל העותקים הנדרשים`);
+  const otherMoved=result.moved_sources-result.duets.retired_sources;
+  if(otherMoved>0)parts.push(`${otherMoved.toLocaleString('he-IL')} קבצים נוספים הועברו`);
+  if(result.duets.no_action_sources)parts.push(`${result.duets.no_action_sources.toLocaleString('he-IL')} מקורות ללא יעד מתאים נשמרו ללא פעולה`);
+  if(result.duets.unfinished_retirements)parts.push(`${result.duets.unfinished_retirements.toLocaleString('he-IL')} מחיקות מקור דואט לא הושלמו; העותקים שכבר אומתו נשמרו`);
  }
  else if(copy)parts.push(`נוצרו ${result.committed_destinations.toLocaleString('he-IL')} עותקים`);
  else{

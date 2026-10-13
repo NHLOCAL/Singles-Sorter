@@ -9,7 +9,7 @@ use sorter_core::{
     discovery::*,
     job_plan::{
         DisabledRecognition, JobMode, JobRequestV2, OperationKind, PlanningBoundary,
-        PlanningControl, plan_job_controlled,
+        PlanningControl, album_projection::project_album_operations, plan_job_controlled,
     },
     metadata::{MetadataError, MetadataFields, MetadataProvider},
 };
@@ -36,6 +36,7 @@ struct Entry {
     document_id: String,
     name: String,
     directory: bool,
+    directory_children_complete: Option<bool>,
     observed_size: Option<u64>,
     observed_modified: Option<String>,
 }
@@ -89,7 +90,10 @@ impl ReadStorage for SnapshotStorage {
     }
     fn children(&mut self, r: &StorageRef) -> Result<Vec<EntryObservation>, StorageError> {
         self.children.get(r).cloned().ok_or_else(|| {
-            StorageError::new(StorageErrorKind::NotDirectory, "not a captured directory")
+            StorageError::new(
+                StorageErrorKind::UnsupportedCapability,
+                "directory listing was not completely captured",
+            )
         })
     }
     fn open_read(&mut self, _: &StorageRef) -> Result<ReadInput, StorageError> {
@@ -263,41 +267,29 @@ impl SnapshotMetadata<'_, '_, '_> {
         )?))
     }
 }
-fn plan(
-    env: &mut JNIEnv,
-    provider: &JObject,
-    model_directory: &[u8],
-    snapshot_directory: &[u8],
-    bytes: &[u8],
-    cancel: JobCancellation,
-) -> Result<Value, String> {
-    if !MetadataReader::is_available() {
-        return Err("ANDROID_METADATA_UNAVAILABLE".into());
-    }
-    cancel
-        .checkpoint(PlanningBoundary::Start)
-        .map_err(|_| "cancelled")?;
-    let manifest: Manifest = serde_json::from_slice(bytes).map_err(|_| "invalid_manifest")?;
-    if manifest.schema != 1 || manifest.entries.len() > 2000 || manifest.entries.is_empty() {
+struct CapturedStorage {
+    storage: SnapshotStorage,
+    by_token: HashMap<String, EntryObservation>,
+    originals: HashMap<StorageRef, Entry>,
+}
+fn captured_storage(entries: &[Entry], complete_sort: bool) -> Result<CapturedStorage, String> {
+    if entries.is_empty() || entries.len() > 2000 {
         return Err("manifest_limit".into());
     }
-    let directory =
-        PathBuf::from(std::str::from_utf8(snapshot_directory).map_err(|_| "invalid_cache_path")?);
-    if !directory.is_absolute() {
-        return Err("invalid_cache_path".into());
+    if complete_sort
+        && entries
+            .iter()
+            .any(|e| e.directory && e.directory_children_complete != Some(true))
+    {
+        return Err("incomplete_sort_listing".into());
     }
-    let manifest_by_token: HashMap<_, _> = manifest
-        .entries
-        .iter()
-        .map(|e| (e.token.as_str(), e))
-        .collect();
+    let manifest_by_token: HashMap<_, _> = entries.iter().map(|e| (e.token.as_str(), e)).collect();
     let mut observations = HashMap::new();
     let mut by_token = HashMap::new();
     let mut originals = HashMap::new();
     let mut unique = HashSet::new();
     let mut children = HashMap::new();
-    let mut resources = vec![];
-    for e in &manifest.entries {
+    for e in entries {
         if [&e.token, &e.name, &e.tree_uri, &e.authority, &e.document_id]
             .iter()
             .any(|s| s.len() > 4096)
@@ -334,13 +326,16 @@ fn plan(
         {
             return Err("duplicate_document".into());
         }
-        if e.directory {
+        if e.directory && e.directory_children_complete == Some(true) {
             children.insert(reference.clone(), vec![]);
+        }
+        if !e.directory && e.directory_children_complete.is_some() {
+            return Err("file_listing_marker".into());
         }
         by_token.insert(e.token.clone(), observation);
         originals.insert(reference, e.clone());
     }
-    for e in &manifest.entries {
+    for e in entries {
         if let Some(parent) = &e.parent {
             let p = by_token.get(parent).ok_or("missing_parent")?;
             children
@@ -349,6 +344,42 @@ fn plan(
                 .push(by_token[&e.token].clone());
         }
     }
+    Ok(CapturedStorage {
+        storage: SnapshotStorage {
+            observations,
+            children,
+        },
+        by_token,
+        originals,
+    })
+}
+fn plan(
+    env: &mut JNIEnv,
+    provider: &JObject,
+    model_directory: &[u8],
+    snapshot_directory: &[u8],
+    bytes: &[u8],
+    cancel: JobCancellation,
+) -> Result<Value, String> {
+    if !MetadataReader::is_available() {
+        return Err("ANDROID_METADATA_UNAVAILABLE".into());
+    }
+    cancel
+        .checkpoint(PlanningBoundary::Start)
+        .map_err(|_| "cancelled")?;
+    let manifest: Manifest = serde_json::from_slice(bytes).map_err(|_| "invalid_manifest")?;
+    if manifest.schema != 1 || manifest.entries.len() > 2000 || manifest.entries.is_empty() {
+        return Err("manifest_limit".into());
+    }
+    let directory =
+        PathBuf::from(std::str::from_utf8(snapshot_directory).map_err(|_| "invalid_cache_path")?);
+    if !directory.is_absolute() {
+        return Err("invalid_cache_path".into());
+    }
+    let captured = captured_storage(&manifest.entries, manifest.mode == JobMode::Sort)?;
+    let by_token = captured.by_token;
+    let originals = captured.originals;
+    let mut resources = vec![];
     let source = by_token
         .get(&manifest.source)
         .ok_or("source_missing")?
@@ -376,7 +407,7 @@ fn plan(
             .map(|h| format!("aliases:{:?}:sha256:{}", h.source, h.sha256)),
     );
     let mut adapters = vec![
-        "android-saf-snapshot-preview-v1".into(),
+        "android-saf-complete-sort-snapshot-preview-v2".into(),
         "taglib:2.3.2:3ca2d8afaa7f1cf7f6ed10e511ebc368bfacd6dcaa3dbfa690b89e502e8963dc".into(),
         format!(
             "metadata-coverage:sha256:{:x}",
@@ -412,10 +443,7 @@ fn plan(
         adapter_versions: adapters,
         ai_profile: recognition.profile(),
     };
-    let mut storage = SnapshotStorage {
-        observations,
-        children,
-    };
+    let mut storage = captured.storage;
     let mut metadata = SnapshotMetadata {
         directory,
         entries: originals,
@@ -470,9 +498,17 @@ fn plan(
     let mut source_tokens: Vec<_> = source_tokens.into_iter().collect();
     source_tokens.sort();
     let retained = bounded_json(&plan, 8 * 1024 * 1024).map_err(|_| "RETAINED_PLAN_LIMIT")?;
+    // Execution evidence is projected only after the unchanged original planning call.
+    // Keep the original bound plan, child order/names/flags and blockers intact.
+    let album_projection = project_album_operations(&plan, &cancel)
+        .map_err(|e| format!("{}: {}", e.code, e.detail))?;
+    let album_projection = bounded_json(&album_projection, 8 * 1024 * 1024 - retained.len())
+        .map_err(|_| "RETAINED_PLAN_LIMIT")?;
+    let album_projection: Value =
+        serde_json::from_slice(&album_projection).map_err(|_| "RETAINED_PLAN_ENCODING")?;
     let retained = String::from_utf8(retained).map_err(|_| "RETAINED_PLAN_ENCODING")?;
     Ok(
-        json!({"_source_tokens":source_tokens,"_retained_plan":retained,"plan_id":plan.binding_sha256,"rows":plan_view::project_rows(&plan),"blockers":plan.blockers,"warnings":plan.warnings,"inference_executed":recognition.inference_executed(),"snapshot_hashes":metadata.hashes,"provider_snapshot_only":true,"executable":false}),
+        json!({"_album_projection":album_projection,"_source_tokens":source_tokens,"_retained_plan":retained,"plan_id":plan.binding_sha256,"rows":plan_view::project_rows(&plan),"blockers":plan.blockers,"warnings":plan.warnings,"inference_executed":recognition.inference_executed(),"snapshot_hashes":metadata.hashes,"provider_snapshot_only":true,"executable":false}),
     )
 }
 #[unsafe(no_mangle)]
@@ -509,6 +545,116 @@ pub extern "system" fn Java_com_nhlocal_singlesorter_inference_OriginalPlanning_
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[allow(dead_code)]
+    mod metadata_fixture {
+        include!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../crates/sorter-core/tests/support/album_fixture.rs"
+        ));
+    }
+    fn album_entries() -> Vec<Entry> {
+        let make =
+            |token: &str, parent: Option<&str>, name: &str, directory: bool, source: bool| Entry {
+                token: token.into(),
+                parent: parent.map(str::to_owned),
+                tree_uri: format!(
+                    "content://com.android.externalstorage.documents/tree/{}",
+                    if source { "source" } else { "target" }
+                ),
+                authority: "com.android.externalstorage.documents".into(),
+                document_id: token.into(),
+                name: name.into(),
+                directory,
+                directory_children_complete: directory.then_some(true),
+                observed_size: if directory { None } else { Some(4) },
+                observed_modified: Some("1000".into()),
+            };
+        vec![
+            make("source", None, "source", true, true),
+            make("album", Some("source"), "album", true, true),
+            make("song-a", Some("album"), "track_a.mp3", false, true),
+            make("song-b", Some("album"), "track_b.mp3", false, true),
+            make("song-c", Some("album"), "track_c.mp3", false, true),
+            make("nested", Some("album"), "nested", true, true),
+            make("note", Some("nested"), "keep.txt", false, true),
+            make("target", None, "target", true, false),
+        ]
+    }
+    #[test]
+    fn main_only_original_album_reads_complete_nested_non_audio_evidence() {
+        struct Metadata;
+        impl MetadataProvider for Metadata {
+            fn open(
+                &mut self,
+                _: &EntryObservation,
+            ) -> Result<Box<dyn MetadataFields>, MetadataError> {
+                Ok(Box::new(metadata_fixture::Fields(
+                    json!({"album":"אלבום", "artist":"אברהם פריד"}),
+                )))
+            }
+        }
+        let entries = album_entries();
+        let aliases = vec![vec!["אברהם פריד".into(), "אברהם פריד".into()]];
+        for main_folder_only in [true, false] {
+            let mut captured = captured_storage(&entries, true).unwrap();
+            let request = JobRequestV2 {
+                mode: JobMode::Sort,
+                source: captured.by_token["source"].reference.clone(),
+                target: Some(captured.by_token["target"].reference.clone()),
+                settings: Settings {
+                    main_folder_only,
+                    copy_mode: true,
+                    singles_folder: false,
+                    ..Settings::default()
+                },
+                alias_rows: aliases.clone(),
+                resource_ids: vec![],
+                adapter_versions: vec![],
+                ai_profile: sorter_core::job_plan::AiProfile::Disabled,
+            };
+            let plan = plan_job_controlled(
+                &request,
+                &mut captured.storage,
+                &mut Metadata,
+                &mut DisabledRecognition,
+                &sorter_core::job_plan::UncontrolledPlanning,
+            )
+            .unwrap();
+            let projected =
+                project_album_operations(&plan, &sorter_core::job_plan::UncontrolledPlanning)
+                    .unwrap();
+            assert_eq!(projected.operations.len(), 1);
+            assert_eq!(projected.operations[0].children.len(), 4);
+            assert_eq!(projected.operations[0].children[3].planned_name, "nested");
+            assert_eq!(
+                projected.operations[0].children[3].intent.source.kind,
+                EntryKind::Directory
+            );
+            assert!(plan.observations.iter().any(|e| e.name == "keep.txt"));
+            assert_eq!(plan.request.settings.main_folder_only, main_folder_only);
+        }
+    }
+    #[test]
+    fn an_unlisted_directory_is_never_an_empty_native_listing() {
+        let mut entries = album_entries();
+        entries[1].directory_children_complete = Some(false);
+        assert_eq!(
+            captured_storage(&entries, true).err().unwrap(),
+            "incomplete_sort_listing"
+        );
+        // Fix root-only can retain an unlisted directory, but any attempted lazy
+        // read must fail rather than inventing a successful empty listing.
+        entries.retain(|entry| matches!(entry.token.as_str(), "source" | "album"));
+        let mut captured = captured_storage(&entries, false).unwrap();
+        let album = captured.by_token["album"].reference.clone();
+        assert_eq!(
+            captured.storage.children(&album).unwrap_err().kind,
+            StorageErrorKind::UnsupportedCapability
+        );
+        entries[1].directory_children_complete = Some(true);
+        let mut captured = captured_storage(&entries, true).unwrap();
+        assert!(captured.storage.children(&album).unwrap().is_empty());
+    }
     #[test]
     fn parent_groups_are_scoped_references_not_held_file_identity() {
         let make = |token: &str, parent: Option<&str>, directory| Entry {
@@ -519,6 +665,7 @@ mod tests {
             document_id: token.into(),
             name: "same name.wav".into(),
             directory,
+            directory_children_complete: directory.then_some(true),
             observed_size: None,
             observed_modified: None,
         };

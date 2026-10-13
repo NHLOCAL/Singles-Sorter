@@ -127,7 +127,7 @@ if arm:
 for p in sorted(Path(ui).rglob('*')):
     if p.is_symlink(): raise SystemExit('UI symlinks are not packaged')
     if p.is_file(): entries.append((p, 'assets/ui/' + p.relative_to(ui).as_posix()))
-receipt = {"preview_only": False, "saf_mutation_enabled": True, "validation_scope": "local-provider-single-file-product", "provider_contract": "quiescent-system-local-single-copy-move", "runtime_evidence_abis": ["x86_64"], "runtime_evidence_api": 30, "fix_and_album_effects_enabled": False, "build_tools": "35.0.0", "android_jar": platform, "generated_asset_verifier_sha256": hashlib.sha256((out / "build/OriginalAssets.java").read_bytes()).hexdigest(), "entries": []}
+receipt = {"preview_only": False, "saf_mutation_enabled": True, "validation_scope": "current-source-android-fix-album-parent-duet-candidate", "runtime_acceptance": "pending-exact-apk-device-validation", "provider_contract": "quiescent-system-local-single-copy-move-fix-album-retained-original-explicit-parent-duet-exact-cohort", "runtime_evidence_abis": [], "runtime_evidence_api": None, "prior_sort_runtime_evidence": {"abis": ["x86_64"], "api": 30}, "fix_effects_enabled": True, "album_effects_enabled": True, "album_root_parent_effects_enabled": True, "duet_cohort_effects_enabled": True, "build_tools": "35.0.0", "android_jar": platform, "generated_asset_verifier_sha256": hashlib.sha256((out / "build/OriginalAssets.java").read_bytes()).hexdigest(), "entries": []}
 with ZipFile(out / "build/unsigned.apk", "a") as apk:
     for source, name in entries:
         data = source.read_bytes()

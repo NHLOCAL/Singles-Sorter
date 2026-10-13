@@ -2,7 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { androidInvoke,hasAndroidHost } from './android-transport';
 const invokeHost = <T>(command:string,args:Record<string,unknown>={}):Promise<T> => hasAndroidHost()?androidInvoke<T>(command,args):invoke<T>(command,args);
 import type {ProjectLinkTarget} from './about';
-import type { Host,ProfileHost,RecoveryHost } from './contracts';
+import type { Host,ProfileHost,RecoveryHost,RootSelection } from './contracts';
 /** No generic shell, filesystem or arbitrary URL command is exposed here.
  * Apply accepts only a retained job and its inspected plan digest. */
 export const nativeHost: Host & ProfileHost = {
@@ -24,6 +24,8 @@ export const nativeHost: Host & ProfileHost = {
   cancelPreview: jobId => invokeHost('cancel_preview',{jobId}),
   snapshot: jobId => invokeHost('job_snapshot',{jobId}),
   page: (jobId,offset,limit,developerMode=false,showInactive=false) => invokeHost('get_plan_page',{jobId,offset,limit,developerMode,showInactive}),
+  // Deliberately absent on desktop; parent authority never enters a generic root command.
+  ...(hasAndroidHost()?{selectAlbumSourceParent:(jobId:string,planId:string)=>androidInvoke<RootSelection|null>('select_album_source_parent',{jobId,planId})}:{}),
   startApply: (jobId,planId) => invokeHost('start_apply',{jobId,planId}),
   executionSnapshot: jobId => invokeHost('execution_snapshot',{jobId}),
   cancelApply: jobId => invokeHost('cancel_apply',{jobId}),

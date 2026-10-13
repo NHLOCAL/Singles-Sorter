@@ -212,8 +212,10 @@ export const appTemplate = `
           <p id="execution-summary" role="status" aria-live="polite"></p>
         </div>
         <button id="review-apply" class="primary">בצע את התוכנית</button>
+        <button id="select-album-source-parent" class="secondary" aria-describedby="album-source-parent-help" hidden>בחירת תיקיית האב ובדיקה מחדש</button>
         <button id="cancel-apply" class="secondary" hidden>עצור ביצוע</button>
       </div>
+      <p id="album-source-parent-help" class="hint" hidden>הרשאת תיקיית האב תשמש רק לאימות ולהסרת תיקיית המקור שנבחרה, אם תתרוקן לאחר ההעברה המתוכננת. יש לוודא ששום יישום או משתמש אחר אינו משנה את המקור, היעד או תיקיית האב בזמן הביצוע.</p>
       <progress id="execution-progress" aria-label="התקדמות הקובץ הנוכחי" hidden></progress>
       <p id="execution-recovery" class="warning" hidden></p>
       <p id="recovery-inspection" class="hint" hidden></p>

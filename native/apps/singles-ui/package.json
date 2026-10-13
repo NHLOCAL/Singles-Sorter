@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --maxWorkers=1",
     "test:renderer": "python tests/renderer.py",
+    "test:renderer:album-parent": "python tests/renderer_album_source_parent.py",
     "tauri": "tauri",
     "build:desktop": "tauri build --no-bundle",
     "test:desktop": "python tests/desktop.py"

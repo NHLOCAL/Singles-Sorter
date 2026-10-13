@@ -75,6 +75,24 @@ Browser acceptance still uses mock IPC around actual serialized host fixture
 rows. Full Windows dialogs/profile persistence and Android SAF remain distinct
 platform tests; a successful renderer build does not complete them.
 
+### Explicit selected-root Album parent selection
+
+Only a completed Android Sort Move preview with the native
+`source_parent_selection_required` flag and dedicated host method shows the
+limited-purpose parent-picker action. It sends only the retained job/plan IDs;
+the renderer never submits a parent URI or assigns the returned parent token to
+Source or Target. Cancellation preserves the preview. Success discards it and
+starts a fresh Sort preview with the original roots, settings and AI choice;
+Apply still requires that new native readiness and separate user confirmation.
+Competing controls and Back navigation remain frozen while the picker is open,
+and a disappearing view discards late replies.
+
+`npm run test:renderer:album-parent` checks this flow after a UI build using
+explicitly mocked Android IPC and an installed Playwright Chromium. It also
+checks that desktop and ordinary unflagged Android plans expose no parent
+action. Its screenshots and `renderer-parent-checks.json` are renderer evidence
+only, never Android SAF/provider or device acceptance.
+
 ### Native Windows acceptance harness
 
 `npm run build:desktop` invokes the pinned Tauri CLI (`tauri build --no-bundle`),

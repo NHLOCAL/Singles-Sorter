@@ -51,6 +51,17 @@ describe('ordinary result presentation',()=>{
   expect(simpleExecutionSummary({status:'complete',result:{...result,committed_destinations:1}},true)).not.toContain('לא בוצעו שינויים');
   expect(simpleExecutionSummary({status:'complete',result:{...result,failed_operations:1}},false)).not.toContain('לא בוצעו שינויים');
  });
+ it('keeps duet copy acknowledgments separate from original retirement',()=>{
+  const retained={...item('complete'),duet_retirement_status:'pending' as const};
+  expect(simpleStatus(row,[retained],false)).toBe('הועתק; המקור נשמר');
+  expect(simpleStatus(row,[{...retained,duet_retirement_status:'needs_recovery'}],false)).toBe('העותקים אומתו; המקור דורש בדיקה');
+  expect(simpleStatus(row,[{...retained,duet_retirement_status:'retired'}],false)).toBe('הועבר');
+  const result={source_items:2,committed_destinations:2,moved_sources:0,failed_operations:0,blocked_operations:0,cancelled_operations:0,recovery_operations:0,items:[retained],duets:{retired_sources:0,no_action_sources:0,unfinished_retirements:1}};
+  const summary=simpleExecutionSummary({status:'needs_recovery',result},false);
+  expect(summary).toContain('2 יעדים אומתו');expect(summary).toContain('1 מחיקות מקור דואט לא הושלמו');expect(summary).not.toContain('קבצים הועברו');
+  expect(simpleExecutionSummary({status:'complete',result:{...result,moved_sources:1,duets:{retired_sources:1,no_action_sources:0,unfinished_retirements:0}}},false)).toContain('1 מקורות דואט נמחקו לאחר אימות כל העותקים הנדרשים');
+  expect(simpleExecutionSummary({status:'complete',result:{...result,no_op:true,source_items:0,committed_destinations:0,items:[],duets:{retired_sources:0,no_action_sources:1,unfinished_retirements:0}}},false)).toBe('לא בוצעו שינויים. קובצי המקור נשמרו.');
+ });
  it('reports actual Fix outcomes without copy or move claims',()=>{
   const fix={...row,kind:'FixNames'};
   expect(simpleStatus({...fix,blockers:['Observation(PhysicalApplyUnavailable)']},[],false,{repairEligible:true})).toBe('לתיקון');

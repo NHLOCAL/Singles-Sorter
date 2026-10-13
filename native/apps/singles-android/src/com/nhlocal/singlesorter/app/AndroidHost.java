@@ -19,9 +19,10 @@ final class AndroidHost implements AutoCloseable {
     private final ExecutorService worker=Executors.newSingleThreadExecutor();
     private final SafReadStorage storage;private final AndroidProfile profile;private final AndroidCsv csv;
     private String documentAction;private long documentMessage;private CancellationSignal documentCancel;private byte[] exportBytes;private int exportRows;
-    private String source,target;private boolean closed;
+    private String source,target,albumParent;private boolean closed;
     private final java.util.concurrent.atomic.AtomicBoolean lifetimeCancelled=new java.util.concurrent.atomic.AtomicBoolean();
     private File models;private long pendingPicker,pickerMessage;private String pickerRole;
+    private CancellationSignal parentPickerCancellation;
     private CancellationSignal cancellation;private long nativeJob;private String jobId;
     private RetainedPlan retainedPlan;
     private String previewPersonalRevision,previewStoredSettings,ownedExecution;
@@ -70,10 +71,15 @@ final class AndroidHost implements AutoCloseable {
             }
             if(busy||pendingPicker!=0||documentAction!=null||(ProviderExecutionOwner.active()&&!command.equals("get_settings"))){error(id,"BUSY",new IllegalStateException("פעולה קודמת עדיין מסתיימת."));return;}
             if("select_root".equals(command)){
-                retainedPlan=null;
+                retainedPlan=null;albumParent=null;
                 pickerRole=args.getString("role");if(!pickerRole.equals("Source")&&!pickerRole.equals("Target"))throw new IllegalArgumentException("ROOT_ROLE");
                 pendingPicker=storage.beginPicker();pickerMessage=id;
                 activity.runOnUiThread(()->{synchronized(AndroidHost.this){if(!closed){try{activity.startActivityForResult(LocalTreeGrant.picker(),100);}catch(RuntimeException failure){long failed=pickerMessage;try{storage.finishPicker(pendingPicker,Activity.RESULT_CANCELED,null,new CancellationSignal());}catch(Exception cleanup){failure.addSuppressed(cleanup);}pendingPicker=0;error(failed,"PICKER_UNAVAILABLE",failure);}}}});return;
+            }
+            if("select_album_source_parent".equals(command)){
+                if(args.length()!=2||retainedPlan==null||!retainedPlan.jobId.equals(args.getString("jobId"))||!retainedPlan.planId.equals(args.getString("planId"))||snapshot==null||!snapshot.getJSONObject("apply").optBoolean("source_parent_selection_required",false)||!AlbumRootParent.required(retainedPlan.planCopy()))throw new IllegalArgumentException("ALBUM_PARENT_SELECTION");
+                pickerRole="AlbumParent";parentPickerCancellation=new CancellationSignal();pendingPicker=storage.beginPicker();pickerMessage=id;
+                activity.runOnUiThread(()->{synchronized(AndroidHost.this){if(!closed){try{Intent picker=LocalTreeGrant.picker();picker.putExtra(Intent.EXTRA_TITLE,"בחירת תיקיית האב של תיקיית המקור");activity.startActivityForResult(picker,100);}catch(RuntimeException failure){long failed=pickerMessage;try{storage.finishPicker(pendingPicker,Activity.RESULT_CANCELED,null,new CancellationSignal());}catch(Exception cleanup){failure.addSuppressed(cleanup);}pendingPicker=0;error(failed,"PICKER_UNAVAILABLE",failure);}}}});return;
             }
             if("select_personal_import".equals(command)||"export_personal_list".equals(command)){
                 byte[] prepared=null;int count=0;
@@ -99,7 +105,7 @@ final class AndroidHost implements AutoCloseable {
                             if(!profile.personal().getString("revision").equals(previewPersonalRevision))throw new IllegalArgumentException("PERSONAL_LIST_CHANGED");
                             JSONObject originalSettings=new JSONObject(previewStoredSettings),currentSettings=profile.settings();
                             for(String key:new String[]{"copy_mode","main_folder_only","singles_folder","exist_only","abc_sort","duet_mode"})if(originalSettings.getBoolean(key)!=currentSettings.getBoolean(key))throw new IllegalArgumentException("SETTINGS_CHANGED");
-                            ProviderReferences currentReferences=new ProviderReferences(activity,authorized,storage,source,target);
+                            ProviderReferences currentReferences=new ProviderReferences(activity,authorized,storage,source,"FixNames".equals(authorized.planCopy().getJSONObject("request").getString("mode"))?null:target,albumParent);
                             String execution=LifecycleAcceptance.accept(AndroidHost.this,()->closed,()->{String accepted=ProviderExecutionOwner.start(activity,authorized,currentReferences);ownedExecution=accepted;return accepted;});
                             value=new JSONObject().put("job_id",execution);break;
                         case "save_main_settings":retainedPlan=null;value=profile.save(args.getJSONObject("settings"));break;
@@ -142,7 +148,7 @@ final class AndroidHost implements AutoCloseable {
         if(mode.equals("Sort")){String[] s=storage.provenance(source),t=storage.provenance(target);if(s[1].equals(t[1])&&s[2].equals(t[2]))throw new IllegalArgumentException("SAME_ROOT");}
         JSONObject settings=request.getJSONObject("settings");AndroidProfile.validateSettings(settings,true);
         String ai=request.getString("ai_profile");if(!ai.equals("Disabled")&&!ai.equals("Configured"))throw new IllegalArgumentException("AI_PROFILE");
-        final String sourceRoot=source,targetRoot=mode.equals("Sort")?target:null,personalCsv=profile.personalCsv();
+        final String sourceRoot=source,targetRoot=mode.equals("Sort")?target:null,parentRoot=mode.equals("Sort")?albumParent:null,personalCsv=profile.personalCsv();
         cancellation=new CancellationSignal();final CancellationSignal signal=cancellation;
         previewPersonalRevision=profile.personal().getString("revision");previewStoredSettings=profile.settings().toString();
         final long previewGeneration=PreviewGeneration.PROCESS.capture();
@@ -156,19 +162,21 @@ final class AndroidHost implements AutoCloseable {
                 signal.throwIfCanceled();
                 if(models==null&&ai.equals("Configured"))models=OriginalAssets.prepare(activity.getApplicationContext(),signal::isCanceled);
                 signal.throwIfCanceled();
-                captured.capture(sourceRoot,true,!settings.getBoolean("main_folder_only"));
+                // Sort may lazily inspect direct Albums even in main-folder-only mode.
+                captured.capture(sourceRoot,true,mode.equals("Sort")||!settings.getBoolean("main_folder_only"));
                 if(targetRoot!=null)captured.capture(targetRoot,false,true);
                 signal.throwIfCanceled();
-                JSONObject input=new JSONObject().put("schema",1).put("mode",mode).put("source",sourceRoot).put("target",targetRoot==null?JSONObject.NULL:targetRoot).put("settings",settings).put("ai_profile",ai).put("personal_csv",personalCsv).put("entries",captured.entries);
+                JSONObject input=new JSONObject().put("schema",1).put("mode",mode).put("source",sourceRoot).put("target",targetRoot==null?JSONObject.NULL:targetRoot).put("settings",settings).put("ai_profile",ai).put("personal_csv",personalCsv).put("entries",captured.retainedReferences());
                 JSONObject result=new JSONObject(OriginalPlanning.run(nativeId,models==null?"/unconfigured":models.getAbsolutePath(),captured.directory.getAbsolutePath(),input.toString(),captured));
                 signal.throwIfCanceled();if(!result.getBoolean("ok"))throw new IllegalStateException(result.optString("error","PLANNING_FAILED"));
                 completed=result.getJSONObject("data");
                 retained=RetainedPlan.capture(ownJob,completed,captured,signal,previewGeneration);
+                if(parentRoot!=null&&AlbumRootParent.required(retained.planCopy()))retained=retained.withAlbumRootParent(AlbumRootParent.capture(activity,retained,storage.provenance(parentRoot),signal),signal::isCanceled);
             }catch(Throwable e){failure=e;}
             finally{OriginalPlanning.abandon(nativeId);}
             // Provider readiness runs after cleanup, outside the lifecycle monitor.
             if(retained!=null&&!signal.isCanceled()){
-                try{RetainedPlan readyPlan=retained;applyReadiness=LifecycleIo.run(AndroidHost.this,()->readiness(readyPlan,sourceRoot,targetRoot,signal));}catch(Throwable unavailable){failure=unavailable;}
+                try{RetainedPlan readyPlan=retained;applyReadiness=LifecycleIo.run(AndroidHost.this,()->readiness(readyPlan,sourceRoot,targetRoot,parentRoot,signal));}catch(Throwable unavailable){failure=unavailable;}
             }
             // Resource cleanup has finished before terminal state is visible.
             synchronized(AndroidHost.this){
@@ -180,7 +188,7 @@ final class AndroidHost implements AutoCloseable {
                     else if(!closed&&completed!=null&&retained!=null){retainedPlan=retained;rows=completed.getJSONArray("rows");snapshot.put("status","completed").put("plan_id",completed.getString("plan_id")).put("total_rows",rows.length()).put("blockers",completed.getJSONArray("blockers")).put("warnings",completed.getJSONArray("warnings"));snapshot.put("apply",applyReadiness==null?JSONObject.NULL:applyReadiness);
                         if(applyReadiness!=null&&applyReadiness.getBoolean("supported"))for(int n=0;n<rows.length();n++){
                             JSONObject row=rows.getJSONObject(n);JSONArray original=row.getJSONArray("blockers"),effective=new JSONArray();
-                            for(int b=0;b<original.length();b++){String blocker=original.getString(b);if(!blocker.equals("PHYSICAL_APPLY_UNAVAILABLE")&&!blocker.equals("MISSING_IDENTITY")&&!blocker.equals("UNKNOWN_CAPABILITY"))effective.put(blocker);}
+                            for(int b=0;b<original.length();b++){String blocker=original.getString(b);if(!blocker.equals("PHYSICAL_APPLY_UNAVAILABLE")&&!blocker.equals("MISSING_IDENTITY")&&!blocker.equals("UNKNOWN_CAPABILITY")&&!blocker.equals(NativeDuetPlan.MARKER)&&!("FixNames".equals(mode)&&blocker.matches("Observation\\((PhysicalApplyUnavailable|MissingIdentity|UnknownCapability)\\)|RenameMustSucceedAndRebindOriginal")))effective.put(blocker);}
                             row.put("effective_blockers",effective);
                         }}
                 }catch(Exception invalid){try{snapshot.put("status","failed").put("error","RESULT_INVALID");}catch(Exception ignored){}}
@@ -188,27 +196,32 @@ final class AndroidHost implements AutoCloseable {
             }
         });
     }
-    private JSONObject readiness(RetainedPlan retained,String selectedSource,String selectedTarget,CancellationSignal signal)throws Exception{
+    private JSONObject readiness(RetainedPlan retained,String selectedSource,String selectedTarget,String selectedParent,CancellationSignal signal)throws Exception{
         JSONObject request=retained.planCopy().getJSONObject("request");
         JSONObject result=new JSONObject().put("supported",false).put("reason",JSONObject.NULL).put("operation_count",0).put("copy_mode",request.getJSONObject("settings").getBoolean("copy_mode")).put("source",storage.inspect(selectedSource,signal).displayName).put("target",selectedTarget==null?"":storage.inspect(selectedTarget,signal).displayName);
+        String phase="reference-binding";String mode=request.getString("mode");result.put("mode",mode);
         try{
-            signal.throwIfCanceled();ProviderReferences references=new ProviderReferences(activity,retained,storage,selectedSource,selectedTarget);NativeTransferPlan plan;
+            signal.throwIfCanceled();ProviderReferences references=new ProviderReferences(activity,retained,storage,selectedSource,selectedTarget,selectedParent);int count;
             try(DiagnosticReadGate.Lease lease=ProviderExecutionOwner.beginDiagnosticRead()){
-                lease.check();PreviewGeneration.PROCESS.require(retained.recoveryGeneration);RecoveryAdmission.require(activity,references,signal);plan=NativeTransferPlan.prepare(retained,references);signal.throwIfCanceled();
+                lease.check();PreviewGeneration.PROCESS.require(retained.recoveryGeneration);phase="recovery-admission";RecoveryAdmission.require(activity,references,signal);phase="original-plan-projection";
+                if(mode.equals("FixNames")){NativeFixPlan plan=NativeFixPlan.prepare(retained,references,signal::isCanceled);phase="fix-admission-budget";FixAdmissionBounds.require(retained,plan,signal::isCanceled);phase="retained-namespace-admission";ReservedProviderObjects reserved=ReservedProviderObjects.load(activity,signal);for(NativeFixPlan.Fix fix:plan.operations)reserved.require(references.uri(fix.source()));count=plan.operations.size();}
+                else{NativeTransferPlan plan=NativeTransferPlan.prepare(retained,references);NativeAlbumPlan albums=NativeAlbumPlan.prepare(retained,references,signal::isCanceled);NativeDuetPlan duets=NativeDuetPlan.inspectOriginal(retained.planCopy(),signal::isCanceled);AlbumAdmissionBounds.require(retained,plan,albums,signal::isCanceled);DuetAdmissionBounds.require(retained,plan,albums,duets,references,signal::isCanceled);phase="retained-namespace-admission";ReservedProviderObjects reserved=ReservedProviderObjects.load(activity,signal);for(NativeTransferPlan.Transfer transfer:plan.operations)reserved.require(references.uri(transfer.source()));for(NativeAlbumPlan.Album album:albums.operations)reserved.requireSubtree(references.uri(album.source.reference()));for(NativeDuetPlan.Group group:duets.groups)reserved.require(references.uri(group.source().getJSONObject("reference")));result.put("duet_groups",duets.groups.size());count=plan.operations.size()+albums.operations.size();}signal.throwIfCanceled();
             }
-            result.put("supported",true).put("recovery_scope_admitted",true).put("operation_count",plan.operations.size()).put("reason","יש להשאיר את התיקיות ללא שינויים במהלך הביצוע. במקרה של הפרעה, הביצוע ייעצר והקבצים שכבר נוצרו יישמרו.");
-        }catch(Exception unavailable){result.put("reason","לא ניתן לבצע תוכנית זו במכשיר או בהרשאות הנוכחיות. יש לבחור תיקיות מקומיות ולבדוק מחדש.");}
+            result.put("supported",true).put("recovery_scope_admitted",true).put("operation_count",count).put("reason","יש להשאיר את התיקיות ללא שינויים במהלך הביצוע. במקרה של הפרעה, הביצוע ייעצר והקבצים שכבר נוצרו יישמרו.");
+            if(retained.albumRootParentCopy()!=null)result.put("reason","יש להשאיר את המקור, היעד ותיקיית האב ללא שינויים של יישום או משתמש אחר בזמן הביצוע. בדיקת תיקייה ריקה אינה נעילה אטומית; במקרה של הפרעה הביצוע ייעצר והראיות יישמרו.");
+        }catch(Exception unavailable){String code=ReadinessDiagnostic.code(unavailable);result.put("reason","לא ניתן לבצע תוכנית זו במכשיר או בהרשאות הנוכחיות. יש לבחור תיקיות מקומיות ולבדוק מחדש. ["+phase+"/"+code+"]").put("diagnostic",new JSONObject().put("phase",phase).put("code",code));if(code.equals("ALBUM_SELECTED_ROOT_REMOVAL_UNAVAILABLE"))result.put("source_parent_selection_required",true);}
         return result;
     }
     void pickerResult(int resultCode,Intent data){
-        final long ticket,message;final String role;final OwnedCompletion completion;
-        synchronized(this){if(closed||pendingPicker==0)return;ticket=pendingPicker;message=pickerMessage;role=pickerRole;pendingPicker=0;busy=true;completion=new OwnedCompletion(this,()->busy=false);}
+        final long ticket,message;final String role;final OwnedCompletion completion;final CancellationSignal pickerSignal;
+        synchronized(this){if(closed||pendingPicker==0)return;ticket=pendingPicker;message=pickerMessage;role=pickerRole;pickerSignal=parentPickerCancellation==null?new CancellationSignal():parentPickerCancellation;pendingPicker=0;busy=true;completion=new OwnedCompletion(this,()->{busy=false;if(parentPickerCancellation==pickerSignal)parentPickerCancellation=null;});}
         worker.execute(()->{
-            try{SafReadStorage.Entry selected=storage.finishPicker(ticket,resultCode,data,new CancellationSignal());
+            try{pickerSignal.throwIfCanceled();SafReadStorage.Entry selected=storage.finishPicker(ticket,resultCode,data,pickerSignal);
                 Object value=JSONObject.NULL;
                 if(selected!=null){
-                    LocalTreeGrant.retainIfLocal(activity,data);
-                    synchronized(AndroidHost.this){if(closed)return;if(role.equals("Source"))source=selected.token;else target=selected.token;}
+                    pickerSignal.throwIfCanceled();LocalTreeGrant.retainIfLocal(activity,data);
+                    if(role.equals("AlbumParent")){RetainedPlan current;synchronized(AndroidHost.this){if(closed)return;current=retainedPlan;}if(current==null)throw new IllegalArgumentException("STALE_PLAN");AlbumRootParent.capture(activity,current,storage.provenance(selected.token),pickerSignal);}
+                    synchronized(AndroidHost.this){if(closed)return;if(role.equals("Source"))source=selected.token;else if(role.equals("Target"))target=selected.token;else if(role.equals("AlbumParent")){albumParent=selected.token;retainedPlan=null;}else throw new IllegalArgumentException("ROOT_ROLE");}
                     value=new JSONObject().put("token",selected.token).put("display_name",selected.displayName).put("platform","android").put("capabilities",new JSONObject().put("read",true).put("list",true));
                 }
                 final Object result=value;completion.finish(()->reply(message,true,result));
@@ -232,7 +245,7 @@ final class AndroidHost implements AutoCloseable {
     }
     @Override public synchronized void close(){
         lifetimeCancelled.set(true);
-        if(closed)return;closed=true;ProviderExecutionOwner.cancelOwned(ownedExecution);retainedPlan=null;if(documentCancel!=null)documentCancel.cancel();if(cancellation!=null)cancellation.cancel();if(nativeJob!=0)OriginalPlanning.cancel(nativeJob);
+        if(closed)return;closed=true;ProviderExecutionOwner.cancelOwned(ownedExecution);retainedPlan=null;if(parentPickerCancellation!=null)parentPickerCancellation.cancel();if(documentCancel!=null)documentCancel.cancel();if(cancellation!=null)cancellation.cancel();if(nativeJob!=0)OriginalPlanning.cancel(nativeJob);
         // Scope/asset cleanup is queued after active JNI/provider work, never under it.
         worker.execute(()->{csv.clear();if(exportBytes!=null)java.util.Arrays.fill(exportBytes,(byte)0);try{storage.close();}catch(Exception ignored){}if(models!=null)OriginalAssets.cleanup(models);});worker.shutdown();
     }

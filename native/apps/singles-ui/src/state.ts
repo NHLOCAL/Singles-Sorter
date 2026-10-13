@@ -1,11 +1,11 @@
 import {defaults} from './contracts';
-import type {Host,ProfileHost,Mode,ModelStatus,PlanPage,Role,RootSelection,Settings,Snapshot,ExecutionSnapshot,RecoveryNotice} from './contracts';
+import type {Host,ProfileHost,Mode,ModelStatus,PlanPage,Role,RootSelection,Settings,Snapshot,ExecutionSnapshot,RecoveryNotice,PreviewRequest} from './contracts';
 export const PAGE_SIZE = 50;
 const rootKeys = {Source:'source',Target:'target'} as const;
 export interface RootInput {text:string;selection:RootSelection|null;pending:boolean;revision:number}
 export interface State {
   source:RootInput;target:RootInput;settings:Settings;model:ModelStatus|null;
-  initialized:boolean;startupWaiting:boolean;hostAvailable:boolean;busy:boolean;cancelRequested:boolean;activity:'preview'|'apply'|'settings'|'page'|null;error:string|null;
+  initialized:boolean;startupWaiting:boolean;hostAvailable:boolean;busy:boolean;cancelRequested:boolean;activity:'preview'|'apply'|'settings'|'page'|'album-parent'|null;error:string|null;
   recoveryNotice:RecoveryNotice|null;snapshot:Snapshot|null;execution:ExecutionSnapshot|null;page:PlanPage|null;offset:number;ai:'Disabled'|'Configured';developerMode:boolean;showInactive:boolean;
 }
 const newRoot = ():RootInput => ({text:'',selection:null,pending:false,revision:0});
@@ -35,13 +35,15 @@ export class PreviewController {
   readonly state:State={source:newRoot(),target:newRoot(),settings:{...defaults},model:null,initialized:false,startupWaiting:false,hostAvailable:false,busy:false,cancelRequested:false,activity:null,error:null,recoveryNotice:null,snapshot:null,execution:null,page:null,offset:0,ai:'Disabled',developerMode:false,showInactive:false};
   private activeApply:{jobId:string;started:boolean;cancelSent:boolean;terminal:boolean}|null=null;
   private activePreview:{jobId:string|null;cancelSent:boolean;terminal:boolean}|null=null;
+  private retainedPreview:{snapshot:Snapshot;request:PreviewRequest}|null=null;
+  private activeAlbumParent:object|null=null;
   private listeners=new Set<()=>void>();
   savedNotice:string|null=null;
   settingsDirty=false;
   constructor(private host:Host,private profile?:ProfileHost){}
   subscribe(listener:()=>void):()=>void{this.listeners.add(listener);return()=>this.listeners.delete(listener);}
   private emit(){for(const listener of this.listeners)listener();}
-  private invalidate(){this.state.execution=null;this.state.snapshot=null;this.state.page=null;this.state.offset=0;this.state.error=null;}
+  private invalidate(){this.retainedPreview=null;this.state.execution=null;this.state.snapshot=null;this.state.page=null;this.state.offset=0;this.state.error=null;}
   async initialize(){
     try{
       const settings=await this.host.getSettings();
@@ -153,7 +155,8 @@ export class PreviewController {
       if(this.state.cancelRequested)return;
       const target=mode==='Sort'?await this.resolve('Target'):null;
       if(this.state.cancelRequested)return;
-      const started=await this.host.startPreview({mode,source_token:source.token,target_token:target?.token??null,settings:{...this.state.settings},ai_profile:this.state.ai});
+      const request:PreviewRequest={mode,source_token:source.token,target_token:target?.token??null,settings:{...this.state.settings},ai_profile:this.state.ai};
+      const started=await this.host.startPreview(request);
       run.jobId=started.job_id;
       if(this.state.cancelRequested)this.sendCancellation(run);
       for(;;){
@@ -180,7 +183,7 @@ export class PreviewController {
           if(snapshot.status==='failed')throw new Error(snapshot.error||'התצוגה המקדימה נכשלה.');
           if(snapshot.status==='completed'&&!this.state.cancelRequested){
             const page=await this.host.page(started.job_id,0,PAGE_SIZE,this.state.developerMode,this.state.showInactive);
-            if(!this.state.cancelRequested)this.state.page=page;
+            if(!this.state.cancelRequested){this.state.page=page;this.retainedPreview={snapshot,request};}
           }
           break;
         }
@@ -193,9 +196,38 @@ export class PreviewController {
       this.state.busy=false;this.state.activity=null;this.emit();
     }
   }
+  get needsAlbumSourceParent():boolean {
+    const snapshot=this.state.snapshot,retained=this.retainedPreview;
+    return this.state.model?.platform==='android'&&!!this.host.selectAlbumSourceParent&&snapshot?.status==='completed'&&!!snapshot.plan_id&&snapshot.apply?.source_parent_selection_required===true&&snapshot.apply.copy_mode===false&&snapshot.apply.mode!=='FixNames'&&!this.state.execution&&retained?.snapshot===snapshot&&retained.request.mode==='Sort';
+  }
+  get canSelectAlbumSourceParent():boolean {
+    return this.needsAlbumSourceParent&&this.state.hostAvailable&&!this.state.busy&&!this.state.source.pending&&!this.state.target.pending;
+  }
+  /** A disappearing view cannot use a late picker reply to grant or restart work. */
+  discardAlbumSourceParentSelection(){
+    if(!this.activeAlbumParent)return;
+    this.activeAlbumParent=null;this.invalidate();this.state.busy=false;this.state.activity=null;this.emit();
+  }
+  /** True requests a fresh Sort preview, never Apply. The returned parent token is not stored in either root. */
+  async selectAlbumSourceParent():Promise<boolean>{
+    if(!this.canSelectAlbumSourceParent)return false;
+    const retained=this.retainedPreview!,snapshot=retained.snapshot,jobId=snapshot.job_id,planId=snapshot.plan_id!;
+    const sourceRevision=this.state.source.revision,targetRevision=this.state.target.revision,run={};
+    const current=()=>this.activeAlbumParent===run&&this.state.activity==='album-parent'&&this.needsAlbumSourceParent&&this.retainedPreview===retained&&this.state.snapshot===snapshot&&snapshot.job_id===jobId&&snapshot.plan_id===planId&&this.state.source.revision===sourceRevision&&this.state.target.revision===targetRevision&&this.state.source.selection?.token===retained.request.source_token&&this.state.target.selection?.token===retained.request.target_token&&this.state.ai===retained.request.ai_profile&&(Object.keys(defaults) as (keyof Settings)[]).every(key=>this.state.settings[key]===retained.request.settings[key]);
+    this.activeAlbumParent=run;this.state.busy=true;this.state.activity='album-parent';this.state.error=null;this.emit();
+    try{
+      const selected=await this.host.selectAlbumSourceParent!(jobId,planId);
+      if(!current()||selected===null)return false;
+      if(!selected||selected.platform!=='android'||typeof selected.token!=='string'||!selected.token||typeof selected.display_name!=='string'||selected.capabilities?.read!==true||selected.capabilities.list!==true)throw new Error('בחירת תיקיית האב לא אומתה. יש לבצע בדיקה חדשה.');
+      // The native host invalidated this exact preview. Keep both original roots,
+      // settings and AI choice; the existing UI starts a new Sort preview next.
+      this.invalidate();return true;
+    }catch(error){if(current())this.state.error=errorText(error);return false;}
+    finally{if(this.activeAlbumParent===run){this.activeAlbumParent=null;if(this.state.activity==='album-parent'){this.state.busy=false;this.state.activity=null;}this.emit();}}
+  }
   get canApply():boolean {
     const snapshot=this.state.snapshot;
-    return !this.state.busy&&(!this.state.recoveryNotice||(this.state.recoveryNotice.status==='attention'&&this.state.model?.platform==='android'&&snapshot?.apply?.recovery_scope_admitted===true))&&this.state.hostAvailable&&snapshot?.status==='completed'&&!!snapshot.plan_id&&snapshot.apply?.supported===true&&!this.state.execution&&!!this.host.startApply&&!!this.host.executionSnapshot&&!!this.host.cancelApply;
+    return !this.state.busy&&(!this.state.recoveryNotice||(this.state.recoveryNotice.status==='attention'&&this.state.model?.platform==='android'&&snapshot?.apply?.recovery_scope_admitted===true))&&this.state.hostAvailable&&snapshot?.status==='completed'&&!!snapshot.plan_id&&snapshot.apply?.supported===true&&snapshot.apply.source_parent_selection_required!==true&&!this.state.execution&&!!this.host.startApply&&!!this.host.executionSnapshot&&!!this.host.cancelApply;
   }
   cancelApply(){
     const run=this.activeApply;if(!run||run.terminal)return;

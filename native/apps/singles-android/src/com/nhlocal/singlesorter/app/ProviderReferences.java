@@ -19,10 +19,15 @@ final class ProviderReferences {
     private final Context context;
     private final HashMap<String,JSONObject> byReference=new HashMap<>(),byToken=new HashMap<>();
     private final JSONObject bindings;
-    final Uri sourceTree,targetTree;
+    private final String rootParent;
+    final Uri sourceTree,targetTree;final boolean fixMode;
     ProviderReferences(Context context,RetainedPlan retained,SafReadStorage current,String sourceToken,String targetToken)throws Exception{
+        this(context,retained,current,sourceToken,targetToken,null);
+    }
+    ProviderReferences(Context context,RetainedPlan retained,SafReadStorage current,String sourceToken,String targetToken,String parentToken)throws Exception{
         this.context=context.getApplicationContext();bindings=retained.bindingsCopy();
         JSONObject plan=retained.planCopy(),request=plan.getJSONObject("request");
+        String mode=request.getString("mode");if(!mode.equals("Sort")&&!mode.equals("FixNames"))throw new IllegalArgumentException("EXECUTION_MODE");fixMode=mode.equals("FixNames");if(fixMode!=request.isNull("target"))throw new IllegalArgumentException("EXECUTION_ROOT_MODE");
         JSONArray entries=retained.referencesCopy();if(entries.length()>2000)throw new IllegalArgumentException("REFERENCE_LIMIT");
         for(int n=0;n<entries.length();n++){
             JSONObject entry=entries.getJSONObject(n);String token=entry.getString("token");
@@ -32,6 +37,8 @@ final class ProviderReferences {
         JSONObject source=resolve(request.getJSONObject("source"));requireSelected(source,current.provenance(sourceToken));sourceTree=Uri.parse(source.getString("tree_uri"));
         if(request.isNull("target")){targetTree=null;if(targetToken!=null)throw new IllegalArgumentException("UNEXPECTED_TARGET");}
         else{if(targetToken==null)throw new IllegalArgumentException("TARGET_REQUIRED");JSONObject target=resolve(request.getJSONObject("target"));requireSelected(target,current.provenance(targetToken));targetTree=Uri.parse(target.getString("tree_uri"));}
+        JSONObject parent=retained.albumRootParentCopy();rootParent=parent==null?null:AlbumRootParent.validate(parent,plan,()->false).toString();
+        if(parent!=null){if(parentToken==null)throw new SecurityException("ALBUM_PARENT_SELECTION");String[] selected=current.provenance(parentToken);if(!parent.getString("parent_tree").equals(selected[0])||!AUTHORITY.equals(selected[1])||!parent.getString("parent_document_id").equals(selected[2]))throw new SecurityException("ALBUM_PARENT_SELECTION");requireWritable(AlbumRootParent.parentTree(parent));}
     }
     private static String key(String tree,String authority,String id){if(tree.indexOf(0)>=0||authority.indexOf(0)>=0||id.indexOf(0)>=0)throw new IllegalArgumentException("REFERENCE_NUL");return tree+'\u0000'+authority+'\u0000'+id;}
     private static void requireSelected(JSONObject entry,String[] current)throws Exception{
@@ -49,6 +56,7 @@ final class ProviderReferences {
         Uri tree=Uri.parse(parent.getString("tree_uri"));requireReadable(tree);return DocumentsContract.buildDocumentUriUsingTree(tree,parent.getString("document_id"));
     }
     JSONObject binding(JSONObject reference)throws Exception{JSONObject entry=resolve(reference);if(entry.getBoolean("directory"))throw new IllegalArgumentException("DIRECTORY_CONTENT_NOT_BOUND");return new JSONObject(bindings.getJSONObject(entry.getString("token")).toString());}
+    JSONObject rootParentEvidence()throws Exception{return rootParent==null?null:new JSONObject(rootParent);}
     void requireReadable(Uri tree)throws Exception{requireGrant(tree,false);}
     void requireWritable(Uri tree)throws Exception{requireGrant(tree,true);}
     private void requireGrant(Uri tree,boolean write)throws Exception{requireGrant(context,tree,write);}
@@ -59,8 +67,11 @@ final class ProviderReferences {
         for(UriPermission grant:context.getContentResolver().getPersistedUriPermissions())if(tree.equals(grant.getUri())&&grant.isReadPermission()&&(!write||grant.isWritePermission()))return;
         throw new SecurityException("PICKER_WRITE_GRANT_REQUIRED");
     }
+    void requireSelectedRoots()throws Exception{if(fixMode){if(targetTree!=null)throw new SecurityException("FIX_TARGET");requireWritable(sourceTree);}else requireDisjointRoots();}
+    Uri[] selectedRoots(){return fixMode?new Uri[]{sourceTree}:new Uri[]{sourceTree,targetTree};}
     void requireDisjointRoots()throws Exception{
         requireReadable(sourceTree);requireWritable(targetTree);
+        if(rootParent!=null)requireWritable(AlbumRootParent.parentTree(new JSONObject(rootParent)));
         String sourceId=DocumentsContract.getTreeDocumentId(sourceTree),targetId=DocumentsContract.getTreeDocumentId(targetTree);
         Uri sourceRoot=DocumentsContract.buildDocumentUriUsingTree(sourceTree,sourceId),targetRoot=DocumentsContract.buildDocumentUriUsingTree(targetTree,targetId);
         if(sourceId.equals(targetId)||CheckedLocalAncestry.isChild(context,sourceRoot,targetRoot)||CheckedLocalAncestry.isChild(context,targetRoot,sourceRoot))throw new SecurityException("SOURCE_TARGET_OVERLAP");
