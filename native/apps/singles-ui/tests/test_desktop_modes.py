@@ -102,7 +102,7 @@ console.log(JSON.stringify([
         expected={'desktop.py','desktop_ai.py','desktop_apply.py','desktop_albums.py',
                   'desktop_copied_move.py','desktop_cross_albums.py','desktop_stability.py',
                   'desktop_repair.py','desktop_flac.py','desktop_ogg.py','desktop_mp4.py',
-                  'desktop_id3_container.py','desktop_wavpack.py'}
+                  'desktop_id3_container.py','desktop_wavpack.py','desktop_metadata_readiness.py'}
         found=set()
         for path in Path(__file__).parent.glob('desktop*.py'):
             lines=path.read_text(encoding='utf-8').splitlines()
