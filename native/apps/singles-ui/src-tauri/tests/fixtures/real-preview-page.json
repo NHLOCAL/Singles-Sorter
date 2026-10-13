@@ -1,0 +1,32 @@
+{
+  "rows": [
+    {
+      "blockers": [],
+      "destination": null,
+      "id": "decision-0",
+      "kind": "Album",
+      "reason": "התיקייה אינה אלבום לפי כללי המיון",
+      "source": "מקור",
+      "developer_only": true,
+      "artist": null,
+      "operation_ids": [],
+      "no_action": true
+    },
+    {
+      "blockers": [],
+      "destination": "אברהם פריד / סינגלים / אברהם פריד - בדיקה.mp3",
+      "id": "decision-1",
+      "kind": "Single",
+      "reason": "אברהם פריד",
+      "source": "אברהם פריד - בדיקה.mp3",
+      "developer_only": false,
+      "artist": "אברהם פריד",
+      "operation_ids": [
+        0
+      ],
+      "no_action": false
+    }
+  ],
+  "total": 2,
+  "skipped": 1
+}

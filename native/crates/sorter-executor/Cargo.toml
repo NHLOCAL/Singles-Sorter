@@ -1,0 +1,33 @@
+[package]
+name = "sorter-executor"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+sorter-storage-contracts.workspace = true
+sorter-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+sorter-io = { path = "../sorter-io", optional = true, features = ["experimental-windows-mutation"] }
+
+[dev-dependencies]
+tempfile = "=3.27.0"
+
+[features]
+default = []
+# Owned fixture journal I/O only; never enables native transfer or apply.
+experimental-windows-journal = ["dep:sorter-io"]
+
+# Real identities and held handles, exclusively on consumed fixture TempDir roots.
+experimental-windows-copy = ["experimental-windows-journal"]
+
+# Same-volume rename only, on consumed fixture roots; no copy/delete fallback.
+experimental-windows-rename = ["experimental-windows-copy"]
+
+# Explicit host-selected local NTFS root execution.
+selected-windows-execution = ["experimental-windows-rename"]

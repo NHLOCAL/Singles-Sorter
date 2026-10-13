@@ -1,0 +1,56 @@
+import { invoke } from '@tauri-apps/api/core';
+import { androidInvoke,hasAndroidHost } from './android-transport';
+const invokeHost = <T>(command:string,args:Record<string,unknown>={}):Promise<T> => hasAndroidHost()?androidInvoke<T>(command,args):invoke<T>(command,args);
+import type {ProjectLinkTarget} from './about';
+import type { Host,ProfileHost,RecoveryHost,RootSelection } from './contracts';
+/** No generic shell, filesystem or arbitrary URL command is exposed here.
+ * Apply accepts only a retained job and its inspected plan digest. */
+export const nativeHost: Host & ProfileHost = {
+  saveMainSettings: settings => invokeHost('save_main_settings',{settings}),
+  setDuet: enabled => invokeHost('set_duet',{enabled}),
+  getPersonalList: () => invokeHost('get_personal_list'),
+  savePersonalList: (revision,rows) => invokeHost('save_personal_list',{revision,rows}),
+  selectPersonalImport: () => invokeHost('select_personal_import'),
+  previewPersonalImport: (token,encoding) => invokeHost('preview_personal_import',{token,encoding}),
+  confirmPersonalImport: (token,encoding,revision,edits=[]) => invokeHost('confirm_personal_import',{token,encoding,revision,edits}),
+  exportPersonalList: () => invokeHost('export_personal_list'),
+  getFirstRunStatus: () => invokeHost('get_first_run_status'),
+  markFirstRunSeen: () => invokeHost('mark_first_run_seen'),
+  selectRoot: role => invokeHost('select_root',{role}),
+  resolveRoot: (role,text) => invokeHost('resolve_typed_root',{role,text}),
+  getSettings: () => invokeHost('get_settings'),
+  getModelStatus: () => invokeHost('get_model_status'),
+  startPreview: request => invokeHost('start_preview',{request}),
+  cancelPreview: jobId => invokeHost('cancel_preview',{jobId}),
+  snapshot: jobId => invokeHost('job_snapshot',{jobId}),
+  page: (jobId,offset,limit,developerMode=false,showInactive=false) => invokeHost('get_plan_page',{jobId,offset,limit,developerMode,showInactive}),
+  // Deliberately absent on desktop; parent authority never enters a generic root command.
+  ...(hasAndroidHost()?{selectAlbumSourceParent:(jobId:string,planId:string)=>androidInvoke<RootSelection|null>('select_album_source_parent',{jobId,planId})}:{}),
+  startApply: (jobId,planId) => invokeHost('start_apply',{jobId,planId}),
+  executionSnapshot: jobId => invokeHost('execution_snapshot',{jobId}),
+  cancelApply: jobId => invokeHost('cancel_apply',{jobId}),
+  latestExecution: () => invokeHost('latest_execution'),
+};
+
+/** The host owns the single allowlisted destination; no URL arrives from JS. */
+export const openFooterLink = ():Promise<void> => invokeHost('open_footer_link');
+
+/** Only these named project destinations are accepted by the native host. */
+export const openProjectLink = (target:ProjectLinkTarget):Promise<void> => invokeHost('open_project_link',{target});
+
+/** Fixed offline Android notice viewer, no caller-supplied path. */
+export const openLocalLicenses=():Promise<void>=>invokeHost('open_local_licenses');
+
+export const nativeRecoveryHost:RecoveryHost = {
+  startRecoveryList: (offset,limit) => invoke('start_recovery_list',{offset,limit}),
+  recoverySnapshot: runId => invoke('recovery_snapshot',{runId}),
+  cancelRecovery: runId => invoke('cancel_recovery',{runId}),
+  selectRecoveryRoot: role => invoke('select_recovery_root',{role}),
+  selectRecoveryParent: token => invoke('select_recovery_parent',{token}),
+  startRecoveryInspection: (token,sourceToken,targetToken,resumeRunId) => invoke('start_recovery_inspection',{token,sourceToken,targetToken,resumeRunId}),
+};
+/** Fixed app-owned diagnostic viewer; no private path supplied by JavaScript. */
+export const openExecutionDiagnostics=():Promise<void>=>invokeHost('open_execution_diagnostics');
+
+/** Fixed native retained-effects review; JavaScript supplies no journal identifier or path. */
+export const openRecovery=():Promise<void>=>invokeHost('open_recovery');

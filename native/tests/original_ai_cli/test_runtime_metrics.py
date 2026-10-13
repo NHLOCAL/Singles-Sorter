@@ -1,0 +1,156 @@
+"""Portable telemetry semantics, not proof of actual Windows memory counters."""
+import os
+import subprocess
+from pathlib import Path
+import sys
+import tempfile
+import zipfile
+import unittest
+from unittest.mock import patch
+import windows_runtime_metrics as metrics
+
+
+class RuntimeMetricsTests(unittest.TestCase):
+    def test_optional_paths_bind_invocation_directory_before_oracle_chdir(self):
+        import check_windows_v14 as gate
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            original = Path.cwd()
+            try:
+                os.chdir(root)
+                package = gate.invocation_path(Path('package'))
+                archive = gate.invocation_path(Path('archive.zip'))
+                (root/'oracle-code').mkdir()
+                os.chdir(root/'oracle-code')
+                self.assertEqual(package, root/'package')
+                self.assertEqual(archive, root/'archive.zip')
+                self.assertIsNone(gate.invocation_path(None))
+            finally:
+                os.chdir(original)
+
+    def test_tree_snapshot_does_not_append_source_target_again(self):
+        import check_windows_v14 as gate
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root/'source').mkdir(); (root/'target').mkdir()
+            (root/'source'/'authored.wav').write_bytes(b'owned fixture')
+            (root/'target'/'sentinel.bin').write_bytes(b'unchanged')
+            source = gate.snapshot_tree(root/'source')
+            self.assertEqual([row['path'] for row in source], ['.', 'authored.wav'])
+            self.assertEqual([row['path'] for row in gate.snapshot(root)],
+                             ['source', str(Path('source/authored.wav')), 'target', str(Path('target/sentinel.bin'))])
+
+    def test_fresh_telemetry_compares_both_role_trees_and_preserves_sentinel(self):
+        # Exercise orchestration with fake process adapters, never Windows proof.
+        import check_windows_v14 as gate
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); native = root/'native'; bundle = root/'bundle'
+            native.mkdir(); bundle.mkdir()
+            lock = native/'probes/released-ner/released-ner-export/release-lock.json'
+            lock.parent.mkdir(parents=True); lock.write_text('{"source_files":{}}')
+            (bundle/'original-release.pkl').write_bytes(b'owned test placeholder')
+            def author(destination, case):
+                (destination/'source').mkdir(parents=True); (destination/'target').mkdir()
+                (destination/'source'/gate.DUET).write_bytes(b'owned test fixture')
+                (destination/'target'/'sentinel.bin').write_bytes(b'untouched')
+                for path in destination.rglob('*'):
+                    if path.is_file(): os.utime(path, ns=(gate.FIXED_MTIME_NS, gate.FIXED_MTIME_NS))
+            def copy_pair(destination):
+                import shutil
+                for artist in ('ישראל כהן', 'חיים לוי'):
+                    folder = destination/'target'/artist; folder.mkdir()
+                    shutil.copy2(destination/'source'/gate.DUET, folder/gate.DUET)
+            def original(command, *, cwd, **kwargs):
+                copy_pair(cwd)
+                return subprocess.CompletedProcess(command, 0, b'', b'Loaded NER model:\nLoaded sklearn model successfully'), {'elapsed_ns': 1}
+            def selected(binary, destination, arguments, **kwargs):
+                copy_pair(destination)
+                return {'exit': 0, 'performance': {'elapsed_ns': 2}}
+            with patch.object(gate, 'NATIVE', native), patch.object(gate, 'author_case', author), \
+                 patch.object(gate, 'measured_process', original), patch.object(gate, 'subprocess_record', selected), \
+                 patch.dict(os.environ, {'SystemRoot': str(root)}):
+                result = gate.fresh_process_trial(root/'app.exe', bundle, root/'baseline', root, {}, float('inf'))
+            self.assertEqual(result['status'], 'measured')
+            self.assertTrue(result['functional_media_match'])
+            self.assertTrue(any(row['path'] == 'sentinel.bin' for row in result['original_media']))
+
+    def test_package_measurement_binds_exact_archive_and_unpacked_bytes(self):
+        import check_windows_v14 as gate
+        import check_execution
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);package=root/'package';package.mkdir()
+            binary=package/'singles-sorter.exe';binary.write_bytes(b'owned executable')
+            (package/'model.bin').write_bytes(b'owned model')
+            archive=root/'owned.zip'
+            with zipfile.ZipFile(archive,'w',compression=zipfile.ZIP_DEFLATED) as zipped:
+                for path in package.iterdir(): zipped.write(path,path.name)
+            with patch.object(check_execution.package,'verify_package'):
+                value=gate.package_measurement(binary,package,archive)
+                self.assertEqual(value['unpacked_file_bytes'],len(b'owned executableowned model'))
+                self.assertEqual(value['compressed_bytes'],archive.stat().st_size)
+                (package/'model.bin').write_bytes(b'changed model')
+                with self.assertRaises(AssertionError): gate.package_measurement(binary,package,archive)
+        self.assertEqual(gate.package_measurement(Path('unused'),None,None)['status'],'unavailable')
+
+    def test_expired_optional_budget_refuses_before_extra_work(self):
+        import check_windows_v14 as gate
+        with patch.object(gate.time,'monotonic',return_value=100):
+            with self.assertRaises(TimeoutError): gate.budget_remaining(100)
+            self.assertEqual(gate.budget_remaining(125),25)
+            with self.assertRaises(TimeoutError): gate.fresh_process_trial(None,None,None,None,None,99)
+
+    def test_checked_copy_is_exclusive_and_preserves_bytes(self):
+        import check_windows_v14 as gate
+        with tempfile.TemporaryDirectory() as directory, patch.object(gate.time,'monotonic',return_value=1):
+            root=Path(directory);source=root/'source';destination=root/'destination'
+            source.write_bytes(b'owned'*40000)
+            gate.checked_copy(source,destination,2)
+            self.assertEqual(gate.checked_digest(source,2),gate.checked_digest(destination,2))
+            with self.assertRaises(FileExistsError): gate.checked_copy(source,destination,2)
+            with self.assertRaises(TimeoutError): gate.checked_digest(source,1)
+
+    def test_high_water_is_distinct_from_sampled_working_set(self):
+        values = iter([{'working_set_bytes':20,'process_lifetime_peak_working_set_bytes':100},
+                       {'working_set_bytes':30,'process_lifetime_peak_working_set_bytes':100}])
+        sampler=metrics.Sampler(lambda:next(values))
+        sampler.sample(); result=sampler.finish()
+        self.assertEqual(result['samples'],2)
+        self.assertEqual(result['sampled_peak_working_set_bytes'],30)
+        self.assertEqual(result['process_lifetime_peak_working_set_bytes'],100)
+
+    def test_failed_query_never_becomes_zero_memory(self):
+        def refused(): raise OSError('query failed')
+        result=metrics.Sampler(refused).finish()
+        self.assertEqual(result['status'],'unavailable')
+        self.assertIsNone(result['process_lifetime_peak_working_set_bytes'])
+        self.assertEqual(result['errors'],['query failed'])
+
+    def test_measured_process_retains_real_output_and_failure(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(metrics,'start_sampler',return_value=(None,{'status':'unavailable'})):
+            result, observation=metrics.measured_process([sys.executable,'-c','import sys;print("owned");sys.exit(3)'],cwd=directory,env=dict(os.environ))
+        self.assertEqual(result.returncode,3);self.assertEqual(result.stdout.strip(),b'owned')
+        self.assertGreater(observation['elapsed_ns'],0)
+        self.assertEqual(observation['memory']['status'],'unavailable')
+
+    def test_payload_and_closed_stdin_remain_exact(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(metrics,'start_sampler',return_value=(None,{'status':'unavailable'})):
+            command=[sys.executable,'-c','import sys;sys.stdout.buffer.write(sys.stdin.buffer.read())']
+            for payload in (None,b'owned payload'):
+                result,_=metrics.measured_process(command,cwd=directory,env=dict(os.environ),payload=payload)
+                self.assertEqual(result.stdout,payload or b'')
+
+    def test_cold_worker_refuses_optimized_execution_before_paths(self):
+        worker=Path(__file__).with_name('cold_original.py')
+        result=subprocess.run([sys.executable,'-O',str(worker),'unused','unused'],capture_output=True,text=True)
+        self.assertNotEqual(result.returncode,0)
+        self.assertIn('owned Windows CI runner and assertions',result.stderr)
+
+    def test_shared_measurement_keeps_return_value_and_runtime_label(self):
+        with patch.object(metrics,'start_sampler',return_value=(None,{'status':'unavailable'})):
+            result,observation=metrics.measured_call(lambda:{'original':'value'},runtime='shared warm harness')
+        self.assertEqual(result,{'original':'value'})
+        self.assertEqual(observation['runtime'],'shared warm harness')
+        self.assertGreaterEqual(observation['elapsed_ns'],0)
+
+
+if __name__ == '__main__': unittest.main()

@@ -7,3 +7,4 @@ vendor
 repomix-output.xml
 repomix-output.md
 *.pyc
+/native/apps/singles-ui/src-tauri

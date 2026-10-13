@@ -1,0 +1,299 @@
+{
+  "schema": "original-ner-runtime-source-bytes-v1",
+  "platform": "win32",
+  "python_abi": "cp312",
+  "architecture": "x86_64",
+  "comparison": "Exact pinned Windows raw bytes first; CRLF-to-LF comparison only then proves equality to unchanged original/reference source hashes. Installed source and model bytes are never modified.",
+  "wheels": {
+    "spacy": {
+      "filename": "spacy-3.7.5-cp312-cp312-win_amd64.whl",
+      "sha256": "07677e270a6d729453cc04b5e2247a96a86320b8845e6428d9f90f217eff0f56",
+      "platforms": [
+        "win32"
+      ],
+      "url": "https://files.pythonhosted.org/packages/58/42/b6bb76b08f4a0ccb0e2d0e4f3524acadf1ba929e2b93f90e4652d1c3cbd3/spacy-3.7.5-cp312-cp312-win_amd64.whl",
+      "version": "3.7.5"
+    },
+    "thinc": {
+      "filename": "thinc-8.2.5-cp312-cp312-win_amd64.whl",
+      "sha256": "c5f750ea2dd32ca6d46947025dacfc0f6037340c4e5f7adb9af84c75f65aa7d8",
+      "platforms": [
+        "win32"
+      ],
+      "url": "https://files.pythonhosted.org/packages/cd/26/306b8bedb678c52464ed00e576edf9d365fce0bcae597a333bdad9fb5d67/thinc-8.2.5-cp312-cp312-win_amd64.whl",
+      "version": "8.2.5"
+    }
+  },
+  "files": {
+    "spacy/tokenizer.pyx": {
+      "windows_sha256": "17308449f4f5f4fb9ece04617edce914f3f46848660a7a6ecccc81a716333e27",
+      "bytes": 37489,
+      "crlf": 875,
+      "bare_cr": 0,
+      "lf_sha256": "61e70a7ebda714715ae9ae502db62efe51377fb6aa799ce7abcfa095411318fb",
+      "original_sha256": "61e70a7ebda714715ae9ae502db62efe51377fb6aa799ce7abcfa095411318fb",
+      "lf_matches_original": true,
+      "raw_matches_original": false,
+      "upstream": {
+        "url": "https://raw.githubusercontent.com/explosion/spaCy/v3.7.5/spacy/tokenizer.pyx",
+        "sha256": "61e70a7ebda714715ae9ae502db62efe51377fb6aa799ce7abcfa095411318fb",
+        "bytes": 36614
+      }
+    },
+    "spacy/vocab.pyx": {
+      "windows_sha256": "ca0908b289682c95ba55e46300c9b56cd785dbab398df3c4c0ae101f7dcda362",
+      "bytes": 24832,
+      "crlf": 606,
+      "bare_cr": 0,
+      "lf_sha256": "4493c2c7789a933a5e3a093521b5d2221b1d14637a2dfc13d69c616c2ad3c007",
+      "original_sha256": "4493c2c7789a933a5e3a093521b5d2221b1d14637a2dfc13d69c616c2ad3c007",
+      "lf_matches_original": true,
+      "raw_matches_original": false,
+      "upstream": {
+        "url": "https://raw.githubusercontent.com/explosion/spaCy/v3.7.5/spacy/vocab.pyx",
+        "sha256": "4493c2c7789a933a5e3a093521b5d2221b1d14637a2dfc13d69c616c2ad3c007",
+        "bytes": 24226
+      }
+    },
+    "spacy/strings.pyx": {
+      "windows_sha256": "37158fc7e3e32e19547446acff7a12db737413f7011f7e05d86a5d05b8403131",
+      "bytes": 10920,
+      "crlf": 318,
+      "bare_cr": 0,
+      "lf_sha256": "648453878e5b2ad9b17486fc62da524ecb55958c1d5e11b8fc0ee41dd6e29c54",
+      "original_sha256": "648453878e5b2ad9b17486fc62da524ecb55958c1d5e11b8fc0ee41dd6e29c54",
+      "lf_matches_original": true,
+      "raw_matches_original": false,
+      "upstream": {
+        "url": "https://raw.githubusercontent.com/explosion/spaCy/v3.7.5/spacy/strings.pyx",
+        "sha256": "648453878e5b2ad9b17486fc62da524ecb55958c1d5e11b8fc0ee41dd6e29c54",
+        "bytes": 10602
+      }
+    },
+    "spacy/lang/lex_attrs.py": {
+      "windows_sha256": "5e6e8aa94139e5cea974b4e5fae13c87c6e894b2d55cee09589707215789c251",
+      "bytes": 6156,
+      "crlf": 213,
+      "bare_cr": 0,
+      "lf_sha256": "a20128d553a876047ae4159cec52d658c04c10dca3ba4f5320c43541e791ac5b",
+      "original_sha256": "a20128d553a876047ae4159cec52d658c04c10dca3ba4f5320c43541e791ac5b",
+      "lf_matches_original": true,
+      "raw_matches_original": false,
+      "upstream": {
+        "url": "https://raw.githubusercontent.com/explosion/spaCy/v3.7.5/spacy/lang/lex_attrs.py",
+        "sha256": "a20128d553a876047ae4159cec52d658c04c10dca3ba4f5320c43541e791ac5b",
+        "bytes": 5943
+      }
+    },
+    "spacy/lang/norm_exceptions.py": {
+      "windows_sha256": "6469b30d37027b1ac0367fe03dd12a35b2e271e4836878789f7f6c9be66de72e",
+      "bytes": 1484,
+      "crlf": 59,
+      "bare_cr": 0,
+      "lf_sha256": "4176f2ade764ddc1ff61f6a7e4774e706ed82957dcbccb8c936ff82bc9274db7",
+      "original_sha256": "4176f2ade764ddc1ff61f6a7e4774e706ed82957dcbccb8c936ff82bc9274db7",
+      "lf_matches_original": true,
+      "raw_matches_original": false,
+      "upstream": {
+        "url": "https://raw.githubusercontent.com/explosion/spaCy/v3.7.5/spacy/lang/norm_exceptions.py",
+        "sha256": "4176f2ade764ddc1ff61f6a7e4774e706ed82957dcbccb8c936ff82bc9274db7",
+        "bytes": 1425
+      }
+    },
+    "spacy/ml/models/tok2vec.py": {
+      "windows_sha256": "d993996b4e74871974f3106bc60e9985de696a9d375ba25647f33ed4973cca8f",
+      "bytes": 14395,
+      "crlf": 351,
+      "bare_cr": 0,
+      "lf_sha256": "136a036c0a929863f9971b94366778066119f0cf2638dbd89052d28a41de4a9b",
+      "original_sha256": "136a036c0a929863f9971b94366778066119f0cf2638dbd89052d28a41de4a9b",
+      "lf_matches_original": true,
+      "raw_matches_original": false,
+      "upstream": {
+        "url": "https://raw.githubusercontent.com/explosion/spaCy/v3.7.5/spacy/ml/models/tok2vec.py",
+        "sha256": "136a036c0a929863f9971b94366778066119f0cf2638dbd89052d28a41de4a9b",
+        "bytes": 14044
+      }
+    },
+    "spacy/ml/models/parser.py": {
+      "windows_sha256": "e7e77d28ca4b432d95e1dd1e315525d93b611242b98e191fe1ae6655c25c9ee9",
+      "bytes": 7072,
+      "crlf": 175,
+      "bare_cr": 0,
+      "lf_sha256": "9e1d9d9c3dafc40c3ec3c0493b12bbc1404ef668e05970f28569903de8acdab1",
+      "original_sha256": "9e1d9d9c3dafc40c3ec3c0493b12bbc1404ef668e05970f28569903de8acdab1",
+      "lf_matches_original": true,
+      "raw_matches_original": false,
+      "upstream": {
+        "url": "https://raw.githubusercontent.com/explosion/spaCy/v3.7.5/spacy/ml/models/parser.py",
+        "sha256": "9e1d9d9c3dafc40c3ec3c0493b12bbc1404ef668e05970f28569903de8acdab1",
+        "bytes": 6897
+      }
+    },
+    "spacy/ml/_precomputable_affine.py": {
+      "windows_sha256": "56fccae29694a83123ad8e98365da7c2fdf10d99d59803c81f72ad5b2b16f06d",
+      "bytes": 5998,
+      "crlf": 164,
+      "bare_cr": 0,
+      "lf_sha256": "2070d2d81bddc5eb5dc2b62a37e3829e9cfbe9be630d71d7cd43bb686f481da8",
+      "original_sha256": "2070d2d81bddc5eb5dc2b62a37e3829e9cfbe9be630d71d7cd43bb686f481da8",
+      "lf_matches_original": true,
+      "raw_matches_original": false,
+      "upstream": {
+        "url": "https://raw.githubusercontent.com/explosion/spaCy/v3.7.5/spacy/ml/_precomputable_affine.py",
+        "sha256": "2070d2d81bddc5eb5dc2b62a37e3829e9cfbe9be630d71d7cd43bb686f481da8",
+        "bytes": 5834
+      }
+    },
+    "spacy/ml/parser_model.pyx": {
+      "windows_sha256": "dd3b27510dc41d3cd93fcc792c1980482158b24b2363900b692c3ef3fdd09024",
+      "bytes": 18958,
+      "crlf": 533,
+      "bare_cr": 0,
+      "lf_sha256": "3e2a5d9caa3ac7212c68f53e8a5a28ebc15ff2b818c9828dba8a3a9a5cbbb76f",
+      "original_sha256": "3e2a5d9caa3ac7212c68f53e8a5a28ebc15ff2b818c9828dba8a3a9a5cbbb76f",
+      "lf_matches_original": true,
+      "raw_matches_original": false,
+      "upstream": {
+        "url": "https://raw.githubusercontent.com/explosion/spaCy/v3.7.5/spacy/ml/parser_model.pyx",
+        "sha256": "3e2a5d9caa3ac7212c68f53e8a5a28ebc15ff2b818c9828dba8a3a9a5cbbb76f",
+        "bytes": 18425
+      }
+    },
+    "spacy/pipeline/transition_parser.pyx": {
+      "windows_sha256": "02412a6b425c9a99380df23510a7c3bead0eca81e7c81c7ce13629c9c903a7d5",
+      "bytes": 28119,
+      "crlf": 695,
+      "bare_cr": 0,
+      "lf_sha256": "5da349a27c539759d1e5223c4410ca490ac29055839f1f4f08f485c0b15b9864",
+      "original_sha256": "5da349a27c539759d1e5223c4410ca490ac29055839f1f4f08f485c0b15b9864",
+      "lf_matches_original": true,
+      "raw_matches_original": false,
+      "upstream": {
+        "url": "https://raw.githubusercontent.com/explosion/spaCy/v3.7.5/spacy/pipeline/transition_parser.pyx",
+        "sha256": "5da349a27c539759d1e5223c4410ca490ac29055839f1f4f08f485c0b15b9864",
+        "bytes": 27424
+      }
+    },
+    "spacy/pipeline/_parser_internals/ner.pyx": {
+      "windows_sha256": "d23bba31c915259723a755c605bf732d6aa47c79b9abd2fb1b308fc158b782e6",
+      "bytes": 23777,
+      "crlf": 689,
+      "bare_cr": 0,
+      "lf_sha256": "827139f64f94d574c4193b8148211635b38b5e4721b51844cfad0050fa7b4de9",
+      "original_sha256": "827139f64f94d574c4193b8148211635b38b5e4721b51844cfad0050fa7b4de9",
+      "lf_matches_original": true,
+      "raw_matches_original": false,
+      "upstream": {
+        "url": "https://raw.githubusercontent.com/explosion/spaCy/v3.7.5/spacy/pipeline/_parser_internals/ner.pyx",
+        "sha256": "827139f64f94d574c4193b8148211635b38b5e4721b51844cfad0050fa7b4de9",
+        "bytes": 23088
+      }
+    },
+    "spacy/pipeline/_parser_internals/_state.pxd": {
+      "windows_sha256": "61374b865457f8c9c915d9d08e433d82f1ccfc2e7c252677600a2e249686418b",
+      "bytes": 12764,
+      "crlf": 409,
+      "bare_cr": 0,
+      "lf_sha256": "c530aa5d3eef233b1fee06a34c9524baea5ad579af81c2573a20145316b69457",
+      "original_sha256": "c530aa5d3eef233b1fee06a34c9524baea5ad579af81c2573a20145316b69457",
+      "lf_matches_original": true,
+      "raw_matches_original": false,
+      "upstream": {
+        "url": "https://raw.githubusercontent.com/explosion/spaCy/v3.7.5/spacy/pipeline/_parser_internals/_state.pxd",
+        "sha256": "c530aa5d3eef233b1fee06a34c9524baea5ad579af81c2573a20145316b69457",
+        "bytes": 12355
+      }
+    },
+    "thinc/layers/hashembed.py": {
+      "windows_sha256": "001677413b7f5e51e8c4824f5b708ec9a60b3657aff007299d11b669ef5c46c6",
+      "bytes": 3716,
+      "crlf": 101,
+      "bare_cr": 0,
+      "lf_sha256": "29ec1061570972ae6c541280ed3c086162bcf0eb129824e716a5cb7e5d38f8e7",
+      "original_sha256": "29ec1061570972ae6c541280ed3c086162bcf0eb129824e716a5cb7e5d38f8e7",
+      "lf_matches_original": true,
+      "raw_matches_original": false,
+      "upstream": {
+        "url": "https://raw.githubusercontent.com/explosion/thinc/v8.2.5/thinc/layers/hashembed.py",
+        "sha256": "29ec1061570972ae6c541280ed3c086162bcf0eb129824e716a5cb7e5d38f8e7",
+        "bytes": 3615
+      }
+    },
+    "thinc/layers/maxout.py": {
+      "windows_sha256": "6f5667f38c15aee130bc120a2439ccb7d82eaa9d40f0af7a8bc297c387ee5c2a",
+      "bytes": 2676,
+      "crlf": 82,
+      "bare_cr": 0,
+      "lf_sha256": "3a99e35e93a49dea68c50384cd7bc9e9927aa7174763b95c8b3069cfe17e5b04",
+      "original_sha256": "3a99e35e93a49dea68c50384cd7bc9e9927aa7174763b95c8b3069cfe17e5b04",
+      "lf_matches_original": true,
+      "raw_matches_original": false,
+      "upstream": {
+        "url": "https://raw.githubusercontent.com/explosion/thinc/v8.2.5/thinc/layers/maxout.py",
+        "sha256": "3a99e35e93a49dea68c50384cd7bc9e9927aa7174763b95c8b3069cfe17e5b04",
+        "bytes": 2594
+      }
+    },
+    "thinc/layers/layernorm.py": {
+      "windows_sha256": "2213c7a216eb5a3b48ecd22d1192f7f4e02bb1c44bfd432bb5f40def92eca960",
+      "bytes": 2621,
+      "crlf": 87,
+      "bare_cr": 0,
+      "lf_sha256": "6d6cd215d259c89a85d219d9b22a0d8cc880770c21fccf8c63d6311e8fbb5e26",
+      "original_sha256": "6d6cd215d259c89a85d219d9b22a0d8cc880770c21fccf8c63d6311e8fbb5e26",
+      "lf_matches_original": true,
+      "raw_matches_original": false,
+      "upstream": {
+        "url": "https://raw.githubusercontent.com/explosion/thinc/v8.2.5/thinc/layers/layernorm.py",
+        "sha256": "6d6cd215d259c89a85d219d9b22a0d8cc880770c21fccf8c63d6311e8fbb5e26",
+        "bytes": 2534
+      }
+    },
+    "thinc/layers/expand_window.py": {
+      "windows_sha256": "0e687f81e2efb3a8421e597c4806cef801907d6efbb817a7fafd5c41441a2e1e",
+      "bytes": 1697,
+      "crlf": 57,
+      "bare_cr": 0,
+      "lf_sha256": "17a33ee6e6b9a3cc9f048fdc108f36aa5abc1ce704d38704c0166d7f98ea3016",
+      "original_sha256": "17a33ee6e6b9a3cc9f048fdc108f36aa5abc1ce704d38704c0166d7f98ea3016",
+      "lf_matches_original": true,
+      "raw_matches_original": false,
+      "upstream": {
+        "url": "https://raw.githubusercontent.com/explosion/thinc/v8.2.5/thinc/layers/expand_window.py",
+        "sha256": "17a33ee6e6b9a3cc9f048fdc108f36aa5abc1ce704d38704c0166d7f98ea3016",
+        "bytes": 1640
+      }
+    },
+    "thinc/layers/with_array.py": {
+      "windows_sha256": "c11e7de06570c4b457376e67265b0e187172c01992fd999ba8f8029942e691ee",
+      "bytes": 3688,
+      "crlf": 110,
+      "bare_cr": 0,
+      "lf_sha256": "c27355d7b0cdd19931bddda54637def3c21fa528e3087328e27dc0e78c3e9477",
+      "original_sha256": "c27355d7b0cdd19931bddda54637def3c21fa528e3087328e27dc0e78c3e9477",
+      "lf_matches_original": true,
+      "raw_matches_original": false,
+      "upstream": {
+        "url": "https://raw.githubusercontent.com/explosion/thinc/v8.2.5/thinc/layers/with_array.py",
+        "sha256": "c27355d7b0cdd19931bddda54637def3c21fa528e3087328e27dc0e78c3e9477",
+        "bytes": 3578
+      }
+    },
+    "thinc/backends/numpy_ops.pyx": {
+      "windows_sha256": "3f09c4ccba8f900915594c93f18d4c286b51e19879c780bbf08edc1fb1adeacd",
+      "bytes": 41227,
+      "crlf": 1183,
+      "bare_cr": 0,
+      "lf_sha256": "884221757b780e198a2ded38bcf6aef3395383c43a47c991dae9d5a8aba28c76",
+      "original_sha256": "884221757b780e198a2ded38bcf6aef3395383c43a47c991dae9d5a8aba28c76",
+      "lf_matches_original": true,
+      "raw_matches_original": false,
+      "upstream": {
+        "url": "https://raw.githubusercontent.com/explosion/thinc/v8.2.5/thinc/backends/numpy_ops.pyx",
+        "sha256": "884221757b780e198a2ded38bcf6aef3395383c43a47c991dae9d5a8aba28c76",
+        "bytes": 40044
+      }
+    }
+  }
+}

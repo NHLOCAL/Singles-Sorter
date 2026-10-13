@@ -1,0 +1,1532 @@
+//! Retained preview -> one-shot native execution. The renderer never supplies
+//! paths, settings, operation lists, resource hashes, or serialized authority.
+use super::*;
+use sorter_core::discovery::{ReadInput, StorageError};
+#[cfg(all(windows, feature = "selected-windows-execution"))]
+#[path = "execution_album.rs"]
+mod album;
+#[cfg(all(windows, feature = "selected-windows-execution"))]
+#[path = "execution_repair.rs"]
+mod repair;
+
+pub(super) struct ReadAdapter<'a>(pub Box<dyn ReadStorage + 'a>);
+impl ReadStorage for ReadAdapter<'_> {
+    fn stat(
+        &mut self,
+        reference: &StorageRef,
+    ) -> std::result::Result<EntryObservation, StorageError> {
+        self.0.stat(reference)
+    }
+    fn children(
+        &mut self,
+        reference: &StorageRef,
+    ) -> std::result::Result<Vec<EntryObservation>, StorageError> {
+        self.0.children(reference)
+    }
+    fn open_read(
+        &mut self,
+        reference: &StorageRef,
+    ) -> std::result::Result<ReadInput, StorageError> {
+        self.0.open_read(reference)
+    }
+}
+#[derive(Clone, Debug, Serialize)]
+pub struct ApplyReadiness {
+    pub supported: bool,
+    pub reason: Option<String>,
+    pub operation_count: usize,
+    pub copy_mode: bool,
+    pub source: String,
+    pub target: Option<String>,
+    pub mode: JobMode,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata_diagnostics: Option<MetadataDiagnostics>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notice: Option<String>,
+}
+/// Display-only attribution from the retained full plan, not paginated rows.
+#[derive(Clone, Debug, Serialize)]
+pub struct MetadataDiagnostics {
+    pub failed_observations: usize,
+    pub affected_sources: usize,
+    pub truncated: bool,
+    pub issues: Vec<MetadataDiagnostic>,
+}
+#[derive(Clone, Debug, Serialize)]
+pub struct MetadataDiagnostic {
+    pub observation_index: usize,
+    pub after_operations: usize,
+    pub relative_source: String,
+    pub label_truncated: bool,
+    pub error_kind: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub storage_kind: Option<sorter_core::discovery::StorageErrorKind>,
+}
+#[cfg(any(test, all(windows, feature = "selected-windows-execution")))]
+fn metadata_diagnostics(
+    root: &StorageRef,
+    observations: &[sorter_core::metadata::MetadataObservation],
+) -> Option<MetadataDiagnostics> {
+    use sorter_core::metadata::{MetadataError, MetadataObservation};
+    let mut issues = Vec::new();
+    let mut sources = std::collections::HashSet::new();
+    let mut failed_observations = 0;
+    for (observation_index, observation) in observations.iter().enumerate() {
+        let MetadataObservation::Open {
+            source,
+            after_operations,
+            result: Err(error),
+        } = observation
+        else {
+            continue;
+        };
+        let (error_kind, storage_kind) = match error {
+            MetadataError::LegacyOpen { .. } => continue,
+            MetadataError::Storage(error) => ("Storage", Some(error.kind)),
+            MetadataError::UnsupportedPlatform => ("UnsupportedPlatform", None),
+            MetadataError::SeekRequired => ("SeekRequired", None),
+            MetadataError::InvalidInput => ("InvalidInput", None),
+            MetadataError::Parser => ("Parser", None),
+            MetadataError::InputBudget => ("InputBudget", None),
+            MetadataError::NativeException => ("NativeException", None),
+            MetadataError::UnsupportedClass => ("UnsupportedClass", None),
+        };
+        failed_observations += 1;
+        sources.insert(&source.reference);
+        if issues.len() < 20 {
+            // Exact lexical suffix is display only; it never becomes a path grant.
+            let relative = match (root, &source.reference) {
+                (
+                    StorageRef::WindowsPath { utf16: root },
+                    StorageRef::WindowsPath { utf16: source },
+                ) if source == root => Some(".".to_owned()),
+                (
+                    StorageRef::WindowsPath { utf16: root },
+                    StorageRef::WindowsPath { utf16: source },
+                ) if !root.is_empty() && source.starts_with(root) => {
+                    let suffix = &source[root.len()..];
+                    let separator = |unit: u16| unit == u16::from(b'\\') || unit == u16::from(b'/');
+                    if root.last().is_some_and(|unit| separator(*unit)) {
+                        Some(String::from_utf16_lossy(suffix))
+                    } else if suffix.first().is_some_and(|unit| separator(*unit)) {
+                        Some(String::from_utf16_lossy(&suffix[1..]))
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            }
+            .unwrap_or_else(|| {
+                source
+                    .name
+                    .rsplit(['/', '\\'])
+                    .next()
+                    .unwrap_or("")
+                    .to_owned()
+            });
+            let label_truncated = relative.chars().count() > 512;
+            let relative_source = relative.chars().take(512).map(|c| if c.is_control() || matches!(c, '\u{061c}' | '\u{200e}' | '\u{200f}' | '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}') { '\u{fffd}' } else { c }).collect();
+            issues.push(MetadataDiagnostic {
+                observation_index,
+                after_operations: *after_operations,
+                relative_source,
+                label_truncated,
+                error_kind,
+                storage_kind,
+            });
+        }
+    }
+    (failed_observations > 0).then_some(MetadataDiagnostics {
+        failed_observations,
+        affected_sources: sources.len(),
+        truncated: failed_observations > issues.len(),
+        issues,
+    })
+}
+#[derive(Clone, Debug, Serialize)]
+pub struct ExecutionItem {
+    pub operation: usize,
+    pub status: &'static str,
+    pub detail: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub repair: Option<RepairOutcome>,
+}
+#[derive(Clone, Debug, Serialize)]
+pub struct RepairOutcome {
+    pub renamed: bool,
+    pub repaired: bool,
+    pub unchanged: bool,
+    /// Display-only leaf from a successful current-file observation, never a plan.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub observed_filename: Option<String>,
+}
+#[derive(Clone, Debug, Serialize)]
+pub struct RepairSummary {
+    pub total_files: usize,
+    pub processed_files: usize,
+    pub renamed_files: usize,
+    pub repaired_files: usize,
+    pub unchanged_files: usize,
+    pub unsupported_files: usize,
+    pub failed_files: usize,
+    pub retained_backup_bytes: u64,
+}
+#[derive(Clone, Debug, Serialize)]
+pub struct AlbumSummary {
+    pub completed: usize,
+    pub child_names_changed: usize,
+    pub created_directories: usize,
+    pub removed_directories: usize,
+    pub retained_directories: usize,
+}
+#[derive(Clone, Debug, Serialize)]
+pub struct ExecutionResult {
+    /// True only after a freshly revalidated plan with no admitted effects.
+    pub no_op: bool,
+    #[cfg(feature = "selected-windows-execution")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub legacy_summary: Option<sorter_executor::legacy_summary::LegacySummary>,
+    pub source_items: usize,
+    pub committed_destinations: usize,
+    pub moved_sources: usize,
+    pub failed_operations: usize,
+    pub blocked_operations: usize,
+    pub recovery_operations: usize,
+    pub cancelled_operations: usize,
+    pub items: Vec<ExecutionItem>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub repair: Option<RepairSummary>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub albums: Option<AlbumSummary>,
+}
+#[derive(Clone, Debug, Serialize)]
+pub struct VerificationProgress {
+    pub completed_operations: usize,
+    pub total_operations: usize,
+    pub bytes_read: u64,
+    pub elapsed_ms: u64,
+}
+#[derive(Clone, Debug, Serialize)]
+pub struct ExecutionSnapshot {
+    pub host_schema: u16,
+    pub job_id: String,
+    pub plan_id: String,
+    pub status: &'static str,
+    pub operation_count: usize,
+    pub operation: Option<usize>,
+    pub bytes_written: u64,
+    pub source_length: u64,
+    pub journal_path: Option<String>,
+    pub error: Option<String>,
+    pub result: Option<ExecutionResult>,
+    pub recovery: Option<RecoveryInspection>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recovery_error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub verification: Option<VerificationProgress>,
+}
+#[derive(Clone, Debug, Serialize)]
+pub struct RecoveryDirectory {
+    pub reference: StorageRef,
+    pub role: &'static str,
+    pub status: String,
+}
+#[derive(Clone, Debug, Serialize)]
+pub struct RecoveryInspection {
+    pub observed_directories: usize,
+    pub pending_directories: usize,
+    pub rejected_directories: usize,
+    pub incomplete_tail: bool,
+    pub transfers: Vec<RecoveryItem>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub pending_operations: Vec<usize>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub directory_evidence: Vec<RecoveryDirectory>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata_issues: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub terminal_records_complete: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub append_blocked: Option<bool>,
+}
+#[derive(Clone, Debug, Serialize)]
+pub struct RecoveryItem {
+    pub operation: usize,
+    pub status: String,
+}
+#[derive(Clone, Debug, Serialize)]
+pub struct RetainedExecution {
+    pub preview: JobSnapshot,
+    pub execution: ExecutionSnapshot,
+}
+impl ExecutionSnapshot {
+    pub(super) fn is_running(&self) -> bool {
+        matches!(self.status, "preparing" | "running")
+    }
+}
+impl Host {
+    pub fn latest_execution(&self) -> Result<Option<RetainedExecution>> {
+        let inner = self.lock()?;
+        Ok(inner.job.as_ref().and_then(|job| {
+            job.execution.as_ref().map(|execution| RetainedExecution {
+                preview: job.snapshot.clone(),
+                execution: execution.clone(),
+            })
+        }))
+    }
+    pub fn set_journal_directory(&self, directory: PathBuf) -> Result<()> {
+        validate_path(&directory)?;
+        self.lock()?.journal_directory = Some(directory);
+        Ok(())
+    }
+    pub fn execution_snapshot(&self, id: &str) -> Result<ExecutionSnapshot> {
+        self.lock()?
+            .job
+            .as_ref()
+            .filter(|job| job.snapshot.job_id == id)
+            .ok_or_else(|| HostError::new("UNKNOWN_JOB", "Job is no longer retained"))?
+            .execution
+            .clone()
+            .ok_or_else(|| HostError::new("APPLY_NOT_STARTED", "Execution was not started"))
+    }
+    pub fn cancel_apply(&self, id: &str) -> Result<()> {
+        let inner = self.lock()?;
+        let job = inner
+            .job
+            .as_ref()
+            .filter(|job| job.snapshot.job_id == id)
+            .ok_or_else(|| HostError::new("UNKNOWN_JOB", "Job is no longer retained"))?;
+        if job
+            .execution
+            .as_ref()
+            .is_some_and(ExecutionSnapshot::is_running)
+        {
+            job.cancellation.cancel();
+        }
+        Ok(())
+    }
+    #[cfg(not(all(windows, feature = "selected-windows-execution")))]
+    pub fn start_apply(&self, _: &str, _: &str, _: Vec<u8>, _: BusyGuard) -> Result<JobId> {
+        Err(HostError::new(
+            "APPLY_UNAVAILABLE",
+            "ביצוע קבצים אינו זמין במארח זה.",
+        ))
+    }
+}
+#[cfg(all(windows, feature = "selected-windows-execution"))]
+mod selected {
+    use super::*;
+    use sorter_executor::{
+        binding::{ExecutionScope, Resources, prepare_scope},
+        results::{ItemStatus, JobResult, JobStatus},
+        windows_album::{
+            AlbumScope, prepare_album_move_streams, prepare_album_scope, supported_album_plan,
+        },
+        windows_job::{
+            CopiedMoveScope, SelectedWindowsJob, prepare_copied_move_scope,
+            supported_copied_move_plan, supported_plan,
+        },
+        windows_repair::{RepairScope, prepare_repair_scope, supported_repair_plan},
+    };
+    use sorter_io::desktop::windows_mutation::{WindowsMutationStorage, WindowsSelectedRootGrant};
+    #[derive(Clone)]
+    pub(crate) struct PreparedSelection {
+        source: PathBuf,
+        personal: Vec<u8>,
+        ai: RequestedAi,
+        scope: PreparedScope,
+    }
+    #[derive(Clone)]
+    enum PreparedScope {
+        Noop {
+            target: PathBuf,
+            resources: Resources,
+        },
+        Sort {
+            target: PathBuf,
+            scope: ExecutionScope,
+        },
+        CopiedMove {
+            target: PathBuf,
+            journal: PathBuf,
+            journal_identity: sorter_core::discovery::ObjectIdentity,
+            scope: Box<CopiedMoveScope>,
+        },
+        Album {
+            target: PathBuf,
+            journal: Option<(PathBuf, sorter_core::discovery::ObjectIdentity)>,
+            scope: Box<AlbumScope>,
+        },
+        Repair(RepairScope),
+    }
+    impl PreparedSelection {
+        #[cfg(test)]
+        pub(super) fn test_album_scope(&self) -> Option<&AlbumScope> {
+            match &self.scope {
+                PreparedScope::Album { scope, .. } => Some(scope),
+                _ => None,
+            }
+        }
+        fn resources(&self) -> &Resources {
+            match &self.scope {
+                PreparedScope::Noop { resources, .. } => resources,
+                PreparedScope::Sort { scope, .. } => &scope.resources,
+                PreparedScope::CopiedMove { scope, .. } => &scope.execution_scope().resources,
+                PreparedScope::Repair(scope) => scope.resources(),
+                PreparedScope::Album { scope, .. } => scope.resources(),
+            }
+        }
+    }
+    fn digest(value: &[u8]) -> String {
+        format!("{:x}", Sha256::digest(value))
+    }
+    // IDs come exclusively from verified resources/loaders in this process.
+    // Adapter evidence hashes descriptors, not executable binary bytes. The
+    // model hash is the ordered four-artifact ID aggregate, not a fifth asset.
+    fn evidence(plan: &JobPlanV2) -> Result<Resources> {
+        let resource_hashes = plan
+            .request
+            .resource_ids
+            .iter()
+            .map(|id| {
+                id.rsplit_once(":sha256:")
+                    .map(|(_, hash)| hash.to_owned())
+                    .filter(|hash| {
+                        hash.len() == 64
+                            && hash
+                                .bytes()
+                                .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
+                    })
+                    .ok_or_else(|| {
+                        HostError::new(
+                            "RESOURCE_INVALID",
+                            "Resource has no verified content digest",
+                        )
+                    })
+            })
+            .collect::<Result<Vec<_>>>()?;
+        let models = plan
+            .request
+            .resource_ids
+            .iter()
+            .filter(|id| id.starts_with("original-"))
+            .collect::<Vec<_>>();
+        Ok(Resources {
+            resource_ids: plan.request.resource_ids.clone(),
+            adapter_versions: plan.request.adapter_versions.clone(),
+            ai_profile: plan.request.ai_profile.clone(),
+            resource_hashes,
+            adapter_hashes: plan
+                .request
+                .adapter_versions
+                .iter()
+                .map(|s| digest(s.as_bytes()))
+                .collect(),
+            model_hash: (!matches!(plan.request.ai_profile, AiProfile::Disabled))
+                .then(|| digest(&serde_json::to_vec(&models).expect("string identifiers"))),
+        })
+    }
+    pub(super) const COPIED_MOVE_NOTICE: &str = "סגור תוכנות או סנכרון שמשנים את המקור או היעד עד סיום ההעברה. המקור יוסר רק לאחר אימות כל היעדים של אותו קובץ.";
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn inspect_selection(
+        plan: &JobPlanV2,
+        source: &Root,
+        target: Option<&Root>,
+        personal: Option<&[u8]>,
+        ai: RequestedAi,
+        journal_directory: Option<&Path>,
+        storage: &mut dyn ReadStorage,
+        cancellation: &Cancellation,
+    ) -> Result<(Option<ApplyReadiness>, Option<PreparedSelection>)> {
+        let inspected = (|| {
+            let resources = evidence(plan)?;
+            if plan.request.mode == JobMode::FixNames {
+                supported_repair_plan(plan).map_err(storage_error)?;
+                let scope =
+                    prepare_repair_scope(plan, storage, &resources, &cancellation.cancelled)
+                        .map_err(storage_error)?;
+                return Ok(PreparedSelection {
+                    source: source.path.clone(),
+                    personal: personal.unwrap_or_default().to_vec(),
+                    ai,
+                    scope: PreparedScope::Repair(scope),
+                });
+            }
+            let target =
+                target.ok_or_else(|| HostError::new("TARGET_REQUIRED", "בחר תיקיית יעד למיון."))?;
+            if plan.operations.iter().any(|operation| {
+                matches!(
+                    operation.kind,
+                    sorter_core::job_plan::OperationKind::AlbumTransfer { .. }
+                )
+            }) {
+                supported_album_plan(plan).map_err(storage_error)?;
+                let mut scope =
+                    prepare_album_scope(plan, storage, &resources, &cancellation.cancelled)
+                        .map_err(storage_error)?;
+                let mut retained_journal = None;
+                if !plan.request.settings.copy_mode
+                    && !matches!((&scope.execution_scope().source_root, &scope.execution_scope().target_root), (sorter_core::discovery::ObjectIdentity::Windows {volume:a,..},sorter_core::discovery::ObjectIdentity::Windows {volume:b,..}) if a == b)
+                {
+                    let journal = journal_directory.ok_or_else(|| {
+                        HostError::new(
+                            "JOURNAL_UNAVAILABLE",
+                            "Application journal directory is unavailable",
+                        )
+                    })?;
+                    let identity = inspect_root(journal)?.identity.ok_or_else(|| {
+                        HostError::new("JOURNAL_UNAVAILABLE", "Journal root identity missing")
+                    })?;
+                    let grant = |path: &Path, identity| {
+                        WindowsSelectedRootGrant::new(path.to_owned(), identity)
+                            .map_err(storage_error)
+                    };
+                    let roots = WindowsMutationStorage::for_selected_roots(
+                        grant(&source.path, scope.execution_scope().source_root.clone())?,
+                        grant(&target.path, scope.execution_scope().target_root.clone())?,
+                        grant(journal, identity.clone())?,
+                    )
+                    .map_err(storage_error)?;
+                    prepare_album_move_streams(&mut scope, &roots, &cancellation.cancelled)
+                        .map_err(storage_error)?;
+                    // The preview grants never escape or create a journal. Apply
+                    // receives retained data and independently reopens every root.
+                    retained_journal = Some((journal.to_owned(), identity));
+                }
+                return Ok(PreparedSelection {
+                    source: source.path.clone(),
+                    personal: personal.unwrap_or_default().to_vec(),
+                    ai,
+                    scope: PreparedScope::Album {
+                        target: target.path.clone(),
+                        journal: retained_journal,
+                        scope: Box::new(scope),
+                    },
+                });
+            }
+            if sorter_executor::no_op::is_clean_sort_noop(plan) {
+                return Ok(PreparedSelection {
+                    source: source.path.clone(),
+                    personal: personal.unwrap_or_default().to_vec(),
+                    ai,
+                    scope: PreparedScope::Noop {
+                        target: target.path.clone(),
+                        resources,
+                    },
+                });
+            }
+            if supported_plan(plan).is_err() {
+                supported_copied_move_plan(plan).map_err(storage_error)?;
+                let journal = journal_directory.ok_or_else(|| {
+                    HostError::new(
+                        "JOURNAL_UNAVAILABLE",
+                        "Application journal directory is unavailable",
+                    )
+                })?;
+                let journal_identity = inspect_root(journal)?.identity.ok_or_else(|| {
+                    HostError::new("JOURNAL_UNAVAILABLE", "Journal root identity missing")
+                })?;
+                let grant =
+                    |path: &Path, identity: Option<sorter_core::discovery::ObjectIdentity>| {
+                        WindowsSelectedRootGrant::new(
+                            path.to_owned(),
+                            identity.ok_or_else(|| {
+                                HostError::new("ROOT_CHANGED", "Selected root identity missing")
+                            })?,
+                        )
+                        .map_err(storage_error)
+                    };
+                let roots = WindowsMutationStorage::for_selected_roots(
+                    grant(&source.path, source.observed.identity.clone())?,
+                    grant(&target.path, target.observed.identity.clone())?,
+                    grant(journal, Some(journal_identity.clone()))?,
+                )
+                .map_err(storage_error)?;
+                let scope = prepare_copied_move_scope(
+                    plan,
+                    storage,
+                    &roots,
+                    &resources,
+                    &cancellation.cancelled,
+                )
+                .map_err(storage_error)?;
+                return Ok(PreparedSelection {
+                    source: source.path.clone(),
+                    personal: personal.unwrap_or_default().to_vec(),
+                    ai,
+                    scope: PreparedScope::CopiedMove {
+                        target: target.path.clone(),
+                        journal: journal.to_owned(),
+                        journal_identity,
+                        scope: Box::new(scope),
+                    },
+                });
+            }
+            let scope = prepare_scope(plan, storage, &resources, &cancellation.cancelled)
+                .map_err(storage_error)?;
+            if !plan.request.settings.copy_mode
+                && !matches!((&scope.source_root, &scope.target_root), (sorter_core::discovery::ObjectIdentity::Windows {volume:a,..},sorter_core::discovery::ObjectIdentity::Windows {volume:b,..}) if a == b)
+            {
+                return Err(HostError::new(
+                    "CROSS_VOLUME_MOVE_UNAVAILABLE",
+                    "העברה בין כוננים אינה זמינה עדיין. אפשר לבחור העתקה ולבדוק מחדש.",
+                ));
+            }
+            Ok(PreparedSelection {
+                source: source.path.clone(),
+                personal: personal.unwrap_or_default().to_vec(),
+                ai,
+                scope: PreparedScope::Sort {
+                    target: target.path.clone(),
+                    scope,
+                },
+            })
+        })();
+        if cancellation.is_cancelled() {
+            return Err(HostError::new("PLANNING_CANCELLED", "הבדיקה בוטלה."));
+        }
+        let (selected, reason) = match inspected {
+            Ok(selected) => (Some(selected), None),
+            Err(error) => (
+                None,
+                Some(if error.code == "CROSS_VOLUME_MOVE_UNAVAILABLE" {
+                    error.message
+                } else {
+                    format!(
+                        "התוכנית כוללת פעולות שאינן זמינות לביצוע בטוח במארח זה ({})",
+                        error.message
+                    )
+                }),
+            ),
+        };
+        Ok((
+            Some(ApplyReadiness {
+                supported: selected.is_some(),
+                reason,
+                operation_count: plan.operations.len(),
+                copy_mode: plan.request.settings.copy_mode,
+                source: source.selection.display_name.clone(),
+                target: target.map(|root| root.selection.display_name.clone()),
+                mode: plan.request.mode,
+                metadata_diagnostics: metadata_diagnostics(&plan.request.source, &plan.metadata_observations),
+                notice: selected.as_ref().and_then(|selection| match &selection.scope {
+                    PreparedScope::Album { journal: Some(_), .. } => Some("סגור תוכנות או סנכרון שמשנים את המקור או היעד עד סיום ההעברה. קובצי המקור יוסרו רק אחרי אימות ההעתקה; תיקיות המקור יוסרו רק כשהן ריקות.".into()),
+                    PreparedScope::Album { .. } => Some("לפני מיון אלבומים, סגור תוכנות או סנכרון שעלולים לשנות את המקור או היעד עד לסיום הפעולה.".into()),
+                    PreparedScope::CopiedMove { .. } => Some(COPIED_MOVE_NOTICE.into()),
+                    _ => None,
+                }),
+            }),
+            selected,
+        ))
+    }
+    pub(super) fn journal_grant(
+        directory: PathBuf,
+        retained_identity: Option<sorter_core::discovery::ObjectIdentity>,
+    ) -> Result<WindowsSelectedRootGrant> {
+        // A copied job already bound this role at preview. Never adopt a newly
+        // observed identity between its comparison and the native root open.
+        let identity = match retained_identity {
+            Some(identity) => identity,
+            None => inspect_root(&directory)?.identity.ok_or_else(|| {
+                HostError::new("JOURNAL_UNAVAILABLE", "Journal root identity missing")
+            })?,
+        };
+        WindowsSelectedRootGrant::new(directory, identity).map_err(storage_error)
+    }
+    impl Host {
+        pub(super) fn verification_control(
+            &self,
+            id: &str,
+            cancellation: &Cancellation,
+        ) -> sorter_executor::inspection_control::InspectionControl<'static> {
+            let host = self.clone();
+            let job_id = id.to_owned();
+            #[cfg(test)]
+            let verification_observer = self.verification_observer.clone();
+            sorter_executor::inspection_control::InspectionControl::new(
+                cancellation.cancelled.clone(),
+                move |progress| {
+                    if let Ok(mut inner) = host.lock()
+                        && let Some(snapshot) = inner
+                            .job
+                            .as_mut()
+                            .filter(|job| job.snapshot.job_id == job_id)
+                            .and_then(|job| job.execution.as_mut())
+                    {
+                        snapshot.operation = None;
+                        snapshot.verification = Some(VerificationProgress {
+                            completed_operations: progress.completed_operations,
+                            total_operations: progress.total_operations,
+                            bytes_read: progress.bytes_read,
+                            elapsed_ms: progress.elapsed_ms,
+                        });
+                    }
+                    #[cfg(test)]
+                    if let Some(observer) = &verification_observer {
+                        observer(&progress);
+                    }
+                },
+            )
+        }
+
+        pub fn start_apply(
+            &self,
+            id: &str,
+            plan_id: &str,
+            personal: Vec<u8>,
+            guard: BusyGuard,
+        ) -> Result<JobId> {
+            let mut inner = self.lock()?;
+            if guard.lifecycle != self.shared.lifecycle.load(Ordering::Acquire) {
+                return Err(HostError::new(
+                    "PLANNING_CANCELLED",
+                    "The owning view was closed or reloaded",
+                ));
+            }
+            let directory = inner.journal_directory.clone().ok_or_else(|| {
+                HostError::new(
+                    "JOURNAL_UNAVAILABLE",
+                    "Application journal directory is unavailable",
+                )
+            })?;
+            let job = inner
+                .job
+                .as_mut()
+                .filter(|job| job.snapshot.job_id == id)
+                .ok_or_else(|| HostError::new("UNKNOWN_JOB", "Plan is no longer retained"))?;
+            if job.snapshot.status != "completed"
+                || job.snapshot.plan_id.as_deref() != Some(plan_id)
+                || job.execution.is_some()
+            {
+                return Err(HostError::new(
+                    "PLAN_CHANGED",
+                    "יש לבצע בדיקה חדשה לפני הביצוע.",
+                ));
+            }
+            let selected = job.selected.as_ref().ok_or_else(|| {
+                HostError::new("APPLY_UNAVAILABLE", "תוכנית זו אינה זמינה לביצוע.")
+            })?;
+            if selected.personal != personal {
+                return Err(HostError::new(
+                    "LIST_CHANGED",
+                    "רשימת האמנים השתנתה. יש לבדוק מחדש.",
+                ));
+            }
+            let selected = job.selected.take().expect("checked retained selection");
+            let plan = job._plan.as_ref().expect("completed retained plan").clone();
+            let cancellation = Cancellation::default();
+            job.cancellation = cancellation.clone();
+            job.execution = Some(ExecutionSnapshot {
+                host_schema: 1,
+                job_id: id.into(),
+                plan_id: plan_id.into(),
+                status: "preparing",
+                operation_count: plan.operations.len(),
+                operation: None,
+                bytes_written: 0,
+                source_length: 0,
+                journal_path: Some(directory.to_string_lossy().into_owned()),
+                error: None,
+                result: None,
+                recovery: None,
+                recovery_error: None,
+                verification: None,
+            });
+            drop(inner);
+            let host = self.clone();
+            let job_id = id.to_owned();
+            let returned_id = job_id.clone();
+            let spawned = std::thread::Builder::new()
+                .name("selected-windows-execution".into())
+                .spawn(move || {
+                    let _guard = guard;
+                    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        host.execute_selected(&job_id, &plan, selected, directory, &cancellation)
+                    }));
+                    if result.is_err() {
+                        host.execution_error(
+                            &job_id,
+                            "needs_recovery",
+                            "הפעולה הופסקה באופן בלתי צפוי. יש לבדוק את היומן לפני פעולה נוספת.",
+                        );
+                    } else if let Ok(Err(error)) = result {
+                        host.execution_error(&job_id, "failed", &error.message);
+                    }
+                });
+            if let Err(error) = spawned {
+                self.execution_error(id, "failed", &error.to_string());
+            }
+            Ok(JobId {
+                job_id: returned_id,
+            })
+        }
+        pub(super) fn execution_error(&self, id: &str, status: &'static str, error: &str) {
+            if let Ok(mut inner) = self.lock()
+                && let Some(e) = inner
+                    .job
+                    .as_mut()
+                    .filter(|j| j.snapshot.job_id == id)
+                    .and_then(|j| j.execution.as_mut())
+            {
+                e.status = status;
+                e.error = Some(error.into());
+            }
+        }
+        fn execute_selected(
+            &self,
+            id: &str,
+            plan: &JobPlanV2,
+            selected: PreparedSelection,
+            directory: PathBuf,
+            cancellation: &Cancellation,
+        ) -> Result<()> {
+            if cancellation.is_cancelled() {
+                self.execution_error(id, "cancelled", "הביצוע בוטל לפני הפעלתו.");
+                return Ok(());
+            }
+            let recognition_result =
+                recognition(&selected.ai, self.model_directory.as_deref(), cancellation);
+            if cancellation.is_cancelled() {
+                self.execution_error(id, "cancelled", "הביצוע בוטל לפני תחילת ההעברה.");
+                return Ok(());
+            }
+            let (mut recognition, model_resources, _) = recognition_result?;
+            let aliases = load_aliases(BUNDLED, Some(&selected.personal)).map_err(storage_error)?;
+            let mut ids = aliases
+                .source_hashes
+                .iter()
+                .map(|s| {
+                    format!(
+                        "{}:sha256:{}",
+                        match s.source {
+                            sorter_io::resources::AliasSource::Bundled => "bundled",
+                            sorter_io::resources::AliasSource::Personal => "personal",
+                        },
+                        s.sha256
+                    )
+                })
+                .collect::<Vec<_>>();
+            ids.extend(model_resources);
+            if ids != selected.resources().resource_ids
+                || recognition.profile() != selected.resources().ai_profile
+            {
+                return Err(HostError::new(
+                    "RESOURCE_CHANGED",
+                    "Resources changed; inspect a fresh plan",
+                ));
+            }
+            let (target, scope, copied, retained_journal) = match selected.scope {
+                PreparedScope::Noop { target, .. } => {
+                    let reads =
+                        sorter_executor::windows_copy::WindowsPlanningStorage::for_album_preview(
+                            &selected.source,
+                            &target,
+                            sorter_io::desktop::WindowsDirectoryReadLimits::ALBUM_DEFAULT,
+                            &cancellation.cancelled,
+                        )
+                        .map_err(storage_error)?;
+                    let mut storage = SharedReadStorage::new(reads);
+                    let mut metadata_storage = storage.clone();
+                    let mut metadata = StorageMetadataProvider {
+                        storage: &mut metadata_storage,
+                        reader: MetadataReader,
+                    };
+                    let fresh = plan_job_controlled(
+                        &plan.request,
+                        &mut storage,
+                        &mut metadata,
+                        recognition.as_mut(),
+                        cancellation,
+                    );
+                    if cancellation.is_cancelled() {
+                        self.execution_error(id, "cancelled", "הבדיקה בוטלה. לא בוצעו שינויים.");
+                        return Ok(());
+                    }
+                    let fresh = fresh.map_err(|error| HostError::new(&error.code, error.detail))?;
+                    if fresh.binding_sha256 != plan.binding_sha256
+                        || !sorter_executor::no_op::is_clean_sort_noop(&fresh)
+                    {
+                        return Err(HostError::new(
+                            "PLAN_CHANGED",
+                            "Files or resources changed; inspect a fresh plan",
+                        ));
+                    }
+                    let mut inner = self.lock()?;
+                    if let Some(snapshot) = inner
+                        .job
+                        .as_mut()
+                        .filter(|job| job.snapshot.job_id == id)
+                        .and_then(|job| job.execution.as_mut())
+                    {
+                        snapshot.status = "complete";
+                        snapshot.journal_path = None;
+                        snapshot.operation = None;
+                        snapshot.result = Some(ExecutionResult {
+                            no_op: true,
+                            legacy_summary: Some(
+                                sorter_executor::legacy_summary::LegacySummary::default(),
+                            ),
+                            source_items: 0,
+                            committed_destinations: 0,
+                            moved_sources: 0,
+                            failed_operations: 0,
+                            blocked_operations: 0,
+                            recovery_operations: 0,
+                            cancelled_operations: 0,
+                            items: vec![],
+                            repair: None,
+                            albums: None,
+                        });
+                    }
+                    return Ok(());
+                }
+                PreparedScope::Repair(scope) => {
+                    return self.execute_repair(
+                        id,
+                        plan,
+                        &selected.source,
+                        directory,
+                        &scope,
+                        recognition.as_mut(),
+                        cancellation,
+                    );
+                }
+                PreparedScope::Album {
+                    target,
+                    journal,
+                    scope,
+                } => {
+                    if let Some((path, identity)) = &journal
+                        && (path != &directory
+                            || inspect_root(&directory)?.identity.as_ref() != Some(identity))
+                    {
+                        return Err(HostError::new(
+                            "JOURNAL_CHANGED",
+                            "Journal storage changed; inspect a fresh plan",
+                        ));
+                    }
+                    return self.execute_album(
+                        id,
+                        plan,
+                        &selected.source,
+                        &target,
+                        directory,
+                        &scope,
+                        recognition.as_mut(),
+                        cancellation,
+                        journal.map(|(_, identity)| identity),
+                    );
+                }
+                PreparedScope::Sort { target, scope } => (target, scope, None, None),
+                PreparedScope::CopiedMove {
+                    target,
+                    journal,
+                    journal_identity,
+                    scope,
+                } => {
+                    if directory != journal
+                        || inspect_root(&directory)?.identity.as_ref() != Some(&journal_identity)
+                    {
+                        return Err(HostError::new(
+                            "JOURNAL_CHANGED",
+                            "Journal storage changed; inspect a fresh plan",
+                        ));
+                    }
+                    (
+                        target,
+                        scope.execution_scope().clone(),
+                        Some(scope),
+                        Some(journal_identity),
+                    )
+                }
+            };
+            // Startup profile access already established this application directory.
+            // Never create a path selected relative to a music tree here.
+            let journal = journal_grant(directory.clone(), retained_journal)?;
+            let grant = |path, identity| {
+                WindowsSelectedRootGrant::new(path, identity).map_err(storage_error)
+            };
+            let roots = WindowsMutationStorage::for_selected_roots(
+                grant(selected.source.clone(), scope.source_root.clone())?,
+                grant(target.clone(), scope.target_root.clone())?,
+                journal,
+            )
+            .map_err(storage_error)?;
+            let mut reads = sorter_executor::windows_copy::WindowsPlanningStorage::for_preview(
+                &selected.source,
+                &target,
+            )
+            .map_err(storage_error)?;
+            let mut metadata = StorageMetadataProvider {
+                storage: &mut reads,
+                reader: MetadataReader,
+            };
+            let prepared_job = if let Some(copied) = &copied {
+                SelectedWindowsJob::prepare_copied_move(
+                    roots,
+                    plan,
+                    &mut metadata,
+                    recognition.as_mut(),
+                    &scope.resources,
+                    copied,
+                    &cancellation.cancelled,
+                )
+            } else {
+                SelectedWindowsJob::prepare(
+                    roots,
+                    plan,
+                    &mut metadata,
+                    recognition.as_mut(),
+                    &scope.resources,
+                    &scope,
+                )
+            };
+            if cancellation.is_cancelled() {
+                self.execution_error(id, "cancelled", "הביצוע בוטל לפני תחילת ההעברה.");
+                return Ok(());
+            }
+            let mut job = prepared_job.map_err(storage_error)?;
+            let journal_path = directory.to_string_lossy().into_owned();
+            let recovery_scope = sorter_executor::binding::RecoveryScope {
+                original_scope: scope.clone(),
+                inspected_binding_sha256: job.binding_sha256().map_err(storage_error)?,
+            };
+            if let Ok(mut inner) = self.lock()
+                && let Some(e) = inner
+                    .job
+                    .as_mut()
+                    .filter(|j| j.snapshot.job_id == id)
+                    .and_then(|j| j.execution.as_mut())
+            {
+                e.status = "running";
+                e.journal_path = Some(journal_path);
+            }
+            let result = job.run(&cancellation.cancelled, &mut |progress| {
+                if let Ok(mut inner) = self.lock()
+                    && let Some(e) = inner
+                        .job
+                        .as_mut()
+                        .filter(|j| j.snapshot.job_id == id)
+                        .and_then(|j| j.execution.as_mut())
+                {
+                    e.operation = Some(progress.operation);
+                    e.bytes_written = progress.bytes_written;
+                    e.source_length = progress.source_length;
+                }
+            });
+            let (recovered, recovery_error) = if job.journal_locations().is_empty() {
+                (None, None)
+            } else if cancellation.is_cancelled() {
+                (None, Some("VERIFICATION_CANCELLED".into()))
+            } else {
+                let control = self.verification_control(id, cancellation);
+                match job.inspect_recovery_controlled(&recovery_scope, &control) {
+                    Ok(report) => {
+                        let inspection = project_recovery(report);
+                        let incomplete = !inspection.pending_operations.is_empty()
+                            || inspection.pending_directories > 0
+                            || inspection.rejected_directories > 0
+                            || inspection.incomplete_tail
+                            || inspection.terminal_records_complete != Some(true)
+                            || inspection.append_blocked == Some(true)
+                            || inspection.metadata_issues.is_some_and(|count| count > 0);
+                        (
+                            Some(inspection),
+                            incomplete.then(|| "TRANSFER_RECONCILIATION_INCOMPLETE".into()),
+                        )
+                    }
+                    Err(error) => (None, Some(error.to_string())),
+                }
+            };
+            if let Ok(mut inner) = self.lock()
+                && let Some(e) = inner
+                    .job
+                    .as_mut()
+                    .filter(|j| j.snapshot.job_id == id)
+                    .and_then(|j| j.execution.as_mut())
+            {
+                e.recovery = recovered;
+                e.recovery_error = recovery_error;
+            }
+            match result {
+                Ok(result) => {
+                    let mut inner = self.lock()?;
+                    if let Some(e) = inner
+                        .job
+                        .as_mut()
+                        .filter(|j| j.snapshot.job_id == id)
+                        .and_then(|j| j.execution.as_mut())
+                    {
+                        e.status = status(&result);
+                        let legacy_summary =
+                            sorter_executor::legacy_summary::LegacySummary::from_receipts(
+                                &plan.operations,
+                                &result.committed_operations,
+                                &job.created_directory_receipts()
+                                    .iter()
+                                    .map(|(reference, _)| reference.clone())
+                                    .collect::<Vec<_>>(),
+                                0,
+                                &[],
+                            );
+                        let mut projected = project(result);
+                        projected.legacy_summary = Some(legacy_summary);
+                        e.result = Some(projected);
+                        e.operation = None;
+                    }
+                }
+                Err(error) => self.execution_error(
+                    id,
+                    if job.journal_locations().is_empty() && cancellation.is_cancelled() {
+                        "cancelled"
+                    } else {
+                        "needs_recovery"
+                    },
+                    &format!("הביצוע נעצר: {error}. יש לבדוק את יומן הפעולה."),
+                ),
+            }
+            Ok(())
+        }
+    }
+    fn project_recovery(
+        report: sorter_executor::windows_job::SelectedRecoveryReport,
+    ) -> RecoveryInspection {
+        use sorter_executor::recovery::{CopyMetadataRecoveryStatus, RecoveryStatus};
+        let append_blocked = report
+            .transfers
+            .as_ref()
+            .is_none_or(|transfer| transfer.append_blocked);
+        let mut pending_operations = vec![];
+        let mut metadata_issues = 0;
+        let transfers = report
+            .transfers
+            .map(|transfer| {
+                transfer
+                    .operations
+                    .into_iter()
+                    .map(|operation| {
+                        if operation.status != RecoveryStatus::Committed {
+                            pending_operations.push(operation.operation);
+                        }
+                        if !matches!(
+                            operation.copy_metadata,
+                            CopyMetadataRecoveryStatus::NotRequested
+                                | CopyMetadataRecoveryStatus::Verified
+                        ) {
+                            metadata_issues += 1;
+                        }
+                        RecoveryItem {
+                            operation: operation.operation,
+                            status: format!("{:?}", operation.status),
+                        }
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        RecoveryInspection {
+            pending_operations,
+            directory_evidence: vec![],
+            metadata_issues: Some(metadata_issues),
+            terminal_records_complete: Some(report.directories.complete),
+            append_blocked: Some(append_blocked),
+            observed_directories: report.directories.observed.len(),
+            pending_directories: report.directories.pending.len(),
+            rejected_directories: report.directories.rejected.len(),
+            incomplete_tail: report.directories.incomplete_tail,
+            transfers,
+        }
+    }
+    pub(super) fn status(result: &JobResult) -> &'static str {
+        match result.status {
+            JobStatus::Complete => "complete",
+            JobStatus::Partial => "partial",
+            JobStatus::Cancelled => "cancelled",
+            JobStatus::NeedsRecovery => "needs_recovery",
+        }
+    }
+    pub(super) fn project(result: JobResult) -> ExecutionResult {
+        ExecutionResult {
+            no_op: false,
+            legacy_summary: None,
+            source_items: result.source_items,
+            committed_destinations: result.committed_destinations,
+            moved_sources: result.moved_sources,
+            failed_operations: result.failed_operations,
+            blocked_operations: result.blocked_operations,
+            recovery_operations: result.recovery_operations,
+            cancelled_operations: result.cancelled_operations,
+            repair: None,
+            albums: None,
+            items: result
+                .items
+                .into_iter()
+                .map(|i| ExecutionItem {
+                    operation: i.operation,
+                    status: match i.status {
+                        ItemStatus::Complete => "complete",
+                        ItemStatus::SourceRetained => "source_retained",
+                        ItemStatus::Failed => "failed",
+                        ItemStatus::Cancelled => "cancelled",
+                        ItemStatus::Blocked => "blocked",
+                        ItemStatus::NeedsRecovery => "needs_recovery",
+                    },
+                    detail: i.detail,
+                    repair: None,
+                })
+                .collect(),
+        }
+    }
+}
+#[cfg(all(windows, feature = "selected-windows-execution"))]
+pub(super) use selected::{PreparedSelection, inspect_selection};
+
+#[cfg(all(test, windows, feature = "selected-windows-execution"))]
+#[path = "execution_noop_tests.rs"]
+mod no_op_tests;
+
+#[cfg(all(test, windows, feature = "selected-windows-execution"))]
+#[path = "execution_copied_move_tests.rs"]
+mod copied_move_tests;
+
+#[cfg(test)]
+mod metadata_diagnostic_tests {
+    use super::*;
+    use sorter_core::discovery::{Capabilities, EntryKind, StorageErrorKind};
+    use sorter_core::metadata::{MetadataError, MetadataObservation};
+    fn reference(path: &str) -> StorageRef {
+        StorageRef::WindowsPath {
+            utf16: path.encode_utf16().collect(),
+        }
+    }
+    fn observation(
+        path: &str,
+        error: MetadataError,
+        after_operations: usize,
+    ) -> MetadataObservation {
+        MetadataObservation::Open {
+            source: EntryObservation {
+                reference: reference(path),
+                identity: None,
+                parent_identity: None,
+                name: path.to_owned(),
+                kind: EntryKind::File,
+                size: Some(42),
+                modified: None,
+                capabilities: Capabilities::default(),
+            },
+            after_operations,
+            result: Err(error),
+        }
+    }
+    #[test]
+    fn metadata_diagnostics_include_protected_album_children_without_operation_rows() {
+        // An album-protected child need never receive its own display/transfer row.
+        // Attribution reads the original observation directly, not operation rows.
+        let values = vec![observation(
+            r"C:\private\music\אלבום\שיר.mp3",
+            MetadataError::UnsupportedClass,
+            0,
+        )];
+        let report = metadata_diagnostics(&reference(r"C:\private\music"), &values).unwrap();
+        assert_eq!(report.failed_observations, 1);
+        assert_eq!(report.affected_sources, 1);
+        assert_eq!(report.issues[0].relative_source, r"אלבום\שיר.mp3");
+        assert_eq!(report.issues[0].error_kind, "UnsupportedClass");
+        assert_eq!(report.issues[0].after_operations, 0);
+        assert!(!serde_json::to_string(&report).unwrap().contains("private"));
+    }
+    #[test]
+    fn metadata_diagnostics_preserve_order_duplicates_and_exact_storage_subkind() {
+        let values = vec![
+            observation(
+                r"C:\music\album\one.mp3",
+                MetadataError::LegacyOpen {
+                    kind: "ValueError".into(),
+                    detail: "private legacy data".into(),
+                },
+                0,
+            ),
+            observation(r"C:\music\album\one.mp3", MetadataError::Parser, 0),
+            observation(
+                r"C:\music\album\one.mp3",
+                MetadataError::Storage(StorageError::new(
+                    StorageErrorKind::Changed,
+                    r"C:\secret absolute details",
+                )),
+                3,
+            ),
+        ];
+        let report = metadata_diagnostics(&reference(r"C:\music"), &values).unwrap();
+        assert_eq!(report.failed_observations, 2);
+        assert_eq!(report.affected_sources, 1);
+        assert_eq!(
+            report
+                .issues
+                .iter()
+                .map(|item| item.observation_index)
+                .collect::<Vec<_>>(),
+            [1, 2]
+        );
+        assert_eq!(report.issues[1].after_operations, 3);
+        assert_eq!(
+            report.issues[1].storage_kind,
+            Some(StorageErrorKind::Changed)
+        );
+        let json = serde_json::to_string(&report).unwrap();
+        assert!(!json.contains("secret"));
+        assert!(!json.contains("legacy data"));
+    }
+    #[test]
+    fn metadata_diagnostics_cap_details_but_count_the_complete_plan() {
+        let values = (0..27)
+            .map(|index| {
+                observation(
+                    &format!(r"C:\music\{}.mp3", index / 2),
+                    MetadataError::InputBudget,
+                    index,
+                )
+            })
+            .collect::<Vec<_>>();
+        let report = metadata_diagnostics(&reference(r"C:\music"), &values).unwrap();
+        assert_eq!(report.failed_observations, 27);
+        assert_eq!(report.affected_sources, 14);
+        assert!(report.truncated);
+        assert_eq!(report.issues.len(), 20);
+        assert_eq!(
+            report
+                .issues
+                .iter()
+                .map(|item| item.observation_index)
+                .collect::<Vec<_>>(),
+            (0..20).collect::<Vec<_>>()
+        );
+        assert!(
+            !metadata_diagnostics(&reference(r"C:\music"), &values[..20])
+                .unwrap()
+                .truncated
+        );
+    }
+    #[test]
+    fn metadata_diagnostics_labels_are_bounded_relative_and_bidi_safe() {
+        let values = vec![
+            observation(r"C:\music-other\private\leaf.mp3", MetadataError::Parser, 0),
+            observation(
+                &format!("C:\\music\\{}\u{202e}\n.mp3", "א".repeat(600)),
+                MetadataError::Parser,
+                0,
+            ),
+            observation("C:\\music\\a\u{202e}b\n.mp3", MetadataError::Parser, 0),
+        ];
+        let report = metadata_diagnostics(&reference(r"C:\music"), &values).unwrap();
+        assert_eq!(report.issues[0].relative_source, "leaf.mp3");
+        assert_eq!(report.issues[1].relative_source.chars().count(), 512);
+        assert!(report.issues[1].label_truncated);
+        assert_eq!(report.issues[2].relative_source, "a�b�.mp3");
+    }
+    #[test]
+    fn metadata_diagnostics_omit_legacy_only_and_keep_every_typed_error() {
+        let root = reference(r"C:\music");
+        assert!(metadata_diagnostics(&root, &[]).is_none());
+        assert!(
+            metadata_diagnostics(
+                &root,
+                &[observation(
+                    r"C:\music\one.mp3",
+                    MetadataError::LegacyOpen {
+                        kind: "ValueError".into(),
+                        detail: "opaque".into()
+                    },
+                    0
+                )]
+            )
+            .is_none()
+        );
+        let errors = [
+            MetadataError::UnsupportedPlatform,
+            MetadataError::SeekRequired,
+            MetadataError::InvalidInput,
+            MetadataError::Parser,
+            MetadataError::InputBudget,
+            MetadataError::NativeException,
+            MetadataError::UnsupportedClass,
+        ];
+        let values = errors
+            .into_iter()
+            .map(|error| observation(r"C:\music\one.mp3", error, 0))
+            .collect::<Vec<_>>();
+        let report = metadata_diagnostics(&root, &values).unwrap();
+        assert_eq!(
+            report
+                .issues
+                .iter()
+                .map(|issue| issue.error_kind)
+                .collect::<Vec<_>>(),
+            [
+                "UnsupportedPlatform",
+                "SeekRequired",
+                "InvalidInput",
+                "Parser",
+                "InputBudget",
+                "NativeException",
+                "UnsupportedClass"
+            ]
+        );
+    }
+    #[test]
+    fn metadata_diagnostics_optional_field_does_not_change_older_snapshot_shape() {
+        let mut readiness = ApplyReadiness {
+            supported: false,
+            reason: Some("Unsupported".into()),
+            operation_count: 0,
+            copy_mode: true,
+            source: "source".into(),
+            target: None,
+            mode: JobMode::Sort,
+            notice: None,
+            metadata_diagnostics: None,
+        };
+        assert!(
+            serde_json::to_value(&readiness)
+                .unwrap()
+                .get("metadata_diagnostics")
+                .is_none()
+        );
+        readiness.metadata_diagnostics = metadata_diagnostics(
+            &reference(r"C:\music"),
+            &[observation(r"C:\music\one.mp3", MetadataError::Parser, 0)],
+        );
+        assert_eq!(
+            serde_json::to_value(&readiness).unwrap()["metadata_diagnostics"]["issues"][0]["error_kind"],
+            "Parser"
+        );
+    }
+}
+#[cfg(all(test, windows, feature = "selected-windows-execution"))]
+mod metadata_readiness_tests {
+    use super::*;
+    use serde_json::json;
+    mod fixtures {
+        include!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../../tests/metadata_read_compatibility/fixture_support.rs"
+        ));
+    }
+    type TreeRow = (PathBuf, bool, u64, std::time::SystemTime, Vec<u8>);
+    fn tree(root: &Path) -> Vec<TreeRow> {
+        fn visit(root: &Path, path: &Path, rows: &mut Vec<TreeRow>) {
+            let metadata = std::fs::symlink_metadata(path).unwrap();
+            assert!(!metadata.file_type().is_symlink());
+            rows.push((
+                path.strip_prefix(root).unwrap().to_owned(),
+                metadata.is_dir(),
+                metadata.len(),
+                metadata.modified().unwrap(),
+                if metadata.is_file() {
+                    std::fs::read(path).unwrap()
+                } else {
+                    vec![]
+                },
+            ));
+            if metadata.is_dir() {
+                for entry in std::fs::read_dir(path).unwrap() {
+                    visit(root, &entry.unwrap().path(), rows);
+                }
+            }
+        }
+        let mut rows = vec![];
+        visit(root, root, &mut rows);
+        rows.sort_by(|a, b| a.0.cmp(&b.0));
+        rows
+    }
+    #[test]
+    fn mixed_103_file_host_advertises_copy_and_move_without_preview_effects() {
+        for copy in [true, false] {
+            let owned = tempfile::tempdir().unwrap();
+            let source = owned.path().canonicalize().unwrap().join("source");
+            let target = owned.path().canonicalize().unwrap().join("target");
+            let journal = owned.path().canonicalize().unwrap().join("journal");
+            for path in [&source, &target, &journal] {
+                std::fs::create_dir(path).unwrap();
+            }
+            fixtures::mixed_library(&source);
+            let before = tree(owned.path());
+            assert_eq!(before.iter().filter(|row| !row.1).count(), 103);
+            let host = Host::default();
+            host.set_journal_directory(journal).unwrap();
+            let s = host.select_path(Role::Source, source).unwrap();
+            let t = host.select_path(Role::Target, target).unwrap();
+            let request = serde_json::from_value(json!({"mode":"Sort","source_token":s.token,"target_token":t.token,"settings":{"copy_mode":copy,"main_folder_only":false,"singles_folder":false,"abc_sort":false,"exist_only":false,"duet_mode":false},"ai_profile":"Disabled"})).unwrap();
+            let job = host.preview_with_personal(request, Some("זמר אלבום,Mapped Artist\nשלום עולם,Mapped Artist\nFallback Artist,Mapped Artist\n".as_bytes().to_vec())).unwrap();
+            let snapshot = host.snapshot(&job.job_id).unwrap();
+            assert_eq!(snapshot.status, "completed", "{snapshot:?}");
+            let readiness = snapshot.apply.as_ref().unwrap();
+            assert!(readiness.supported, "{snapshot:?}");
+            assert!(readiness.reason.is_none() && readiness.metadata_diagnostics.is_none());
+            assert_eq!(readiness.operation_count, 24, "{snapshot:?}");
+            assert!(
+                !snapshot
+                    .blockers
+                    .iter()
+                    .any(|value| value == "METADATA_ADAPTER_LIMITATION")
+            );
+            assert_eq!(tree(owned.path()), before);
+            assert!(host.claim().is_ok());
+        }
+    }
+    #[test]
+    fn unsupported_album_child_is_attributed_in_host_refusal_without_effects() {
+        let owned = tempfile::tempdir().unwrap();
+        let source = owned.path().canonicalize().unwrap().join("source");
+        let target = owned.path().canonicalize().unwrap().join("target");
+        let journal = owned.path().canonicalize().unwrap().join("journal");
+        for path in [&source, &target, &journal] {
+            std::fs::create_dir(path).unwrap();
+        }
+        let album = source.join("protected-album");
+        std::fs::create_dir(&album).unwrap();
+        for index in 0..4 {
+            std::fs::write(album.join(format!("{index}.mp3")), fixtures::fixture(2, 0)).unwrap();
+        }
+        std::fs::write(album.join("unsupported.mp3"), fixtures::fixture(3, 0xc0)).unwrap();
+        let before = tree(owned.path());
+        let host = Host::default();
+        host.set_journal_directory(journal).unwrap();
+        let s = host.select_path(Role::Source, source).unwrap();
+        let t = host.select_path(Role::Target, target).unwrap();
+        let request = serde_json::from_value(json!({"mode":"Sort","source_token":s.token,"target_token":t.token,"settings":{"copy_mode":true,"main_folder_only":false,"singles_folder":false,"abc_sort":false,"exist_only":false,"duet_mode":false},"ai_profile":"Disabled"})).unwrap();
+        let job = host
+            .preview_with_personal(
+                request,
+                Some(
+                    "זמר אלבום,Mapped Artist\nשלום עולם,Mapped Artist\n"
+                        .as_bytes()
+                        .to_vec(),
+                ),
+            )
+            .unwrap();
+        let snapshot = host.snapshot(&job.job_id).unwrap();
+        assert_eq!(snapshot.status, "completed", "{snapshot:?}");
+        let readiness = snapshot.apply.as_ref().unwrap();
+        assert!(
+            !readiness.supported && readiness.reason.is_some(),
+            "{snapshot:?}"
+        );
+        assert!(
+            snapshot
+                .blockers
+                .iter()
+                .any(|value| value == "METADATA_ADAPTER_LIMITATION")
+        );
+        let report = readiness.metadata_diagnostics.as_ref().unwrap();
+        assert!(report.failed_observations > 0);
+        assert_eq!(report.affected_sources, 1);
+        assert!(!report.truncated);
+        assert!(report.issues.iter().all(|issue| issue.relative_source
+            == r"protected-album\unsupported.mp3"
+            && issue.error_kind == "UnsupportedClass"));
+        let wire = serde_json::to_string(report).unwrap();
+        assert!(!wire.contains(&owned.path().to_string_lossy().replace('\\', "\\\\")));
+        assert_eq!(tree(owned.path()), before);
+        assert!(host.claim().is_ok());
+    }
+}

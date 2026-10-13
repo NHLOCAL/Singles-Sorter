@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "name": "Microsoft WebView2 SDK static loader",
+  "version": "1.0.3800.47",
+  "source_url": "https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/1.0.3800.47/microsoft.web.webview2.1.0.3800.47.nupkg",
+  "source_archive_sha256": "56c9f26bdd07916a2d1949fb58a5c7e434dfa1173577dca879206050c4e718db",
+  "wrapper_package": "webview2-com-sys",
+  "wrapper_version": "0.39.1",
+  "wrapper_vcs_revision": "edc2caf886175ccaebe86078c9cfe1ae2a187328",
+  "source_version_evidence": "https://raw.githubusercontent.com/wravery/webview2-rs/edc2caf886175ccaebe86078c9cfe1ae2a187328/crates/update-bindings/src/main.rs",
+  "loader_path": "x64/WebView2LoaderStatic.lib",
+  "source_archive_loader_path": "build/native/x64/WebView2LoaderStatic.lib",
+  "loader_sha256": "89c6b872783b8f6c3cedbff618adb42082d455c615453ae10cfc753f1e8f25d8",
+  "license": "Microsoft BSD-style source/binary redistribution terms; full upstream notices retained",
+  "require_license_acceptance": false,
+  "notices": {
+    "desktop-upstream/microsoft-webview2-sdk-1.0.3800.47/LICENSE.txt": "0af8f1b807512aae39c2ac1aa4d0cae65cabecb6fd554b8439a5162a0d6eca55",
+    "desktop-upstream/microsoft-webview2-sdk-1.0.3800.47/NOTICE.txt": "106423785c5b7eba0a8e61d1837f2132e9c828e20ad530f565d981c1df60dd90"
+  }
+}

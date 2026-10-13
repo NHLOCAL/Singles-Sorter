@@ -1,0 +1,462 @@
+name: Windows native UI acceptance
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'native/apps/singles-ui/**'
+      - 'native/crates/**'
+      - 'native/tests/fixtures/**'
+      - 'native/packaging/**'
+      - 'native/probes/released-ner/**'
+      - 'native/rust-toolchain.toml'
+      - '.github/workflows/native-ui-windows.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-ui-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  windows-ui:
+    runs-on: windows-2025
+    # Two sequential source/package-bound selected trials have 30-minute caps.
+    # Actual 881 preparation/build took about 24 minutes; retain bounded room for both.
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: native/apps/singles-ui
+    env:
+      RUSTUP_TOOLCHAIN: '1.99.0'
+      CARGO_BUILD_JOBS: '2'
+      CARGO_TARGET_DIR: ${{ github.workspace }}/native/apps/singles-ui/src-tauri/target
+      MSEDGEDRIVER_TELEMETRY_OPTOUT: '1'
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+    steps:
+      - name: Keep authenticated source bytes identical on Windows
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config --global core.autocrlf false
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git config --global core.eol lf
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check out reviewed sources
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout: |
+            native
+            .github/workflows
+
+      - name: Install pinned official Python for exports and driver tests
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12.10'
+
+      - name: Require FFmpeg and FFprobe before owned media helper tests
+        run: |
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+            choco install ffmpeg --yes --no-progress
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          foreach ($tool in @('ffmpeg', 'ffprobe')) {
+            if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) { throw "$tool must be available; decoder tests cannot be skipped" }
+            & $tool -version
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+      - name: Test bounded startup and original-AI driver contracts before heavy builds
+        run: |
+          python -m unittest discover -s tests -p 'test_desktop*.py' -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m unittest discover -s ../../packaging/windows-desktop-preview -p 'test_*.py' -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+
+      - name: Fetch hash-pinned official portable least-privilege launcher
+        run: |
+          $directory = Join-Path $env:RUNNER_TEMP 'singles-ui-gsudo-2.6.1'
+          New-Item -ItemType Directory -Force $directory | Out-Null
+          $archive = Join-Path $directory 'gsudo.portable.zip'
+          Invoke-WebRequest 'https://github.com/gerardog/gsudo/releases/download/v2.6.1/gsudo.portable.zip' -OutFile $archive
+          $expected = '21130bf178d7b9891207f00bff56f05b6b363ce9cec7b2d084e45fb12ee51f44'
+          if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) {
+            throw 'Official portable gsudo archive hash mismatch'
+          }
+          Expand-Archive $archive -DestinationPath $directory
+          $launcher = Join-Path $directory 'x64/gsudo.exe'
+          if (-not (Test-Path $launcher)) { throw 'Pinned x64 launcher missing' }
+          "SINGLES_GSUDO_EXE=$launcher" >> $env:GITHUB_ENV
+
+      - name: Verify effective normal-user rights before compilation
+        run: python tests/run_desktop_medium.py --preflight
+
+      - name: Probe exact staging diagnostics and inherited Medium access before builds
+        run: python ../../packaging/windows-desktop-preview/probe_staging_access.py
+
+      - name: Probe strict profile guard and same-directory Windows rename
+        run: python tests/windows-profile-rename-probe.py
+
+      - name: Isolate public Cargo downloads and driver installation
+        run: |
+          "CARGO_HOME=$env:RUNNER_TEMP/singles-ui-cargo" >> $env:GITHUB_ENV
+          "TAURI_DRIVER_ROOT=$env:RUNNER_TEMP/singles-ui-tauri-driver-2.1.0" >> $env:GITHUB_ENV
+
+      - name: Install pinned official Rust toolchain
+        run: rustup toolchain install 1.99.0 --profile minimal --component rustfmt --component clippy
+
+      # Cache only public dependency downloads and generated build intermediates.
+      # Never cache credentials, the checkout, frontend dist, or app/test executables.
+      # Local crate intermediates are included but always cleaned before rebuilding.
+      - name: Fingerprint pinned compiler and build environment
+        id: rust-cache-key
+        run: |
+          $compiler = (& rustc -vV | Out-String)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $cargo = (& cargo -V | Out-String)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $buildEnv = Get-ChildItem Env: | Where-Object {
+            $_.Name -match '^(RUST|CARGO_BUILD|CARGO_TARGET|CARGO_PROFILE|CARGO_ENCODED_RUSTFLAGS|CC|CXX|CFLAGS|CXXFLAGS|CMAKE)' -and
+            $_.Name -notmatch '(TOKEN|SECRET|PASSWORD|CREDENTIAL)'
+          } | Sort-Object Name | ForEach-Object { "$($_.Name)=$($_.Value)" }
+          $input = "$compiler`n$cargo`n$env:ImageOS`n$env:ImageVersion`n$env:CARGO_HOME`n$env:CARGO_TARGET_DIR`n$($buildEnv -join "`n")"
+          $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($input))).ToLowerInvariant()
+          "fingerprint=$hash" >> $env:GITHUB_OUTPUT
+
+      - name: Restore Rust downloads and build intermediates
+        id: rust-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ env.CARGO_HOME }}/registry/index
+            ${{ env.CARGO_HOME }}/registry/cache
+            ${{ env.CARGO_HOME }}/git/db
+            ${{ env.CARGO_TARGET_DIR }}/debug/deps/*
+            !${{ env.CARGO_TARGET_DIR }}/debug/deps/*.exe
+            ${{ env.CARGO_TARGET_DIR }}/debug/build
+            ${{ env.CARGO_TARGET_DIR }}/debug/.fingerprint
+            ${{ env.CARGO_TARGET_DIR }}/release/deps/*
+            !${{ env.CARGO_TARGET_DIR }}/release/deps/*.exe
+            ${{ env.CARGO_TARGET_DIR }}/release/build
+            ${{ env.CARGO_TARGET_DIR }}/release/.fingerprint
+          key: native-ui-rust-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.rust-cache-key.outputs.fingerprint }}-${{ hashFiles('native/**/Cargo.lock', 'native/**/Cargo.toml', 'native/**/rust-toolchain*', 'native/**/.cargo/config*', 'native/**/build.rs', 'native/apps/singles-ui/src-tauri/tauri*.conf.*', 'native/apps/singles-ui/package*.json', '.github/workflows/native-ui-windows.yml') }}
+
+      - name: Restore pinned official tauri-driver installation
+        id: driver-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ env.TAURI_DRIVER_ROOT }}/bin/tauri-driver.exe
+            ${{ env.TAURI_DRIVER_ROOT }}/.crates.toml
+            ${{ env.TAURI_DRIVER_ROOT }}/.crates2.json
+          key: native-ui-tauri-driver-2.1.0-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.rust-cache-key.outputs.fingerprint }}-${{ hashFiles('.github/workflows/native-ui-windows.yml') }}
+
+      - name: Verify runner tools and matching Edge driver
+        run: |
+          node -e "const [major,minor]=process.versions.node.split('.').map(Number); if(major<22 || (major===22&&minor<12)) process.exit(1)"
+          if ($LASTEXITCODE -ne 0) { throw 'Runner Node must be 22.12 or newer' }
+          if (-not $env:EDGEWEBDRIVER) { throw 'Official runner Edge driver directory missing' }
+          $driver = Join-Path $env:EDGEWEBDRIVER 'msedgedriver.exe'
+          if (-not (Test-Path $driver)) { throw 'Official runner Edge driver missing' }
+          $edge = Join-Path ${env:ProgramFiles(x86)} 'Microsoft/Edge/Application/msedge.exe'
+          $edgeVersion = (Get-Item $edge).VersionInfo.ProductVersion
+          $driverOutput = (& $driver --version | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'Edge driver version command failed' }
+          $versionMatches = [regex]::Matches($driverOutput, '\b[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\b')
+          if ($versionMatches.Count -ne 1) { throw "Unrecognized Edge driver version banner: $driverOutput" }
+          $driverVersion = $versionMatches[0].Value
+          if (($edgeVersion.Split('.')[0..2] -join '.') -ne ($driverVersion.Split('.')[0..2] -join '.')) {
+            throw "Edge/driver version mismatch: $edgeVersion / $driverVersion"
+          }
+          $env:EDGEWEBDRIVER >> $env:GITHUB_PATH
+          Write-Output "Edge $edgeVersion; driver $driverVersion"
+          cmake --version
+          if ($LASTEXITCODE -ne 0) { throw 'Official runner CMake missing' }
+
+      - name: Install locked frontend and official test tools
+        run: |
+          npm ci
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install pywinauto==0.6.9
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Install and verify exact tauri-driver receipt
+        run: |
+          $driver = Join-Path $env:TAURI_DRIVER_ROOT 'bin/tauri-driver.exe'
+          if (-not (Test-Path $driver)) {
+            cargo install tauri-driver --version '=2.1.0' --locked --root $env:TAURI_DRIVER_ROOT --target-dir "$env:RUNNER_TEMP/tauri-driver-build"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          # This version has no --version flag. Cargo records the exact installed version.
+          $installed = (& cargo install --list --root $env:TAURI_DRIVER_ROOT | Out-String)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($installed -notmatch '(?m)^tauri-driver v2\.1\.0:\r?$') {
+            throw 'Pinned tauri-driver 2.1.0 install receipt missing or mismatched'
+          }
+          & $driver --help
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          (Join-Path $env:TAURI_DRIVER_ROOT 'bin') >> $env:GITHUB_PATH
+
+      - name: Save verified driver for this same-repository PR
+        if: github.event.pull_request.head.repo.full_name == github.repository && steps.driver-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ env.TAURI_DRIVER_ROOT }}/bin/tauri-driver.exe
+            ${{ env.TAURI_DRIVER_ROOT }}/.crates.toml
+            ${{ env.TAURI_DRIVER_ROOT }}/.crates2.json
+          key: ${{ steps.driver-cache.outputs.cache-primary-key }}
+
+      - name: Capture actual reviewed-profile dependency resolution
+        run: |
+          New-Item -ItemType Directory -Force test-results/native-windows/dependency-review | Out-Null
+          cargo metadata --locked --format-version 1 --manifest-path src-tauri/Cargo.toml --filter-platform x86_64-pc-windows-msvc --features desktop,original-ai,tauri/custom-protocol | Set-Content -Encoding utf8 test-results/native-windows/dependency-review/desktop-metadata.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-FileHash src-tauri/Cargo.lock -Algorithm SHA256 | ConvertTo-Json | Set-Content -Encoding utf8 test-results/native-windows/dependency-review/lock-hash.json
+          cargo metadata --locked --format-version 1 --manifest-path src-tauri/Cargo.toml --filter-platform x86_64-pc-windows-msvc --features desktop,original-ai,selected-windows-execution,tauri/custom-protocol | Set-Content -Encoding utf8 test-results/native-windows/dependency-review/selected-desktop-metadata.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Retain early dependency evidence for exact package policy review
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: desktop-dependency-review-${{ github.sha }}
+          path: native/apps/singles-ui/test-results/native-windows/dependency-review/
+          if-no-files-found: error
+          retention-days: 7
+          include-hidden-files: false
+          overwrite: false
+
+      - name: Always discard every local crate's cached build outputs
+        run: |
+          $metadataJson = (& cargo metadata --locked --format-version 1 --manifest-path src-tauri/Cargo.toml | Out-String)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $metadata = $metadataJson | ConvertFrom-Json
+          $localPackages = @($metadata.packages | Where-Object { $null -eq $_.source })
+          if ($localPackages.Count -eq 0) { throw 'No local crates found to clean' }
+          foreach ($package in $localPackages) {
+            cargo clean --manifest-path src-tauri/Cargo.toml --package $package.id
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            cargo clean --manifest-path src-tauri/Cargo.toml --release --package $package.id
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          if (Test-Path 'src-tauri/target/release/singles-sorter-preview.exe') {
+            throw 'Stale desktop executable survived local-package cleanup'
+          }
+
+      - name: Read only the pinned public original baseline
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: NHLOCAL/Singles-Sorter
+          ref: 78d001aee5ce49628bdffebd34540fa83ba32c12
+          path: original-baseline
+          persist-credentials: false
+          sparse-checkout: src/core
+
+      - name: Prepare authenticated original assets and static PCRE2
+        working-directory: native
+        run: |
+          python -m pip install --only-binary=:all: --require-hashes --disable-pip-version-check -r probes/released-ner/oracle-requirements.txt -r crates/sorter-classifier/tools/oracle-requirements.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python probes/released-ner/check_oracle_runtime.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python probes/released-ner/released-ner-export/export.py --model "$env:GITHUB_WORKSPACE/original-baseline/src/core/models/singer_ner_he" --out target/desktop-original/bundle --suite platform
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python probes/released-ner/released-ner-export/verify.py target/desktop-original/bundle
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python probes/released-ner/check_oracle_golden.py target/desktop-original/bundle
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python crates/sorter-classifier/tools/export_original.py --baseline "$env:GITHUB_WORKSPACE/original-baseline" --output target/desktop-original/bundle
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python probes/released-ner/acquire_pcre2.py --out target/desktop-original/pcre2 --build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "PCRE2_STATIC_DIR=$((Resolve-Path target/desktop-original/pcre2/install/lib).Path)" >> $env:GITHUB_ENV
+
+      - name: Verify bounded official zlib acquisition before native builds
+        working-directory: native
+        run: |
+          python tests/build/test_acquire_zlib.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tests/build/acquire_zlib.py --evidence test-results/zlib-acquisition
+
+      - name: Retain exact desktop zlib acquisition receipts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: zlib-acquisition-desktop-${{ github.run_attempt }}
+          path: native/test-results/zlib-acquisition
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Test renderer and native profile contracts
+        run: |
+          npm test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run typecheck
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build actual desktop application through pinned Tauri CLI
+        id: default-desktop-build
+        run: npm run build:desktop -- --ci -- --locked
+
+      # Save only after all contracts and the actual desktop build succeed. Saving
+      # before UI execution keeps useful compilation work even if UI acceptance fails.
+      # PR caches stay merge-ref scoped; forks never publish caches from this workflow.
+      - name: Save successful build intermediates for this same-repository PR
+        if: github.event.pull_request.head.repo.full_name == github.repository && steps.rust-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ env.CARGO_HOME }}/registry/index
+            ${{ env.CARGO_HOME }}/registry/cache
+            ${{ env.CARGO_HOME }}/git/db
+            ${{ env.CARGO_TARGET_DIR }}/debug/deps/*
+            !${{ env.CARGO_TARGET_DIR }}/debug/deps/*.exe
+            ${{ env.CARGO_TARGET_DIR }}/debug/build
+            ${{ env.CARGO_TARGET_DIR }}/debug/.fingerprint
+            ${{ env.CARGO_TARGET_DIR }}/release/deps/*
+            !${{ env.CARGO_TARGET_DIR }}/release/deps/*.exe
+            ${{ env.CARGO_TARGET_DIR }}/release/build
+            ${{ env.CARGO_TARGET_DIR }}/release/.fingerprint
+          key: ${{ steps.rust-cache.outputs.cache-primary-key }}
+
+      - name: Exercise feature-off desktop at verified Medium integrity
+        env:
+          SINGLES_DESKTOP_AI_EXPECTED: 'off'
+          SINGLES_UI_OUTPUT: ${{ github.workspace }}/native/apps/singles-ui/test-results/native-windows/feature-off
+        run: |
+          python tests/run_desktop_medium.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force ../../target/desktop-original/feature-off | Out-Null
+          Copy-Item src-tauri/target/release/singles-sorter-preview.exe ../../target/desktop-original/feature-off/singles-sorter-preview.exe
+
+      # A renderer-only failure must not starve independent native host evidence.
+      # The successful prerequisite build binds this same checkout/toolchain and
+      # authenticated resources. These are the existing tests, not a second run.
+      - name: Run selected host contracts independently of renderer acceptance
+        id: selected-host-contracts
+        if: ${{ !cancelled() && steps.default-desktop-build.outcome == 'success' }}
+        run: |
+          cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai,selected-windows-execution
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $restartCase = 'job_owner::recovery_owner::selected::tests::actual_content_chunk_close_cancels_and_fresh_host_reopens_read_only'
+          $restartListing = cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai,selected-windows-execution --lib $restartCase -- --exact --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($restartListing | Where-Object { $_ -eq "${restartCase}: test" }).Count -ne 1) { throw "Actual native chunk-cancel restart case must not be compiled out" }
+          cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai,selected-windows-execution --lib $restartCase -- --exact --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $albumRestartCase = 'job_owner::recovery_owner::selected::album_restart_tests::fresh_host_reopens_file_albums_with_exact_locations_and_all_evidence'
+          $albumRestartListing = cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai,selected-windows-execution --lib $albumRestartCase -- --exact --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($albumRestartListing | Where-Object { $_ -eq "${albumRestartCase}: test" }).Count -ne 1) { throw "Actual file-Album fresh-host restart case must not be compiled out" }
+          cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai,selected-windows-execution --lib $albumRestartCase -- --exact --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $wholeRestartCase = 'job_owner::recovery_owner::selected::whole_restart_tests::fresh_host_reopens_whole_albums_without_fabricating_child_transfers'
+          $wholeRestartListing = cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai,selected-windows-execution --lib $wholeRestartCase -- --exact --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($wholeRestartListing | Where-Object { $_ -eq "${wholeRestartCase}: test" }).Count -ne 1) { throw "Actual Whole-Album fresh-host restart case must not be compiled out" }
+          cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai,selected-windows-execution --lib $wholeRestartCase -- --exact --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $fixRestartCase = 'job_owner::recovery_owner::selected::tests::fresh_fix_restart_requires_source_only_and_verifies_retained_backups'
+          $fixRestartListing = cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai,selected-windows-execution --lib $fixRestartCase -- --exact --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($fixRestartListing | Where-Object { $_ -eq "${fixRestartCase}: test" }).Count -ne 1) { throw "Actual source-only Fix restart case must not be compiled out" }
+          cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai,selected-windows-execution --lib $fixRestartCase -- --exact --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:ORIGINAL_AI_BUNDLE = (Resolve-Path ../../target/desktop-original/bundle).Path
+          cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai,selected-windows-execution --release --lib -- --ignored
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build original-AI and selected-execution desktop through pinned Tauri CLI
+        if: ${{ success() && steps.selected-host-contracts.outcome == 'success' }}
+        run: |
+          npm run build:desktop -- --ci --features original-ai,selected-windows-execution -- --locked
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Stage only reviewed desktop runtime, exact models and full notices
+        run: |
+          $out = '../../target/desktop-original'
+          $compilerFiles = @(Get-ChildItem src-tauri/target/release/build/sorter-io-*/out/taglib/CMakeFiles/*/CMakeCXXCompiler.cmake)
+          if ($compilerFiles.Count -lt 1) { throw 'Missing native compiler identity' }
+          $identity = @('Native static TagLib/zlib/PCRE2; dynamic MSVC CRT', (cmake --version))
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($file in $compilerFiles) {
+            $identity += Get-Content $file | Where-Object { $_ -match '^set\(CMAKE_CXX_(COMPILER_ID |COMPILER_VERSION |COMPILER_ARCHITECTURE_ID |SIMULATE_ID |SIMULATE_VERSION |COMPILER_FRONTEND_VARIANT )' }
+          }
+          $identity | Set-Content -Encoding utf8 "$out/native-build-info.txt"
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $dumpbin = @(& $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find 'VC\Tools\MSVC\**\bin\Hostx64\x64\dumpbin.exe') | Select-Object -Last 1
+          if (-not $dumpbin) { throw 'Official MSVC dumpbin unavailable' }
+          & $dumpbin /dependents src-tauri/target/release/singles-sorter-preview.exe | Set-Content -Encoding utf8 "$out/dumpbin-dependents.txt"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python ../../packaging/windows-desktop-preview/package_desktop.py build --binary src-tauri/target/release/singles-sorter-preview.exe --bundle "$out/bundle" --featureoff-report test-results/native-windows/feature-off/acceptance.json --featureoff-binary "$out/feature-off/singles-sorter-preview.exe" --pcre2-receipt "$out/pcre2/build-receipt.json" --build-info "$out/native-build-info.txt" --dumpbin-report "$out/dumpbin-dependents.txt" --ci-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" --output "$out/windows-desktop-preview"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise staged original-AI desktop and actual selected Copy Move and FixNames
+        env:
+          SINGLES_DESKTOP_AI_EXPECTED: 'on'
+          SINGLES_DESKTOP_APPLY_EXPECTED: 'on'
+          SINGLES_DESKTOP_RECOVERY_EXPECTED: 'on'
+          SINGLES_DESKTOP_BIN: ${{ github.workspace }}/native/target/desktop-original/windows-desktop-preview/singles-sorter-preview.exe
+          SINGLES_UI_OUTPUT: ${{ github.workspace }}/native/apps/singles-ui/test-results/native-windows/original-staged
+        run: |
+          python tests/run_desktop_medium.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Archive and extract only after original-AI and actual apply acceptance
+        run: |
+          python ../../packaging/windows-desktop-preview/package_desktop.py archive --package ../../target/desktop-original/windows-desktop-preview --report test-results/native-windows/original-staged/acceptance.json --output ../../target/desktop-original/singles-sorter-original-ai-windows-x64-selected-desktop.zip
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Expand-Archive -LiteralPath ../../target/desktop-original/singles-sorter-original-ai-windows-x64-selected-desktop.zip -DestinationPath '../../target/desktop-original/תצוגה חדשה extracted'
+
+      - name: Exercise extracted original-AI desktop and actual selected Copy Move and FixNames
+        env:
+          SINGLES_DESKTOP_AI_EXPECTED: 'on'
+          SINGLES_DESKTOP_APPLY_EXPECTED: 'on'
+          SINGLES_DESKTOP_RECOVERY_EXPECTED: 'on'
+          SINGLES_DESKTOP_BIN: ${{ github.workspace }}/native/target/desktop-original/תצוגה חדשה extracted/singles-sorter-preview.exe
+          SINGLES_UI_OUTPUT: ${{ github.workspace }}/native/apps/singles-ui/test-results/native-windows/original-extracted
+        run: |
+          python tests/run_desktop_medium.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python ../../packaging/windows-desktop-preview/package_desktop.py verify --package '../../target/desktop-original/תצוגה חדשה extracted' --report test-results/native-windows/original-extracted/acceptance.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Retain verified original-AI selected-execution desktop package
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: original-ai-windows-x64-selected-desktop-${{ github.sha }}
+          path: |
+            native/target/desktop-original/singles-sorter-original-ai-windows-x64-selected-desktop.zip
+            native/target/desktop-original/singles-sorter-original-ai-windows-x64-selected-desktop.zip.sha256
+            native/apps/singles-ui/test-results/native-windows/original-extracted/acceptance.json
+          if-no-files-found: error
+          retention-days: 7
+          include-hidden-files: false
+          overwrite: false
+
+      - name: Upload actual runtime evidence, including failures
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: singles-native-ui-evidence-${{ github.run_attempt }}
+          path: native/apps/singles-ui/test-results/native-windows/
+          if-no-files-found: warn
+          retention-days: 7
+          include-hidden-files: false
+          overwrite: false

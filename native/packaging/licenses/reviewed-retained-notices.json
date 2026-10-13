@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "hash_normalization": "CRLF to LF only, to accommodate Git Windows checkouts",
+  "components": [
+    {
+      "component": "original",
+      "license_summary": "MIT",
+      "notices": {
+        "LICENSE": "eac06ea7fe6853177b30a8982d836dc663bb9d2faac2e7217969bee23dcfda1b",
+        "native/probes/released-ner/ORIGINAL-LICENSE.md": "eac06ea7fe6853177b30a8982d836dc663bb9d2faac2e7217969bee23dcfda1b"
+      }
+    },
+    {
+      "component": "original-ai-adapter",
+      "license_summary": "MIT",
+      "notices": {
+        "native/crates/sorter-recognition/NOTICE.md": "0c930c736987d2db783830880ca2362e4071223e1fc91d5baf28af701b6dd550"
+      }
+    },
+    {
+      "component": "ner-math",
+      "license_summary": "MIT AND BSD-3-Clause",
+      "notices": {
+        "native/probes/released-ner/released-ner-math/licenses/numpy-BSD.txt": "1107b0c831e918d4f1dbc28a33190c77215ef278d4a4c4009572088770d4334a",
+        "native/probes/released-ner/released-ner-math/licenses/spacy-MIT.txt": "3f4378e67708fecacd3e27651c8bc0f977cf20789e19da0d81a2840e7cf573a2",
+        "native/probes/released-ner/released-ner-math/licenses/thinc-MIT.txt": "d7192459f33a5d8c66358e2115ccbd3265478750f0b9d15f0c22e68e3ce6cc1e"
+      }
+    },
+    {
+      "component": "ner-text",
+      "license_summary": "MIT; PSF license and historical licenses; retained Unicode data-file/software notice; BSD-3-Clause WITH PCRE2-exception",
+      "notices": {
+        "native/probes/released-ner/released-ner-text/licenses/CPython-LICENSE.txt": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf",
+        "native/probes/released-ner/released-ner-text/licenses/Unicode-data-packaged.txt": "9c2d400b7b6065235f656936ee86fefe66b75d93158a7630b28ee567dd7bf3e8",
+        "native/probes/released-ner/released-ner-text/licenses/pcre2-COPYING.txt": "99272c55f3dcfa07a8a7e15a5c1a33096e4727de74241d65fa049fccfdd59507",
+        "native/probes/released-ner/released-ner-text/licenses/pcre2-packaged.txt": "e915cde4251f96ec6af107ecd2e194440a4e69440893b0c982802f8a1e4ae40a",
+        "native/probes/released-ner/released-ner-text/licenses/pcre2-source-10.46.md": "9cf7ac6976099a1d856826d3ef1b093bd6b84489dc6100628ac79e740cf9885a",
+        "native/probes/released-ner/released-ner-text/licenses/spacy-MIT.txt": "3f4378e67708fecacd3e27651c8bc0f977cf20789e19da0d81a2840e7cf573a2",
+        "native/probes/released-ner/released-ner-text/licenses/thinc-MIT.txt": "d7192459f33a5d8c66358e2115ccbd3265478750f0b9d15f0c22e68e3ce6cc1e"
+      }
+    },
+    {
+      "component": "secondary-classifier",
+      "license_summary": "MIT; PSF license and historical licenses; Unicode-3.0",
+      "notices": {
+        "native/crates/sorter-classifier/NOTICE.md": "1692ff23d7531026ee07ed45d885e55a550290fe58023a3efcb64b9621be1ecf",
+        "native/crates/sorter-classifier/UPSTREAM-NOTICES.txt": "bb6d3570e2ea134238d77b18078fb797c23758bff9d37bda9561d98b223ab75b"
+      }
+    },
+    {
+      "component": "native-libraries",
+      "license_summary": "MPL-1.1 AND BSL-1.0 AND Zlib",
+      "notices": {
+        "native/crates/sorter-io/dependencies/licenses/taglib-COPYING.LGPL": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551",
+        "native/crates/sorter-io/dependencies/licenses/taglib-COPYING.MPL": "53692a2ed6c6a2c6ec9b32dd0b820dfae91e0a1fcdf625ca9ed0bdf8705fcc4f",
+        "native/crates/sorter-io/dependencies/licenses/utf8cpp-LICENSE": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566",
+        "native/crates/sorter-io/dependencies/licenses/zlib-LICENSE": "845efc77857d485d91fb3e0b884aaa929368c717ae8186b66fe1ed2495753243"
+      }
+    }
+  ]
+}

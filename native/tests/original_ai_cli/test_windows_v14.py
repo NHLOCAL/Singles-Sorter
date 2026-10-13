@@ -1,0 +1,325 @@
+"""Portable harness tests. These are not actual Windows parity evidence."""
+import copy
+import importlib.util
+import hashlib
+import itertools
+import json
+import os
+from pathlib import Path, PureWindowsPath
+import subprocess
+import sys
+import tempfile
+import unittest
+
+import check_windows_v14 as gate
+from windows_v14_trace import MutationConfinementError, confine_mutations, relative
+
+
+class PairedWindowsContract(unittest.TestCase):
+    def test_exact_exhaustive_setting_matrix_and_four_duets(self):
+        cases = gate.cases()
+        matrix = [case for case in cases if case['group'] == 'settings']
+        duets = [case for case in cases if case['group'] == 'duet']
+        expanded = [case for case in cases if case['group'] == 'duet-settings']
+        self.assertEqual(len(cases), 66)
+        self.assertEqual(len({case['id'] for case in cases}), 66)
+        self.assertEqual(len(expanded), 30)
+        self.assertEqual(len({tuple(case['settings'][key] for key in (*gate.SETTING_NAMES, 'duet_mode'))
+                              for case in cases}), 64)
+        self.assertTrue(all(case['settings']['duet_mode'] and case['ai'] for case in expanded))
+        self.assertEqual({tuple(case['settings'][key] for key in gate.SETTING_NAMES) for case in matrix},
+                         set(itertools.product((False, True), repeat=5)))
+        self.assertEqual({(case['settings']['copy_mode'], case['settings']['duet_mode']) for case in duets},
+                         set(itertools.product((False, True), repeat=2)))
+        self.assertTrue(all(case['ai'] for case in duets))
+        self.assertEqual(hashlib.sha256(json.dumps(cases[:36], sort_keys=True).encode()).hexdigest(),
+                         '67155586ea56e0b7f9e0ba3c8d7c0052558b0e42ecae82cd330c679db7022839',
+                         'The original 36 paired-041 case definitions must remain exact')
+
+    @unittest.skipUnless(importlib.util.find_spec('music_tag'), 'Metadata fixture authoring requires pinned oracle packages')
+    def test_expanded_duets_keep_one_existing_route_and_required_depth(self):
+        for case in [case for case in gate.cases() if case['group'] == 'duet-settings']:
+            with self.subTest(case=case['id']), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)/'owned'
+                gate.author_case(root, case)
+                for prefix in ('', 'direct', 'direct/deeper'):
+                    self.assertTrue((root/'source'/prefix/gate.DUET).is_file())
+                self.assertEqual(gate.artist_directory(root, 'ישראל כהן', case['settings']).is_dir(),
+                                 case['settings']['exist_only'])
+                self.assertFalse(gate.artist_directory(root, 'חיים לוי', case['settings']).exists())
+
+    def test_no_name_order_or_counter_tolerance(self):
+        for expected, actual in [(['A', 'B'], ['B', 'A']), ('אב', 'באַ'), ('file.wav', 'File.wav'),
+                                 ([['A', 2], ['B', 2]], [['B', 2], ['A', 2]]), (2, 3)]:
+            self.assertEqual(gate.comparison('exact', expected, actual)['status'], 'MISMATCH')
+        self.assertEqual(gate.comparison('missing', 0, None, available=False)['status'], 'OPEN')
+
+    def test_snapshot_timestamp_normalization_is_narrow(self):
+        rows = [{'path': 'source', 'absolute_path': '/owned/source', 'kind': 'directory', 'mtime_ns': 1},
+                {'path': 'source/file.wav', 'absolute_path': '/owned/source/file.wav', 'kind': 'file', 'mtime_ns': 2}]
+        view = gate.comparable_snapshot(rows)
+        self.assertNotIn('mtime_ns', view[0])
+        self.assertEqual(view[1]['mtime_ns'], 2)
+        self.assertNotIn('absolute_path', view[1])
+        self.assertEqual(rows[0]['mtime_ns'], 1)
+
+    def test_confine_all_mutations_and_keep_outside_bytes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory); root = base/'owned'; root.mkdir()
+            outside = base/'outside'; outside.write_bytes(b'outside')
+            inside = root/'inside'; inside.write_bytes(b'inside')
+            with confine_mutations(root):
+                (root/'allowed').write_bytes(b'yes')
+                for action in [lambda: outside.write_bytes(b'bad'), lambda: outside.unlink(),
+                               lambda: inside.rename(outside), lambda: outside.rename(inside),
+                               lambda: os.open(outside, os.O_RDWR), lambda: os.utime(outside, None),
+                               lambda: (root/'..'/'escape').mkdir()]:
+                    with self.subTest(action=action), self.assertRaises(MutationConfinementError):
+                        action()
+            self.assertEqual(outside.read_bytes(), b'outside')
+            self.assertEqual(inside.read_bytes(), b'inside')
+            self.assertFalse((base/'escape').exists())
+
+    def test_original_exception_catch_cannot_swallow_confinement(self):
+        self.assertFalse(issubclass(MutationConfinementError, Exception))
+
+    def test_relative_never_normalizes_case_or_unrelated_prefix(self):
+        root = Path('/owned')
+        self.assertEqual(relative(root, str(root)+os.sep+'A'), 'A')
+        with self.assertRaises(ValueError):
+            relative(root, str(root)+'2'+os.sep+'A')
+
+    def test_result_duplicate_is_error_and_absence_not_success(self):
+        line = '2026-10-12 02:00:00 - MusicSorter - INFO - result: {"status":"complete"}'
+        self.assertEqual(gate.result_record(line), {'status': 'complete'})
+        self.assertIsNone(gate.result_record('error only'))
+        self.assertIsNone(gate.result_record('DEBUG - MusicSorter - INFO - result: {}'))
+        with self.assertRaises(AssertionError):
+            gate.result_record(line+'\n'+line)
+
+    def test_namespace_receipts_preserve_cross_journal_order_and_require_commits(self):
+        identity_a = {'Test': {'id': 'a'}}; identity_b = {'Test': {'id': 'b'}}
+        commits = [{'journal':'one','ordered_commits':[{'kind':'copy','source':'source/a','destination':'target/a','observed_identity':identity_a}]},
+                   {'journal':'two','ordered_commits':[{'kind':'copy','source':'source/b','destination':'target/b','observed_identity':identity_b}]}]
+        result = {'effect_receipts':[{'operation':1,'kind':'file_published','identity':identity_b},
+                                     {'operation':0,'kind':'file_published','identity':identity_a}]}
+        order = gate.acknowledged_transfer_order(Path('/owned'),result,{},commits)
+        self.assertEqual([row['source'] for row in order],['source/b','source/a'])
+        for invalid in [[], commits+commits]:
+            with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(Path('/owned'),result,{},invalid)
+        truncated=copy.deepcopy(result);truncated['effect_receipts']=truncated['effect_receipts'][:1]
+        with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(Path('/owned'),truncated,{},commits)
+        result['effect_receipts'].append(result['effect_receipts'][0])
+        with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(Path('/owned'),result,{},commits)
+
+    def test_cross_volume_move_preserves_publish_receipt_and_requires_retirement(self):
+        source = {'Test': {'id': 'source'}}; destination = {'Test': {'id': 'destination'}}
+        entry = dict(kind='move',source='source/a',destination='target/a',observed_identity=destination,
+                     copied_move=True,source_identity=source,source_retired=True,retirement_operation=0)
+        streams = [{'journal':'one','ordered_commits':[entry]}]
+        result = {'effect_receipts':[{'operation':0,'kind':'file_published','identity':destination},
+                                     {'operation':0,'kind':'source_retired','identity':source}]}
+        value = gate.acknowledged_transfer_order(Path('/owned'),result,{},streams)
+        self.assertEqual((value[0]['kind'],value[0]['receipt_kind']), ('move','file_published'))
+        for field, invalid in [('copied_move',False),('source_retired',False),('source_identity',destination),('retirement_operation',1)]:
+            wrong=copy.deepcopy(streams);wrong[0]['ordered_commits'][0][field]=invalid
+            with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(Path('/owned'),result,{},wrong)
+        for wrong in [result['effect_receipts'][:1],list(reversed(result['effect_receipts'])),result['effect_receipts']+[result['effect_receipts'][1]]]:
+            with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(Path('/owned'),{'effect_receipts':wrong},{},streams)
+
+    def test_whole_rename_stays_one_real_event_instead_of_per_file_moves(self):
+        def reference(path):
+            raw=path.encode('utf-16-le')
+            return {'WindowsPath':{'utf16':[int.from_bytes(raw[i:i+2],'little') for i in range(0,len(raw),2)]}}
+        # WindowsPath evidence needs Windows spelling even when this test runs on Linux.
+        root=PureWindowsPath(r'C:\owned')
+        identity={'Test':{'id':'album'}}
+        result={'effect_receipts':[{'operation':0,'kind':'album_renamed','identity':identity}],
+                'whole_albums':[{'operation':0,'status':'complete','root':{'identity':identity,'reference':reference(str(root/'target'/'album'))}}]}
+        plan={'operations':[{'id':0,'kind':{'AlbumTransfer':{'source':{'identity':identity,'reference':reference(str(root/'source'/'album'))}}}}]}
+        order=gate.acknowledged_transfer_order(root,result,plan,[])
+        self.assertEqual([(r['kind'],r['source'],r['destination']) for r in order],[('move',r'source\album',r'target\album')])
+        wrong_separator=copy.deepcopy(plan)
+        wrong_separator['operations'][0]['kind']['AlbumTransfer']['source']['reference']=reference('C:/owned/source/album')
+        with self.assertRaises(ValueError): gate.acknowledged_transfer_order(root,result,wrong_separator,[])
+        omitted=copy.deepcopy(result);omitted['effect_receipts']=[]
+        with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(root,omitted,plan,[])
+        omitted['whole_albums'][0]['root']=None
+        with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(root,omitted,plan,[])
+        result['whole_albums'][0]['status']='partial'
+        with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(root,result,plan,[])
+        result['whole_albums'][0]['status']='complete'; plan['operations'][0]['kind']['AlbumTransfer']['source']['identity']={'Test':{'id':'other'}}
+        with self.assertRaises(AssertionError): gate.acknowledged_transfer_order(root,result,plan,[])
+
+    def test_namespace_receipt_absence_remains_open_and_empty_is_explicit(self):
+        self.assertIsNone(gate.acknowledged_transfer_order(Path('/owned'),{'status':'complete'},None,[]))
+        self.assertEqual(gate.acknowledged_transfer_order(Path('/owned'),{'effect_receipts':[]},None,[]),[])
+        with self.assertRaises(AssertionError):
+            gate.acknowledged_transfer_order(Path('/owned'),{'effect_receipts':[{'operation':0,'kind':'guessed','identity':{'Test':{'id':'x'}}}]},None,[])
+
+    def test_whole_rename_granularity_is_an_explicit_mismatch_not_normalized(self):
+        original={'before':[],'after':[],'legacy_summary':None,'ordered_operations':[
+            {'kind':'move','source':'source/album/a','destination':'target/album/a'},
+            {'kind':'move','source':'source/album/b','destination':'target/album/b'}],
+            'ordered_decisions':[],'error':None}
+        native={'before':[],'after':[],'result':{'status':'complete','effect_receipts':[]},
+            'execution':{'exit':0},'observed_physical':{'new_destinations':[],'committed_destinations':0,'moved_sources':0,'changed_existing_files':[]},
+            'acknowledged_transfer_order':[{'kind':'move','source':'source/album','destination':'target/album'}]}
+        rows={row['field']:row for row in gate.compare_case(gate.cases()[0],original,native)}
+        self.assertEqual(rows['actual_transfer_order']['status'],'MISMATCH')
+        self.assertEqual(len(rows['actual_transfer_order']['actual']),1)
+
+    def test_verified_final_parity_classifies_only_atomic_granularity_as_observed_difference(self):
+        path=lambda *parts:os.sep.join(parts)
+        before=[{'path':path('source','album',name),'kind':'file','bytes':1,'sha256':name} for name in ('a','b')]
+        after=[{'path':path('target','album',name),'kind':'file','bytes':1,'sha256':name} for name in ('a','b')]
+        summary={'songs_sorted':0,'artist_folders_created':0,'albums_processed':1,'top_artists':[['artist',2]]}
+        original={'before':before,'after':after,'legacy_summary':summary,'ordered_operations':[
+            {'kind':'move','source':path('source','album',name),'destination':path('target','album',name)} for name in ('a','b')],
+            'ordered_decisions':[],'error':None}
+        native={'before':before,'after':after,'result':{'status':'complete','legacy_summary':copy.deepcopy(summary),'committed_destinations':2,'moved_sources':2},
+            'execution':{'exit':0},'observed_physical':gate.physical_observations(before,after),
+            'committed_destination_mapping':[{'destination':row['path'],'verified_bytes':True} for row in after],
+            'acknowledged_transfer_order':[{'kind':'move','source':path('source','album'),'destination':path('target','album'),'receipt_kind':'album_renamed'}]}
+        def order(value):
+            return next(row for row in gate.compare_case(gate.cases()[0],original,value) if row['field']=='actual_transfer_order')
+        self.assertEqual(order(native)['status'],'OBSERVED_DIFFERENCE')
+        self.assertEqual(order(native)['scope'],'physical_operation_granularity')
+        for field in ('legacy_summary','committed_destinations'):
+            changed=copy.deepcopy(native);changed['result'][field]={} if field=='legacy_summary' else 0
+            self.assertEqual(order(changed)['status'],'MISMATCH')
+        changed=copy.deepcopy(native);changed['committed_destination_mapping'][0]['verified_bytes']=False
+        self.assertEqual(order(changed)['status'],'MISMATCH')
+        changed=copy.deepcopy(native);changed['after'][0]['sha256']='different'
+        self.assertEqual(order(changed)['status'],'MISMATCH')
+
+    def test_atomic_granularity_recognizer_never_hides_single_order_or_path_changes(self):
+        path=lambda *parts:os.sep.join(parts)
+        expected=[{'kind':'move','source':path('source','album',name),'destination':path('target','album',name)} for name in ('a','b')]
+        single={'kind':'copy','source':path('source','single'),'destination':path('target','single')}
+        expected.append(single)
+        actual=[{'kind':'move','source':path('source','album'),'destination':path('target','album'),'receipt_kind':'album_renamed'},
+                {**single,'receipt_kind':'file_published'}]
+        self.assertTrue(gate.only_atomic_album_granularity(expected,actual))
+        self.assertFalse(gate.only_atomic_album_granularity(expected,list(reversed(actual))))
+        changed=copy.deepcopy(expected);changed[-1]['destination']+='wrong'
+        self.assertFalse(gate.only_atomic_album_granularity(changed,actual))
+        self.assertFalse(gate.only_atomic_album_granularity(expected,actual[:1]))
+
+    def test_physical_counts_are_independent_observed_files(self):
+        def row(path, value):
+            return {'path': path, 'kind': 'file', 'bytes': len(value), 'sha256': value}
+        source = 'source'+os.sep+'song.wav'; target = 'target'+os.sep+'song.wav'
+        before = [row(source, 'same')]; after = [row(target, 'same')]
+        observed = gate.physical_observations(before, after)
+        self.assertEqual(observed['committed_destinations'], 1)
+        self.assertEqual(observed['moved_sources'], 1)
+        self.assertEqual(observed['new_destinations'][0]['path'], target)
+        self.assertEqual(gate.physical_observations(before, before)['committed_destinations'], 0)
+
+    def test_matching_physical_counts_cannot_supply_legacy_summary(self):
+        original = {'before': [], 'after': [], 'legacy_summary': {'songs_sorted': 1, 'artist_folders_created': 1,
+                    'albums_processed': 0, 'top_artists': [['A', 1]]}, 'ordered_operations': [],
+                    'ordered_decisions': [], 'error': None}
+        native = {'before': [], 'after': [], 'result': {'status': 'complete', 'committed_destinations': 0, 'moved_sources': 0},
+                  'preview_response': {'result': {'plan': {'predicted_legacy_counters': original['legacy_summary']}}},
+                  'execution': {'exit': 0}, 'observed_physical': {'committed_destinations': 0, 'moved_sources': 0,
+                                                               'changed_existing_files': []}}
+        rows = {row['field']: row for row in gate.compare_case(gate.cases()[0], original, native)}
+        self.assertEqual(rows['planning_only_legacy_counters']['status'], 'MATCH')
+        self.assertEqual(rows['physical_committed_destinations']['status'], 'MATCH')
+        self.assertEqual(rows['actual_legacy_summary']['status'], 'OPEN')
+        native['result']['legacy_summary'] = copy.deepcopy(original['legacy_summary'])
+        rows = {row['field']: row for row in gate.compare_case(gate.cases()[0], original, native)}
+        self.assertEqual(rows['actual_legacy_summary']['status'], 'MATCH')
+
+    def test_committed_receipts_map_exact_observed_bytes(self):
+        before = [{'kind': 'file', 'path': 'source/a.wav', 'sha256': 'abc', 'bytes': 3}]
+        after = [{'kind': 'file', 'path': 'target/a.wav', 'sha256': 'abc', 'bytes': 3}]
+        streams = [{'journal': 'owned.jsonl', 'ordered_commits': [
+            {'source': 'source/a.wav', 'destination': 'target/a.wav', 'sha256': 'abc', 'sequence': 7}]}]
+        rows = gate.map_committed_destinations(Path('/owned'), before, after, streams, None)
+        self.assertTrue(rows[0]['verified_bytes'])
+        self.assertEqual(rows[0]['sequence'], 7)
+        after[0]['sha256'] = 'tampered'
+        self.assertFalse(gate.map_committed_destinations(Path('/owned'), before, after, streams, None)[0]['verified_bytes'])
+
+    def test_whole_album_mapping_requires_unambiguous_source_and_full_hash(self):
+        root = Path('/owned')
+        destination = 'target'+os.sep+'a.wav'
+        source = 'source'+os.sep+'a.wav'
+        raw = (str(root)+os.sep+destination).encode('utf-16-le')
+        reference = {'WindowsPath': {'utf16': [int.from_bytes(raw[i:i+2], 'little') for i in range(0, len(raw), 2)]}}
+        before = [{'kind': 'file', 'path': source, 'sha256': 'original', 'bytes': 8}]
+        after = [{'kind': 'file', 'path': destination, 'sha256': 'original', 'bytes': 8}]
+        operations = [{'kind': 'move', 'source': source, 'destination': destination}]
+        result = {'whole_albums': [{'operation': 0, 'status': 'complete', 'descendants': [
+            [[{'Windows': [97]}], {'reference': reference, 'size': 8}]]}]}
+        def verify(relations):
+            rows = gate.map_committed_destinations(root, before, after, [], result, relations)
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]['operation_kind'], 'whole_directory_rename')
+            return rows[0]['verified_bytes']
+        self.assertTrue(verify(operations))
+        after[0]['sha256'] = 'tampered'
+        self.assertFalse(verify(operations), 'Equal size is not byte verification')
+        after[0]['sha256'] = 'original'
+        self.assertFalse(verify([]), 'A missing source relationship is not verified')
+        self.assertFalse(verify(operations + operations), 'An ambiguous source relationship is not verified')
+        missing = [dict(operations[0], source='source'+os.sep+'missing.wav')]
+        self.assertFalse(verify(missing))
+        after[0]['bytes'] = 7
+        self.assertFalse(verify(operations))
+
+    def test_observed_windows_extended_root_has_only_one_narrow_alias(self):
+        root = PureWindowsPath(r'C:\owned\case\native')
+        def reference(path):
+            data = path.encode('utf-16-le')
+            return {'WindowsPath': {'utf16': [int.from_bytes(data[i:i+2], 'little') for i in range(0, len(data), 2)]}}
+        self.assertEqual(gate.reference_path(root, reference(r'\\?\C:\owned\case\native\target\Album\Song.WAV')),
+                         r'target\Album\Song.WAV')
+        for path in [r'\\?\c:\owned\case\native\target\Song.WAV',
+                     r'\\?\C:\owned\case\native2\target\Song.WAV',
+                     r'\\?\C:\Owned\case\native\target\Song.WAV',
+                     r'\\server\share\case\native\target\Song.WAV']:
+            with self.subTest(path=path), self.assertRaises(ValueError):
+                gate.reference_path(root, reference(path))
+
+    def test_native_planning_projection_retains_artist_and_decision_order(self):
+        root = Path('/owned')
+        def reference(name):
+            data = (str(root)+os.sep+name).encode('utf-16-le')
+            return {'WindowsPath': {'utf16': [int.from_bytes(data[i:i+2], 'little') for i in range(0, len(data), 2)]}}
+        plan = {'decisions': [
+            {'Single': {'read': {'source': {'reference': reference('z.wav')}}, 'artists': ['B', 'A']}},
+            {'Single': {'read': {'source': {'reference': reference('a.wav')}}, 'artists': []}}]}
+        rows = gate.planning_decisions(root, plan)
+        self.assertEqual(rows, [{'kind': 'single', 'source': 'z.wav', 'result': ['B', 'A']},
+                                {'kind': 'single', 'source': 'a.wav', 'result': None}])
+
+    @unittest.skipUnless(importlib.util.find_spec('music_tag'), 'Metadata fixture authoring requires pinned oracle packages')
+    def test_authored_pairs_have_identical_bytes_and_required_depth(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory); case = gate.cases()[0]
+            gate.author_case(base/'original', case); gate.author_case(base/'native', case)
+            before = gate.snapshot(base/'original')
+            self.assertEqual(gate.comparable_snapshot(before), gate.comparable_snapshot(gate.snapshot(base/'native')))
+            paths = {row['path'] for row in before}
+            for path in ['source/root song.wav', 'source/direct/child song.wav', 'source/direct/deeper/deep song.wav',
+                         'source/protected/track 1.wav', 'source/processable/track 1.wav']:
+                self.assertIn(str(Path(path)), paths)
+            self.assertTrue(any(row.get('bytes', 0) > 1600 and row['path'].endswith('.wav') for row in before))
+
+    @unittest.skipIf(os.name == 'nt', 'Non-Windows refusal checked only on a non-Windows host')
+    def test_non_windows_never_produces_parity_report(self):
+        with tempfile.TemporaryDirectory() as directory:
+            report = Path(directory)/'report.json'
+            result = subprocess.run([sys.executable, gate.__file__, '--binary', 'unused', '--bundle', 'unused',
+                                     '--baseline', 'unused', '--report', str(report)], capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('actual Windows CI runner', result.stderr)
+            self.assertFalse(report.exists())
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -1,0 +1,48 @@
+import type {PlanRow,Platform} from './contracts';
+const kinds:Record<string,string>={Album:'בדיקת אלבום',Single:'בדיקת שיר',ItemError:'שגיאה בבדיקה',Vanished:'מקור לא זמין',FixNames:'תיקון שם ותגיות מתוכנן'};
+export function kindLabel(kind:string):string{return kinds[kind]??'רשומת תכנון';}
+export function reasonLabel(row:PlanRow):string{
+ if(row.kind==='FixNames')return 'נבדקו שם הקובץ והתגיות לתיקון.';
+ if(row.kind==='ItemError')return 'לא ניתן היה להשלים את בדיקת הפריט. פרטי השגיאה זמינים במידע הטכני.';
+ if(row.included_in_album!==undefined)return 'הפריט כלול בפעולת האלבום, ללא פעולה נפרדת.';
+ if(row.kind==='Vanished')return 'המקור אינו זמין בשלב זה של התכנון.';
+ if(row.kind==='Single'&&row.destination)return `האמנים שנבחרו: ${row.reason}`;
+ return row.reason;
+}
+const blockers:Record<string,string>={
+ PHYSICAL_APPLY_UNAVAILABLE:'ביצוע שינויים אינו זמין בגרסה זו',
+ PhysicalApplyUnavailable:'ביצוע שינויים אינו זמין בגרסה זו',
+ 'Observation(PhysicalApplyUnavailable)':'ביצוע שינויים אינו זמין בגרסה זו',
+ RECOGNITION_UNAVAILABLE:'מודל הזיהוי הדרוש אינו זמין',
+ ALBUM_READ_ERROR:'לא ניתן היה להשלים את בדיקת התיקייה',
+ UNRECOGNIZED_ARTIST:'לא זוהה אמן',
+ UnsafeIntendedName:'שם היעד המוצע אינו בטוח',EmptyIntendedName:'שם היעד המוצע ריק',
+ RenameMustSucceedAndRebindOriginal:'כתיבת תגיות תלויה בהצלחת שינוי השם ובאימות אותו קובץ',
+ CaseCollisionRequiresProviderResolution:'קיימת התנגשות שמות המחייבת בדיקה במערכת הקבצים',
+};
+export function blockerLabel(code:string):string{return blockers[code]??'הפעולה חסומה; הסיבה הטכנית מופיעה בפירוט';}
+
+// These two exact engine messages are routine metadata, not actionable warnings.
+// Keep their original bytes available in technical details; never use substring filtering.
+const routineNotices=new Set([
+ 'Effects and counters are predicted; no files or tags were changed',
+ 'AI intentionally disabled; no native inference bundle is used',
+]);
+export function warningPresentation(message:string):{technical:boolean;label:string}{
+ return {technical:routineNotices.has(message),label:Object.hasOwn(blockers,message)?blockers[message]:message};
+}
+const conciseNotices:Record<string,string>={
+ 'הגדרות המיון נשמרו להפעלות הבאות.':'נשמר',
+ 'מצב הדואטים נשמר מיד.':'נשמר',
+ 'הרשימה נשמרה. סדר השורות והכפילויות נשמרו.':'נשמר',
+ 'השורות נוספו בסוף הרשימה, ללא מיון או הסרת כפילויות.':'נוסף לרשימה',
+};
+export function noticeLabel(message:string|null):string{return message===null?'':Object.hasOwn(conciseNotices,message)?conciseNotices[message]:message;}
+
+/** Windows sources are display paths; other hosts already return display names.
+ * This is a label only: no decoding, path normalization or authority is created. */
+export function sourceLabel(source:string,platform:Platform|undefined):string{
+ if(platform!=='windows'||/[\\/]$/.test(source)||/^[a-z][a-z0-9+.-]*:\/\//i.test(source))return source;
+ const boundary=Math.max(source.lastIndexOf('\\'),source.lastIndexOf('/'));
+ return boundary<0?source:source.slice(boundary+1);
+}

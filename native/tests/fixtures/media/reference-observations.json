@@ -1,0 +1,5962 @@
+{
+  "runtime": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "music_tag": "0.4.3",
+  "mutagen": "1.47.0",
+  "scope": "Synthetic acquisition/reference evidence only; no native parity or release acceptance",
+  "generation_notes": [
+    {
+      "file": "tagged.aac",
+      "note": "AACError: doesn't support tags"
+    },
+    {
+      "file": "malformed_track.aac",
+      "note": "AACError: doesn't support tags"
+    }
+  ],
+  "ffmpeg_commands": [
+    [
+      "ffmpeg",
+      "-v",
+      "error",
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "anullsrc=r=44100:cl=mono",
+      "-t",
+      "0.12",
+      "-map_metadata",
+      "-1",
+      "-fflags",
+      "+bitexact",
+      "-flags:a",
+      "+bitexact",
+      "-c:a",
+      "aac",
+      "-f",
+      "mp4",
+      "<acquisition-root>/fixtures/blank.m4a"
+    ],
+    [
+      "ffmpeg",
+      "-v",
+      "error",
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "anullsrc=r=44100:cl=mono",
+      "-t",
+      "0.12",
+      "-map_metadata",
+      "-1",
+      "-fflags",
+      "+bitexact",
+      "-flags:a",
+      "+bitexact",
+      "-c:a",
+      "wmav2",
+      "-f",
+      "asf",
+      "<acquisition-root>/fixtures/blank.wma"
+    ],
+    [
+      "ffmpeg",
+      "-v",
+      "error",
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "anullsrc=r=44100:cl=mono",
+      "-t",
+      "0.12",
+      "-map_metadata",
+      "-1",
+      "-fflags",
+      "+bitexact",
+      "-flags:a",
+      "+bitexact",
+      "-c:a",
+      "pcm_s16le",
+      "-f",
+      "wav",
+      "<acquisition-root>/fixtures/blank.wav"
+    ],
+    [
+      "ffmpeg",
+      "-v",
+      "error",
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "anullsrc=r=44100:cl=mono",
+      "-t",
+      "0.12",
+      "-map_metadata",
+      "-1",
+      "-fflags",
+      "+bitexact",
+      "-flags:a",
+      "+bitexact",
+      "-c:a",
+      "pcm_s16be",
+      "-f",
+      "aiff",
+      "<acquisition-root>/fixtures/blank.aiff"
+    ],
+    [
+      "ffmpeg",
+      "-v",
+      "error",
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "anullsrc=r=44100:cl=mono",
+      "-t",
+      "0.12",
+      "-map_metadata",
+      "-1",
+      "-fflags",
+      "+bitexact",
+      "-flags:a",
+      "+bitexact",
+      "-c:a",
+      "flac",
+      "-f",
+      "flac",
+      "<acquisition-root>/fixtures/blank.flac"
+    ],
+    [
+      "ffmpeg",
+      "-v",
+      "error",
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "anullsrc=r=44100:cl=mono",
+      "-t",
+      "0.12",
+      "-map_metadata",
+      "-1",
+      "-fflags",
+      "+bitexact",
+      "-flags:a",
+      "+bitexact",
+      "-c:a",
+      "aac",
+      "-f",
+      "adts",
+      "<acquisition-root>/fixtures/blank.aac"
+    ],
+    [
+      "ffmpeg",
+      "-v",
+      "error",
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "anullsrc=r=44100:cl=mono",
+      "-t",
+      "0.12",
+      "-map_metadata",
+      "-1",
+      "-fflags",
+      "+bitexact",
+      "-flags:a",
+      "+bitexact",
+      "-c:a",
+      "alac",
+      "-f",
+      "mp4",
+      "<acquisition-root>/fixtures/blank.alac"
+    ],
+    [
+      "ffmpeg",
+      "-v",
+      "error",
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "anullsrc=r=44100:cl=mono",
+      "-t",
+      "0.12",
+      "-map_metadata",
+      "-1",
+      "-fflags",
+      "+bitexact",
+      "-flags:a",
+      "+bitexact",
+      "-c:a",
+      "wavpack",
+      "-f",
+      "wv",
+      "<acquisition-root>/fixtures/blank.wv"
+    ],
+    [
+      "ffmpeg",
+      "-v",
+      "error",
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "anullsrc=r=44100:cl=mono",
+      "-t",
+      "0.12",
+      "-map_metadata",
+      "-1",
+      "-fflags",
+      "+bitexact",
+      "-flags:a",
+      "+bitexact",
+      "-c:a",
+      "libvorbis",
+      "-f",
+      "ogg",
+      "<acquisition-root>/fixtures/blank.ogg"
+    ],
+    [
+      "ffmpeg",
+      "-v",
+      "error",
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "anullsrc=r=44100:cl=mono",
+      "-t",
+      "0.12",
+      "-map_metadata",
+      "-1",
+      "-fflags",
+      "+bitexact",
+      "-flags:a",
+      "+bitexact",
+      "-c:a",
+      "libopus",
+      "-f",
+      "opus",
+      "<acquisition-root>/fixtures/blank.opus"
+    ],
+    [
+      "ffmpeg",
+      "-v",
+      "error",
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "anullsrc=r=44100:cl=mono",
+      "-t",
+      "0.12",
+      "-map_metadata",
+      "-1",
+      "-fflags",
+      "+bitexact",
+      "-flags:a",
+      "+bitexact",
+      "-c:a",
+      "libmp3lame",
+      "-f",
+      "mp3",
+      "<acquisition-root>/fixtures/blank.mp3"
+    ]
+  ],
+  "files": [
+    {
+      "path": "fixtures/bad_header.aac",
+      "sha256": "1e58ee81ffe7bf105531c1931a1194deede5c2a5001f128e7e54107747f4e95d",
+      "bytes": 31,
+      "suffix": ".aac",
+      "probe": {
+        "exit": 1,
+        "data": {},
+        "stderr": "<acquisition-root>/fixtures/bad_header.aac: End of file\n"
+      },
+      "mutagen_error": {
+        "type": "AACError",
+        "message": "sync not found"
+      },
+      "open": {
+        "ok": false,
+        "error": {
+          "type": "AACError",
+          "message": "sync not found"
+        }
+      }
+    },
+    {
+      "path": "fixtures/bad_header.aiff",
+      "sha256": "1e58ee81ffe7bf105531c1931a1194deede5c2a5001f128e7e54107747f4e95d",
+      "bytes": 31,
+      "suffix": ".aiff",
+      "probe": {
+        "exit": 1,
+        "data": {},
+        "stderr": "<acquisition-root>/fixtures/bad_header.aiff: Invalid data found when processing input\n"
+      },
+      "mutagen_error": {
+        "type": "InvalidChunk",
+        "message": "Root chunk must be a FORM chunk, got owne"
+      },
+      "open": {
+        "ok": false,
+        "error": {
+          "type": "InvalidChunk",
+          "message": "Root chunk must be a FORM chunk, got owne"
+        }
+      }
+    },
+    {
+      "path": "fixtures/bad_header.alac",
+      "sha256": "1e58ee81ffe7bf105531c1931a1194deede5c2a5001f128e7e54107747f4e95d",
+      "bytes": 31,
+      "suffix": ".alac",
+      "probe": {
+        "exit": 1,
+        "data": {},
+        "stderr": "<acquisition-root>/fixtures/bad_header.alac: Invalid data found when processing input\n"
+      },
+      "mutagen_type": "builtins.NoneType",
+      "open": {
+        "ok": false,
+        "error": {
+          "type": "NotImplementedError",
+          "message": "Mutagen type <class 'NoneType'> not implemented"
+        }
+      }
+    },
+    {
+      "path": "fixtures/bad_header.dsf",
+      "sha256": "1e58ee81ffe7bf105531c1931a1194deede5c2a5001f128e7e54107747f4e95d",
+      "bytes": 31,
+      "suffix": ".dsf",
+      "probe": {
+        "exit": 1,
+        "data": {},
+        "stderr": "<acquisition-root>/fixtures/bad_header.dsf: Invalid data found when processing input\n"
+      },
+      "mutagen_error": {
+        "type": "error",
+        "message": "DSF dsd header not found"
+      },
+      "open": {
+        "ok": false,
+        "error": {
+          "type": "error",
+          "message": "DSF dsd header not found"
+        }
+      }
+    },
+    {
+      "path": "fixtures/bad_header.flac",
+      "sha256": "1e58ee81ffe7bf105531c1931a1194deede5c2a5001f128e7e54107747f4e95d",
+      "bytes": 31,
+      "suffix": ".flac",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "flac"
+            }
+          ],
+          "format": {
+            "format_name": "flac"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_error": {
+        "type": "FLACNoHeaderError",
+        "message": "'<acquisition-root>/fixtures/bad_header.flac' is not a valid FLAC file"
+      },
+      "open": {
+        "ok": false,
+        "error": {
+          "type": "FLACNoHeaderError",
+          "message": "'<acquisition-root>/fixtures/bad_header.flac' is not a valid FLAC file"
+        }
+      }
+    },
+    {
+      "path": "fixtures/bad_header.m4a",
+      "sha256": "1e58ee81ffe7bf105531c1931a1194deede5c2a5001f128e7e54107747f4e95d",
+      "bytes": 31,
+      "suffix": ".m4a",
+      "probe": {
+        "exit": 1,
+        "data": {},
+        "stderr": "[mov,mp4,m4a,3gp,3g2,mj2 @ 0x5584eb67e180] moov atom not found\n<acquisition-root>/fixtures/bad_header.m4a: Invalid data found when processing input\n"
+      },
+      "mutagen_type": "builtins.NoneType",
+      "open": {
+        "ok": false,
+        "error": {
+          "type": "NotImplementedError",
+          "message": "Mutagen type <class 'NoneType'> not implemented"
+        }
+      }
+    },
+    {
+      "path": "fixtures/bad_header.mp3",
+      "sha256": "1e58ee81ffe7bf105531c1931a1194deede5c2a5001f128e7e54107747f4e95d",
+      "bytes": 31,
+      "suffix": ".mp3",
+      "probe": {
+        "exit": 1,
+        "data": {},
+        "stderr": "[mp3 @ 0x560380cd0180] Failed to find two consecutive MPEG audio frames.\n<acquisition-root>/fixtures/bad_header.mp3: Invalid data found when processing input\n"
+      },
+      "mutagen_error": {
+        "type": "HeaderNotFoundError",
+        "message": "can't sync to MPEG frame"
+      },
+      "open": {
+        "ok": false,
+        "error": {
+          "type": "HeaderNotFoundError",
+          "message": "can't sync to MPEG frame"
+        }
+      }
+    },
+    {
+      "path": "fixtures/bad_header.ogg",
+      "sha256": "1e58ee81ffe7bf105531c1931a1194deede5c2a5001f128e7e54107747f4e95d",
+      "bytes": 31,
+      "suffix": ".ogg",
+      "probe": {
+        "exit": 1,
+        "data": {},
+        "stderr": "<acquisition-root>/fixtures/bad_header.ogg: End of file\n"
+      },
+      "mutagen_type": "builtins.NoneType",
+      "open": {
+        "ok": false,
+        "error": {
+          "type": "NotImplementedError",
+          "message": "Mutagen type <class 'NoneType'> not implemented"
+        }
+      }
+    },
+    {
+      "path": "fixtures/bad_header.opus",
+      "sha256": "1e58ee81ffe7bf105531c1931a1194deede5c2a5001f128e7e54107747f4e95d",
+      "bytes": 31,
+      "suffix": ".opus",
+      "probe": {
+        "exit": 1,
+        "data": {},
+        "stderr": "<acquisition-root>/fixtures/bad_header.opus: Invalid data found when processing input\n"
+      },
+      "mutagen_type": "builtins.NoneType",
+      "open": {
+        "ok": false,
+        "error": {
+          "type": "NotImplementedError",
+          "message": "Mutagen type <class 'NoneType'> not implemented"
+        }
+      }
+    },
+    {
+      "path": "fixtures/bad_header.wav",
+      "sha256": "1e58ee81ffe7bf105531c1931a1194deede5c2a5001f128e7e54107747f4e95d",
+      "bytes": 31,
+      "suffix": ".wav",
+      "probe": {
+        "exit": 1,
+        "data": {},
+        "stderr": "<acquisition-root>/fixtures/bad_header.wav: Invalid data found when processing input\n"
+      },
+      "mutagen_error": {
+        "type": "InvalidChunk",
+        "message": "Root chunk must be a RIFF chunk, got owne"
+      },
+      "open": {
+        "ok": false,
+        "error": {
+          "type": "InvalidChunk",
+          "message": "Root chunk must be a RIFF chunk, got owne"
+        }
+      }
+    },
+    {
+      "path": "fixtures/bad_header.wma",
+      "sha256": "1e58ee81ffe7bf105531c1931a1194deede5c2a5001f128e7e54107747f4e95d",
+      "bytes": 31,
+      "suffix": ".wma",
+      "probe": {
+        "exit": 1,
+        "data": {},
+        "stderr": "<acquisition-root>/fixtures/bad_header.wma: Invalid data found when processing input\n"
+      },
+      "mutagen_type": "builtins.NoneType",
+      "open": {
+        "ok": false,
+        "error": {
+          "type": "NotImplementedError",
+          "message": "Mutagen type <class 'NoneType'> not implemented"
+        }
+      }
+    },
+    {
+      "path": "fixtures/bad_header.wv",
+      "sha256": "1e58ee81ffe7bf105531c1931a1194deede5c2a5001f128e7e54107747f4e95d",
+      "bytes": 31,
+      "suffix": ".wv",
+      "probe": {
+        "exit": 1,
+        "data": {},
+        "stderr": "<acquisition-root>/fixtures/bad_header.wv: Invalid data found when processing input\n"
+      },
+      "mutagen_type": "builtins.NoneType",
+      "open": {
+        "ok": false,
+        "error": {
+          "type": "NotImplementedError",
+          "message": "Mutagen type <class 'NoneType'> not implemented"
+        }
+      }
+    },
+    {
+      "path": "fixtures/blank.aac",
+      "sha256": "de2e15dc4a4abe06502244f2fc2ae9ab3f17aacd75f4ab0c1bb1b790889e055d",
+      "bytes": 77,
+      "suffix": ".aac",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "aac"
+            }
+          ],
+          "format": {
+            "format_name": "aac"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.aac.AAC",
+      "open": {
+        "ok": false,
+        "error": {
+          "type": "AACError",
+          "message": "doesn't support tags"
+        }
+      }
+    },
+    {
+      "path": "fixtures/blank.aiff",
+      "sha256": "41c324384b3024089c97f355ae1b3f5d3f9dcbc3d97a4109d23e3d960eee84a7",
+      "bytes": 10638,
+      "suffix": ".aiff",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "pcm_s16be"
+            }
+          ],
+          "format": {
+            "format_name": "aiff"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.aiff.AIFF",
+      "open": {
+        "ok": true,
+        "type": "AiffFile"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "0"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/blank.alac",
+      "sha256": "433e927dc6f575d7f52f7f82edd1e5b80f99c90d2714bfc7e3d4ee3371f994b1",
+      "bytes": 776,
+      "suffix": ".alac",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "alac"
+            }
+          ],
+          "format": {
+            "format_name": "mov,mp4,m4a,3gp,3g2,mj2"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.mp4.MP4",
+      "open": {
+        "ok": true,
+        "type": "Mp4File"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "0"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/blank.dsf",
+      "sha256": "c1916b859fa8f74af8293177ed7d4ed1151f93b45e78e973ed0d95b259667a70",
+      "bytes": 4188,
+      "suffix": ".dsf",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "dsd_lsbf_planar"
+            }
+          ],
+          "format": {
+            "format_name": "dsf"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.dsf.DSF",
+      "open": {
+        "ok": true,
+        "type": "DsfFile"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "0"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/blank.flac",
+      "sha256": "626b7009add72ab6ab011656b07b8f7cf32a5e0ee24658ccd7caa8875b6b7332",
+      "bytes": 70,
+      "suffix": ".flac",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "flac"
+            }
+          ],
+          "format": {
+            "format_name": "flac"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.flac.FLAC",
+      "open": {
+        "ok": true,
+        "type": "FlacFile"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "0"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/blank.m4a",
+      "sha256": "d0b6dd28d1b6027150c188cfadd4a9d2732ef7f127507b35d85be12cb8b429bc",
+      "bytes": 826,
+      "suffix": ".m4a",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "aac"
+            }
+          ],
+          "format": {
+            "format_name": "mov,mp4,m4a,3gp,3g2,mj2"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.mp4.MP4",
+      "open": {
+        "ok": true,
+        "type": "Mp4File"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "0"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/blank.mp3",
+      "sha256": "22243ac666aded18eba7be81321eb883bf63c615fa8fbe4690cf646b5c4b51e5",
+      "bytes": 1435,
+      "suffix": ".mp3",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "mp3"
+            }
+          ],
+          "format": {
+            "format_name": "mp3"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.mp3.MP3",
+      "open": {
+        "ok": true,
+        "type": "Mp3File"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "0"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/blank.ogg",
+      "sha256": "178172d2f6c1ba8aeff6ec6aa8c7cbe28e4b2bfc62644d7c53831541e3417214",
+      "bytes": 3351,
+      "suffix": ".ogg",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "vorbis"
+            }
+          ],
+          "format": {
+            "format_name": "ogg"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.oggvorbis.OggVorbis",
+      "open": {
+        "ok": true,
+        "type": "OggVorbisFile"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "0"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/blank.opus",
+      "sha256": "f35a572151d51d49e08563004c1f79887bba6eba97e479d351b31f6fa1b12dc7",
+      "bytes": 152,
+      "suffix": ".opus",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "opus"
+            }
+          ],
+          "format": {
+            "format_name": "ogg"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.oggopus.OggOpus",
+      "open": {
+        "ok": true,
+        "type": "OggOpusFile"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "0"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/blank.wav",
+      "sha256": "e40fde31d225d47e2aeb94dcadafd712ed6e81916904b30e51f795788f98805f",
+      "bytes": 10628,
+      "suffix": ".wav",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "pcm_s16le"
+            }
+          ],
+          "format": {
+            "format_name": "wav"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.wave.WAVE",
+      "open": {
+        "ok": true,
+        "type": "WaveId3File"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "0"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/blank.wma",
+      "sha256": "c3ddbb61153f5244c4d768afe80fcee6e79e3edbb0ef16e5c6d6261a6fb75e46",
+      "bytes": 3780,
+      "suffix": ".wma",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "wmav2"
+            }
+          ],
+          "format": {
+            "format_name": "asf"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.asf.ASF",
+      "open": {
+        "ok": false,
+        "error": {
+          "type": "NotImplementedError",
+          "message": "ASF format not implemented"
+        }
+      }
+    },
+    {
+      "path": "fixtures/blank.wv",
+      "sha256": "8419d6791599b819bedd067c4f6637743d52ab5b30ecdc16de4a92573989f37d",
+      "bytes": 54,
+      "suffix": ".wv",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "wavpack"
+            }
+          ],
+          "format": {
+            "format_name": "wv"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.wavpack.WavPack",
+      "open": {
+        "ok": true,
+        "type": "WavePackFile"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "0"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/id3v23_utf16.mp3",
+      "sha256": "0f7fbf833cd4ec87a3e24fd35b8c1c23981adba61b25cc2f29ff5368bc32463e",
+      "bytes": 2864,
+      "suffix": ".mp3",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "mp3"
+            },
+            {
+              "codec_name": "png"
+            }
+          ],
+          "format": {
+            "format_name": "mp3"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.mp3.MP3",
+      "open": {
+        "ok": true,
+        "type": "Mp3File"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה/Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה/Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "integer",
+              "decimal": "2"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "2"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/id3v24_empty_values.mp3",
+      "sha256": "a86600693cb52f33e5215690695db65dba692346565445a6b9804545f10cf853",
+      "bytes": 2727,
+      "suffix": ".mp3",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "mp3"
+            },
+            {
+              "codec_name": "png"
+            }
+          ],
+          "format": {
+            "format_name": "mp3"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.mp3.MP3",
+      "open": {
+        "ok": true,
+        "type": "Mp3File"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": ""
+            },
+            {
+              "type": "str",
+              "value": ""
+            }
+          ],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ", "
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "integer",
+              "decimal": "2"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "2"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/id3v24_latin1.mp3",
+      "sha256": "0c2d3b38f2de6bec5afaa2f2d7ed96fb479a4224e2a504b1cddc847f0f20fab9",
+      "bytes": 2733,
+      "suffix": ".mp3",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "mp3"
+            },
+            {
+              "codec_name": "png"
+            }
+          ],
+          "format": {
+            "format_name": "mp3"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.mp3.MP3",
+      "open": {
+        "ok": true,
+        "type": "Mp3File"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "One"
+            },
+            {
+              "type": "str",
+              "value": "Two"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "One, Two"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "integer",
+              "decimal": "2"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "2"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/id3v24_mixed_empty.mp3",
+      "sha256": "fff2c34d458b839f6f3387e5d5178f3b4e476030c418cd5ab34019a769c2d8d8",
+      "bytes": 2733,
+      "suffix": ".mp3",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "mp3"
+            },
+            {
+              "codec_name": "png"
+            }
+          ],
+          "format": {
+            "format_name": "mp3"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.mp3.MP3",
+      "open": {
+        "ok": true,
+        "type": "Mp3File"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": ""
+            },
+            {
+              "type": "str",
+              "value": "Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ", Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "integer",
+              "decimal": "2"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "2"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/id3v24_multi_track.mp3",
+      "sha256": "6cdd70826f272a136a9d62f896f8481268f5dfd373c2ca92f799760e034b7f3d",
+      "bytes": 2757,
+      "suffix": ".mp3",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "mp3"
+            },
+            {
+              "codec_name": "png"
+            }
+          ],
+          "format": {
+            "format_name": "mp3"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.mp3.MP3",
+      "open": {
+        "ok": true,
+        "type": "Mp3File"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה"
+            },
+            {
+              "type": "str",
+              "value": "Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה, Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": false,
+          "error": {
+            "type": "ValueError",
+            "message": "invalid literal for int() with base 10: '1\\x002'"
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/id3v24_utf16.mp3",
+      "sha256": "4a1bad87e8e65f2e978462a2c4b77fd4517f3e1df74d476cb8b429d3e8f3fb9e",
+      "bytes": 2866,
+      "suffix": ".mp3",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "mp3"
+            },
+            {
+              "codec_name": "png"
+            }
+          ],
+          "format": {
+            "format_name": "mp3"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.mp3.MP3",
+      "open": {
+        "ok": true,
+        "type": "Mp3File"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה"
+            },
+            {
+              "type": "str",
+              "value": "Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה, Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "integer",
+              "decimal": "2"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "2"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/malformed_track.aac",
+      "sha256": "de2e15dc4a4abe06502244f2fc2ae9ab3f17aacd75f4ab0c1bb1b790889e055d",
+      "bytes": 77,
+      "suffix": ".aac",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "aac"
+            }
+          ],
+          "format": {
+            "format_name": "aac"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.aac.AAC",
+      "open": {
+        "ok": false,
+        "error": {
+          "type": "AACError",
+          "message": "doesn't support tags"
+        }
+      }
+    },
+    {
+      "path": "fixtures/malformed_track.aiff",
+      "sha256": "3e32f8177ec634406311e76fbe9e61f8498654d6aa84e94077c0ad2926e09853",
+      "bytes": 11974,
+      "suffix": ".aiff",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "pcm_s16be"
+            },
+            {
+              "codec_name": "png"
+            }
+          ],
+          "format": {
+            "format_name": "aiff"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.aiff.AIFF",
+      "open": {
+        "ok": true,
+        "type": "AiffFile"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה"
+            },
+            {
+              "type": "str",
+              "value": "Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה, Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": false,
+          "error": {
+            "type": "ValueError",
+            "message": "invalid literal for int() with base 10: 'not-an-int'"
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/malformed_track.alac",
+      "sha256": "c6f6d9f3c8b673304bf1bfac8d0e1a08a59992ff984df22645be98a2fabb8d46",
+      "bytes": 2137,
+      "suffix": ".alac",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "alac"
+            },
+            {
+              "codec_name": "png"
+            }
+          ],
+          "format": {
+            "format_name": "mov,mp4,m4a,3gp,3g2,mj2"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.mp4.MP4",
+      "open": {
+        "ok": true,
+        "type": "Mp4File"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה"
+            },
+            {
+              "type": "str",
+              "value": "Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה, Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "integer",
+              "decimal": "2"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "2"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/malformed_track.dsf",
+      "sha256": "5934c109b9e140ed8e72928a0ff09a6fe7a025c5bcbdec4835d7abba2cd76bd6",
+      "bytes": 5516,
+      "suffix": ".dsf",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "dsd_lsbf_planar"
+            },
+            {
+              "codec_name": "png"
+            }
+          ],
+          "format": {
+            "format_name": "dsf"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.dsf.DSF",
+      "open": {
+        "ok": true,
+        "type": "DsfFile"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה"
+            },
+            {
+              "type": "str",
+              "value": "Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה, Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": false,
+          "error": {
+            "type": "ValueError",
+            "message": "invalid literal for int() with base 10: 'not-an-int'"
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/malformed_track.flac",
+      "sha256": "cf90d1a5f0e5ccd398d668fde2fc5f7e1cdf0b158a78d39b8f0744e444f9f4c6",
+      "bytes": 1314,
+      "suffix": ".flac",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "flac"
+            }
+          ],
+          "format": {
+            "format_name": "flac"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.flac.FLAC",
+      "open": {
+        "ok": true,
+        "type": "FlacFile"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה"
+            },
+            {
+              "type": "str",
+              "value": "Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה, Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": false,
+          "error": {
+            "type": "ValueError",
+            "message": "invalid literal for int() with base 10: 'not-an-int'"
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/malformed_track.m4a",
+      "sha256": "90606d164d86c70a6c5a7cbc0dd25ad28c2a6f73bedd2053be24a77c63708b37",
+      "bytes": 2187,
+      "suffix": ".m4a",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "aac"
+            },
+            {
+              "codec_name": "png"
+            }
+          ],
+          "format": {
+            "format_name": "mov,mp4,m4a,3gp,3g2,mj2"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.mp4.MP4",
+      "open": {
+        "ok": true,
+        "type": "Mp4File"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה"
+            },
+            {
+              "type": "str",
+              "value": "Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה, Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "integer",
+              "decimal": "2"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "2"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/malformed_track.mp3",
+      "sha256": "eb330581ef77e68c1cf057978ceb029da211a516f92670677854d7ba6d15c92f",
+      "bytes": 2764,
+      "suffix": ".mp3",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "mp3"
+            },
+            {
+              "codec_name": "png"
+            }
+          ],
+          "format": {
+            "format_name": "mp3"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.mp3.MP3",
+      "open": {
+        "ok": true,
+        "type": "Mp3File"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה"
+            },
+            {
+              "type": "str",
+              "value": "Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה, Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": false,
+          "error": {
+            "type": "ValueError",
+            "message": "invalid literal for int() with base 10: 'not-an-int'"
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/malformed_track.ogg",
+      "sha256": "d7a6f00bfff408b65b31aac83bdd5d42a790e353c17fda3c770cd3888d0d8f9c",
+      "bytes": 4576,
+      "suffix": ".ogg",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "vorbis"
+            }
+          ],
+          "format": {
+            "format_name": "ogg"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.oggvorbis.OggVorbis",
+      "open": {
+        "ok": true,
+        "type": "OggVorbisFile"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה"
+            },
+            {
+              "type": "str",
+              "value": "Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה, Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": false,
+          "error": {
+            "type": "ValueError",
+            "message": "invalid literal for int() with base 10: 'not-an-int'"
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/malformed_track.opus",
+      "sha256": "0c0f71f28957f1149f0540224b287df8bc7567673e7142e54426036bdb9f8034",
+      "bytes": 1374,
+      "suffix": ".opus",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "opus"
+            }
+          ],
+          "format": {
+            "format_name": "ogg"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.oggopus.OggOpus",
+      "open": {
+        "ok": true,
+        "type": "OggOpusFile"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה"
+            },
+            {
+              "type": "str",
+              "value": "Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה, Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": false,
+          "error": {
+            "type": "ValueError",
+            "message": "invalid literal for int() with base 10: 'not-an-int'"
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/malformed_track.wav",
+      "sha256": "a56ea9d551572a7c43805de9b2866e001e309fbda7e8f4e4731d0dad05c74f8e",
+      "bytes": 11964,
+      "suffix": ".wav",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "pcm_s16le"
+            },
+            {
+              "codec_name": "png"
+            }
+          ],
+          "format": {
+            "format_name": "wav"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.wave.WAVE",
+      "open": {
+        "ok": true,
+        "type": "WaveId3File"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה"
+            },
+            {
+              "type": "str",
+              "value": "Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה, Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": false,
+          "error": {
+            "type": "ValueError",
+            "message": "invalid literal for int() with base 10: 'not-an-int'"
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/malformed_track.wma",
+      "sha256": "464a71968d29b0e70bf418c308f7e6045cb6711121fe60a07ed33cfff776fd6f",
+      "bytes": 5133,
+      "suffix": ".wma",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "wmav2"
+            }
+          ],
+          "format": {
+            "format_name": "asf"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.asf.ASF",
+      "open": {
+        "ok": false,
+        "error": {
+          "type": "NotImplementedError",
+          "message": "ASF format not implemented"
+        }
+      }
+    },
+    {
+      "path": "fixtures/malformed_track.wv",
+      "sha256": "9b6d89c38f40ffe0fb8e941d887138b833efde33cbb2c4ae9746da362adebc02",
+      "bytes": 324,
+      "suffix": ".wv",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "wavpack"
+            }
+          ],
+          "format": {
+            "format_name": "wv"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.wavpack.WavPack",
+      "open": {
+        "ok": true,
+        "type": "WavePackFile"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה\u0000Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה\u0000Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": false,
+          "error": {
+            "type": "ValueError",
+            "message": "invalid literal for int() with base 10: 'not-an-int'"
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/mp4_multi_tuple.m4a",
+      "sha256": "8878303c786ec6d8868c2d3f836d2c1c4e751dc5ee363862c0f80adbad0f915a",
+      "bytes": 2211,
+      "suffix": ".m4a",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "aac"
+            },
+            {
+              "codec_name": "png"
+            }
+          ],
+          "format": {
+            "format_name": "mov,mp4,m4a,3gp,3g2,mj2"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.mp4.MP4",
+      "open": {
+        "ok": true,
+        "type": "Mp4File"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה"
+            },
+            {
+              "type": "str",
+              "value": "Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה, Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "integer",
+              "decimal": "3"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "3"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/mp4_zero_tuple.m4a",
+      "sha256": "835e97fb3550c95394bd29368fe3967e39b6427f5194d1fdb0f76842b0d4b86c",
+      "bytes": 2187,
+      "suffix": ".m4a",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "aac"
+            },
+            {
+              "codec_name": "png"
+            }
+          ],
+          "format": {
+            "format_name": "mov,mp4,m4a,3gp,3g2,mj2"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.mp4.MP4",
+      "open": {
+        "ok": true,
+        "type": "Mp4File"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה"
+            },
+            {
+              "type": "str",
+              "value": "Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה, Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "integer",
+              "decimal": "0"
+            }
+          ],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "0"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/tagged.aac",
+      "sha256": "de2e15dc4a4abe06502244f2fc2ae9ab3f17aacd75f4ab0c1bb1b790889e055d",
+      "bytes": 77,
+      "suffix": ".aac",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "aac"
+            }
+          ],
+          "format": {
+            "format_name": "aac"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.aac.AAC",
+      "open": {
+        "ok": false,
+        "error": {
+          "type": "AACError",
+          "message": "doesn't support tags"
+        }
+      }
+    },
+    {
+      "path": "fixtures/tagged.aiff",
+      "sha256": "f75e12075e10cc20e30ec77c92c47998bd62940ced6d7ac4f38b84d83626f42f",
+      "bytes": 11968,
+      "suffix": ".aiff",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "pcm_s16be"
+            },
+            {
+              "codec_name": "png"
+            }
+          ],
+          "format": {
+            "format_name": "aiff"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.aiff.AIFF",
+      "open": {
+        "ok": true,
+        "type": "AiffFile"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה"
+            },
+            {
+              "type": "str",
+              "value": "Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה, Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "integer",
+              "decimal": "2"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "2"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/tagged.alac",
+      "sha256": "c6f6d9f3c8b673304bf1bfac8d0e1a08a59992ff984df22645be98a2fabb8d46",
+      "bytes": 2137,
+      "suffix": ".alac",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "alac"
+            },
+            {
+              "codec_name": "png"
+            }
+          ],
+          "format": {
+            "format_name": "mov,mp4,m4a,3gp,3g2,mj2"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.mp4.MP4",
+      "open": {
+        "ok": true,
+        "type": "Mp4File"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה"
+            },
+            {
+              "type": "str",
+              "value": "Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה, Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "integer",
+              "decimal": "2"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "2"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/tagged.dsf",
+      "sha256": "5034f6e109d46d183085a096486da9b0551bfefdddd0ee006b88e64d9e1bcb72",
+      "bytes": 5509,
+      "suffix": ".dsf",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "dsd_lsbf_planar"
+            },
+            {
+              "codec_name": "png"
+            }
+          ],
+          "format": {
+            "format_name": "dsf"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.dsf.DSF",
+      "open": {
+        "ok": true,
+        "type": "DsfFile"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה"
+            },
+            {
+              "type": "str",
+              "value": "Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה, Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "integer",
+              "decimal": "2"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "2"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/tagged.flac",
+      "sha256": "8c2ea7b8e1e01460587ab697a01f9ca92b1da725b06fe6f3413c87b70dd254ef",
+      "bytes": 1307,
+      "suffix": ".flac",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "flac"
+            }
+          ],
+          "format": {
+            "format_name": "flac"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.flac.FLAC",
+      "open": {
+        "ok": true,
+        "type": "FlacFile"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה"
+            },
+            {
+              "type": "str",
+              "value": "Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה, Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": false,
+          "error": {
+            "type": "ValueError",
+            "message": "invalid literal for int() with base 10: '2/9'"
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/tagged.m4a",
+      "sha256": "90606d164d86c70a6c5a7cbc0dd25ad28c2a6f73bedd2053be24a77c63708b37",
+      "bytes": 2187,
+      "suffix": ".m4a",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "aac"
+            },
+            {
+              "codec_name": "png"
+            }
+          ],
+          "format": {
+            "format_name": "mov,mp4,m4a,3gp,3g2,mj2"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.mp4.MP4",
+      "open": {
+        "ok": true,
+        "type": "Mp4File"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה"
+            },
+            {
+              "type": "str",
+              "value": "Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה, Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "integer",
+              "decimal": "2"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "2"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/tagged.mp3",
+      "sha256": "e783d83d4cd4714e3ccfa7891233c9e7a8a164a9d529979fc1ad61c633cc4921",
+      "bytes": 2757,
+      "suffix": ".mp3",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "mp3"
+            },
+            {
+              "codec_name": "png"
+            }
+          ],
+          "format": {
+            "format_name": "mp3"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.mp3.MP3",
+      "open": {
+        "ok": true,
+        "type": "Mp3File"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה"
+            },
+            {
+              "type": "str",
+              "value": "Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה, Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "integer",
+              "decimal": "2"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "2"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/tagged.ogg",
+      "sha256": "86b83b96919571c3144d444ed057cd081fd01c3e22aec763694c1cb548e83746",
+      "bytes": 4569,
+      "suffix": ".ogg",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "vorbis"
+            }
+          ],
+          "format": {
+            "format_name": "ogg"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.oggvorbis.OggVorbis",
+      "open": {
+        "ok": true,
+        "type": "OggVorbisFile"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה"
+            },
+            {
+              "type": "str",
+              "value": "Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה, Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": false,
+          "error": {
+            "type": "ValueError",
+            "message": "invalid literal for int() with base 10: '2/9'"
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/tagged.opus",
+      "sha256": "bacd7c911d076563354dc2f3232ed15b0e4800c393439a81546318f42c31a1a9",
+      "bytes": 1367,
+      "suffix": ".opus",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "opus"
+            }
+          ],
+          "format": {
+            "format_name": "ogg"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.oggopus.OggOpus",
+      "open": {
+        "ok": true,
+        "type": "OggOpusFile"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה"
+            },
+            {
+              "type": "str",
+              "value": "Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה, Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": false,
+          "error": {
+            "type": "ValueError",
+            "message": "invalid literal for int() with base 10: '2/9'"
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/tagged.wav",
+      "sha256": "ce64b3289b5490e303abca8395effd343fb514eb2b06d35f1997f3b8ce4bbc8a",
+      "bytes": 11958,
+      "suffix": ".wav",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "pcm_s16le"
+            },
+            {
+              "codec_name": "png"
+            }
+          ],
+          "format": {
+            "format_name": "wav"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.wave.WAVE",
+      "open": {
+        "ok": true,
+        "type": "WaveId3File"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה"
+            },
+            {
+              "type": "str",
+              "value": "Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה, Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "integer",
+              "decimal": "2"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "2"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/tagged.wma",
+      "sha256": "ba8069bdd8b4b6999afd727efc8419b516fb714fb3ba09b47b8d0cefb73e92bd",
+      "bytes": 5119,
+      "suffix": ".wma",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "wmav2"
+            }
+          ],
+          "format": {
+            "format_name": "asf"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.asf.ASF",
+      "open": {
+        "ok": false,
+        "error": {
+          "type": "NotImplementedError",
+          "message": "ASF format not implemented"
+        }
+      }
+    },
+    {
+      "path": "fixtures/tagged.wv",
+      "sha256": "dd5f9ed215bf1f0200d19ba8488dcf00e47bc27a7967cc3d31fb7c25c03f1205",
+      "bytes": 317,
+      "suffix": ".wv",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "wavpack"
+            }
+          ],
+          "format": {
+            "format_name": "wv"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.wavpack.WavPack",
+      "open": {
+        "ok": true,
+        "type": "WavePackFile"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה\u0000Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה\u0000Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": ""
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "integer",
+              "decimal": "2"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "2"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/xiph_multi_track.flac",
+      "sha256": "219dfe24dbf2d7d2e0569ed9cced6283e85df67a4cc53f24143e36ca0e0f675c",
+      "bytes": 1322,
+      "suffix": ".flac",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "flac"
+            }
+          ],
+          "format": {
+            "format_name": "flac"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.flac.FLAC",
+      "open": {
+        "ok": true,
+        "type": "FlacFile"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה"
+            },
+            {
+              "type": "str",
+              "value": "Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה, Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "integer",
+              "decimal": "1"
+            },
+            {
+              "type": "integer",
+              "decimal": "2"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": false,
+            "error": {
+              "type": "ValueError",
+              "message": "Metadata must have 1 value to cast to int"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/xiph_oversize_track.flac",
+      "sha256": "aab6108e70b9444e160f0c88e46c5e72293c8590f93455e81cce0e9d9a19ed41",
+      "bytes": 1404,
+      "suffix": ".flac",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "flac"
+            }
+          ],
+          "format": {
+            "format_name": "flac"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.flac.FLAC",
+      "open": {
+        "ok": true,
+        "type": "FlacFile"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה"
+            },
+            {
+              "type": "str",
+              "value": "Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה, Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "integer",
+              "decimal": "9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/xiph_unicode_track.flac",
+      "sha256": "f6608dccf294ea0a567b2f69caa57221835e708db8875931202a0c254bfd8576",
+      "bytes": 1310,
+      "suffix": ".flac",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "flac"
+            }
+          ],
+          "format": {
+            "format_name": "flac"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.flac.FLAC",
+      "open": {
+        "ok": true,
+        "type": "FlacFile"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה"
+            },
+            {
+              "type": "str",
+              "value": "Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה, Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "integer",
+              "decimal": "12"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "12"
+            }
+          }
+        }
+      }
+    },
+    {
+      "path": "fixtures/xiph_zero_track.flac",
+      "sha256": "39ae4b78d861210e76a55913b542e8ce0c7bb4cabc1d62771dfae44b6b4f2b38",
+      "bytes": 1305,
+      "suffix": ".flac",
+      "probe": {
+        "exit": 0,
+        "data": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "flac"
+            }
+          ],
+          "format": {
+            "format_name": "flac"
+          }
+        },
+        "stderr": ""
+      },
+      "mutagen_type": "mutagen.flac.FLAC",
+      "open": {
+        "ok": true,
+        "type": "FlacFile"
+      },
+      "fields": {
+        "artist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "אמן בדיקה"
+            },
+            {
+              "type": "str",
+              "value": "Second Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "אמן בדיקה, Second Artist"
+            }
+          }
+        },
+        "albumartist": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Album Artist"
+            }
+          }
+        },
+        "title": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Title"
+            }
+          }
+        },
+        "album": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Synthetic Album"
+            }
+          }
+        },
+        "genre": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "str",
+              "value": "Test"
+            }
+          ],
+          "truthy": true,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "str",
+              "value": "Test"
+            }
+          }
+        },
+        "tracknumber": {
+          "get_ok": true,
+          "values": [
+            {
+              "type": "integer",
+              "decimal": "0"
+            }
+          ],
+          "truthy": false,
+          "value": {
+            "ok": true,
+            "scalar": {
+              "type": "integer",
+              "decimal": "0"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

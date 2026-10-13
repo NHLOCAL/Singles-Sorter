@@ -13,6 +13,21 @@
 [🌐 בקרו באתר הרשמי של התוכנה](https://singles-sorter.ze-kal.top)
 
 
+## גרסת Native החדשה: Windows ו-Android
+
+לצד גרסת Python המתועדת בהמשך, נמצא כאן מימוש Native עם ממשק עברי,
+מודלי הזיהוי המקוריים ופעולות מיון ותיקון. נקודת הבדיקה `77295d31`
+עברה את חבילות Windows ואת בדיקות Android המוגדרות
+ב[מטריצת הקבלה](native/docs/product-acceptance-matrix.md#current-772-windows-and-android-checkpoint-2026-10-13).
+הבדיקה ב-Android בוצעה באמולטור API 30 מסוג x86_64 ובספק הקבצים המקומי;
+ARM64 נבנה ונבדק כמבנה קובץ, אך טרם נבדק במכשיר.
+
+זו גרסת פיתוח. ל-APK מפתח חתימה זמני חדש בכל בנייה, ולכן הוא אינו יכול
+לעדכן התקנה בעלת אותו שם חבילה וחתימה אחרת. פרטי הבנייה, החתימות ומגבלות
+הבדיקה נמצאים ב[מדריך Native](native/README.md)
+וב[מדריך Android](native/apps/singles-android/README.md).
+הגדלים והוראות ההתקנה בהמשך מתייחסים לגרסאות ההפצה הקודמות, ולא לחבילות Native אלו.
+
 ## 📦 PyPI Installation
 
 ```bash

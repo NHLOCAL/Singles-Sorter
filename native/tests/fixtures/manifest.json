@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "purpose": "Immutable released-source oracle data. Product code must not regenerate expected values.",
+  "baseline": {
+    "repository": "NHLOCAL/Singles-Sorter",
+    "release": "v14.0",
+    "revision": "78d001aee5ce49628bdffebd34540fa83ba32c12",
+    "release_url": "https://github.com/NHLOCAL/Singles-Sorter/releases/tag/v14.0",
+    "source_files": {
+      "src/core/singles_sorter_v5.py": {
+        "sha256": "ec4a98ce29c431b5d46b59f11a531eaf8fb4f3c8c16248372771de630086fffa",
+        "git_blob": "0b67726e72e527556f47a8eeffeb44778c62809b"
+      },
+      "src/core/check_name.py": {
+        "sha256": "788b5952ed3af91f8206dceb3db7cb3d5cccf38923a2feb73b9e1860f448e3b5",
+        "git_blob": "24edf4cf4bd61aab710e4e7808d67404f49b4a79"
+      },
+      "src/core/jibrish_to_hebrew.py": {
+        "sha256": "add66eb62535d42d5ad3257de5d081be6faf97de500234f05c6b0e3716f667b6",
+        "git_blob": "f779ad638b1d4a5a0f471daf760b4c1d4228e421"
+      }
+    }
+  },
+  "release_corpus": {
+    "file": "release-contract.jsonl",
+    "original_file": "shared/release-contract.jsonl",
+    "bytes": 95989,
+    "sha256": "d7ce4a2e543a2a4782036c5e55d396a1eb9fd7e4601104ad9d97b485ba095536",
+    "total_cases": 574,
+    "counts_by_op": {
+      "check_artist": 46,
+      "clean": 38,
+      "fix_jibrish": 20,
+      "match": 298,
+      "route": 57,
+      "sanitize": 27,
+      "target": 88
+    },
+    "source_runtime": {
+      "implementation": "CPython",
+      "python": "3.12.14",
+      "unicode": "15.0.0",
+      "os": "Linux"
+    },
+    "oracle": "Unmodified released Python functions, imported from pinned source",
+    "target_flag_order": [
+      "copy_mode",
+      "abc_sort",
+      "exist_only",
+      "singles_folder",
+      "main_folder_only",
+      "duet_mode"
+    ],
+    "target_matrix_combinations": 64,
+    "original_manifest_sha256": "15a5664306659920e660682d34d92c3aafb539fcdbed5a298c160600a8990988",
+    "exporter_sha256": "2b9f3881a1e817848ce7c0c5531fa7835f71aaa73094259c62110c3cea1e2e10"
+  },
+  "ordered_alias_corpus": {
+    "file": "ordered-aliases.json",
+    "original_file": "rust/alias-corpus.json",
+    "bytes": 291847,
+    "sha256": "dbffac487b7c4ccc787725b8b2e869f5a5b5bb62e5dfe95f12a223bcb4d5ec61",
+    "aliases": 1196,
+    "total_cases": 2409,
+    "baseline": "78d001aee5ce49628bdffebd34540fa83ba32c12",
+    "csv_path": "src/core/app/singer-list.csv",
+    "csv_sha256": "7d2b0c806a18043c16b7baa99ebd174955bad1f8b70f606ee8f56e9559d4d391",
+    "oracle": "Unmodified released check_exact_name over the exact ordered released CSV rows",
+    "exporter_sha256": "d9db5858216d2d59b31dc3f509abcfe16e8654d9e35ed3736d224da2dd0c6d6f",
+    "runtime_provenance": "The ordered-alias artifact embeds source and CSV identities but no runtime version. The companion source corpus oracle runtime is recorded separately; this does not recover the historical Windows runtime."
+  },
+  "import": {
+    "method": "Byte-for-byte copies of reviewed exports; original JSON formatting and all expected outputs retained",
+    "copied_implementation": false,
+    "expected_values_regenerated": false
+  },
+  "scope_limits": [
+    "No real AI inference",
+    "No actual metadata parser parity",
+    "No file transfers",
+    "Target output is relative path components, not Windows filesystem integration",
+    "Corpus characterizes observed release behavior, including quirks; it is not a safety specification",
+    "No real CSV parser, directory traversal, album support or physical apply in Phase 1",
+    "Linux tests do not establish Windows or Android acceptance"
+  ]
+}

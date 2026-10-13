@@ -1,0 +1,837 @@
+name: Native read-only preview CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'native/**'
+      - '.github/workflows/native-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Rust 1.99.0 (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2025, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    # Full Windows native safety suites now exceed the former 20-minute build budget.
+    timeout-minutes: ${{ matrix.os == 'windows-2025' && 40 || 20 }}
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: native
+    steps:
+      - name: Check out reviewed code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout: native
+
+      - name: Install pinned official Rust toolchain
+        run: rustup toolchain install 1.99.0 --profile minimal --component rustfmt --component clippy
+
+      - name: Verify toolchain
+        run: |
+          rustup run 1.99.0 rustc --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 --version
+
+      - name: Require FFmpeg for owned Ogg decoder comparisons
+        run: |
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+            if ($IsWindows) {
+              choco install ffmpeg --yes --no-progress
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            } elseif ($IsLinux) {
+              sudo apt-get update
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              sudo apt-get install --yes ffmpeg
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            } else { throw "Unsupported decoder-test runner" }
+          }
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) { throw "FFmpeg must be available; decoder tests cannot be skipped" }
+          ffmpeg -version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test all-scope formatter diagnostic orchestration
+        run: python tests/build/test_rust_format_diagnostics.py
+
+      - name: Check every Rust scope and collect formatter diagnostics
+        run: python tests/build/capture_rust_format.py --out ../native-formatting
+
+      - name: Upload formatter diagnostics from all Rust scopes
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: native-formatting-${{ matrix.os }}
+          path: native-formatting/
+          if-no-files-found: error
+
+      - name: Verify bounded official zlib acquisition
+        run: |
+          python tests/build/test_acquire_zlib.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tests/build/acquire_zlib.py --evidence test-results/zlib-acquisition
+
+      - name: Retain exact zlib acquisition response receipts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: zlib-acquisition-native-${{ matrix.os }}-${{ github.run_attempt }}
+          path: native/test-results/zlib-acquisition
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Preflight exact native owned-Copy fixture binding
+        if: runner.os == 'Windows'
+        run: |
+          $listing = cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-copy --test windows_copy exact_unicode_copy_preserves_source_and_reopens_read_only -- --exact --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $cases = @($listing | Where-Object { $_ -match ': test$' })
+          if ($cases.Count -ne 1) { throw "Expected the exact native owned-Copy preflight; found $($cases.Count)" }
+          cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-copy --test windows_copy exact_unicode_copy_preserves_source_and_reopens_read_only -- --exact --test-threads=1 --nocapture
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test pinned dependency acquisition and offline cache
+        run: |
+          python tests/build/test_dependency_acquisition.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tests/build/test_dependency_failure_containment.py
+
+      - name: Build pinned static PCRE2 for original adapter workspace tests
+        run: |
+          python probes/released-ner/acquire_pcre2.py --out probes/released-ner/.pcre2 --build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "PCRE2_STATIC_DIR=$((Resolve-Path probes/released-ner/.pcre2/install/lib).Path)" >> $env:GITHUB_ENV
+
+      - name: Check formatting
+        run: cargo +1.99.0 fmt --all -- --check
+
+      - name: Check all targets with Clippy
+        run: cargo +1.99.0 clippy --locked --workspace --all-targets -- -D warnings
+
+      - name: Test native contracts and JSON subprocess protocol
+        run: cargo +1.99.0 test --locked --workspace
+
+      - name: Check experimental Windows mutation contracts
+        if: runner.os == 'Windows'
+        run: cargo +1.99.0 clippy --locked -p sorter-io --features experimental-windows-mutation --all-targets -- -D warnings
+
+      - name: Exercise handle-bound mutation on owned Windows NTFS fixtures
+        if: runner.os == 'Windows'
+        run: |
+          $listing = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --test windows_storage -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $cases = @($listing | Where-Object { $_ -match ': test$' })
+          if ($cases.Count -ne 12) { throw "Expected all 12 native Windows fixture cases; found $($cases.Count)" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --test windows_storage -- --test-threads=1
+
+      - name: Test pinned legacy diagnostic log sink
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib diagnostic_log_tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 8) { throw "Expected 8 diagnostic log cases" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib diagnostic_log_tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check experimental Windows journal bridge
+        if: runner.os == 'Windows'
+        run: cargo +1.99.0 clippy --locked -p sorter-executor --features experimental-windows-journal --all-targets -- -D warnings
+
+      - name: Exercise verified held-publication file sync
+        if: runner.os == 'Windows'
+        run: |
+          $listing = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib published_sync_tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $cases = @($listing | Where-Object { $_ -match ': test$' })
+          if ($cases.Count -ne 6) { throw "Expected all 6 native published-sync cases; found $($cases.Count)" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib published_sync_tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native journal flush errors and close/reopen recovery
+        if: runner.os == 'Windows'
+        run: |
+          $listing = cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-journal --test windows_journal -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $cases = @($listing | Where-Object { $_ -match ': test$' })
+          if ($cases.Count -ne 6) { throw "Expected all 6 native journal fixture cases; found $($cases.Count)" }
+          cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-journal --test windows_journal -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $flushListing = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib journal_flush_tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $flushCases = @($flushListing | Where-Object { $_ -match ': test$' })
+          if ($flushCases.Count -ne 1) { throw "Expected the native rejected-flush test; found $($flushCases.Count)" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib journal_flush_tests -- --test-threads=1
+
+      - name: Check and exercise owned Windows single-file Copy
+        if: runner.os == 'Windows'
+        run: |
+          cargo +1.99.0 clippy --locked -p sorter-executor --features experimental-windows-copy --all-targets -- -D warnings
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $listing = cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-copy --test windows_copy -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $cases = @($listing | Where-Object { $_ -match ': test$' })
+          if ($cases.Count -ne 9) { throw "Expected all 9 owned Windows Copy fixture cases; found $($cases.Count)" }
+          cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-copy --test windows_copy -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-copy
+
+      - name: Exercise owned Windows write-through rename-only Move
+        if: runner.os == 'Windows'
+        run: |
+          cargo +1.99.0 clippy --locked -p sorter-executor --features experimental-windows-rename --all-targets -- -D warnings
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $primitiveListing = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib rename_guard_tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $primitiveCases = @($primitiveListing | Where-Object { $_ -match ': test$' })
+          if ($primitiveCases.Count -ne 12) { throw "Expected all 12 native rename-guard cases; found $($primitiveCases.Count)" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib rename_guard_tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $listing = cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-rename --test windows_rename -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $cases = @($listing | Where-Object { $_ -match ': test$' })
+          if ($cases.Count -ne 7) { throw "Expected all 7 owned Windows rename driver cases; found $($cases.Count)" }
+          cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-rename --test windows_rename -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 test --locked -p sorter-executor --features experimental-windows-rename
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise fresh Apply-preflight decision receipt boundaries
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test journal_faults execution_decisions_ -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ': test$' }).Count -ne 3) { throw "Expected 3 fresh decision receipt boundary cases" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test journal_faults execution_decisions_ -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Lint inspected CLI execution protocol
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        run: |
+          cargo +1.99.0 clippy --locked -p sorter-cli --features selected-windows-execution --all-targets -- -D warnings
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise inspected CLI execution protocol on owned Windows files
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        run: |
+          $protocol = cargo +1.99.0 test --locked -p sorter-cli --features selected-windows-execution --test run_files -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $protocolCases = @($protocol | Where-Object { $_ -match ': test$' })
+          if ($protocolCases.Count -ne 8) { throw "Expected all 8 inspected CLI product cases; found $($protocolCases.Count)" }
+          cargo +1.99.0 test --locked -p sorter-cli --features selected-windows-execution --test run_files -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $legacy = cargo +1.99.0 test --locked -p sorter-cli --features selected-windows-execution --test legacy -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $legacyCases = @($legacy | Where-Object { $_ -match ': test$' })
+          if ($legacyCases.Count -ne 12) { throw "Expected all 12 legacy CLI product cases; found $($legacyCases.Count)" }
+          cargo +1.99.0 test --locked -p sorter-cli --features selected-windows-execution --test legacy -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Lint selected Windows multi-file jobs
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        run: |
+          cargo +1.99.0 clippy --locked -p sorter-executor --features selected-windows-execution --all-targets -- -D warnings
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise selected Windows root safety
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        run: |
+          $roots = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --test windows_selected_roots -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($roots | Where-Object { $_ -match ': test$' }).Count -ne 12) { throw "Expected 12 selected-root cases" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --test windows_selected_roots -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib selected_directory_uncertainty_tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Exercise selected Windows multi-file job safety
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        run: |
+          $jobs = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_selected_job -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($jobs | Where-Object { $_ -match ': test$' }).Count -ne 21) { throw "Expected 21 selected-job and restart cases" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test staged MP3 repair and retained-original adapter
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $tags = cargo +1.99.0 test --locked -p sorter-io --test staged_tags -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($tags | Where-Object { $_ -match ': test$' }).Count -ne 10) { throw "Expected 9 staged-writer cases plus native metadata roundtrip" }
+          cargo +1.99.0 test --locked -p sorter-io --test staged_tags -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $repair = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib repair_backup_tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($repair | Where-Object { $_ -match ': test$' }).Count -ne 20) { throw "Expected 20 retained-original preservation cases" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib repair_backup_tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test selected Windows FixNames jobs
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $repairBounds = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib journal_budget_tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($repairBounds | Where-Object { $_ -match ': test$' }).Count -ne 4) { throw "Expected 4 repair journal/classification/path boundary cases" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib journal_budget_tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $repairJobs = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($repairJobs | Where-Object { $_ -match ': test$' }).Count -ne 65) { throw "Expected 37 prior product FixNames, 7 restart, 10 MP4, 6 ID3 container and 5 WavPack cases" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require Ogg stream and native reader plus actual decoder gates
+        if: ${{ !cancelled() }}
+        run: |
+          $listing = cargo +1.99.0 test --locked -p sorter-io --test staged_ogg -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($listing | Where-Object { $_ -match ': test$' }).Count -ne 17) { throw "Expected all 17 Ogg stream/native/decoder cases" }
+          $cases = @('real_native_reader_roundtrip_matches_five_ogg_assignments_and_track', 'ffmpeg_decodes_real_staged_vorbis_and_opus_to_identical_pcm')
+          foreach ($case in $cases) {
+            $exact = cargo +1.99.0 test --locked -p sorter-io --test staged_ogg $case -- --exact --list
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            if (@($exact | Where-Object { $_ -eq "${case}: test" }).Count -ne 1) { throw "Missing mandatory Ogg case: $case" }
+            cargo +1.99.0 test --locked -p sorter-io --test staged_ogg $case -- --exact --test-threads=1 --nocapture
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          cargo +1.99.0 test --locked -p sorter-io --test staged_ogg -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require exact Ogg product dispatch and Windows preservation cases
+        if: ${{ !cancelled() }}
+        run: |
+          $dispatch = cargo +1.99.0 test --locked -p sorter-io --test staged_ogg_dispatch -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($dispatch | Where-Object { $_ -match ': test$' }).Count -ne 3) { throw "Expected all 3 Ogg dispatch cases" }
+          cargo +1.99.0 test --locked -p sorter-io --test staged_ogg_dispatch -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($IsWindows) {
+            $cases = @(
+              'real_taglib_provider_plans_rebinds_and_publishes_vorbis_growth',
+              'real_taglib_provider_plans_rebinds_and_publishes_opus_duplicate_shrink',
+              'duplicate_five_field_ogg_repairs_preserve_artwork_and_exact_backup',
+              'unchanged_ogg_tags_keep_identity_without_stage_or_backup',
+              'corrupt_crc_truncation_chaining_and_multiplexing_retain_filename_only',
+              'cancellation_during_ogg_stage_preserves_original_and_forbids_replay',
+              'cancellation_and_lost_backup_response_keep_grown_stage_and_original_lengths',
+              'lost_publication_response_reopens_grown_and_shorter_replacements',
+              'rehashed_oversize_inconsistent_lengths_hashes_and_v1_downgrade_are_rejected',
+              'coherent_rehashed_wrong_replacement_size_never_verifies_current_artifact',
+              'foreign_collision_after_backup_preserves_grown_stage_and_exact_original'
+            )
+            foreach ($case in $cases) {
+              $exact = "ogg::$case"
+              $listing = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair $exact -- --exact --list
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              if (@($listing | Where-Object { $_ -eq "${exact}: test" }).Count -ne 1) { throw "Missing exact Ogg product case: $exact" }
+              cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair $exact -- --exact --test-threads=1 --nocapture
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            }
+          }
+
+      - name: Require FLAC stream dispatch and native metadata roundtrip
+        if: ${{ !cancelled() }}
+        run: |
+          $listing = cargo +1.99.0 test --locked -p sorter-io --test staged_flac -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($listing | Where-Object { $_ -match ': test$' }).Count -ne 14) { throw "Expected all 14 FLAC stream/dispatch/native cases" }
+          $nativeCase = 'real_native_reader_roundtrip_matches_all_five_assignments_and_untouched_track'
+          $nativeListing = cargo +1.99.0 test --locked -p sorter-io --test staged_flac $nativeCase -- --exact --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($nativeListing | Where-Object { $_ -eq "${nativeCase}: test" }).Count -ne 1) { throw "Native FLAC bridge roundtrip must not be compiled out" }
+          cargo +1.99.0 test --locked -p sorter-io --test staged_flac $nativeCase -- --exact --test-threads=1 --nocapture
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 test --locked -p sorter-io --test staged_flac -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require each exact Windows FLAC product and length-binding case
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        run: |
+          $cases = @(
+            'five_fields_shrink_preserves_picture_vendor_unknowns_audio_and_exact_backup',
+            'unchanged_flac_tags_keep_identity_without_stage_or_backup',
+            'opaque_application_and_reserved_blocks_reject_shift_after_filename_repair',
+            'equal_length_flac_repair_keeps_opaque_block_bytes',
+            'cancellation_during_flac_stage_preserves_original_and_forbids_replay',
+            'cancellation_and_lost_backup_response_keep_distinct_original_and_stage_lengths',
+            'lost_publication_response_reopens_with_replacement_length_and_original_backup',
+            'rehashed_original_replacement_length_or_hash_substitution_is_rejected',
+            'coherent_rehashed_wrong_sizes_and_foreign_identical_bytes_never_verify',
+            'legacy_v1_mp3_journal_reopens_without_new_evidence_or_rewriting_bytes',
+            'v1_journal_cannot_claim_v2_length_changing_evidence',
+            'foreign_collision_after_backup_never_overwrites_or_loses_shorter_stage',
+            'real_taglib_provider_plans_rebinds_and_publishes_five_flac_fields'
+          )
+          foreach ($case in $cases) {
+            $exact = "flac::$case"
+            $listing = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair $exact -- --exact --list
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            if (@($listing | Where-Object { $_ -eq "${exact}: test" }).Count -ne 1) { throw "Missing exact FLAC product case: $exact" }
+            cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair $exact -- --exact --test-threads=1 --nocapture
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+      - name: Test bounded album planning reads
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib album_bounded_ -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 8) { throw "Expected 8 cases for --lib album_bounded_" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib album_bounded_ -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $cases = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_album_reads -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 5) { throw "Expected 5 cases for --test windows_album_reads" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_album_reads -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test acknowledged directory summary boundary
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib directory_receipt_tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 3) { throw "Expected 3 directory receipt and manifest boundary cases" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib directory_receipt_tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test preview-bound copied Move stream evidence
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib move_stream_ -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 21) { throw "Expected 21 copied Move stream inventory/copy/retirement/read-only cases" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib move_stream_ -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test preview-bound copied Move job and journal contracts
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $limits = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib controlled_writer_boundary_tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($limits | Where-Object { $_ -match ": test$" }).Count -ne 3) { throw "Expected three exact controlled writer boundary cases" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib controlled_writer_boundary_tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $cases = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib copied_move_journal_tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 7) { throw "Expected seven copied Move journal cases" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib copied_move_journal_tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $cases = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_copied_move -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 30) { throw "Expected thirty copied Move job and restart cases including partial eligible duets, controlled inspection and distinct-volume NTFS" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_copied_move -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Validate scoped NTFS album cleanup
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib album_cleanup_tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 14) { throw "Expected fourteen explicit album cleanup cases" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib album_cleanup_tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test exact-length WavPack staged repair
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-io --test staged_wavpack -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 10) { throw "Expected ten WavPack stream, native-reader and decoder cases" }
+          cargo +1.99.0 test --locked -p sorter-io --test staged_wavpack -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $product = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair wavpack:: -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($product | Where-Object { $_ -match ": test$" }).Count -ne 5) { throw "Expected five WavPack product and restart cases" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair wavpack:: -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Test exact-extent ID3 container staged repair
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-io --test staged_id3_container -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 10) { throw "Expected ten ID3 container, native-reader and decoder cases" }
+          cargo +1.99.0 test --locked -p sorter-io --test staged_id3_container -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 test --locked -p sorter-io --test staged_tags -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $product = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair id3_container:: -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($product | Where-Object { $_ -match ": test$" }).Count -ne 6) { throw "Expected six ID3 container product and restart cases" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair id3_container:: -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Test exact-extent MP4 staged repair
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-io --test staged_mp4 -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 20) { throw "Expected twenty MP4 stream, decoder and native-reader cases" }
+          cargo +1.99.0 test --locked -p sorter-io --test staged_mp4 -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $product = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair mp4:: -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($product | Where-Object { $_ -match ": test$" }).Count -ne 10) { throw "Expected ten MP4 product and restart cases" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_repair mp4:: -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test native album source guards
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib album_directory_guard_tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 20) { throw "Expected 20 cases for --lib album_directory_guard_tests" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib album_directory_guard_tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test whole and ordered album rename scopes
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib album_rename::tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 15) { throw "Expected 15 cases for --lib album_rename::tests" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib album_rename::tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $cases = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib child_rename::tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 25) { throw "Expected 25 cases for --lib child_rename::tests" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib child_rename::tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test ordinary metadata-reader compatibility and mixed-library execution
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-io --test metadata_id3_compatibility -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 16) { throw "Expected 16 metadata compatibility cases" }
+          cargo +1.99.0 test --locked -p sorter-io --test metadata_id3_compatibility -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $cases = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_metadata_sort -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 3) { throw "Expected 3 actual metadata-driven execution cases" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_metadata_sort -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test read-only Album original-parent grants
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib album_inspection::tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 13) { throw "Expected 13 cases for --lib album_inspection::tests" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib album_inspection::tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test read-only Album target and journal owner
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib album_inspection::storage::tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 37) { throw "Expected 37 cases for --lib album_inspection::storage::tests" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib album_inspection::storage::tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test selected Copy metadata and old journal compatibility
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib copy_metadata::tests -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 23) { throw "Expected 23 cases for --lib copy_metadata::tests" }
+          cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib copy_metadata::tests -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $cases = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib copy_metadata_ -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 6) { throw "Expected 6 cases for --lib copy_metadata_" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --lib copy_metadata_ -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test selected album product jobs
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_album -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 71) { throw "Expected 71 cases for --test windows_album" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_album -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Test native metadata with static Windows CRT
+        if: runner.os == 'Windows'
+        env:
+          RUSTFLAGS: '-C target-feature=+crt-static'
+        run: cargo +1.99.0 test --locked -j 2 --release -p sorter-io --test metadata_reference --test metadata_errors
+
+      - name: Build native release executable
+        env:
+          RUSTFLAGS: ${{ runner.os == 'Windows' && '-C target-feature=+crt-static' || '' }}
+        run: cargo +1.99.0 build --locked --release -p sorter-cli
+
+      - name: Smoke release executable in Hebrew path and unrelated CWD
+        run: |
+          @'
+          import hashlib
+          import json
+          from pathlib import Path
+          import shutil
+          import subprocess
+          import tempfile
+
+          native = Path.cwd()
+          suffix = ".exe" if __import__("os").name == "nt" else ""
+          fixtures = native / "tests" / "fixtures" / "protocol"
+
+          def manifest(root):
+              return sorted((str(p.relative_to(root)), p.is_dir(),
+                             hashlib.sha256(p.read_bytes()).hexdigest() if p.is_file() else "")
+                            for p in root.rglob("*"))
+
+          with tempfile.TemporaryDirectory(prefix="singles-native-smoke-") as temporary:
+              root = Path(temporary)
+              executable_dir = root / "תיקיית תוכנה"
+              executable_dir.mkdir()
+              executable = executable_dir / ("מסדר סינגלים" + suffix)
+              shutil.copy2(native / "target" / "release" / ("singles-sorter" + suffix), executable)
+              cwd = root / "unrelated-cwd"
+              cwd.mkdir()
+              source = root / "מקור"
+              target = root / "יעד"
+              source.mkdir()
+              target.mkdir()
+              song = source / "אמן - שיר.mp3"
+              song.write_bytes(b"source sentinel\x00\xff")
+              (target / "existing.mp3").write_bytes(b"target sentinel")
+              before = manifest(root)
+
+              def invoke(command, data=b"", expected_exit=0, expected_code=None):
+                  process = subprocess.run([str(executable), command, "--json"], input=data,
+                                           stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                           cwd=cwd, timeout=30, check=False)
+                  assert process.returncode == expected_exit, (command, process)
+                  response = json.loads(process.stdout.decode("utf-8"))
+                  assert process.stdout.endswith(b"\n")
+                  assert response["schema_version"] == 1
+                  assert response["result"]["inference_executed"] is False
+                  assert response["result"]["executable"] is False
+                  if expected_code is None:
+                      assert response["status"] == "ok" and response["error"] is None
+                      assert process.stderr == b""
+                  else:
+                      assert response["status"] == "error"
+                      assert response["error"]["code"] == expected_code
+                  return response
+
+              classified = invoke("classify", (fixtures / "classify-alias.json").read_bytes())
+              assert classified["result"]["decision"]["artists"] == ["אמן ראשון"]
+              request = json.loads((fixtures / "plan-collisions.json").read_text(encoding="utf-8"))
+              request["songs"][0]["source_id"] = str(song)
+              request["target"]["root_id"] = str(target)
+              payload = json.dumps(request, ensure_ascii=False).encode("utf-8")
+              planned = invoke("plan", payload)
+              assert planned["result"]["plan"]["executable"] is False
+              capabilities = invoke("capabilities")["result"]["capabilities"]
+              assert capabilities["native_inference"] is False
+              assert capabilities["physical_apply"] is False
+              invoke("classify", b"{", 2, "INVALID_INPUT")
+              invoke("apply", payload, 3, "UNSUPPORTED_CAPABILITY")
+              assert manifest(root) == before, "all source/target paths and file hashes must survive"
+          print("Native release smoke passed: Hebrew executable path, unrelated CWD, UTF-8, and unchanged sentinels")
+          '@ | python -
+
+      - name: Check Windows PowerShell 5.1 UTF-8 native pipeline
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          if ($PSVersionTable.PSVersion.Major -ne 5 -or $PSVersionTable.PSVersion.Minor -ne 1) {
+            throw "This regression must run under Windows PowerShell 5.1"
+          }
+          $exe = (Resolve-Path 'target/release/singles-sorter.exe').Path
+          # ASCII-only script literals also work without a UTF-8 script BOM in PS 5.1.
+          $artist = [regex]::Unescape('\u05d0\u05de\u05df \u05e8\u05d0\u05e9\u05d5\u05df')
+          $folder = [regex]::Unescape('\u05e1\u05d9\u05e0\u05d2\u05dc\u05d9\u05dd')
+          $name = [regex]::Unescape('\u05d0\u05de\u05df - \u05e9\u05d9\u05e8')
+          [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false)
+          [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+          foreach ($command in @('classify', 'plan')) {
+            $fixture = if ($command -eq 'classify') { 'classify-alias.json' } else { 'plan-collisions.json' }
+            $path = Join-Path 'tests/fixtures/protocol' $fixture
+            $OutputEncoding = [System.Text.Encoding]::ASCII
+            $prefix = Get-Content -LiteralPath $path -Raw -Encoding utf8 |
+              python -c "import sys; print(sys.stdin.buffer.read()[:3].hex())"
+            if ($LASTEXITCODE -ne 0) { throw 'ASCII stdin byte probe failed' }
+            if ($prefix -notlike '7b*') { throw 'ASCII native stdin must start with {, without a BOM' }
+            $previousErrorPreference = $ErrorActionPreference
+            try {
+              $ErrorActionPreference = 'Continue'
+              $brokenJson = Get-Content -LiteralPath $path -Raw -Encoding utf8 | & $exe $command --json 2>$null
+              $brokenExit = $LASTEXITCODE
+            } finally {
+              $ErrorActionPreference = $previousErrorPreference
+            }
+            if ($brokenExit -ne 2) { throw "ASCII-corrupted $command must fail with exit 2" }
+            $broken = $brokenJson | ConvertFrom-Json
+            if ($broken.status -ne 'error' -or $broken.error.code -ne 'INVALID_INPUT' -or
+                $broken.error.message -notlike 'Supplied title sanitizes to no string*') {
+              throw "ASCII-corrupted $command did not reproduce the input encoding error: $brokenJson"
+            }
+            $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+            $prefix = Get-Content -LiteralPath $path -Raw -Encoding utf8 |
+              python -c "import sys; print(sys.stdin.buffer.read()[:3].hex())"
+            if ($LASTEXITCODE -ne 0) { throw 'UTF-8 stdin byte probe failed' }
+            if ($prefix -notlike '7b*') { throw 'UTF-8 native stdin must start with {, without a BOM' }
+            $json = Get-Content -LiteralPath $path -Raw -Encoding utf8 | & $exe $command --json
+            if ($LASTEXITCODE -ne 0) { throw "UTF-8 $command failed: $json" }
+            $response = $json | ConvertFrom-Json
+            if ($response.status -ne 'ok' -or $response.schema_version -ne 1 -or
+                $null -ne $response.error -or $response.result.inference_executed -ne $false -or
+                $response.result.executable -ne $false) { throw "Invalid UTF-8 $command envelope" }
+            if ($command -eq 'classify') {
+              if (@($response.result.decision.artists).Count -ne 1 -or
+                  $response.result.decision.artists[0] -cne $artist) { throw 'Hebrew artist changed' }
+            } else {
+              $plan = $response.result.plan
+              if ($plan.executable -ne $false -or @($plan.items).Count -ne 2) { throw 'Invalid plan' }
+              for ($i = 0; $i -lt 2; $i++) {
+                $item = $plan.items[$i]
+                if (@($item.destinations).Count -ne 1) { throw 'Unexpected destination count' }
+                $parts = $item.destinations[0].components
+                $expectedName = $name + '_' + ($i + 1) + '.mp3'
+                if (@($parts).Count -ne 3 -or $parts[0] -cne $artist -or
+                    $parts[1] -cne $folder -or $parts[2] -cne $expectedName) {
+                  throw 'Hebrew plan components or collision suffixes changed'
+                }
+              }
+            }
+          }
+          Write-Output 'Windows PowerShell 5.1 native pipeline passed: ASCII failure and UTF-8 Hebrew classify/plan'
+
+      - name: Record Windows preview checksum and provenance
+        if: runner.os == 'Windows'
+        env:
+          PREVIEW_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          @'
+          import hashlib
+          import os
+          from pathlib import Path
+          import subprocess
+
+          release = Path("target/release")
+          binary = release / "singles-sorter.exe"
+          data = binary.read_bytes()
+          assert data[:2] == b"MZ", "preview must be the native Windows executable"
+          digest = hashlib.sha256(data).hexdigest()
+          (release / "SHA256SUMS.txt").write_text(f"{digest}  singles-sorter.exe\n", encoding="utf-8")
+          checkout = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+          rust = subprocess.check_output(["rustup", "run", "1.99.0", "rustc", "--version"], text=True).strip()
+          run_url = f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
+          provenance = [
+              "Singles-Sorter unsigned Windows x64 native preview CLI",
+              f"Repository: {os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}",
+              f"PR head: {os.environ['PREVIEW_HEAD_SHA']}",
+              f"Tested checkout (PR merge): {checkout}",
+              f"Toolchain: {rust}",
+              "Runtime: Windows 10+ x64; MSVC C runtime linked statically.",
+              f"Workflow run: {run_url}",
+              f"EXE SHA256: {digest}",
+              "Windows formatting, Clippy, workspace tests, release build, and portable smoke passed.",
+              "Supplied-facts v1 classify/plan and read-only real-file v2 plan-files; every plan is non-executable.",
+              "Frozen synthetic metadata coverage only; no GUI, real inference, tag writes, or physical apply.",
+              "Quick PowerShell checks: .\\singles-sorter.exe --help",
+              "                         .\\singles-sorter.exe capabilities --json",
+              "No Rust or Python installation is needed to run this EXE.",
+          ]
+          (release / "PREVIEW.txt").write_text("\n".join(provenance) + "\n", encoding="utf-8")
+          '@ | python -
+
+      - name: Upload tested Windows preview CLI
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: singles-sorter-windows-preview-${{ github.run_attempt }}
+          path: |
+            native/target/release/singles-sorter.exe
+            native/target/release/SHA256SUMS.txt
+            native/target/release/PREVIEW.txt
+          if-no-files-found: error
+          retention-days: 7
+          include-hidden-files: false
+          overwrite: false
+
+  metadata-sanitizers:
+    name: Native metadata ASan, UBSan and leak checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+        working-directory: native
+    steps:
+      - name: Check out reviewed native sources
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout: native
+
+      - name: Verify bounded official zlib acquisition
+        run: |
+          python tests/build/test_acquire_zlib.py
+          python tests/build/acquire_zlib.py --evidence test-results/zlib-acquisition
+
+      - name: Retain exact zlib acquisition response receipts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: zlib-acquisition-sanitizer-${{ github.run_attempt }}
+          path: native/test-results/zlib-acquisition
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Build finite owned ABI sanitizer harness
+        run: |
+          cmake -S crates/sorter-io/bridge -B target/metadata-sanitizers \
+            -DSORTER_BRIDGE_TESTS=ON -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS='-fsanitize=address,undefined -fno-omit-frame-pointer' \
+            -DCMAKE_C_FLAGS='-fsanitize=address,undefined -fno-omit-frame-pointer' \
+            -DCMAKE_EXE_LINKER_FLAGS='-fsanitize=address,undefined'
+          cmake --build target/metadata-sanitizers --target sorter_bridge_tests --parallel 2
+
+      - name: Exercise all frozen media, truncations and deterministic malformed inputs
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: |
+          python - <<'PYCODE'
+          from pathlib import Path
+          import subprocess
+          root = Path("tests/fixtures/media")
+          files = [str(root / line.split("  ", 1)[1].removeprefix("fixtures/"))
+                   for line in (root / "fixtures.sha256").read_text().splitlines() if line]
+          assert len(files) == 60 and all(Path(f).is_file() for f in files)
+          subprocess.run(["target/metadata-sanitizers/sorter_bridge_tests", *files],
+                         check=True, timeout=300)
+          PYCODE

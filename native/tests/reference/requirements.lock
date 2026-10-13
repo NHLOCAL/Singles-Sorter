@@ -1,0 +1,11 @@
+# Test-only Python 3.12.14 / Unicode 15 reference. No ML dependencies required.
+# Official PyPI packages; these are a current reproducible reference environment,
+# not a recovered Windows historical installer lock.
+music-tag==0.4.3
+mutagen==1.47.0
+pytest==9.1.1
+iniconfig==2.3.1
+packaging==26.3
+pluggy==1.6.0
+Pygments==2.21.0
+colorama==0.4.6; sys_platform == 'win32'

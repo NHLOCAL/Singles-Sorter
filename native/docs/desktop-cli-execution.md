@@ -1,0 +1,170 @@
+# Desktop and CLI selected-root execution candidate
+
+This integration is opt-in (`selected-windows-execution`) and must pass the
+actual Windows gates at its final commit before it is described as validated.
+Default feature-off binaries remain read-only. The selected desktop package
+combines original AI and selected execution, and archive/upload requires actual
+Copy/Move acceptance on both staged and consumer-extracted bytes. A plan document alone is never an executable authorization token.
+
+## Desktop flow
+
+1. Select source and target, retain the released six settings, then plan.
+2. The native planning adapter probes read/list/seek capabilities and hashes the
+   observed source contents without changing the selected music trees. The host
+   retains the exact roots, identities, ordered resources, settings and digest.
+3. Only a supported whole plan gets the Hebrew “בצע את התוכנית” action. The review
+   names source, target, operation count and Copy/Move before the user confirms.
+4. The renderer sends only job ID and inspected plan digest. The worker rechecks
+   aliases, models, directory identities, exact plan, metadata and content hashes.
+   Selected source, target and private journal roots are pinned independently.
+5. Per-file byte progress is actual callback evidence, not predicted completion.
+   Cancel requests remain pending until the native worker reaches a terminal
+   state. Settings, root changes and repeat execution stay blocked while busy.
+6. Results distinguish complete, partial, cancelled and needs-recovery. Counters
+   come from durable journal evidence. Row details show actual operation results.
+   Read-only reconciliation checks retained journal identities and current files;
+   no automatic replay, rollback or source deletion is inferred from a receipt.
+
+The host owns the job through reload/close cancellation. A reload can restore the
+retained execution result within the same running host. After process exit, the
+[current read-only restart candidate](current-restart-product.md) discovers single
+Copy/Move (including copied routes) and Fix journals. Inspection requires fresh
+exact native source/target choices, or source-only choices for Fix, and offers
+measured progress and cancellation. The [file-Album restart candidate](windows-file-album-restart-host.md) additionally requires fresh source/target selection, or an explicitly chosen original parent for schema-2 absent sources. Whole-object Album and orphan journals remain visibly unsupported. No execution replay or cleanup is exposed; inspection writes no
+files or journals. Actual composed Windows acceptance is still required.
+
+## CLI flow
+
+Run `singles-sorter run-files --ndjson` from a Windows build with the explicit
+feature. Unlike `plan-files --json`, this is a bidirectional single-process
+session. The explicitly selected journal directory must already exist and be disjoint from
+source and target. The host never recursively creates it from the supplied path.
+Send one UTF-8 line:
+
+```json
+{"schema_version":1,"journal_directory":"C:\\AppData\\SinglesJobJournals","preview":{"schema_version":2,"mode":"Sort","source":"C:\\Music\\Incoming","target":"C:\\Music\\Sorted","settings":{"copy_mode":true,"main_folder_only":false,"singles_folder":true,"exist_only":false,"abc_sort":false,"duet_mode":false},"ai_profile":"Disabled","personal_aliases":null}}
+```
+
+Read the `planned` event, review the complete plan and paths, then send exactly
+`{"action":"apply","plan_id":"<returned exact digest>"}`. Sending
+`{"action":"cancel"}` before confirmation changes no music files. During apply,
+the same cancel command sets the cooperative cancellation token; already
+committed effects are reported and are not rolled back. Each line is bounded to
+16 MiB. Only the first request and its confirmation enter the one-slot stdin queue.
+After confirmation, only cancel is accepted; malformed or repeated commands
+cancel safely without enqueuing undrained messages. Lost stdout cancels subsequent work rather
+than silently proceeding without reporting it. EOF before confirmation is an
+error. Closing stdin after confirmation does not itself request cancellation.
+
+Events are `planned`, `started`, `progress`, `result`, `cancelled` and `error`.
+Partial/cancelled/recovery results exit nonzero; only a complete result exits 0.
+No standalone `apply plan.json` command exists. `plan-files` still changes no
+music files and still returns a non-executable plan. An unsupported build rejects
+`run-files` before consuming user paths. Ctrl-C OS process termination is not a
+cooperative CLI handler; inspect the journal after forced termination.
+
+## Evidence semantics and bounds
+
+- Resource hashes are the actual ordered alias/model content hashes supplied by
+  verified resource loaders. The four original model IDs are deterministically
+  JSON-encoded and hashed for the model aggregate; this is not a fifth model file.
+- Adapter hashes hash pinned UTF-8 build/coverage descriptors. They are not
+  claimed to be executable binary hashes.
+- The delivered selected-root milestone covers Copy and same-volume Move with
+  supported single-file operations. Artist/ABC/singles directories are journaled.
+  The separate source-only repair candidate is described below. Full albums,
+  cross-volume Move and Move duets requiring copy-plus-retirement remain
+  unavailable unless a later verified backend adds them. Whole unsupported plans are not silently reduced to a successful subset.
+- Linux remains a read-only testing adapter; no Linux mutation path is enabled.
+- Sources, results and journal paths are rendered with textContent/value, never
+  injected as HTML. The local main view has only named scoped IPC commands.
+
+## Acceptance
+
+- `tests/execution.test.ts`: retained binding, one-shot ownership, no implicit
+  eligibility, partial counts, cancellation, stale/lost replies, recovery states.
+- `tests/desktop_apply.py`: actual Windows WebView2/IPC on generated owned audio;
+  review cancellation, multi-file Copy, same-volume Move, created folders,
+  independent SHA-256 checks, stale-source rejection and screenshots.
+- CLI `tests/run_files.rs`: actual subprocess inspect/apply handshake, Copy/Move,
+  cancel and changed-source refusal. Unsupported builds fail closed.
+- Strict formatter, Clippy and Windows native gates remain required. Renderer
+  fixtures do not count as native filesystem or Windows acceptance.
+
+Official Tauri command/background-worker references used for this integration:
+https://v2.tauri.app/develop/calling-rust/
+https://v2.tauri.app/develop/calling-frontend/
+
+
+## Source-only repair candidate
+
+`run-files --ndjson` also accepts a `FixNames` preview with `target: null`.
+The same one-process, exact inspected-plan confirmation is mandatory. The host
+retains a non-deserializable `RepairScope`; it independently pins only source and
+an already-existing journal root. No fictitious target or mkdir is used.
+Desktop confirmation identifies repair and explains retained originals. Result
+counters distinguish renamed filenames, repaired tags, unchanged tags, unsupported
+formats, failed work, and retained backup bytes; these are never copy/move counts.
+`unchanged_files` means no tag changes, so it may overlap filename renaming.
+The CLI retains full serialized per-file observations and read-only reconciliation;
+the ordinary UI shows only short human outcomes, with diagnostics in developer mode.
+
+The initial writer supports bounded unflagged ID3v2.3/v2.4 MP3 representations.
+It preserves audio offsets/payload and untouched frames and retains the original
+same-object backup before no-replace publication. Unsupported tag representation
+can still leave a successfully repaired filename; that is explicitly partial.
+No automatic backup deletion, rollback or replay is exposed. Both staged and
+consumer-extracted EXEs must pass real five-field repair, backup/media checks,
+unsupported-partial and stale-plan cases before packaging acceptance. Test source
+presence alone is not a native pass.
+
+## Observed v14 summary
+
+The frozen reference is released commit `78d001aee5ce49628bdffebd34540fa83ba32c12`,
+`src/core/singles_sorter_v5.py`, blob `0b67726e72e527556f47a8eeffeb44778c62809b`,
+41,353 bytes, SHA-256
+`ec4a98ce29c431b5d46b59f11a531eaf8fb4f3c8c16248372771de630086fffa`.
+Its exact counter anchors are [album direct files and original artist, lines
+548–551](https://github.com/NHLOCAL/Singles-Sorter/blob/78d001aee5ce49628bdffebd34540fa83ba32c12/src/core/singles_sorter_v5.py#L548-L551),
+[single destination mkdir, lines 611–613](https://github.com/NHLOCAL/Singles-Sorter/blob/78d001aee5ce49628bdffebd34540fa83ba32c12/src/core/singles_sorter_v5.py#L611-L613),
+[single-loop counter credits, lines 642–643](https://github.com/NHLOCAL/Singles-Sorter/blob/78d001aee5ce49628bdffebd34540fa83ba32c12/src/core/singles_sorter_v5.py#L642-L643),
+and [stable summary top five, lines 824–831](https://github.com/NHLOCAL/Singles-Sorter/blob/78d001aee5ce49628bdffebd34540fa83ba32c12/src/core/singles_sorter_v5.py#L824-L831).
+
+Sort result payloads expose `legacy_summary` with exactly `songs_sorted`,
+`artist_folders_created`, `albums_processed` and ordered `top_artists` pairs.
+The shared projection consumes acknowledged commits and directory creations;
+`predicted_legacy_counters` never supplies actual result values. A committed
+single destination counts even if a later operation or source retirement fails.
+Album files contribute only the completed album's direct-file count under its
+original analyzed artist, including sidecars but excluding recursive children.
+Albums do not increment `songs_sorted`. Tied artist totals retain first-credit
+order, with albums before deferred singles, and the first five are returned.
+
+A new artist folder means a newly acknowledged complete single destination parent,
+including its optional singles leaf, deduplicated by the original Single artist.
+Album-created parent directories are excluded. A created folder may remain after
+a failed file transfer and still contributes to the folder count. Drivers can
+prepare directories before all transfers, unlike the original per-song loop;
+this failure-time timing difference is retained honestly rather than replacing
+observed creation with predicted successes. Failed/unconfirmed file effects are
+never counted as songs, even where the released Python swallowed such failures.
+A zero summary describes zero acknowledged effects; it never changes a partial,
+blocked, cancelled or recovery outcome into success.
+
+The CLI also preserves `committed_operations` and `effect_receipts` in their actual
+acknowledgment order. These include original planner operation IDs, including
+repeated album IDs for actual child file transfers. A whole-album rename is one
+namespace effect. This is not a full cross-journal event trace: directory and
+metadata phases are deliberately absent. The ordinary desktop view renders the
+compact human summary without raw journal diagnostics. Physical counters remain
+separate and retain their existing meanings.
+
+A legitimately skipped Sort job can now finish with an explicit zero summary.
+The CLI confirmation and retained host plan are re-read using the same resources
+and exact binding before completion; no mutation grants or journal files are
+created. Changed plans still require another preview. Empty plans containing
+vanished items, item/metadata/album-read failures, unresolved blockers, predicted
+effects or recognition diagnostics are not admitted as successful no-ops. Empty
+source directories remain the frozen planner's `SOURCE_EMPTY` error. The ordinary
+frontend journal-directory configuration remains required, but the zero-effect
+result has no journal path and no invented commit or namespace receipts.

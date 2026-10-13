@@ -1,0 +1,574 @@
+{"id":"match-exact","op":"match","input":{"text":"דוד","artist":"דוד"},"expected":true}
+{"id":"match-vav","op":"match","input":{"text":"ודוד","artist":"דוד"},"expected":true}
+{"id":"match-double-vav","op":"match","input":{"text":"וודוד","artist":"דוד"},"expected":false}
+{"id":"match-hebrew-prefix","op":"match","input":{"text":"לדוד","artist":"דוד"},"expected":false}
+{"id":"match-ascii-prefix","op":"match","input":{"text":"xדוד","artist":"דוד"},"expected":true}
+{"id":"match-underscore-suffix","op":"match","input":{"text":"דוד_","artist":"דוד"},"expected":false}
+{"id":"match-niqqud-suffix","op":"match","input":{"text":"דודָ","artist":"דוד"},"expected":true}
+{"id":"match-superscript-suffix","op":"match","input":{"text":"דוד²","artist":"דוד"},"expected":false}
+{"id":"match-connector-suffix","op":"match","input":{"text":"דוד‿","artist":"דוד"},"expected":true}
+{"id":"match-zwnj-suffix","op":"match","input":{"text":"דוד‌","artist":"דוד"},"expected":true}
+{"id":"match-empty-alias-word","op":"match","input":{"text":"דוד","artist":""},"expected":true}
+{"id":"match-later-valid-occurrence","op":"match","input":{"text":"לדוד וגם דוד","artist":"דוד"},"expected":true}
+{"id":"match-later-valid-after-suffix","op":"match","input":{"text":"דודx דוד","artist":"דוד"},"expected":true}
+{"id":"match-overlap-only-invalid","op":"match","input":{"text":"דודדוד","artist":"דוד"},"expected":false}
+{"id":"match-multiple-valid","op":"match","input":{"text":"דוד דוד","artist":"דוד"},"expected":true}
+{"id":"match-absent","op":"match","input":{"text":"שיר אחר","artist":"דוד"},"expected":false}
+{"id":"match-empty-text","op":"match","input":{"text":"","artist":"דוד"},"expected":false}
+{"id":"match-both-empty","op":"match","input":{"text":"","artist":""},"expected":false}
+{"id":"match-empty-alias-punctuation","op":"match","input":{"text":"!!!","artist":""},"expected":false}
+{"id":"match-empty-alias-vav","op":"match","input":{"text":"ו","artist":""},"expected":true}
+{"id":"match-spaces-text-empty-alias","op":"match","input":{"text":"   ","artist":""},"expected":false}
+{"id":"match-alias-leading-space","op":"match","input":{"text":"שיר דוד","artist":" דוד"},"expected":false}
+{"id":"match-alias-trailing-space-word","op":"match","input":{"text":"דוד שיר","artist":"דוד "},"expected":true}
+{"id":"match-alias-trailing-space-end","op":"match","input":{"text":"דוד ","artist":"דוד "},"expected":false}
+{"id":"match-alias-both-spaces","op":"match","input":{"text":" דוד שיר","artist":" דוד "},"expected":false}
+{"id":"match-alias-space-only-word","op":"match","input":{"text":"x y","artist":" "},"expected":true}
+{"id":"match-alias-space-only-end","op":"match","input":{"text":"x ","artist":" "},"expected":false}
+{"id":"match-ascii-case-sensitive","op":"match","input":{"text":"john","artist":"John"},"expected":false}
+{"id":"match-ascii-exact","op":"match","input":{"text":"John Smith.mp3","artist":"John Smith"},"expected":true}
+{"id":"match-metachar-dot-literal","op":"match","input":{"text":"A.B!","artist":"A.B"},"expected":true}
+{"id":"match-metachar-dot-not-wildcard","op":"match","input":{"text":"AxB!","artist":"A.B"},"expected":false}
+{"id":"match-metachar-bracket","op":"match","input":{"text":"[דוד]x","artist":"[דוד]"},"expected":true}
+{"id":"match-metachar-bracket-end","op":"match","input":{"text":"[דוד]","artist":"[דוד]"},"expected":false}
+{"id":"match-metachar-plus-word","op":"match","input":{"text":"A+B?","artist":"A+B"},"expected":true}
+{"id":"match-metachar-paren-word","op":"match","input":{"text":"(דוד)x","artist":"(דוד)"},"expected":true}
+{"id":"match-metachar-paren-end","op":"match","input":{"text":"(דוד)","artist":"(דוד)"},"expected":false}
+{"id":"match-metachar-star","op":"match","input":{"text":"a*b!","artist":"a*b"},"expected":true}
+{"id":"match-quote-alias-end","op":"match","input":{"text":"דוד'","artist":"דוד'"},"expected":false}
+{"id":"match-quote-alias-next-word","op":"match","input":{"text":"דוד'x","artist":"דוד'"},"expected":true}
+{"id":"match-niqqud-in-name-mismatch","op":"match","input":{"text":"דָוד","artist":"דוד"},"expected":false}
+{"id":"match-niqqud-explicit-alias","op":"match","input":{"text":"דָוד!","artist":"דָוד"},"expected":true}
+{"id":"match-nbsp-between-words","op":"match","input":{"text":"אברהם פריד","artist":"אברהם פריד"},"expected":false}
+{"id":"match-line-between-words","op":"match","input":{"text":"אברהם\nפריד","artist":"אברהם פריד"},"expected":false}
+{"id":"match-tab-leading-trim","op":"match","input":{"text":"\t\n דוד!","artist":"דוד"},"expected":true}
+{"id":"match-zwj-within-name","op":"match","input":{"text":"דו‍ד","artist":"דוד"},"expected":false}
+{"id":"match-emoji-alias-next-letter","op":"match","input":{"text":"😀x","artist":"😀"},"expected":true}
+{"id":"match-emoji-alias-end","op":"match","input":{"text":"😀","artist":"😀"},"expected":false}
+{"id":"match-ascii-apostrophe-vs-geresh","op":"match","input":{"text":"דוד׳","artist":"דוד'"},"expected":false}
+{"id":"match-hebrew-maqaf","op":"match","input":{"text":"דוד־שיר","artist":"דוד"},"expected":true}
+{"id":"match-vav-separated","op":"match","input":{"text":"ו דוד","artist":"דוד"},"expected":true}
+{"id":"match-prefix-space","op":"match","input":{"text":" דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-space","op":"match","input":{"text":"דוד ","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-space","op":"match","input":{"text":" ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-tab","op":"match","input":{"text":"\tדוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-tab","op":"match","input":{"text":"דוד\t","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-tab","op":"match","input":{"text":"\tודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-lf","op":"match","input":{"text":"\nדוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-lf","op":"match","input":{"text":"דוד\n","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-lf","op":"match","input":{"text":"\nודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-cr","op":"match","input":{"text":"\rדוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-cr","op":"match","input":{"text":"דוד\r","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-cr","op":"match","input":{"text":"\rודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-nbsp","op":"match","input":{"text":" דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-nbsp","op":"match","input":{"text":"דוד ","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-nbsp","op":"match","input":{"text":" ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-thin-space","op":"match","input":{"text":" דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-thin-space","op":"match","input":{"text":"דוד ","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-thin-space","op":"match","input":{"text":" ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-narrow-nbsp","op":"match","input":{"text":" דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-narrow-nbsp","op":"match","input":{"text":"דוד ","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-narrow-nbsp","op":"match","input":{"text":" ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-ideographic-space","op":"match","input":{"text":"　דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-ideographic-space","op":"match","input":{"text":"דוד　","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-ideographic-space","op":"match","input":{"text":"　ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-ascii-letter","op":"match","input":{"text":"xדוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-ascii-letter","op":"match","input":{"text":"דודx","artist":"דוד"},"expected":false}
+{"id":"match-vav-prefix-ascii-letter","op":"match","input":{"text":"xודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-ascii-digit","op":"match","input":{"text":"1דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-ascii-digit","op":"match","input":{"text":"דוד1","artist":"דוד"},"expected":false}
+{"id":"match-vav-prefix-ascii-digit","op":"match","input":{"text":"1ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-underscore","op":"match","input":{"text":"_דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-underscore","op":"match","input":{"text":"דוד_","artist":"דוד"},"expected":false}
+{"id":"match-vav-prefix-underscore","op":"match","input":{"text":"_ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-hyphen","op":"match","input":{"text":"-דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-hyphen","op":"match","input":{"text":"דוד-","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-hyphen","op":"match","input":{"text":"-ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-dot","op":"match","input":{"text":".דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-dot","op":"match","input":{"text":"דוד.","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-dot","op":"match","input":{"text":".ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-comma","op":"match","input":{"text":",דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-comma","op":"match","input":{"text":"דוד,","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-comma","op":"match","input":{"text":",ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-slash","op":"match","input":{"text":"/דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-slash","op":"match","input":{"text":"דוד/","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-slash","op":"match","input":{"text":"/ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-backslash","op":"match","input":{"text":"\\דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-backslash","op":"match","input":{"text":"דוד\\","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-backslash","op":"match","input":{"text":"\\ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-ascii-quote","op":"match","input":{"text":"'דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-ascii-quote","op":"match","input":{"text":"דוד'","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-ascii-quote","op":"match","input":{"text":"'ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-double-quote","op":"match","input":{"text":"\"דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-double-quote","op":"match","input":{"text":"דוד\"","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-double-quote","op":"match","input":{"text":"\"ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-geresh","op":"match","input":{"text":"׳דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-geresh","op":"match","input":{"text":"דוד׳","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-geresh","op":"match","input":{"text":"׳ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-gershayim","op":"match","input":{"text":"״דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-gershayim","op":"match","input":{"text":"דוד״","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-gershayim","op":"match","input":{"text":"״ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-maqaf","op":"match","input":{"text":"־דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-maqaf","op":"match","input":{"text":"דוד־","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-maqaf","op":"match","input":{"text":"־ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-hebrew-letter","op":"match","input":{"text":"אדוד","artist":"דוד"},"expected":false}
+{"id":"match-suffix-hebrew-letter","op":"match","input":{"text":"דודא","artist":"דוד"},"expected":false}
+{"id":"match-vav-prefix-hebrew-letter","op":"match","input":{"text":"אודוד!","artist":"דוד"},"expected":false}
+{"id":"match-prefix-hebrew-final","op":"match","input":{"text":"ץדוד","artist":"דוד"},"expected":false}
+{"id":"match-suffix-hebrew-final","op":"match","input":{"text":"דודץ","artist":"דוד"},"expected":false}
+{"id":"match-vav-prefix-hebrew-final","op":"match","input":{"text":"ץודוד!","artist":"דוד"},"expected":false}
+{"id":"match-prefix-vav","op":"match","input":{"text":"ודוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-vav","op":"match","input":{"text":"דודו","artist":"דוד"},"expected":false}
+{"id":"match-vav-prefix-vav","op":"match","input":{"text":"וודוד!","artist":"דוד"},"expected":false}
+{"id":"match-prefix-niqqud-patah","op":"match","input":{"text":"ַדוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-niqqud-patah","op":"match","input":{"text":"דודַ","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-niqqud-patah","op":"match","input":{"text":"ַודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-niqqud-qamats","op":"match","input":{"text":"ָדוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-niqqud-qamats","op":"match","input":{"text":"דודָ","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-niqqud-qamats","op":"match","input":{"text":"ָודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-cantillation","op":"match","input":{"text":"֑דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-cantillation","op":"match","input":{"text":"דוד֑","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-cantillation","op":"match","input":{"text":"֑ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-combining-acute","op":"match","input":{"text":"́דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-combining-acute","op":"match","input":{"text":"דוד́","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-combining-acute","op":"match","input":{"text":"́ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-arabic-letter","op":"match","input":{"text":"عדוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-arabic-letter","op":"match","input":{"text":"דודع","artist":"דוד"},"expected":false}
+{"id":"match-vav-prefix-arabic-letter","op":"match","input":{"text":"عודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-arabic-digit","op":"match","input":{"text":"١דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-arabic-digit","op":"match","input":{"text":"דוד١","artist":"דוד"},"expected":false}
+{"id":"match-vav-prefix-arabic-digit","op":"match","input":{"text":"١ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-cyrillic","op":"match","input":{"text":"яדוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-cyrillic","op":"match","input":{"text":"דודя","artist":"דוד"},"expected":false}
+{"id":"match-vav-prefix-cyrillic","op":"match","input":{"text":"яודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-cjk","op":"match","input":{"text":"中דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-cjk","op":"match","input":{"text":"דוד中","artist":"דוד"},"expected":false}
+{"id":"match-vav-prefix-cjk","op":"match","input":{"text":"中ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-latin-accent","op":"match","input":{"text":"éדוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-latin-accent","op":"match","input":{"text":"דודé","artist":"דוד"},"expected":false}
+{"id":"match-vav-prefix-latin-accent","op":"match","input":{"text":"éודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-superscript-two","op":"match","input":{"text":"²דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-superscript-two","op":"match","input":{"text":"דוד²","artist":"דוד"},"expected":false}
+{"id":"match-vav-prefix-superscript-two","op":"match","input":{"text":"²ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-fraction-half","op":"match","input":{"text":"½דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-fraction-half","op":"match","input":{"text":"דוד½","artist":"דוד"},"expected":false}
+{"id":"match-vav-prefix-fraction-half","op":"match","input":{"text":"½ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-roman-number","op":"match","input":{"text":"Ⅷדוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-roman-number","op":"match","input":{"text":"דודⅧ","artist":"דוד"},"expected":false}
+{"id":"match-vav-prefix-roman-number","op":"match","input":{"text":"Ⅷודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-connector-undertie","op":"match","input":{"text":"‿דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-connector-undertie","op":"match","input":{"text":"דוד‿","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-connector-undertie","op":"match","input":{"text":"‿ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-connector-tie","op":"match","input":{"text":"⁀דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-connector-tie","op":"match","input":{"text":"דוד⁀","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-connector-tie","op":"match","input":{"text":"⁀ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-fullwidth-underscore","op":"match","input":{"text":"＿דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-fullwidth-underscore","op":"match","input":{"text":"דוד＿","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-fullwidth-underscore","op":"match","input":{"text":"＿ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-fullwidth-digit","op":"match","input":{"text":"１דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-fullwidth-digit","op":"match","input":{"text":"דוד１","artist":"דוד"},"expected":false}
+{"id":"match-vav-prefix-fullwidth-digit","op":"match","input":{"text":"１ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-zwsp","op":"match","input":{"text":"​דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-zwsp","op":"match","input":{"text":"דוד​","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-zwsp","op":"match","input":{"text":"​ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-zwnj","op":"match","input":{"text":"‌דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-zwnj","op":"match","input":{"text":"דוד‌","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-zwnj","op":"match","input":{"text":"‌ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-zwj","op":"match","input":{"text":"‍דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-zwj","op":"match","input":{"text":"דוד‍","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-zwj","op":"match","input":{"text":"‍ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-lrm","op":"match","input":{"text":"‎דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-lrm","op":"match","input":{"text":"דוד‎","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-lrm","op":"match","input":{"text":"‎ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-rlm","op":"match","input":{"text":"‏דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-rlm","op":"match","input":{"text":"דוד‏","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-rlm","op":"match","input":{"text":"‏ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-bidi-isolate","op":"match","input":{"text":"⁧דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-bidi-isolate","op":"match","input":{"text":"דוד⁧","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-bidi-isolate","op":"match","input":{"text":"⁧ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-bidi-pop","op":"match","input":{"text":"⁩דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-bidi-pop","op":"match","input":{"text":"דוד⁩","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-bidi-pop","op":"match","input":{"text":"⁩ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-emoji","op":"match","input":{"text":"😀דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-emoji","op":"match","input":{"text":"דוד😀","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-emoji","op":"match","input":{"text":"😀ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-supplementary-letter","op":"match","input":{"text":"𐐀דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-supplementary-letter","op":"match","input":{"text":"דוד𐐀","artist":"דוד"},"expected":false}
+{"id":"match-vav-prefix-supplementary-letter","op":"match","input":{"text":"𐐀ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-supplementary-digit","op":"match","input":{"text":"𝟙דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-supplementary-digit","op":"match","input":{"text":"דוד𝟙","artist":"דוד"},"expected":false}
+{"id":"match-vav-prefix-supplementary-digit","op":"match","input":{"text":"𝟙ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-variation-selector","op":"match","input":{"text":"️דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-variation-selector","op":"match","input":{"text":"דוד️","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-variation-selector","op":"match","input":{"text":"️ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-nul","op":"match","input":{"text":"\u0000דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-nul","op":"match","input":{"text":"דוד\u0000","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-nul","op":"match","input":{"text":"\u0000ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-bom","op":"match","input":{"text":"﻿דוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-bom","op":"match","input":{"text":"דוד﻿","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-bom","op":"match","input":{"text":"﻿ודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-control-separator","op":"match","input":{"text":"\u001cדוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-control-separator","op":"match","input":{"text":"דוד\u001c","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-control-separator","op":"match","input":{"text":"\u001cודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-formfeed","op":"match","input":{"text":"\fדוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-formfeed","op":"match","input":{"text":"דוד\f","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-formfeed","op":"match","input":{"text":"\fודוד!","artist":"דוד"},"expected":true}
+{"id":"match-prefix-vertical-tab","op":"match","input":{"text":"\u000bדוד","artist":"דוד"},"expected":true}
+{"id":"match-suffix-vertical-tab","op":"match","input":{"text":"דוד\u000b","artist":"דוד"},"expected":true}
+{"id":"match-vav-prefix-vertical-tab","op":"match","input":{"text":"\u000bודוד!","artist":"דוד"},"expected":true}
+{"id":"match-alias-00-exact","op":"match","input":{"text":"אברהם פריד","artist":"אברהם פריד"},"expected":true}
+{"id":"match-alias-00-vav","op":"match","input":{"text":"ואברהם פריד","artist":"אברהם פריד"},"expected":true}
+{"id":"match-alias-00-prefix","op":"match","input":{"text":"לאברהם פריד","artist":"אברהם פריד"},"expected":false}
+{"id":"match-alias-00-suffix","op":"match","input":{"text":"אברהם פרידx","artist":"אברהם פריד"},"expected":false}
+{"id":"match-alias-00-punctuation","op":"match","input":{"text":"(אברהם פריד)","artist":"אברהם פריד"},"expected":true}
+{"id":"match-alias-01-exact","op":"match","input":{"text":"מוטי שטיינמץ","artist":"מוטי שטיינמץ"},"expected":true}
+{"id":"match-alias-01-vav","op":"match","input":{"text":"ומוטי שטיינמץ","artist":"מוטי שטיינמץ"},"expected":true}
+{"id":"match-alias-01-prefix","op":"match","input":{"text":"למוטי שטיינמץ","artist":"מוטי שטיינמץ"},"expected":false}
+{"id":"match-alias-01-suffix","op":"match","input":{"text":"מוטי שטיינמץx","artist":"מוטי שטיינמץ"},"expected":false}
+{"id":"match-alias-01-punctuation","op":"match","input":{"text":"(מוטי שטיינמץ)","artist":"מוטי שטיינמץ"},"expected":true}
+{"id":"match-alias-02-exact","op":"match","input":{"text":"וייסמנדל","artist":"וייסמנדל"},"expected":true}
+{"id":"match-alias-02-vav","op":"match","input":{"text":"ווייסמנדל","artist":"וייסמנדל"},"expected":true}
+{"id":"match-alias-02-prefix","op":"match","input":{"text":"לוייסמנדל","artist":"וייסמנדל"},"expected":false}
+{"id":"match-alias-02-suffix","op":"match","input":{"text":"וייסמנדלx","artist":"וייסמנדל"},"expected":false}
+{"id":"match-alias-02-punctuation","op":"match","input":{"text":"(וייסמנדל)","artist":"וייסמנדל"},"expected":true}
+{"id":"match-alias-03-exact","op":"match","input":{"text":"ויסמנדל","artist":"ויסמנדל"},"expected":true}
+{"id":"match-alias-03-vav","op":"match","input":{"text":"וויסמנדל","artist":"ויסמנדל"},"expected":true}
+{"id":"match-alias-03-prefix","op":"match","input":{"text":"לויסמנדל","artist":"ויסמנדל"},"expected":false}
+{"id":"match-alias-03-suffix","op":"match","input":{"text":"ויסמנדלx","artist":"ויסמנדל"},"expected":false}
+{"id":"match-alias-03-punctuation","op":"match","input":{"text":"(ויסמנדל)","artist":"ויסמנדל"},"expected":true}
+{"id":"match-alias-04-exact","op":"match","input":{"text":"A.B","artist":"A.B"},"expected":true}
+{"id":"match-alias-04-vav","op":"match","input":{"text":"וA.B","artist":"A.B"},"expected":true}
+{"id":"match-alias-04-prefix","op":"match","input":{"text":"לA.B","artist":"A.B"},"expected":false}
+{"id":"match-alias-04-suffix","op":"match","input":{"text":"A.Bx","artist":"A.B"},"expected":false}
+{"id":"match-alias-04-punctuation","op":"match","input":{"text":"(A.B)","artist":"A.B"},"expected":true}
+{"id":"match-alias-05-exact","op":"match","input":{"text":"A+B","artist":"A+B"},"expected":true}
+{"id":"match-alias-05-vav","op":"match","input":{"text":"וA+B","artist":"A+B"},"expected":true}
+{"id":"match-alias-05-prefix","op":"match","input":{"text":"לA+B","artist":"A+B"},"expected":false}
+{"id":"match-alias-05-suffix","op":"match","input":{"text":"A+Bx","artist":"A+B"},"expected":false}
+{"id":"match-alias-05-punctuation","op":"match","input":{"text":"(A+B)","artist":"A+B"},"expected":true}
+{"id":"match-alias-06-exact","op":"match","input":{"text":"(A)","artist":"(A)"},"expected":false}
+{"id":"match-alias-06-vav","op":"match","input":{"text":"ו(A)","artist":"(A)"},"expected":false}
+{"id":"match-alias-06-prefix","op":"match","input":{"text":"ל(A)","artist":"(A)"},"expected":false}
+{"id":"match-alias-06-suffix","op":"match","input":{"text":"(A)x","artist":"(A)"},"expected":true}
+{"id":"match-alias-06-punctuation","op":"match","input":{"text":"((A))","artist":"(A)"},"expected":false}
+{"id":"match-alias-07-exact","op":"match","input":{"text":"[A]","artist":"[A]"},"expected":false}
+{"id":"match-alias-07-vav","op":"match","input":{"text":"ו[A]","artist":"[A]"},"expected":false}
+{"id":"match-alias-07-prefix","op":"match","input":{"text":"ל[A]","artist":"[A]"},"expected":false}
+{"id":"match-alias-07-suffix","op":"match","input":{"text":"[A]x","artist":"[A]"},"expected":true}
+{"id":"match-alias-07-punctuation","op":"match","input":{"text":"([A])","artist":"[A]"},"expected":false}
+{"id":"match-alias-08-exact","op":"match","input":{"text":"a\\b","artist":"a\\b"},"expected":true}
+{"id":"match-alias-08-vav","op":"match","input":{"text":"וa\\b","artist":"a\\b"},"expected":true}
+{"id":"match-alias-08-prefix","op":"match","input":{"text":"לa\\b","artist":"a\\b"},"expected":false}
+{"id":"match-alias-08-suffix","op":"match","input":{"text":"a\\bx","artist":"a\\b"},"expected":false}
+{"id":"match-alias-08-punctuation","op":"match","input":{"text":"(a\\b)","artist":"a\\b"},"expected":true}
+{"id":"match-alias-09-exact","op":"match","input":{"text":"a^b","artist":"a^b"},"expected":true}
+{"id":"match-alias-09-vav","op":"match","input":{"text":"וa^b","artist":"a^b"},"expected":true}
+{"id":"match-alias-09-prefix","op":"match","input":{"text":"לa^b","artist":"a^b"},"expected":false}
+{"id":"match-alias-09-suffix","op":"match","input":{"text":"a^bx","artist":"a^b"},"expected":false}
+{"id":"match-alias-09-punctuation","op":"match","input":{"text":"(a^b)","artist":"a^b"},"expected":true}
+{"id":"match-alias-10-exact","op":"match","input":{"text":"a$b","artist":"a$b"},"expected":true}
+{"id":"match-alias-10-vav","op":"match","input":{"text":"וa$b","artist":"a$b"},"expected":true}
+{"id":"match-alias-10-prefix","op":"match","input":{"text":"לa$b","artist":"a$b"},"expected":false}
+{"id":"match-alias-10-suffix","op":"match","input":{"text":"a$bx","artist":"a$b"},"expected":false}
+{"id":"match-alias-10-punctuation","op":"match","input":{"text":"(a$b)","artist":"a$b"},"expected":true}
+{"id":"match-alias-11-exact","op":"match","input":{"text":"a?b","artist":"a?b"},"expected":true}
+{"id":"match-alias-11-vav","op":"match","input":{"text":"וa?b","artist":"a?b"},"expected":true}
+{"id":"match-alias-11-prefix","op":"match","input":{"text":"לa?b","artist":"a?b"},"expected":false}
+{"id":"match-alias-11-suffix","op":"match","input":{"text":"a?bx","artist":"a?b"},"expected":false}
+{"id":"match-alias-11-punctuation","op":"match","input":{"text":"(a?b)","artist":"a?b"},"expected":true}
+{"id":"match-alias-12-exact","op":"match","input":{"text":"a|b","artist":"a|b"},"expected":true}
+{"id":"match-alias-12-vav","op":"match","input":{"text":"וa|b","artist":"a|b"},"expected":true}
+{"id":"match-alias-12-prefix","op":"match","input":{"text":"לa|b","artist":"a|b"},"expected":false}
+{"id":"match-alias-12-suffix","op":"match","input":{"text":"a|bx","artist":"a|b"},"expected":false}
+{"id":"match-alias-12-punctuation","op":"match","input":{"text":"(a|b)","artist":"a|b"},"expected":true}
+{"id":"match-alias-13-exact","op":"match","input":{"text":"a{2}","artist":"a{2}"},"expected":false}
+{"id":"match-alias-13-vav","op":"match","input":{"text":"וa{2}","artist":"a{2}"},"expected":false}
+{"id":"match-alias-13-prefix","op":"match","input":{"text":"לa{2}","artist":"a{2}"},"expected":false}
+{"id":"match-alias-13-suffix","op":"match","input":{"text":"a{2}x","artist":"a{2}"},"expected":true}
+{"id":"match-alias-13-punctuation","op":"match","input":{"text":"(a{2})","artist":"a{2}"},"expected":false}
+{"id":"match-alias-14-exact","op":"match","input":{"text":"a*b","artist":"a*b"},"expected":true}
+{"id":"match-alias-14-vav","op":"match","input":{"text":"וa*b","artist":"a*b"},"expected":true}
+{"id":"match-alias-14-prefix","op":"match","input":{"text":"לa*b","artist":"a*b"},"expected":false}
+{"id":"match-alias-14-suffix","op":"match","input":{"text":"a*bx","artist":"a*b"},"expected":false}
+{"id":"match-alias-14-punctuation","op":"match","input":{"text":"(a*b)","artist":"a*b"},"expected":true}
+{"id":"match-alias-15-exact","op":"match","input":{"text":"a/b","artist":"a/b"},"expected":true}
+{"id":"match-alias-15-vav","op":"match","input":{"text":"וa/b","artist":"a/b"},"expected":true}
+{"id":"match-alias-15-prefix","op":"match","input":{"text":"לa/b","artist":"a/b"},"expected":false}
+{"id":"match-alias-15-suffix","op":"match","input":{"text":"a/bx","artist":"a/b"},"expected":false}
+{"id":"match-alias-15-punctuation","op":"match","input":{"text":"(a/b)","artist":"a/b"},"expected":true}
+{"id":"clean-underscore-no-space","op":"clean","input":{"text":"אבי_בדיקה.mp3"},"expected":"אבי בדיקה.mp3"}
+{"id":"clean-underscore-with-space","op":"clean","input":{"text":"אבי_בדיקה - שיר.mp3"},"expected":"אביבדיקה - שיר.mp3"}
+{"id":"clean-hyphen","op":"clean","input":{"text":"אבי-בדיקה.mp3"},"expected":"אבי בדיקה.mp3"}
+{"id":"clean-promotion","op":"clean","input":{"text":"מייל מיוזיק ציצו במייל שיר.mp3"},"expected":"שיר.mp3"}
+{"id":"clean-whitespace","op":"clean","input":{"text":"  שיר\tחדש  .mp3 "},"expected":"שיר חדש .mp3"}
+{"id":"clean-empty","op":"clean","input":{"text":""},"expected":""}
+{"id":"clean-only-space","op":"clean","input":{"text":" \t\r\n "},"expected":""}
+{"id":"clean-only-promotion","op":"clean","input":{"text":"מייל מיוזיק"},"expected":""}
+{"id":"clean-adjacent-promotion","op":"clean","input":{"text":"אברהםהמחדשפריד"},"expected":"אברהםפריד"}
+{"id":"clean-repeated-promotion","op":"clean","input":{"text":"חדשות המוזיקהחדשות המוזיקהשיר"},"expected":"שיר"}
+{"id":"clean-underscore-two","op":"clean","input":{"text":"אבי__בדיקה.mp3"},"expected":"אבי בדיקה.mp3"}
+{"id":"clean-underscore-leading","op":"clean","input":{"text":"_אבי.mp3"},"expected":"אבי.mp3"}
+{"id":"clean-underscore-edge-with-space","op":"clean","input":{"text":"_אבי _ שיר.mp3"},"expected":"_אבי _ שיר.mp3"}
+{"id":"clean-underscore-tab","op":"clean","input":{"text":"אבי_בדיקה\tשיר.mp3"},"expected":"אבי בדיקה שיר.mp3"}
+{"id":"clean-underscore-nbsp","op":"clean","input":{"text":"אבי_בדיקה שיר.mp3"},"expected":"אבי בדיקה שיר.mp3"}
+{"id":"clean-underscore-ascii-space","op":"clean","input":{"text":"A_B C.mp3"},"expected":"AB C.mp3"}
+{"id":"clean-hyphen-spaced","op":"clean","input":{"text":"אבי - בדיקה.mp3"},"expected":"אבי - בדיקה.mp3"}
+{"id":"clean-hyphen-double","op":"clean","input":{"text":"אבי--בדיקה.mp3"},"expected":"אבי--בדיקה.mp3"}
+{"id":"clean-hyphen-mixed","op":"clean","input":{"text":"A-_B.mp3"},"expected":"A- B.mp3"}
+{"id":"clean-unicode-dash","op":"clean","input":{"text":"אבי–בדיקה.mp3"},"expected":"אבי–בדיקה.mp3"}
+{"id":"clean-hebrew-maqaf","op":"clean","input":{"text":"אבי־בדיקה.mp3"},"expected":"אבי־בדיקה.mp3"}
+{"id":"clean-niqqud-underscore","op":"clean","input":{"text":"דָ_וד X"},"expected":"דָ_וד X"}
+{"id":"clean-superscript-hyphen","op":"clean","input":{"text":"²-דוד.mp3"},"expected":"² דוד.mp3"}
+{"id":"clean-connector-hyphen","op":"clean","input":{"text":"‿-דוד.mp3"},"expected":"‿-דוד.mp3"}
+{"id":"clean-superscript-underscore","op":"clean","input":{"text":"²_דוד X"},"expected":"²דוד X"}
+{"id":"clean-zwj-hyphen","op":"clean","input":{"text":"‍-דוד.mp3"},"expected":"‍-דוד.mp3"}
+{"id":"clean-nul","op":"clean","input":{"text":"א\u0000ב"},"expected":"א\u0000ב"}
+{"id":"clean-control-whitespace","op":"clean","input":{"text":"א\u001cב\u0085ג"},"expected":"א ב ג"}
+{"id":"clean-multiple-languages","op":"clean","input":{"text":"English 中文 عربي"},"expected":"English 中文 عربي"}
+{"id":"clean-emoji","op":"clean","input":{"text":"😀_🎵.mp3"},"expected":"😀 🎵.mp3"}
+{"id":"clean-capitalization","op":"clean","input":{"text":"SINGLE song.MP3"},"expected":"SINGLE song.MP3"}
+{"id":"clean-no-change","op":"clean","input":{"text":"אברהם פריד.mp3"},"expected":"אברהם פריד.mp3"}
+{"id":"clean-promotion-0","op":"clean","input":{"text":"מייל מיוזיק אברהם פריד מייל מיוזיק.mp3"},"expected":"אברהם פריד .mp3"}
+{"id":"clean-promotion-1","op":"clean","input":{"text":"ציצו במייל אברהם פריד ציצו במייל.mp3"},"expected":"אברהם פריד .mp3"}
+{"id":"clean-promotion-2","op":"clean","input":{"text":"חדשות המוזיקה אברהם פריד חדשות המוזיקה.mp3"},"expected":"אברהם פריד .mp3"}
+{"id":"clean-promotion-3","op":"clean","input":{"text":"ציצו אברהם פריד ציצו.mp3"},"expected":"אברהם פריד .mp3"}
+{"id":"clean-promotion-4","op":"clean","input":{"text":"מוזיקה מכל הלב אברהם פריד מוזיקה מכל הלב.mp3"},"expected":"אברהם פריד .mp3"}
+{"id":"clean-promotion-5","op":"clean","input":{"text":"המחדש אברהם פריד המחדש.mp3"},"expected":"אברהם פריד .mp3"}
+{"id":"sanitize-empty","op":"sanitize","input":{"text":""},"expected":null}
+{"id":"sanitize-all-space","op":"sanitize","input":{"text":"   "},"expected":null}
+{"id":"sanitize-all-invalid","op":"sanitize","input":{"text":"<>:\"/\\|?*"},"expected":null}
+{"id":"sanitize-invalid-mixed","op":"sanitize","input":{"text":"a<>:\"/\\|?*b.mp3"},"expected":"ab.mp3"}
+{"id":"sanitize-reserved-con","op":"sanitize","input":{"text":"CON.mp3"},"expected":"CON.mp3"}
+{"id":"sanitize-reserved-nul","op":"sanitize","input":{"text":"NUL"},"expected":"NUL"}
+{"id":"sanitize-reserved-lpt","op":"sanitize","input":{"text":"LPT1.mp3"},"expected":"LPT1.mp3"}
+{"id":"sanitize-trailing-dot","op":"sanitize","input":{"text":"name."},"expected":"name."}
+{"id":"sanitize-dot","op":"sanitize","input":{"text":"."},"expected":"."}
+{"id":"sanitize-dot-dot","op":"sanitize","input":{"text":".."},"expected":".."}
+{"id":"sanitize-spaces","op":"sanitize","input":{"text":"  דוד\t  שיר .mp3  "},"expected":"דוד שיר .mp3"}
+{"id":"sanitize-nul-preserved","op":"sanitize","input":{"text":"a\u0000b.mp3"},"expected":"a\u0000b.mp3"}
+{"id":"sanitize-control-nonspace","op":"sanitize","input":{"text":"a\u0001b"},"expected":"a\u0001b"}
+{"id":"sanitize-bidi-preserved","op":"sanitize","input":{"text":"⁧דוד⁩.mp3"},"expected":"⁧דוד⁩.mp3"}
+{"id":"sanitize-niqqud-preserved","op":"sanitize","input":{"text":"דָוד.mp3"},"expected":"דָוד.mp3"}
+{"id":"sanitize-long-254","op":"sanitize","input":{"text":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.mp3"},"expected":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.mp3"}
+{"id":"sanitize-long-255","op":"sanitize","input":{"text":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.mp3"},"expected":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.mp3"}
+{"id":"sanitize-long-256","op":"sanitize","input":{"text":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.mp3"},"expected":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.mp"}
+{"id":"sanitize-extension-lost","op":"sanitize","input":{"text":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.mp3"},"expected":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+{"id":"sanitize-emoji-codepoints-255","op":"sanitize","input":{"text":"😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀.mp3"},"expected":"😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"}
+{"id":"sanitize-surrogate-boundary","op":"sanitize","input":{"text":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀.mp3"},"expected":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀"}
+{"id":"sanitize-combining-truncated","op":"sanitize","input":{"text":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaדָ.mp3"},"expected":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaד"}
+{"id":"sanitize-nbsp","op":"sanitize","input":{"text":" a b "},"expected":"a b"}
+{"id":"sanitize-zwsp","op":"sanitize","input":{"text":"​a​"},"expected":"​a​"}
+{"id":"sanitize-slash-removed","op":"sanitize","input":{"text":"artist/song.mp3"},"expected":"artistsong.mp3"}
+{"id":"sanitize-colon-removed","op":"sanitize","input":{"text":"C:filename.mp3"},"expected":"Cfilename.mp3"}
+{"id":"sanitize-all-whitespace-python","op":"sanitize","input":{"text":"\u001c\u0085 "},"expected":null}
+{"id":"artist-normal","op":"check_artist","input":{"text":"אברהם פריד"},"expected":true}
+{"id":"artist-single","op":"check_artist","input":{"text":"דוד"},"expected":true}
+{"id":"artist-three-words","op":"check_artist","input":{"text":"אברהם מרדכי שוורץ"},"expected":true}
+{"id":"artist-four-words","op":"check_artist","input":{"text":"אברהם מרדכי שוורץ זמר"},"expected":false}
+{"id":"artist-tab","op":"check_artist","input":{"text":"אברהם\tפריד"},"expected":false}
+{"id":"artist-geresh","op":"check_artist","input":{"text":"דוד׳"},"expected":true}
+{"id":"artist-gershayim","op":"check_artist","input":{"text":"דוד״"},"expected":false}
+{"id":"artist-ascii-apostrophe","op":"check_artist","input":{"text":"דוד'"},"expected":true}
+{"id":"artist-ascii-quote","op":"check_artist","input":{"text":"דוד\""},"expected":false}
+{"id":"artist-niqqud","op":"check_artist","input":{"text":"דָוד"},"expected":false}
+{"id":"artist-latin","op":"check_artist","input":{"text":"John Smith"},"expected":false}
+{"id":"artist-empty","op":"check_artist","input":{"text":""},"expected":false}
+{"id":"artist-spaces","op":"check_artist","input":{"text":"   "},"expected":false}
+{"id":"artist-leading-space","op":"check_artist","input":{"text":" דוד"},"expected":true}
+{"id":"artist-trailing-space","op":"check_artist","input":{"text":"דוד "},"expected":true}
+{"id":"artist-repeated-space","op":"check_artist","input":{"text":"דוד  ישראל"},"expected":true}
+{"id":"artist-nbsp","op":"check_artist","input":{"text":"דוד ישראל"},"expected":false}
+{"id":"artist-newline","op":"check_artist","input":{"text":"דוד\nישראל"},"expected":false}
+{"id":"artist-hyphen","op":"check_artist","input":{"text":"דוד-ישראל"},"expected":true}
+{"id":"artist-hyphen-only","op":"check_artist","input":{"text":"-"},"expected":true}
+{"id":"artist-apostrophe-only","op":"check_artist","input":{"text":"'"},"expected":true}
+{"id":"artist-geresh-only","op":"check_artist","input":{"text":"׳"},"expected":true}
+{"id":"artist-two-hyphen-words","op":"check_artist","input":{"text":"- -"},"expected":true}
+{"id":"artist-four-hyphen-words","op":"check_artist","input":{"text":"- - - -"},"expected":false}
+{"id":"artist-final-pe","op":"check_artist","input":{"text":"ף"},"expected":true}
+{"id":"artist-all-finals","op":"check_artist","input":{"text":"ךםןףץ"},"expected":true}
+{"id":"artist-digits","op":"check_artist","input":{"text":"דוד 1"},"expected":false}
+{"id":"artist-emoji","op":"check_artist","input":{"text":"דוד 😀"},"expected":false}
+{"id":"artist-maqaf","op":"check_artist","input":{"text":"דוד־ישראל"},"expected":false}
+{"id":"artist-zero-width","op":"check_artist","input":{"text":"דוד‌ישראל"},"expected":false}
+{"id":"artist-bidi","op":"check_artist","input":{"text":"‏דוד"},"expected":false}
+{"id":"artist-unusual-space-padding","op":"check_artist","input":{"text":" סינגלים "},"expected":true}
+{"id":"artist-unusual-extra-word","op":"check_artist","input":{"text":"סינגלים חדשים"},"expected":true}
+{"id":"artist-unusual-singular-padding","op":"check_artist","input":{"text":"סינגל "},"expected":true}
+{"id":"artist-lowercase-ascii","op":"check_artist","input":{"text":"abc"},"expected":false}
+{"id":"artist-cjk","op":"check_artist","input":{"text":"中文"},"expected":false}
+{"id":"artist-arabic","op":"check_artist","input":{"text":"عربي"},"expected":false}
+{"id":"artist-plus","op":"check_artist","input":{"text":"דוד+ישראל"},"expected":false}
+{"id":"artist-ampersand","op":"check_artist","input":{"text":"דוד & ישראל"},"expected":false}
+{"id":"artist-unusual-0","op":"check_artist","input":{"text":"סינגלים"},"expected":false}
+{"id":"artist-unusual-1","op":"check_artist","input":{"text":"סינגל"},"expected":false}
+{"id":"artist-unusual-2","op":"check_artist","input":{"text":"אבגדהוזחטיכלמנסעפצקרשתךםןץ"},"expected":false}
+{"id":"artist-unusual-3","op":"check_artist","input":{"text":"אמן לא ידוע"},"expected":false}
+{"id":"artist-unusual-4","op":"check_artist","input":{"text":"טוב"},"expected":false}
+{"id":"artist-unusual-5","op":"check_artist","input":{"text":"לא ידוע"},"expected":false}
+{"id":"artist-unusual-6","op":"check_artist","input":{"text":"תודה לך ה"},"expected":false}
+{"id":"jibrish-auto-jib-first","op":"fix_jibrish","input":{"text":"abc àא","mode":"auto"},"expected":"abc אא"}
+{"id":"jibrish-auto-hebrew-first","op":"fix_jibrish","input":{"text":"abc אà","mode":"auto"},"expected":"abc àà"}
+{"id":"jibrish-album-to-hebrew","op":"fix_jibrish","input":{"text":"àìáåí","mode":"heb"},"expected":"אלבום"}
+{"id":"jibrish-album-to-jib","op":"fix_jibrish","input":{"text":"אלבום","mode":"jib"},"expected":"àìáåí"}
+{"id":"jibrish-empty","op":"fix_jibrish","input":{"text":"","mode":"heb"},"expected":""}
+{"id":"jibrish-ascii","op":"fix_jibrish","input":{"text":"John 123","mode":"auto"},"expected":"John 123"}
+{"id":"jibrish-mixed-heb-forced","op":"fix_jibrish","input":{"text":"אà English","mode":"heb"},"expected":"אא English"}
+{"id":"jibrish-mixed-jib-forced","op":"fix_jibrish","input":{"text":"אà English","mode":"jib"},"expected":"àà English"}
+{"id":"jibrish-accent-false-positive","op":"fix_jibrish","input":{"text":"café déjà vu","mode":"heb"},"expected":"cafי dיjא vu"}
+{"id":"jibrish-unsupported-mode-auto","op":"fix_jibrish","input":{"text":"abc אà","mode":"unknown"},"expected":"abc àà"}
+{"id":"jibrish-all-hebrew","op":"fix_jibrish","input":{"text":"אבגדהוזחטיכלמנסעפצקרשתךםןףץ","mode":"jib"},"expected":"àáâãäåæçèéëìîðñòôö÷øùúêíïóõ"}
+{"id":"jibrish-all-jib","op":"fix_jibrish","input":{"text":"àáâãäåæçèéëìîðñòôö÷øùúêíïóõ","mode":"heb"},"expected":"אבגדהוזחטיכלמנסעפצקרשתךםןףץ"}
+{"id":"jibrish-niqqud","op":"fix_jibrish","input":{"text":"דָוד","mode":"jib"},"expected":"ãָåã"}
+{"id":"jibrish-punctuation","op":"fix_jibrish","input":{"text":"'׳״- 😀","mode":"auto"},"expected":"'׳״- 😀"}
+{"id":"jibrish-uppercase-mode-auto","op":"fix_jibrish","input":{"text":"àא","mode":"HEB"},"expected":"אא"}
+{"id":"jibrish-auto-symbol-divider","op":"fix_jibrish","input":{"text":"÷א","mode":"auto"},"expected":"קא"}
+{"id":"jibrish-nfd-accent","op":"fix_jibrish","input":{"text":"é","mode":"heb"},"expected":"é"}
+{"id":"jibrish-nfc-accent","op":"fix_jibrish","input":{"text":"é","mode":"heb"},"expected":"י"}
+{"id":"jibrish-auto-hebrew-after-emoji","op":"fix_jibrish","input":{"text":"😀 אà","mode":"auto"},"expected":"😀 àà"}
+{"id":"jibrish-auto-jib-after-emoji","op":"fix_jibrish","input":{"text":"😀 àא","mode":"auto"},"expected":"😀 אא"}
+{"id":"route-filename-list-order","op":"route","input":{"filename":"מוטי שטיינמץ ואברהם פריד.mp3","artist":"מוטי שטיינמץ","title":"מוטי שטיינמץ","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["אברהם פריד"],"calls":[]}}
+{"id":"route-filename-list-order-duet","op":"route","input":{"filename":"מוטי שטיינמץ ואברהם פריד.mp3","artist":"","title":"","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":true},"expected":{"artists":["אברהם פריד"],"calls":[]}}
+{"id":"route-filename-exact-skip","op":"route","input":{"filename":"וייסמנדל - שיר.mp3","artist":"","title":"","metadata_error":false,"aliases":[["ויסמנדל","first"],["וייסמנדל","second"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["second"],"calls":[]}}
+{"id":"route-filename-metadata-error","op":"route","input":{"filename":"אברהם פריד.mp3","artist":"","title":"","metadata_error":true,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["אברהם פריד"],"calls":[]}}
+{"id":"route-filename-known-no-ai","op":"route","input":{"filename":"אברהם פריד.mp3","artist":"דוד ישראל","title":"","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["אברהם פריד"],"calls":[]}}
+{"id":"route-filename-custom-target","op":"route","input":{"filename":"אברהם פריד.mp3","artist":"","title":"","metadata_error":false,"aliases":[["אברהם פריד","CUSTOM canonical"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["CUSTOM canonical"],"calls":[]}}
+{"id":"route-filename-duplicate-aliases","op":"route","input":{"filename":"אברהם פריד.mp3","artist":"","title":"","metadata_error":false,"aliases":[["אברהם פריד","first"],["אברהם פריד","second"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["first"],"calls":[]}}
+{"id":"route-filename-prefix-exact","op":"route","input":{"filename":"ואברהם פריד.mp3","artist":"","title":"","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["אברהם פריד"],"calls":[]}}
+{"id":"route-filename-nonexact-title","op":"route","input":{"filename":"לאברהם פריד.mp3","artist":"","title":"מוטי שטיינמץ","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["מוטי שטיינמץ"],"calls":[]}}
+{"id":"route-filename-empty-alias","op":"route","input":{"filename":"unrecognized.mp3","artist":"","title":"","metadata_error":false,"aliases":[["","empty-alias-result"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["empty-alias-result"],"calls":[]}}
+{"id":"route-filename-space-alias","op":"route","input":{"filename":"דוד שיר.mp3","artist":"","title":"","metadata_error":false,"aliases":[["דוד ","space-alias-result"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["space-alias-result"],"calls":[]}}
+{"id":"route-filename-cleaned-underscore","op":"route","input":{"filename":"אברהם_פריד.mp3","artist":"","title":"","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["אברהם פריד"],"calls":[]}}
+{"id":"route-filename-space-underscore-merges","op":"route","input":{"filename":"אברהם_פריד - שיר.mp3","artist":"","title":"מוטי שטיינמץ","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["מוטי שטיינמץ"],"calls":[]}}
+{"id":"route-filename-cleaned-hyphen","op":"route","input":{"filename":"אברהם-פריד.mp3","artist":"","title":"","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["אברהם פריד"],"calls":[]}}
+{"id":"route-filename-cleaned-promo","op":"route","input":{"filename":"מייל מיוזיק אברהם פריד.mp3","artist":"","title":"","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["אברהם פריד"],"calls":[]}}
+{"id":"route-filename-jib-not-repaired","op":"route","input":{"filename":"àáøäí ôøéã.mp3","artist":"","title":"","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":null,"calls":[]}}
+{"id":"route-filename-multi-extension","op":"route","input":{"filename":"אברהם פריד.live.mp3","artist":"","title":"","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["אברהם פריד"],"calls":[]}}
+{"id":"route-filename-no-extension","op":"route","input":{"filename":"אברהם פריד","artist":"","title":"","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["אברהם פריד"],"calls":[]}}
+{"id":"route-artist-precedes-title","op":"route","input":{"filename":"unrecognized.mp3","artist":"מוטי שטיינמץ","title":"אברהם פריד","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["מוטי שטיינמץ"],"calls":[]}}
+{"id":"route-artist-list-order","op":"route","input":{"filename":"unrecognized.mp3","artist":"מוטי שטיינמץ ואברהם פריד","title":"","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["אברהם פריד"],"calls":[]}}
+{"id":"route-artist-jib-repaired","op":"route","input":{"filename":"unrecognized.mp3","artist":"àáøäí ôøéã","title":"","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["אברהם פריד"],"calls":[]}}
+{"id":"route-artist-not-cleaned","op":"route","input":{"filename":"unrecognized.mp3","artist":"אברהם_פריד","title":"","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":null,"calls":[]}}
+{"id":"route-title-known","op":"route","input":{"filename":"unrecognized.mp3","artist":"","title":"אברהם פריד","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["אברהם פריד"],"calls":[]}}
+{"id":"route-title-cleaned-underscore","op":"route","input":{"filename":"unrecognized.mp3","artist":"","title":"אברהם_פריד","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["אברהם פריד"],"calls":[]}}
+{"id":"route-title-space-underscore-merges","op":"route","input":{"filename":"unrecognized.mp3","artist":"","title":"אברהם_פריד - שיר","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":null,"calls":[]}}
+{"id":"route-title-jib-repaired","op":"route","input":{"filename":"unrecognized.mp3","artist":"","title":"àáøäí ôøéã","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["אברהם פריד"],"calls":[]}}
+{"id":"route-title-cleaned-promo","op":"route","input":{"filename":"unrecognized.mp3","artist":"","title":"מייל מיוזיק אברהם פריד","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["אברהם פריד"],"calls":[]}}
+{"id":"route-unknown-no-ai","op":"route","input":{"filename":"unrecognized.mp3","artist":"דוד ישראל","title":"unknown title","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":null,"calls":[]}}
+{"id":"route-classifier-accepted","op":"route","input":{"filename":"unrecognized.mp3","artist":"דוד ישראל","title":"אברהם פריד","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["דוד ישראל"],"calls":[["classify","דוד ישראל"]]}}
+{"id":"route-classifier-reject-title","op":"route","input":{"filename":"unrecognized.mp3","artist":"דוד ישראל","title":"אברהם פריד","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":false,"ner":{},"duet_mode":false},"expected":{"artists":["אברהם פריד"],"calls":[["classify","דוד ישראל"]]}}
+{"id":"route-classifier-reject-both-ner","op":"route","input":{"filename":"unrecognized.mp3","artist":"דוד ישראל","title":"unknown title","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":false,"ner":{"unknown title":["חדש"]},"duet_mode":false},"expected":{"artists":["חדש"],"calls":[["classify","דוד ישראל"],["ner","unrecognized"],["ner","unknown title"]]}}
+{"id":"route-classifier-reject-filename-ner","op":"route","input":{"filename":"unrecognized.mp3","artist":"דוד ישראל","title":"unknown title","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":false,"ner":{"unrecognized":["זמר אחר"]},"duet_mode":false},"expected":{"artists":["זמר אחר"],"calls":[["classify","דוד ישראל"],["ner","unrecognized"]]}}
+{"id":"route-classifier-jib-accepted","op":"route","input":{"filename":"unrecognized.mp3","artist":"ãåã éùøàì","title":"","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["דוד ישראל"],"calls":[["classify","דוד ישראל"]]}}
+{"id":"route-classifier-artist-whitespace-preserved","op":"route","input":{"filename":"unrecognized.mp3","artist":" דוד  ישראל ","title":"","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":[" דוד  ישראל "],"calls":[["classify"," דוד  ישראל "]]}}
+{"id":"route-classifier-reject-no-title","op":"route","input":{"filename":"unrecognized.mp3","artist":"דוד ישראל","title":"","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":false,"ner":{},"duet_mode":false},"expected":{"artists":null,"calls":[["classify","דוד ישראל"],["ner","unrecognized"]]}}
+{"id":"route-invalid-latin-skips-classifier","op":"route","input":{"filename":"unrecognized.mp3","artist":"English Name","title":"","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":null,"calls":[["ner","unrecognized"]]}}
+{"id":"route-invalid-tab-skips-classifier","op":"route","input":{"filename":"unrecognized.mp3","artist":"דוד\tישראל","title":"","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":null,"calls":[["ner","unrecognized"]]}}
+{"id":"route-invalid-four-words-skips-classifier","op":"route","input":{"filename":"unrecognized.mp3","artist":"דוד ישראל יוסף כהן","title":"","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":null,"calls":[["ner","unrecognized"]]}}
+{"id":"route-unusual-skips-classifier","op":"route","input":{"filename":"unrecognized.mp3","artist":"לא ידוע","title":"","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":null,"calls":[["ner","unrecognized"]]}}
+{"id":"route-punctuation-candidate-classified","op":"route","input":{"filename":"unrecognized.mp3","artist":"-","title":"","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["-"],"calls":[["classify","-"]]}}
+{"id":"route-filename-ner-duplicates","op":"route","input":{"filename":"unrecognized.mp3","artist":"","title":"unknown title","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":true,"ner":{"unrecognized":["English Name","English Name"]},"duet_mode":false},"expected":{"artists":["English Name","English Name"],"calls":[["ner","unrecognized"]]}}
+{"id":"route-filename-ner-duplicates-duet","op":"route","input":{"filename":"unrecognized.mp3","artist":"","title":"unknown title","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":true,"ner":{"unrecognized":["English Name","English Name"]},"duet_mode":true},"expected":{"artists":["English Name","English Name"],"calls":[["ner","unrecognized"]]}}
+{"id":"route-title-ner-fallback","op":"route","input":{"filename":"unrecognized.mp3","artist":"","title":"unknown title","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":true,"ner":{"unknown title":["דוד ישראל"]},"duet_mode":false},"expected":{"artists":["דוד ישראל"],"calls":[["ner","unrecognized"],["ner","unknown title"]]}}
+{"id":"route-both-ner-empty","op":"route","input":{"filename":"unrecognized.mp3","artist":"","title":"unknown title","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":null,"calls":[["ner","unrecognized"],["ner","unknown title"]]}}
+{"id":"route-filename-ner-only","op":"route","input":{"filename":"unrecognized.mp3","artist":"","title":"","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":null,"calls":[["ner","unrecognized"]]}}
+{"id":"route-metadata-error-filename-ner","op":"route","input":{"filename":"unrecognized.mp3","artist":"","title":"","metadata_error":true,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":true,"ner":{"unrecognized":["STUB artist"]},"duet_mode":false},"expected":{"artists":["STUB artist"],"calls":[["ner","unrecognized"]]}}
+{"id":"route-metadata-error-no-ai","op":"route","input":{"filename":"unrecognized.mp3","artist":"","title":"","metadata_error":true,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":false,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":null,"calls":[]}}
+{"id":"route-ner-does-not-canonicalize","op":"route","input":{"filename":"unrecognized.mp3","artist":"","title":"","metadata_error":false,"aliases":[["דוד","Canonical"]],"ai_enabled":true,"accept_artist":true,"ner":{"unrecognized":["דוד","דוד"]},"duet_mode":false},"expected":{"artists":["דוד","דוד"],"calls":[["ner","unrecognized"]]}}
+{"id":"route-ner-preserves-invalid-values","op":"route","input":{"filename":"unrecognized.mp3","artist":"","title":"","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":true,"ner":{"unrecognized":["","-","לא ידוע","English","English"]},"duet_mode":false},"expected":{"artists":["","-","לא ידוע","English","English"],"calls":[["ner","unrecognized"]]}}
+{"id":"route-ner-cleaned-filename","op":"route","input":{"filename":"שם_חדש.mp3","artist":"","title":"","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":true,"ner":{"שם חדש":["STUB artist"]},"duet_mode":false},"expected":{"artists":["STUB artist"],"calls":[["ner","שם חדש"]]}}
+{"id":"route-ner-cleaned-title","op":"route","input":{"filename":"unrecognized.mp3","artist":"","title":"מייל מיוזיק שם חדש","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":true,"ner":{"שם חדש":["STUB artist"]},"duet_mode":false},"expected":{"artists":["STUB artist"],"calls":[["ner","unrecognized"],["ner","שם חדש"]]}}
+{"id":"route-ner-jib-title","op":"route","input":{"filename":"unrecognized.mp3","artist":"","title":"ãåã éùøàì","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":true,"ner":{"דוד ישראל":["STUB artist"]},"duet_mode":false},"expected":{"artists":["STUB artist"],"calls":[["ner","unrecognized"],["ner","דוד ישראל"]]}}
+{"id":"route-ner-jib-filename-unchanged","op":"route","input":{"filename":"ãåã éùøàì.mp3","artist":"","title":"","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":true,"ner":{"ãåã éùøàì":["STUB artist"]},"duet_mode":false},"expected":{"artists":["STUB artist"],"calls":[["ner","ãåã éùøàì"]]}}
+{"id":"route-title-known-blocks-ner","op":"route","input":{"filename":"unrecognized.mp3","artist":"","title":"אברהם פריד","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":true,"ner":{"unrecognized":["wrong route"]},"duet_mode":false},"expected":{"artists":["אברהם פריד"],"calls":[]}}
+{"id":"route-cleaned-empty-filename-falls-back","op":"route","input":{"filename":"מייל מיוזיק","artist":"","title":"","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":true,"ner":{"מייל מיוזיק":["STUB artist"]},"duet_mode":false},"expected":{"artists":["STUB artist"],"calls":[["ner","מייל מיוזיק"]]}}
+{"id":"route-cleaned-empty-title-falls-back","op":"route","input":{"filename":"unrecognized.mp3","artist":"","title":"מייל מיוזיק","metadata_error":false,"aliases":[["אברהם פריד","אברהם פריד"],["מוטי שטיינמץ","מוטי שטיינמץ"]],"ai_enabled":true,"accept_artist":true,"ner":{"מייל מיוזיק":["STUB artist"]},"duet_mode":false},"expected":{"artists":["STUB artist"],"calls":[["ner","unrecognized"],["ner","מייל מיוזיק"]]}}
+{"id":"route-unusual-known-alias-bypasses-validation","op":"route","input":{"filename":"unrecognized.mp3","artist":"סינגלים","title":"","metadata_error":false,"aliases":[["סינגלים","KNOWN exception"]],"ai_enabled":true,"accept_artist":true,"ner":{},"duet_mode":false},"expected":{"artists":["KNOWN exception"],"calls":[]}}
+{"id":"target-flags-000000","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":false,"exist_only":false,"singles_folder":false,"main_folder_only":false,"duet_mode":false},"expected":["אברהם פריד"]}
+{"id":"target-flags-000001","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":false,"exist_only":false,"singles_folder":false,"main_folder_only":false,"duet_mode":true},"expected":["אברהם פריד"]}
+{"id":"target-flags-000010","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":false,"exist_only":false,"singles_folder":false,"main_folder_only":true,"duet_mode":false},"expected":["אברהם פריד"]}
+{"id":"target-flags-000011","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":false,"exist_only":false,"singles_folder":false,"main_folder_only":true,"duet_mode":true},"expected":["אברהם פריד"]}
+{"id":"target-flags-000100","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":false,"exist_only":false,"singles_folder":true,"main_folder_only":false,"duet_mode":false},"expected":["אברהם פריד","סינגלים"]}
+{"id":"target-flags-000101","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":false,"exist_only":false,"singles_folder":true,"main_folder_only":false,"duet_mode":true},"expected":["אברהם פריד","סינגלים"]}
+{"id":"target-flags-000110","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":false,"exist_only":false,"singles_folder":true,"main_folder_only":true,"duet_mode":false},"expected":["אברהם פריד","סינגלים"]}
+{"id":"target-flags-000111","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":false,"exist_only":false,"singles_folder":true,"main_folder_only":true,"duet_mode":true},"expected":["אברהם פריד","סינגלים"]}
+{"id":"target-flags-001000","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":false,"exist_only":true,"singles_folder":false,"main_folder_only":false,"duet_mode":false},"expected":["אברהם פריד"]}
+{"id":"target-flags-001001","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":false,"exist_only":true,"singles_folder":false,"main_folder_only":false,"duet_mode":true},"expected":["אברהם פריד"]}
+{"id":"target-flags-001010","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":false,"exist_only":true,"singles_folder":false,"main_folder_only":true,"duet_mode":false},"expected":["אברהם פריד"]}
+{"id":"target-flags-001011","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":false,"exist_only":true,"singles_folder":false,"main_folder_only":true,"duet_mode":true},"expected":["אברהם פריד"]}
+{"id":"target-flags-001100","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":false,"exist_only":true,"singles_folder":true,"main_folder_only":false,"duet_mode":false},"expected":["אברהם פריד","סינגלים"]}
+{"id":"target-flags-001101","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":false,"exist_only":true,"singles_folder":true,"main_folder_only":false,"duet_mode":true},"expected":["אברהם פריד","סינגלים"]}
+{"id":"target-flags-001110","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":false,"exist_only":true,"singles_folder":true,"main_folder_only":true,"duet_mode":false},"expected":["אברהם פריד","סינגלים"]}
+{"id":"target-flags-001111","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":false,"exist_only":true,"singles_folder":true,"main_folder_only":true,"duet_mode":true},"expected":["אברהם פריד","סינגלים"]}
+{"id":"target-flags-010000","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":true,"exist_only":false,"singles_folder":false,"main_folder_only":false,"duet_mode":false},"expected":["א","אברהם פריד"]}
+{"id":"target-flags-010001","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":true,"exist_only":false,"singles_folder":false,"main_folder_only":false,"duet_mode":true},"expected":["א","אברהם פריד"]}
+{"id":"target-flags-010010","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":true,"exist_only":false,"singles_folder":false,"main_folder_only":true,"duet_mode":false},"expected":["א","אברהם פריד"]}
+{"id":"target-flags-010011","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":true,"exist_only":false,"singles_folder":false,"main_folder_only":true,"duet_mode":true},"expected":["א","אברהם פריד"]}
+{"id":"target-flags-010100","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":true,"exist_only":false,"singles_folder":true,"main_folder_only":false,"duet_mode":false},"expected":["א","אברהם פריד","סינגלים"]}
+{"id":"target-flags-010101","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":true,"exist_only":false,"singles_folder":true,"main_folder_only":false,"duet_mode":true},"expected":["א","אברהם פריד","סינגלים"]}
+{"id":"target-flags-010110","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":true,"exist_only":false,"singles_folder":true,"main_folder_only":true,"duet_mode":false},"expected":["א","אברהם פריד","סינגלים"]}
+{"id":"target-flags-010111","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":true,"exist_only":false,"singles_folder":true,"main_folder_only":true,"duet_mode":true},"expected":["א","אברהם פריד","סינגלים"]}
+{"id":"target-flags-011000","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":true,"exist_only":true,"singles_folder":false,"main_folder_only":false,"duet_mode":false},"expected":["א","אברהם פריד"]}
+{"id":"target-flags-011001","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":true,"exist_only":true,"singles_folder":false,"main_folder_only":false,"duet_mode":true},"expected":["א","אברהם פריד"]}
+{"id":"target-flags-011010","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":true,"exist_only":true,"singles_folder":false,"main_folder_only":true,"duet_mode":false},"expected":["א","אברהם פריד"]}
+{"id":"target-flags-011011","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":true,"exist_only":true,"singles_folder":false,"main_folder_only":true,"duet_mode":true},"expected":["א","אברהם פריד"]}
+{"id":"target-flags-011100","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":true,"exist_only":true,"singles_folder":true,"main_folder_only":false,"duet_mode":false},"expected":["א","אברהם פריד","סינגלים"]}
+{"id":"target-flags-011101","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":true,"exist_only":true,"singles_folder":true,"main_folder_only":false,"duet_mode":true},"expected":["א","אברהם פריד","סינגלים"]}
+{"id":"target-flags-011110","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":true,"exist_only":true,"singles_folder":true,"main_folder_only":true,"duet_mode":false},"expected":["א","אברהם פריד","סינגלים"]}
+{"id":"target-flags-011111","op":"target","input":{"artist":"אברהם פריד","copy_mode":false,"abc_sort":true,"exist_only":true,"singles_folder":true,"main_folder_only":true,"duet_mode":true},"expected":["א","אברהם פריד","סינגלים"]}
+{"id":"target-flags-100000","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":false,"exist_only":false,"singles_folder":false,"main_folder_only":false,"duet_mode":false},"expected":["אברהם פריד"]}
+{"id":"target-flags-100001","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":false,"exist_only":false,"singles_folder":false,"main_folder_only":false,"duet_mode":true},"expected":["אברהם פריד"]}
+{"id":"target-flags-100010","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":false,"exist_only":false,"singles_folder":false,"main_folder_only":true,"duet_mode":false},"expected":["אברהם פריד"]}
+{"id":"target-flags-100011","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":false,"exist_only":false,"singles_folder":false,"main_folder_only":true,"duet_mode":true},"expected":["אברהם פריד"]}
+{"id":"target-flags-100100","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":false,"exist_only":false,"singles_folder":true,"main_folder_only":false,"duet_mode":false},"expected":["אברהם פריד","סינגלים"]}
+{"id":"target-flags-100101","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":false,"exist_only":false,"singles_folder":true,"main_folder_only":false,"duet_mode":true},"expected":["אברהם פריד","סינגלים"]}
+{"id":"target-flags-100110","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":false,"exist_only":false,"singles_folder":true,"main_folder_only":true,"duet_mode":false},"expected":["אברהם פריד","סינגלים"]}
+{"id":"target-flags-100111","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":false,"exist_only":false,"singles_folder":true,"main_folder_only":true,"duet_mode":true},"expected":["אברהם פריד","סינגלים"]}
+{"id":"target-flags-101000","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":false,"exist_only":true,"singles_folder":false,"main_folder_only":false,"duet_mode":false},"expected":["אברהם פריד"]}
+{"id":"target-flags-101001","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":false,"exist_only":true,"singles_folder":false,"main_folder_only":false,"duet_mode":true},"expected":["אברהם פריד"]}
+{"id":"target-flags-101010","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":false,"exist_only":true,"singles_folder":false,"main_folder_only":true,"duet_mode":false},"expected":["אברהם פריד"]}
+{"id":"target-flags-101011","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":false,"exist_only":true,"singles_folder":false,"main_folder_only":true,"duet_mode":true},"expected":["אברהם פריד"]}
+{"id":"target-flags-101100","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":false,"exist_only":true,"singles_folder":true,"main_folder_only":false,"duet_mode":false},"expected":["אברהם פריד","סינגלים"]}
+{"id":"target-flags-101101","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":false,"exist_only":true,"singles_folder":true,"main_folder_only":false,"duet_mode":true},"expected":["אברהם פריד","סינגלים"]}
+{"id":"target-flags-101110","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":false,"exist_only":true,"singles_folder":true,"main_folder_only":true,"duet_mode":false},"expected":["אברהם פריד","סינגלים"]}
+{"id":"target-flags-101111","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":false,"exist_only":true,"singles_folder":true,"main_folder_only":true,"duet_mode":true},"expected":["אברהם פריד","סינגלים"]}
+{"id":"target-flags-110000","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":true,"exist_only":false,"singles_folder":false,"main_folder_only":false,"duet_mode":false},"expected":["א","אברהם פריד"]}
+{"id":"target-flags-110001","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":true,"exist_only":false,"singles_folder":false,"main_folder_only":false,"duet_mode":true},"expected":["א","אברהם פריד"]}
+{"id":"target-flags-110010","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":true,"exist_only":false,"singles_folder":false,"main_folder_only":true,"duet_mode":false},"expected":["א","אברהם פריד"]}
+{"id":"target-flags-110011","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":true,"exist_only":false,"singles_folder":false,"main_folder_only":true,"duet_mode":true},"expected":["א","אברהם פריד"]}
+{"id":"target-flags-110100","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":true,"exist_only":false,"singles_folder":true,"main_folder_only":false,"duet_mode":false},"expected":["א","אברהם פריד","סינגלים"]}
+{"id":"target-flags-110101","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":true,"exist_only":false,"singles_folder":true,"main_folder_only":false,"duet_mode":true},"expected":["א","אברהם פריד","סינגלים"]}
+{"id":"target-flags-110110","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":true,"exist_only":false,"singles_folder":true,"main_folder_only":true,"duet_mode":false},"expected":["א","אברהם פריד","סינגלים"]}
+{"id":"target-flags-110111","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":true,"exist_only":false,"singles_folder":true,"main_folder_only":true,"duet_mode":true},"expected":["א","אברהם פריד","סינגלים"]}
+{"id":"target-flags-111000","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":true,"exist_only":true,"singles_folder":false,"main_folder_only":false,"duet_mode":false},"expected":["א","אברהם פריד"]}
+{"id":"target-flags-111001","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":true,"exist_only":true,"singles_folder":false,"main_folder_only":false,"duet_mode":true},"expected":["א","אברהם פריד"]}
+{"id":"target-flags-111010","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":true,"exist_only":true,"singles_folder":false,"main_folder_only":true,"duet_mode":false},"expected":["א","אברהם פריד"]}
+{"id":"target-flags-111011","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":true,"exist_only":true,"singles_folder":false,"main_folder_only":true,"duet_mode":true},"expected":["א","אברהם פריד"]}
+{"id":"target-flags-111100","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":true,"exist_only":true,"singles_folder":true,"main_folder_only":false,"duet_mode":false},"expected":["א","אברהם פריד","סינגלים"]}
+{"id":"target-flags-111101","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":true,"exist_only":true,"singles_folder":true,"main_folder_only":false,"duet_mode":true},"expected":["א","אברהם פריד","סינגלים"]}
+{"id":"target-flags-111110","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":true,"exist_only":true,"singles_folder":true,"main_folder_only":true,"duet_mode":false},"expected":["א","אברהם פריד","סינגלים"]}
+{"id":"target-flags-111111","op":"target","input":{"artist":"אברהם פריד","copy_mode":true,"abc_sort":true,"exist_only":true,"singles_folder":true,"main_folder_only":true,"duet_mode":true},"expected":["א","אברהם פריד","סינגלים"]}
+{"id":"target-artist-0-00","op":"target","input":{"artist":"David","copy_mode":false,"abc_sort":false,"exist_only":false,"singles_folder":false,"main_folder_only":false,"duet_mode":false},"expected":["David"]}
+{"id":"target-artist-0-01","op":"target","input":{"artist":"David","copy_mode":false,"abc_sort":false,"exist_only":false,"singles_folder":true,"main_folder_only":false,"duet_mode":false},"expected":["David","סינגלים"]}
+{"id":"target-artist-0-10","op":"target","input":{"artist":"David","copy_mode":false,"abc_sort":true,"exist_only":false,"singles_folder":false,"main_folder_only":false,"duet_mode":false},"expected":["D","David"]}
+{"id":"target-artist-0-11","op":"target","input":{"artist":"David","copy_mode":false,"abc_sort":true,"exist_only":false,"singles_folder":true,"main_folder_only":false,"duet_mode":false},"expected":["D","David","סינגלים"]}
+{"id":"target-artist-1-00","op":"target","input":{"artist":"😀 Artist","copy_mode":false,"abc_sort":false,"exist_only":false,"singles_folder":false,"main_folder_only":false,"duet_mode":false},"expected":["😀 Artist"]}
+{"id":"target-artist-1-01","op":"target","input":{"artist":"😀 Artist","copy_mode":false,"abc_sort":false,"exist_only":false,"singles_folder":true,"main_folder_only":false,"duet_mode":false},"expected":["😀 Artist","סינגלים"]}
+{"id":"target-artist-1-10","op":"target","input":{"artist":"😀 Artist","copy_mode":false,"abc_sort":true,"exist_only":false,"singles_folder":false,"main_folder_only":false,"duet_mode":false},"expected":["😀","😀 Artist"]}
+{"id":"target-artist-1-11","op":"target","input":{"artist":"😀 Artist","copy_mode":false,"abc_sort":true,"exist_only":false,"singles_folder":true,"main_folder_only":false,"duet_mode":false},"expected":["😀","😀 Artist","סינגלים"]}
+{"id":"target-artist-2-00","op":"target","input":{"artist":" אמן","copy_mode":false,"abc_sort":false,"exist_only":false,"singles_folder":false,"main_folder_only":false,"duet_mode":false},"expected":[" אמן"]}
+{"id":"target-artist-2-01","op":"target","input":{"artist":" אמן","copy_mode":false,"abc_sort":false,"exist_only":false,"singles_folder":true,"main_folder_only":false,"duet_mode":false},"expected":[" אמן","סינגלים"]}
+{"id":"target-artist-2-10","op":"target","input":{"artist":" אמן","copy_mode":false,"abc_sort":true,"exist_only":false,"singles_folder":false,"main_folder_only":false,"duet_mode":false},"expected":[" "," אמן"]}
+{"id":"target-artist-2-11","op":"target","input":{"artist":" אמן","copy_mode":false,"abc_sort":true,"exist_only":false,"singles_folder":true,"main_folder_only":false,"duet_mode":false},"expected":[" "," אמן","סינגלים"]}
+{"id":"target-artist-3-00","op":"target","input":{"artist":"דָוד","copy_mode":false,"abc_sort":false,"exist_only":false,"singles_folder":false,"main_folder_only":false,"duet_mode":false},"expected":["דָוד"]}
+{"id":"target-artist-3-01","op":"target","input":{"artist":"דָוד","copy_mode":false,"abc_sort":false,"exist_only":false,"singles_folder":true,"main_folder_only":false,"duet_mode":false},"expected":["דָוד","סינגלים"]}
+{"id":"target-artist-3-10","op":"target","input":{"artist":"דָוד","copy_mode":false,"abc_sort":true,"exist_only":false,"singles_folder":false,"main_folder_only":false,"duet_mode":false},"expected":["ד","דָוד"]}
+{"id":"target-artist-3-11","op":"target","input":{"artist":"דָוד","copy_mode":false,"abc_sort":true,"exist_only":false,"singles_folder":true,"main_folder_only":false,"duet_mode":false},"expected":["ד","דָוד","סינגלים"]}
+{"id":"target-artist-4-00","op":"target","input":{"artist":"123 Singer","copy_mode":false,"abc_sort":false,"exist_only":false,"singles_folder":false,"main_folder_only":false,"duet_mode":false},"expected":["123 Singer"]}
+{"id":"target-artist-4-01","op":"target","input":{"artist":"123 Singer","copy_mode":false,"abc_sort":false,"exist_only":false,"singles_folder":true,"main_folder_only":false,"duet_mode":false},"expected":["123 Singer","סינגלים"]}
+{"id":"target-artist-4-10","op":"target","input":{"artist":"123 Singer","copy_mode":false,"abc_sort":true,"exist_only":false,"singles_folder":false,"main_folder_only":false,"duet_mode":false},"expected":["1","123 Singer"]}
+{"id":"target-artist-4-11","op":"target","input":{"artist":"123 Singer","copy_mode":false,"abc_sort":true,"exist_only":false,"singles_folder":true,"main_folder_only":false,"duet_mode":false},"expected":["1","123 Singer","סינגלים"]}
+{"id":"target-artist-5-00","op":"target","input":{"artist":"אמן.","copy_mode":false,"abc_sort":false,"exist_only":false,"singles_folder":false,"main_folder_only":false,"duet_mode":false},"expected":["אמן."]}
+{"id":"target-artist-5-01","op":"target","input":{"artist":"אמן.","copy_mode":false,"abc_sort":false,"exist_only":false,"singles_folder":true,"main_folder_only":false,"duet_mode":false},"expected":["אמן.","סינגלים"]}
+{"id":"target-artist-5-10","op":"target","input":{"artist":"אמן.","copy_mode":false,"abc_sort":true,"exist_only":false,"singles_folder":false,"main_folder_only":false,"duet_mode":false},"expected":["א","אמן."]}
+{"id":"target-artist-5-11","op":"target","input":{"artist":"אמן.","copy_mode":false,"abc_sort":true,"exist_only":false,"singles_folder":true,"main_folder_only":false,"duet_mode":false},"expected":["א","אמן.","סינגלים"]}

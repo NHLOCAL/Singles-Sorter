@@ -1,0 +1,31 @@
+{
+  "verdict": "APPROVE_SCOPED_LINUX_OPTIMIZATION",
+  "commit": "acefa1a4396d0c14c4f45d6e3b12bd94992a285e",
+  "binary_sha256": "cf65ce5e347ce6521087cb1b197d7854e34a4485f2773ba6ac49e88f3b18b311",
+  "source_sha256": {
+    "math/src/lib.rs": "79d91924733124de371200160bbeefac6928eac76826d6e70e8b1e594ba21bd6",
+    "text/src/bin/raw-ner.rs": "9d557e083e3df256e38746ac7fa935b83d37415b5afa1c0fdfc2b091a3bb4736"
+  },
+  "independent_checks": {
+    "linear_shape_value_cases": 4536,
+    "linear_comparison": "Bit-exact non-NaN scalar comparison; both NaN accepted for overflowing synthetic reductions. Zero rows/inputs/outputs, all output tail classes, subnormals, signed zero, cancellation. rustc opt-level=2, CPU1.",
+    "math_unit_tests_passed": 9,
+    "inference_cases": 9,
+    "inference_comparison": "Baseline diagnostic versus optimized diagnostic/fast JSON identical. Span-only preserves spans and error JSON. Includes empty input, saved fixture 247,302-token padding input, and 6 malformed/rejected input cases.",
+    "fixture 247": "Exact saved native JSON equality; minimum margin 8.7738037109375e-05. Original oracle margin 8.821487426757812e-05 already differs in preoptimization baseline.",
+    "stage_reports": "Owner baseline and optimized trace files byte-identical; reviewed probe coverage of 0, 1, 2, 3, 7, 58, 129, and 257 token counts, 9 stages, logits, one ULP and exact tie."
+  },
+  "source_review": [
+    "Four accumulators operate on separate outputs; each dot product retains left-to-right f32 multiplication/addition. Bias added once after each complete reduction.",
+    "Block end floor(no/4)*4 and tail range cover every output once. x length assertion plus nonzero width makes chunks_exact produce rows exactly. Zero-width branch preserves prior zero-plus-bias semantics.",
+    "No unsafe code, dependency, weight, or compiler-profile changes. Fixed scratch arrays of 384/512/256 bytes do not materially increase stack risk.",
+    "forward preserves all diagnostic stages; forward_fast omits only stage collection. Span-only removes diagnostic output and margin/action recording without changing state application or validation.",
+    "No new valid-input panic or error regression found. Existing dimension multiplication overflow/resource limits remain outside validated model shapes."
+  ],
+  "limits": [
+    "Linux/x86_64 only; platform CI still required.",
+    "Full 3,295 dataset timings/parity and stage bits are owner-generated evidence inspected by reviewer, not independently recomputed in full.",
+    "No held-out sealed test or training data used. No pushes or uploads.",
+    "No claim of universal NaN payload stability or cross-platform float-bit equivalence."
+  ]
+}
