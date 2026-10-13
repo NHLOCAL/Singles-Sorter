@@ -519,6 +519,21 @@ jobs:
           cargo +1.99.0 test --locked -p sorter-io --features experimental-windows-mutation --lib child_rename::tests -- --test-threads=1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Test ordinary metadata-reader compatibility and mixed-library execution
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          $cases = cargo +1.99.0 test --locked -p sorter-io --test metadata_id3_compatibility -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 16) { throw "Expected 16 metadata compatibility cases" }
+          cargo +1.99.0 test --locked -p sorter-io --test metadata_id3_compatibility -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $cases = cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_metadata_sort -- --list
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (@($cases | Where-Object { $_ -match ": test$" }).Count -ne 3) { throw "Expected 3 actual metadata-driven execution cases" }
+          cargo +1.99.0 test --locked -p sorter-executor --features selected-windows-execution --test windows_metadata_sort -- --test-threads=1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Test read-only Album original-parent grants
         if: ${{ !cancelled() && runner.os == 'Windows' }}
         shell: pwsh

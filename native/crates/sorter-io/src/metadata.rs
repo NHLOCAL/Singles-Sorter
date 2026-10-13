@@ -331,7 +331,7 @@ impl MetadataReader {
     pub fn open(
         &self,
         mut input: ReadInput,
-        _name_hint: &str,
+        name_hint: &str,
     ) -> Result<MetadataHandle, MetadataError> {
         if !input.is_seekable() {
             return Err(MetadataError::SeekRequired);
@@ -360,6 +360,20 @@ impl MetadataReader {
             return Err(MetadataError::LegacyOpen {
                 kind: "AACError".into(),
                 detail: "doesn't support tags".into(),
+            });
+        }
+        // A sub-header-size MP3 cannot contain a complete MPEG frame header.
+        // The released reader raises HeaderNotFoundError; filename recognition
+        // still applies. This is deliberately not a blanket parser-error alias.
+        if length < 4
+            && std::path::Path::new(name_hint)
+                .extension()
+                .and_then(|s| s.to_str())
+                .is_some_and(|s| s.eq_ignore_ascii_case("mp3"))
+        {
+            return Err(MetadataError::LegacyOpen {
+                kind: "HeaderNotFoundError".into(),
+                detail: "MP3 input is shorter than one MPEG frame header".into(),
             });
         }
         #[cfg(native_metadata_bridge)]

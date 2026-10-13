@@ -12,6 +12,7 @@
 #include <mp4tag.h>
 #include <mp4item.h>
 #include <id3v2tag.h>
+#include <id3v1genres.h>
 #include <textidentificationframe.h>
 #include <xiphcomment.h>
 #include <apetag.h>
@@ -122,6 +123,56 @@ TagLib::ByteVector read_at(ReadStream& s, uint64_t offset, size_t n) {
  // a mutable source cannot swap in over-budget metadata after validation.
  s.remember(offset,bytes);return bytes;
 }
+// Mutagen's ordinary 128-byte ID3v1 fallback, captured before native parsing.
+void capture_id3v1(SmHandle& h, uint64_t length) {
+ if(length<128)return;
+ const auto tail_size=static_cast<size_t>(std::min<uint64_t>(length,131));
+ auto tail=read_at(h.stream,length-tail_size,tail_size);
+ const auto first=tail.find("TAG");
+ const auto standard=tail_size-128;
+ if(first<0)return;
+ // Mutagen takes the first TAG in its last-131-byte probe. Truncated legacy
+ // tails and competing markers remain explicit limitations, not new values.
+ if(static_cast<size_t>(first)!=standard) {
+  const auto remaining=tail_size-static_cast<size_t>(first);
+  if((remaining>=124&&remaining<=128)||tail.mid(standard,3)=="TAG")throw Unsupported{};
+  return;
+ }
+ const auto ape=tail.find("APETAGEX");
+ if(ape>=0 && first==ape+3)throw Unsupported{};
+ auto tag=tail.mid(standard,128);
+ const auto put=[&](const char* key,const std::string& text,uint8_t encoding) {
+  if(text.empty()||h.raw_id3.count(key))return;
+  TagLib::ByteVector value(1,static_cast<char>(encoding));
+  value.append(TagLib::ByteVector(text.data(),text.size()));h.raw_id3.emplace(key,std::move(value));
+ };
+ const auto field=[&](size_t offset) {
+  size_t end=offset;while(end<offset+30 && tag[end]!=0)++end;
+  const auto space=[](char c){return c==' '||c=='\t'||c=='\n'||c=='\r'||c=='\v'||c=='\f';};
+  while(offset<end&&space(tag[offset]))++offset;
+  while(end>offset&&space(tag[end-1]))--end;
+  return std::string(tag.data()+offset,end-offset);
+ };
+ put("TIT2",field(3),0);put("TPE1",field(33),0);put("TALB",field(63),0);
+ const auto track=static_cast<uint8_t>(tag[126]);
+ if(track && (track!=32 || tag[125]==0))put("TRCK",std::to_string(track),0);
+ const auto genre=static_cast<uint8_t>(tag[127]);
+ if(genre!=255) {
+  std::string value;
+  // Both pinned tables have 192 entries; retain the released spellings where
+  // TagLib 2.3.2 intentionally modernised its labels.
+  switch(genre) {
+   case 29:value="Jazz+Funk";break;case 40:value="Alt. Rock";break;
+   case 59:value="Gangsta Rap";break;case 81:value="Folk-Rock";break;
+   case 84:value="Fast-Fusion";break;case 90:value="Avantgarde";break;
+   case 125:value="Dance Hall";break;case 129:value="Hardcore";break;
+   case 132:value="BritPop";break;case 133:value="Afro-Punk";break;
+   case 146:value="JPop";break;
+   default:value=genre<192?TagLib::ID3v1::genre(genre).to8Bit(true):"Unknown";
+  }
+  put("TCON",value,3);
+ }
+}
 // This is a bounded raw-byte preflight, before any TagLib::File constructor.
 // It allocates one capped tag body, never a per-component native string list.
 void capture_id3(SmHandle& h, const TagLib::ByteVector& magic) {
@@ -170,21 +221,61 @@ void capture_id3(SmHandle& h, const TagLib::ByteVector& magic) {
  auto head=read_at(h.stream,offset,10);
  if(head.size()!=10 || !head.startsWith("ID3"))throw Unsupported{};
  const auto version=static_cast<uint8_t>(head[3]);
- if((version!=3&&version!=4)||head[5]!=0)throw Unsupported{}; // v2.2, unsync, extension/footer not proven
+ const auto flags=static_cast<uint8_t>(head[5]);
+ if(version!=2&&version!=3&&version!=4)throw Unsupported{};
+ // Only ordinary v2.2/v2.3 tag unsynchronisation and v2.3's minimal
+ // unflagged extended header are admitted here. Compression/CRC/footer and
+ // v2.4 per-frame transformation need their own proven bounded projection.
+ if((version==2 && (flags&~0x80)) || (version==3 && (flags&~0xc0)) ||
+    (version==4 && flags!=0) || (version==3 && flags==0xc0))throw Unsupported{};
  const auto size=sync32(head,6);
  if(size>max_block || offset+10ULL+size>static_cast<uint64_t>(h.stream.length()))throw Unsupported{};
  auto body=read_at(h.stream,offset+10,size);
+ if(flags&0x80) {
+  TagLib::ByteVector decoded(body.size(),0);size_t written=0;
+  for(size_t i=0;i<body.size();++i) {
+   decoded[written++]=body[i];
+   if(static_cast<uint8_t>(body[i])==255) {
+    if(i+1==body.size() || static_cast<uint8_t>(body[i+1])>=0xe0)throw Unsupported{};
+    if(body[i+1]==0)++i;
+   }
+  }
+  decoded.resize(written);body=std::move(decoded);
+ }
  size_t at=0, frames=0, components=0;
+ if(flags&0x40) {
+  // v2.3 size excludes its own four bytes. Bound the exact no-CRC layout;
+  // unlike v2.4 this size is big-endian, not syncsafe.
+  if(body.size()<10 || big32(body,0)!=6 || body[4]!=0 || body[5]!=0)throw Unsupported{};
+  const auto padding=big32(body,6);
+  if(padding>body.size()-10)throw Unsupported{};
+  at=10;
+ }
  while(at<body.size() && body[at]!=0) {
   if(++frames>4096)throw InputFailure{};
-  if(body.size()-at<10)throw Unsupported{};
-  std::string key(body.data()+at,4);
-  const uint32_t n=version==4?sync32(body,at+4):big32(body,at+4);
-  if(n>body.size()-at-10)throw Unsupported{};
+  const size_t frame_header=version==2?6:10;
+  if(body.size()-at<frame_header)throw Unsupported{};
+  std::string key(body.data()+at,version==2?3:4);
+  const uint32_t n=version==2?
+   (static_cast<uint32_t>(static_cast<uint8_t>(body[at+3]))<<16)|
+   (static_cast<uint32_t>(static_cast<uint8_t>(body[at+4]))<<8)|
+   static_cast<uint8_t>(body[at+5]):version==4?sync32(body,at+4):big32(body,at+4);
+  if(n>body.size()-at-frame_header)throw Unsupported{};
+  if(version==2) {
+   // Exact v2.2 aliases consumed by the released six-field projection. The
+   // native factory also upgrades text aliases; charge their components below.
+   if(key=="TP1")key="TPE1";else if(key=="TP2")key="TPE2";
+   else if(key=="TT2")key="TIT2";else if(key=="TAL")key="TALB";
+   else if(key=="TCO")key="TCON";else if(key=="TRK")key="TRCK";
+   else if(key=="IPL")key="TIPL";else if(key=="WFD")key="WFED";
+   else if(key=="MVN")key="MVNM";else if(key=="MVI")key="MVIN";
+   else if(key=="GP1")key="GRP1";
+   else if(key=="SLT"||key=="ETC")throw Unsupported{};
+  }
   // All frames, including fields ignored by the compatibility projection,
   // are parsed by TagLib. Reject flags before decompression/decryption and
   // reject structured/embedded frame classes lacking bounded preflight here.
-  if(body[at+8]!=0||body[at+9]!=0)throw Unsupported{};
+  if(version!=2 && (body[at+8]!=0||body[at+9]!=0))throw Unsupported{};
   // Pinned FrameFactory upgrades IPLS to TIPL in v2.3. Its iTunes
   // three-character compatibility IDs have a separate v2.2 conversion table;
   // reject that representation rather than admitting unclassified aliases.
@@ -193,10 +284,10 @@ void capture_id3(SmHandle& h, const TagLib::ByteVector& magic) {
   if(key=="CHAP"||key=="CTOC"||key=="SYLT"||key=="ETCO"||key=="RVA2")throw Unsupported{};
   if(text) {
    if(n<1)throw Unsupported{};
-   const auto encoding=static_cast<uint8_t>(body[at+10]);
+   const auto encoding=static_cast<uint8_t>(body[at+frame_header]);
    if(encoding>3)throw Unsupported{};
    const size_t width=(encoding==1||encoding==2)?2:1;
-   const size_t start=at+11, end=at+10+n;
+   const size_t start=at+frame_header+1, end=at+frame_header+n;
    if((end-start)%width)throw Unsupported{};
    size_t count=0;
    for(size_t cursor=start;cursor<end;cursor+=width) {
@@ -213,9 +304,11 @@ void capture_id3(SmHandle& h, const TagLib::ByteVector& magic) {
   }
   if(key=="TPE1"||key=="TPE2"||key=="TIT2"||key=="TALB"||key=="TCON"||key=="TRCK") {
    if(h.raw_id3.count(key))throw Unsupported{};
-   h.raw_id3.emplace(key,body.mid(at+10,n));
+   // Mutagen drops an encoding-byte-only text frame; an encoding plus
+   // explicit NUL is a present empty value and retains precedence over v1.
+   if(n>1)h.raw_id3.emplace(key,body.mid(at+frame_header,n));
   }
-  at+=10+n;
+  at+=frame_header+n;
  }
 }
 }
@@ -268,10 +361,10 @@ extern "C" int32_t sm_open(const SmInput* input, SmHandle** out) {
    const bool id3v1=length>=128 && read_at(h->stream,length-128,3).startsWith("TAG");
    const uint64_t trailer=id3v1?160:32;
    if(length>=trailer && read_at(h->stream,length-trailer,8).startsWith("APETAGEX"))return 3;
+   capture_id3v1(*h,length);
    h->stream.seek(0);
    auto f=std::make_unique<TagLib::MPEG::File>(&h->stream,false,TagLib::AudioProperties::Fast);
    if(f->firstFrameOffset()<0)return 2;
-   if(f->hasID3v1Tag() && !f->hasID3v2Tag())return 3;
    h->id3=f->ID3v2Tag();h->file=std::move(f);h->family=1;
   } else return 2; // includes ADTS: never admit a newly supported AAC tag read
   if(!h->file->isValid()) return 2;
