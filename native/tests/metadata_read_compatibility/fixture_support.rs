@@ -86,7 +86,13 @@ pub fn mixed_library(source: &std::path::Path) {
             if index == 0 {
                 vec![]
             } else if index == 1 {
-                id3v1(17, 1, 0)
+                let mut bytes = id3v1(17, 1, 0);
+                let at = bytes.len() - 128 + 33;
+                bytes[at..at + 30].fill(0);
+                // Latin-1 mojibake for "שלום עולם", matching the original map.
+                bytes[at..at + 9]
+                    .copy_from_slice(&[0xf9, 0xec, 0xe5, 0xed, b' ', 0xf2, 0xe5, 0xec, 0xed]);
+                bytes
             } else {
                 fixture(3, 0)
             },

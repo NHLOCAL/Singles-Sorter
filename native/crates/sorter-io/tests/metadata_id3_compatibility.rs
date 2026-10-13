@@ -163,6 +163,8 @@ fn real_provider_mixed_103_item_plan_preserves_album_and_filename_fallback() {
             .count(),
         23
     );
+    assert!(plan.metadata_observations.iter().any(|o|matches!(o,MetadataObservation::Get{source,field:LegacyField::Artist,result:Ok(item),..} if source.name=="metadata-only-v1.mp3" && item.value==Ok(LegacyScalar::Text("ùìåí òåìí".into())))));
+    assert!(plan.operations.iter().any(|o|matches!(&o.kind,OperationKind::SingleTransfer{source,artist,..} if source.name=="metadata-only-v1.mp3"&&artist=="Mapped Artist")));
     assert_eq!(plan.predicted_legacy_counters.songs_sorted, 23);
     assert_eq!(plan.predicted_legacy_counters.albums_processed, 1);
     assert!(plan.metadata_observations.iter().any(|o|matches!(o,MetadataObservation::Open{source,result:Err(sorter_io::metadata::MetadataError::LegacyOpen{kind,..}),..}if source.size==Some(0)&&kind=="HeaderNotFoundError")));
