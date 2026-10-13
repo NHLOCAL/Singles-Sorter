@@ -52,7 +52,8 @@ export interface ProfileHost {
 }
 
 /** Apply eligibility is granted by retained native evidence, never inferred from rows. */
-export interface ApplyReadiness {duet_groups?:number;supported:boolean;recovery_scope_admitted?:boolean;source_parent_selection_required?:boolean;reason:string|null;operation_count:number;copy_mode:boolean;source:string;target:string|null;mode?:Mode;notice?:string|null}
+export interface MetadataDiagnostics {failed_observations:number;affected_sources:number;truncated:boolean;issues:{observation_index:number;after_operations:number;relative_source:string;label_truncated:boolean;error_kind:string;storage_kind?:string}[]}
+export interface ApplyReadiness {metadata_diagnostics?:MetadataDiagnostics;duet_groups?:number;supported:boolean;recovery_scope_admitted?:boolean;source_parent_selection_required?:boolean;reason:string|null;operation_count:number;copy_mode:boolean;source:string;target:string|null;mode?:Mode;notice?:string|null}
 export type ExecutionStatus='preparing'|'running'|'complete'|'partial'|'cancelled'|'failed'|'needs_recovery';
 export type ItemStatus='partial'|'complete'|'source_retained'|'failed'|'cancelled'|'blocked'|'needs_recovery'|'unsupported_tags'|'metadata_failure';
 /** Optional display-only observed leaf; older/Android hosts may omit it. */

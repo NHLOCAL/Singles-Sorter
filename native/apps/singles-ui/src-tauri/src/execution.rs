@@ -40,7 +40,108 @@ pub struct ApplyReadiness {
     pub target: Option<String>,
     pub mode: JobMode,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata_diagnostics: Option<MetadataDiagnostics>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub notice: Option<String>,
+}
+/// Display-only attribution from the retained full plan, not paginated rows.
+#[derive(Clone, Debug, Serialize)]
+pub struct MetadataDiagnostics {
+    pub failed_observations: usize,
+    pub affected_sources: usize,
+    pub truncated: bool,
+    pub issues: Vec<MetadataDiagnostic>,
+}
+#[derive(Clone, Debug, Serialize)]
+pub struct MetadataDiagnostic {
+    pub observation_index: usize,
+    pub after_operations: usize,
+    pub relative_source: String,
+    pub label_truncated: bool,
+    pub error_kind: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub storage_kind: Option<sorter_core::discovery::StorageErrorKind>,
+}
+#[cfg(any(test, all(windows, feature = "selected-windows-execution")))]
+fn metadata_diagnostics(
+    root: &StorageRef,
+    observations: &[sorter_core::metadata::MetadataObservation],
+) -> Option<MetadataDiagnostics> {
+    use sorter_core::metadata::{MetadataError, MetadataObservation};
+    let mut issues = Vec::new();
+    let mut sources = std::collections::HashSet::new();
+    let mut failed_observations = 0;
+    for (observation_index, observation) in observations.iter().enumerate() {
+        let MetadataObservation::Open {
+            source,
+            after_operations,
+            result: Err(error),
+        } = observation
+        else {
+            continue;
+        };
+        let (error_kind, storage_kind) = match error {
+            MetadataError::LegacyOpen { .. } => continue,
+            MetadataError::Storage(error) => ("Storage", Some(error.kind)),
+            MetadataError::UnsupportedPlatform => ("UnsupportedPlatform", None),
+            MetadataError::SeekRequired => ("SeekRequired", None),
+            MetadataError::InvalidInput => ("InvalidInput", None),
+            MetadataError::Parser => ("Parser", None),
+            MetadataError::InputBudget => ("InputBudget", None),
+            MetadataError::NativeException => ("NativeException", None),
+            MetadataError::UnsupportedClass => ("UnsupportedClass", None),
+        };
+        failed_observations += 1;
+        sources.insert(&source.reference);
+        if issues.len() < 20 {
+            // Exact lexical suffix is display only; it never becomes a path grant.
+            let relative = match (root, &source.reference) {
+                (
+                    StorageRef::WindowsPath { utf16: root },
+                    StorageRef::WindowsPath { utf16: source },
+                ) if source == root => Some(".".to_owned()),
+                (
+                    StorageRef::WindowsPath { utf16: root },
+                    StorageRef::WindowsPath { utf16: source },
+                ) if !root.is_empty() && source.starts_with(root) => {
+                    let suffix = &source[root.len()..];
+                    let separator = |unit: u16| unit == u16::from(b'\\') || unit == u16::from(b'/');
+                    if root.last().is_some_and(|unit| separator(*unit)) {
+                        Some(String::from_utf16_lossy(suffix))
+                    } else if suffix.first().is_some_and(|unit| separator(*unit)) {
+                        Some(String::from_utf16_lossy(&suffix[1..]))
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            }
+            .unwrap_or_else(|| {
+                source
+                    .name
+                    .rsplit(['/', '\\'])
+                    .next()
+                    .unwrap_or("")
+                    .to_owned()
+            });
+            let label_truncated = relative.chars().count() > 512;
+            let relative_source = relative.chars().take(512).map(|c| if c.is_control() || matches!(c, '\u{061c}' | '\u{200e}' | '\u{200f}' | '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}') { '\u{fffd}' } else { c }).collect();
+            issues.push(MetadataDiagnostic {
+                observation_index,
+                after_operations: *after_operations,
+                relative_source,
+                label_truncated,
+                error_kind,
+                storage_kind,
+            });
+        }
+    }
+    (failed_observations > 0).then_some(MetadataDiagnostics {
+        failed_observations,
+        affected_sources: sources.len(),
+        truncated: failed_observations > issues.len(),
+        issues,
+    })
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct ExecutionItem {
@@ -507,6 +608,7 @@ mod selected {
                 source: source.selection.display_name.clone(),
                 target: target.map(|root| root.selection.display_name.clone()),
                 mode: plan.request.mode,
+                metadata_diagnostics: metadata_diagnostics(&plan.request.source, &plan.metadata_observations),
                 notice: selected.as_ref().and_then(|selection| match &selection.scope {
                     PreparedScope::Album { journal: Some(_), .. } => Some("סגור תוכנות או סנכרון שמשנים את המקור או היעד עד סיום ההעברה. קובצי המקור יוסרו רק אחרי אימות ההעתקה; תיקיות המקור יוסרו רק כשהן ריקות.".into()),
                     PreparedScope::Album { .. } => Some("לפני מיון אלבומים, סגור תוכנות או סנכרון שעלולים לשנות את המקור או היעד עד לסיום הפעולה.".into()),
@@ -1085,3 +1187,217 @@ mod no_op_tests;
 #[cfg(all(test, windows, feature = "selected-windows-execution"))]
 #[path = "execution_copied_move_tests.rs"]
 mod copied_move_tests;
+
+#[cfg(test)]
+mod metadata_diagnostic_tests {
+    use super::*;
+    use sorter_core::discovery::{Capabilities, EntryKind, StorageErrorKind};
+    use sorter_core::metadata::{MetadataError, MetadataObservation};
+    fn reference(path: &str) -> StorageRef {
+        StorageRef::WindowsPath {
+            utf16: path.encode_utf16().collect(),
+        }
+    }
+    fn observation(
+        path: &str,
+        error: MetadataError,
+        after_operations: usize,
+    ) -> MetadataObservation {
+        MetadataObservation::Open {
+            source: EntryObservation {
+                reference: reference(path),
+                identity: None,
+                parent_identity: None,
+                name: path.to_owned(),
+                kind: EntryKind::File,
+                size: Some(42),
+                modified: None,
+                capabilities: Capabilities::default(),
+            },
+            after_operations,
+            result: Err(error),
+        }
+    }
+    #[test]
+    fn metadata_diagnostics_include_protected_album_children_without_operation_rows() {
+        // An album-protected child need never receive its own display/transfer row.
+        // Attribution reads the original observation directly, not operation rows.
+        let values = vec![observation(
+            r"C:\private\music\אלבום\שיר.mp3",
+            MetadataError::UnsupportedClass,
+            0,
+        )];
+        let report = metadata_diagnostics(&reference(r"C:\private\music"), &values).unwrap();
+        assert_eq!(report.failed_observations, 1);
+        assert_eq!(report.affected_sources, 1);
+        assert_eq!(report.issues[0].relative_source, r"אלבום\שיר.mp3");
+        assert_eq!(report.issues[0].error_kind, "UnsupportedClass");
+        assert_eq!(report.issues[0].after_operations, 0);
+        assert!(!serde_json::to_string(&report).unwrap().contains("private"));
+    }
+    #[test]
+    fn metadata_diagnostics_preserve_order_duplicates_and_exact_storage_subkind() {
+        let values = vec![
+            observation(
+                r"C:\music\album\one.mp3",
+                MetadataError::LegacyOpen {
+                    kind: "ValueError".into(),
+                    detail: "private legacy data".into(),
+                },
+                0,
+            ),
+            observation(r"C:\music\album\one.mp3", MetadataError::Parser, 0),
+            observation(
+                r"C:\music\album\one.mp3",
+                MetadataError::Storage(StorageError::new(
+                    StorageErrorKind::Changed,
+                    r"C:\secret absolute details",
+                )),
+                3,
+            ),
+        ];
+        let report = metadata_diagnostics(&reference(r"C:\music"), &values).unwrap();
+        assert_eq!(report.failed_observations, 2);
+        assert_eq!(report.affected_sources, 1);
+        assert_eq!(
+            report
+                .issues
+                .iter()
+                .map(|item| item.observation_index)
+                .collect::<Vec<_>>(),
+            [1, 2]
+        );
+        assert_eq!(report.issues[1].after_operations, 3);
+        assert_eq!(
+            report.issues[1].storage_kind,
+            Some(StorageErrorKind::Changed)
+        );
+        let json = serde_json::to_string(&report).unwrap();
+        assert!(!json.contains("secret"));
+        assert!(!json.contains("legacy data"));
+    }
+    #[test]
+    fn metadata_diagnostics_cap_details_but_count_the_complete_plan() {
+        let values = (0..27)
+            .map(|index| {
+                observation(
+                    &format!(r"C:\music\{}.mp3", index / 2),
+                    MetadataError::InputBudget,
+                    index,
+                )
+            })
+            .collect::<Vec<_>>();
+        let report = metadata_diagnostics(&reference(r"C:\music"), &values).unwrap();
+        assert_eq!(report.failed_observations, 27);
+        assert_eq!(report.affected_sources, 14);
+        assert!(report.truncated);
+        assert_eq!(report.issues.len(), 20);
+        assert_eq!(
+            report
+                .issues
+                .iter()
+                .map(|item| item.observation_index)
+                .collect::<Vec<_>>(),
+            (0..20).collect::<Vec<_>>()
+        );
+        assert!(
+            !metadata_diagnostics(&reference(r"C:\music"), &values[..20])
+                .unwrap()
+                .truncated
+        );
+    }
+    #[test]
+    fn metadata_diagnostics_labels_are_bounded_relative_and_bidi_safe() {
+        let values = vec![
+            observation(r"C:\music-other\private\leaf.mp3", MetadataError::Parser, 0),
+            observation(
+                &format!("C:\\music\\{}\u{202e}\n.mp3", "א".repeat(600)),
+                MetadataError::Parser,
+                0,
+            ),
+            observation("C:\\music\\a\u{202e}b\n.mp3", MetadataError::Parser, 0),
+        ];
+        let report = metadata_diagnostics(&reference(r"C:\music"), &values).unwrap();
+        assert_eq!(report.issues[0].relative_source, "leaf.mp3");
+        assert_eq!(report.issues[1].relative_source.chars().count(), 512);
+        assert!(report.issues[1].label_truncated);
+        assert_eq!(report.issues[2].relative_source, "a�b�.mp3");
+    }
+    #[test]
+    fn metadata_diagnostics_omit_legacy_only_and_keep_every_typed_error() {
+        let root = reference(r"C:\music");
+        assert!(metadata_diagnostics(&root, &[]).is_none());
+        assert!(
+            metadata_diagnostics(
+                &root,
+                &[observation(
+                    r"C:\music\one.mp3",
+                    MetadataError::LegacyOpen {
+                        kind: "ValueError".into(),
+                        detail: "opaque".into()
+                    },
+                    0
+                )]
+            )
+            .is_none()
+        );
+        let errors = [
+            MetadataError::UnsupportedPlatform,
+            MetadataError::SeekRequired,
+            MetadataError::InvalidInput,
+            MetadataError::Parser,
+            MetadataError::InputBudget,
+            MetadataError::NativeException,
+            MetadataError::UnsupportedClass,
+        ];
+        let values = errors
+            .into_iter()
+            .map(|error| observation(r"C:\music\one.mp3", error, 0))
+            .collect::<Vec<_>>();
+        let report = metadata_diagnostics(&root, &values).unwrap();
+        assert_eq!(
+            report
+                .issues
+                .iter()
+                .map(|issue| issue.error_kind)
+                .collect::<Vec<_>>(),
+            [
+                "UnsupportedPlatform",
+                "SeekRequired",
+                "InvalidInput",
+                "Parser",
+                "InputBudget",
+                "NativeException",
+                "UnsupportedClass"
+            ]
+        );
+    }
+    #[test]
+    fn metadata_diagnostics_optional_field_does_not_change_older_snapshot_shape() {
+        let mut readiness = ApplyReadiness {
+            supported: false,
+            reason: Some("Unsupported".into()),
+            operation_count: 0,
+            copy_mode: true,
+            source: "source".into(),
+            target: None,
+            mode: JobMode::Sort,
+            notice: None,
+            metadata_diagnostics: None,
+        };
+        assert!(
+            serde_json::to_value(&readiness)
+                .unwrap()
+                .get("metadata_diagnostics")
+                .is_none()
+        );
+        readiness.metadata_diagnostics = metadata_diagnostics(
+            &reference(r"C:\music"),
+            &[observation(r"C:\music\one.mp3", MetadataError::Parser, 0)],
+        );
+        assert_eq!(
+            serde_json::to_value(&readiness).unwrap()["metadata_diagnostics"]["issues"][0]["error_kind"],
+            "Parser"
+        );
+    }
+}

@@ -8,6 +8,39 @@ export function executionReadinessText(readiness:ApplyReadiness,developer:boolea
  if(readiness.mode==='FixNames')return developer?`${readiness.operation_count===1?'קובץ אחד':readiness.operation_count.toLocaleString('he-IL')+' קבצים'} בתוכנית לאימות ולתיקון לפי הצורך`:'מוכן לאימות הקבצים ולביצוע תיקונים לפי הצורך.';
  return developer?`${readiness.operation_count.toLocaleString('he-IL')} פעולות ${readiness.copy_mode?'העתקה':'העברה'} ממתינות לאישור`:'הקבצים מוכנים. אפשר לבדוק ולאשר את הביצוע.';
 }
+/** Refusal presentation uses exact host plan codes, never guesses from paths or
+ * free-form error substrings. This is display only and cannot authorize Apply. */
+const executionBlockerMessages:Readonly<Record<string,string>>={
+ METADATA_ADAPTER_LIMITATION:'קריאת פרטי הקבצים לא הושלמה, ולכן התוכנית נחסמה. פתח את פרטי החסימה לבירור.',
+ SOURCE_TARGET_OVERLAP:'תיקיות המקור והיעד חופפות. חזור להגדרות ובחר תיקיות נפרדות שאינן זו בתוך זו.',
+ LINK_OR_REPARSE:'בתיקיות שנבדקו נמצא קישור לקובץ או לתיקייה. ביצוע דרך קישורים אינו נתמך; בדוק את מיקום הקבצים.',
+ MISSING_IDENTITY:'לא ניתן לאמת את זהות הקבצים או התיקיות. בדוק שהם זמינים ובחר את התיקיות מחדש.',
+ UNKNOWN_CAPABILITY:'לא ניתן לאמת את הגישה הנדרשת לקבצים. בדוק את זמינות התיקיות והרשאות הגישה.',
+ AMBIGUOUS_DISPLAY_NAME:'נמצאו שמות שלא ניתן להבחין ביניהם בבטחה. יש לבדוק את הקבצים והתיקיות לפני ניסיון נוסף.',
+ CASE_COLLISION_REQUIRES_PROVIDER_RESOLUTION:'נמצאו שמות שמתנגשים זה בזה. יש לבדוק את שמות הקבצים והתיקיות לפני ניסיון נוסף.',
+ HARD_LINK_IDENTITY:'נמצאו כמה שמות שמפנים לאותו קובץ. ביצוע בתוכנית זו אינו נתמך; בדוק את הקבצים לפני ניסיון נוסף.',
+ RECOGNITION_UNAVAILABLE:'מודל הזיהוי הדרוש אינו זמין. יש לבדוק את הגדרות הזיהוי לפני ניסיון נוסף.',
+};
+export function executionRefusalSummary(readiness:ApplyReadiness|null|undefined,blockers:readonly string[]):string{
+ if(!readiness||readiness.supported)return '';
+ const messages=[...new Set(blockers)].filter(code=>Object.hasOwn(executionBlockerMessages,code)).map(code=>executionBlockerMessages[code]);
+ const diagnostic=readiness.metadata_diagnostics;
+ const counts=diagnostic?` נכשלו ${diagnostic.failed_observations.toLocaleString('he-IL')} בדיקות פרטים של ${diagnostic.affected_sources.toLocaleString('he-IL')} קבצים.`:'';
+ return `${messages[0]||'התוכנית לא אושרה לביצוע. פתח את פרטי החסימה לבירור הסיבה.'}${messages.length>1?' יש חסימות נוספות בפרטים.':''}${counts} לא בוצעו שינויים בקבצים.`;
+}
+/** The exact native explanation is opt-in diagnostic text. Do not append source
+ * or target paths, infer per-file counts, or replace the native reason. */
+export function executionRefusalDetails(readiness:ApplyReadiness|null|undefined,blockers:readonly string[]):string{
+ if(!readiness||readiness.supported)return '';
+ const lines=[readiness.reason||'לא נמסרה סיבה מפורטת מהמארח.',`פעולות מתוכננות בתוכנית המלאה: ${readiness.operation_count.toLocaleString('he-IL')}`,`חסימות שדווחו: ${blockers.join(' · ')||'לא דווחו חסימות נוספות.'}`];
+ const diagnostic=readiness.metadata_diagnostics;
+ if(diagnostic){
+  lines.push(`כשלים בקריאת פרטי קבצים: ${diagnostic.failed_observations}; קבצים שונים: ${diagnostic.affected_sources}. אותו קובץ עשוי להיבדק יותר מפעם אחת.`);
+  for(const issue of diagnostic.issues)lines.push(`תצפית ${issue.observation_index}; לאחר ${issue.after_operations} פעולות מתוכננות: \u2068${issue.relative_source}\u2069${issue.label_truncated?'… [השם קוצר]':''} — ${issue.error_kind}${issue.storage_kind?' / '+issue.storage_kind:''}`);
+  if(diagnostic.truncated)lines.push(`מוצגות ${diagnostic.issues.length} התצפיות הראשונות בלבד מתוך ${diagnostic.failed_observations}.`);
+ }
+ return lines.join('\n');
+}
 /** A zero total is an unknown byte extent, not an estimated zero-byte job. */
 export function executionBytesText(written:number,total:number):string{
  const observed=written.toLocaleString('he-IL');

@@ -6,7 +6,7 @@ import {installStudio} from './studio';
 import {installViewport} from './viewport';
 import {nativeHost,nativeRecoveryHost,openFooterLink,openProjectLink,openLocalLicenses,openExecutionDiagnostics,openRecovery} from './host';
 import {installAbout} from './about';
-import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,verificationWarning,developerRowSummary,recoveryNoticeText,verificationProgressText,resultFilename,executionReadinessText,executionBytesText,REPAIR_REVIEW_TEXT} from './result-presentation';
+import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,verificationWarning,developerRowSummary,recoveryNoticeText,verificationProgressText,resultFilename,executionReadinessText,executionBytesText,executionRefusalSummary,executionRefusalDetails,REPAIR_REVIEW_TEXT} from './result-presentation';
 import {kindLabel,reasonLabel,blockerLabel,warningPresentation,noticeLabel} from './presentation';
 import {PAGE_SIZE,PreviewController} from './state';
 import type {Settings,ImportEncoding,Mode,PlanRow,ExecutionItem} from './contracts';
@@ -231,6 +231,7 @@ function rowStatus(row:PlanRow){
  const s=controller.state;
  return simpleStatus(row,executionItems(row),s.snapshot?.apply?.copy_mode??s.settings.copy_mode,{repairEligible:s.snapshot?.apply?.supported,terminalResult:!!s.execution?.result&&!['preparing','running'].includes(s.execution.status),uncertain:!!s.execution&&!s.execution.result&&!['preparing','running'].includes(s.execution.status)});
 }
+let executionRefusalBinding='';
 function renderExecution(){
  const s=controller.state,e=s.execution,readiness=s.snapshot?.apply;
  $('execution-panel').hidden=!readiness&&!e;$('results').dataset.executionVisible=String(!!readiness||!!e);
@@ -243,7 +244,13 @@ function renderExecution(){
  $('execution-title').textContent=e?e.status==='complete'&&e.recovery_error?'הקבצים טופלו; נדרשת בדיקה':executionTitles[e.status]:running?'מאמת את הקבצים לפני ביצוע…':readiness?.supported?'התוכנית מוכנה לביצוע':'התוכנית זמינה לתצוגה בלבד';
  const r=e?.result;
  const developer=s.developerMode;
- $('execution-summary').textContent=developer?(r?r.repair?`${r.repair.renamed_files} שמות תוקנו · ${r.repair.repaired_files} תגיות תוקנו · ${r.repair.unchanged_files} ללא שינוי בתגיות · ${r.repair.unsupported_files} לא נתמכים · ${r.repair.retained_backup_bytes.toLocaleString('he-IL')} בתים נשמרו בגיבוי`:r.duets?simpleExecutionSummary(e!,readiness?.copy_mode??s.settings.copy_mode):`${r.committed_destinations.toLocaleString('he-IL')} יעדים נכתבו · ${r.moved_sources.toLocaleString('he-IL')} קבצי מקור הועברו · ${r.failed_operations.toLocaleString('he-IL')} נכשלו · ${r.blocked_operations.toLocaleString('he-IL')} לא בוצעו`:s.cancelRequested&&running?'ממתין לעצירה בטוחה…':e?.status==='running'&&e.operation!==null?`פעולה ${e.operation+1} מתוך ${e.operation_count} · ${executionBytesText(e.bytes_written,e.source_length)}`:e&&!['preparing','running'].includes(e.status)?(e.error??'לא התקבלו מוני ביצוע מאומתים. יש לבדוק את היומן.'):readiness?.supported?executionReadinessText(readiness,true):readiness?.reason??''):(e?simpleExecutionSummary(e,readiness?.copy_mode??s.settings.copy_mode):readiness?.supported?executionReadinessText(readiness,false):'לא בוצעו שינויים בקבצים.');
+ const refusal=!e&&!parentNeeded?executionRefusalDetails(readiness,s.snapshot?.blockers??[]):'';
+ const refusalDetails=$<HTMLDetailsElement>('execution-refusal');
+ const refusalBinding=refusal?JSON.stringify([s.snapshot?.job_id,s.snapshot?.plan_id,refusal]):'';
+ if(refusalBinding!==executionRefusalBinding)refusalDetails.open=false;
+ executionRefusalBinding=refusalBinding;refusalDetails.hidden=!refusal;
+ $('execution-refusal-details').textContent=refusal;
+ $('execution-summary').textContent=developer?(r?r.repair?`${r.repair.renamed_files} שמות תוקנו · ${r.repair.repaired_files} תגיות תוקנו · ${r.repair.unchanged_files} ללא שינוי בתגיות · ${r.repair.unsupported_files} לא נתמכים · ${r.repair.retained_backup_bytes.toLocaleString('he-IL')} בתים נשמרו בגיבוי`:r.duets?simpleExecutionSummary(e!,readiness?.copy_mode??s.settings.copy_mode):`${r.committed_destinations.toLocaleString('he-IL')} יעדים נכתבו · ${r.moved_sources.toLocaleString('he-IL')} קבצי מקור הועברו · ${r.failed_operations.toLocaleString('he-IL')} נכשלו · ${r.blocked_operations.toLocaleString('he-IL')} לא בוצעו`:s.cancelRequested&&running?'ממתין לעצירה בטוחה…':e?.status==='running'&&e.operation!==null?`פעולה ${e.operation+1} מתוך ${e.operation_count} · ${executionBytesText(e.bytes_written,e.source_length)}`:e&&!['preparing','running'].includes(e.status)?(e.error??'לא התקבלו מוני ביצוע מאומתים. יש לבדוק את היומן.'):readiness?.supported?executionReadinessText(readiness,true):readiness?.reason??''):(e?simpleExecutionSummary(e,readiness?.copy_mode??s.settings.copy_mode):readiness?.supported?executionReadinessText(readiness,false):executionRefusalSummary(readiness,s.snapshot?.blockers??[]));
  if(!developer&&running)$('execution-summary').textContent=s.cancelRequested?'ממתין לעצירה בטוחה…':e?.operation!==null&&e?.operation!==undefined?`התקדמות: ${e.operation+1} מתוך ${e.operation_count}`:'בודק שהקבצים מוכנים…';
  if(parentNeeded){$('execution-title').textContent='נדרשת בחירה מפורשת של תיקיית האב';$('execution-summary').textContent=parentPending?'ממתין לבחירת תיקיית האב…':'לאחר הבחירה תופעל בדיקת מיון חדשה. עדיין לא יבוצעו שינויים בקבצים.';}
  if(running&&e?.verification){

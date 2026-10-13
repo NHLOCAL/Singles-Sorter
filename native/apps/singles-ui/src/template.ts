@@ -216,6 +216,11 @@ export const appTemplate = `
         <button id="cancel-apply" class="secondary" hidden>עצור ביצוע</button>
       </div>
       <p id="album-source-parent-help" class="hint" hidden>הרשאת תיקיית האב תשמש רק לאימות ולהסרת תיקיית המקור שנבחרה, אם תתרוקן לאחר ההעברה המתוכננת. יש לוודא ששום יישום או משתמש אחר אינו משנה את המקור, היעד או תיקיית האב בזמן הביצוע.</p>
+      <details id="execution-refusal" class="execution-refusal" hidden>
+        <summary>פרטי החסימה</summary>
+        <p class="hint">מידע טכני לבירור הסיבה. ייתכן שמופיעים בו שמות קבצים או מיקומים.</p>
+        <pre id="execution-refusal-details" dir="auto"></pre>
+      </details>
       <progress id="execution-progress" aria-label="התקדמות הקובץ הנוכחי" hidden></progress>
       <p id="execution-recovery" class="warning" hidden></p>
       <p id="recovery-inspection" class="hint" hidden></p>
