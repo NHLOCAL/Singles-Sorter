@@ -1,10 +1,14 @@
-# Native read-only planning core and JSON CLI
+# Native Singles Sorter: Windows, Android and CLI
 
-This Rust workspace contains the contracts and pure single-song policy of the
-Windows-first rebuild. It lives beside the unchanged released application. The
-primary product target remains Windows; Android must eventually include the full
-feature set and local AI. Linux contract tests establish neither platform's
-final acceptance.
+This Rust workspace contains the shared original-v14 planner, original local AI,
+metadata readers and bounded execution backends. It lives beside the released
+Python application. Windows remains the primary product target.
+
+The accepted `77295d31` checkpoint has actual Windows staged/extracted desktop
+and CLI acceptance, plus an authored Android API30 x86_64 local-provider runtime
+matrix. See the [exact artifacts, capabilities and limits](docs/product-acceptance-matrix.md#current-772-windows-and-android-checkpoint-2026-10-13).
+Android ARM64 has compilation/ELF evidence only. These are development preview
+packages, not general arbitrary-library/provider or performance guarantees.
 
 ## Current scope
 
@@ -14,25 +18,28 @@ final acceptance.
   loaders used only by tests. Read-only v2 job planning now includes album/fix
   policy and an ordered virtual mutation timeline; see the
   [preview acceptance boundary](docs/phase2-preview-status.md).
-- `sorter-cli`: `singles-sorter classify --json`, `plan --json`, and
-  `capabilities --json`, plus `plan-files --json` for read-only real-file v2
-  previews. Supplied-facts v1 classify/plan bytes and schemas are preserved.
-  No-argument invocation shows help.
+- `sorter-cli`: read-only `classify`, `plan`, `capabilities` and `plan-files`
+  JSON interfaces, plus the selected Windows execution profile's explicit NDJSON
+  protocol and [v14-compatible positional commands](docs/legacy-cli.md).
+  Supplied-facts v1 bytes/schemas remain non-executable. No arguments shows help.
 - `sorter-io`: ordered CSV resources, read-only identity-aware storage, and an
   owned read-only TagLib metadata bridge with typed field/error observations.
   See [metadata build and platform gates](docs/metadata-bridge.md). Frozen Linux
   media parity does not establish arbitrary-library or native Windows/Android
   acceptance. V2 previews expose these limitations and the frozen coverage
   report explicitly.
-- `sorter-recognition` and `sorter-classifier`: opt-in, original-only local AI
-  for read-only `plan-files` previews; see [build, explicit bundle, limits and
-  acceptance boundaries](docs/original-ai-preview.md).
-- `sorter-executor`: identity-bound synthetic transfer/journal tests, opt-in
-  [owned Windows single-file Copy fixtures](docs/windows-owned-copy.md), and
-  [exclusive owned-directory / flat album Copy contracts](docs/synthetic-album-copy.md).
-  This is not a production mutation adapter or an apply entry point.
-- No tag writes, user-library transfers, UI AI activation, network service or
-  telemetry is enabled by this preview.
+- `sorter-recognition` and `sorter-classifier`: original-only local AI, packaged
+  for the selected Windows and Android products; no replacement model or silent
+  fallback. See [bundle requirements](docs/original-ai-preview.md).
+- `sorter-executor`: retained-plan Windows Copy/Move, same-volume rename,
+  stream-preserving copied Move, album execution, bounded filename/tag repair,
+  append-only journals and read-only restart inspection. Effects require native
+  eligibility, fresh validation and explicit confirmation; displayed or imported
+  plan data never grants file authority.
+- `apps/singles-ui` supplies the shared Hebrew/RTL frontend and Windows host;
+  `apps/singles-android` supplies the SAF/JNI provider host. Android operations
+  require the documented local-provider/quiescent contract. Neither recovery
+  route automatically resumes, rolls back or cleans up ambiguous effects.
 
 The core's production dependencies are serde, serde_json and SHA256 (sha2),
 with exact versions/checksums preserved in Cargo.lock. No Python runtime is required by this

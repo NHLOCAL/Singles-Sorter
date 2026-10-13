@@ -2,24 +2,24 @@
 
 This source connects the existing Hebrew frontend to the original Rust planner,
 TagLib metadata bridge and unchanged original recognition models. It is a
-read-only development preview until its exact APK/device acceptance is recorded.
-There is no Python runtime or model download in the APK.
+development preview with bounded actual provider execution. The exact 772
+checkpoint passes authored API30 x86_64 software-emulator checks on the local
+ExternalStorage DocumentsProvider. There is no Python runtime or model download
+in the APK. See the [source/artifact-bound acceptance record](../../docs/product-acceptance-matrix.md#current-772-windows-and-android-checkpoint-2026-10-13).
 
 ## Coverage and remaining work
 
 | Released feature | Android source route | Acceptance status |
 | --- | --- | --- |
-| Source/target selection | Native SAF tree picker, opaque UI tokens | Device proof pending |
-| Six original settings | Shared UI, typed private preferences, original core Settings | Java/frontend compilation only |
-| Personal artist list editing | Ordered rows, revision conflict check, original CSV parser for planning | Device proof pending |
-| CSV import/export | Explicit document picker, same Rust CSV parser/codecs, original-index edits, selected new-document export with readback | Java compilation; native/device proof pending |
-| Sort, artist folders, ABC, existing-only, duet, copy/move intent | Unchanged `plan_job_controlled` | Product native build pending |
-| Album detection and fallback | Original core traversal and metadata rules | Product native build/device oracle pending |
-| FixNames predictions | Original FixNames planner and metadata projection | Product native build/device oracle pending |
-| Original NER + secondary gate | Same original Rust recognition library, same five pinned assets | Prior fixture evidence does not validate this product APK |
-| Provider file mutation | No capability/command | Pending provider identity, journal and rollback acceptance |
-| Android 10/API 29+ | Required by provider ancestry verification | Current product runtime untested |
-| ARM64 and 16 KiB pages | Two-ABI build and 16 KiB link/ZIP alignment scripts | Runtime untested |
+| Source/target selection | Native SAF picker, opaque UI tokens; explicit limited parent selection for selected-root Album Move | Current 772 source/target flow passed; parent-specific cases retain earlier exact APK attribution |
+| Six original settings and personal CSV | Shared UI, typed private preferences, ordered Rust CSV resources | Implemented; Windows acceptance and Android cases are separately recorded, not exhaustive Android settings/CSV device proof |
+| Sort / Copy / Move / original AI | Original planner/models; native provider preflight and confirmation | Current Single Move and genuine two-destination original-AI duet Move passed, including observed retirement |
+| Albums | Original recognition; bounded provider copies, metadata and cleanup | Current selected-root Album Copy passed; nested Move/explicit-parent root Move and interruption cases retain prior exact APK attribution |
+| Fix names and tags | Original Fix planner; staged bounded shared repair writers and original backups | Current filename+title Both repair passed; nine-format/unchanged/unsupported/interruption matrix retains prior exact APK attribution |
+| Recovery and history | Read-only retained-effects review, explicit acknowledgment; no automatic replay/rollback | Three interrupted histories and nine private state/index/authority files preserved across the owned update; fresh current journals independently inspected |
+| Notices | Packaged full notices/source inventory, native viewer and explicit export | Current viewer/export/readback passed; all 437 exported entries match authentic APK bytes |
+| Android API 29+ | Source floor for provider ancestry verification | Actual runtime evidence is API30 x86_64 software emulator only |
+| ARM64 and 16 KiB pages | Both ABIs compiled; ELF/load and ZIP alignment verified | Physical ARM64 and 16 KiB-page runtime untested |
 
 Windows and Android use the same frontend and sorting implementation. Android's
 native transport supplies local platform functions; it does not reinterpret the
@@ -45,14 +45,18 @@ Each private snapshot is at most 64 MiB and a job at most 512 MiB; descriptor/pi
 spooling is also bounded. Read errors or snapshot-budget failures fail the job,
 not a silently incomplete successful preview. Cleanup touches only the exact
 owned temporary files/directory. Abrupt OS process death may leave cache files;
-restart cleanup/recovery remains to be validated before release.
+read-only interrupted-operation inspection is now verified in the bounded device
+matrix. It does not authorize deletion of unknown leftovers or automatic replay.
 
 Metadata uses a hash-verified private snapshot. The original SAF tree/document
 reference remains provenance. Provider size/time are observations, not immutable
-identity or a fabricated same-handle ReadBinding. All previews advertise
-`executable:false`; provider mutations remain unavailable. Provider content can
-change after a preview. Snapshot hashes and original model runtime identity are
-retained in the native result, separately from frontend display paths.
+identity or a fabricated same-handle ReadBinding. The Rust snapshot-only preview's
+`executable:false` never grants mutation authority. A separate native provider
+admission can make an eligible retained plan ready for confirmation; fresh
+preflight and actual provider observations still govern Apply. Provider content
+can change after preview, and the supported contract requires quiescent writers.
+Snapshot hashes/model identity remain separate from frontend display paths.
+Provider operations are not atomic multi-document transactions.
 
 ## Reproduction
 
@@ -60,8 +64,20 @@ retained in the native result, separately from frontend display paths.
 and authenticated PCRE2 source using official NDK r27d. `build-preview.sh` consumes
 those libraries, the original five-file bundle and `vite build --mode android
 --base /assets/` output. Both scripts keep build outputs outside Git. Signing is
-an ephemeral development identity, never a production key. Do not upload its
-private keystore. The workflow's final acceptance remains `--locked`, fmt, tests,
+an ephemeral development identity, never a production key. The authentic 772 APK
+SHA256 is `05ff5d598868686b49f86c9d8913be48ff8650de5a375ac38687140a520389b1`;
+its APK v3 signature is valid, but a fresh key is generated per build. It cannot
+update an installed same-package app signed by a different key. Do not uninstall
+a valued installation merely to bypass that mismatch: private history would be
+lost without a separately verified preservation route.
+
+For the owned acceptance emulator only, the identical payload was re-signed with
+its existing QA key to preserve history. The installed QA artifact SHA256 is
+`e40b70e10c27201f08a22522c344ec7184f735f6e0bafe9c5f3a28ad16f59147`;
+all 452 non-signature entries are byte-identical to the authentic APK. Actual
+device results refer to that QA artifact, not an installation of the authentic
+APK. This does not establish a production signing/update channel. Do not upload
+private keystores. The workflow's final acceptance remains `--locked`, fmt, tests,
 and strict Clippy; the optional diagnostics job only emits a proposed source diff.
 
 The product floor is API 29 because `DocumentsContract.isChildDocument` is not

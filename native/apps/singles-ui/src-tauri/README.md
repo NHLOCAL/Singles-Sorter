@@ -1,4 +1,15 @@
-# Read-only desktop host: integration boundary
+# Desktop host: integration boundary
+
+The selected Windows host now supports retained-plan execution and read-only
+restart; full staged/extracted GUI acceptance passed at 772.
+See the [current capability and evidence matrix](../../../docs/product-acceptance-matrix.md).
+
+## Historical initial contract
+
+The following records the earlier read-only/synthetic integration stage. Its
+then-unavailable feature statements are historical, not the current product
+capability list. Native authority and current acceptance limits are documented
+in the linked matrix.
 
 This is the first preview slice, not a complete desktop/Android release. It calls
 `sorter_core::job_plan::plan_job_controlled` directly with the existing desktop storage and

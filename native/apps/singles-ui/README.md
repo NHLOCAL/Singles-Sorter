@@ -1,8 +1,10 @@
-# Shared Singles Sorter interface: first read-only slice
+# Shared Singles Sorter interface
 
-This is the new Hebrew/RTL renderer and thin local Tauri host. It preserves the
-released blue header, source/target rows, paired sort/fix actions and visible
-options card. It is **not a complete replacement release**.
+The Hebrew/RTL renderer supports the Windows Tauri and Android SAF/JNI hosts,
+with separate Sort/Fix modes, native confirmation and truthful observed results.
+The [accepted 772 checkpoint](../../docs/product-acceptance-matrix.md#current-772-windows-and-android-checkpoint-2026-10-13)
+records complete staged/extracted Windows GUI gates and bounded Android runtime
+proof. These remain development previews with explicit platform/storage limits.
 
 ## Implemented surface (subject to native platform gates)
 
@@ -12,14 +14,17 @@ options card. It is **not a complete replacement release**.
 - Sort and target-free FixNames previews, ordered host-projected rows, reasons,
   blockers, bounded result paging, explicit configured-AI failure.
 - Help/About/What's New dialogs, advanced duet/AI controls, keyboard dismissal.
-- No file mutation or executable plan import, shell or filesystem frontend API.
+- Eligible native Copy/Move, albums and bounded filename/tag repair; read-only
+  restart inspection. No executable plan import, general shell or filesystem
+  frontend API.
 
 Preference persistence and ordered personal CSV editing/import/export are implemented
 through native profile commands in the Task 2 continuation below. The first five
 settings save explicitly; duet saves immediately. No localStorage substitute or
-false migration is used. Native inference, Android SAF, transfer execution and
-update handling remain incomplete. All settings/list changes are separate from
-read-only music previews.
+false migration is used. Native inference, Android SAF and eligible execution
+are integrated. All settings/list changes remain separate from read-only music
+previews; Apply requires a retained native plan and confirmation. Automatic
+migration/updating and arbitrary-provider compatibility are not established.
 
 ## Development and verification
 
@@ -54,7 +59,7 @@ Pinned package versions were checked at the official npm registry on
 The lockfile retains full transitive resolution/integrity. Renderer bytes do
 not describe complete installer size or WebView memory consumption.
 
-## Task 2 profile/list continuation (not yet native platform acceptance)
+## Profile and personal-list behavior
 
 The continued interface calls a dedicated native development profile. The five
 main checkboxes are saved only by **Save settings**. The duet radio writes
@@ -103,9 +108,10 @@ binary and real IPC against an owned synthetic MP3, checks source hashes and
 an unchanged target, captures screenshots, and verifies preference/list reopen.
 No embedded WebDriver server or mock IPC is added to the application.
 
-This harness is prepared but **has not yet passed a native Windows run**. Its
-syntax check is not runtime acceptance. Native picker automation, Narrator,
-DPI, Android, apply and recovery remain separate gates. Primary driver research:
+The exact 772 Windows run passed native pickers, settings/CSV export, physical
+Apply and read-only restart in staged and extracted packages. Browser syntax
+checks alone are not runtime acceptance; Narrator, system-DPI and Android
+acceptance are separate. Primary driver research:
 https://v2.tauri.app/develop/tests/webdriver/ and
 https://v2.tauri.app/develop/tests/webdriver/example/selenium/ .
 
@@ -121,12 +127,10 @@ used. The script requires both Task 2 controls and successful settings/list
 persistence after restart, and fails on unrecognized native dialog controls.
 It uploads actual screenshots and JSON only when produced by the runtime.
 
-This workflow source is an **unrun acceptance gate**, not proof of Windows
-success. It must be integrated on the clean publication branch with the reviewed
-native dependency acquisition fixes, without restoring vendor archives. Native
-picker controls may require a source-reviewed correction after the first actual
-Windows run. Android, Narrator, DPI and physical apply/recovery remain separate
-acceptance gates.
+This workflow passed the complete 772 Windows gates. Exact binary, package and
+receipt hashes are recorded in the acceptance matrix; later source changes need
+their own evidence. Android has its separately attributed runtime record;
+Narrator and system-DPI acceptance remain open.
 
 Primary references checked 2026-10-11:
 - https://v2.tauri.app/develop/tests/webdriver/ci/
@@ -151,7 +155,8 @@ Pinned CLI 2.12.2 filters required-features during binary discovery and can fall
 back to the Cargo package name when desktop is enabled only through defaults.
 The configured Cargo binary remains singles-sorter-preview.exe; there is no
 mainBinaryName override. Build adds tauri/custom-protocol and embeds frontendDist.
-The launch timeout's root cause still requires the Windows diagnostic evidence.
+The early launch-timeout investigation below is historical; current Windows
+launch and full consumer acceptance passed at 772.
 
 References inspected 11 October 2026:
 - https://docs.rs/crate/tauri-cli/2.12.2/source/src/interface/rust.rs

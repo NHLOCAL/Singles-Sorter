@@ -4,12 +4,14 @@ Evidence categories are intentionally separate: released-policy parity,
 read-only real-file behavior, physical execution, and actual product interaction.
 A green test in one column does not establish the others. New candidate checks
 below require final-head CI results; the presence of a test is not a passing run.
-The current complete Windows desktop checkpoint is 78b, recorded below: both
-staged and ZIP-extracted selected applications passed the full interaction and
-read-only restart suites. The matching CLI package passes 58 cases in each lane.
-The bounded 66-case / 64-vector original/native settings corpus first passed at
-26e and has been repeated on later exact sources. These supersede older gaps
-only within their stated bounds; arbitrary libraries and Android remain separate.
+The current accepted checkpoint is [772](#current-772-windows-and-android-checkpoint-2026-10-13):
+both staged and ZIP-extracted Windows applications pass full interaction and
+read-only restart suites, and each CLI lane passes 58 cases. The bounded
+66-case / 64-vector original/native settings corpus also passes on that exact
+source. Android has a separate actual API30 x86_64 local-provider record, with
+current operations distinguished from prior-binary format/fault evidence.
+These supersede older gaps only within their stated bounds; arbitrary libraries,
+providers, physical ARM64 runtime and general speed claims remain unestablished.
 
 | Released behavior / flow | Planning and compatibility | Physical/product boundary |
 | --- | --- | --- |
@@ -37,7 +39,7 @@ only within their stated bounds; arbitrary libraries and Android remain separate
 | CLI NDJSON execution | One-process inspected-digest handshake | Same selected Windows backend; machine protocol remains explicit |
 | CLI positional source/target and flags | Frozen v14 declarations/probes pinned, including all eight flags and default Move | The retained planner/executor runs without an interactive JSON prompt. Actual 2ec release/staged/extracted CLI acceptance covers 58 cases with the selected feature/notice profile, including newer formats and cross-volume Albums; desktop and restart consumer gates remain separate |
 | CLI log level and file diagnostics | Original five levels, local timestamp, UTF-8 CWD/logs filename and matching stderr/file filtering | Pinned/exclusive sink with pre-create media/journal overlap refusal and honest log failure reporting. Ten positional and eight sink cases passed actual Windows native tests at f181; logging levels/files also passed the actual 041 staged/extracted CLI gates. Explicit dry-run and machine protocols create no file log |
-| Android | Shared UI remains fail-closed without native apply eligibility | Separate Android workstream; Windows proof is not Android/provider/ARM64 proof |
+| Android | Shared original planner/models; independent native provider admission, confirmation and read-only recovery | Current 772 Single Move, Fix Both, root Album Copy, original-AI duet Move, retained histories and notice export pass on API30 x86_64 local provider. Earlier format/parent/fault cases retain their exact APK attribution. ARM64 compile/ELF only; see signing and provider limits below |
 | Portable Windows artifact | Explicit original-AI + selected-execution feature profile | EXE-bound staged/extracted Windows checks passed original AI, singles Copy/Move, bounded MP3/FLAC/Ogg repair, same-volume albums and the requested UI polish. The later 78b checkpoint additionally passes copied Move, all six bounded repair-format families, cross-volume Albums and read-only process restart |
 
 ## Earlier verification record
@@ -74,7 +76,7 @@ parsed does not imply that every resulting operation is physically supported.
 | Filename cleanup | Original underscore/hyphen/substrings/whitespace and Windows-character sanitization, collision suffix order | Positional source-only MP3 Fix passed the actual Windows subprocess gate; bounded standalone and desktop consumers pass at 78b; arbitrary-file representations remain separate |
 | Album handling | Single-keyword exclusions, track/album/artist inspection order, protected per-file errors, nested and mixed traversal timing | Actual staged/extracted Windows UI passed bounded album Copy, root Move and mixed Move; 26e later covers all 64 settings vectors in the authored paired sorting corpus. Cross-volume Album CLI consumers passed at 2ec; desktop consumers also pass at 78b; broader UI combinations remain separate work |
 | Duet effects | Original artist order and duplication; first/all-artist toggle | Copied Move composes complete multi-destination cohorts with the existing original-order runner; no early source deletion. A nonempty exact original eligible cohort is supported by the reviewed admission; zero eligible targets retain the source through a separately validated no-op. Cross-volume Album CLI consumer acceptance passed at 2ec; desktop consumer acceptance also passes at 78b |
-| Failures and cancellation | Planning metadata failures are not silently converted into success; native actual effects remain explicit | Read-only repair recovery now passes both ordinary and short Windows path spellings; process-kill/restart UI remains separate |
+| Failures and cancellation | Planning metadata failures are not silently converted into success; native actual effects remain explicit | Actual Windows staged/extracted restart and cancellation checks pass at 772; Android interruption/recovery evidence retains its stated APK and provider bounds. No automatic replay/rollback |
 | File lists and settings | Bundled/personal ordering, duplicate rows, CSV editing/import/export and every six-boolean setting | The 26e paired engine corpus covers all 64 boolean vectors; actual CSV edit/import/export and explicit-save versus immediate-duet persistence pass at 78b; the UI does not claim exhaustive visual testing of every settings combination |
 | User interface | Hebrew RTL, compact display, immediate help dismissal, richer About, default-minimal results and explicit developer mode | Actual staged/extracted Windows evidence covers advanced-Settings developer placement, independent inactive filtering, long-name bounds and stable footer; Android/device and broader settings combinations remain separate |
 
@@ -121,7 +123,10 @@ separately from the original album/artist counters. The confirmation states the
 no-concurrent-writer condition. Bounds and unsupported plans stay explicit;
 no automatic replay, journal deletion or guessed cleanup is introduced.
 
-## Paired actual-Windows audit
+## Initial paired actual-Windows audit (historical)
+
+The following records the initial 36-case lane before the later accepted 66-case
+corpus. Its pending statements are historical; see the current checkpoint.
 
 The diagnostic lane compares the exact frozen v14 Python implementation against
 fresh selected EXE executions in separate authored trees. It records 32 duet-disabled settings
@@ -619,3 +624,78 @@ representations and quiescent local Windows filesystem requirements remain as
 listed above. This checkpoint does not claim arbitrary-library coverage, a
 clean machine lacking the documented runtime prerequisites, every assistive
 technology/system-DPI configuration, or Android/provider/physical-device acceptance.
+
+
+## Current 772 Windows and Android checkpoint, 2026-10-13
+
+All binaries in this checkpoint were built from synthetic CI source
+`5a69246e1d028b7ab1d577011bde21d092f011c5`, tree
+`503f93b95371448e31ae1230c29bc5e3643d82a9`, equal to public source
+`77295d3118a2576847db65dc8f2b5c84676a15e5`. A later documentation-only commit
+is not the source of these frozen binaries. Optional history-index optimization
+is excluded. Historical checkpoints above keep their original source attribution.
+
+### Windows
+
+The [desktop run](https://github.com/NHLOCAL/Singles-Sorter/actions/runs/38329930083)
+passed feature-off, selected host and both complete staged/extracted GUI lanes.
+Each selected lane includes the bounded Copy/Move/duet/Album/cross-volume,
+six repair-format families, settings/CSV/native Export and 11 fresh restart
+cases. Both complete receipt sets, all 54 layout and 160 stress measurements,
+package notices/models/inventory, PE imports and representative actual pixels
+were independently checked. The [CLI run](https://github.com/NHLOCAL/Singles-Sorter/actions/runs/38329930045)
+passed both 58-case/56-check package lanes and the same bounded 66-case/64-vector
+original-v14 comparison. Eight whole-Album atomic grouping differences remain
+explicit; historical all-skipped source deletion is intentionally not reproduced.
+
+| Package | Compressed bytes | Logical unpacked bytes | SHA256 |
+| --- | ---: | ---: | --- |
+| Windows desktop ZIP | 17,055,997 | 49,127,535 (565 files) | `4dbdba68ce1eae6c5a0fb2eb28ecc71c06b092f76d8adfd03875b3e34f3fcc68` |
+| Windows CLI ZIP | 12,380,221 | 34,796,064 (144 files) | `fed3ac3243cf5adc977f74fb1c046db3b157d493a2b0e9136c99d368d56baeff` |
+
+Desktop EXE SHA256:
+`2cfd09c3ffd7f7c24f08fffcf9b4b90e682eb30afca23274756c602fd133d34f`.
+CLI EXE SHA256:
+`125415017e234ed6f355aa50dcf8f841f5c83d039ec28969b391e4ae36e1ea6c`.
+Whole-Album historical recovery verifies recorded main bytes, full identities
+and directory membership; those journals contain no historical ADS baseline.
+The existing ordinary NTFS/quiescent-writer and supported representation limits
+remain. CSS text scaling/narrow viewport evidence is not system-DPI or Narrator
+acceptance. Audio preservation uses exact encoded bytes and per-decoder
+before/after checks; different FFmpeg versions need not produce identical PCM
+hashes. No general speedup follows from small, cache-uncontrolled process trials.
+
+### Android
+
+The authentic APK is 23,075,795 bytes, SHA256
+`05ff5d598868686b49f86c9d8913be48ff8650de5a375ac38687140a520389b1`.
+Its v3 development-preview signature is valid. The build uses a fresh per-build
+key, so it cannot update a differently signed installation of the same package.
+The owned emulator installed QA-signed SHA256
+`e40b70e10c27201f08a22522c344ec7184f735f6e0bafe9c5f3a28ad16f59147`:
+all 452 non-signature entries match the authentic APK. This allowed an owned
+history-preserving update; it is not a production signing/update guarantee.
+
+Actual runtime is one software-emulated API30 x86_64 device using the local
+ExternalStorage DocumentsProvider and quiescent owned fixtures. Current checks
+independently passed Single Move, filename/title Fix Both with exact backup,
+selected-root Album Copy (five files, sources retained), and genuine original-AI
+duet Move (two verified destinations before one source retirement). Native
+startup/JNI passed; an earlier emulator System UI ANR is retained separately.
+Three interrupted records and all nine private authority/state/index files
+survived the update unchanged. Final inventory preserved 140 prior paths and
+19 current-operation paths, with only eight authorized export additions.
+The notice viewer and native export/readback passed; all 437 exported entries
+(inventory plus 436 files) match authentic packaged bytes.
+
+The broader nine-format/33-field repair, explicit-parent root/nested Album Move,
+zero/one-eligible duets and interruption/read-only recovery evidence remains
+bound to its earlier c151/f5ed/78e test APKs; it is not relabeled as a complete
+rerun on 772. Both ARM64 and x86_64 libraries were compiled and their ELF imports,
+16 KiB load alignment and ZIP alignment checked. Physical ARM64, physical-phone
+speed, arbitrary/cloud providers and 16 KiB-page device runtime remain untested.
+Provider calls are not atomic CAS or multi-document transactions. Private journal
+tampering/partial acknowledgment-write negatives and in-flight notice export
+cancellation remain source/test-only; picker cancellation was observed. Recovery
+inspection authorizes no automatic replay, rollback or cleanup. Packaged notice
+verification is not blanket legal clearance.

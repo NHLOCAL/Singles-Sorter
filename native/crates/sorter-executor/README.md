@@ -1,4 +1,15 @@
-# Experimental execution contracts
+# Execution contracts
+
+Selected Windows Copy/Move, albums, bounded repair and read-only restart now
+have actual native and staged/extracted acceptance at 772.
+See the [current capability and evidence matrix](../../docs/product-acceptance-matrix.md).
+
+## Historical initial contract
+
+The following records the earlier read-only/synthetic integration stage. Its
+then-unavailable feature statements are historical, not the current product
+capability list. Native authority and current acceptance limits are documented
+in the linked matrix.
 
 This crate provides binding, append-only physical journals, read-only recovery,
 and bounded streaming transfer contracts. The transfer driver and outcome
