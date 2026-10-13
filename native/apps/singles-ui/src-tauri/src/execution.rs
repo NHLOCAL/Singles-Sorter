@@ -1401,3 +1401,132 @@ mod metadata_diagnostic_tests {
         );
     }
 }
+#[cfg(all(test, windows, feature = "selected-windows-execution"))]
+mod metadata_readiness_tests {
+    use super::*;
+    use serde_json::json;
+    mod fixtures {
+        include!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../../tests/metadata_read_compatibility/fixture_support.rs"
+        ));
+    }
+    type TreeRow = (PathBuf, bool, u64, std::time::SystemTime, Vec<u8>);
+    fn tree(root: &Path) -> Vec<TreeRow> {
+        fn visit(root: &Path, path: &Path, rows: &mut Vec<TreeRow>) {
+            let metadata = std::fs::symlink_metadata(path).unwrap();
+            assert!(!metadata.file_type().is_symlink());
+            rows.push((
+                path.strip_prefix(root).unwrap().to_owned(),
+                metadata.is_dir(),
+                metadata.len(),
+                metadata.modified().unwrap(),
+                if metadata.is_file() {
+                    std::fs::read(path).unwrap()
+                } else {
+                    vec![]
+                },
+            ));
+            if metadata.is_dir() {
+                for entry in std::fs::read_dir(path).unwrap() {
+                    visit(root, &entry.unwrap().path(), rows);
+                }
+            }
+        }
+        let mut rows = vec![];
+        visit(root, root, &mut rows);
+        rows.sort_by(|a, b| a.0.cmp(&b.0));
+        rows
+    }
+    #[test]
+    fn mixed_103_file_host_advertises_copy_and_move_without_preview_effects() {
+        for copy in [true, false] {
+            let owned = tempfile::tempdir().unwrap();
+            let source = owned.path().canonicalize().unwrap().join("source");
+            let target = owned.path().canonicalize().unwrap().join("target");
+            let journal = owned.path().canonicalize().unwrap().join("journal");
+            for path in [&source, &target, &journal] {
+                std::fs::create_dir(path).unwrap();
+            }
+            fixtures::mixed_library(&source);
+            let before = tree(owned.path());
+            assert_eq!(before.iter().filter(|row| !row.1).count(), 103);
+            let host = Host::default();
+            host.set_journal_directory(journal).unwrap();
+            let s = host.select_path(Role::Source, source).unwrap();
+            let t = host.select_path(Role::Target, target).unwrap();
+            let request = serde_json::from_value(json!({"mode":"Sort","source_token":s.token,"target_token":t.token,"settings":{"copy_mode":copy,"main_folder_only":false,"singles_folder":false,"abc_sort":false,"exist_only":false,"duet_mode":false},"ai_profile":"Disabled"})).unwrap();
+            let job = host.preview_with_personal(request, Some("זמר אלבום,Mapped Artist\nשלום עולם,Mapped Artist\nFallback Artist,Mapped Artist\n".as_bytes().to_vec())).unwrap();
+            let snapshot = host.snapshot(&job.job_id).unwrap();
+            assert_eq!(snapshot.status, "completed", "{snapshot:?}");
+            let readiness = snapshot.apply.as_ref().unwrap();
+            assert!(readiness.supported, "{snapshot:?}");
+            assert!(readiness.reason.is_none() && readiness.metadata_diagnostics.is_none());
+            assert_eq!(readiness.operation_count, 24, "{snapshot:?}");
+            assert!(
+                !snapshot
+                    .blockers
+                    .iter()
+                    .any(|value| value == "METADATA_ADAPTER_LIMITATION")
+            );
+            assert_eq!(tree(owned.path()), before);
+            assert!(host.claim().is_ok());
+        }
+    }
+    #[test]
+    fn unsupported_album_child_is_attributed_in_host_refusal_without_effects() {
+        let owned = tempfile::tempdir().unwrap();
+        let source = owned.path().canonicalize().unwrap().join("source");
+        let target = owned.path().canonicalize().unwrap().join("target");
+        let journal = owned.path().canonicalize().unwrap().join("journal");
+        for path in [&source, &target, &journal] {
+            std::fs::create_dir(path).unwrap();
+        }
+        let album = source.join("protected-album");
+        std::fs::create_dir(&album).unwrap();
+        for index in 0..4 {
+            std::fs::write(album.join(format!("{index}.mp3")), fixtures::fixture(2, 0)).unwrap();
+        }
+        std::fs::write(album.join("unsupported.mp3"), fixtures::fixture(3, 0xc0)).unwrap();
+        let before = tree(owned.path());
+        let host = Host::default();
+        host.set_journal_directory(journal).unwrap();
+        let s = host.select_path(Role::Source, source).unwrap();
+        let t = host.select_path(Role::Target, target).unwrap();
+        let request = serde_json::from_value(json!({"mode":"Sort","source_token":s.token,"target_token":t.token,"settings":{"copy_mode":true,"main_folder_only":false,"singles_folder":false,"abc_sort":false,"exist_only":false,"duet_mode":false},"ai_profile":"Disabled"})).unwrap();
+        let job = host
+            .preview_with_personal(
+                request,
+                Some(
+                    "זמר אלבום,Mapped Artist\nשלום עולם,Mapped Artist\n"
+                        .as_bytes()
+                        .to_vec(),
+                ),
+            )
+            .unwrap();
+        let snapshot = host.snapshot(&job.job_id).unwrap();
+        assert_eq!(snapshot.status, "completed", "{snapshot:?}");
+        let readiness = snapshot.apply.as_ref().unwrap();
+        assert!(
+            !readiness.supported && readiness.reason.is_some(),
+            "{snapshot:?}"
+        );
+        assert!(
+            snapshot
+                .blockers
+                .iter()
+                .any(|value| value == "METADATA_ADAPTER_LIMITATION")
+        );
+        let report = readiness.metadata_diagnostics.as_ref().unwrap();
+        assert!(report.failed_observations > 0);
+        assert_eq!(report.affected_sources, 1);
+        assert!(!report.truncated);
+        assert!(report.issues.iter().all(|issue| issue.relative_source
+            == r"protected-album\unsupported.mp3"
+            && issue.error_kind == "UnsupportedClass"));
+        let wire = serde_json::to_string(report).unwrap();
+        assert!(!wire.contains(&owned.path().to_string_lossy().replace('\\', "\\\\")));
+        assert_eq!(tree(owned.path()), before);
+        assert!(host.claim().is_ok());
+    }
+}
