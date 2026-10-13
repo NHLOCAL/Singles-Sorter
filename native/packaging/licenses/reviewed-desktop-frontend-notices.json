@@ -2,7 +2,7 @@
   "schema_version": 1,
   "root": "native/apps/singles-ui",
   "lock_sha256_lf": "b4a64eddbbc9ab8dc5cde7457a8a42f717897516ecaf3b62c8ed28eee826b96a",
-  "manifest_sha256_lf": "9a84f27f2f5162ed038a4523be2cbd470339c27f2285e438e9609c7a1c3ac403",
+  "manifest_sha256_lf": "73fe02d6fc1cbd23b3b93078c2351a72ecc2f705dbe743c80415cc04d2cd2e36",
   "production_packages": [
     "node_modules/@tauri-apps/api"
   ],

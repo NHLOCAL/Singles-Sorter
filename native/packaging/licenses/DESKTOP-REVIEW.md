@@ -140,3 +140,31 @@ The policy now pins the actual default-enabled combined feature graph used by
 Tauri's production build and the collector. Runtime archive/checksum/full-notice
 checks are unchanged. This resolution review does not establish Windows runtime
 acceptance; real original-AI and selected-execution package gates remain required.
+
+## Shared frontend test-script manifest review, 2026-10-13
+
+The actual Android `1a5f13b0` collection stopped at the shared collector's
+`Reviewed frontend manifest changed` check after both ABI compilations.
+Compared accepted Windows source `129a00a6472c2653a875d883e7499b1ab024db98`
+with integrated source `52960778212fccd485b143e1c5cc2847130435c3`:
+
+- The only `package.json` change adds script `test:renderer:album-parent`,
+  invoking `python tests/renderer_album_source_parent.py`.
+- All existing scripts and all parsed non-script fields are identical.
+  Production dependency remains `@tauri-apps/api` `2.12.3`; development
+  dependencies remain `@tauri-apps/cli` `2.12.2`, `typescript` `7.0.2`,
+  `vite` `8.3.4`, and `vitest` `5.0.3`.
+- `package-lock.json` is byte-identical; its LF SHA256 remains
+  `b4a64eddbbc9ab8dc5cde7457a8a42f717897516ecaf3b62c8ed28eee826b96a`.
+  Thus the locked package identities, dependency graph and integrity values
+  did not change.
+
+Only the reviewed manifest LF SHA256 advances from
+`9a84f27f2f5162ed038a4523be2cbd470339c27f2285e438e9609c7a1c3ac403` to
+`73fe02d6fc1cbd23b3b93078c2351a72ecc2f705dbe743c80415cc04d2cd2e36`.
+No notice, asset, archive, production-package or lock policy changes. Both
+desktop and Android keep the shared strict whole-manifest check, including
+script-only drift. A repository manifest/lock regression reproduced the old
+pin failure before this update, and a synthetic script-only mutation still
+refuses collection before output. This source review is not an actual rebuilt
+Android or desktop package acceptance result.

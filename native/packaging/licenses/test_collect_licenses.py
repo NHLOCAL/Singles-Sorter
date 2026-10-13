@@ -292,6 +292,25 @@ class LicenseCollectorTests(unittest.TestCase):
         self.assertEqual(rows[0]["component"], "demo")
         self.assertEqual((self.output / rows[0]["notices"][0]).read_bytes(), b"Full original upstream license text\n")
 
+    def test_repository_frontend_manifest_and_lock_match_reviewed_policy(self):
+        policy = json.loads(Path(__file__).with_name("reviewed-desktop-frontend-notices.json").read_bytes())
+        repo = Path(__file__).resolve().parents[3]
+        for name, key in (("package.json", "manifest_sha256_lf"),
+                          ("package-lock.json", "lock_sha256_lf")):
+            with self.subTest(name=name):
+                data = (repo / policy["root"] / name).read_bytes().replace(b"\r\n", b"\n")
+                self.assertEqual(collector.sha256(data), policy[key])
+
+    def test_frontend_script_only_manifest_drift_still_requires_review(self):
+        policy, cache, _, _ = self.frontend_fixture()
+        manifest = self.repo / "frontend/package.json"
+        data = json.loads(manifest.read_bytes())
+        data["scripts"] = {"test:renderer:album-parent": "python tests/renderer_album_source_parent.py"}
+        manifest.write_bytes(json.dumps(data).encode())
+        with self.assertRaisesRegex(collector.CollectionError, "Reviewed frontend manifest changed"):
+            collector.collect_frontend(self.writer, self.repo, policy, cache)
+        self.assertEqual(list(self.output.iterdir()), [])
+
     def test_frontend_corrupt_archive_rejected(self):
         policy, cache, archive, _ = self.frontend_fixture()
         archive.write_bytes(archive.read_bytes() + b"drift")
