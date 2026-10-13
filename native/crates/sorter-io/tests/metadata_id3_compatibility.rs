@@ -141,9 +141,9 @@ fn real_provider_mixed_103_item_plan_preserves_album_and_filename_fallback() {
         &mut DisabledRecognition,
     )
     .unwrap();
-    #[cfg(windows)]
-    assert_eq!(plan.blockers, vec!["PHYSICAL_APPLY_UNAVAILABLE"]);
-    #[cfg(target_os = "linux")]
+    // Bare DesktopStorage does not establish read/list capabilities on either
+    // platform. The executor's WindowsPlanningStorage fixture separately proves
+    // selected execution readiness after those capabilities are inspected.
     assert_eq!(
         plan.blockers,
         vec!["PHYSICAL_APPLY_UNAVAILABLE", "UNKNOWN_CAPABILITY"]
