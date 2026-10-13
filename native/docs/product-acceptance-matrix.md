@@ -4,42 +4,43 @@ Evidence categories are intentionally separate: released-policy parity,
 read-only real-file behavior, physical execution, and actual product interaction.
 A green test in one column does not establish the others. New candidate checks
 below require final-head CI results; the presence of a test is not a passing run.
-The latest actual Windows sorting-settings checkpoint is the 66-case / 64-vector
-26e result, repeated at 2ec. The 2ec CLI consumer checkpoint below also passes
-58 real staged/extracted subprocess cases. These supersede the older 041 gaps
-only within their stated bounds; desktop and unrelated product acceptance remain
-separate.
+The current complete Windows desktop checkpoint is 78b, recorded below: both
+staged and ZIP-extracted selected applications passed the full interaction and
+read-only restart suites. The matching CLI package passes 58 cases in each lane.
+The bounded 66-case / 64-vector original/native settings corpus first passed at
+26e and has been repeated on later exact sources. These supersede older gaps
+only within their stated bounds; arbitrary libraries and Android remain separate.
 
 | Released behavior / flow | Planning and compatibility | Physical/product boundary |
 | --- | --- | --- |
-| Copy / Move toggle | Exact boolean and v14 virtual effects retained | Delivered selected Windows multi-file Copy / same-volume rename; new copied-Move host candidate binds ordinary NTFS main and named streams at preview for cross-volume singles and exact nonempty eligible duet cohorts. The one-eligible/zero-eligible follow-up passes the actual 2ec staged/extracted CLI cases; desktop consumer acceptance remains pending |
+| Copy / Move toggle | Exact boolean and v14 virtual effects retained | Delivered selected Windows multi-file Copy / same-volume rename; copied-Move host binds ordinary NTFS main and named streams at preview for cross-volume singles and exact nonempty eligible duet cohorts. The one-eligible/zero-eligible follow-up passes the actual 2ec staged/extracted CLI cases; both staged/extracted desktop consumers pass at 78b |
 | Copy file attributes/timestamps | v14 uses `copy2` / `copytree` | Native Copy metadata preserves timestamps/readonly attributes; actual staged and extracted album-Copy fixtures passed at the desktop checkpoint below |
 | Main folder only / full tree | Original traversal/order retained | All 64 six-boolean vectors have bounded actual original/native Windows comparison at 26e; broader UI/library coverage remains separate |
 | Create singles folders | Original `סינגלים` destination component retained | Journaled directory creation; actual staged/extracted singles tests assert artist and `סינגלים` layout |
 | Alphabetic sort | Original letter hierarchy retained | Bounded paired Windows matrix includes both states at 26e; full native UI combination coverage remains separate |
 | Existing folders only | Original skip/target policy retained | Bounded paired Windows matrix includes both states and no-transfer routes at 26e; source-retaining all-skipped no-op is separately tested, not covered by these 66 cases |
-| Duets, first artist | Original matching order retained | Ordinary single destination candidate supported |
-| Duets, every artist | Original ordered destinations and deletion intention retained | Copy supported where backend preflight accepts; new Move candidate verifies every destination before retiring the source once. Actual 2ec CLI consumers verify one eligible original duet destination and zero eligible destinations retaining the source as an explicitly revalidated no-op. Failed required publication still retains the source. Ordinary same-volume singles in mixed jobs retain rename identity |
+| Duets, first artist | Original matching order retained | Ordinary single destination supported in the bounded selected domain |
+| Duets, every artist | Original ordered destinations and deletion intention retained | Copy supported where backend preflight accepts; Move verifies every destination before retiring the source once. Actual 2ec CLI consumers verify one eligible original duet destination and zero eligible destinations retaining the source as an explicitly revalidated no-op. Failed required publication still retains the source. Ordinary same-volume singles in mixed jobs retain rename identity |
 | Original alias list + personal CSV | Ordered rows, duplicates, malformed-row diagnostics preserved | UI edit/import/delete/save/export and persistence baseline covered; no silent normalization |
 | Original NER + secondary classifier | Both exact original assets validated; no fallback | Actual staged/extracted Windows UI runs both original assets and original-AI selected Copy; unavailable/corrupt assets still fail closed |
 | Disabled AI | Explicit choice; no inference | Never silently substituted for configured unavailable models |
-| Albums | Original album recognition, metadata-error ordering and virtual transfer timeline | Actual staged/extracted Windows UI passed bounded album Copy, root-album and mixed same-volume Move with nested files/sidecars; cross-volume albums pass the actual 2ec staged/extracted CLI cases; desktop acceptance remains pending |
-| Fix names / gibberish tags | Original planned rename/tag intentions retained | Original filename policy across 12 extensions; bounded MP3 ID3v2.3/v2.4, native FLAC and single-stream Ogg Vorbis/Opus five-field writes. Actual staged/extracted Windows gates passed exact retained originals/media, partial unsupported representations and stale-plan refusal; bounded MP4, existing ID3 in WAVE/AIFF/DSF, and terminal WavPack APEv2 also pass actual 2ec CLI consumers; their desktop consumers remain pending |
+| Albums | Original album recognition, metadata-error ordering and virtual transfer timeline | Actual staged/extracted Windows UI passed bounded album Copy, root-album and mixed same-volume Move with nested files/sidecars; cross-volume albums pass the actual 2ec staged/extracted CLI cases; both staged/extracted desktop consumers pass at 78b |
+| Fix names / gibberish tags | Original planned rename/tag intentions retained | Original filename policy across 12 extensions; bounded MP3 ID3v2.3/v2.4, native FLAC and single-stream Ogg Vorbis/Opus five-field writes. Actual staged/extracted Windows gates passed exact retained originals/media, partial unsupported representations and stale-plan refusal; bounded MP4, existing ID3 in WAVE/AIFF/DSF, and terminal WavPack APEv2 also pass actual 2ec CLI consumers; their staged/extracted desktop consumers pass at 78b |
 | Name collisions | Original reservation policy; exact plan revalidated | Identity-bound no-replace publication; changed destination stops execution |
 | Preview cancellation / Back / reload | Host owner remains busy until native terminal state | Existing lifecycle tests; no stale plan resurrection |
-| Apply review / repeat click | Host-selected paths and retained digest only | New UI/CLI candidate; cannot repeat consumed plan |
+| Apply review / repeat click | Host-selected paths and retained digest only | Actual staged/extracted UI/CLI review and one-shot checks pass; cannot repeat consumed plan |
 | Apply progress / cancellation | Actual bytes; predicted rows stay predictions | Native result distinguishes committed, blocked, cancelled, partial and recovery |
-| Recovery | Hash-chained journal and identity-bound reconciliation | Read-only restart for singles/duets, Fix, file-Album and Whole-Album is integrated and passes the actual dfae native/selected-host checkpoint below. Real GUI and staged/extracted restart consumers remain pending; historical Whole verification covers recorded main bytes, identity and membership, without an ADS baseline |
-| Hebrew RTL compact layout / import editing | Shared UI and original labels preserved | The earlier [result/viewport checkpoint](ui-results-layout.md) passed actual staged/extracted Windows checks for action-only defaults, independent inactive rows, advanced developer settings, long-name width and stationary footer. The later user redesign is preserved and requires its own current runtime acceptance; the observed About icon target was corrected after 26e. Android evidence remains platform-specific |
+| Recovery | Hash-chained journal and identity-bound reconciliation | Read-only restart for singles/duets, Fix, file-Album and Whole-Album is integrated and passes the actual dfae native/selected-host checkpoint below. Both actual staged/extracted GUI restart consumers pass at 78b; historical Whole verification covers recorded main bytes, identity and membership, without an ADS baseline |
+| Hebrew RTL compact layout / import editing | Shared UI and original labels preserved | The earlier [result/viewport checkpoint](ui-results-layout.md) passed actual staged/extracted Windows checks for action-only defaults, independent inactive rows, advanced developer settings, long-name width and stationary footer. The later user redesign, real mode navigation, settings/CSV Export and full viewport checks pass in all three 78b UI lanes. Android evidence remains platform-specific |
 | CLI supplied-facts v1 | Existing envelopes remain model-free and non-executable | No physical authorization granted |
 | CLI real-file v2 JSON | Same request fields and original planning policy | Read-only; optional selected planning adapter strengthens capability observations |
 | CLI NDJSON execution | One-process inspected-digest handshake | Same selected Windows backend; machine protocol remains explicit |
 | CLI positional source/target and flags | Frozen v14 declarations/probes pinned, including all eight flags and default Move | The retained planner/executor runs without an interactive JSON prompt. Actual 2ec release/staged/extracted CLI acceptance covers 58 cases with the selected feature/notice profile, including newer formats and cross-volume Albums; desktop and restart consumer gates remain separate |
 | CLI log level and file diagnostics | Original five levels, local timestamp, UTF-8 CWD/logs filename and matching stderr/file filtering | Pinned/exclusive sink with pre-create media/journal overlap refusal and honest log failure reporting. Ten positional and eight sink cases passed actual Windows native tests at f181; logging levels/files also passed the actual 041 staged/extracted CLI gates. Explicit dry-run and machine protocols create no file log |
 | Android | Shared UI remains fail-closed without native apply eligibility | Separate Android workstream; Windows proof is not Android/provider/ARM64 proof |
-| Portable Windows artifact | Explicit original-AI + selected-execution feature profile | EXE-bound staged/extracted Windows checks passed original AI, singles Copy/Move, bounded MP3/FLAC/Ogg repair, same-volume albums and the requested UI polish. This checkpoint does not activate the later copied-Move or process-restart candidates |
+| Portable Windows artifact | Explicit original-AI + selected-execution feature profile | EXE-bound staged/extracted Windows checks passed original AI, singles Copy/Move, bounded MP3/FLAC/Ogg repair, same-volume albums and the requested UI polish. The later 78b checkpoint additionally passes copied Move, all six bounded repair-format families, cross-volume Albums and read-only process restart |
 
-## Current verification record
+## Earlier verification record
 
 The delivered d917 baseline passed its exact Windows native safety, CLI, and
 staged/extracted original-AI Copy/Move gates. Its ZIP SHA-256 is
@@ -70,11 +71,11 @@ parsed does not imply that every resulting operation is physically supported.
 | Decision/effect family | Preserved reference behavior | Outstanding physical or product proof |
 | --- | --- | --- |
 | Classification | Ordered filename aliases, metadata artist/title routes, Hebrew repairs, exact-name check, original NER/classifier fallback | Broader arbitrary-library representations; platform-specific inference acceptance remains separately recorded |
-| Filename cleanup | Original underscore/hyphen/substrings/whitespace and Windows-character sanitization, collision suffix order | Positional source-only MP3 Fix passed the actual Windows subprocess gate; standalone consumer package checks remain required |
-| Album handling | Single-keyword exclusions, track/album/artist inspection order, protected per-file errors, nested and mixed traversal timing | Actual staged/extracted Windows UI passed bounded album Copy, root Move and mixed Move; 26e later covers all 64 settings vectors in the authored paired sorting corpus. Cross-volume Album CLI consumers passed at 2ec; desktop consumers and broader UI combinations remain separate work |
-| Duet effects | Original artist order and duplication; first/all-artist toggle | New copied-Move candidate composes complete multi-destination cohorts with the existing original-order runner; no early source deletion. A nonempty exact original eligible cohort is supported by the reviewed admission; zero eligible targets retain the source through a separately validated no-op. Cross-volume Album CLI consumer acceptance passed at 2ec; desktop consumer acceptance remains pending |
+| Filename cleanup | Original underscore/hyphen/substrings/whitespace and Windows-character sanitization, collision suffix order | Positional source-only MP3 Fix passed the actual Windows subprocess gate; bounded standalone and desktop consumers pass at 78b; arbitrary-file representations remain separate |
+| Album handling | Single-keyword exclusions, track/album/artist inspection order, protected per-file errors, nested and mixed traversal timing | Actual staged/extracted Windows UI passed bounded album Copy, root Move and mixed Move; 26e later covers all 64 settings vectors in the authored paired sorting corpus. Cross-volume Album CLI consumers passed at 2ec; desktop consumers also pass at 78b; broader UI combinations remain separate work |
+| Duet effects | Original artist order and duplication; first/all-artist toggle | Copied Move composes complete multi-destination cohorts with the existing original-order runner; no early source deletion. A nonempty exact original eligible cohort is supported by the reviewed admission; zero eligible targets retain the source through a separately validated no-op. Cross-volume Album CLI consumer acceptance passed at 2ec; desktop consumer acceptance also passes at 78b |
 | Failures and cancellation | Planning metadata failures are not silently converted into success; native actual effects remain explicit | Read-only repair recovery now passes both ordinary and short Windows path spellings; process-kill/restart UI remains separate |
-| File lists and settings | Bundled/personal ordering, duplicate rows, CSV editing/import/export and every six-boolean setting | The 26e paired engine corpus covers all 64 boolean vectors; expanded actual UI combinations and CSV edit/import/export/persistence retain separate product gates |
+| File lists and settings | Bundled/personal ordering, duplicate rows, CSV editing/import/export and every six-boolean setting | The 26e paired engine corpus covers all 64 boolean vectors; actual CSV edit/import/export and explicit-save versus immediate-duet persistence pass at 78b; the UI does not claim exhaustive visual testing of every settings combination |
 | User interface | Hebrew RTL, compact display, immediate help dismissal, richer About, default-minimal results and explicit developer mode | Actual staged/extracted Windows evidence covers advanced-Settings developer placement, independent inactive filtering, long-name bounds and stable footer; Android/device and broader settings combinations remain separate |
 
 ### All twelve released extensions
@@ -87,13 +88,13 @@ preserved; a filename change does not imply a successful tag repair.
 | Extension | Frozen reference metadata-open fixture | Current physical tag repair boundary |
 | --- | --- | --- |
 | `.mp3` | Supported ID3 fixture classes | Bounded unflagged ID3v2.3/v2.4 with existing padding; five original fields; original backup retained. Unsupported flags/representations/insufficient padding stop tag publication explicitly |
-| `.m4a`, `.alac` | MP4 AAC/ALAC fixtures | Exact-extent UTF-8 five-field repair candidate; main media/chunk offsets/fast-start and opaque ordinary items retained, exact original backup. Duplicate outer text fields are combined in original order, including a later-only changed value; unsupported structures refuse tag writes. Actual 2ec staged/extracted CLI cases passed; desktop consumer acceptance pending |
-| `.wav` | WAVE ID3 fixtures | Candidate: existing unflagged ID3v2.3/v2.4 in ordinary PCM/float RIFF; exact file/chunk/media extents and INFO bytes retained. Actual 2ec staged/extracted CLI cases passed; desktop consumer acceptance pending |
-| `.aiff` | AIFF fixtures | Candidate: existing unflagged ID3v2.3/v2.4 in ordinary AIFF, exact COMM/SSND and unknown chunks retained; AIFC and insufficient padding refuse tags. Actual 2ec staged/extracted CLI cases passed; desktop consumer acceptance pending |
+| `.m4a`, `.alac` | MP4 AAC/ALAC fixtures | Exact-extent UTF-8 five-field repair; main media/chunk offsets/fast-start and opaque ordinary items retained, exact original backup. Duplicate outer text fields are combined in original order, including a later-only changed value; unsupported structures refuse tag writes. Actual staged/extracted CLI and desktop cases pass at 78b |
+| `.wav` | WAVE ID3 fixtures | Existing unflagged ID3v2.3/v2.4 in ordinary PCM/float RIFF; exact file/chunk/media extents and INFO bytes retained. Actual staged/extracted CLI and desktop cases pass at 78b |
+| `.aiff` | AIFF fixtures | Existing unflagged ID3v2.3/v2.4 in ordinary AIFF, exact COMM/SSND and unknown chunks retained; AIFC and insufficient padding refuse tags. Actual staged/extracted CLI and desktop cases pass at 78b |
 | `.flac` | FLAC fixtures | Bounded native FLAC Vorbis comments, including shifted audio after shorter metadata; pictures/vendor/unknown pairs/audio and original backup retained. Dedicated staged/extracted Windows cases passed; opaque-offset representations explicitly remain partial |
-| `.wv` | WavPack fixtures | Candidate: existing terminal APEv2 UTF-8 five-field patches, original NUL scalar, exact block/tag layout and unknown binary/artwork retained; read-only/binary/external repaired items and ambiguous layouts refuse. Actual 2ec staged/extracted CLI cases passed; desktop consumer acceptance pending |
+| `.wv` | WavPack fixtures | Existing terminal APEv2 UTF-8 five-field patches, original NUL scalar, exact block/tag layout and unknown binary/artwork retained; read-only/binary/external repaired items and ambiguous layouts refuse. Actual staged/extracted CLI and desktop cases pass at 78b |
 | `.ogg` | Ogg Vorbis fixtures | Bounded single-logical-stream Vorbis writes preserve encoded packets/timing/vendor/artwork/unknown pairs. Dedicated staged/extracted Windows cases passed; chained/multiplexed/other-codec layouts refused |
-| `.dsf` | DSF fixtures | Candidate: existing terminal ID3v2.3/v2.4 in ordinary DSF, exact metadata pointer/header/media extents retained. Actual 2ec staged/extracted CLI cases passed; desktop consumer acceptance pending |
+| `.dsf` | DSF fixtures | Existing terminal ID3v2.3/v2.4 in ordinary DSF, exact metadata pointer/header/media extents retained. Actual staged/extracted CLI and desktop cases pass at 78b |
 | `.opus` | Ogg Opus fixtures | Bounded ordinary single-logical-stream Opus writes; dedicated staged/extracted Windows byte, timing and retained-backup cases passed, with the same representation limits as Vorbis |
 | `.wma` | Released metadata open rejects ASF | Preserve metadata-error outcome after any supported filename repair |
 | `.aac` | Released ADTS fixture rejects tags | Preserve metadata-error outcome after any supported filename repair |
@@ -550,3 +551,71 @@ rejected that result. The later keyboard-input correction requires its own
 actual rerun. Current user-interface and staged/extracted restart consumer
 acceptance therefore remain pending; the passing native suites do not close
 those product gates. Historical checkpoint sections above remain dated evidence.
+
+
+## Complete 78b Windows desktop consumer checkpoint
+
+The [actual Windows UI run](https://github.com/NHLOCAL/Singles-Sorter/actions/runs/38319045786)
+passed all three lanes: feature-off, staged selected original-AI application and
+ZIP-extracted selected application. The authenticated synthetic merge source is
+`0015fcd7497eefeec5f08b1483108101fd7fdf03`, with tree
+`921ab13f2efe6f1bca3fc9912be5e2c9ed9555b2`, matching public 78b75cff.
+The earlier failed and partial checkpoints above remain historical evidence.
+
+Exact selected desktop package:
+
+- ZIP: 17,054,712 bytes, SHA-256
+  `c5752e793fd1c73c1a047382fe476c10eeb51dbf888ce5d1f28569175cf02079`.
+- EXE: 17,772,544 bytes, SHA-256
+  `c259caecbcd8456adc7ad9f5ac7bcd9d66aa0b536bb6a62c7a0cdf4cbee0f3a2`.
+- `SHA256SUMS.txt`: SHA-256
+  `74b2d813b67d69ef5a310926a44980517e393cd6addf3fb6d4eaae9da00d20e4`.
+- 564 manifest entries, 565 files including the manifest, 49,127,405 unpacked
+  logical bytes. Exact model, license/source-notice inventory and PE-import
+  provenance were rechecked; filesystem allocation is not inferred from these bytes.
+- Staged acceptance SHA-256:
+  `ab23bb77b445c16c7dbf9230a5df78fb736097c76b38652d9b03878015926b5f`.
+- Extracted acceptance SHA-256:
+  `ab23bb77b445c16c7dbf9230a5df78fb736097c76b38652d9b03878015926b5f`.
+
+Both receipts bind the exact EXE and package manifest, real IPC and verified
+Medium-integrity execution. Required checks cover original-model execution and
+failure handling; settings, ordered personal CSV editing/import/export and
+restart persistence; singles and genuine duet Copy/Move including one/zero
+eligible destinations; all six bounded repair-format families and their partial
+unsupported cases; same-volume and cross-volume Albums; and fresh read-only
+Single/copied/Fix, file-Album and Whole-Album restart inspection. Stale inputs,
+changed streams or backups, recreated roots and extra membership retain explicit
+refusal/unresolved outcomes. The unchanged-file filter remains independent of
+developer mode. Every physical family retains its byte/backup/no-effect checks.
+
+The current user interface also passed the real mode transitions, actual native
+folder/Save dialogs, default action-only results, optional inactive descendants,
+long mixed Hebrew/Latin names, narrow 360/390 CSS-pixel layouts, 200-percent text
+and stationary footer under multiline alerts. Independent audit re-ran 54 saved
+layout measurements and 160 stress measurements across the three lanes and
+viewed the bound result/recovery screenshots. Narrow Windows rendering does not
+establish Android touch/keyboard behavior or unmeasured system DPI/Narrator use.
+
+The selected harness took 1,310.422 seconds staged and 1,310.625 seconds extracted,
+within each explicit 1,800-second cap. These include automation, deliberate
+negative cases, native dialogs and repeated restarts; they are acceptance-suite
+durations, not application speed benchmarks. Individual operation timeouts and
+all package success gates were retained.
+
+The matching [CLI run](https://github.com/NHLOCAL/Singles-Sorter/actions/runs/38319045824)
+passed both 58-case / 56-check staged and extracted gates, with the raw subprocess
+receipts rechecked. Its ZIP is 12,380,780 bytes, SHA-256
+`e13f6d534e4e0248340aab4c97ff6efac0e8392b455c25e5a0239b5030c0aced`;
+its EXE SHA-256 is
+`75700cfaa116b50c8c2cfa77a7b59b96bdf986e6d39df953bacb25117dd9e408`.
+The CLI distribution contains 144 files / 34,797,600 logical bytes. These package
+sizes do not establish a speedup relative to the original Python application.
+
+Scope remains bounded. Whole restart verifies recorded main bytes, full object
+identity and directory membership, without an unrecorded historical named-stream
+baseline. Inspection never replays mutations automatically. Supported metadata
+representations and quiescent local Windows filesystem requirements remain as
+listed above. This checkpoint does not claim arbitrary-library coverage, a
+clean machine lacking the documented runtime prerequisites, every assistive
+technology/system-DPI configuration, or Android/provider/physical-device acceptance.
