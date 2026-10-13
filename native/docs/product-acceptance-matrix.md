@@ -658,7 +658,8 @@ Desktop EXE SHA256:
 CLI EXE SHA256:
 `125415017e234ed6f355aa50dcf8f841f5c83d039ec28969b391e4ae36e1ea6c`.
 Whole-Album historical recovery verifies recorded main bytes, full identities
-and directory membership; those journals contain no historical ADS baseline.
+and recorded album directory membership; those journals contain no historical
+ADS baseline.
 The existing ordinary NTFS/quiescent-writer and supported representation limits
 remain. CSS text scaling/narrow viewport evidence is not system-DPI or Narrator
 acceptance. Audio preservation uses exact encoded bytes and per-decoder
