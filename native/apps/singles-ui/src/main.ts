@@ -298,7 +298,7 @@ function render(){
  $('recovery-notice').hidden=!s.recoveryNotice;
  $('recovery-notice-text').textContent=recoveryNoticeText(s.recoveryNotice);
  $('open-recovery').hidden=!hasAndroidHost()||!s.recoveryNotice;$<HTMLButtonElement>('open-recovery').disabled=s.busy;
- $('settings-label').textContent=controller.settingsDirty?'שינויים שלא נשמרו':'ההגדרות שלך';$('settings-notice').textContent=noticeLabel(controller.savedNotice);$<HTMLButtonElement>('save-settings').disabled=blocked;$('settings-error').hidden=!s.error;$('settings-error').textContent=s.error?(developer?s.error:simpleError(s.error)):'';
+ $('settings-label').textContent=controller.settingsDirty?'שינויים שלא נשמרו':'ההגדרות שלך';$('settings-label').hidden=!controller.settingsDirty;$('settings-notice').textContent=noticeLabel(controller.savedNotice);$<HTMLButtonElement>('save-settings').disabled=blocked;$('settings-error').hidden=!s.error;$('settings-error').textContent=s.error?(developer?s.error:simpleError(s.error)):'';
  $<HTMLButtonElement>('cancel-preview').disabled=!s.busy||s.cancelRequested;
  $('busy').textContent=s.cancelRequested&&s.activity==='preview'?'מבטל את הבדיקה…':s.activity==='settings'?'שומר הגדרות…':s.activity==='page'?'טוען עמוד תוצאות…':s.activity==='album-parent'?'ממתין לבחירת תיקיית האב…':'קורא ומנתח את הקבצים…';
  $('busy').hidden=!s.busy;$('results').setAttribute('aria-busy',String(s.busy));

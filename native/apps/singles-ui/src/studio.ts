@@ -24,7 +24,7 @@ export function installStudio(app:HTMLElement,isBusy:()=>boolean,onModeChange:()
     for(const id of ['target-station','station-flow','destination-options-group','sort-command-wrap'])get(id).hidden=!sorting;
     for(const id of ['fix-inplace-station','fix-command-wrap'])get(id).hidden=sorting;
     get('copy_mode').closest<HTMLElement>('.option-row')!.hidden=!sorting;
-    get('options-heading').textContent=sorting?'כללי המיון':'אפשרויות בדיקה';
+    get('options-heading').textContent='אפשרויות';
     get('mode-deck-description').textContent=sorting
       ?'בחר תיקיית מקור לבדיקה ותיקיית יעד לארגון השירים לפי אמנים'
       :'בדיקת שמות ותגיות בתיקיית המקור, ללא צורך בתיקיית יעד';

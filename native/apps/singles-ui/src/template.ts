@@ -12,10 +12,10 @@ export const appTemplate = `
   <div class="topbar-center">
     <nav class="mode-tabs" role="group" aria-label="מצב עבודה ראשי">
       <button type="button" id="tab-mode-sort" class="mode-tab active" aria-pressed="true">
-        <span class="tab-label">מיון שירים לתיקיות</span>
+        <span class="tab-label">מיון שירים</span>
       </button>
       <button type="button" id="tab-mode-fix" class="mode-tab" aria-pressed="false">
-        <span class="tab-label">תיקון שמות ותגיות</span>
+        <span class="tab-label">תיקון שמות</span>
       </button>
     </nav>
   </div>
@@ -37,7 +37,7 @@ export const appTemplate = `
       <section class="stations-deck" aria-label="בחירת תיקיות לעבודה">
         <div class="deck-header">
           <div class="deck-title-group">
-            <h2 id="folders-heading">סביבת עבודה ותיקיות</h2>
+            <h2 id="folders-heading">בחירת תיקיות</h2>
             <p class="deck-subtitle" id="mode-deck-description">בחר תיקיית מקור לבדיקה ותיקיית יעד לארגון השירים לפי אמנים.</p>
           </div>
         </div>
@@ -47,7 +47,7 @@ export const appTemplate = `
             <div class="station-header">
               <div class="field-label">
                 <span class="station-badge">1</span>
-                <label for="source">תיקיית מקור (סריקה)</label>
+                <label for="source">תיקיית מקור</label>
                 <button class="help-badge" aria-label="עזרה: תיקית מקור" data-help-text="בחירת תיקיה המכילה את המוזיקה שברצונך לסדר.">?</button>
               </div>
             </div>
@@ -66,7 +66,7 @@ export const appTemplate = `
             <div class="station-header">
               <div class="field-label">
                 <span class="station-badge">2</span>
-                <label for="target">תיקיית יעד (סידור)</label>
+                <label for="target">תיקיית יעד</label>
                 <button class="help-badge" aria-label="עזרה: תיקית יעד" data-help-text="בחירת תיקית יעד אליה יוכנסו תיקיות המוזיקה שיווצרו. נדרשת למיון בלבד.">?</button>
               </div>
             </div>
@@ -81,7 +81,7 @@ export const appTemplate = `
             <div class="station-header">
               <div class="field-label">
                 <span class="station-badge">✓</span>
-                <span class="station-title-text">תיקון ישיר במקום</span>
+                <span class="station-title-text">הקבצים יתוקנו במקומם</span>
               </div>
             </div>
             <p class="station-hint">במצב תיקון שמות, הקבצים מתוקנים ישירות בתיקיית המקור ללא צורך ביעד נפרד.</p>
@@ -106,7 +106,7 @@ export const appTemplate = `
       <div class="options-header">
         <div class="section-title">
           <div class="field-label">
-            <h2 id="options-heading">כללי המיון</h2>
+            <h2 id="options-heading">אפשרויות</h2>
             <button class="help-badge" aria-label="עזרה: אפשרויות מיון" data-help-text="חמש האפשרויות נשמרות בלחיצה על שמור הגדרות; מצב דואטים נשמר מיד בהגדרות מתקדמות.">?</button>
           </div>
           <span id="settings-label" class="quiet-label">ההגדרות שלך</span>
@@ -189,7 +189,7 @@ export const appTemplate = `
         </div>
       </div>
 
-      <div class="filter-scope">סינון בעמוד הנוכחי בלבד<span id="filter-summary" role="status" aria-live="polite"></span></div>
+      <div class="filter-scope"><span id="filter-summary" role="status" aria-live="polite"></span></div>
       <div class="results-filters" role="group" aria-label="סינון בעמוד הנוכחי">
         <button type="button" class="filter-chip active" aria-pressed="true" data-filter="all" id="filter-chip-all">הכל</button>
         <button type="button" class="filter-chip" aria-pressed="false" data-filter="ready" id="filter-chip-ready">עם פעולה</button>
@@ -389,7 +389,7 @@ export const appTemplate = `
       </div>
       <dl class="about-facts">
         <div><dt>גרסת התוכנה</dt><dd id="about-version" dir="ltr"></dd></div>
-        <div><dt>כללי המיון</dt><dd>מבוססים על גרסה 14.0</dd></div>
+        <div><dt>אפשרויות</dt><dd>מבוססים על גרסה 14.0</dd></div>
         <div><dt>פרויקט המקור</dt><dd><bdi>NHLOCAL / Singles-Sorter</bdi></dd></div>
       </dl>
       <p>מיון לפי רשימת אמנים, אפשרויות המיון והרשימה האישית שלך. זיהוי בעזרת המודלים המקוריים פועל מקומית כאשר הם זמינים.</p>
