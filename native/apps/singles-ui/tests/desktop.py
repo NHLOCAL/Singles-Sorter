@@ -289,7 +289,7 @@ try:
         # in this session, but must not be persisted by that unrelated action.
         set_main_settings(script, click, wait, settings_baseline)
         assert text('#settings-label') == 'שינויים שלא נשמרו'
-        click('#advanced')
+        click('#open-settings')
         expected_duet = not script("return document.querySelector('#duet-all').checked")
         click('#duet-all' if expected_duet else '#duet-first')
         wait(lambda: script("return !document.querySelector('#duet-all').disabled"))
@@ -343,7 +343,7 @@ try:
         assert observed_settings == expected_settings
         assert script("return document.querySelector('#source').value") == ''
         assert script("return document.querySelector('#target').value") == ''
-        click('#advanced')
+        click('#open-settings')
         observed_duet = script("return document.querySelector('#duet-all').checked")
         assert observed_duet == expected_duet
         click('#edit-list')

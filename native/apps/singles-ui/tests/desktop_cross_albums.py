@@ -70,7 +70,7 @@ def exercise_cross_albums(script, click, fill, wait, capture, root, output, audi
                                    abc_sort=False, exist_only=False).items():
                 if script(f"return document.querySelector('#{key}').checked") != value:
                     click('#' + key)
-            click('#advanced'); click('#duet-first')
+            click('#open-settings'); click('#duet-first')
             wait(lambda: script("return !document.querySelector('#duet-first').disabled"))
             script("document.querySelector('#ai-profile').value='Disabled';document.querySelector('#ai-profile').dispatchEvent(new Event('change',{bubbles:true}));")
             click('#advanced-dialog .close-dialog'); set_developer_mode(script, click, wait, False)

@@ -291,9 +291,9 @@ try:
         assert page.evaluate("window.__calls.filter(call=>call.command==='start_preview').length")==scans
         page.locator('#back-setup').click()
         expect(page.locator('#setup-screen')).to_be_visible()
-        page.locator('#advanced').click()
+        page.locator('#open-settings').click()
         expect(page.locator('#advanced-dialog')).to_be_visible()
-        expect(page.locator('#model-status')).to_have_text('לא זמין')
+        expect(page.locator('#model-status')).to_have_text('המודל לא מותקן')
         expect(page.locator('#model-help')).to_have_attribute('data-help-text', 'בדיקת ממשק בלבד עם IPC מדומה. לא בוצעה הסקה.')
         page.locator('#duet-all').check()
         expect(page.locator('#duet-all')).to_be_checked()
@@ -397,7 +397,7 @@ try:
         page.locator('#ai-profile').select_option('Configured')
         page.keyboard.press('Escape')
         expect(page.locator('#advanced-dialog')).not_to_be_visible()
-        expect(page.locator('#advanced')).to_be_focused()
+        expect(page.locator('#open-settings')).to_be_focused()
         page.locator('#save-settings').click()
         expect(page.locator('#settings-notice')).to_have_text('נשמר')
         assert page.evaluate('window.__storedSettings.singles_folder') is False
@@ -414,7 +414,6 @@ try:
         expect(page.locator('#about-content')).to_be_visible()
         expect(page.locator('#about-version')).to_have_text(json.loads((ROOT/'package.json').read_text())['version'])
         expect(page.locator('[data-help="about"]')).to_have_attribute('aria-pressed','true')
-        expect(page.locator('#about-content')).to_contain_text('מבוססים על גרסה 14.0')
         page.screenshot(path=str(OUTPUT/'renderer-about.png'),full_page=True)
         for target in ['Source','License']:
             page.locator(f'[data-project-link="{target}"]').click()
@@ -441,7 +440,7 @@ try:
         assert large['reflow']
         assert_layout(large,require_bounded=False)
         page.locator('#tab-mode-sort').click()
-        for selector in ['#source','#target','#copy_mode','#exist_only','#advanced','#save-settings','#sort']:
+        for selector in ['#source','#target','#copy_mode','#exist_only','#open-settings','#save-settings','#sort']:
             page.locator(selector).scroll_into_view_if_needed()
             expect(page.locator(selector)).to_be_in_viewport()
         page.evaluate("document.documentElement.style.fontSize=''")
@@ -457,7 +456,7 @@ try:
         checks.append('360px layout retains basic controls without page horizontal overflow')
         page.evaluate("document.documentElement.style.fontSize='200%'")
         assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth')
-        for selector in ['#source','#source-picker','#target','#target-picker','#sort','#advanced','#save-settings']:
+        for selector in ['#source','#source-picker','#target','#target-picker','#sort','#open-settings','#save-settings']:
             control=page.locator(selector)
             control.scroll_into_view_if_needed()
             box=control.bounding_box()

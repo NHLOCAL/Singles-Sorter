@@ -203,8 +203,8 @@ function syncPersonalNotices(){
 function openDialog(id:string){$<HTMLDialogElement>(id).showModal();syncPersonalNotices();}
 for(const id of ['list-dialog','import-dialog'])$(id).addEventListener('close',syncPersonalNotices);
 $('menu').addEventListener('click',()=>openDialog('menu-dialog'));
-let settingsTrigger:HTMLElement=$('advanced');
-for(const id of ['advanced','open-settings'])$(id).addEventListener('click',()=>{settingsTrigger=$(id);openDialog('advanced-dialog');});
+const settingsTrigger:HTMLElement=$('open-settings');
+settingsTrigger.addEventListener('click',()=>openDialog('advanced-dialog'));
 $('advanced-dialog').addEventListener('close',()=>{if(!document.querySelector('dialog[open]'))settingsTrigger.focus();});
 $('menu-dialog').addEventListener('close',()=>{if(!document.querySelector('dialog[open]'))$('menu').focus();});
 for(const button of document.querySelectorAll<HTMLButtonElement>('.close-dialog'))button.addEventListener('click',()=>button.closest('dialog')?.close());
@@ -290,7 +290,7 @@ function render(){
  $<HTMLInputElement>('duet-first').checked=!s.settings.duet_mode;$<HTMLInputElement>('duet-all').checked=s.settings.duet_mode;
  for(const id of ['duet-first','duet-all','ai-profile'])$(id).toggleAttribute('disabled',blocked);
  $<HTMLSelectElement>('ai-profile').value=s.ai;
- $('model-status').textContent=s.model?.available?'זמין':'לא זמין';
+ $('model-status').textContent=s.model?.available?'המודל מותקן':'המודל לא מותקן';
  $('model-help').dataset.helpText=s.model?.message??'לא התקבל מצב המודל מהמארח.';
  const previewCancelled=s.snapshot?.status==='cancelled'&&!s.busy&&!s.execution;
  $('connection').hidden=s.hostAvailable&&!previewCancelled;

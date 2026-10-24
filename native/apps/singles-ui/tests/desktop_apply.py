@@ -30,7 +30,7 @@ def exercise_apply(script, click, fill, wait, capture, root, output, ai_mode="of
         for key, value in desired.items():
             if script(f"return document.querySelector('#{key}').checked") != value:
                 click('#' + key)
-        click('#advanced')
+        click('#open-settings')
         click('#duet-first')
         wait(lambda: script("return !document.querySelector('#duet-first').disabled"))
         # Explicit profiles exercise both original aliases and real original inference.

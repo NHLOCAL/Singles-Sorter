@@ -8,7 +8,6 @@ export function installStudio(app:HTMLElement,isBusy:()=>boolean,onModeChange:()
   const modeButtons=[get<HTMLButtonElement>('tab-mode-sort'),get<HTMLButtonElement>('tab-mode-fix')];
   const filters=[...app.querySelectorAll<HTMLButtonElement>('.filter-chip')];
   get('station-flow').replaceChildren(iconElement('next'));
-  get('fix-inplace-station').querySelector('.station-badge')!.replaceChildren(iconElement('fix'));
   let mode:Mode='Sort';
   let filter:ResultFilter='all';
 
@@ -22,7 +21,7 @@ export function installStudio(app:HTMLElement,isBusy:()=>boolean,onModeChange:()
       button.setAttribute('aria-pressed',String(selected));
     });
     for(const id of ['target-station','station-flow','destination-options-group','sort-command-wrap'])get(id).hidden=!sorting;
-    for(const id of ['fix-inplace-station','fix-command-wrap'])get(id).hidden=sorting;
+    for(const id of ['fix-command-wrap'])get(id).hidden=sorting;
     get('copy_mode').closest<HTMLElement>('.option-row')!.hidden=!sorting;
     get('options-heading').textContent='אפשרויות';
     get('mode-deck-description').textContent=sorting

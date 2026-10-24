@@ -79,7 +79,7 @@ def exercise_copied_move(script, click, fill, wait, capture, root, output, secon
             fill('#source', str(source)); fill('#target', str(target))
             for key, value in dict(copy_mode=False, main_folder_only=True, singles_folder=False, abc_sort=False, exist_only=label in ('one-eligible', 'zero-eligible')).items():
                 if script(f"return document.querySelector('#{key}').checked") != value: click('#'+key)
-            click('#advanced'); click('#duet-all' if configured else '#duet-first')
+            click('#open-settings'); click('#duet-all' if configured else '#duet-first')
             wait(lambda: script("return !document.querySelector('#duet-first').disabled"))
             profile = 'Configured' if configured else 'Disabled'
             script(f"document.querySelector('#ai-profile').value='{profile}';document.querySelector('#ai-profile').dispatchEvent(new Event('change',{{bubbles:true}}));")

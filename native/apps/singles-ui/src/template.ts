@@ -20,7 +20,7 @@ export const appTemplate = `
     </nav>
   </div>
   <div class="topbar-end">
-    <button id="open-settings" class="icon-button" aria-label="הגדרות מתקדמות" aria-haspopup="dialog"></button>
+    <button id="open-settings" class="icon-button" aria-label="הגדרות" aria-haspopup="dialog"></button>
     <button id="menu" class="icon-button" aria-label="עזרה ומידע" aria-haspopup="dialog">⋮</button>
   </div>
 </header>
@@ -77,15 +77,6 @@ export const appTemplate = `
             <p class="station-hint">התיקיות החדשות והשירים הממוינים ייווצרו במיקום זה.</p>
           </div>
 
-          <div class="station-card fix-inplace-station" id="fix-inplace-station" hidden>
-            <div class="station-header">
-              <div class="field-label">
-                <span class="station-badge">✓</span>
-                <span class="station-title-text">הקבצים יתוקנו במקומם</span>
-              </div>
-            </div>
-            <p class="station-hint">במצב תיקון שמות, הקבצים מתוקנים ישירות בתיקיית המקור ללא צורך ביעד נפרד.</p>
-          </div>
         </div>
 
         <div class="actions-dock">
@@ -165,8 +156,7 @@ export const appTemplate = `
       </div>
 
       <div class="options-bottom">
-        <button id="advanced" class="text-button">הגדרות מתקדמות</button>
-        <button id="save-settings" class="text-button">שמור הגדרות</button>
+        <button id="save-settings" class="text-button">שמור כברירת מחדל</button>
       </div>
       <p id="settings-notice" role="status" class="hint"></p>
     </aside>
@@ -182,7 +172,7 @@ export const appTemplate = `
   <section id="results" class="results card" aria-labelledby="results-heading">
     <div class="results-toolbar">
       <div class="toolbar-nav">
-        <button id="back-setup" class="text-button">חזרה להגדרות</button>
+        <button id="back-setup" class="text-button">חזרה</button>
         <div class="section-title">
           <h2 id="results-heading" tabindex="-1">תוכנית מיון</h2>
           <span id="count" class="quiet-label" role="status"></span>
@@ -277,7 +267,7 @@ export const appTemplate = `
     <h2 id="recovery-title">בדיקת פעולות קודמות</h2>
     <button id="recovery-close" class="icon-button" aria-label="סגור יומנים">×</button>
   </div>
-  <p class="hint">בחר פעולה ובחר מחדש את תיקיית המקור, וגם תיקיית יעד כשנדרשת, כדי לבדוק את הקבצים. הבדיקה אינה משנה קבצים ואינה מפעילה שוב פעולות.</p>
+  <p class="hint">בחר פעולה ואת התיקיות שלה כדי לבדוק את מצב הקבצים. הבדיקה אינה משנה דבר.</p>
   <p id="recovery-error" class="error" role="alert" hidden></p>
   <p id="recovery-busy" role="status" aria-live="polite" hidden>בודק את היומן והקבצים…</p>
   <div class="dialog-actions">
@@ -344,7 +334,7 @@ export const appTemplate = `
   <p id="apply-description"></p>
   <label class="detail-path-label">תיקית מקור<input id="apply-source" class="source-path" dir="ltr" readonly></label>
   <label id="apply-target-label" class="detail-path-label">תיקית יעד<input id="apply-target" class="source-path" dir="ltr" readonly></label>
-  <p class="hint">הקבצים והתוכנית ייבדקו מחדש לפני הביצוע. עצירה עשויה להשאיר פעולות שכבר הושלמו; התוצאה תציג מה בוצע בפועל.</p>
+  <p class="hint">התוכנית תיבדק שוב לפני הביצוע. עצירה באמצע משאירה את מה שכבר בוצע.</p>
   <div class="dialog-actions">
     <button id="confirm-apply" class="primary">אשר ביצוע</button>
     <button id="apply-back" class="secondary">חזור לתוכנית</button>
@@ -366,46 +356,38 @@ export const appTemplate = `
   </div>
   <div class="menu-items" role="group" aria-label="נושאי מידע">
     <button data-help="help" aria-pressed="true" aria-controls="usage-content">איך משתמשים?</button>
-    <button data-help="about" aria-pressed="false" aria-controls="about-content">אודות התוכנה</button>
+    <button data-help="about" aria-pressed="false" aria-controls="about-content">אודות</button>
   </div>
   <button id="recovery-menu" class="secondary" hidden>פעולות קודמות</button>
   <div id="help-content" class="help-content">
     <section id="usage-content" data-info-page="help" aria-labelledby="usage-title">
-      <h3 id="usage-title">מהתיקייה לתוכנית המיון</h3>
+      <h3 id="usage-title">שלושה צעדים</h3>
       <ol class="usage-steps">
         <li>בחר תיקית מקור, ובמיון גם תיקית יעד.</li>
-        <li>התאם את האפשרויות ולחץ על <strong>מיין שירים</strong> או <strong>תקן שמות</strong>. במצב תיקון אין צורך ביעד.</li>
-        <li>עיין בהצעות ובסיבות לחסימה. כשאפשר לבצע את התוכנית, יופיע כפתור ביצוע ואישור נוסף לפני שינוי הקבצים.</li>
+        <li>לחץ על <strong>מיין שירים</strong> או <strong>תקן שמות</strong>.</li>
+        <li>עיין בתוכנית ואשר את הביצוע. שום קובץ לא משתנה לפני האישור.</li>
       </ol>
-      <p class="hint">רשימת האמנים האישית ומיון דואטים נמצאים בהגדרות מתקדמות. ההסבר ליד כל אפשרות זמין גם במקלדת ובמגע.</p>
     </section>
     <section id="about-content" data-info-page="about" aria-labelledby="about-name" hidden>
       <div class="about-brand">
         <img src="/icon.png" width="44" height="44" alt="">
         <div>
           <h3 id="about-name">מסדר הסינגלים</h3>
-          <p class="hint">סידור המוזיקה שלך בתיקיות לפי אמנים</p>
         </div>
       </div>
       <dl class="about-facts">
         <div><dt>גרסת התוכנה</dt><dd id="about-version" dir="ltr"></dd></div>
-        <div><dt>אפשרויות</dt><dd>מבוססים על גרסה 14.0</dd></div>
         <div><dt>פרויקט המקור</dt><dd><bdi>NHLOCAL / Singles-Sorter</bdi></dd></div>
       </dl>
-      <p>מיון לפי רשימת אמנים, אפשרויות המיון והרשימה האישית שלך. זיהוי בעזרת המודלים המקוריים פועל מקומית כאשר הם זמינים.</p>
-      <p class="hint about-capability">הזמינות לביצוע מוצגת בכל תוכנית לפי המכשיר והפעולות הנדרשות. פעולות שאינן נתמכות נשארות לתצוגה בלבד.</p>
       <div class="about-links">
         <button class="secondary" data-project-link="Source">קוד המקור ב־GitHub</button>
         <button class="secondary" data-project-link="License">רישיון MIT</button>
       </div>
-      <p class="hint about-browser-note">הקישורים נפתחים בדפדפן שלך.</p>
       <p id="about-link-error" class="error" role="alert" hidden></p>
       <button class="secondary" data-local-notices hidden>הודעות רישוי וקוד מקור לרכיבים</button>
       <details class="about-credits">
         <summary>רכיבים ותודות</summary>
-        <p>הפרויקט מבוסס על מסדר הסינגלים המקורי של NHLOCAL, רשימת האמנים והמודלים המקוריים לזיהוי שמות אמנים.</p>
-        <p><bdi>Rust</bdi> למנוע המיון, <bdi>Tauri</bdi> למארח שולחן העבודה, <bdi>TagLib</bdi> לקריאת מאפייני קבצים, וסמלים מתוך <bdi>Microsoft Fluent UI System Icons</bdi>.</p>
-        <p class="hint">קוד הפרויקט מופץ ברישיון MIT. לרכיבי צד שלישי ולמודלים יש תנאי רישוי נפרדים; הודעות הרישוי הנלוות לחבילה הן המקור המלא.</p>
+        <p>מבוסס על מסדר הסינגלים המקורי של NHLOCAL. נבנה עם <bdi>Rust</bdi>, <bdi>Tauri</bdi>, <bdi>TagLib</bdi> ו־<bdi>Fluent UI Icons</bdi>. לרכיבי צד שלישי תנאי רישוי משלהם.</p>
       </details>
     </section>
   </div>
@@ -413,7 +395,7 @@ export const appTemplate = `
 
 <dialog id="advanced-dialog" aria-labelledby="advanced-title">
   <div class="dialog-heading">
-    <h2 id="advanced-title">הגדרות מתקדמות</h2>
+    <h2 id="advanced-title">הגדרות</h2>
     <button class="close-dialog icon-button" aria-label="סגור">×</button>
   </div>
   <fieldset>
@@ -423,22 +405,22 @@ export const appTemplate = `
   </fieldset>
   <fieldset>
     <legend class="ai-heading">
-      <span>זיהוי בעזרת AI</span>
+      <span>זיהוי אמנים בעזרת AI</span>
       <span id="model-status" class="quiet-label"></span>
-      <button id="model-help" class="help-badge" aria-label="עזרה: זמינות AI" data-help-text="">?</button>
+      <button id="model-help" class="help-badge" aria-label="עזרה: מצב מודל ה-AI" data-help-text="">?</button>
     </legend>
-    <div class="field-label">
-      <label for="ai-profile">פרופיל הבדיקה</label>
-      <button class="help-badge" aria-label="עזרה: פרופיל הבדיקה" data-help-text="אם נדרש מודל ואינו זמין, הבדיקה תיחסם. אין מעבר אוטומטי לפרופיל אחר.">?</button>
+    <div class="field-label visually-hidden">
+      <label for="ai-profile">שימוש ב-AI</label>
+      <button class="help-badge" aria-label="עזרה: שימוש ב-AI" data-help-text="כשהאפשרות פעילה, מודל AI מזהה אמנים שאינם מופיעים ברשימה. אם המודל אינו מותקן, הבדיקה לא תתחיל.">?</button>
     </div>
     <select id="ai-profile">
-      <option value="Disabled">ללא AI</option>
-      <option value="Configured">דרוש מודל AI זמין</option>
+      <option value="Disabled">כבוי – זיהוי לפי הרשימה בלבד</option>
+      <option value="Configured">פעיל – דורש מודל מותקן</option>
     </select>
   </fieldset>
   <section>
     <div class="field-label">
-      <h3>הוספת זמרים</h3>
+      <h3>רשימת זמרים אישית</h3>
       <button class="help-badge" aria-label="עזרה: רשימת אמנים" data-help-text="השורות האישיות מתווספות אחרי הרשימה המובנית. סדר ההתאמה נשמר.">?</button>
     </div>
     <div class="list-actions">
@@ -450,12 +432,11 @@ export const appTemplate = `
     <p id="profile-error" class="error" role="alert" hidden></p>
   </section>
   <fieldset class="display-settings">
-    <legend>תצוגה</legend>
+    <legend>מתקדם</legend>
     <label class="option">
       <input id="developer-mode" type="checkbox" role="switch">
       <span>מצב מפתחים</span>
     </label>
-    <p class="hint">מציג פרטים טכניים ויומנים. פריטים ללא פעולה מוצגים רק לפי הבחירה ברשימת התוצאות.</p>
     <button id="execution-diagnostics" class="secondary" hidden>שמור יומן פעולה לבדיקה</button>
   </fieldset>
   <p id="settings-error" class="error" role="alert" hidden></p>
