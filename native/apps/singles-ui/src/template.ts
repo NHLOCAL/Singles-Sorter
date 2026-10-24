@@ -85,7 +85,7 @@ export const appTemplate = `
             <button class="help-badge" aria-label="עזרה: מיין שירים" data-help-text="מיון מתקדם של הסינגלים שלך בתיקיות לפי אמנים.">?</button>
           </div>
           <div class="action-command" id="fix-command-wrap" hidden>
-            <button id="fix" class="secondary action-launch">תקן שמות</button>
+            <button id="fix" class="primary action-launch">תקן שמות</button>
             <button class="help-badge" aria-label="עזרה: תקן שמות" data-help-text="תיקון ג׳יבריש במאפייני הקובץ והסרת תוכן מיותר בשמות הקבצים.">?</button>
           </div>
           <button id="reopen-results" class="text-button" hidden>הצג תוצאות</button>
@@ -178,7 +178,35 @@ export const appTemplate = `
           <span id="count" class="quiet-label" role="status"></span>
         </div>
       </div>
+    </div>
 
+    <section id="execution-panel" class="execution-panel" aria-label="ביצוע התוכנית" hidden>
+      <div class="execution-heading">
+        <div>
+          <h3 id="execution-title">מוכן לביצוע</h3>
+          <p id="execution-summary" role="status" aria-live="polite"></p>
+        </div>
+        <button id="review-apply" class="primary">בצע את התוכנית</button>
+        <button id="select-album-source-parent" class="secondary" aria-describedby="album-source-parent-help" hidden>בחירת תיקיית האב ובדיקה מחדש</button>
+        <button id="cancel-apply" class="secondary" hidden>עצור ביצוע</button>
+        <button id="finish-results" class="primary" hidden>סיום</button>
+      </div>
+      <p id="album-source-parent-help" class="hint" hidden>תיקיית האב משמשת רק להסרת תיקיית המקור אם תתרוקן לאחר ההעברה המתוכננת. ודא ששום יישום או משתמש אחר אינו משנה את התיקיות בזמן הביצוע.</p>
+      <details id="execution-refusal" class="execution-refusal" hidden>
+        <summary>פרטי החסימה</summary>
+        <p class="hint">מידע טכני לבירור הסיבה. ייתכן שמופיעים בו שמות קבצים או מיקומים.</p>
+        <pre id="execution-refusal-details" dir="auto"></pre>
+      </details>
+      <progress id="execution-progress" aria-label="התקדמות הקובץ הנוכחי" hidden></progress>
+      <p id="execution-recovery" class="warning" hidden></p>
+      <p id="recovery-inspection" class="hint" hidden></p>
+      <label id="journal-label" class="detail-path-label" hidden>
+        יומן הפעולה
+        <input id="journal-path" class="source-path" dir="ltr" readonly>
+      </label>
+    </section>
+
+    <div class="results-filterbar">
       <div class="filter-scope"><span id="filter-summary" role="status" aria-live="polite"></span></div>
       <div class="results-filters" role="group" aria-label="סינון בעמוד הנוכחי">
         <button type="button" class="filter-chip active" aria-pressed="true" data-filter="all" id="filter-chip-all">הכל</button>
@@ -194,31 +222,6 @@ export const appTemplate = `
         <span id="inactive-count" class="quiet-label"></span>
       </label>
     </div>
-
-    <section id="execution-panel" class="execution-panel" aria-label="ביצוע התוכנית" hidden>
-      <div class="execution-heading">
-        <div>
-          <h3 id="execution-title">התוכנית מוכנה לבדיקה</h3>
-          <p id="execution-summary" role="status" aria-live="polite"></p>
-        </div>
-        <button id="review-apply" class="primary">בצע את התוכנית</button>
-        <button id="select-album-source-parent" class="secondary" aria-describedby="album-source-parent-help" hidden>בחירת תיקיית האב ובדיקה מחדש</button>
-        <button id="cancel-apply" class="secondary" hidden>עצור ביצוע</button>
-      </div>
-      <p id="album-source-parent-help" class="hint" hidden>הרשאת תיקיית האב תשמש רק לאימות ולהסרת תיקיית המקור שנבחרה, אם תתרוקן לאחר ההעברה המתוכננת. יש לוודא ששום יישום או משתמש אחר אינו משנה את המקור, היעד או תיקיית האב בזמן הביצוע.</p>
-      <details id="execution-refusal" class="execution-refusal" hidden>
-        <summary>פרטי החסימה</summary>
-        <p class="hint">מידע טכני לבירור הסיבה. ייתכן שמופיעים בו שמות קבצים או מיקומים.</p>
-        <pre id="execution-refusal-details" dir="auto"></pre>
-      </details>
-      <progress id="execution-progress" aria-label="התקדמות הקובץ הנוכחי" hidden></progress>
-      <p id="execution-recovery" class="warning" hidden></p>
-      <p id="recovery-inspection" class="hint" hidden></p>
-      <label id="journal-label" class="detail-path-label" hidden>
-        יומן הפעולה
-        <input id="journal-path" class="source-path" dir="ltr" readonly>
-      </label>
-    </section>
 
     <div class="results-body" id="results-body" tabindex="0" aria-label="תוכן התוצאות">
       <div id="empty" class="empty">התוצאה תופיע כאן לאחר בחירת תיקיות והפעלת בדיקה.</div>
@@ -328,16 +331,16 @@ export const appTemplate = `
 
 <dialog id="apply-dialog" aria-labelledby="apply-title">
   <div class="dialog-heading">
-    <h2 id="apply-title">ביצוע התוכנית</h2>
+    <h2 id="apply-title">לבצע את התוכנית?</h2>
     <button id="apply-dismiss" class="icon-button" aria-label="חזור לתוכנית">×</button>
   </div>
   <p id="apply-description"></p>
-  <label class="detail-path-label">תיקית מקור<input id="apply-source" class="source-path" dir="ltr" readonly></label>
-  <label id="apply-target-label" class="detail-path-label">תיקית יעד<input id="apply-target" class="source-path" dir="ltr" readonly></label>
-  <p class="hint">התוכנית תיבדק שוב לפני הביצוע. עצירה באמצע משאירה את מה שכבר בוצע.</p>
+  <label class="detail-path-label apply-path">מ<input id="apply-source" class="source-path" dir="ltr" readonly></label>
+  <label id="apply-target-label" class="detail-path-label apply-path">אל<input id="apply-target" class="source-path" dir="ltr" readonly></label>
+  <p class="hint">הקבצים ייבדקו שוב רגע לפני הביצוע.</p>
   <div class="dialog-actions">
     <button id="confirm-apply" class="primary">אשר ביצוע</button>
-    <button id="apply-back" class="secondary">חזור לתוכנית</button>
+    <button id="apply-back" class="secondary">ביטול</button>
   </div>
 </dialog>
 

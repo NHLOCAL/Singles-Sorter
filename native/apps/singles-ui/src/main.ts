@@ -9,7 +9,7 @@ import {installAbout} from './about';
 import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,verificationWarning,developerRowSummary,recoveryNoticeText,verificationProgressText,resultFilename,executionReadinessText,executionBytesText,executionRefusalSummary,executionRefusalDetails,REPAIR_REVIEW_TEXT} from './result-presentation';
 import {kindLabel,reasonLabel,blockerLabel,warningPresentation,noticeLabel} from './presentation';
 import {PAGE_SIZE,PreviewController} from './state';
-import type {Settings,ImportEncoding,Mode,PlanRow,ExecutionItem} from './contracts';
+import type {Settings,ImportEncoding,Mode,PlanRow,ExecutionItem,ApplyReadiness} from './contracts';
 import {PersonalListController} from './lists';
 import {installHelpBadges} from './help';
 import {RecoveryController,RECOVERY_PAGE_SIZE,RECOVERY_OPERATION_PAGE_SIZE,recoveryStateLabel,recoveryFamilyLabel,recoveryNextStep,recoveryOperationLabel,displayRecoveryPath,recoveryProgressText,recoveryEvidenceRole,recoveryEvidenceStatus} from './recovery';
@@ -131,13 +131,14 @@ window.addEventListener('popstate',()=>{
 });
 $('cancel-preview').addEventListener('click',()=>controller.cancelPreview());
 $('back-setup').addEventListener('click',backToSetup);
+$('finish-results').addEventListener('click',backToSetup);
 $('review-apply').addEventListener('click',()=>{
  if(!controller.canApply)return;
  const readiness=controller.state.snapshot!.apply!;
  const repairing=readiness.mode==='FixNames';
- $('apply-title').textContent=repairing?'תיקון שמות ותגיות':'ביצוע התוכנית';
+ $('apply-title').textContent=repairing?'תיקון שמות ותגיות':`${applyActionLabel(readiness)}?`;$('confirm-apply').textContent=applyActionLabel(readiness);
  $('apply-target-label').hidden=repairing;
- $('apply-description').textContent=repairing?REPAIR_REVIEW_TEXT:readiness.operation_count===0?'לא בוצעו שינויים. קובצי המקור יישארו במקומם; הבדיקה החוזרת תאמת שאין פעולות לביצוע.':controller.state.developerMode?`${readiness.copy_mode?'העתקת':'העברת'} ${readiness.operation_count.toLocaleString('he-IL')} פעולות לפי התוכנית שהוצגה.`:readiness.copy_mode?'העתקת הקבצים שברשימה. קובצי המקור יישארו במקומם.':'העברת הקבצים שברשימה אל תיקיית היעד.';
+ $('apply-description').textContent=repairing?REPAIR_REVIEW_TEXT:readiness.operation_count===0?'לא בוצעו שינויים. קובצי המקור יישארו במקומם; הבדיקה החוזרת תאמת שאין פעולות לביצוע.':controller.state.developerMode?`${readiness.copy_mode?'העתקת':'העברת'} ${readiness.operation_count.toLocaleString('he-IL')} פעולות לפי התוכנית שהוצגה.`:readiness.copy_mode?'קובצי המקור יישארו במקומם.':'';
  if(readiness.duet_groups&&readiness.operation_count>0)$('apply-description').append(document.createTextNode(' בדואטים, המקור יימחק רק לאחר אימות כל העותקים הנדרשים בתוכנית. מקור ללא יעד מתאים יישמר.'));
  if(readiness.notice)$('apply-description').append(document.createTextNode(' '+readiness.notice));
  if(controller.state.model?.platform==='android'&&readiness.reason)$('apply-description').append(document.createTextNode(' '+readiness.reason));
@@ -231,17 +232,32 @@ function rowStatus(row:PlanRow){
  const s=controller.state;
  return simpleStatus(row,executionItems(row),s.snapshot?.apply?.copy_mode??s.settings.copy_mode,{repairEligible:s.snapshot?.apply?.supported,terminalResult:!!s.execution?.result&&!['preparing','running'].includes(s.execution.status),uncertain:!!s.execution&&!s.execution.result&&!['preparing','running'].includes(s.execution.status)});
 }
+/** One verb and one count: what the primary button will do to the user's files. */
+function applyActionLabel(readiness:ApplyReadiness){
+ const count=readiness.operation_count,n=count.toLocaleString('he-IL');
+ if(readiness.mode==='FixNames')return count===1?'תקן קובץ אחד':`תקן ${n} קבצים`;
+ if(count===0)return 'סיים';
+ const verb=readiness.copy_mode?'העתק':'העבר';
+ return count===1?`${verb} שיר אחד`:`${verb} ${n} שירים`;
+}
+function routeSummary(readiness:ApplyReadiness){
+ const node=document.createDocumentFragment(),bdi=(value:string)=>{const el=document.createElement('bdi');el.dir='ltr';el.textContent=value;return el;};
+ if(readiness.mode==='FixNames'||!readiness.target){node.append('בתיקייה ',bdi(readiness.source));return node;}
+ node.append('מ־',bdi(readiness.source),' אל ',bdi(readiness.target));return node;
+}
 let executionRefusalBinding='';
 function renderExecution(){
  const s=controller.state,e=s.execution,readiness=s.snapshot?.apply;
  $('execution-panel').hidden=!readiness&&!e;$('results').dataset.executionVisible=String(!!readiness||!!e);
  $('review-apply').hidden=!!e||!readiness?.supported||readiness.source_parent_selection_required===true;$<HTMLButtonElement>('review-apply').disabled=!controller.canApply;
+ if(readiness?.supported)$('review-apply').textContent=applyActionLabel(readiness);
  const parentNeeded=controller.needsAlbumSourceParent,parentPending=s.activity==='album-parent';
  $('select-album-source-parent').hidden=!parentNeeded;$<HTMLButtonElement>('select-album-source-parent').disabled=!controller.canSelectAlbumSourceParent;
  $('album-source-parent-help').hidden=!parentNeeded;
- const running=s.activity==='apply';$('cancel-apply').hidden=!running;$<HTMLButtonElement>('cancel-apply').disabled=s.cancelRequested;
+ const running=s.activity==='apply';$('cancel-apply').hidden=!running;
+ $('finish-results').hidden=running||e?.status!=='complete'||!!e.recovery_error;$('execution-panel').dataset.state=e?(running?'running':e.status):readiness?.supported?'ready':'blocked';$<HTMLButtonElement>('cancel-apply').disabled=s.cancelRequested;
  $<HTMLButtonElement>('back-setup').disabled=running||parentPending;
- $('execution-title').textContent=e?e.status==='complete'&&e.recovery_error?'הקבצים טופלו; נדרשת בדיקה':executionTitles[e.status]:running?'מאמת את הקבצים לפני ביצוע…':readiness?.supported?'התוכנית מוכנה לביצוע':'התוכנית זמינה לתצוגה בלבד';
+ $('execution-title').textContent=e?e.status==='complete'&&e.recovery_error?'הקבצים טופלו; נדרשת בדיקה':executionTitles[e.status]:running?'מאמת את הקבצים לפני ביצוע…':readiness?.supported?(readiness.mode==='FixNames'?'מוכן לתיקון':'מוכן למיון'):'התוכנית זמינה לתצוגה בלבד';
  const r=e?.result;
  const developer=s.developerMode;
  const refusal=!e&&!parentNeeded?executionRefusalDetails(readiness,s.snapshot?.blockers??[]):'';
@@ -251,6 +267,7 @@ function renderExecution(){
  executionRefusalBinding=refusalBinding;refusalDetails.hidden=!refusal;
  $('execution-refusal-details').textContent=refusal;
  $('execution-summary').textContent=developer?(r?r.repair?`${r.repair.renamed_files} שמות תוקנו · ${r.repair.repaired_files} תגיות תוקנו · ${r.repair.unchanged_files} ללא שינוי בתגיות · ${r.repair.unsupported_files} לא נתמכים · ${r.repair.retained_backup_bytes.toLocaleString('he-IL')} בתים נשמרו בגיבוי`:r.duets?simpleExecutionSummary(e!,readiness?.copy_mode??s.settings.copy_mode):`${r.committed_destinations.toLocaleString('he-IL')} יעדים נכתבו · ${r.moved_sources.toLocaleString('he-IL')} קבצי מקור הועברו · ${r.failed_operations.toLocaleString('he-IL')} נכשלו · ${r.blocked_operations.toLocaleString('he-IL')} לא בוצעו`:s.cancelRequested&&running?'ממתין לעצירה בטוחה…':e?.status==='running'&&e.operation!==null?`פעולה ${e.operation+1} מתוך ${e.operation_count} · ${executionBytesText(e.bytes_written,e.source_length)}`:e&&!['preparing','running'].includes(e.status)?(e.error??'לא התקבלו מוני ביצוע מאומתים. יש לבדוק את היומן.'):readiness?.supported?executionReadinessText(readiness,true):readiness?.reason??''):(e?simpleExecutionSummary(e,readiness?.copy_mode??s.settings.copy_mode):readiness?.supported?executionReadinessText(readiness,false):executionRefusalSummary(readiness,s.snapshot?.blockers??[]));
+ if(!developer&&!e&&!running&&readiness?.supported)$('execution-summary').replaceChildren(routeSummary(readiness));
  if(!developer&&running)$('execution-summary').textContent=s.cancelRequested?'ממתין לעצירה בטוחה…':e?.operation!==null&&e?.operation!==undefined?`התקדמות: ${e.operation+1} מתוך ${e.operation_count}`:'בודק שהקבצים מוכנים…';
  if(parentNeeded){$('execution-title').textContent='נדרשת בחירה מפורשת של תיקיית האב';$('execution-summary').textContent=parentPending?'ממתין לבחירת תיקיית האב…':'לאחר הבחירה תופעל בדיקת מיון חדשה. עדיין לא יבוצעו שינויים בקבצים.';}
  if(running&&e?.verification){
@@ -301,7 +318,7 @@ function render(){
  $('settings-label').textContent=controller.settingsDirty?'שינויים שלא נשמרו':'ההגדרות שלך';$('settings-label').hidden=!controller.settingsDirty;$('settings-notice').textContent=noticeLabel(controller.savedNotice);$<HTMLButtonElement>('save-settings').disabled=blocked;$('settings-error').hidden=!s.error;$('settings-error').textContent=s.error?(developer?s.error:simpleError(s.error)):'';
  $<HTMLButtonElement>('cancel-preview').disabled=!s.busy||s.cancelRequested;
  $('busy').textContent=s.cancelRequested&&s.activity==='preview'?'מבטל את הבדיקה…':s.activity==='settings'?'שומר הגדרות…':s.activity==='page'?'טוען עמוד תוצאות…':s.activity==='album-parent'?'ממתין לבחירת תיקיית האב…':'קורא ומנתח את הקבצים…';
- $('busy').hidden=!s.busy;$('results').setAttribute('aria-busy',String(s.busy));
+ $('busy').hidden=!s.busy||$('busy').textContent===$('processing-title').textContent;$('results').setAttribute('aria-busy',String(s.busy));
  $('error').hidden=!s.error;$('error').textContent=s.error?(developer?s.error:simpleError(s.error)):'';$('error').tabIndex=-1;
  const ready=s.snapshot?.status==='completed'&&!!s.page;
  $('empty').hidden=s.busy||!!s.error||ready&&s.page!.total>0;
