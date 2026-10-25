@@ -9,7 +9,7 @@ import {installAbout} from './about';
 import {readDeveloperMode,saveDeveloperMode,simpleStatus,simpleReason,simpleExecutionSummary,simpleError,simpleRepairReason,verificationWarning,developerRowSummary,recoveryNoticeText,verificationProgressText,resultFilename,executionReadinessText,executionBytesText,executionRefusalSummary,executionRefusalDetails,REPAIR_REVIEW_TEXT} from './result-presentation';
 import {kindLabel,reasonLabel,blockerLabel,warningPresentation,noticeLabel} from './presentation';
 import {PAGE_SIZE,PreviewController} from './state';
-import type {Settings,ImportEncoding,Mode,PlanRow,ExecutionItem,ApplyReadiness} from './contracts';
+import type {Settings,ImportEncoding,Mode,PlanRow,ExecutionItem,ApplyReadiness,ExecutionSnapshot} from './contracts';
 import {PersonalListController} from './lists';
 import {installHelpBadges} from './help';
 import {RecoveryController,RECOVERY_PAGE_SIZE,RECOVERY_OPERATION_PAGE_SIZE,recoveryStateLabel,recoveryFamilyLabel,recoveryNextStep,recoveryOperationLabel,displayRecoveryPath,recoveryProgressText,recoveryEvidenceRole,recoveryEvidenceStatus} from './recovery';
@@ -132,6 +132,8 @@ window.addEventListener('popstate',()=>{
 $('cancel-preview').addEventListener('click',()=>controller.cancelPreview());
 $('back-setup').addEventListener('click',backToSetup);
 $('finish-results').addEventListener('click',backToSetup);
+let completionListShown=false,completionRun='';
+$('show-completed-list').addEventListener('click',()=>{completionListShown=true;render();$('results-heading').focus();});
 $('review-apply').addEventListener('click',()=>{
  if(!controller.canApply)return;
  const readiness=controller.state.snapshot!.apply!;
@@ -172,15 +174,6 @@ $('row-close').addEventListener('click',closeRow);
 $('row-dialog').addEventListener('cancel',event=>{event.preventDefault();closeRow();});
 function openRow(row:PlanRow,trigger:HTMLButtonElement,push=true){
  detailTrigger=trigger;$('row-title').textContent=resultFilename(row,executionItems(row),controller.state.model?.platform);$('row-content').replaceChildren();
- if(!controller.state.developerMode){
-  const status=rowStatus(row);
-  if(row.artist)$('row-content').append(text('p',row.artist,'detail-artist'));
-  $('row-content').append(text('p',status,'detail-status'));
-  for(const item of executionItems(row)){const repairReason=simpleRepairReason(item);if(repairReason)$('row-content').append(text('p',repairReason,'hint'));}
-  const reason=simpleReason(row,controller.state.snapshot?.apply?.supported);if(reason&&!executionItems(row).length)$('row-content').append(text('p',reason,'hint'));
-  if(executionItems(row).some(item=>['partial','failed','needs_recovery','source_retained'].includes(item.status)))$('row-content').append(text('p',row.kind==='FixNames'?'בדוק את הקובץ ואת הגיבוי בתיקיית המקור לפני ניסיון נוסף.':'בדוק את הקובץ בתיקיית המקור ובתיקיית היעד לפני ניסיון נוסף.','hint'));
-  if(push)history.pushState({singlesView:'detail',jobId:controller.state.snapshot?.job_id,rowId:row.id},'');openDialog('row-dialog');return;
- }
 
  for(const [label,value]of [['מקור',row.source],['יעד מוצע',row.destination]]as const){if(value===null)continue;const wrapper=text('label',label,'detail-path-label');const input=document.createElement('input');input.className='source-path';input.readOnly=true;input.dir='ltr';input.value=value;input.setAttribute('aria-label',label);input.addEventListener('focus',()=>input.select());wrapper.append(input);$('row-content').append(wrapper);}
  const description=text('p',reasonLabel(row),'detail-reason');$('row-content').append(description);
@@ -245,6 +238,31 @@ function routeSummary(readiness:ApplyReadiness){
  if(readiness.mode==='FixNames'||!readiness.target){node.append('בתיקייה ',bdi(readiness.source));return node;}
  node.append('מ־',bdi(readiness.source),' אל ',bdi(readiness.target));return node;
 }
+/** Ranked artists with their share of the sorted songs; bars are relative to the leader. */
+function leaderList(leaders:[string,number][],total:number){
+ const section=document.createElement('section');section.className='leaders';
+ section.append(text('h4',leaders.length===1?'האמן המוביל':`${leaders.length} האמנים המובילים`));
+ const list=document.createElement('ol'),top=Math.max(...leaders.map(([,count])=>count),1);
+ leaders.forEach(([name,count],index)=>{
+  const item=document.createElement('li'),bar=document.createElement('span');
+  bar.className='leader-bar';bar.style.setProperty('--share',String(count/top));
+  const songs=count===1?'שיר אחד':`${count.toLocaleString('he-IL')} שירים`,share=total>0?` · ${Math.round(count/total*100)}%`:'';
+  const label=text('bdi',name,'leader-name');label.dir='auto';
+  item.append(text('span',String(index+1),'leader-rank'),label,bar,text('span',songs+share,'leader-count'));
+  list.append(item);
+ });
+ section.append(list);return section;
+}
+/** The few numbers a finished run is remembered by; the text summary stays for assistive tech. */
+function completionStats(e:ExecutionSnapshot,copy:boolean):{value:number;label:string}[]{
+ const r=e.result;if(!r)return [];
+ if(r.repair)return [{value:r.repair.renamed_files,label:'שמות תוקנו'},{value:r.repair.repaired_files,label:'תגיות תוקנו'},{value:r.repair.unchanged_files,label:'ללא שינוי'}].filter((stat,index)=>index<2||stat.value>0);
+ const stats=[{value:r.committed_destinations,label:copy?'שירים הועתקו':'שירים הועברו'}];
+ if(r.legacy_summary?.artist_folders_created)stats.push({value:r.legacy_summary.artist_folders_created,label:'תיקיות אמנים חדשות'});
+ if(r.albums?.completed)stats.push({value:r.albums.completed,label:'אלבומים'});
+ if(r.failed_operations)stats.push({value:r.failed_operations,label:'לא הושלמו'});
+ return stats;
+}
 let executionRefusalBinding='';
 function renderExecution(){
  const s=controller.state,e=s.execution,readiness=s.snapshot?.apply;
@@ -268,6 +286,14 @@ function renderExecution(){
  $('execution-refusal-details').textContent=refusal;
  $('execution-summary').textContent=developer?(r?r.repair?`${r.repair.renamed_files} שמות תוקנו · ${r.repair.repaired_files} תגיות תוקנו · ${r.repair.unchanged_files} ללא שינוי בתגיות · ${r.repair.unsupported_files} לא נתמכים · ${r.repair.retained_backup_bytes.toLocaleString('he-IL')} בתים נשמרו בגיבוי`:r.duets?simpleExecutionSummary(e!,readiness?.copy_mode??s.settings.copy_mode):`${r.committed_destinations.toLocaleString('he-IL')} יעדים נכתבו · ${r.moved_sources.toLocaleString('he-IL')} קבצי מקור הועברו · ${r.failed_operations.toLocaleString('he-IL')} נכשלו · ${r.blocked_operations.toLocaleString('he-IL')} לא בוצעו`:s.cancelRequested&&running?'ממתין לעצירה בטוחה…':e?.status==='running'&&e.operation!==null?`פעולה ${e.operation+1} מתוך ${e.operation_count} · ${executionBytesText(e.bytes_written,e.source_length)}`:e&&!['preparing','running'].includes(e.status)?(e.error??'לא התקבלו מוני ביצוע מאומתים. יש לבדוק את היומן.'):readiness?.supported?executionReadinessText(readiness,true):readiness?.reason??''):(e?simpleExecutionSummary(e,readiness?.copy_mode??s.settings.copy_mode):readiness?.supported?executionReadinessText(readiness,false):executionRefusalSummary(readiness,s.snapshot?.blockers??[]));
  if(!developer&&!e&&!running&&readiness?.supported)$('execution-summary').replaceChildren(routeSummary(readiness));
+ const stats=!developer&&e?.status==='complete'&&!e.recovery_error?completionStats(e,readiness?.copy_mode??s.settings.copy_mode):[];
+ const run=e?`${e.job_id}:${e.plan_id}`:'';if(run!==completionRun){completionRun=run;completionListShown=false;}
+ const completionView=stats.length>0&&!completionListShown;
+ $('results').dataset.completion=String(completionView);$('show-completed-list').hidden=!completionView;
+ $('execution-stats').hidden=!stats.length;$('execution-summary').classList.toggle('visually-hidden',stats.length>0);
+ $('execution-stats').replaceChildren(...stats.map(stat=>{const item=document.createElement('div');item.className='stat';item.append(text('strong',stat.value.toLocaleString('he-IL')),text('span',stat.label));return item;}));
+ const legacy=stats.length?e?.result?.legacy_summary:null,leaders=legacy?.top_artists??[];
+ if(leaders.length)$('execution-stats').append(leaderList(leaders,legacy!.songs_sorted));
  if(!developer&&running)$('execution-summary').textContent=s.cancelRequested?'ממתין לעצירה בטוחה…':e?.operation!==null&&e?.operation!==undefined?`התקדמות: ${e.operation+1} מתוך ${e.operation_count}`:'בודק שהקבצים מוכנים…';
  if(parentNeeded){$('execution-title').textContent='נדרשת בחירה מפורשת של תיקיית האב';$('execution-summary').textContent=parentPending?'ממתין לבחירת תיקיית האב…':'לאחר הבחירה תופעל בדיקת מיון חדשה. עדיין לא יבוצעו שינויים בקבצים.';}
  if(running&&e?.verification){
@@ -315,7 +341,7 @@ function render(){
  $('recovery-notice').hidden=!s.recoveryNotice;
  $('recovery-notice-text').textContent=recoveryNoticeText(s.recoveryNotice);
  $('open-recovery').hidden=!hasAndroidHost()||!s.recoveryNotice;$<HTMLButtonElement>('open-recovery').disabled=s.busy;
- $('settings-label').textContent=controller.settingsDirty?'שינויים שלא נשמרו':'ההגדרות שלך';$('settings-label').hidden=!controller.settingsDirty;$('settings-notice').textContent=noticeLabel(controller.savedNotice);$<HTMLButtonElement>('save-settings').disabled=blocked;$('settings-error').hidden=!s.error;$('settings-error').textContent=s.error?(developer?s.error:simpleError(s.error)):'';
+ const savedMain=controller.savedNotice==='הגדרות המיון נשמרו להפעלות הבאות.';$('save-settings').dataset.saved=String(savedMain);setButtonLabel($('save-settings'),savedMain?'נשמר':'שמור כברירת מחדל','save');$('settings-label').textContent=controller.settingsDirty?'שינויים שלא נשמרו':'ההגדרות שלך';$('settings-label').hidden=!controller.settingsDirty;$('settings-notice').textContent=noticeLabel(controller.savedNotice);$<HTMLButtonElement>('save-settings').disabled=blocked;$('settings-error').hidden=!s.error;$('settings-error').textContent=s.error?(developer?s.error:simpleError(s.error)):'';
  $<HTMLButtonElement>('cancel-preview').disabled=!s.busy||s.cancelRequested;
  $('busy').textContent=s.cancelRequested&&s.activity==='preview'?'מבטל את הבדיקה…':s.activity==='settings'?'שומר הגדרות…':s.activity==='page'?'טוען עמוד תוצאות…':s.activity==='album-parent'?'ממתין לבחירת תיקיית האב…':'קורא ומנתח את הקבצים…';
  $('busy').hidden=!s.busy||$('busy').textContent===$('processing-title').textContent;$('results').setAttribute('aria-busy',String(s.busy));
@@ -332,7 +358,8 @@ function render(){
   const origin=document.createElement('td');origin.className='file-name';const name=text('bdi',filename,'source-name');name.dir='auto';name.title=developer?row.source:filename;origin.append(name);tr.append(origin);
   const action=text('td',developer?(items.length?items.map(itemLabel).join(' · '):kindLabel(row.kind)):(row.artist??''),'row-action');action.dir='auto';tr.append(action);
   const reason=document.createElement('td');reason.className='row-reason';reason.append(text('span',developer?`${kindLabel(row.kind)} · `:row.artist?`${row.artist} · `:'','mobile-action'),text('span',developer?developerRowSummary(row,rowStatus(row),items.length>0||!!s.execution&&!['preparing','running'].includes(s.execution.status)):rowStatus(row)));tr.append(reason);
-  const detail=document.createElement('td');detail.className='row-detail';const button=document.createElement('button');button.className='icon-button detail-button';button.disabled=s.activity==='album-parent';button.dataset.rowId=row.id;button.setAttribute('aria-label',`פרטים: ${filename}`);button.append(iconElement('info'));button.addEventListener('click',()=>openRow(row,button));detail.append(button);tr.append(detail);$('rows').append(tr);
+  if(developer){const detail=document.createElement('td');detail.className='row-detail';const button=document.createElement('button');button.className='icon-button detail-button';button.disabled=s.activity==='album-parent';button.dataset.rowId=row.id;button.setAttribute('aria-label',`פרטים: ${filename}`);button.append(iconElement('info'));button.addEventListener('click',()=>openRow(row,button));detail.append(button);tr.append(detail);}
+  else reason.title=[...items.map(simpleRepairReason),items.length?null:simpleReason(row,s.snapshot?.apply?.supported)].filter(Boolean).join(' · ');$('rows').append(tr);
  }
  studio.filterRows();
  $('warnings').replaceChildren();$('technical-notices').replaceChildren();

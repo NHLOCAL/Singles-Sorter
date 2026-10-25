@@ -163,6 +163,7 @@ export const appTemplate = `
   </div>
 
   <section id="processing-screen" hidden aria-labelledby="processing-title">
+    <span class="equalizer" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
     <progress aria-label="מתבצעת בדיקה"></progress>
     <h2 id="processing-title" tabindex="-1">קורא ומנתח את הקבצים…</h2>
     <p id="busy" role="status" aria-live="polite"></p>
@@ -185,11 +186,13 @@ export const appTemplate = `
         <div>
           <h3 id="execution-title">מוכן לביצוע</h3>
           <p id="execution-summary" role="status" aria-live="polite"></p>
+          <div id="execution-stats" class="execution-stats" aria-hidden="true" hidden></div>
         </div>
         <button id="review-apply" class="primary">בצע את התוכנית</button>
         <button id="select-album-source-parent" class="secondary" aria-describedby="album-source-parent-help" hidden>בחירת תיקיית האב ובדיקה מחדש</button>
         <button id="cancel-apply" class="secondary" hidden>עצור ביצוע</button>
         <button id="finish-results" class="primary" hidden>סיום</button>
+        <button id="show-completed-list" class="text-button" hidden>הצג את הקבצים</button>
       </div>
       <p id="album-source-parent-help" class="hint" hidden>תיקיית האב משמשת רק להסרת תיקיית המקור אם תתרוקן לאחר ההעברה המתוכננת. ודא ששום יישום או משתמש אחר אינו משנה את התיקיות בזמן הביצוע.</p>
       <details id="execution-refusal" class="execution-refusal" hidden>

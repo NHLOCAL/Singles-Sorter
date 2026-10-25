@@ -99,7 +99,6 @@ def assert_observed_filename(script, fixed):
     name = Path(fixed).name
     assert script("return Array.from(document.querySelectorAll('#rows .source-name'),n=>n.textContent)") == [name]
     assert script("return document.querySelector('#rows .source-name').title") == name
-    assert script("return document.querySelector('#rows .detail-button').getAttribute('aria-label')") == 'פרטים: ' + name
 
 
 def exercise_repair(command, script, click, fill, wait, capture, root, output, audio_path):
@@ -170,11 +169,8 @@ def exercise_repair(command, script, click, fill, wait, capture, root, output, a
         assert script("return document.querySelectorAll('#rows tr').length") == 1
         assert 'unchanged.wav' not in script("return document.querySelector('#rows').textContent")
         assert_observed_filename(script, fixed)
-        click('#rows .detail-button')
-        assert script("return document.querySelector('#row-title').textContent") == fixed.name
-        click('#row-close')
-        wait(lambda: script("return !document.querySelector('#row-dialog').open"))
         set_developer_mode(script, click, wait, True)
+        assert script("return document.querySelector('#rows .detail-button').getAttribute('aria-label')") == 'פרטים: ' + fixed.name
         click('#rows .detail-button')
         assert script("return document.querySelector('#row-title').textContent") == fixed.name
         assert str(path) in script("return Array.from(document.querySelectorAll('#row-content input'),n=>n.value)")

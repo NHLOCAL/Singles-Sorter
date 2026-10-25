@@ -209,10 +209,8 @@ try:
         expect(page.locator('#rows tr')).to_have_count(1)
         assert page.evaluate("window.__calls.filter(c=>c.command==='start_preview').length")==1
         checks.append('Page filters expose selected state, match counts and empty matches without restarting or changing the plan')
-        page.locator('#rows .detail-button').click()
-        expect(page.locator('#row-content')).not_to_contain_text('מידע טכני')
-        expect(page.locator('#row-content .source-path')).to_have_count(0)
-        page.keyboard.press('Escape')
+        # Ordinary rows already show everything they know; details are a developer tool.
+        expect(page.locator('#rows .detail-button')).to_have_count(0)
         developer_mode(page,True)
         expect(page.locator('#rows tr')).to_have_count(1)
         page.locator('#show-inactive').check()

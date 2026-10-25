@@ -236,12 +236,7 @@ try:
         capture('02-native-real-sort-preview')
         check_native_layout(command, script, capture, OUTPUT, '02-native-results')
         check_phone_layout(command,script,capture,OUTPUT,'02-native-results')
-        click('#rows tr:last-child .detail-button')
-        wait(lambda:script("return document.querySelector('#row-dialog').open"))
-        assert script("return document.querySelectorAll('#row-dialog .source-path').length") == 0
-        assert 'אברהם פריד' in text('#row-content')
-        capture('02-native-simple-result-details')
-        click('#row-close')
+        assert script("return document.querySelectorAll('#rows .detail-button').length") == 0, 'Ordinary rows expose a details action'
         set_developer_mode(script, click, wait, True)
         capture('02-native-developer-results')
         click('#rows tr:last-child .detail-button')

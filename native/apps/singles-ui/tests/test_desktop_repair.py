@@ -26,16 +26,16 @@ class RepairFixtures(unittest.TestCase):
 
 
 class ObservedFilenameAssertion(unittest.TestCase):
-    def test_actual_gate_checks_exact_current_label_title_and_accessible_name(self):
+    def test_actual_gate_checks_exact_current_label_and_title(self):
         with tempfile.TemporaryDirectory() as directory:
             fixed = Path(directory) / 'שם מתוקן.mp3'
             fixed.write_bytes(b'owned test evidence')
-            answers = [[fixed.name], fixed.name, 'פרטים: ' + fixed.name]
+            answers = [[fixed.name], fixed.name]
             def check(values):
                 replies = iter(values)
                 assert_observed_filename(lambda _script: next(replies), fixed)
             check(answers)
-            for index, wrong in [(0, ['old_name.mp3']), (1, 'old_name.mp3'), (2, 'פרטים: old_name.mp3')]:
+            for index, wrong in [(0, ['old_name.mp3']), (1, 'old_name.mp3')]:
                 changed = answers.copy(); changed[index] = wrong
                 with self.assertRaises(AssertionError): check(changed)
             fixed.unlink()

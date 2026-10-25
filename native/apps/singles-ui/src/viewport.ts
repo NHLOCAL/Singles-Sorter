@@ -12,7 +12,9 @@ export function installViewport(app:HTMLElement){
  window.addEventListener('resize',update);
  window.visualViewport?.addEventListener('resize',update);
  const observer=new ResizeObserver(update);observer.observe(document.documentElement);
+ // The fixed-height toolbar no longer grows with text; its title always does.
  const header=app.querySelector('header');if(header)observer.observe(header);
+ const title=header?.querySelector('h1');if(title)observer.observe(title);
  update();
  return()=>{window.removeEventListener('resize',update);window.visualViewport?.removeEventListener('resize',update);observer.disconnect();};
 }
