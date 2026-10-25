@@ -1,7 +1,7 @@
 """Sign an aligned APK with an explicitly supplied, durable identity.
 
 Passwords are read by apksigner from environment variables, never command arguments.
-Release mode requires the certificate of the published 14.0 APK. QA signing is
+Release mode requires the pinned permanent product certificate. QA signing is
 explicit and never implies compatibility with installations from the release.
 """
 import argparse
@@ -50,8 +50,8 @@ def main():
                             capture_output=True, text=True, check=True)
     digest = certificate(result.stdout)
     compatible = digest == config["legacy_android_certificate_sha256"]
-    if not args.qa and not compatible:
-        raise SystemExit("Signing certificate differs from published 14.0; release rejected. Use --qa only for device testing.")
+    if not args.qa and digest != config["android_certificate_sha256"]:
+        raise SystemExit("Signing certificate differs from permanent product identity; release rejected. Use --qa only for device testing.")
     candidate.rename(args.output)
     receipt = {"version": config["version"], "qa_only": args.qa,
                "legacy_update_signature_compatible": compatible, "certificate_sha256": digest,
