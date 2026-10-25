@@ -99,6 +99,7 @@ jobs:
           retention-days: 7
       - name: Strict source and ownership guards
         run: |
+          python3 -m unittest discover -s native/apps/singles-android -p 'test_release.py'
           cargo +1.99.0 fmt --manifest-path native/plugins/original-inference/Cargo.toml -- --check
           cargo +1.99.0 test --locked --manifest-path native/plugins/original-inference/Cargo.toml --features product --lib
           cargo +1.99.0 clippy --locked --manifest-path native/plugins/original-inference/Cargo.toml --features product --all-targets -- -D warnings
@@ -129,8 +130,16 @@ jobs:
             --ndk "$ANDROID_NDK_HOME" --npm-cache "$(npm config get cache)" \
             --dependency-cache "$HOME/.cache/singles-sorter/sources" \
             --output-dir "$RUNNER_TEMP/android-licenses"
-      - name: Package development preview without Python or runtime downloads
+      - name: Prepare isolated QA signing identity
+        run: |
+          keytool -genkeypair -noprompt -keystore "$RUNNER_TEMP/qa-only.p12" -storetype PKCS12 -storepass android -keypass android -alias qa -keyalg RSA -keysize 2048 -validity 3650 -dname 'CN=Singles QA Only'
+      - name: Package QA APK without Python or runtime downloads
         env:
+          SINGLES_SIGNING_MODE: qa
+          SINGLES_KEYSTORE: ${{ runner.temp }}/qa-only.p12
+          SINGLES_KEY_ALIAS: qa
+          SINGLES_STORE_PASSWORD: android
+          SINGLES_KEY_PASSWORD: android
           MODEL_BUNDLE: ${{ runner.temp }}/original-bundle
           NATIVE_LIB_X86_64: ${{ runner.temp }}/android-native/x86_64/libsingles_android_inference.so
           NATIVE_LIB_ARM64: ${{ runner.temp }}/android-native/arm64-v8a/libsingles_android_inference.so
@@ -149,6 +158,7 @@ jobs:
             ${{ runner.temp }}/android-preview/source-commit.txt
             ${{ runner.temp }}/android-preview/apk.sha256
             ${{ runner.temp }}/android-preview/inputs.json
+            ${{ runner.temp }}/android-preview/singles-android-preview.signing.json
             ${{ runner.temp }}/android-licenses/inventory.json
             ${{ runner.temp }}/android-native/*/elf-program-headers.txt
             ${{ runner.temp }}/android-native/*/elf-linkage.json

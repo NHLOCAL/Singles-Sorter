@@ -2,7 +2,7 @@
 # Build the shared-UI Android preview from verified local inputs. No downloads.
 # Requires original-model five-file bundle, product-feature JNI libraries, Android
 # mode UI_DIST, SDK Build Tools 35.0.0 and JDK. OUT must be fresh/outside Git.
-# Generated development-only signing key is never uploaded or used for release.
+# Signing identity is explicit; release signing must match the published APK.
 # Python is a build helper only; the APK contains no Python runtime.
 set -euo pipefail
 umask 077
@@ -141,13 +141,14 @@ with ZipFile(out / "build/unsigned.apk", "a") as apk:
 PY
 
 "$BUILD_TOOLS/zipalign" -P 16 4 "$OUT/build/unsigned.apk" "$OUT/build/aligned.apk"
-"$JAVA_HOME/bin/keytool" -genkeypair -noprompt -keystore "$OUT/development-only.p12" \
-    -storetype PKCS12 -storepass android -keypass android -alias development-only \
-    -keyalg RSA -keysize 2048 -validity 3650 \
-    -dname 'CN=Singles Android Development,OU=Preview Only,O=Local Development,C=ZZ'
-"$BUILD_TOOLS/apksigner" sign --ks "$OUT/development-only.p12" \
-    --ks-key-alias development-only --ks-pass pass:android --key-pass pass:android \
-    --v4-signing-enabled false --out "$OUT/singles-android-preview.apk" "$OUT/build/aligned.apk"
+SIGNING_ARGS=()
+case "${SINGLES_SIGNING_MODE:?Set SINGLES_SIGNING_MODE to qa or release}" in
+    qa) SIGNING_ARGS+=(--qa) ;;
+    release) ;;
+    *) fail 'SINGLES_SIGNING_MODE must be qa or release' ;;
+esac
+python3 "$SCRIPT_DIR/sign_apk.py" --input "$OUT/build/aligned.apk" \
+    --output "$OUT/singles-android-preview.apk" --apksigner "$BUILD_TOOLS/apksigner" "${SIGNING_ARGS[@]}"
 "$BUILD_TOOLS/zipalign" -c -P 16 -v 4 "$OUT/singles-android-preview.apk"
 "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$OUT/singles-android-preview.apk"
 "$BUILD_TOOLS/aapt2" dump badging "$OUT/singles-android-preview.apk"

@@ -3,7 +3,7 @@ name: APK Build and Release
 on:
   push:
     tags:
-      - 'v*'
+      - 'v1[0-4].*'
 
   workflow_dispatch:
 
