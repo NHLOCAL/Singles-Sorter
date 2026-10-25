@@ -1,4 +1,4 @@
-name: Android shared UI product preview
+name: Singles Sorter 15 Android beta
 on:
   workflow_dispatch:
     inputs:
@@ -6,6 +6,10 @@ on:
         description: 'Emit exact formatting/lock diff and compile diagnostics; never an acceptance build'
         type: boolean
         default: false
+      release_signing:
+        description: 'Use the permanent version 15 signing identity (manual builds only)'
+        type: boolean
+        default: true
   pull_request:
     paths: ['native/**', '.github/workflows/android-product.yml']
 permissions:
@@ -131,15 +135,33 @@ jobs:
             --dependency-cache "$HOME/.cache/singles-sorter/sources" \
             --output-dir "$RUNNER_TEMP/android-licenses"
       - name: Prepare isolated QA signing identity
+        if: github.event_name != 'workflow_dispatch' || inputs.release_signing != true
         run: |
           keytool -genkeypair -noprompt -keystore "$RUNNER_TEMP/qa-only.p12" -storetype PKCS12 -storepass android -keypass android -alias qa -keyalg RSA -keysize 2048 -validity 3650 -dname 'CN=Singles QA Only'
-      - name: Package QA APK without Python or runtime downloads
+          echo "SINGLES_KEYSTORE=$RUNNER_TEMP/qa-only.p12" >> "$GITHUB_ENV"
+      - name: Restore permanent signing identity
+        if: github.event_name == 'workflow_dispatch' && inputs.release_signing == true
         env:
-          SINGLES_SIGNING_MODE: qa
-          SINGLES_KEYSTORE: ${{ runner.temp }}/qa-only.p12
-          SINGLES_KEY_ALIAS: qa
-          SINGLES_STORE_PASSWORD: android
-          SINGLES_KEY_PASSWORD: android
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          python3 - <<'PY'
+          import base64, os
+          from pathlib import Path
+          value = os.environ['KEYSTORE_BASE64']
+          if not value:
+              raise SystemExit('Permanent signing identity is missing; do not generate a replacement')
+          path = Path(os.environ['RUNNER_TEMP']) / 'permanent-signing.p12'
+          path.write_bytes(base64.b64decode(value, validate=True))
+          path.chmod(0o600)
+          with open(os.environ['GITHUB_ENV'], 'a') as stream:
+              stream.write(f'SINGLES_KEYSTORE={path}\n')
+          PY
+      - name: Package version 15 APK without Python or runtime downloads
+        env:
+          SINGLES_SIGNING_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.release_signing == true && 'release' || 'qa' }}
+          SINGLES_KEY_ALIAS: ${{ github.event_name == 'workflow_dispatch' && inputs.release_signing == true && secrets.ANDROID_KEY_ALIAS || 'qa' }}
+          SINGLES_STORE_PASSWORD: ${{ github.event_name == 'workflow_dispatch' && inputs.release_signing == true && secrets.ANDROID_STORE_PASSWORD || 'android' }}
+          SINGLES_KEY_PASSWORD: ${{ github.event_name == 'workflow_dispatch' && inputs.release_signing == true && secrets.ANDROID_KEY_PASSWORD || 'android' }}
           MODEL_BUNDLE: ${{ runner.temp }}/original-bundle
           NATIVE_LIB_X86_64: ${{ runner.temp }}/android-native/x86_64/libsingles_android_inference.so
           NATIVE_LIB_ARM64: ${{ runner.temp }}/android-native/arm64-v8a/libsingles_android_inference.so
@@ -147,18 +169,18 @@ jobs:
           LICENSES_DIR: ${{ runner.temp }}/android-licenses
           OUT: ${{ runner.temp }}/android-preview
         run: |
-          bash native/apps/singles-android/build-preview.sh
+          python3 native/apps/singles-android/build_apk.py
           git rev-parse HEAD > "$OUT/source-commit.txt"
-          sha256sum "$OUT/singles-android-preview.apk" > "$OUT/apk.sha256"
+          sha256sum "$OUT"/*.apk > "$OUT/apk.sha256"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: android-product-preview-${{ github.sha }}
+          name: singles-sorter-15-android-${{ github.sha }}
           path: |
-            ${{ runner.temp }}/android-preview/singles-android-preview.apk
+            ${{ runner.temp }}/android-preview/*.apk
             ${{ runner.temp }}/android-preview/source-commit.txt
             ${{ runner.temp }}/android-preview/apk.sha256
             ${{ runner.temp }}/android-preview/inputs.json
-            ${{ runner.temp }}/android-preview/singles-android-preview.signing.json
+            ${{ runner.temp }}/android-preview/*.signing.json
             ${{ runner.temp }}/android-licenses/inventory.json
             ${{ runner.temp }}/android-native/*/elf-program-headers.txt
             ${{ runner.temp }}/android-native/*/elf-linkage.json

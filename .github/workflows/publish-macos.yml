@@ -3,7 +3,7 @@ name: macOS Publish AI Installer and Portable
 on:
   push:
     tags:
-      - 'v*'
+      - 'v1[0-4].*'
 
 jobs:
   build-macos:

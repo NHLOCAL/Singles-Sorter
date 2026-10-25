@@ -4,7 +4,7 @@ resolver = "3"
 exclude = ["probes/released-ner/released-ner-text", "probes/released-ner/released-ner-math"]
 
 [workspace.package]
-version = "0.1.0"
+version = "15.0.0-beta.1"
 edition = "2024"
 rust-version = "1.99"
 license = "MIT"

@@ -3,7 +3,7 @@ name: Build and Release CLI
 on:
   push:
     tags:
-      - 'v*'
+      - 'v1[0-4].*'
 
 jobs:
   build:

@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import shutil
 import sys
 import xml.etree.ElementTree as ET
 from zipfile import ZipFile, ZIP_STORED, ZIP_DEFLATED
@@ -101,16 +102,22 @@ def main():
     run(jar, "--create", "--file", out / "build/classes.jar", "-C", classes, ".")
     run(tools["d8"], "--min-api", "29", "--lib", platform, "--output", dex, out / "build/classes.jar")
     unsigned = out / "build/unsigned.apk"
+    drawable = out / "build/res/drawable"
+    drawable.mkdir(parents=True)
+    shutil.copyfile(ROOT / "native/apps/singles-ui/public/icon.png", drawable / "app_icon.png")
+    resources = out / "build/resources.zip"
+    run(tools["aapt2"], "compile", "--dir", out / "build/res", "-o", resources)
     manifest = HERE / "AndroidManifest.xml"
     if mode == "qa":
         tree = ET.parse(manifest)
         tree.getroot().find("application").set("{http://schemas.android.com/apk/res/android}debuggable", "true")
         manifest = out / "build/AndroidManifest.xml"
         tree.write(manifest, encoding="utf-8", xml_declaration=True)
-    run(tools["aapt2"], "link", "--manifest", manifest, "-I", platform, "-o", unsigned)
+    run(tools["aapt2"], "link", "--manifest", manifest, "-I", platform, "-o", unsigned, resources)
     for path in sorted(dex.glob("*.dex")):
         assets.append((path.name, path.read_bytes(), ZIP_STORED))
     receipt = {"source_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
+               "source_dirty": bool(subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=no"], cwd=ROOT, text=True).strip()),
                "runtime_acceptance": "pending-exact-apk-device-validation", "entries": []}
     with ZipFile(unsigned, "a") as apk:
         for name, data, compression in assets:

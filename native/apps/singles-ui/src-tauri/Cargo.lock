@@ -3257,7 +3257,7 @@ dependencies = [
 
 [[package]]
 name = "sorter-classifier"
-version = "0.1.0"
+version = "15.0.0-beta.1"
 dependencies = [
  "libc",
  "sha2",
@@ -3265,7 +3265,7 @@ dependencies = [
 
 [[package]]
 name = "sorter-core"
-version = "0.1.0"
+version = "15.0.0-beta.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -3274,7 +3274,7 @@ dependencies = [
 
 [[package]]
 name = "sorter-executor"
-version = "0.1.0"
+version = "15.0.0-beta.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -3286,7 +3286,7 @@ dependencies = [
 
 [[package]]
 name = "sorter-io"
-version = "0.1.0"
+version = "15.0.0-beta.1"
 dependencies = [
  "libc",
  "sha2",
@@ -3298,7 +3298,7 @@ dependencies = [
 
 [[package]]
 name = "sorter-recognition"
-version = "0.1.0"
+version = "15.0.0-beta.1"
 dependencies = [
  "released-ner-probe",
  "released-ner-text",
@@ -3311,7 +3311,7 @@ dependencies = [
 
 [[package]]
 name = "sorter-storage-contracts"
-version = "0.1.0"
+version = "15.0.0-beta.1"
 dependencies = [
  "serde",
  "sorter-core",
