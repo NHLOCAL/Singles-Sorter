@@ -84,11 +84,19 @@ struct ProfileData {
     first_run_seen_version: Option<String>,
     personal_rows: Vec<Vec<String>>,
 }
+/// The app starts without a singles subfolder. The planning contract keeps its
+/// released defaults; only a fresh profile chooses differently.
+fn app_default_settings() -> Settings {
+    Settings {
+        singles_folder: false,
+        ..Settings::default()
+    }
+}
 impl Default for ProfileData {
     fn default() -> Self {
         Self {
             schema_version: 1,
-            settings: Settings::default().into(),
+            settings: app_default_settings().into(),
             first_run_seen_version: None,
             personal_rows: vec![],
         }
@@ -858,15 +866,16 @@ mod tests {
     #[test]
     fn defaults_false_and_independent_save_timing() {
         let (_directory, store) = store();
-        assert_eq!(store.settings().unwrap(), Settings::default());
-        let mut first = MainSettings::from(Settings::default());
-        first.singles_folder = false;
+        assert_eq!(store.settings().unwrap(), app_default_settings());
+        assert!(!store.settings().unwrap().singles_folder);
+        let mut first = MainSettings::from(app_default_settings());
+        first.singles_folder = true;
         first.copy_mode = true;
         store.set_duet(true).unwrap();
         assert!(!store.settings().unwrap().copy_mode);
         let saved = store.save_main(first).unwrap();
         assert!(saved.duet_mode);
-        assert!(!saved.singles_folder);
+        assert!(saved.singles_folder);
         assert!(saved.copy_mode);
         assert!(!store.set_duet(false).unwrap().duet_mode);
         assert!(store.settings().unwrap().copy_mode);
@@ -1324,7 +1333,7 @@ mod tests {
                 let cloned = store.clone();
                 std::thread::spawn(move || {
                     for _ in 0..5 {
-                        assert_eq!(cloned.settings().unwrap(), Settings::default());
+                        assert_eq!(cloned.settings().unwrap(), app_default_settings());
                     }
                 })
             })

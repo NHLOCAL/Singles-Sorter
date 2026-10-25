@@ -6,7 +6,7 @@ export interface Settings {
   copy_mode: boolean; main_folder_only: boolean; singles_folder: boolean;
   exist_only: boolean; abc_sort: boolean; duet_mode: boolean;
 }
-export const defaults: Readonly<Settings> = Object.freeze({copy_mode:false,main_folder_only:false,singles_folder:true,exist_only:false,abc_sort:false,duet_mode:false});
+export const defaults: Readonly<Settings> = Object.freeze({copy_mode:false,main_folder_only:false,singles_folder:false,exist_only:false,abc_sort:false,duet_mode:false});
 export interface RootSelection {token:string;display_name:string;capabilities:{read:boolean;list:boolean};platform:Platform}
 export interface PreviewRequest {mode:Mode;source_token:string;target_token:string|null;settings:Settings;ai_profile:'Disabled'|'Configured'}
 export interface ModelStatus {execution_available?:boolean;available:boolean;message:string;platform:Platform}

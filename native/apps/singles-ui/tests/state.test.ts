@@ -15,7 +15,7 @@ async function ready(h=host()){const c=new PreviewController(h);await c.initiali
 describe('read-only preview controller',()=>{
  it('requires a new preview after opening retained-effects review',async()=>{const c=await ready();c.editRoot('Source','owned-source');await c.preview('FixNames');expect(c.state.snapshot).not.toBeNull();c.resourcesChanged();expect(c.state.snapshot).toBeNull();expect(c.state.page).toBeNull();expect(c.state.execution).toBeNull();expect(c.state.source.text).toBe('owned-source');expect(c.state.hostAvailable).toBe(true);});
 
- it('uses all six release defaults including explicit false',async()=>{const c=await ready();expect(c.state.settings).toEqual(defaults);expect(c.state.settings.singles_folder).toBe(true);});
+ it('uses all six release defaults including explicit false',async()=>{const c=await ready();expect(c.state.settings).toEqual(defaults);expect(c.state.settings.singles_folder).toBe(false);});
  it('keeps the explicit Disabled default even when a model is available',async()=>{const h=host();h.getModelStatus=async()=>({available:true,message:'loaded',platform:'windows'});const c=await ready(h);expect(c.state.model?.available).toBe(true);expect(c.state.ai).toBe('Disabled');});
  it('preserves explicit false preference values',async()=>{const h=host();h.getSettings=async()=>({...defaults,singles_folder:false});const c=await ready(h);expect(c.state.settings.singles_folder).toBe(false);});
  it('rejects malformed settings rather than silently coercing false',async()=>{const h=host();h.getSettings=async()=>({...defaults,copy_mode:'false'} as never);const c=await ready(h);expect(c.state.hostAvailable).toBe(false);});

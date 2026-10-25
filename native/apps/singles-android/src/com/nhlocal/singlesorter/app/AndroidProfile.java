@@ -13,7 +13,7 @@ final class AndroidProfile {
     private final SharedPreferences prefs;
     AndroidProfile(Context context){prefs=context.getSharedPreferences("singles-profile-v1",Context.MODE_PRIVATE);}
     synchronized JSONObject settings()throws Exception {
-        JSONObject result=new JSONObject();for(String key:KEYS)result.put(key,prefs.getBoolean(key,"singles_folder".equals(key)));return result;
+        JSONObject result=new JSONObject();for(String key:KEYS)result.put(key,prefs.getBoolean(key,false));return result;
     }
     static void validateSettings(JSONObject value,boolean duet)throws Exception {
         if(value.length()!=(duet?6:5))throw new IllegalArgumentException("SETTINGS_SHAPE");
