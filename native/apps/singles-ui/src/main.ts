@@ -32,7 +32,6 @@ app.innerHTML=appTemplate;
 // Keep the historical footer destination, verified from the released source.
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 const source=$<HTMLInputElement>('source'),target=$<HTMLInputElement>('target');
-$('android-permissions').hidden=!hasAndroidHost();
 const studio=installStudio(app,()=>controller.state.busy||personal.busy,()=>{if(navigation.screen==='results')backToSetup();});
 $('recovery-menu').addEventListener('click',async()=>{
  if(controller.state.busy)return;
