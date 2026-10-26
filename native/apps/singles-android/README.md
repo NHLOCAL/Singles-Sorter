@@ -1,7 +1,7 @@
 # Singles Sorter 15.0 Android beta
 
-Current product identity is `15.0.0-beta.1`, package `com.nhlocal.singlesorter`,
-version code `1500001`. Use `build_apk.py` on Windows/Linux or its shell wrapper
+Current product identity is `15.0.0-beta.2`, package `com.nhlocal.singlesorter`,
+version code `1500002`. Use `build_apk.py` on Windows/Linux or its shell wrapper
 `build-preview.sh`. Manual Actions builds default to the backed-up permanent key;
 pull requests use isolated QA signing. See the [signing and transition guide](docs/signing-and-v15-updates.md).
 
