@@ -3,7 +3,7 @@ name: Publish to PyPI
 on:
   push:
     tags:
-      - 'v1[0-4].*'
+      - 'v1[0-4].*.*'
 
 jobs:
   publish:
