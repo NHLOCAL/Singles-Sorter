@@ -1,4 +1,12 @@
 import './android.css';
+// CSS.supports('gap') also succeeds on engines that only support Grid gap.
+// Measure a real flex layout so WebView 83 receives spacing fallbacks.
+const flexGapProbe=document.createElement('div');
+flexGapProbe.style.cssText='display:flex;flex-direction:column;row-gap:1px;position:absolute;visibility:hidden';
+flexGapProbe.append(document.createElement('div'),document.createElement('div'));
+document.documentElement.append(flexGapProbe);
+document.documentElement.classList.toggle('no-flex-gap',flexGapProbe.scrollHeight===0);
+flexGapProbe.remove();
 /** Only the packaged Android host injects this narrow command transport.
  * No paths, URLs or generic filesystem operations are accepted by this layer.
  */

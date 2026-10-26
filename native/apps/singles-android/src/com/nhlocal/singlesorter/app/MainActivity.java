@@ -21,7 +21,9 @@ public final class MainActivity extends Activity {
         @JavascriptInterface public void invoke(String request){if(host!=null)host.invoke(request);}
     }
     @Override public void onCreate(Bundle state){
-        super.onCreate(state);view=new WebView(this);host=new AndroidHost(this,view);
+        super.onCreate(state);
+        WebView.setWebContentsDebuggingEnabled((getApplicationInfo().flags&android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0);
+        view=new WebView(this);host=new AndroidHost(this,view);
         WebSettings settings=view.getSettings();settings.setJavaScriptEnabled(true);settings.setDomStorageEnabled(false);
         settings.setAllowFileAccess(false);settings.setAllowContentAccess(false);settings.setBlockNetworkLoads(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);settings.setSupportMultipleWindows(true);

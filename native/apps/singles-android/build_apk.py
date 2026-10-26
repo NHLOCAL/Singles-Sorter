@@ -41,6 +41,15 @@ def main():
     mode = os.environ["SINGLES_SIGNING_MODE"]
     if mode not in ("qa", "release"):
         raise ValueError("SINGLES_SIGNING_MODE must be qa or release")
+    if mode == "release" and not os.environ.get("NATIVE_LIB_ARM64"):
+        raise ValueError("Release builds require ARM64 as well as x86_64")
+    release = json.loads((ROOT / "release.json").read_text(encoding="utf-8"))
+    declared = ET.parse(HERE / "AndroidManifest.xml").getroot()
+    ns = "{http://schemas.android.com/apk/res/android}"
+    if (declared.get("package") != release["android_package"]
+            or declared.get(ns + "versionName") != release["version"]
+            or declared.get(ns + "versionCode") != str(release["android_version_code"])):
+        raise ValueError("Android manifest and release.json disagree")
     out = Path(os.environ["OUT"]).resolve()
     if out.exists() or out == ROOT or ROOT in out.parents:
         raise ValueError("OUT must be a fresh directory outside the repository")
