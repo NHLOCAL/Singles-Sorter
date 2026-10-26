@@ -1,0 +1,317 @@
+name: Original AI and selected CLI release proof
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'native/**'
+      - '.github/workflows/original-ai-cli.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: original-ai-cli-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-proof:
+    name: Original models and real-file CLI (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2025, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: native
+    steps:
+      - name: Keep authenticated source bytes identical on both platforms
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config --global core.autocrlf false
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git config --global core.eol lf
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check out reviewed native sources
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: native
+
+      - name: Preflight snapshot helpers in Windows PowerShell 5.1 before heavy builds
+        if: runner.os == 'Windows'
+        run: |
+          powershell.exe -NoProfile -NonInteractive -File packaging/windows-preview/test_smoke_snapshots.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Read only the pinned public original baseline
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: NHLOCAL/Singles-Sorter
+          ref: 78d001aee5ce49628bdffebd34540fa83ba32c12
+          path: original-baseline
+          persist-credentials: false
+          sparse-checkout: src/core
+
+      - name: Install pinned oracle Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12.10'
+
+      - name: Install authenticated oracle-only packages
+        run: |
+          python -m pip install --only-binary=:all: --require-hashes --disable-pip-version-check -r probes/released-ner/oracle-requirements.txt -r crates/sorter-classifier/tools/oracle-requirements.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # music-tag has no official wheel; only this hash-pinned source package
+          # is built, using the already pinned setuptools backend without isolation.
+          python -m pip install --no-build-isolation --require-hashes --disable-pip-version-check -r tests/original_ai_cli/metadata-requirements.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python probes/released-ner/check_oracle_runtime.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip freeze
+
+      - name: Require FFmpeg for owned Ogg decoder comparisons
+        run: |
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+            if ($IsWindows) {
+              choco install ffmpeg --yes --no-progress
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            } elseif ($IsLinux) {
+              sudo apt-get update
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              sudo apt-get install --yes ffmpeg
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            } else { throw "Unsupported decoder-test runner" }
+          }
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) { throw "FFmpeg must be available; decoder tests cannot be skipped" }
+          ffmpeg -version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Verify exporters and regenerate only exact original assets
+        run: |
+          python -O crates/sorter-classifier/tools/test_export_auth.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m unittest discover -s packaging/windows-preview -p 'test_*.py'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -O -m unittest discover -s packaging/windows-preview -p 'test_*.py'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m unittest discover -s packaging/licenses -p 'test_*.py'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m unittest discover -s tests/original_ai_cli -p 'test_*.py'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python probes/released-ner/released-ner-export/export.py --model "$env:GITHUB_WORKSPACE/original-baseline/src/core/models/singer_ner_he" --out target/original-ai/bundle --suite platform
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python probes/released-ner/released-ner-export/verify.py target/original-ai/bundle
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python probes/released-ner/check_oracle_golden.py target/original-ai/bundle
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python crates/sorter-classifier/tools/export_original.py --baseline "$env:GITHUB_WORKSPACE/original-baseline" --output target/original-ai/bundle
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build authenticated static PCRE2 archive without JIT
+        run: |
+          python probes/released-ner/acquire_pcre2.py --out target/original-ai/pcre2 --build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "PCRE2_STATIC_DIR=$((Resolve-Path target/original-ai/pcre2/install/lib).Path)" >> $env:GITHUB_ENV
+          # Windows uses the dynamic MSVC CRT consistently in PCRE2, TagLib and
+          # Rust. PCRE2, TagLib and zlib themselves are linked as static archives.
+
+      - name: Install pinned official Rust
+        run: |
+          # Keep the official pinned toolchain separate from mutable runner-image
+          # components. RUSTUP_HOME is job-owned; never delete the runner's home.
+          # https://rust-lang.github.io/rustup/devel/environment-variables.html
+          if ($IsLinux) {
+            $isolatedHome = Join-Path $env:RUNNER_TEMP ("singles-cli-rustup-" + [guid]::NewGuid().ToString("N"))
+            New-Item -ItemType Directory -Path $isolatedHome -ErrorAction Stop | Out-Null
+            $env:RUSTUP_HOME = $isolatedHome
+            Add-Content -LiteralPath $env:GITHUB_ENV -Value "RUSTUP_HOME=$isolatedHome" -Encoding utf8
+            Write-Host "Using job-owned RUSTUP_HOME: $isolatedHome"
+          }
+          rustup toolchain install 1.99.0 --profile minimal --component rustfmt --component clippy
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          rustup which --toolchain 1.99.0 rustc
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 clippy --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 fmt --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Record exact Windows CLI profiles for selected-execution notice review
+        if: runner.os == 'Windows'
+        run: |
+          New-Item -ItemType Directory -Force target/original-ai/dependency-review | Out-Null
+          cargo +1.99.0 metadata --locked --format-version 1 --filter-platform x86_64-pc-windows-msvc --features sorter-cli/original-ai | Set-Content -Encoding utf8 target/original-ai/dependency-review/cli-metadata.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 metadata --locked --format-version 1 --filter-platform x86_64-pc-windows-msvc --features sorter-cli/original-ai,sorter-cli/selected-windows-execution | Set-Content -Encoding utf8 target/original-ai/dependency-review/selected-cli-metadata.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-FileHash Cargo.lock -Algorithm SHA256 | ConvertTo-Json | Set-Content -Encoding utf8 target/original-ai/dependency-review/lock-hash.json
+
+      - name: Retain exact CLI graphs before compile or packaging gates
+        if: runner.os == 'Windows' && !cancelled()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-cli-dependency-review-${{ github.sha }}
+          path: native/target/original-ai/dependency-review
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Verify bounded official zlib acquisition
+        run: |
+          python tests/build/test_acquire_zlib.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tests/build/acquire_zlib.py --evidence test-results/zlib-acquisition
+
+      - name: Retain exact zlib acquisition response receipts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: zlib-acquisition-cli-${{ matrix.os }}-${{ github.run_attempt }}
+          path: native/test-results/zlib-acquisition
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Check original AI feature and workspace contracts
+        run: |
+          cargo +1.99.0 fmt --all -- --check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $features = if ($IsWindows) { 'sorter-cli/original-ai,sorter-cli/selected-windows-execution' } else { 'sorter-cli/original-ai' }
+          cargo +1.99.0 clippy --locked --workspace --all-targets --features $features -- -D warnings
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 test --locked --release --workspace --features $features
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build default-off CLI and original AI with Windows selected execution
+        id: build-selected-cli
+        run: |
+          cargo +1.99.0 build --locked --release -p sorter-cli
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ext = if ($IsWindows) { '.exe' } else { '' }
+          Copy-Item "target/release/singles-sorter$ext" "target/original-ai/default-cli$ext"
+          $features = if ($IsWindows) { 'original-ai,selected-windows-execution' } else { 'original-ai' }
+          cargo +1.99.0 build --locked --release -p sorter-cli --features $features
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 build --locked --release -p sorter-classifier --example parity
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Compare original classifier numeric oracle at application optimization level
+        run: |
+          $ext = if ($IsWindows) { '.exe' } else { '' }
+          python crates/sorter-classifier/tools/verify_original.py --assets target/original-ai/bundle --binary "target/release/examples/parity$ext" --evidence target/original-ai/classifier-evidence
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Compare original NER paths and exercise shared bounded adapter
+        run: |
+          $env:ORIGINAL_AI_BUNDLE = (Resolve-Path target/original-ai/bundle).Path
+          $env:ORIGINAL_NER_ORACLE = (Resolve-Path target/original-ai/bundle/fixtures.json).Path
+          cargo +1.99.0 test --locked --release -p sorter-recognition --test original_oracle -- --ignored --nocapture
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run actual release CLI against original routes on authored real audio
+        run: |
+          $ext = if ($IsWindows) { '.exe' } else { '' }
+          python tests/original_ai_cli/check_cli.py --binary "target/release/singles-sorter$ext" --disabled-binary "target/original-ai/default-cli$ext" --bundle target/original-ai/bundle --baseline "$env:GITHUB_WORKSPACE/original-baseline" --report target/original-ai/cli-report.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-Content target/original-ai/pcre2/build-receipt.json
+
+      - name: Exercise actual Windows positional execution with closed stdin
+        if: runner.os == 'Windows'
+        run: |
+          python tests/original_ai_cli/check_execution.py --binary target/release/singles-sorter.exe --bundle target/original-ai/bundle --report target/original-ai/execution-report.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Package only verified Windows original-AI runtime and complete notices
+        if: runner.os == 'Windows'
+        run: |
+          # These steps run only after all actual original-AI Windows gates above.
+          # Read the native compiler identity from this build, not an assumed PATH.
+          $compilerFiles = @(Get-ChildItem target/release/build/sorter-io-*/out/taglib/CMakeFiles/*/CMakeCXXCompiler.cmake)
+          if ($compilerFiles.Count -lt 1) { throw 'Missing actual native compiler identity' }
+          $identity = @('Native static TagLib/zlib; dynamic MSVC CRT', (cmake --version))
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($file in $compilerFiles) {
+            $identity += Get-Content $file | Where-Object { $_ -match '^set\(CMAKE_CXX_(COMPILER_ID |COMPILER_VERSION |COMPILER_ARCHITECTURE_ID |SIMULATE_ID |SIMULATE_VERSION |COMPILER_FRONTEND_VARIANT )' }
+          }
+          $identity | Set-Content -Encoding utf8 target/original-ai/native-build-info.txt
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $dumpbin = @(& $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find 'VC\Tools\MSVC\**\bin\Hostx64\x64\dumpbin.exe') | Select-Object -Last 1
+          if (-not $dumpbin) { throw 'Official MSVC dumpbin not found' }
+          & $dumpbin /dependents target/release/singles-sorter.exe | Set-Content -Encoding utf8 target/original-ai/dumpbin-dependents.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python packaging/windows-preview/package_preview.py build --binary target/release/singles-sorter.exe --bundle target/original-ai/bundle --cli-report target/original-ai/cli-report.json --execution-report target/original-ai/execution-report.json --pcre2-receipt target/original-ai/pcre2/build-receipt.json --build-info target/original-ai/native-build-info.txt --dumpbin-report target/original-ai/dumpbin-dependents.txt --ci-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" --output target/original-ai/windows-preview
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Smoke the staged and ZIP-extracted preview in Windows PowerShell 5.1
+        if: runner.os == 'Windows'
+        run: |
+          powershell.exe -NoProfile -NonInteractive -File packaging/windows-preview/smoke.ps1 -PackageRoot target/original-ai/windows-preview -ReportPath target/original-ai/windows-preview-stage-smoke.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tests/original_ai_cli/check_execution.py --binary target/original-ai/windows-preview/singles-sorter.exe --bundle target/original-ai/windows-preview/models/original --package target/original-ai/windows-preview --report target/original-ai/windows-preview-stage-execution.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python packaging/windows-preview/package_preview.py archive --package target/original-ai/windows-preview --smoke-report target/original-ai/windows-preview-stage-smoke.json --execution-report target/original-ai/windows-preview-stage-execution.json --output target/original-ai/singles-sorter-original-ai-windows-x64-selected-cli.zip
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Exercise the consumer ZIP extraction too; a staging-only smoke is insufficient.
+          Expand-Archive -LiteralPath target/original-ai/singles-sorter-original-ai-windows-x64-selected-cli.zip -DestinationPath target/original-ai/windows-preview-extracted
+          powershell.exe -NoProfile -NonInteractive -File packaging/windows-preview/smoke.ps1 -PackageRoot target/original-ai/windows-preview-extracted -ReportPath target/original-ai/windows-preview-smoke.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tests/original_ai_cli/check_execution.py --binary target/original-ai/windows-preview-extracted/singles-sorter.exe --bundle target/original-ai/windows-preview-extracted/models/original --package target/original-ai/windows-preview-extracted --report target/original-ai/windows-preview-execution.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python packaging/windows-preview/package_preview.py verify-execution --package target/original-ai/windows-preview-extracted --execution-report target/original-ai/windows-preview-execution.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Retain the smoke-tested Windows CLI preview for review, never a release
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: original-ai-windows-x64-cli-preview-${{ github.sha }}
+          path: |
+            native/target/original-ai/singles-sorter-original-ai-windows-x64-selected-cli.zip
+            native/target/original-ai/singles-sorter-original-ai-windows-x64-selected-cli.zip.sha256
+            native/target/original-ai/windows-preview-smoke.json
+            native/target/original-ai/windows-preview-execution.json
+            native/target/original-ai/windows-preview-stage-execution.json
+          if-no-files-found: error
+          retention-days: 7
+          include-hidden-files: false
+          overwrite: false
+
+      - name: Diagnose paired actual-Windows frozen-v14 regression (66 cases, 64 settings vectors)
+        if: runner.os == 'Windows' && !cancelled() && steps.build-selected-cli.outcome == 'success'
+        continue-on-error: true
+        timeout-minutes: 8
+        run: |
+          # A diagnostic lane, not a release/parity gate: OPEN and MISMATCH exit nonzero.
+          # Never promote unsupported execution or missing actual summaries to parity.
+          python tests/original_ai_cli/check_windows_v14.py --binary target/release/singles-sorter.exe --bundle target/original-ai/bundle --baseline "$env:GITHUB_WORKSPACE/original-baseline" --report target/original-ai/windows-v14-paired/report.json --package target/original-ai/windows-preview-extracted --archive target/original-ai/singles-sorter-original-ai-windows-x64-selected-cli.zip
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Always retain paired Windows regression diagnostics
+        if: always() && runner.os == 'Windows' && steps.build-selected-cli.outcome == 'success'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-v14-paired-diagnostic-${{ github.sha }}
+          path: native/target/original-ai/windows-v14-paired
+          if-no-files-found: error
+          retention-days: 7
+          include-hidden-files: false
+          overwrite: false
+
+      # Only already-public original parameters, applicable source/notices and
+      # newly authored silent examples enter the allowlisted preview. Source
+      # pickle, oracle corpora, Python environments and candidate/private data
+      # remain job-local. No release publication, model network at app runtime,
+      # signing/installer claim or clean-machine guarantee. Actual selected execution
+      # is limited to the explicitly tested retained-plan Windows paths.

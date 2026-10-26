@@ -1,0 +1,31 @@
+{
+  "purpose": "CPython word/space/decimal predicates for v14.0 matching, cleanup and album numbering",
+  "generator": "native/unicode/generate_unicode15.py",
+  "generator_sha256": "4597604d711cce5780505a7b2bac1f368486b5c1e9c0dc1c5d32dbf965289717",
+  "python_implementation": "CPython",
+  "python_version": "3.12.14",
+  "unicode_version": "15.0.0",
+  "runtime": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "oracle": "Exhaustive re.fullmatch(r'\\w', chr(cp)) and re.fullmatch(r'\\s', chr(cp)) checked against str.isalnum()/str.isspace() for cp=0..0x10FFFF",
+  "word_semantics": "SRE_UNI_IS_WORD = Py_UNICODE_ISALNUM(ch) || ch == '_'",
+  "space_semantics": "SRE_UNI_IS_SPACE = Py_UNICODE_ISSPACE(ch)",
+  "cpython_source_revision": "v3.12.14",
+  "source_references": [
+    "https://github.com/python/cpython/blob/v3.12.14/Modules/_sre/sre.c",
+    "https://github.com/python/cpython/blob/v3.12.14/Objects/unicodectype.c",
+    "https://github.com/python/cpython/blob/v3.12.14/Objects/unicodetype_db.h",
+    "https://github.com/python/cpython/blob/v3.12.14/Include/cpython/unicodeobject.h"
+  ],
+  "domain": "All 1,114,112 code points; surrogate membership is false",
+  "word_codepoints": 137936,
+  "space_codepoints": 29,
+  "word_ranges": 748,
+  "space_ranges": 10,
+  "word_membership_sha256": "046793435c64dad1695e649076ae8f66d098caa067665c4f12ba5a97fe7ee69b",
+  "space_membership_sha256": "cfa4f8aea235c599e0a6f876ce90cae66cce3ddb50e787dcd3a3020ef5c89209",
+  "decimal_values_sha256": "bb3993b130cc02b9f2668f0460278cafc470fd87ebc8b5cccba421b579404a12",
+  "decimal_encoding": "One byte per codepoint: 0..9 for Nd decimal value, 255 otherwise; exhaustive regex \\d and int(character) agreement",
+  "decimal_zeroes": 68,
+  "generated_rust_sha256": "0cfd83feaf3d01185a5cfa4bd2568f5db631f8f79ad6948a032000a1697e4068",
+  "normalization": "None; Rust standard Unicode classes and regex tables are not used"
+}

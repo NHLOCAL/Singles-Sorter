@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "context": {
+    "ruleset_id": "singles-v14.0",
+    "settings": {},
+    "aliases": [],
+    "recognition": {
+      "kind": "configured",
+      "bundle_id": "example-failed-bundle",
+      "health": "failed",
+      "classifier": {
+        "אמן חדש": {
+          "kind": "unavailable"
+        }
+      },
+      "ner": {}
+    }
+  },
+  "song": {
+    "source_id": "song-failed-classifier",
+    "filename": "unknown.mp3",
+    "metadata": {
+      "kind": "present",
+      "artist": "אמן חדש",
+      "title": ""
+    }
+  }
+}

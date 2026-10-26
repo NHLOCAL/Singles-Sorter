@@ -1,0 +1,14 @@
+{
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "unicode": "15.0.0",
+  "sources": {
+    "spacy/tokenizer.pyx": "61e70a7ebda714715ae9ae502db62efe51377fb6aa799ce7abcfa095411318fb",
+    "spacy/strings.pyx": "648453878e5b2ad9b17486fc62da524ecb55958c1d5e11b8fc0ee41dd6e29c54",
+    "spacy/lang/lex_attrs.py": "a20128d553a876047ae4159cec52d658c04c10dca3ba4f5320c43541e791ac5b",
+    "spacy/lang/norm_exceptions.py": "4176f2ade764ddc1ff61f6a7e4774e706ed82957dcbccb8c936ff82bc9274db7",
+    "thinc/backends/numpy_ops.pyx": "884221757b780e198a2ded38bcf6aef3395383c43a47c991dae9d5a8aba28c76",
+    "spacy/tokens/doc.pyx": "52e71a2d7f97d3b1c9de1cf9754c8cdea51a1d00a06d138a24cd7f2b4e5c6a0d",
+    "spacy/vocab.pyx": "4493c2c7789a933a5e3a093521b5d2221b1d14637a2dfc13d69c616c2ad3c007"
+  },
+  "tokenizer_export_sha256": "33841cad4949620c48fbb0570865a31a19cfbb463088b1fec3d9fb7e1a8c8574"
+}

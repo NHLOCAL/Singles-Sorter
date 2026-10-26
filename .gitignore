@@ -7,3 +7,9 @@ vendor
 repomix-output.xml
 repomix-output.md
 *.pyc
+/native/apps/singles-ui/src-tauri
+
+# Durable Android identity is backed up outside Git and in Actions secrets.
+*.keystore
+*.jks
+*.p12

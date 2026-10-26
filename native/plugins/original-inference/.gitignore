@@ -1,0 +1,4 @@
+/target/
+/build/
+*.apk
+*.keystore

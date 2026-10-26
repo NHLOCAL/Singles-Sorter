@@ -1,4 +1,4 @@
-name: APK Build
+name: Legacy Flet APK Build (through v14)
 
 on:
   push:
@@ -24,6 +24,13 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Require the version 15 native build for current sources
+      run: |
+        if test -f release.json; then
+          echo 'Use Singles Sorter 15 Android beta (android-product.yml) for version 15 sources.'
+          exit 1
+        fi
 
     - name: Setup Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v5

@@ -1,0 +1,61 @@
+/* Platform-only fallback for the Android 11 system WebView. Shared UI text and
+   desktop layout stay unchanged. dvh overrides vh on newer WebViews. */
+html[data-android-host] #app {height:100vh;height:var(--viewport-height,100dvh)}
+html[data-android-host] input[readonly] {cursor:pointer}
+/* WebView 83 lacks dvh and :has(). Keep long editors inside the visual
+   viewport even when opened from a scrolled settings page. */
+html[data-android-host] dialog[open] {
+  position:fixed;top:50%;bottom:auto;left:0;right:0;margin:0 auto;
+  transform:translateY(-50%);max-height:85vh;max-height:85dvh;
+}
+html[data-android-host] .editor-dialog[open] {
+  max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);
+}
+html[data-android-host].android-modal-open,
+html[data-android-host].android-modal-open body {overflow:hidden}
+html[data-android-host] .help-popover {max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px)}
+
+/* Chrome 83 accepts gap for Grid but silently ignores it for Flex. Use margins
+   only on measured legacy engines; modern Android and desktop retain the tokens. */
+.no-flex-gap button > .app-icon {margin-inline-end:6px}
+.no-flex-gap .icon-button > .app-icon {margin-inline-end:0}
+.no-flex-gap .folder-row > button {margin-inline-end:var(--s-2)}
+html.no-flex-gap .option input[type="checkbox"],
+html.no-flex-gap .option input[type="radio"] {margin-inline-end:10px}
+.no-flex-gap .field-label > .help-badge {margin-inline-start:var(--s-2)}
+.no-flex-gap .station-header {margin-bottom:var(--s-2)}
+.no-flex-gap .topbar-start > * + * {margin-inline-start:var(--s-3)}
+.no-flex-gap .topbar-end > * + * {margin-inline-start:var(--s-1)}
+.no-flex-gap .brand > * + * {margin-inline-start:10px}
+.no-flex-gap .mode-tabs > * + * {margin-inline-start:2px}
+.no-flex-gap .option-row + .option-row {margin-top:0}
+.no-flex-gap .option-row > .help-badge {margin-inline-start:var(--s-2)}
+.no-flex-gap .topbar-end button.icon-button + button.icon-button {margin-inline-start:var(--s-1)}
+.no-flex-gap .ai-heading > * + * {margin-inline-start:var(--s-2)}
+.no-flex-gap .dialog-actions > button {margin-inline-end:var(--s-2);margin-bottom:var(--s-2)}
+.no-flex-gap .dialog-actions > button:last-child {margin-inline-end:0}
+.no-flex-gap .list-actions > button + button {margin-inline-start:var(--s-2)}
+.no-flex-gap .results-filters > * + * {margin-inline-start:var(--s-1)}
+.no-flex-gap .execution-stats > * + * {margin-inline-start:var(--s-3)}
+.no-flex-gap .mode-tab > .app-icon {margin-inline-end:6px}
+.no-flex-gap .station-header .field-label {gap:0}
+
+/* Legacy WebViews do not implement accent-color. Draw compact controls in the
+   same palette instead of inheriting the browser's gray, inset checkboxes. */
+.no-flex-gap .option input[type="checkbox"]:not([role="switch"]) {
+  -webkit-appearance:none;appearance:none;flex:none;position:relative;
+  width:18px;height:18px;border:1px solid var(--line-strong);border-radius:4px;
+  background:var(--surface);
+}
+.no-flex-gap .option input[type="checkbox"]:not([role="switch"]):checked {background:var(--midnight);border-color:var(--midnight)}
+.no-flex-gap .option input[type="checkbox"]:not([role="switch"]):checked::after {
+  content:"";position:absolute;left:5px;top:2px;width:4px;height:8px;
+  border:solid white;border-width:0 2px 2px 0;transform:rotate(45deg);
+}
+@media (max-width:740px) {
+  .no-flex-gap .topbar-center {margin-top:var(--s-2)}
+  .no-flex-gap .workspace > * + * {margin-top:var(--s-3)}
+  .no-flex-gap .options.card > * + * {margin-top:var(--s-3)}
+  .no-flex-gap .dialog-actions {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s-2)}
+  .no-flex-gap .dialog-actions > button {margin:0}
+}

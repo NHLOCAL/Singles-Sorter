@@ -1,0 +1,9 @@
+{
+  "schema_version": 2,
+  "mode": "FixNames",
+  "source": "/absolute/owned-fixture/source",
+  "target": null,
+  "settings": {},
+  "ai_profile": "Disabled",
+  "personal_aliases": null
+}

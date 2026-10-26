@@ -1,0 +1,4 @@
+/target/
+/build/
+/.dependency-cache/
+/vcpkg_installed/

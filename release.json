@@ -1,0 +1,10 @@
+{
+  "version": "15.0.0-beta.2",
+  "channel": "beta",
+  "android_package": "com.nhlocal.singlesorter",
+  "android_version_code": 1500002,
+  "legacy_android_certificate_sha256": "b67f10fc6dea13396b722e3c8673c79fc483a98325e0255103eb171011491c19",
+  "windows_installer_app_id": "C1801B38-3050-4D83-8085-6466145B0A06",
+  "android_certificate_sha256": "6b40783e5ffe29c4659fa48d1e20a12df583a0f606a74aba710b10275537ef41",
+  "legacy_android_update_requires_reinstall": true
+}

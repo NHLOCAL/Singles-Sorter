@@ -1,0 +1,57 @@
+cmake_minimum_required(VERSION 3.24)
+project(sorter_metadata LANGUAGES C CXX)
+include(cmake/AcquireDependency.cmake)
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/../dependencies/lock.json" dependency_lock)
+foreach(name IN ITEMS taglib zlib)
+  string(JSON version GET "${dependency_lock}" dependencies ${name} version)
+  string(JSON url GET "${dependency_lock}" dependencies ${name} url)
+  string(JSON sha256 GET "${dependency_lock}" dependencies ${name} archive_sha256)
+  sorter_acquire_dependency("${name}" "${version}" "${url}" "${sha256}" ${name}_source)
+  # A nested CMake command may fail without returning a populated result. Never
+  # let an empty path reach file(COPY), where a trailing slash would mean root.
+  sorter_require_acquired_source("${name}" "${${name}_source}"
+    "${${name}_source_archive_sha256}" "${sha256}")
+endforeach()
+file(WRITE "${CMAKE_BINARY_DIR}/dependency-sources.txt" "${taglib_source}\n${zlib_source}\n")
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(BUILD_BINDINGS OFF CACHE BOOL "" FORCE)
+set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(WITH_ZLIB ON CACHE BOOL "" FORCE)
+# zlib's upstream configure renames zconf.h in its source tree. Configure a
+# disposable build-directory copy so the verified acquired source tree remains immutable.
+file(COPY "${zlib_source}/" DESTINATION "${CMAKE_BINARY_DIR}/deps/zlib-1.3.1")
+set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(SKIP_INSTALL_ALL ON CACHE BOOL "" FORCE)
+add_subdirectory("${CMAKE_BINARY_DIR}/deps/zlib-1.3.1" zlib-build EXCLUDE_FROM_ALL)
+set_target_properties(zlibstatic PROPERTIES OUTPUT_NAME sorter_zlib
+  ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+  ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/lib")
+# Supply a config package so TagLib cannot accidentally resolve system zlib.
+set(ZLIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake/zlib" CACHE PATH "Pinned zlib" FORCE)
+set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
+find_package(ZLIB 1.3.1 EXACT REQUIRED CONFIG)
+# Always use the archive's pinned utf8cpp, never an arbitrary installed copy.
+set(CMAKE_DISABLE_FIND_PACKAGE_utf8cpp TRUE)
+set(utf8cpp_INCLUDE_DIR "${taglib_source}/3rdparty/utfcpp/source" CACHE PATH "Pinned utf8cpp" FORCE)
+add_subdirectory("${taglib_source}" taglib-build)
+add_library(sorter_metadata STATIC taglib_bridge.cpp)
+target_link_libraries(sorter_metadata PRIVATE tag ZLIB::ZLIB)
+set_target_properties(sorter_metadata PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib" ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/lib")
+set_target_properties(tag PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib" ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/lib")
+get_target_property(TAGLIB_PRIVATE_INCLUDES tag INCLUDE_DIRECTORIES)
+target_include_directories(sorter_metadata PRIVATE ${TAGLIB_PRIVATE_INCLUDES})
+target_include_directories(sorter_metadata PRIVATE "${taglib_source}/taglib" "${CMAKE_BINARY_DIR}/taglib-build" "${CMAKE_BINARY_DIR}/taglib-build/taglib")
+option(SORTER_BRIDGE_TESTS "Build the owned ABI validation harness" OFF)
+if(SORTER_BRIDGE_TESTS)
+  add_executable(sorter_bridge_tests bridge_tests.cpp)
+  target_link_libraries(sorter_bridge_tests PRIVATE sorter_metadata tag ZLIB::ZLIB)
+  # Tests require assertions even for a release-optimized native library.
+  if(MSVC)
+    target_compile_options(sorter_bridge_tests PRIVATE /UNDEBUG)
+  else()
+    target_compile_options(sorter_bridge_tests PRIVATE -UNDEBUG)
+  endif()
+endif()

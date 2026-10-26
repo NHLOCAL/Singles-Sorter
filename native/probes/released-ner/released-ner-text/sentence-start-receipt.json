@@ -1,0 +1,11 @@
+{
+  "prior_commit": "e16926d15667634e0f4d4999487f713bddbd7f8e",
+  "prior_binaries": {
+    "raw-ner": "daf787301e291473670b79fa31c410d9da8e556771f08b423bf09d42255cde3e",
+    "released-ner-text": "fadb13430d9b52b975d2bbe2e8771091ce059e86c3bd596ea98da95c23ccd3b3"
+  },
+  "synthetic_documents": 538,
+  "first_token_flags_corrected": 14,
+  "all_actions_spans_margins_identical_to_prior": true,
+  "change_scope": "Fresh token0 sentence-start metadata only; no text/features/classifier/routing changes"
+}

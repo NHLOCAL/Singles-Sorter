@@ -1,0 +1,6 @@
+/local-assets/
+/fresh-evidence/
+__pycache__/
+*.pkl
+*.weights.bin
+*.vocab.txt

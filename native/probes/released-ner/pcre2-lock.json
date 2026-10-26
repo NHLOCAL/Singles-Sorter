@@ -1,0 +1,10 @@
+{
+  "version": "10.46",
+  "url": "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.46/pcre2-10.46.zip",
+  "sha256": "d872153b2d2338f7bc7b6e9bcc2f7f0c8a529c34fe48c538fea0b3a4e062f046",
+  "digest_source": "https://github.com/PCRE2Project/pcre2/releases/expanded_assets/pcre2-10.46",
+  "root": "pcre2-10.46",
+  "maximum_archive_bytes": 8388608,
+  "maximum_expanded_bytes": 67108864,
+  "maximum_members": 4096
+}
