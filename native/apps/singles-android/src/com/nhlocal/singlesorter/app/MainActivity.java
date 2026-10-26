@@ -20,8 +20,11 @@ public final class MainActivity extends Activity {
     public final class Bridge {
         @JavascriptInterface public void invoke(String request){if(host!=null)host.invoke(request);}
     }
-    @Override public void onCreate(Bundle state){
+    @Override @SuppressWarnings("deprecation") public void onCreate(Bundle state){
         super.onCreate(state);
+        getWindow().setStatusBarColor(android.graphics.Color.rgb(244,242,237));
+        getWindow().setNavigationBarColor(android.graphics.Color.rgb(244,242,237));
+        getWindow().getDecorView().setSystemUiVisibility(android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         WebView.setWebContentsDebuggingEnabled((getApplicationInfo().flags&android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0);
         view=new WebView(this);host=new AndroidHost(this,view);
         android.widget.FrameLayout content=new android.widget.FrameLayout(this);
