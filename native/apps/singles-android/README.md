@@ -1,3 +1,15 @@
+# Singles Sorter 15.0 Android beta
+
+Current product identity is `15.0.0-beta.1`, package `com.nhlocal.singlesorter`,
+version code `1500001`. Use `build_apk.py` on Windows/Linux or its shell wrapper
+`build-preview.sh`. Manual Actions builds use the backed-up permanent key;
+pull requests use isolated QA signing. See the [signing and transition guide](docs/signing-and-v15-updates.md).
+
+The historical checkpoint below records earlier acceptance evidence. Its
+per-build temporary signing and preview version labels are superseded by the
+version 15 pipeline; its ABI/provider limitations still apply unless newer
+exact-artifact runtime evidence is recorded.
+
 # Shared-UI Android product milestone
 
 This source connects the existing Hebrew frontend to the original Rust planner,

@@ -1,8 +1,11 @@
 # Native Singles Sorter: Windows, Android and CLI
 
 This Rust workspace contains the shared original-v14 planner, original local AI,
-metadata readers and bounded execution backends. It lives beside the released
-Python application. Windows remains the primary product target.
+metadata readers and bounded execution backends. It is the implementation of Singles Sorter 15.0 beta, succeeding the released
+Python/Flet application. The original v14 ruleset identifiers describe behavior
+compatibility, not the product version. Product identity is pinned in
+[`release.json`](../release.json). Android signing and the one-time legacy
+transition are documented in the [update guide](apps/singles-android/docs/signing-and-v15-updates.md).
 
 The accepted `77295d31` checkpoint has actual Windows staged/extracted desktop
 and CLI acceptance, plus an authored Android API30 x86_64 local-provider runtime

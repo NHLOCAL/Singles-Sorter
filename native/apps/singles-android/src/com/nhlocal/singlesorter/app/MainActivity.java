@@ -24,6 +24,12 @@ public final class MainActivity extends Activity {
         super.onCreate(state);
         WebView.setWebContentsDebuggingEnabled((getApplicationInfo().flags&android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0);
         view=new WebView(this);host=new AndroidHost(this,view);
+        // Target 35 opts into Android 15 edge-to-edge. Keep native bars/cutouts
+        // outside the shared UI so toolbar and sticky actions remain tappable.
+        if(android.os.Build.VERSION.SDK_INT>=35)view.setOnApplyWindowInsetsListener((web,insets)->{
+            android.graphics.Insets bars=insets.getInsets(android.view.WindowInsets.Type.systemBars()|android.view.WindowInsets.Type.displayCutout());
+            web.setPadding(bars.left,bars.top,bars.right,bars.bottom);return insets;
+        });
         WebSettings settings=view.getSettings();settings.setJavaScriptEnabled(true);settings.setDomStorageEnabled(false);
         settings.setAllowFileAccess(false);settings.setAllowContentAccess(false);settings.setBlockNetworkLoads(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);settings.setSupportMultipleWindows(true);
