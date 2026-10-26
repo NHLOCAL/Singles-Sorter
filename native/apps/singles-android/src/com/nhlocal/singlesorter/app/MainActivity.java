@@ -24,11 +24,13 @@ public final class MainActivity extends Activity {
         super.onCreate(state);
         WebView.setWebContentsDebuggingEnabled((getApplicationInfo().flags&android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0);
         view=new WebView(this);host=new AndroidHost(this,view);
+        android.widget.FrameLayout content=new android.widget.FrameLayout(this);
+        content.addView(view,new android.widget.FrameLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.MATCH_PARENT));
         // Target 35 opts into Android 15 edge-to-edge. Keep native bars/cutouts
         // outside the shared UI so toolbar and sticky actions remain tappable.
-        if(android.os.Build.VERSION.SDK_INT>=35)view.setOnApplyWindowInsetsListener((web,insets)->{
+        if(android.os.Build.VERSION.SDK_INT>=35)content.setOnApplyWindowInsetsListener((root,insets)->{
             android.graphics.Insets bars=insets.getInsets(android.view.WindowInsets.Type.systemBars()|android.view.WindowInsets.Type.displayCutout());
-            web.setPadding(bars.left,bars.top,bars.right,bars.bottom);return insets;
+            root.setPadding(bars.left,bars.top,bars.right,bars.bottom);return insets;
         });
         WebSettings settings=view.getSettings();settings.setJavaScriptEnabled(true);settings.setDomStorageEnabled(false);
         settings.setAllowFileAccess(false);settings.setAllowContentAccess(false);settings.setBlockNetworkLoads(true);
@@ -48,7 +50,7 @@ public final class MainActivity extends Activity {
                 }catch(Exception error){return denied();}
             }
         });
-        setContentView(view);view.loadUrl("https://"+ORIGIN+"/assets/index.html");
+        setContentView(content);view.loadUrl("https://"+ORIGIN+"/assets/index.html");
     }
     private static boolean local(Uri uri){return "https".equals(uri.getScheme())&&ORIGIN.equals(uri.getHost())&&uri.getPort()==-1&&uri.getUserInfo()==null;}
     private static WebResourceResponse denied(){return new WebResourceResponse("text/plain","UTF-8",403,"Forbidden",new HashMap<>(),new ByteArrayInputStream(new byte[0]));}
