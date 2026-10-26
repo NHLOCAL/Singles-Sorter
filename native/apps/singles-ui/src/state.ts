@@ -59,6 +59,7 @@ export class PreviewController {
         }
       }
       this.state.settings={...settings};this.state.model=model;this.state.hostAvailable=true;
+      if(model.preferred_ai==='Configured'||model.preferred_ai==='Disabled')this.state.ai=model.preferred_ai;
       if((model.platform==='windows'||model.execution_available===true)&&this.host.latestExecution){
         const retained=await this.host.latestExecution();
         if(retained&&'recovery_notice' in retained){
@@ -106,8 +107,14 @@ export class PreviewController {
     finally{this.state.busy=false;this.state.activity=null;this.emit();}
   }
   resourcesChanged(){if(this.state.busy)return;this.invalidate();this.emit();}
-  changeAi(value:'Disabled'|'Configured'){
+  async changeAi(value:'Disabled'|'Configured'){
     if(this.state.busy)return;this.state.ai=value;this.invalidate();this.emit();
+    if(this.host.saveAiProfile){
+      this.state.busy=true;this.state.activity='settings';this.emit();
+      try{if(await this.host.saveAiProfile(value)!==value)throw new Error('שמירת הגדרת ה-AI לא אומתה');}
+      catch(error){this.state.error=errorText(error);}
+      finally{this.state.busy=false;this.state.activity=null;this.emit();}
+    }
   }
   async selectRoot(role:Role){
     if(this.state.busy||!this.state.hostAvailable)return;
@@ -182,6 +189,7 @@ export class PreviewController {
           run.terminal=true;
           if(snapshot.status==='failed')throw new Error(snapshot.error||'התצוגה המקדימה נכשלה.');
           if(snapshot.status==='completed'&&!this.state.cancelRequested){
+            if(snapshot.apply?.no_operations===true)this.state.showInactive=true;
             const page=await this.host.page(started.job_id,0,PAGE_SIZE,this.state.developerMode,this.state.showInactive);
             if(!this.state.cancelRequested){this.state.page=page;this.retainedPreview={snapshot,request};}
           }

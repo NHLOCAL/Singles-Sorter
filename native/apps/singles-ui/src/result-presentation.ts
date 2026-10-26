@@ -23,6 +23,7 @@ const executionBlockerMessages:Readonly<Record<string,string>>={
 };
 export function executionRefusalSummary(readiness:ApplyReadiness|null|undefined,blockers:readonly string[]):string{
  if(!readiness||readiness.supported)return '';
+ if(readiness.no_operations===true)return readiness.reason??'לא נמצאו פעולות לביצוע';
  const messages=[...new Set(blockers)].filter(code=>Object.hasOwn(executionBlockerMessages,code)).map(code=>executionBlockerMessages[code]);
  const diagnostic=readiness.metadata_diagnostics;
  const counts=diagnostic?` נכשלו ${diagnostic.failed_observations.toLocaleString('he-IL')} בדיקות פרטים של ${diagnostic.affected_sources.toLocaleString('he-IL')} קבצים.`:'';
@@ -32,6 +33,7 @@ export function executionRefusalSummary(readiness:ApplyReadiness|null|undefined,
  * or target paths, infer per-file counts, or replace the native reason. */
 export function executionRefusalDetails(readiness:ApplyReadiness|null|undefined,blockers:readonly string[]):string{
  if(!readiness||readiness.supported)return '';
+ if(readiness.no_operations===true)return '';
  const lines=[readiness.reason||'לא נמסרה סיבה מפורטת מהמארח.',`פעולות מתוכננות בתוכנית המלאה: ${readiness.operation_count.toLocaleString('he-IL')}`,`חסימות שדווחו: ${blockers.join(' · ')||'לא דווחו חסימות נוספות.'}`];
  const diagnostic=readiness.metadata_diagnostics;
  if(diagnostic){

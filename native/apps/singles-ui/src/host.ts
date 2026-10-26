@@ -20,6 +20,7 @@ export const nativeHost: Host & ProfileHost = {
   resolveRoot: (role,text) => invokeHost('resolve_typed_root',{role,text}),
   getSettings: () => invokeHost('get_settings'),
   getModelStatus: () => invokeHost('get_model_status'),
+  ...(hasAndroidHost()?{saveAiProfile:(value:'Disabled'|'Configured')=>androidInvoke<'Disabled'|'Configured'>('save_ai_profile',{value})}:{}),
   startPreview: request => invokeHost('start_preview',{request}),
   cancelPreview: jobId => invokeHost('cancel_preview',{jobId}),
   snapshot: jobId => invokeHost('job_snapshot',{jobId}),

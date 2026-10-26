@@ -9,7 +9,7 @@ export interface Settings {
 export const defaults: Readonly<Settings> = Object.freeze({copy_mode:false,main_folder_only:false,singles_folder:false,exist_only:false,abc_sort:false,duet_mode:false});
 export interface RootSelection {token:string;display_name:string;capabilities:{read:boolean;list:boolean};platform:Platform}
 export interface PreviewRequest {mode:Mode;source_token:string;target_token:string|null;settings:Settings;ai_profile:'Disabled'|'Configured'}
-export interface ModelStatus {execution_available?:boolean;available:boolean;message:string;platform:Platform}
+export interface ModelStatus {preferred_ai?:'Disabled'|'Configured';execution_available?:boolean;available:boolean;message:string;platform:Platform}
 export interface Snapshot {host_schema:1;job_id:string;status:'running'|'completed'|'failed'|'cancelled';plan_id:string|null;total_rows:number;blockers:string[];warnings:string[];error?:string|null;apply?:ApplyReadiness|null}
 export interface PlanRow {id:string;source:string;kind:string;destination:string|null;reason:string;blockers:string[];effective_blockers?:string[];operation_ids?:number[];artist?:string|null;developer_only?:boolean;no_action?:boolean;included_in_album?:number}
 export interface PlanPage {rows:PlanRow[];total:number;skipped?:number}
@@ -19,6 +19,7 @@ export interface Host {
   resolveRoot(role:Role,text:string):Promise<RootSelection>;
   getSettings():Promise<Settings>;
   getModelStatus():Promise<ModelStatus>;
+  saveAiProfile?(value:'Disabled'|'Configured'):Promise<'Disabled'|'Configured'>;
   startPreview(request:PreviewRequest):Promise<{job_id:string}>;
   cancelPreview(jobId:string):Promise<void>;
   snapshot(jobId:string):Promise<Snapshot>;
@@ -53,7 +54,7 @@ export interface ProfileHost {
 
 /** Apply eligibility is granted by retained native evidence, never inferred from rows. */
 export interface MetadataDiagnostics {failed_observations:number;affected_sources:number;truncated:boolean;issues:{observation_index:number;after_operations:number;relative_source:string;label_truncated:boolean;error_kind:string;storage_kind?:string}[]}
-export interface ApplyReadiness {metadata_diagnostics?:MetadataDiagnostics;duet_groups?:number;supported:boolean;recovery_scope_admitted?:boolean;source_parent_selection_required?:boolean;reason:string|null;operation_count:number;copy_mode:boolean;source:string;target:string|null;mode?:Mode;notice?:string|null}
+export interface ApplyReadiness {no_operations?:boolean;metadata_diagnostics?:MetadataDiagnostics;duet_groups?:number;supported:boolean;recovery_scope_admitted?:boolean;source_parent_selection_required?:boolean;reason:string|null;operation_count:number;copy_mode:boolean;source:string;target:string|null;mode?:Mode;notice?:string|null}
 export type ExecutionStatus='preparing'|'running'|'complete'|'partial'|'cancelled'|'failed'|'needs_recovery';
 export type ItemStatus='partial'|'complete'|'source_retained'|'failed'|'cancelled'|'blocked'|'needs_recovery'|'unsupported_tags'|'metadata_failure';
 /** Optional display-only observed leaf; older/Android hosts may omit it. */

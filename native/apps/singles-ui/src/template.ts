@@ -437,6 +437,10 @@ export const appTemplate = `
     <p id="profile-notice" class="hint" role="status"></p>
     <p id="profile-error" class="error" role="alert" hidden></p>
   </section>
+  <section id="android-permissions" hidden>
+    <h3>גישה לקבצים</h3>
+    <p class="hint">הגישה ניתנת בבחירת תיקיית מקור ויעד ובאישור חלון Android. אין צורך בהרשאת אחסון גורפת בהגדרות המכשיר. לשינוי התיקיות יש לבחור אותן מחדש במסך הראשי</p>
+  </section>
   <fieldset class="display-settings">
     <legend>מתקדם</legend>
     <label class="option">

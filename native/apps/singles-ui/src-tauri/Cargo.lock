@@ -3187,7 +3187,7 @@ checksum = "e3a9fe34e3e7a50316060351f37187a3f546bce95496156754b601a5fa71b76e"
 
 [[package]]
 name = "singles-ui-host"
-version = "15.0.0-beta.1"
+version = "15.0.0-beta.2"
 dependencies = [
  "encoding_rs",
  "serde",

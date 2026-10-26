@@ -32,6 +32,7 @@ app.innerHTML=appTemplate;
 // Keep the historical footer destination, verified from the released source.
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 const source=$<HTMLInputElement>('source'),target=$<HTMLInputElement>('target');
+$('android-permissions').hidden=!hasAndroidHost();
 const studio=installStudio(app,()=>controller.state.busy||personal.busy,()=>{if(navigation.screen==='results')backToSetup();});
 $('recovery-menu').addEventListener('click',async()=>{
  if(controller.state.busy)return;
@@ -276,6 +277,7 @@ function renderExecution(){
  $('finish-results').hidden=running||e?.status!=='complete'||!!e.recovery_error;$('execution-panel').dataset.state=e?(running?'running':e.status):readiness?.supported?'ready':'blocked';$<HTMLButtonElement>('cancel-apply').disabled=s.cancelRequested;
  $<HTMLButtonElement>('back-setup').disabled=running||parentPending;
  $('execution-title').textContent=e?e.status==='complete'&&e.recovery_error?'הקבצים טופלו; נדרשת בדיקה':executionTitles[e.status]:running?'מאמת את הקבצים לפני ביצוע…':readiness?.supported?(readiness.mode==='FixNames'?'מוכן לתיקון':'מוכן למיון'):'התוכנית זמינה לתצוגה בלבד';
+ if(!e&&readiness?.no_operations===true){$('execution-title').textContent='הבדיקה הושלמה ללא פעולות לביצוע';$('execution-panel').dataset.state='empty';}
  const r=e?.result;
  const developer=s.developerMode;
  const refusal=!e&&!parentNeeded?executionRefusalDetails(readiness,s.snapshot?.blockers??[]):'';

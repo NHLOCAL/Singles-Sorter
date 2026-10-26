@@ -12,6 +12,12 @@ final class AndroidProfile {
     private static final String[] KEYS={"copy_mode","main_folder_only","singles_folder","exist_only","abc_sort","duet_mode"};
     private final SharedPreferences prefs;
     AndroidProfile(Context context){prefs=context.getSharedPreferences("singles-profile-v1",Context.MODE_PRIVATE);}
+    synchronized String aiProfile(){return prefs.getString("ai-profile","Configured");}
+    synchronized String saveAiProfile(String value){
+        if(!"Configured".equals(value)&&!"Disabled".equals(value))throw new IllegalArgumentException("AI_PROFILE");
+        if(!prefs.edit().putString("ai-profile",value).commit())throw new IllegalStateException("SETTINGS_SAVE_FAILED");
+        return aiProfile();
+    }
     synchronized JSONObject settings()throws Exception {
         JSONObject result=new JSONObject();for(String key:KEYS)result.put(key,prefs.getBoolean(key,false));return result;
     }

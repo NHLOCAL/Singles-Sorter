@@ -116,9 +116,12 @@ final class AndroidHost implements AutoCloseable {
                         case "confirm_personal_import":retainedPlan=null;value=csv.confirm(profile,args.getString("token"),args.getString("encoding"),args.getString("revision"),args.has("edits")?args.getJSONArray("edits"):new JSONArray());break;
                         case "get_first_run_status":value=profile.firstRun(false);break;
                         case "mark_first_run_seen":value=profile.firstRun(true);break;
+                        case "save_ai_profile":
+                            if(args.length()!=1)throw new IllegalArgumentException("AI_PROFILE_ARGUMENTS");
+                            retainedPlan=null;value=profile.saveAiProfile(args.getString("value"));break;
                         case "get_model_status":
                             if(models==null)models=OriginalAssets.prepare(activity.getApplicationContext(),()->{synchronized(AndroidHost.this){return closed;}});
-                            value=new JSONObject().put("available",true).put("platform","android").put("execution_available",true).put("message","שני מודלי הזיהוי המקוריים אומתו. הקבצים נבדקים מחדש לפני כל בדיקה.");break;
+                            value=new JSONObject().put("available",true).put("platform","android").put("execution_available",true).put("preferred_ai",profile.aiProfile()).put("message","שני מודלי הזיהוי המקוריים אומתו. הקבצים נבדקים מחדש לפני כל בדיקה.");break;
                         case "open_recovery":
                             if(args.length()!=0)throw new IllegalArgumentException("RECOVERY_ARGUMENTS");
                             activity.runOnUiThread(()->{synchronized(AndroidHost.this){if(closed)return;try{activity.startActivity(new Intent(activity,RecoveryActivity.class));completion.finish(()->reply(requestId,true,JSONObject.NULL));}catch(RuntimeException failure){completion.finish(()->error(requestId,"RECOVERY_UNAVAILABLE",failure));}}});return;
@@ -204,6 +207,10 @@ final class AndroidHost implements AutoCloseable {
             signal.throwIfCanceled();ProviderReferences references=new ProviderReferences(activity,retained,storage,selectedSource,selectedTarget,selectedParent);int count;
             try(DiagnosticReadGate.Lease lease=ProviderExecutionOwner.beginDiagnosticRead()){
                 lease.check();PreviewGeneration.PROCESS.require(retained.recoveryGeneration);phase="recovery-admission";RecoveryAdmission.require(activity,references,signal);phase="original-plan-projection";
+                if(retained.operationCount==0&&(!"Sort".equals(mode)||NativeDuetPlan.inspectOriginal(retained.planCopy(),signal::isCanceled).groups.isEmpty())){
+                    NativeTransferPlan.blockers(retained.planCopy().getJSONArray("blockers"),true);
+                    return result.put("no_operations",true).put("reason","FixNames".equals(mode)?"לא נמצאו קבצים לתיקון בתיקייה שנבחרה":"לא זוהו אמנים למיון בקבצים שנבדקו. אפשר לבדוק את שמות האמנים והתגיות או לבחור תיקייה אחרת");
+                }
                 if(mode.equals("FixNames")){NativeFixPlan plan=NativeFixPlan.prepare(retained,references,signal::isCanceled);phase="fix-admission-budget";FixAdmissionBounds.require(retained,plan,signal::isCanceled);phase="retained-namespace-admission";ReservedProviderObjects reserved=ReservedProviderObjects.load(activity,signal);for(NativeFixPlan.Fix fix:plan.operations)reserved.require(references.uri(fix.source()));count=plan.operations.size();}
                 else{NativeTransferPlan plan=NativeTransferPlan.prepare(retained,references);NativeAlbumPlan albums=NativeAlbumPlan.prepare(retained,references,signal::isCanceled);NativeDuetPlan duets=NativeDuetPlan.inspectOriginal(retained.planCopy(),signal::isCanceled);AlbumAdmissionBounds.require(retained,plan,albums,signal::isCanceled);DuetAdmissionBounds.require(retained,plan,albums,duets,references,signal::isCanceled);phase="retained-namespace-admission";ReservedProviderObjects reserved=ReservedProviderObjects.load(activity,signal);for(NativeTransferPlan.Transfer transfer:plan.operations)reserved.require(references.uri(transfer.source()));for(NativeAlbumPlan.Album album:albums.operations)reserved.requireSubtree(references.uri(album.source.reference()));for(NativeDuetPlan.Group group:duets.groups)reserved.require(references.uri(group.source().getJSONObject("reference")));result.put("duet_groups",duets.groups.size());count=plan.operations.size()+albums.operations.size();}signal.throwIfCanceled();
             }
