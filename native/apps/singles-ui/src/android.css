@@ -20,14 +20,18 @@ html[data-android-host] .help-popover {max-height:calc(100vh - 16px);max-height:
 .no-flex-gap button > .app-icon {margin-inline-end:6px}
 .no-flex-gap .icon-button > .app-icon {margin-inline-end:0}
 .no-flex-gap .folder-row > button {margin-inline-end:var(--s-2)}
-html.no-flex-gap .option input[type="checkbox"] {margin-inline-end:10px}
+html.no-flex-gap .option input[type="checkbox"],
+html.no-flex-gap .option input[type="radio"] {margin-inline-end:10px}
 .no-flex-gap .field-label > .help-badge {margin-inline-start:var(--s-2)}
 .no-flex-gap .station-header {margin-bottom:var(--s-2)}
 .no-flex-gap .topbar-start > * + * {margin-inline-start:var(--s-3)}
 .no-flex-gap .topbar-end > * + * {margin-inline-start:var(--s-1)}
 .no-flex-gap .brand > * + * {margin-inline-start:10px}
 .no-flex-gap .mode-tabs > * + * {margin-inline-start:2px}
-.no-flex-gap .option-row + .option-row {margin-top:var(--s-2)}
+.no-flex-gap .option-row + .option-row {margin-top:0}
+.no-flex-gap .option-row > .help-badge {margin-inline-start:var(--s-2)}
+.no-flex-gap .topbar-end button.icon-button + button.icon-button {margin-inline-start:var(--s-1)}
+.no-flex-gap .ai-heading > * + * {margin-inline-start:var(--s-2)}
 .no-flex-gap .dialog-actions > button {margin-inline-end:var(--s-2);margin-bottom:var(--s-2)}
 .no-flex-gap .dialog-actions > button:last-child {margin-inline-end:0}
 .no-flex-gap .list-actions > button + button {margin-inline-start:var(--s-2)}

@@ -617,6 +617,7 @@ dialog select { width: 100%; }
   .station-card .station-badge { inset-inline-start: var(--s-4); top: 15px; }
   .source-station::after { inset-inline-start: 26.25px; top: 42px; bottom: -15px; }
   .options.card { order: 2; padding: var(--s-4); gap: var(--s-3); }
+  .options .option-group { padding: var(--s-1) 0; }
   .actions-dock {
     order: 3;
     position: sticky;
