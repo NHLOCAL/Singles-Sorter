@@ -161,7 +161,7 @@ with integrated source `52960778212fccd485b143e1c5cc2847130435c3`:
 
 Only the reviewed manifest LF SHA256 advances from
 `9a84f27f2f5162ed038a4523be2cbd470339c27f2285e438e9609c7a1c3ac403` to
-`3b05d1460a33761c7a324c04d5071bca43fa5dd700cdf1bdd54e1ee397b74229`.
+`ffd1ab86a23659594d19889ba20c9e236984748e02ede09a1378cd3f0507e1b2`.
 No notice, asset, archive, production-package or lock policy changes. Both
 desktop and Android keep the shared strict whole-manifest check, including
 script-only drift. A repository manifest/lock regression reproduced the old
