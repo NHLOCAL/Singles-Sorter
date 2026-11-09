@@ -88,7 +88,7 @@ def interact_with_owned_picker(binary, path, output, label, *, save=False):
 def _interact_with_owned_picker(binary, path, output, label, *, save=False):
     if save:
         require_new_save_path(path)
-    from pywinauto import Application
+    from pywinauto import Application, timings
     app = Application(backend='uia').connect(path=str(binary), timeout=10)
     dialog = app.window(class_name='#32770')
     dialog.wait('visible enabled', timeout=15)
@@ -150,8 +150,15 @@ def _interact_with_owned_picker(binary, path, output, label, *, save=False):
         confirm.wait('visible enabled', timeout=10)
         if confirm.wrapper_object().process_id() != app.process:
             raise RuntimeError('Confirm control does not belong to the owned app')
-        confirm.click()
-        dialog.wait_not('visible', timeout=15)
+        # The folder dialog may first navigate into the typed path, then close on the next confirm.
+        for attempt in range(3):
+            confirm.click()
+            try:
+                dialog.wait_not('visible', timeout=5)
+                break
+            except timings.TimeoutError:
+                if attempt == 2:
+                    raise
         evidence['dialog_closed_after_native_confirm'] = True
     except Exception as error:
         evidence['error'] = str(error)

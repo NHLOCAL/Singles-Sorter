@@ -1872,11 +1872,12 @@ footer {
   .about-facts > div {
     gap: 4px 12px;
   }
-  .menu-items button {
+  dialog .menu-items button {
     min-height: 48px;
   }
   .about-links button {
     flex: 1;
+    min-height: 48px;
   }
   .about-credits summary {
     min-height: 48px;

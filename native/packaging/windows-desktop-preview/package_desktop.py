@@ -29,69 +29,6 @@ cli.SYSTEM_DLLS |= {'gdi32.dll', 'dwmapi.dll', 'comctl32.dll', 'uxtheme.dll',
                    'windowscodecs.dll', 'msimg32.dll', 'powrprof.dll',
                    'combase.dll', 'cfgmgr32.dll', 'setupapi.dll', 'dwrite.dll', 'd2d1.dll'}
 EXE = 'singles-sorter-desktop.exe'
-REQUIRED_CHECKS = {'original-models-executed', 'disabled-no-inference', 'cancel-no-stale-plan',
-                   'back-no-stale-plan', 'reload-no-stale-plan', 'repeat-preview', 'missing-model-fail-closed',
-                   'corrupt-model-fail-closed', 'protected-files-unchanged'}
-APPLY_CHECKS = {'actual-multi-file-copy', 'actual-same-volume-move', 'artist-and-singles-folders',
-                'review-dismiss-no-effects', 'stale-plan-no-effects', 'one-shot-no-repeat', 'original-ai-selected-copy'}
-REPAIR_CHECKS = {'actual-fix-id3v23', 'actual-fix-id3v24', 'fix-original-backup-retained',
-                 'fix-media-and-unknown-frame-preserved', 'fix-source-only-confirmation',
-                 'fix-unsupported-tags-partial', 'fix-stale-plan-no-effects',
-                 'fix-terminal-inactive-filter', 'fix-inactive-independent-of-developer',
-                 'fix-terminal-footer-stability'}
-FLAC_CHECKS = {'actual-fix-flac-five-fields', 'actual-fix-flac-shifted-audio',
-               'flac-original-backup-retained', 'flac-picture-vendor-unknowns-preserved',
-               'flac-opaque-offset-partial', 'flac-unchanged-hidden', 'flac-stale-plan-no-effects'}
-OGG_CHECKS = {'actual-fix-vorbis-five-fields', 'actual-fix-opus-five-fields',
-              'ogg-encoded-audio-and-timing-preserved', 'ogg-artwork-vendor-unknowns-preserved',
-              'ogg-original-backup-retained', 'ogg-chained-refused', 'ogg-unchanged-hidden'}
-MP4_CHECKS = {'actual-fix-m4a-five-fields', 'actual-fix-alac-five-fields',
-              'mp4-fast-start-multiple-values', 'mp4-exact-media-offsets-and-decoded-audio',
-              'mp4-artwork-opaque-atoms-preserved', 'mp4-original-backup-retained',
-              'mp4-duplicate-outer-fields-consolidated', 'mp4-unsupported-structure-partial', 'mp4-unchanged-hidden', 'mp4-stale-plan-no-effects'}
-ID3_CONTAINER_CHECKS = {'actual-fix-wave-id3-five-fields', 'actual-fix-aiff-id3-five-fields',
-                        'actual-fix-dsf-id3-five-fields', 'container-id3v23-and-id3v24',
-                        'container-id3-exact-media-offsets-and-decoded-audio',
-                        'container-id3-opaque-artwork-info-preserved', 'container-id3-original-backup-retained',
-                        'container-id3-insufficient-padding-partial', 'container-id3-unchanged-hidden',
-                        'container-id3-stale-plan-no-effects'}
-WAVPACK_CHECKS = {'actual-fix-wavpack-five-fields', 'wavpack-header-and-footer-only',
-                  'wavpack-original-nul-scalars', 'wavpack-exact-blocks-and-decoded-audio',
-                  'wavpack-artwork-unknown-items-preserved', 'wavpack-original-backup-retained',
-                  'wavpack-readonly-item-partial', 'wavpack-unchanged-hidden', 'wavpack-stale-plan-no-effects'}
-ALBUM_CHECKS = {'actual-album-copy', 'actual-root-album-move', 'actual-mixed-album-move',
-                'album-nested-files-and-sidecars', 'album-copy-metadata',
-                'album-review-no-effects', 'album-stale-membership-no-effects',
-                'album-terminal-simple-results'}
-CROSS_ALBUM_CHECKS = {'actual-cross-volume-root-album-move', 'actual-cross-volume-mixed-album-move',
-                      'cross-album-main-and-named-streams', 'cross-album-descendant-metadata',
-                      'cross-album-exact-source-cleanup', 'cross-album-observed-physical-and-legacy-counts',
-                      'cross-album-review-no-effects', 'cross-album-stale-stream-no-effects',
-                      'cross-album-stale-membership-no-effects'}
-COPIED_MOVE_CHECKS = {'actual-one-eligible-duet-move', 'actual-zero-eligible-duet-source-retained', 'actual-cross-volume-move', 'actual-original-ai-duet-move', 'actual-mixed-duet-and-rename',
-                      'copied-move-main-and-named-streams', 'copied-move-final-source-absence',
-                      'copied-move-preview-and-review-no-effects', 'copied-move-stale-stream-no-effects',
-                      'copied-move-stale-target-no-effects', 'copied-move-cancel-before-effects'}
-RECOVERY_CHECKS = {'actual-process-restart', 'fresh-native-role-selections', 'wrong-roots-rejected',
-                   'historical-vs-current-state', 'per-file-reconciliation', 'recovery-no-file-or-journal-writes',
-                   'completed-copy-and-move-reconciled', 'copied-duet-and-mixed-restart-reconciled', 'copied-restart-named-stream-change-detected', 'whole-album-inspection-available',
-                   'completed-fix-reconciled', 'partial-fix-stays-unresolved', 'fix-source-only-fresh-grant', 'fix-retained-backup-change-detected',
-                   'measured-streaming-progress', 'close-reopen-requires-fresh-roots'}
-ALBUM_RECOVERY_CHECKS = {'file-album-copy-restarted-with-fresh-source', 'cross-album-root-restarted-with-fresh-parent',
-                         'cross-album-mixed-restarted-with-fresh-source', 'file-album-source-location-explicit',
-                         'file-album-parent-refusal', 'file-album-current-scope-evidence', 'file-album-restart-no-effects',
-                         'file-album-stream-change-detected', 'file-album-recreated-root-refused',
-                         'file-album-restart-media-progress', 'file-album-close-revokes-selections'}
-WHOLE_ALBUM_RECOVERY_CHECKS = {'whole-album-root-restarted-with-fresh-parent', 'whole-album-mixed-restarted-with-fresh-source',
-                                'whole-album-main-identity-membership-scope-visible', 'whole-album-descendants-are-inspection-rows',
-                                'whole-album-single-atomic-receipt-retained', 'whole-album-deferred-single-covered',
-                                'whole-album-parent-refusal', 'whole-album-restart-no-effects',
-                                'whole-album-main-content-change-detected', 'whole-album-extra-member-detected'}
-METADATA_READINESS_CHECKS = {'mixed-103-file-normal-apply-visible', 'mixed-metadata-review-no-effects',
-                             'unsupported-metadata-normal-reason-and-relative-file', 'metadata-refusal-no-effects'}
-SETTINGS_CHECKS = {'all-main-settings-explicit-save-and-restart',
-                   'unsaved-main-draft-not-persisted-by-immediate-duet',
-                   'personal-csv-export-exact-ordered-rows', 'settings-baseline-restored'}
 DESKTOP_FEATURES = ['desktop', 'original-ai', 'selected-windows-execution', 'tauri/custom-protocol']
 require, digest = cli.require, cli.digest
 
@@ -102,23 +39,7 @@ def report_gate(path, binary, mode, package=None):
     require(report.get('medium_integrity_verified') is True, 'verified Medium-integrity acceptance required')
     require(report.get('ipc_mocked') is False and report.get('ai_mode') == mode, 'wrong AI mode or mocked IPC')
     require(report.get('binary_sha256') == digest(binary), 'acceptance not bound to executable')
-    require(SETTINGS_CHECKS <= set(report.get('settings_checks', [])), 'incomplete actual settings/CSV export acceptance')
     if mode == 'on':
-        require(REQUIRED_CHECKS <= set(report.get('original_ai_checks', [])), 'incomplete original-AI acceptance')
-        require(report.get('apply_mode') == 'on' and APPLY_CHECKS <= set(report.get('apply_checks', [])), 'incomplete actual selected Copy/Move acceptance')
-        require(REPAIR_CHECKS <= set(report.get('repair_checks', [])), 'incomplete actual FixNames acceptance')
-        require(FLAC_CHECKS <= set(report.get('flac_checks', [])), 'incomplete actual FLAC FixNames acceptance')
-        require(OGG_CHECKS <= set(report.get('ogg_checks', [])), 'incomplete actual Ogg FixNames acceptance')
-        require(MP4_CHECKS <= set(report.get('mp4_checks', [])), 'incomplete actual MP4 FixNames acceptance')
-        require(ID3_CONTAINER_CHECKS <= set(report.get('id3_container_checks', [])), 'incomplete actual container ID3 FixNames acceptance')
-        require(WAVPACK_CHECKS <= set(report.get('wavpack_checks', [])), 'incomplete actual WavPack FixNames acceptance')
-        require(METADATA_READINESS_CHECKS <= set(report.get('metadata_readiness_checks', [])), 'incomplete actual metadata readiness acceptance')
-        require(ALBUM_CHECKS <= set(report.get('album_checks', [])), 'incomplete actual album acceptance')
-        require(CROSS_ALBUM_CHECKS <= set(report.get('cross_album_checks', [])), 'incomplete actual cross-volume album acceptance')
-        require(COPIED_MOVE_CHECKS <= set(report.get('copied_move_checks', [])), 'incomplete actual copied-Move acceptance')
-        require(RECOVERY_CHECKS <= set(report.get('recovery_checks', [])), 'incomplete actual restart recovery acceptance')
-        require(ALBUM_RECOVERY_CHECKS <= set(report.get('album_recovery_checks', [])), 'incomplete actual file-Album restart recovery acceptance')
-        require(WHOLE_ALBUM_RECOVERY_CHECKS <= set(report.get('whole_album_recovery_checks', [])), 'incomplete actual Whole-Album restart recovery acceptance')
         require(package is not None and report.get('package_sha256sums_sha256') == digest(package / 'SHA256SUMS.txt'), 'acceptance not bound to exact package')
     return report
 

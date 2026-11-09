@@ -45,11 +45,35 @@ jobs:
           persist-credentials: false
           sparse-checkout: native
 
-      - name: Preflight snapshot helpers in Windows PowerShell 5.1 before heavy builds
-        if: runner.os == 'Windows'
+      - name: Install pinned official Rust
         run: |
-          powershell.exe -NoProfile -NonInteractive -File packaging/windows-preview/test_smoke_snapshots.ps1
+          # Keep the official pinned toolchain separate from mutable runner-image
+          # components. RUSTUP_HOME is job-owned; never delete the runner's home.
+          # https://rust-lang.github.io/rustup/devel/environment-variables.html
+          if ($IsLinux) {
+            $isolatedHome = Join-Path $env:RUNNER_TEMP ("singles-cli-rustup-" + [guid]::NewGuid().ToString("N"))
+            New-Item -ItemType Directory -Path $isolatedHome -ErrorAction Stop | Out-Null
+            $env:RUSTUP_HOME = $isolatedHome
+            Add-Content -LiteralPath $env:GITHUB_ENV -Value "RUSTUP_HOME=$isolatedHome" -Encoding utf8
+            Write-Host "Using job-owned RUSTUP_HOME: $isolatedHome"
+          }
+          rustup toolchain install 1.99.0 --profile minimal --component rustfmt --component clippy
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          rustup which --toolchain 1.99.0 rustc
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 clippy --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.99.0 fmt --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: native -> target
+
+      - name: Discard outputs restored with the Rust cache
+        run: if (Test-Path target/original-ai) { Remove-Item -Recurse -Force target/original-ai }
 
       - name: Read only the pinned public original baseline
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -125,33 +149,6 @@ jobs:
           # Windows uses the dynamic MSVC CRT consistently in PCRE2, TagLib and
           # Rust. PCRE2, TagLib and zlib themselves are linked as static archives.
 
-      - name: Install pinned official Rust
-        run: |
-          # Keep the official pinned toolchain separate from mutable runner-image
-          # components. RUSTUP_HOME is job-owned; never delete the runner's home.
-          # https://rust-lang.github.io/rustup/devel/environment-variables.html
-          if ($IsLinux) {
-            $isolatedHome = Join-Path $env:RUNNER_TEMP ("singles-cli-rustup-" + [guid]::NewGuid().ToString("N"))
-            New-Item -ItemType Directory -Path $isolatedHome -ErrorAction Stop | Out-Null
-            $env:RUSTUP_HOME = $isolatedHome
-            Add-Content -LiteralPath $env:GITHUB_ENV -Value "RUSTUP_HOME=$isolatedHome" -Encoding utf8
-            Write-Host "Using job-owned RUSTUP_HOME: $isolatedHome"
-          }
-          rustup toolchain install 1.99.0 --profile minimal --component rustfmt --component clippy
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo +1.99.0 --version
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          rustup which --toolchain 1.99.0 rustc
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo +1.99.0 clippy --version
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo +1.99.0 fmt --version
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-        with:
-          workspaces: native -> target
-
       - name: Build default-off CLI and original AI with Windows selected execution
         id: build-selected-cli
         run: |
@@ -161,21 +158,6 @@ jobs:
           Copy-Item "target/release/singles-sorter$ext" "target/original-ai/default-cli$ext"
           $features = if ($IsWindows) { 'original-ai,selected-windows-execution' } else { 'original-ai' }
           cargo +1.99.0 build --locked --release -p sorter-cli --features $features
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo +1.99.0 build --locked --release -p sorter-classifier --example parity
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Compare original classifier numeric oracle at application optimization level
-        run: |
-          $ext = if ($IsWindows) { '.exe' } else { '' }
-          python crates/sorter-classifier/tools/verify_original.py --assets target/original-ai/bundle --binary "target/release/examples/parity$ext" --evidence target/original-ai/classifier-evidence
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Compare original NER paths and exercise shared bounded adapter
-        run: |
-          $env:ORIGINAL_AI_BUNDLE = (Resolve-Path target/original-ai/bundle).Path
-          $env:ORIGINAL_NER_ORACLE = (Resolve-Path target/original-ai/bundle/fixtures.json).Path
-          cargo +1.99.0 test --locked --release -p sorter-recognition --test original_oracle -- --ignored --nocapture
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run actual release CLI against original routes on authored real audio

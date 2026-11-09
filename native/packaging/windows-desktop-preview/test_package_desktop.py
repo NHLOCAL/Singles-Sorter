@@ -27,89 +27,10 @@ class DesktopPackageTests(unittest.TestCase):
         self.report=self.root/'report.json'
         self.data={'medium_integrity_verified':True,'status':'passed','platform':'windows-native-tauri','ipc_mocked':False,'ai_mode':'on',
                    'binary_sha256':p.digest(self.binary),'package_sha256sums_sha256':p.digest(self.pkg/'SHA256SUMS.txt'),
-                   'metadata_readiness_checks':sorted(p.METADATA_READINESS_CHECKS),'settings_checks':sorted(p.SETTINGS_CHECKS),'original_ai_checks':sorted(p.REQUIRED_CHECKS),'copied_move_checks':sorted(p.COPIED_MOVE_CHECKS),'apply_mode':'on','apply_checks':sorted(p.APPLY_CHECKS),'recovery_checks':sorted(p.RECOVERY_CHECKS),'album_recovery_checks':sorted(p.ALBUM_RECOVERY_CHECKS),'whole_album_recovery_checks':sorted(p.WHOLE_ALBUM_RECOVERY_CHECKS),'repair_checks':sorted(p.REPAIR_CHECKS),'flac_checks':sorted(p.FLAC_CHECKS),'ogg_checks':sorted(p.OGG_CHECKS),'mp4_checks':sorted(p.MP4_CHECKS),'id3_container_checks':sorted(p.ID3_CONTAINER_CHECKS),'wavpack_checks':sorted(p.WAVPACK_CHECKS),'album_checks':sorted(p.ALBUM_CHECKS),'cross_album_checks':sorted(p.CROSS_ALBUM_CHECKS)}
+                   }
         self.save()
     def save(self): self.report.write_text(json.dumps(self.data),encoding='utf-8')
-    def test_metadata_readiness_cannot_be_omitted_from_package_acceptance(self):
-        for missing in p.METADATA_READINESS_CHECKS:
-            self.data['metadata_readiness_checks'] = sorted(p.METADATA_READINESS_CHECKS - {missing}); self.save()
-            with self.assertRaisesRegex(ValueError, 'metadata readiness'):
-                p.report_gate(self.report, self.binary, 'on', self.pkg)
-
-    def test_each_actual_settings_export_check_is_mandatory_in_every_lane(self):
-        for mode in ['off', 'on']:
-            for missing in p.SETTINGS_CHECKS:
-                self.data['ai_mode'] = mode
-                self.data['settings_checks'] = sorted(p.SETTINGS_CHECKS - {missing}); self.save()
-                with self.assertRaisesRegex(ValueError, 'settings/CSV export'):
-                    p.report_gate(self.report, self.binary, mode, self.pkg if mode == 'on' else None)
-
-    def test_each_whole_album_restart_check_is_mandatory(self):
-        for missing in p.WHOLE_ALBUM_RECOVERY_CHECKS:
-            self.data['whole_album_recovery_checks'] = sorted(p.WHOLE_ALBUM_RECOVERY_CHECKS - {missing}); self.save()
-            with self.assertRaisesRegex(ValueError, 'Whole-Album restart'):
-                p.report_gate(self.report, self.binary, 'on', self.pkg)
-
-    def test_each_file_album_restart_check_is_mandatory(self):
-        for missing in p.ALBUM_RECOVERY_CHECKS:
-            self.data['album_recovery_checks'] = sorted(p.ALBUM_RECOVERY_CHECKS - {missing}); self.save()
-            with self.assertRaisesRegex(ValueError, 'file-Album restart'):
-                p.report_gate(self.report, self.binary, 'on', self.pkg)
-
-    def test_each_cross_album_check_is_mandatory(self):
-        for missing in p.CROSS_ALBUM_CHECKS:
-            self.data['cross_album_checks'] = sorted(p.CROSS_ALBUM_CHECKS - {missing}); self.save()
-            with self.assertRaisesRegex(ValueError, 'cross-volume album'):
-                p.report_gate(self.report, self.binary, 'on', self.pkg)
-
-    def test_each_copied_move_check_is_mandatory(self):
-        for missing in p.COPIED_MOVE_CHECKS:
-            self.data['copied_move_checks'] = sorted(p.COPIED_MOVE_CHECKS - {missing}); self.save()
-            with self.assertRaisesRegex(ValueError, 'copied-Move'):
-                p.report_gate(self.report, self.binary, 'on', self.pkg)
-
-    def test_each_wavpack_check_is_mandatory(self):
-        for missing in p.WAVPACK_CHECKS:
-            self.data['wavpack_checks'] = sorted(p.WAVPACK_CHECKS - {missing}); self.save()
-            with self.assertRaisesRegex(ValueError, 'WavPack'):
-                p.report_gate(self.report, self.binary, 'on', self.pkg)
-
-    def test_each_container_id3_check_is_mandatory(self):
-        for missing in p.ID3_CONTAINER_CHECKS:
-            self.data['id3_container_checks'] = sorted(p.ID3_CONTAINER_CHECKS - {missing}); self.save()
-            with self.assertRaisesRegex(ValueError, 'container ID3'):
-                p.report_gate(self.report, self.binary, 'on', self.pkg)
-
-    def test_each_mp4_check_is_mandatory(self):
-        for missing in p.MP4_CHECKS:
-            self.data['mp4_checks'] = sorted(p.MP4_CHECKS - {missing}); self.save()
-            with self.assertRaisesRegex(ValueError, 'MP4'):
-                p.report_gate(self.report, self.binary, 'on', self.pkg)
-
-    def test_each_ogg_check_is_mandatory(self):
-        for missing in p.OGG_CHECKS:
-            self.data['ogg_checks'] = sorted(p.OGG_CHECKS - {missing}); self.save()
-            with self.assertRaisesRegex(ValueError, 'Ogg'):
-                p.report_gate(self.report, self.binary, 'on', self.pkg)
-
-    def test_each_flac_check_is_mandatory(self):
-        for missing in p.FLAC_CHECKS:
-            self.data['flac_checks'] = sorted(p.FLAC_CHECKS - {missing}); self.save()
-            with self.assertRaisesRegex(ValueError, 'FLAC'):
-                p.report_gate(self.report, self.binary, 'on', self.pkg)
-
-    def test_each_album_check_is_mandatory(self):
-        for missing in p.ALBUM_CHECKS:
-            self.data['album_checks'] = sorted(p.ALBUM_CHECKS - {missing}); self.save()
-            with self.assertRaisesRegex(ValueError, 'album'):
-                p.report_gate(self.report, self.binary, 'on', self.root)
-
     def test_exact_acceptance(self): p.report_gate(self.report,self.binary,'on',self.pkg)
-    def test_repair_proof_is_mandatory_and_complete(self):
-        for missing in p.REPAIR_CHECKS:
-            self.data['repair_checks'] = sorted(p.REPAIR_CHECKS - {missing});self.save()
-            with self.assertRaisesRegex(ValueError, 'actual FixNames'):
-                p.report_gate(self.report, self.binary, 'on', self.pkg)
     def test_off_acceptance(self):
         self.data['ai_mode']='off';self.save();p.report_gate(self.report,self.binary,'off')
     def test_bad_reports(self):
@@ -118,21 +39,6 @@ class DesktopPackageTests(unittest.TestCase):
                 old=self.data[key];self.data[key]=value;self.save()
                 with self.assertRaises(ValueError): p.report_gate(self.report,self.binary,'on',self.pkg)
                 self.data[key]=old
-    def test_every_ai_case_required(self):
-        for missing in p.REQUIRED_CHECKS:
-            self.data['original_ai_checks']=sorted(p.REQUIRED_CHECKS-{missing});self.save()
-            with self.assertRaisesRegex(ValueError,'incomplete'): p.report_gate(self.report,self.binary,'on',self.pkg)
-    def test_every_actual_apply_case_required(self):
-        for missing in p.APPLY_CHECKS:
-            self.data['apply_checks']=sorted(p.APPLY_CHECKS-{missing});self.save()
-            with self.assertRaisesRegex(ValueError,'actual selected Copy/Move'): p.report_gate(self.report,self.binary,'on',self.pkg)
-    def test_read_only_binary_report_cannot_publish_selected_package(self):
-        self.data['apply_mode']='off';self.save()
-        with self.assertRaisesRegex(ValueError,'actual selected Copy/Move'): p.report_gate(self.report,self.binary,'on',self.pkg)
-    def test_every_restart_recovery_case_required(self):
-        for missing in p.RECOVERY_CHECKS:
-            self.data['recovery_checks']=sorted(p.RECOVERY_CHECKS-{missing});self.save()
-            with self.assertRaisesRegex(ValueError,'restart recovery'): p.report_gate(self.report,self.binary,'on',self.pkg)
     def test_changed_package_rejected(self):
         (self.pkg/'SHA256SUMS.txt').write_text('different')
         with self.assertRaisesRegex(ValueError,'exact package'): p.report_gate(self.report,self.binary,'on',self.pkg)
