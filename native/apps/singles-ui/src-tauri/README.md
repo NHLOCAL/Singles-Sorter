@@ -2,7 +2,7 @@
 
 The selected Windows host now supports retained-plan execution and read-only
 restart; full staged/extracted GUI acceptance passed at 772.
-See the [current capability and evidence matrix](../../../docs/product-acceptance-matrix.md).
+See the current capability and evidence matrix.
 
 ## Historical initial contract
 
@@ -39,7 +39,7 @@ file-copy/delete/tag-save adapter, or apply command.
   The profile/personal-list section below documents the added persistence. `get_model_status()` explicitly reports unavailable native
   inference when built feature-off, or fully validates both original models
   feature-on. Configured AI never silently becomes disabled. See
-  [original AI desktop contract](../../../docs/original-ai-desktop.md).
+  original AI desktop contract.
 
 Picking, resolving, and scanning share one host-side busy guard. Metadata/scanning
 runs outside the UI thread. Selected identities are rechecked against the opened

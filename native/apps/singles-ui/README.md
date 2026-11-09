@@ -2,7 +2,7 @@
 
 The Hebrew/RTL renderer supports the Windows Tauri and Android SAF/JNI hosts,
 with separate Sort/Fix modes, native confirmation and truthful observed results.
-The [accepted 772 checkpoint](../../docs/product-acceptance-matrix.md#current-772-windows-and-android-checkpoint-2026-10-13)
+The accepted 772 checkpoint
 records complete staged/extracted Windows GUI gates and bounded Android runtime
 proof. These remain development previews with explicit platform/storage limits.
 

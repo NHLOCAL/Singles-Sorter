@@ -2,7 +2,7 @@
 
 Selected Windows Copy/Move, albums, bounded repair and read-only restart now
 have actual native and staged/extracted acceptance at 772.
-See the [current capability and evidence matrix](../../docs/product-acceptance-matrix.md).
+See the current capability and evidence matrix.
 
 ## Historical initial contract
 
@@ -20,7 +20,7 @@ constructor. Its native fixture suite must pass on Windows; Linux compilation
 or skipped tests are not platform acceptance. The separate
 `experimental-windows-copy` feature now bridges the verified driver to actual
 single-file Copy within that owned fixture tree, with real IDs and checked file
-sync. See [boundaries and verification](../../docs/windows-owned-copy.md).
+sync. See boundaries and verification.
 
 There is no public CLI apply command, production-root mutation constructor,
 shipping execution flag, or automatic recovery replay. Existing v1/v2 previews
@@ -53,8 +53,7 @@ repeated artist names with suffixed distinct destinations stay distinct.
 implements the protocol and fault-injecting in-memory store. The optional
 `experimental-windows-journal` bridge now supports a newly created exclusive
 owned-TempDir local-NTFS journal file with checked FlushFileBuffers. Its ordinary
-OS-backed file-content durability assumptions and native evidence limits are
-documented in `native/docs/windows-owned-journal.md`. It grants no production
+OS-backed file-content durability assumptions apply. It grants no production
 root, transfer or album-namespace capability. Events are hash-chained, sequenced and bound to job/plan/operation/source/
 destination/digest. Intent is synced before effects; results follow effects.
 Allocation is preceded by TempAllocationPrepared, writing by BytesWritePrepared,

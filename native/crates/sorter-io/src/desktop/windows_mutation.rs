@@ -3430,7 +3430,6 @@ fn repair_pending(error: MutationError, observation: &MutationObservation) -> Mu
 
 /// Narrow in-place staging/backup adapter. There is deliberately no source unlink
 /// or backup cleanup method. The exact retained original is required to publish.
-/// See docs/windows-fix-preservation.md for the supported security domain and races.
 pub struct WindowsRepairStorage {
     rename: WindowsRenameStorage,
 }

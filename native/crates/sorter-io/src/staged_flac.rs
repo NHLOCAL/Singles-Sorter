@@ -1,7 +1,6 @@
 //! Stream-only native FLAC FixNames repair; never opens a path or publishes data.
 //! All blocks except VORBIS_COMMENT, all unassigned comments, and the complete
-//! encoded media tail are copied exactly. Metadata size may change; see
-//! `native/docs/staged-flac-repair.md` for the offset and compatibility contract.
+//! encoded media tail are copied exactly. Metadata size may change.
 use crate::{
     staged_tags::{StagedTagEvidence, TagWriteError},
     staged_xiph::{CommentKind, rewrite_comments, validate_repairs},

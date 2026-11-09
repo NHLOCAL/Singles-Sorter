@@ -17,7 +17,7 @@ TagLib metadata bridge and unchanged original recognition models. It is a
 development preview with bounded actual provider execution. The exact 772
 checkpoint passes authored API30 x86_64 software-emulator checks on the local
 ExternalStorage DocumentsProvider. There is no Python runtime or model download
-in the APK. See the [source/artifact-bound acceptance record](../../docs/product-acceptance-matrix.md#current-772-windows-and-android-checkpoint-2026-10-13).
+in the APK. See the source/artifact-bound acceptance record.
 
 ## Coverage and remaining work
 
