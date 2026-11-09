@@ -7,12 +7,16 @@ on:
     tags:
       - 'v15.*'
   workflow_dispatch:
+  # Add the full-acceptance label to a PR to run this once before tagging.
+  pull_request:
+    types: [labeled]
 
 permissions:
   contents: read
 
 jobs:
   identity:
+    if: github.event_name != 'pull_request' || github.event.label.name == 'full-acceptance'
     runs-on: ubuntu-24.04
     outputs:
       version: ${{ steps.read.outputs.version }}
@@ -25,6 +29,10 @@ jobs:
       - name: Require one consistent version everywhere
         id: read
         run: python3 native/packaging/windows-installer/check_release_identity.py
+
+  native:
+    needs: identity
+    uses: ./.github/workflows/native-ci.yml
 
   windows-desktop:
     needs: identity
@@ -42,7 +50,7 @@ jobs:
     secrets: inherit
 
   assemble:
-    needs: [identity, windows-desktop, windows-cli, android]
+    needs: [identity, native, windows-desktop, windows-cli, android]
     runs-on: windows-2025
     timeout-minutes: 30
     permissions:

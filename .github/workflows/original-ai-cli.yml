@@ -3,10 +3,6 @@ name: Original AI and selected CLI release proof
 on:
   workflow_call:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - 'native/**'
-      - '.github/workflows/original-ai-cli.yml'
 
 permissions:
   contents: read
@@ -21,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-2025, ubuntu-24.04]
+        os: [windows-2025]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     env:

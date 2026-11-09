@@ -18,13 +18,11 @@ on:
         description: 'Use the permanent version 15 signing identity (manual builds only)'
         type: boolean
         default: true
-  pull_request:
-    paths: ['native/**', '.github/workflows/android-product.yml']
 permissions:
   contents: read
 jobs:
   diagnose:
-    if: github.event_name == 'pull_request' || inputs.diagnostics_only == true
+    if: inputs.diagnostics_only == true
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:

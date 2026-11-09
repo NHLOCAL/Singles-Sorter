@@ -2,22 +2,13 @@ name: Windows native UI acceptance
 
 on:
   workflow_call:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    paths:
-      - 'native/apps/singles-ui/**'
-      - 'native/crates/**'
-      - 'native/tests/fixtures/**'
-      - 'native/packaging/**'
-      - 'native/probes/released-ner/**'
-      - 'native/rust-toolchain.toml'
-      - '.github/workflows/native-ui-windows.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: native-ui-${{ github.event.pull_request.number }}
+  group: native-ui-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

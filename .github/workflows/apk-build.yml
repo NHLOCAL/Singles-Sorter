@@ -1,11 +1,6 @@
 name: Legacy Flet APK Build (through v14)
 
 on:
-  push:
-    paths:
-      - '.github/workflows/apk-build.yml'
-
-
   # Allows you to run this workflow manually from the Actions tab of the repository
   workflow_dispatch:
 
