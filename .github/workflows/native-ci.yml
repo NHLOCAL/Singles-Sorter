@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: native-ci-${{ github.event.pull_request.number || github.sha }}
+  group: native-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 env:

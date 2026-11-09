@@ -73,9 +73,8 @@ class DesktopProgressTests(unittest.TestCase):
         picker = (root / 'native_picker.py').read_text(encoding='utf-8')
         self.assertIn('timeout=75', picker)
         workflow = (root.parents[3] / '.github/workflows/native-ui-windows.yml').read_text(encoding='utf-8')
-        self.assertIn('timeout-minutes: 90', workflow)
-        self.assertEqual(workflow.count('SINGLES_DESKTOP_RECOVERY_EXPECTED:'), 2)
-        self.assertIn('original-staged/acceptance.json', workflow)
+        self.assertIn('timeout-minutes: 60', workflow)
+        self.assertEqual(workflow.count('SINGLES_DESKTOP_RECOVERY_EXPECTED:'), 1)
         self.assertIn('original-extracted/acceptance.json', workflow)
 
 

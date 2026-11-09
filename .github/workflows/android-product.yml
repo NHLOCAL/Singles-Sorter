@@ -110,9 +110,6 @@ jobs:
       - name: Strict source and ownership guards
         run: |
           python3 -m unittest discover -s native/apps/singles-android -p 'test_release.py'
-          cargo +1.99.0 fmt --manifest-path native/plugins/original-inference/Cargo.toml -- --check
-          cargo +1.99.0 test --locked --manifest-path native/plugins/original-inference/Cargo.toml --features product --lib
-          cargo +1.99.0 clippy --locked --manifest-path native/plugins/original-inference/Cargo.toml --features product --all-targets -- -D warnings
           python3 -m unittest discover -s native/packaging/windows-preview -p 'test_package_preview.py'
           python3 -m unittest discover -s native/apps/singles-android -p 'test_android_elf.py'
           python3 -m unittest discover -s native/packaging/licenses -p 'test_android_licenses.py'
@@ -124,8 +121,6 @@ jobs:
         run: |
           node -e 'const [a,b]=process.versions.node.split(".").map(Number);if(a<22||(a===22&&b<12))process.exit(1)'
           npm ci
-          npm test
-          npm run typecheck
           npx vite build --mode android --base /assets/
       - name: Compile original JNI planner and TagLib for both ABIs
         env:

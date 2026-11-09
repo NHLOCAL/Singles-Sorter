@@ -7,7 +7,7 @@ or installer workflow. Default-off UI acceptance stays independent. The explicit
 model path is introduced.
 
 `package_desktop.py build` stages a narrow allowlist only on Windows x64 after
-feature-off actual UI acceptance. It binds PE DLL/symbol imports, official MSVC
+the desktop build. It binds PE DLL/symbol imports, official MSVC
 `dumpbin /dependents`, compiler/source tree, original assets, PCRE2 archive and the
 separate desktop license closure. Unknown DLL dependencies stop generation.
 The CLI dependency allowlist and packaging behavior are unchanged.

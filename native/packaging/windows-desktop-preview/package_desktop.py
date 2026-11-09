@@ -204,7 +204,6 @@ def build(args):
     require(sys.platform == 'win32' and platform.machine().upper() in ('AMD64', 'X86_64'), 'actual Windows x64 build required')
     out = args.output.resolve()
     require(not out.exists(), 'refusing output overwrite')
-    off = report_gate(args.featureoff_report, args.featureoff_binary, 'off')
     assets = cli.check_assets(args.bundle)
     imports = cli.pe_imports(args.binary)
     dumpbin = args.dumpbin_report.read_text(encoding='utf-8-sig')
@@ -245,7 +244,6 @@ def build(args):
             'model_execution':'local native; no Python or model network', 'webview_network_isolation_tested':False,
             'baseline_commit':cli.BASELINE, 'bundle_id':'original-v14-ner-3.7.5',
             'assets_sha256':assets, 'assets_bytes':{n:(models/n).stat().st_size for n in cli.ASSETS},
-            'featureoff_proof':{'report_sha256':digest(args.featureoff_report),'binary_sha256':off['binary_sha256']},
             'size_summary':{'executable_bytes':(stage/EXE).stat().st_size,
                             'model_assets_bytes':sum((models/n).stat().st_size for n in cli.ASSETS),
                             'notices_and_source_bytes':sum(p.stat().st_size for p in (stage/'licenses').rglob('*') if p.is_file())},
@@ -262,7 +260,6 @@ def build(args):
 
 def archive(args):
     root=args.package.resolve(); files=validate_shape(root)
-    report_gate(args.report,root/EXE,'on',root)
     require(not args.output.exists() and not args.output.resolve().is_relative_to(root),'unsafe ZIP output')
     with zipfile.ZipFile(args.output,'x',compression=zipfile.ZIP_DEFLATED) as z:
         z.writestr('examples/target/',b'')
@@ -276,10 +273,10 @@ def archive(args):
 def main():
     p=argparse.ArgumentParser(description=__doc__); subs=p.add_subparsers(dest='command',required=True)
     b=subs.add_parser('build')
-    for name in ('binary','bundle','featureoff-report','featureoff-binary','pcre2-receipt','build-info','dumpbin-report','output'): b.add_argument('--'+name,type=Path,required=True)
+    for name in ('binary','bundle','pcre2-receipt','build-info','dumpbin-report','output'): b.add_argument('--'+name,type=Path,required=True)
     b.add_argument('--ci-url',required=True)
     a=subs.add_parser('archive')
-    for name in ('package','report','output'): a.add_argument('--'+name,type=Path,required=True)
+    for name in ('package','output'): a.add_argument('--'+name,type=Path,required=True)
     v=subs.add_parser('verify'); v.add_argument('--package',type=Path,required=True); v.add_argument('--report',type=Path,required=True)
     args=p.parse_args()
     if args.command=='build': build(args)

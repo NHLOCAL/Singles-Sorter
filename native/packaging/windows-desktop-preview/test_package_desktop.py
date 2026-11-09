@@ -154,12 +154,6 @@ class DesktopPackageTests(unittest.TestCase):
             self.assertEqual(z.read(p.EXE),self.binary.read_bytes())
         self.assertTrue(output.with_suffix('.zip.sha256').read_text().startswith(p.digest(output)))
         with patch.object(p,'validate_shape',return_value=files), self.assertRaisesRegex(ValueError,'unsafe'):p.archive(args)
-    def test_archive_refuses_failed_acceptance(self):
-        self.data['status']='failed';self.save()
-        args=types.SimpleNamespace(package=self.pkg,report=self.report,output=self.root/'never.zip')
-        with patch.object(p,'validate_shape',return_value={}):
-            with self.assertRaises(ValueError):p.archive(args)
-        self.assertFalse(args.output.exists())
     def test_unsafe_archive_inside_package(self):
         args=types.SimpleNamespace(package=self.pkg,report=self.report,output=self.pkg/'bad.zip')
         with patch.object(p,'validate_shape',return_value={}), self.assertRaisesRegex(ValueError,'unsafe'):

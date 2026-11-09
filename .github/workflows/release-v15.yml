@@ -35,15 +35,15 @@ jobs:
     uses: ./.github/workflows/native-ci.yml
 
   windows-desktop:
-    needs: identity
+    needs: [identity, native]
     uses: ./.github/workflows/native-ui-windows.yml
 
   windows-cli:
-    needs: identity
+    needs: [identity, native]
     uses: ./.github/workflows/original-ai-cli.yml
 
   android:
-    needs: identity
+    needs: [identity, native]
     uses: ./.github/workflows/android-product.yml
     with:
       release_signing: true
