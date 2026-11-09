@@ -53,7 +53,7 @@ The separate Cargo workspace/lock avoids adding Tauri to the standalone CLI.
 state/planning module using real owned metadata fixtures and the existing engine.
 It does **not** test Tauri IPC, a native picker, WebView, or Windows execution.
 `cargo test --locked` enables the actual desktop host and platform prerequisites.
-The default binary is `singles-sorter-preview`; bundle creation is disabled.
+The default binary is `singles-sorter-desktop`; bundle creation is disabled.
 
 The desktop feature requires platform SDKs: MSVC and WebView2 on Windows, GTK 3
 and WebKitGTK 4.1 development packages on Linux. No native-desktop acceptance or

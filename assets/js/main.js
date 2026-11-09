@@ -39,7 +39,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const baseUrl = `https://github.com/${GITHUB_REPO}/releases/download/v${version}`;
 
       // Construct the final URLs based on the exact file naming convention
-      const urls = {
+      const isNative = parseInt(version, 10) >= 15;
+      const urls = isNative ? {
+        installer: `${baseUrl}/Singles-Sorter-Installer-${version}.exe`,
+        portable: `${baseUrl}/Singles-Sorter-Portable-${version}.zip`,
+        android: `${baseUrl}/Singles-Sorter-${version}.apk`,
+        cli: `${baseUrl}/Singles-Sorter-CLI-${version}.zip`,
+      } : {
         installer: `${baseUrl}/Singles-Sorter-Installer-AI-${version}.exe`,
         portable: `${baseUrl}/Singles-Sorter-Portable-AI-${version}.zip`,
         android: `${baseUrl}/Singles-Sorter-${version}.apk`,

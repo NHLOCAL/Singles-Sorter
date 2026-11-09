@@ -324,7 +324,7 @@ def build(args):
         models.mkdir(parents=True)
         for name in ASSETS:
             shutil.copyfile(bundle / name, models / name)
-        for name in ('README-preview.txt', 'smoke.ps1'):
+        for name in ('README.txt', 'smoke.ps1'):
             shutil.copyfile(HERE / name, stage / name)
         examples = stage / 'examples/source'
         examples.mkdir(parents=True)

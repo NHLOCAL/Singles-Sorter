@@ -1,3 +1,5 @@
+> Historical record of 15.0.0-beta.1. Current releases are gated by `.github/workflows/release-v15.yml`.
+
 # Singles Sorter 15.0 beta acceptance, 2026-10-26
 
 The deliverable is **15.0.0-beta.1**, Android package

@@ -3,7 +3,7 @@
 #define MyAppName "מסדר הסינגלים"
 #define MyAppPublisher "nhlocal"
 #define MyAppURL "https://singles-sorter.ze-kal.top"
-#define MyAppExeName "singles-sorter-preview.exe"
+#define MyAppExeName "singles-sorter-desktop.exe"
 
 [Setup]
 ; The AppId is shared with version 14, so this installer upgrades it in place.

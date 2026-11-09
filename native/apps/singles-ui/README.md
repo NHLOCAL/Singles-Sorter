@@ -153,7 +153,7 @@ observations counts as a passed IPC, rendering, picker, or persistence check.
 The Tauri CLI's printed output path is not sufficient proof of a renamed binary.
 Pinned CLI 2.12.2 filters required-features during binary discovery and can fall
 back to the Cargo package name when desktop is enabled only through defaults.
-The configured Cargo binary remains singles-sorter-preview.exe; there is no
+The configured Cargo binary remains singles-sorter-desktop.exe; there is no
 mainBinaryName override. Build adds tauri/custom-protocol and embeds frontendDist.
 The early launch-timeout investigation below is historical; current Windows
 launch and full consumer acceptance passed at 772.

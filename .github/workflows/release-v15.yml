@@ -96,7 +96,7 @@ jobs:
           Copy-Item $apk $out
           $package = Join-Path $env:RUNNER_TEMP 'desktop-package'
           Expand-Archive $desktop -DestinationPath $package
-          $exe = Get-ChildItem $package -Recurse -Filter 'singles-sorter-preview.exe' | Select-Object -First 1
+          $exe = Get-ChildItem $package -Recurse -Filter 'singles-sorter-desktop.exe' | Select-Object -First 1
           if (-not $exe) { throw 'Desktop executable missing from accepted package' }
           "PACKAGE_DIR=$($exe.DirectoryName)" >> $env:GITHUB_ENV
           "RELEASE_DIR=$out" >> $env:GITHUB_ENV
@@ -114,7 +114,7 @@ jobs:
           $setup = Join-Path $env:RELEASE_DIR "Singles-Sorter-Installer-$env:VERSION.exe"
           $process = Start-Process $setup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER',"/DIR=$target" -Wait -PassThru
           if ($process.ExitCode -ne 0) { throw "Installer exit $($process.ExitCode)" }
-          foreach ($file in 'singles-sorter-preview.exe','models/original/manifest.json') {
+          foreach ($file in 'singles-sorter-desktop.exe','models/original/manifest.json') {
             if (-not (Test-Path (Join-Path $target $file))) { throw "Installed file missing: $file" }
           }
           $process = Start-Process (Join-Path $target 'unins000.exe') -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru

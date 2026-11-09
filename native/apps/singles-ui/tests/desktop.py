@@ -49,7 +49,7 @@ from desktop_settings import SETTINGS_CHECKS, read_main_settings, set_main_setti
 ROOT = Path(__file__).resolve().parents[1]
 if os.name != 'nt' or os.environ.get('GITHUB_ACTIONS') != 'true':
     raise SystemExit('Native desktop acceptance must run in an owned Windows GitHub Actions runner.')
-BINARY = Path(os.environ.get('SINGLES_DESKTOP_BIN', str(ROOT / 'src-tauri/target/release/singles-sorter-preview.exe'))).resolve(strict=True)
+BINARY = Path(os.environ.get('SINGLES_DESKTOP_BIN', str(ROOT / 'src-tauri/target/release/singles-sorter-desktop.exe'))).resolve(strict=True)
 OUTPUT = Path(os.environ.get('SINGLES_UI_EVIDENCE', str(ROOT / 'test-results/native-windows')))
 OUTPUT.mkdir(parents=True, exist_ok=True)
 security = process_security()

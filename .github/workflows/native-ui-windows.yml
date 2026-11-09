@@ -239,7 +239,7 @@ jobs:
             cargo clean --manifest-path src-tauri/Cargo.toml --release --package $package.id
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
-          if (Test-Path 'src-tauri/target/release/singles-sorter-preview.exe') {
+          if (Test-Path 'src-tauri/target/release/singles-sorter-desktop.exe') {
             throw 'Stale desktop executable survived local-package cleanup'
           }
 
@@ -335,7 +335,7 @@ jobs:
           python tests/run_desktop_medium.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           New-Item -ItemType Directory -Force ../../target/desktop-original/feature-off | Out-Null
-          Copy-Item src-tauri/target/release/singles-sorter-preview.exe ../../target/desktop-original/feature-off/singles-sorter-preview.exe
+          Copy-Item src-tauri/target/release/singles-sorter-desktop.exe ../../target/desktop-original/feature-off/singles-sorter-desktop.exe
 
       # A renderer-only failure must not starve independent native host evidence.
       # The successful prerequisite build binds this same checkout/toolchain and
@@ -394,9 +394,9 @@ jobs:
           $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
           $dumpbin = @(& $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find 'VC\Tools\MSVC\**\bin\Hostx64\x64\dumpbin.exe') | Select-Object -Last 1
           if (-not $dumpbin) { throw 'Official MSVC dumpbin unavailable' }
-          & $dumpbin /dependents src-tauri/target/release/singles-sorter-preview.exe | Set-Content -Encoding utf8 "$out/dumpbin-dependents.txt"
+          & $dumpbin /dependents src-tauri/target/release/singles-sorter-desktop.exe | Set-Content -Encoding utf8 "$out/dumpbin-dependents.txt"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python ../../packaging/windows-desktop-preview/package_desktop.py build --binary src-tauri/target/release/singles-sorter-preview.exe --bundle "$out/bundle" --featureoff-report test-results/native-windows/feature-off/acceptance.json --featureoff-binary "$out/feature-off/singles-sorter-preview.exe" --pcre2-receipt "$out/pcre2/build-receipt.json" --build-info "$out/native-build-info.txt" --dumpbin-report "$out/dumpbin-dependents.txt" --ci-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" --output "$out/windows-desktop-preview"
+          python ../../packaging/windows-desktop-preview/package_desktop.py build --binary src-tauri/target/release/singles-sorter-desktop.exe --bundle "$out/bundle" --featureoff-report test-results/native-windows/feature-off/acceptance.json --featureoff-binary "$out/feature-off/singles-sorter-desktop.exe" --pcre2-receipt "$out/pcre2/build-receipt.json" --build-info "$out/native-build-info.txt" --dumpbin-report "$out/dumpbin-dependents.txt" --ci-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" --output "$out/windows-desktop-preview"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise staged original-AI desktop and actual selected Copy Move and FixNames
@@ -404,7 +404,7 @@ jobs:
           SINGLES_DESKTOP_AI_EXPECTED: 'on'
           SINGLES_DESKTOP_APPLY_EXPECTED: 'on'
           SINGLES_DESKTOP_RECOVERY_EXPECTED: 'on'
-          SINGLES_DESKTOP_BIN: ${{ github.workspace }}/native/target/desktop-original/windows-desktop-preview/singles-sorter-preview.exe
+          SINGLES_DESKTOP_BIN: ${{ github.workspace }}/native/target/desktop-original/windows-desktop-preview/singles-sorter-desktop.exe
           SINGLES_UI_OUTPUT: ${{ github.workspace }}/native/apps/singles-ui/test-results/native-windows/original-staged
         run: |
           python tests/run_desktop_medium.py
@@ -421,7 +421,7 @@ jobs:
           SINGLES_DESKTOP_AI_EXPECTED: 'on'
           SINGLES_DESKTOP_APPLY_EXPECTED: 'on'
           SINGLES_DESKTOP_RECOVERY_EXPECTED: 'on'
-          SINGLES_DESKTOP_BIN: ${{ github.workspace }}/native/target/desktop-original/תצוגה חדשה extracted/singles-sorter-preview.exe
+          SINGLES_DESKTOP_BIN: ${{ github.workspace }}/native/target/desktop-original/תצוגה חדשה extracted/singles-sorter-desktop.exe
           SINGLES_UI_OUTPUT: ${{ github.workspace }}/native/apps/singles-ui/test-results/native-windows/original-extracted
         run: |
           python tests/run_desktop_medium.py

@@ -28,7 +28,7 @@ cli.SYSTEM_DLLS |= {'gdi32.dll', 'dwmapi.dll', 'comctl32.dll', 'uxtheme.dll',
                    'propsys.dll', 'imm32.dll', 'comdlg32.dll', 'shcore.dll',
                    'windowscodecs.dll', 'msimg32.dll', 'powrprof.dll',
                    'combase.dll', 'cfgmgr32.dll', 'setupapi.dll', 'dwrite.dll', 'd2d1.dll'}
-EXE = 'singles-sorter-preview.exe'
+EXE = 'singles-sorter-desktop.exe'
 REQUIRED_CHECKS = {'original-models-executed', 'disabled-no-inference', 'cancel-no-stale-plan',
                    'back-no-stale-plan', 'reload-no-stale-plan', 'repeat-preview', 'missing-model-fail-closed',
                    'corrupt-model-fail-closed', 'protected-files-unchanged'}
@@ -125,7 +125,7 @@ def report_gate(path, binary, mode, package=None):
 
 def validate_shape(root):
     files = cli.verify_package(root)
-    allowed = {EXE, 'README-preview.txt', 'provenance.json',
+    allowed = {EXE, 'README.txt', 'provenance.json',
                'examples/source/ישראל כהן - שיר חדש.wav', 'examples/source/אברהם פריד - בדיקה.wav',
                *(f'models/original/{n}' for n in cli.ASSETS)}
     require(set(files) - {n for n in files if n.startswith('licenses/')} == allowed, 'unexpected desktop package files')
@@ -219,7 +219,7 @@ def build(args):
     with tempfile.TemporaryDirectory(prefix='desktop-preview-build-', dir=out.parent) as temp:
         stage = Path(temp) / 'package'; stage.mkdir()
         shutil.copyfile(args.binary, stage / EXE)
-        shutil.copyfile(HERE / 'README-preview.txt', stage / 'README-preview.txt')
+        shutil.copyfile(HERE / 'README.txt', stage / 'README.txt')
         models = stage / 'models/original'; models.mkdir(parents=True)
         for name in cli.ASSETS: shutil.copyfile(args.bundle / name, models / name)
         examples = stage / 'examples/source'; examples.mkdir(parents=True)

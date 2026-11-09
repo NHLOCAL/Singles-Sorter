@@ -17,7 +17,7 @@ selected-windows-execution = ["dep:sorter-executor", "sorter-executor/selected-w
 desktop = ["dep:tauri", "dep:tauri-build", "dep:tauri-plugin-dialog", "dep:tauri-plugin-opener"]
 
 [[bin]]
-name = "singles-sorter-preview"
+name = "singles-sorter-desktop"
 path = "src/main.rs"
 required-features = ["desktop"]
 
