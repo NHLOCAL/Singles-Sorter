@@ -20,7 +20,7 @@ final class JournalExportBounds {
     static boolean id(String value){return value!=null&&value.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");}
     static int limit(String name){
         if("authority.json".equals(name))return 16*1024*1024;
-        if("state.json".equals(name))return 8*1024*1024;
+        if("state.json".equals(name)||(name!=null&&name.matches("events-[0-9]{6}\\.json")))return ProviderEffectJournal.STATE_LIMIT;
         if("index.json".equals(name))return 4096;
         throw new IllegalArgumentException("JOURNAL_FILE");
     }

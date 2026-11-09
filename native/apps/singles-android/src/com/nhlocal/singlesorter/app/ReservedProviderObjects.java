@@ -15,7 +15,7 @@ import org.json.JSONObject;
  */
 final class ReservedProviderObjects {
     private static final class Scope {final Uri object,parent;final String name;final boolean temporaryReleased;Scope(Uri object,Uri parent,String name,boolean released){this.object=object;this.parent=parent;this.name=name;temporaryReleased=released;}}
-    private final Context context;private final CancellationSignal cancel;private final ArrayList<Scope> scopes=new ArrayList<>();private int checks;
+    private final Context context;private final CancellationSignal cancel;private final ArrayList<Scope> scopes=new ArrayList<>();private ArrayList<Uri> resolved;private int checks;
     private ReservedProviderObjects(Context context,CancellationSignal cancel){this.context=context.getApplicationContext();this.cancel=cancel;}
     static ReservedProviderObjects load(Context context,CancellationSignal cancel)throws Exception{
         ReservedProviderObjects result=new ReservedProviderObjects(context,cancel);
@@ -26,27 +26,33 @@ final class ReservedProviderObjects {
                     Uri parent=checked(detail.getString("parent"));String name=detail.getString("name");ProviderNames.require(name);Uri object=null;
                     if(i+1<events.length()){JSONObject next=events.getJSONObject(i+1);if(operation.equals(next.getString("operation"))&&"returned".equals(next.getString("phase"))&&!next.getJSONObject("detail").isNull("uri"))object=returned(next.getJSONObject("detail").getString("uri"),parent);}
                     boolean released=object!=null&&albumRelease(events,i,object.toString(),parent.toString(),name,role,cancel::isCanceled,visits);
-                    if(result.scopes.size()>=4000)throw new IOException("RESERVED_SCOPE_LIMIT");result.scopes.add(new Scope(object,parent,name,released));continue;
+                    if(result.scopes.size()>=200000)throw new IOException("RESERVED_SCOPE_LIMIT");result.scopes.add(new Scope(object,parent,name,released));continue;
                 }
                 if(!event.getString("phase").equals("intent")||!step.matches("create-stage|create-move-stage|create-fix-stage|create-fix-backup"))continue;
                 JSONObject detail=event.getJSONObject("detail");Uri parent=checked(detail.getString("parent"));String name=detail.getString("name");ProviderNames.require(name);Uri object=null;
                 if(i+1<events.length()){JSONObject next=events.getJSONObject(i+1);if(operation.equals(next.getString("operation"))&&"returned".equals(next.getString("phase"))&&!next.getJSONObject("detail").isNull("uri"))object=returned(next.getJSONObject("detail").getString("uri"),parent);}
                 boolean released=object!=null&&!step.equals("create-fix-backup")&&temporaryRelease(events,i,object.toString(),parent.toString(),name,step,authority,index,cancel::isCanceled,visits);
-                if(result.scopes.size()>=4000)throw new IOException("RESERVED_SCOPE_LIMIT");result.scopes.add(new Scope(object,parent,name,released));
+                if(result.scopes.size()>=200000)throw new IOException("RESERVED_SCOPE_LIMIT");result.scopes.add(new Scope(object,parent,name,released));
             }});return result;
     }
     /** File mutation and directory insertion both refuse equal/below every retained scope. */
     void require(Uri candidate)throws Exception{require(candidate,false);}
     void requireSubtree(Uri candidate)throws Exception{require(candidate,true);}
     private void require(Uri candidate,boolean subtree)throws Exception{
-        cancel.throwIfCanceled();checked(candidate.toString());for(Scope scope:scopes){cancel.throwIfCanceled();if(++checks>20000)throw new IOException("RESERVED_CHECK_BUDGET");Uri reserved=scope.object;
+        cancel.throwIfCanceled();checked(candidate.toString());resolve();String candidateId=DocumentsContract.getDocumentId(candidate);
+        for(Uri reserved:resolved){cancel.throwIfCanceled();String reservedId=DocumentsContract.getDocumentId(reserved);if(candidateId.equals(reservedId)||(ReservedScopePolicy.mayContain(reservedId,candidateId)&&providerChild(reserved,candidate))||(subtree&&ReservedScopePolicy.mayContain(candidateId,reservedId)&&providerChild(candidate,reserved)))throw new IOException("RETAINED_PROVIDER_OBJECT");}
+        cancel.throwIfCanceled();
+    }
+    private boolean providerChild(Uri parent,Uri child)throws Exception{if(++checks>200000)throw new IOException("RESERVED_CHECK_BUDGET");return CheckedLocalAncestry.isChild(context,parent,child);}
+    /** Each instance resolves history once, so job admission stays linear in files plus distinct retained folders. */
+    private void resolve()throws Exception{
+        if(resolved!=null)return;java.util.LinkedHashMap<String,Uri> unique=new java.util.LinkedHashMap<>();
+        for(Scope scope:scopes){cancel.throwIfCanceled();Uri reserved=scope.object;
             if(reserved!=null){int observedKind=kind(reserved);boolean absent=observedKind!=1&&observedKind!=2&&scope.temporaryReleased&&parentListsAbsent(scope);int policy=ReservedScopePolicy.select(observedKind,scope.temporaryReleased,absent);if(policy==0)continue;if(policy==1)reserved=scope.parent;}
             else reserved=scope.parent;
             // Missing or unobservable backup/lost-return namespaces retain their containing parent.
-            ProviderReferences.requireGrant(context,tree(reserved),false);ReservedScopePolicy.requireDirectory(kind(reserved));
-            String candidateId=DocumentsContract.getDocumentId(candidate),reservedId=DocumentsContract.getDocumentId(reserved);
-            if(candidateId.equals(reservedId)||CheckedLocalAncestry.isChild(context,reserved,candidate)||(subtree&&CheckedLocalAncestry.isChild(context,candidate,reserved)))throw new IOException("RETAINED_PROVIDER_OBJECT");
-        }cancel.throwIfCanceled();
+            ProviderReferences.requireGrant(context,tree(reserved),false);if(ReservedScopePolicy.stillReserved(kind(reserved)))unique.putIfAbsent(DocumentsContract.getDocumentId(reserved),reserved);
+        }resolved=new ArrayList<>(unique.values());
     }
     private boolean parentListsAbsent(Scope scope)throws Exception{
         cancel.throwIfCanceled();ProviderReferences.requireGrant(context,tree(scope.parent),false);if(kind(scope.parent)!=2)return false;RetainedNamespaceListing listing=new RetainedNamespaceListing(DocumentsContract.getDocumentId(scope.object),scope.name);
@@ -82,14 +88,14 @@ final class ReservedProviderObjects {
             JSONObject intendedBytes=FixProtocol.binding(writeIntent.getJSONObject("detail").getJSONObject("binding"),FixProtocol.ORIGINAL_LIMIT),returnedBytes=FixProtocol.binding(writeReturned.getJSONObject("detail"),FixProtocol.ORIGINAL_LIMIT);
             if(!FixProtocol.sameBinding(copyBinding,intendedBytes)||!FixProtocol.sameBinding(copyBinding,returnedBytes))return false;
         }
-        for(int i=created+1;i<events.length();i++){JournalExportBounds.checkpoint(cancelled);if(++visits[0]>20000)throw new IOException("RESERVED_CERTIFICATE_BUDGET");JSONObject event=events.getJSONObject(i);if(!event.getString("operation").equals(operation)&&!event.getString("operation").startsWith(operation+"/"))break;if(event.getString("operation").equals(operation))continue;String step=step(event.getString("operation"));JSONObject detail=event.getJSONObject("detail");
+        for(int i=created+1;i<events.length();i++){JournalExportBounds.checkpoint(cancelled);if(++visits[0]>4000000)throw new IOException("RESERVED_CERTIFICATE_BUDGET");JSONObject event=events.getJSONObject(i);if(!event.getString("operation").equals(operation)&&!event.getString("operation").startsWith(operation+"/"))break;if(event.getString("operation").equals(operation))continue;String step=step(event.getString("operation"));JSONObject detail=event.getJSONObject("detail");
             if("intent".equals(event.getString("phase"))&&step.matches("remove-empty-stage|remove-empty-fix-stage")&&uri.equals(detail.optString("owned_empty_directory"))&&parent.equals(detail.optString("parent"))&&name.equals(detail.optString("name"))&&i+2<events.length()){
                 JSONObject effectReturn=events.getJSONObject(i+1),effectObserved=events.getJSONObject(i+2);if(sameEvent(event,effectReturn,"returned")&&sameEvent(event,effectObserved,"observed")&&Boolean.TRUE.equals(effectReturn.getJSONObject("detail").opt("removed"))&&Boolean.TRUE.equals(effectObserved.getJSONObject("detail").opt("owned_empty_stage_absent")))return true;}
             if(createStep.equals("create-stage")&&"intent".equals(event.getString("phase"))&&step.equals("publish-copy")&&uri.equals(detail.optString("source"))&&parent.equals(detail.optString("parent"))&&i+2<events.length()){
                 if(i!=created+5)return false;
                 JSONObject effectReturn=events.getJSONObject(i+1),effectObserved=events.getJSONObject(i+2);if(!sameEvent(event,effectReturn,"returned")||!sameEvent(event,effectObserved,"observed"))continue;JSONObject observation=effectObserved.getJSONObject("detail");String published=observation.getString("uri");if(!published.equals(effectReturn.getJSONObject("detail").getString("uri"))||!detail.getString("name").equals(observation.getJSONObject("metadata").getString("name")))continue;
                 JSONObject binding=copyBinding;
-                for(int n=i+3;n<events.length();n++){JournalExportBounds.checkpoint(cancelled);if(++visits[0]>20000)throw new IOException("RESERVED_CERTIFICATE_BUDGET");JSONObject verified=events.getJSONObject(n);if(operation.equals(verified.getString("operation"))&&"verified".equals(verified.getString("phase"))){JSONObject result=verified.getJSONObject("detail");return published.equals(result.getString("destination"))&&detail.getString("name").equals(result.getString("name"))&&Boolean.TRUE.equals(result.get("copy"))&&binding.getLong("bytes")==result.getLong("bytes")&&binding.getString("sha256").equals(result.getString("sha256"));}}
+                for(int n=i+3;n<events.length();n++){JournalExportBounds.checkpoint(cancelled);if(++visits[0]>4000000)throw new IOException("RESERVED_CERTIFICATE_BUDGET");JSONObject verified=events.getJSONObject(n);if(operation.equals(verified.getString("operation"))&&"verified".equals(verified.getString("phase"))){JSONObject result=verified.getJSONObject("detail");return published.equals(result.getString("destination"))&&detail.getString("name").equals(result.getString("name"))&&Boolean.TRUE.equals(result.get("copy"))&&binding.getLong("bytes")==result.getLong("bytes")&&binding.getString("sha256").equals(result.getString("sha256"));}}
             }
         }return false;
     }
@@ -97,7 +103,7 @@ final class ReservedProviderObjects {
         JSONObject creation=events.getJSONObject(created);String operation=creation.getString("operation").split("/")[0];int child=creation.getJSONObject("detail").getInt("child");
         if(created+2>=events.length())return false;JSONObject made=events.getJSONObject(created+2);if(!sameEvent(creation,made,"observed")||!uri.equals(made.getJSONObject("detail").getString("uri")))return false;
         boolean released=false;
-        for(int n=created+3;n<events.length();n++){JournalExportBounds.checkpoint(cancelled);if(++visits[0]>20000)throw new IOException("RESERVED_CERTIFICATE_BUDGET");JSONObject event=events.getJSONObject(n);String current=event.getString("operation");if(!current.equals(operation)&&!current.startsWith(operation+"/"))break;JSONObject detail=event.getJSONObject("detail");
+        for(int n=created+3;n<events.length();n++){JournalExportBounds.checkpoint(cancelled);if(++visits[0]>4000000)throw new IOException("RESERVED_CERTIFICATE_BUDGET");JSONObject event=events.getJSONObject(n);String current=event.getString("operation");if(!current.equals(operation)&&!current.startsWith(operation+"/"))break;JSONObject detail=event.getJSONObject("detail");
             if(event.getString("phase").equals("intent")&&detail.optInt("child",-1)==child&&n+2<events.length()){
                 boolean effect=role.equals("copy-stage")&&"rename".equals(detail.optString("action"))&&"publish-copy".equals(detail.optString("role"))&&uri.equals(detail.optString("source"))&&parent.equals(detail.optString("parent"));
                 effect|=role.equals("move-stage")&&"remove-empty".equals(detail.optString("action"))&&"move-stage".equals(detail.optString("role"))&&uri.equals(detail.optString("owned_empty_directory"))&&parent.equals(detail.optString("parent"))&&name.equals(detail.optString("name"));

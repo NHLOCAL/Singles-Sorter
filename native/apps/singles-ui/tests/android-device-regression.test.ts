@@ -23,3 +23,16 @@ describe('physical Android regressions',()=>{
   expect(controller.state.busy).toBe(false);expect(controller.state.ai).toBe('Disabled');
  });
 });
+
+describe('readiness diagnostics take priority over generic platform blockers',()=>{
+ const blockers=['MISSING_IDENTITY','PHYSICAL_APPLY_UNAVAILABLE'];
+ const base={supported:false,operation_count:0,copy_mode:false,source:'s',target:'',reason:'x'} as never as ApplyReadiness;
+ it('names a too-large folder instead of an identity failure',()=>{
+  const text=executionRefusalSummary({...base,diagnostic:{phase:'fix-admission-budget',code:'FIX_JOB_BUDGET'}},blockers);
+  expect(text).toContain('גדולה מדי');
+  expect(text).not.toContain('זהות');
+ });
+ it('keeps the blocker message when the code is not specific',()=>{
+  expect(executionRefusalSummary({...base,diagnostic:{phase:'x',code:'OTHER'}},blockers)).toContain('זהות');
+ });
+});

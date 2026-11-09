@@ -1,6 +1,7 @@
 name: Windows native UI acceptance
 
 on:
+  workflow_call:
   pull_request:
     types: [opened, synchronize, reopened]
     paths:

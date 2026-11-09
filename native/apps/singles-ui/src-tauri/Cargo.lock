@@ -3187,7 +3187,7 @@ checksum = "e3a9fe34e3e7a50316060351f37187a3f546bce95496156754b601a5fa71b76e"
 
 [[package]]
 name = "singles-ui-host"
-version = "15.0.0-beta.2"
+version = "15.0.0"
 dependencies = [
  "encoding_rs",
  "serde",
@@ -3257,7 +3257,7 @@ dependencies = [
 
 [[package]]
 name = "sorter-classifier"
-version = "15.0.0-beta.1"
+version = "15.0.0"
 dependencies = [
  "libc",
  "sha2",
@@ -3265,7 +3265,7 @@ dependencies = [
 
 [[package]]
 name = "sorter-core"
-version = "15.0.0-beta.1"
+version = "15.0.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -3274,7 +3274,7 @@ dependencies = [
 
 [[package]]
 name = "sorter-executor"
-version = "15.0.0-beta.1"
+version = "15.0.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -3286,7 +3286,7 @@ dependencies = [
 
 [[package]]
 name = "sorter-io"
-version = "15.0.0-beta.1"
+version = "15.0.0"
 dependencies = [
  "libc",
  "sha2",
@@ -3298,7 +3298,7 @@ dependencies = [
 
 [[package]]
 name = "sorter-recognition"
-version = "15.0.0-beta.1"
+version = "15.0.0"
 dependencies = [
  "released-ner-probe",
  "released-ner-text",
@@ -3311,7 +3311,7 @@ dependencies = [
 
 [[package]]
 name = "sorter-storage-contracts"
-version = "15.0.0-beta.1"
+version = "15.0.0"
 dependencies = [
  "serde",
  "sorter-core",

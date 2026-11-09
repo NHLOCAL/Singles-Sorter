@@ -12,7 +12,7 @@ final class AlbumAdmissionBounds {
         for(NativeTransferPlan.Transfer single:singles.operations){JournalExportBounds.checkpoint(cancelled);long count=AlbumEffectBudget.single(single);events+=count;long uri=uriBound(single.source().getJSONObject("AndroidDocument").toString(),target,single.components());estimated+=count*(512+3*uri);}
         for(NativeAlbumPlan.Album album:albums.operations){JournalExportBounds.checkpoint(cancelled);long count=AlbumEffectBudget.album(album,albums.tree,cancelled),max=album.source.parent==null&&retained.albumRootParentCopy()!=null?AlbumRootParent.uriBudget(retained.albumRootParentCopy()):0;
             for(AlbumSnapshotTree.Node node:albums.tree.complete(album.source)){JournalExportBounds.checkpoint(cancelled);max=Math.max(max,uriBound(FixRecoveryEvidence.uri(node.entry()),target,album.components()));}
-            events+=count;estimated+=count*(512+3*max);if(events>9000||estimated>7L*1024*1024)throw new IllegalArgumentException("ALBUM_JOB_BUDGET");
+            events+=count;estimated+=count*(512+3*max);if(events>ProviderEffectJournal.MAX_EVENTS-1000||estimated>256L*1024*1024)throw new IllegalArgumentException("ALBUM_JOB_BUDGET");
         }
         JournalExportBounds.checkpoint(cancelled);
     }

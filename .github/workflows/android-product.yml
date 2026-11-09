@@ -1,5 +1,13 @@
 name: Singles Sorter 15 Android beta
 on:
+  workflow_call:
+    inputs:
+      diagnostics_only:
+        type: boolean
+        default: false
+      release_signing:
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       diagnostics_only:
@@ -135,12 +143,12 @@ jobs:
             --dependency-cache "$HOME/.cache/singles-sorter/sources" \
             --output-dir "$RUNNER_TEMP/android-licenses"
       - name: Prepare isolated QA signing identity
-        if: github.event_name != 'workflow_dispatch' || inputs.release_signing != true
+        if: inputs.release_signing != true
         run: |
           keytool -genkeypair -noprompt -keystore "$RUNNER_TEMP/qa-only.p12" -storetype PKCS12 -storepass android -keypass android -alias qa -keyalg RSA -keysize 2048 -validity 3650 -dname 'CN=Singles QA Only'
           echo "SINGLES_KEYSTORE=$RUNNER_TEMP/qa-only.p12" >> "$GITHUB_ENV"
       - name: Restore permanent signing identity
-        if: github.event_name == 'workflow_dispatch' && inputs.release_signing == true
+        if: inputs.release_signing == true
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
@@ -158,10 +166,10 @@ jobs:
           PY
       - name: Package version 15 APK without Python or runtime downloads
         env:
-          SINGLES_SIGNING_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.release_signing == true && 'release' || 'qa' }}
-          SINGLES_KEY_ALIAS: ${{ github.event_name == 'workflow_dispatch' && inputs.release_signing == true && secrets.ANDROID_KEY_ALIAS || 'qa' }}
-          SINGLES_STORE_PASSWORD: ${{ github.event_name == 'workflow_dispatch' && inputs.release_signing == true && secrets.ANDROID_STORE_PASSWORD || 'android' }}
-          SINGLES_KEY_PASSWORD: ${{ github.event_name == 'workflow_dispatch' && inputs.release_signing == true && secrets.ANDROID_KEY_PASSWORD || 'android' }}
+          SINGLES_SIGNING_MODE: ${{ inputs.release_signing == true && 'release' || 'qa' }}
+          SINGLES_KEY_ALIAS: ${{ inputs.release_signing == true && secrets.ANDROID_KEY_ALIAS || 'qa' }}
+          SINGLES_STORE_PASSWORD: ${{ inputs.release_signing == true && secrets.ANDROID_STORE_PASSWORD || 'android' }}
+          SINGLES_KEY_PASSWORD: ${{ inputs.release_signing == true && secrets.ANDROID_KEY_PASSWORD || 'android' }}
           MODEL_BUNDLE: ${{ runner.temp }}/original-bundle
           NATIVE_LIB_X86_64: ${{ runner.temp }}/android-native/x86_64/libsingles_android_inference.so
           NATIVE_LIB_ARM64: ${{ runner.temp }}/android-native/arm64-v8a/libsingles_android_inference.so

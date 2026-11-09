@@ -22,7 +22,7 @@ final class DuetRecoveryEvidence {
         JSONObject[] sources=new JSONObject[plan.groups.size()],prepared=new JSONObject[plan.groups.size()];int[] phases=new int[plan.groups.size()];boolean[] removed=new boolean[plan.groups.size()];
         HashMap<Integer,JSONObject> copies=new HashMap<>();HashMap<Integer,DuetCopyEvidence> certificates=new HashMap<>();
         java.util.HashSet<Integer> requiredCopies=new java.util.HashSet<>();for(NativeDuetPlan.Group group:plan.groups)requiredCopies.addAll(group.requiredOperations);int ordinaryAcknowledged=0,retired=0,noAction=0;
-        if(events.length()>10000)throw invalid();
+        if(events.length()>ProviderEffectJournal.MAX_EVENTS)throw invalid();
         for(int id=0;id<plan.groups.size();id++){
             JournalExportBounds.checkpoint(cancelled);NativeDuetPlan.Group group=plan.groups.get(id);JSONObject source=group.source(),ref=source.getJSONObject("reference"),entry=bindings.entry(ref),binding=bindings.binding(ref);
             bindings.requireRoot(ref,root,cancelled);if(FixProtocol.bool(entry,"directory")||!source.getString("name").equals(entry.getString("name")))throw invalid();

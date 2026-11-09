@@ -33,13 +33,13 @@ final class RetainedJournals {
         JSONObject state()throws org.json.JSONException{return new JSONObject(state);}
     }
     static int scan(Context context,BooleanSupplier cancelled,Visitor visitor)throws Exception{
-        int count=0;long[] budget={64L*1024*1024};JournalExportBounds.checkpoint(cancelled);
+        int count=0;long[] budget={1024L*1024*1024};JournalExportBounds.checkpoint(cancelled);
         File root=JournalExportBounds.root(context.getFilesDir());if(!root.exists())return 0;
         try(DirectoryStream<Path> entries=Files.newDirectoryStream(root.toPath())){
             for(Path entry:entries){
-                JournalExportBounds.checkpoint(cancelled);if(++count>1000)throw new IOException("recovery count");
+                JournalExportBounds.checkpoint(cancelled);if(++count>10000)throw new IOException("recovery count");
                 File directory=JournalExportBounds.child(root,entry.getFileName().toString());if(!directory.isDirectory())throw new IOException("recovery directory");
-                    byte[] authorityBytes=read(directory,"authority.json",cancelled,budget);byte[] stateBytes=read(directory,"state.json",cancelled,budget),indexBytes=read(directory,"index.json",cancelled,budget);JSONObject authority=json(authorityBytes),state=json(stateBytes),index=json(indexBytes);
+                    byte[] authorityBytes=read(directory,"authority.json",cancelled,budget);byte[] stateBytes=read(directory,"state.json",cancelled,budget),indexBytes=read(directory,"index.json",cancelled,budget);JSONObject authority=json(authorityBytes),state=expand(directory,json(stateBytes),cancelled,budget),index=json(indexBytes);
                     String hash=hex(MessageDigest.getInstance("SHA-256").digest(authorityBytes));String id=directory.getName();
                     if(authority.getInt("schema")!=1||state.getInt("schema")!=1||index.getInt("schema")!=1||!hash.equals(state.getString("authority_sha256"))||!hash.equals(index.getString("authority_sha256")))throw new IOException("recovery binding");
                     for(String key:new String[]{"execution_id","job_id","plan_id"})if(!authority.getString(key).equals(state.getString(key))||!authority.getString(key).equals(index.getString(key)))throw new IOException("recovery binding");
@@ -65,7 +65,7 @@ final class RetainedJournals {
     }
     static EvidenceCounts validateNonDuetEvents(JSONObject authority,JSONObject state,BooleanSupplier cancelled)throws Exception{
         JSONObject plan=authority.getJSONObject("original_plan");JSONArray ops=plan.getJSONArray("operations"),history=state.getJSONArray("events");
-        if(ops.length()>10000||history.length()>10000)throw new IOException("recovery bounds");
+        if(ops.length()>10000||history.length()>ProviderEffectJournal.MAX_EVENTS)throw new IOException("recovery bounds");
         String mode=plan.getJSONObject("request").getString("mode");
         if(mode.equals("FixNames")){FixRecoveryEvidence fix=FixRecoveryEvidence.validate(authority,state,cancelled);return new EvidenceCounts(true,fix.acknowledged,fix.unresolved);}
         if(!mode.equals("Sort")||authority.has("fix_protocol")||authority.has("fix_backup_leaf"))throw new IOException("recovery mode");
@@ -74,7 +74,7 @@ final class RetainedJournals {
         return validateSingleEvents(plan.getJSONArray("operations"),state.getJSONArray("events"),cancelled);
     }
     static EvidenceCounts validateSingleEvents(JSONArray operations,JSONArray events,BooleanSupplier cancelled)throws Exception{
-        if(operations.length()>10000||events.length()>10000)throw new IOException("recovery bounds");RecoveryAcknowledgments ledger=new RecoveryAcknowledgments(operations.length());
+        if(operations.length()>10000||events.length()>ProviderEffectJournal.MAX_EVENTS)throw new IOException("recovery bounds");RecoveryAcknowledgments ledger=new RecoveryAcknowledgments(operations.length());
                     for(int i=0;i<operations.length();i++)if(operations.getJSONObject(i).getInt("id")!=i)throw new IOException("recovery operation");
                     String[] publications=new String[operations.length()];JSONObject[] destinations=new JSONObject[operations.length()];
                     for(int i=0;i<events.length();i++){
@@ -90,6 +90,20 @@ final class RetainedJournals {
                     }
         JournalExportBounds.checkpoint(cancelled);return new EvidenceCounts(false,ledger.acknowledged(),ledger.unresolved());
     }
+    /** Presents sealed history and the live tail as the single ordered list every validator already reads. */
+    private static JSONObject expand(File directory,JSONObject state,BooleanSupplier cancelled,long[] budget)throws Exception{
+        if(!state.has("segments"))return state;
+        JSONArray segments=(JSONArray)state.remove("segments"),tail=state.getJSONArray("events");
+        return merge(state,segments,tail,(name,hash)->{byte[] bytes=read(directory,name,cancelled,budget);if(!hash.equals(hex(MessageDigest.getInstance("SHA-256").digest(bytes))))throw new IOException("recovery segment");return json(bytes);},cancelled);
+    }
+    interface SegmentSource {JSONObject read(String name,String sha256)throws Exception;}
+    /** Sequence continuity is checked across segments so a missing or reordered file cannot look like a shorter history. */
+    static JSONObject merge(JSONObject state,JSONArray segments,JSONArray tail,SegmentSource source,BooleanSupplier cancelled)throws Exception{
+        if(segments.length()>ProviderEffectJournal.MAX_EVENTS)throw new IOException("recovery bounds");JSONArray all=new JSONArray();
+        for(int i=0;i<segments.length();i++){JournalExportBounds.checkpoint(cancelled);JSONObject entry=segments.getJSONObject(i);int first=entry.getInt("first"),count=entry.getInt("count");if(first!=all.length()||count<1)throw new IOException("recovery segment");JSONObject segment=source.read(ProviderEffectJournal.segmentName(first),entry.getString("sha256"));if(segment.getInt("schema")!=1||!state.getString("execution_id").equals(segment.getString("execution_id"))||segment.getInt("first")!=first)throw new IOException("recovery segment");JSONArray events=segment.getJSONArray("events");if(events.length()!=count)throw new IOException("recovery segment");append(all,events,cancelled);}
+        append(all,tail,cancelled);if(all.length()>ProviderEffectJournal.MAX_EVENTS)throw new IOException("recovery bounds");return state.put("events",all);
+    }
+    private static void append(JSONArray all,JSONArray events,BooleanSupplier cancelled)throws Exception{for(int i=0;i<events.length();i++){JournalExportBounds.checkpoint(cancelled);JSONObject event=events.getJSONObject(i);if(event.getInt("sequence")!=all.length())throw new IOException("recovery segment");all.put(event);}}
     private static JSONObject json(byte[] bytes)throws org.json.JSONException{return new JSONObject(new String(bytes,StandardCharsets.UTF_8));}
     private static byte[] read(File directory,String name,BooleanSupplier cancelled,long[] budget)throws Exception{
         int limit=JournalExportBounds.limit(name);java.io.FileDescriptor fd=Os.open(new File(directory,name).getAbsolutePath(),OsConstants.O_RDONLY|OsConstants.O_NOFOLLOW|OsConstants.O_NONBLOCK|OsConstants.O_CLOEXEC,0);Throwable primary=null;

@@ -104,7 +104,7 @@ public final class JournalExportActivity extends Activity {
     private void export(String id,Uri destination)throws Exception{
         checkpoint();int descriptorsBefore=descriptorCount();LinkedHashMap<String,byte[]> snapshot=new LinkedHashMap<>();
         try(DiagnosticReadGate.Lease lease=ProviderExecutionOwner.beginDiagnosticRead()){
-                lease.check();File directory=directory(id);for(String name:new String[]{"authority.json","state.json","index.json"})snapshot.put(name,read(directory,name));snapshot.putAll(RetainedEffectsAcceptance.exportReceipts(this,id,receiptCancellation));}
+                lease.check();File directory=directory(id);for(String name:new String[]{"authority.json","state.json","index.json"})snapshot.put(name,read(directory,name));String[] sealed=directory.list((parent,name)->name.matches("events-[0-9]{6}\\.json"));if(sealed!=null){java.util.Arrays.sort(sealed);for(String name:sealed)snapshot.put(name,read(directory,name));}snapshot.putAll(RetainedEffectsAcceptance.exportReceipts(this,id,receiptCancellation));}
         // The exact bytes are evidence even if an interrupted journal is inconsistent.
         JSONArray entries=new JSONArray();
         for(Map.Entry<String,byte[]> entry:snapshot.entrySet())entries.put(new JSONObject().put("path",entry.getKey()).put("bytes",entry.getValue().length).put("sha256",hex(MessageDigest.getInstance("SHA-256").digest(entry.getValue()))));
@@ -119,7 +119,7 @@ public final class JournalExportActivity extends Activity {
         checkpoint();String expected=hex(written.digest());MessageDigest actual=MessageDigest.getInstance("SHA-256");long length=0;
         try(InputStream input=getContentResolver().openInputStream(destination)){
             if(input==null)throw new java.io.IOException("readback missing");byte[] buffer=new byte[65536];int n;
-            while((n=input.read(buffer))!=-1){checkpoint();length+=n;if(length>34L*1024*1024)throw new java.io.IOException("readback bound");actual.update(buffer,0,n);}
+            while((n=input.read(buffer))!=-1){checkpoint();length+=n;if(length>1024L*1024*1024)throw new java.io.IOException("readback bound");actual.update(buffer,0,n);}
         }
         if(!expected.equals(hex(actual.digest())))throw new java.io.IOException("readback mismatch");
     }

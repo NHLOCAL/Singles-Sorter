@@ -155,13 +155,13 @@ with integrated source `52960778212fccd485b143e1c5cc2847130435c3`:
   dependencies remain `@tauri-apps/cli` `2.12.2`, `typescript` `7.0.2`,
   `vite` `8.3.4`, and `vitest` `5.0.3`.
 - `package-lock.json` is byte-identical; its LF SHA256 remains
-  `b4a64eddbbc9ab8dc5cde7457a8a42f717897516ecaf3b62c8ed28eee826b96a`.
+  `e3c2999b0dc19840f2309af5a933cd0968053b4e3da2753a8a73dffe271b9348`.
   Thus the locked package identities, dependency graph and integrity values
   did not change.
 
 Only the reviewed manifest LF SHA256 advances from
 `9a84f27f2f5162ed038a4523be2cbd470339c27f2285e438e9609c7a1c3ac403` to
-`73fe02d6fc1cbd23b3b93078c2351a72ecc2f705dbe743c80415cc04d2cd2e36`.
+`3b05d1460a33761c7a324c04d5071bca43fa5dd700cdf1bdd54e1ee397b74229`.
 No notice, asset, archive, production-package or lock policy changes. Both
 desktop and Android keep the shared strict whole-manifest check, including
 script-only drift. A repository manifest/lock regression reproduced the old

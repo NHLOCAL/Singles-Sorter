@@ -21,9 +21,13 @@ const executionBlockerMessages:Readonly<Record<string,string>>={
  HARD_LINK_IDENTITY:'נמצאו כמה שמות שמפנים לאותו קובץ. ביצוע בתוכנית זו אינו נתמך; בדוק את הקבצים לפני ניסיון נוסף.',
  RECOGNITION_UNAVAILABLE:'מודל הזיהוי הדרוש אינו זמין. יש לבדוק את הגדרות הזיהוי לפני ניסיון נוסף.',
 };
+const TOO_LARGE='התיקייה גדולה מדי לפעולה אחת במכשיר הזה. בחר תיקיית משנה קטנה יותר ונסה שוב.';
+const readinessMessages:Record<string,string>={FIX_JOB_BUDGET:TOO_LARGE,ALBUM_JOB_BUDGET:TOO_LARGE,DUET_JOB_BUDGET:TOO_LARGE,RESERVED_CHECK_BUDGET:TOO_LARGE,RESERVED_SCOPE_LIMIT:TOO_LARGE,RETAINED_PROVIDER_OBJECT:'התיקייה שנבחרה מכילה קובצי גיבוי או שרידים של פעולה קודמת. בחר תיקייה אחרת או בדוק את היסטוריית הפעולות.',RESERVED_PARENT_UNAVAILABLE:'לא ניתן לגשת לתיקייה של פעולה קודמת. בדוק את היסטוריית הפעולות ונסה שוב.'};
 export function executionRefusalSummary(readiness:ApplyReadiness|null|undefined,blockers:readonly string[]):string{
  if(!readiness||readiness.supported)return '';
  if(readiness.no_operations===true)return readiness.reason??'לא נמצאו פעולות לביצוע';
+ const specific=readiness.diagnostic&&readinessMessages[readiness.diagnostic.code];
+ if(specific)return `${specific} לא בוצעו שינויים בקבצים.`;
  const messages=[...new Set(blockers)].filter(code=>Object.hasOwn(executionBlockerMessages,code)).map(code=>executionBlockerMessages[code]);
  const diagnostic=readiness.metadata_diagnostics;
  const counts=diagnostic?` נכשלו ${diagnostic.failed_observations.toLocaleString('he-IL')} בדיקות פרטים של ${diagnostic.affected_sources.toLocaleString('he-IL')} קבצים.`:'';

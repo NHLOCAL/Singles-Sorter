@@ -35,7 +35,7 @@ final class DuetAdmissionBounds {
             if(record>60000)throw new IllegalArgumentException("DUET_RECORD_BUDGET");
             events+=group.hasRequiredDestinations()?5:1;bytes+=record*5;
         }
-        if(events>9000||bytes>7L*1024*1024)throw new IllegalArgumentException("DUET_JOB_BUDGET");
+        if(events>ProviderEffectJournal.MAX_EVENTS-1000||bytes>256L*1024*1024)throw new IllegalArgumentException("DUET_JOB_BUDGET");
         JournalExportBounds.checkpoint(cancelled);
     }
     private static long bound(String source,String target,JSONArray path)throws Exception{

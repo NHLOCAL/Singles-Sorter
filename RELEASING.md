@@ -1,3 +1,19 @@
+# Releasing the native application (version 15 and later)
+
+`release-v15.yml` builds and accepts every product from one tag, then creates a **draft** GitHub release.
+
+1. Set the same version in `release.json`, `native/Cargo.toml`, `native/apps/singles-ui/package.json` (and its lock),
+   `src-tauri/Cargo.toml`, `tauri.conf.json` and `AndroidManifest.xml`. Increase `android_version_code`.
+2. Update the three `Cargo.lock` files and the frontend hashes in `native/packaging/licenses/reviewed-desktop-frontend-notices.json`.
+3. Confirm the PR checks are green, merge, then push `vX.Y.Z` from `main`.
+4. When the workflow ends, review the draft and its `SHA256SUMS.txt`, then publish it. Publishing notifies version 14 users.
+
+A `workflow_dispatch` run produces the same assets as a workflow artifact without creating a release.
+
+The sections below cover the legacy Python package on PyPI, which stays on the 14.x line.
+
+---
+
 # Releasing `singlesorter`
 
 This project uses **SemVer** (`MAJOR.MINOR.PATCH`) and publishes from Git tags in the format `vX.Y.Z`.

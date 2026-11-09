@@ -1,7 +1,7 @@
-# Singles Sorter 15.0 Android beta
+# Singles Sorter 15 for Android
 
-Current product identity is `15.0.0-beta.2`, package `com.nhlocal.singlesorter`,
-version code `1500002`. Use `build_apk.py` on Windows/Linux or its shell wrapper
+Current product identity is `15.0.0`, package `com.nhlocal.singlesorter`,
+version code `1500100`. Use `build_apk.py` on Windows/Linux or its shell wrapper
 `build-preview.sh`. Manual Actions builds default to the backed-up permanent key;
 pull requests use isolated QA signing. See the [signing and transition guide](docs/signing-and-v15-updates.md).
 
@@ -51,9 +51,11 @@ owned until actual worker completion, including Activity destruction and provide
 cancellation. A blocked provider read is not called a completed cancellation.
 The worker closes native resources after JNI returns, never underneath it.
 
-SAF traversal is bounded to 2,000 entries/depth 128. The manifest is at most 2 MiB.
+SAF traversal is bounded to 2,000 entries/depth 128 per job. The manifest is at most 2 MiB.
+Journals seal every 128 events into `events-NNNNNN.json`, so per-event cost does not grow with job size;
+`ProviderEffectJournal.MAX_EVENTS` covers a full traversal.
 Only metadata requests actually made by the original planner capture files.
-Each private snapshot is at most 64 MiB and a job at most 512 MiB; descriptor/pipe
+Each private snapshot is at most 64 MiB, and a job stops while 256 MiB of free space remains; descriptor/pipe
 spooling is also bounded. Read errors or snapshot-budget failures fail the job,
 not a silently incomplete successful preview. Cleanup touches only the exact
 owned temporary files/directory. Abrupt OS process death may leave cache files;

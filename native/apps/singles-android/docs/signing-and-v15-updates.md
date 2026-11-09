@@ -2,7 +2,7 @@
 
 Version 15 is the next Singles Sorter release, with the same Android package
 `com.nhlocal.singlesorter`, product name, original recognition resources and
-sorting rules. The initial channel is `15.0.0-beta.1`, version code `1500001`.
+sorting rules. Betas used version codes up to `1500002`; stable 15.0.0 uses `1500100`.
 `release.json` pins the permanent signing certificate and version identity.
 
 ## Permanent key recovery

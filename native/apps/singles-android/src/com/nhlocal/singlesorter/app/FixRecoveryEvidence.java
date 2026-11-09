@@ -14,7 +14,7 @@ final class FixRecoveryEvidence {
         if(FixProtocol.integer(authority,"fix_protocol",1)!=1||!FixProtocol.BACKUP_LEAF.equals(authority.getString("fix_backup_leaf")))throw invalid();
         JSONObject original=authority.getJSONObject("original_plan");NativeFixPlan plan=NativeFixPlan.parse(authority.getString("plan_id"),original,authority.getJSONArray("references"),authority.getJSONObject("source_bindings"),cancelled);
         FixBindingIndex index=new FixBindingIndex(authority.getJSONArray("references"),authority.getJSONObject("source_bindings"),cancelled);
-        JSONArray events=state.getJSONArray("events");if(events.length()>10000)throw invalid();int acknowledged=0;Operation current=null;
+        JSONArray events=state.getJSONArray("events");if(events.length()>ProviderEffectJournal.MAX_EVENTS)throw invalid();int acknowledged=0;Operation current=null;
         for(int i=0;i<events.length();i++){JournalExportBounds.checkpoint(cancelled);JSONObject event=events.getJSONObject(i);if(FixProtocol.integer(event,"sequence",9999)!=i)throw invalid();String operation=FixProtocol.string(event,"operation",100),phase=FixProtocol.string(event,"phase",40);if(!operation.matches("operation-[0-9]{1,5}(/[a-z-]+)?"))throw invalid();int slash=operation.indexOf('/'),number=Integer.parseInt(operation.substring(10,slash<0?operation.length():slash));String step=slash<0?null:operation.substring(slash+1);
             if(number!=acknowledged||number>=plan.operations.size())throw invalid();if(current==null)current=new Operation(plan.operations.get(number),index);current.event(phase,step,event.getJSONObject("detail"));
             if(current.verified){acknowledged++;current=null;}}

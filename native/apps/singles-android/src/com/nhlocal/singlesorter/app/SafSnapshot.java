@@ -21,7 +21,7 @@ import org.json.JSONObject;
  * This owner only deletes names it created in its private per-job directory.
  */
 final class SafSnapshot implements AutoCloseable, com.nhlocal.singlesorter.inference.OriginalPlanning.SnapshotProvider {
-    private static final long FILE_LIMIT=64L*1024*1024, JOB_LIMIT=512L*1024*1024;
+    private static final long FILE_LIMIT=64L*1024*1024, JOB_LIMIT=64L*1024*1024*1024,FREE_RESERVE=256L*1024*1024;
     final File directory;
     final JSONArray entries=new JSONArray();
     private final List<File> owned=new ArrayList<>();
@@ -208,7 +208,7 @@ final class SafSnapshot implements AutoCloseable, com.nhlocal.singlesorter.infer
                 byte[] buffer=new byte[32768];int n;
                 while((n=input.read(buffer))!=-1) {
                     cancel.throwIfCanceled();
-                    if(size+n>FILE_LIMIT||total+n>JOB_LIMIT)throw new IOException("SNAPSHOT_BYTE_BUDGET");
+                    if(size+n>FILE_LIMIT||total+n>JOB_LIMIT||directory.getUsableSpace()<FREE_RESERVE+n)throw new IOException("SNAPSHOT_BYTE_BUDGET");
                     output.write(buffer,0,n);digest.update(buffer,0,n);size+=n;total+=n;
                 }
                 output.getFD().sync();
