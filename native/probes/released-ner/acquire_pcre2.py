@@ -1,5 +1,5 @@
 """CI-only official source acquisition. Never downloads at application runtime."""
-import argparse, hashlib, json, os, shutil, stat, subprocess, tempfile, urllib.parse, urllib.request, zipfile
+import argparse, hashlib, json, os, shutil, stat, subprocess, tempfile, time, urllib.parse, urllib.request, zipfile
 from pathlib import Path, PurePosixPath
 HERE = Path(__file__).resolve().parent
 LOCK = json.loads((HERE / 'pcre2-lock.json').read_text(encoding='utf-8'))
@@ -62,14 +62,22 @@ def acquire(destination, archive=None):
         if archive is None:
             archive = tmp / 'source.zip'
             allowed(LOCK['url'])
-            with urllib.request.build_opener(Redirect()).open(LOCK['url'], timeout=60) as response, archive.open('xb') as out:
-                allowed(response.url)
-                total = 0
-                while chunk := response.read(65536):
-                    total += len(chunk)
-                    if total > LOCK['maximum_archive_bytes']:
-                        raise ValueError('download exceeds bound')
-                    out.write(chunk)
+            # The release host occasionally answers 5xx; the hash check below still decides acceptance.
+            for attempt in range(4):
+                try:
+                    with urllib.request.build_opener(Redirect()).open(LOCK['url'], timeout=60) as response, archive.open('wb') as out:
+                        allowed(response.url)
+                        total = 0
+                        while chunk := response.read(65536):
+                            total += len(chunk)
+                            if total > LOCK['maximum_archive_bytes']:
+                                raise ValueError('download exceeds bound')
+                            out.write(chunk)
+                    break
+                except OSError:
+                    if attempt == 3:
+                        raise
+                    time.sleep(5 * (attempt + 1))
         extract = tmp / 'validated'
         extract.mkdir()
         unpack(archive, extract)

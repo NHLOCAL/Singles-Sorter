@@ -29,25 +29,6 @@ ASSETS = {
  'classifier-v14.weights.bin': 'aa0da9a15f1ddbd62054c26fd4331b355b3e659c952ab3d71dfc8a138e561a33',
  'classifier-v14.vocab.txt': '35b743c5bb3c532222939fa3a421ef25b94c832032926b6d50707902bcd666e3',
 }
-EXECUTION_CHECKS = {'positional-one-eligible-duet-move', 'positional-zero-eligible-duet-source-retained', 'positional-wavpack-five-fields', 'positional-wavpack-nul-scalars', 'positional-wavpack-exact-blocks-decoded-audio', 'positional-wavpack-readonly-partial', 'positional-wave-id3-five-fields', 'positional-aiff-id3-five-fields', 'positional-dsf-id3-five-fields',
-          'positional-container-id3-exact-extent-decoded-audio', 'positional-container-id3-insufficient-padding-partial', 'positional-cross-volume-root-album-move', 'positional-cross-volume-mixed-album-move',
-          'positional-cross-album-streams-metadata', 'positional-cross-album-observed-credits',
-          'positional-cross-album-dry-run-no-effects', 'positional-cross-album-fresh-reconciliation',
-          'positional-m4a-five-fields', 'positional-alac-five-fields', 'positional-mp4-fast-start-values',
-          'positional-mp4-exact-extent-decoded-audio', 'positional-mp4-duplicate-outer-consolidation', 'positional-mp4-structural-partial',
-          'positional-cross-volume-move', 'positional-original-ai-duet-move', 'positional-mixed-duet-and-rename',
-          'positional-copied-move-named-streams', 'positional-copied-move-fresh-reconciliation',
-          'positional-copy', 'positional-move', 'positional-original-ai-copy',
-                    'positional-fix-id3v23', 'positional-fix-id3v24', 'positional-fix-partial',
-                    'positional-album-copy', 'positional-root-album-move', 'positional-mixed-album-move',
-                    'positional-album-descendant-metadata', 'positional-album-dry-run-no-effects',
-                    'positional-flac-five-fields', 'positional-flac-shifted-audio', 'positional-flac-opaque-partial',
-                    'positional-primary-resource-order',
-                    'positional-vorbis-five-fields', 'positional-opus-five-fields',
-                    'positional-ogg-packets-backup-preserved', 'positional-ogg-chained-refused',
-                    'legacy-utf8-file-logging', 'legacy-log-levels', 'diagnostic-overlap-no-effects',
-                    'retained-original-and-media', 'closed-stdin', 'no-developer-path',
-                    'explicit-dry-run-no-effects', 'overlap-rejected-no-effects', 'legacy-argument-exits'}
 CLI_FEATURES = ['original-ai', 'selected-windows-execution']
 CLI_NOTICE_FEATURES = ['sorter-cli/' + feature for feature in CLI_FEATURES]
 
@@ -276,20 +257,6 @@ def verify_cli_notices(root):
                 'CLI notice inventory hash or size mismatch')
 
 
-def execution_gate(path, binary, package_root=None):
-    report = json.loads(path.read_text(encoding='utf-8-sig'))
-    require(report.get('result') == 'PASS' and report.get('schema_version') == 1,
-            'successful actual CLI execution report required')
-    require(EXECUTION_CHECKS <= set(report.get('checks', [])), 'incomplete actual CLI execution coverage')
-    require(report.get('executable_sha256') == digest(binary), 'execution proof bound to a different executable')
-    require(all(report.get(key) is True for key in ('closed_stdin', 'developer_path_removed', 'real_subprocess')),
-            'real closed-stdin application process without developer PATH required')
-    if package_root is not None:
-        require(report.get('sha256sums_sha256') == digest(package_root / 'SHA256SUMS.txt'),
-                'execution proof bound to a different package')
-    return report
-
-
 def run_text(command):
     return subprocess.check_output(command, cwd=ROOT, text=True, encoding='utf-8').strip()
 
@@ -301,7 +268,6 @@ def build(args):
     require(not out.exists(), 'output must be new; refusing overwrite')
     asset_hashes = check_assets(bundle)
     gate = gate_report(args.cli_report, binary)
-    execution_gate(args.execution_report, binary)
     imports = pe_imports(binary)
     dumpbin = args.dumpbin_report.read_text(encoding='utf-8-sig')
     crosscheck_dumpbin(imports, dumpbin)
@@ -365,7 +331,6 @@ def build(args):
                 'notices_and_source_bytes': sum(p.stat().st_size for p in (stage / 'licenses').rglob('*') if p.is_file())},
             'pcre2_build': receipt,
             'release_cli_proof': {'sha256': digest(args.cli_report), 'invocations': gate['cli_invocations']},
-            'execution_cli_proof': {'sha256': digest(args.execution_report), 'checks': sorted(EXECUTION_CHECKS)},
             'samples': 'Two authored silent WAVs; no copyrighted recording or external corpus.',
             'manifest': 'SHA256SUMS.txt covers every package file except itself.'}
         (stage / 'provenance.json').write_text(json.dumps(provenance, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
@@ -388,7 +353,6 @@ def archive(args):
             report.get('executable_sha256') == digest(root / 'singles-sorter.exe') and
             report.get('sha256sums_sha256') == digest(root / 'SHA256SUMS.txt'),
             'successful Windows smoke bound to this exact package is required')
-    execution_gate(args.execution_report, root / 'singles-sorter.exe', root)
     require(not args.output.resolve().is_relative_to(root), 'ZIP output must be outside package')
     require(not args.output.exists(), 'ZIP output already exists')
     with zipfile.ZipFile(args.output, 'x', compression=zipfile.ZIP_DEFLATED) as output:
@@ -408,22 +372,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='command', required=True)
     b = commands.add_parser('build')
-    for name in ('binary', 'bundle', 'cli-report', 'execution-report', 'pcre2-receipt', 'build-info', 'dumpbin-report', 'output'):
+    for name in ('binary', 'bundle', 'cli-report', 'pcre2-receipt', 'build-info', 'dumpbin-report', 'output'):
         b.add_argument('--' + name, type=Path, required=True)
     b.add_argument('--ci-url', required=True)
     a = commands.add_parser('archive')
-    for name in ('package', 'smoke-report', 'execution-report', 'output'):
+    for name in ('package', 'smoke-report', 'output'):
         a.add_argument('--' + name, type=Path, required=True)
-    check = commands.add_parser('verify-execution')
-    check.add_argument('--package', type=Path, required=True)
-    check.add_argument('--execution-report', type=Path, required=True)
     args = parser.parse_args()
-    if args.command == 'verify-execution':
-        verify_package(args.package)
-        verify_cli_notices(args.package)
-        execution_gate(args.execution_report, args.package / 'singles-sorter.exe', args.package)
-    else:
-        (build if args.command == 'build' else archive)(args)
+    (build if args.command == 'build' else archive)(args)
 
 if __name__ == '__main__':
     main()

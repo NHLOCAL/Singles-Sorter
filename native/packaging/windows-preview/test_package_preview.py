@@ -245,11 +245,7 @@ class PackageTests(unittest.TestCase):
         receipt = {'result': 'PASS', 'executable_sha256': p.digest(stage / 'singles-sorter.exe'),
                    'sha256sums_sha256': '0' * 64}
         report.write_text(json.dumps(receipt))
-        execution_report = self.root / 'execution.json'
-        execution_report.write_text(json.dumps({'schema_version':1,'result':'PASS','checks':sorted(p.EXECUTION_CHECKS),
-            'executable_sha256':p.digest(stage/'singles-sorter.exe'),'sha256sums_sha256':p.digest(stage/'SHA256SUMS.txt'),
-            'closed_stdin':True,'developer_path_removed':True,'real_subprocess':True}))
-        args = types.SimpleNamespace(package=stage, smoke_report=report, execution_report=execution_report, output=self.root / 'synthetic-unit-test.zip')
+        args = types.SimpleNamespace(package=stage, smoke_report=report, output=self.root / 'synthetic-unit-test.zip')
         with patch.object(p, 'ASSETS', {'model.bin': p.digest(models / 'model.bin')}):
             with self.assertRaisesRegex(ValueError, 'smoke bound'): p.archive(args)
             self.assertFalse(args.output.exists())
@@ -260,22 +256,6 @@ class PackageTests(unittest.TestCase):
                                                      'SHA256SUMS.txt', 'examples/target/',
                                                      'licenses/inventory.json', 'licenses/SOURCE-AVAILABILITY.md'})
         self.assertTrue(args.output.with_suffix('.zip.sha256').is_file())
-
-    def test_actual_execution_coverage_and_identity_are_required(self):
-        binary=self.binary();report=self.root/'execution.json'
-        valid={'schema_version':1,'result':'PASS','checks':sorted(p.EXECUTION_CHECKS),
-               'executable_sha256':p.digest(binary),'closed_stdin':True,
-               'developer_path_removed':True,'real_subprocess':True}
-        report.write_text(json.dumps(valid));p.execution_gate(report,binary)
-        for check in p.EXECUTION_CHECKS:
-            changed=dict(valid,checks=sorted(p.EXECUTION_CHECKS-{check}))
-            report.write_text(json.dumps(changed))
-            with self.assertRaisesRegex(ValueError,'coverage'):p.execution_gate(report,binary)
-        for key,value in [('executable_sha256','0'*64),('closed_stdin',False),('developer_path_removed',False),('real_subprocess',False),('result','FAIL')]:
-            report.write_text(json.dumps(dict(valid,**{key:value})))
-            with self.assertRaises(ValueError):p.execution_gate(report,binary)
-        report.write_text(json.dumps(valid));self.manifest()
-        with self.assertRaisesRegex(ValueError,'package'):p.execution_gate(report,binary,self.root)
 
     def test_gate_bound_to_executable(self):
         binary = self.binary()

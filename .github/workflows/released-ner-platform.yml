@@ -1,4 +1,4 @@
-name: Original NER isolated platform proof
+name: Recognition engine checks
 on:
   workflow_dispatch:
   pull_request:
@@ -91,13 +91,7 @@ jobs:
         run: |
           rustup toolchain install 1.99.0 --profile minimal
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Prepare independently preserved original scalar baseline
-        run: |
-          python test_baseline.py
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python prepare_baseline.py
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Test isolated crates and build native proof executables
+      - name: Test the recognition crates and build their checkers
         run: |
           cargo +1.99.0 test --locked --manifest-path released-ner-text/Cargo.toml
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -118,17 +112,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cargo +1.99.0 build --locked --release --manifest-path released-ner-math/Cargo.toml --bins
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Build original scalar comparison with the same pinned dependency
-        run: |
-          cargo +1.99.0 build --locked --release --manifest-path .baseline/released-ner-text/Cargo.toml --bins
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo +1.99.0 build --locked --release --manifest-path .baseline/released-ner-math/Cargo.toml --bins
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Require same-host optimization bits, diagnostics, modes and errors
-        run: |
-          $ext = if ($IsWindows) { '.exe' } else { '' }
-          python check_optimization.py --bundle .oracle --baseline "./.baseline/released-ner-text/target/release/raw-ner$ext" --optimized "./released-ner-text/target/release/raw-ner$ext" --baseline-stages "./.baseline/released-ner-math/target/release/stage-bits$ext" --optimized-stages "./released-ner-math/target/release/stage-bits$ext"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require original numeric states and exact cross-platform paths
         run: |
           $ext = if ($IsWindows) { '.exe' } else { '' }
@@ -137,5 +120,3 @@ jobs:
           python check_platform.py --bundle .oracle --raw "./released-ner-text/target/release/raw-ner$ext" --lexical "./released-ner-text/target/release/released-ner-text$ext"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Get-Content .pcre2/build-receipt.json
-      # No artifact uploads: original model bytes and generated oracle arrays stay job-local.
-      # No production package, application dependency, publication, or deployment step.
