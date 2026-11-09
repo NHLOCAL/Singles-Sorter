@@ -1222,9 +1222,13 @@ dialog select {
 }
 
 .about-links {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
-  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+#recovery-menu {
   margin-top: 16px;
 }
 
@@ -1876,7 +1880,6 @@ footer {
     min-height: 48px;
   }
   .about-links button {
-    flex: 1;
     min-height: 48px;
   }
   .about-credits summary {

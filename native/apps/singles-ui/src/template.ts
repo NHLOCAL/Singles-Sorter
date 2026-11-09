@@ -363,7 +363,6 @@ export const appTemplate = `
     <button data-help="help" aria-pressed="true" aria-controls="usage-content">איך משתמשים?</button>
     <button data-help="about" aria-pressed="false" aria-controls="about-content">אודות</button>
   </div>
-  <button id="recovery-menu" class="secondary" hidden>פעולות קודמות</button>
   <div id="help-content" class="help-content">
     <section id="usage-content" data-info-page="help" aria-labelledby="usage-title">
       <h3 id="usage-title">שלושה צעדים</h3>
@@ -372,6 +371,7 @@ export const appTemplate = `
         <li>לחץ על <strong>מיין שירים</strong> או <strong>תקן שמות</strong>.</li>
         <li>עיין בתוכנית ואשר את הביצוע. שום קובץ לא משתנה לפני האישור.</li>
       </ol>
+      <button id="recovery-menu" class="secondary" hidden>בדיקת פעולות קודמות</button>
     </section>
     <section id="about-content" data-info-page="about" aria-labelledby="about-name" hidden>
       <div class="about-brand">
