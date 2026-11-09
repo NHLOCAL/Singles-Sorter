@@ -428,37 +428,37 @@
     },
     {
       "name": "sorter-classifier",
-      "version": "0.1.0",
+      "version": "15.0.0",
       "manifest_path": "native/crates/sorter-classifier/Cargo.toml"
     },
     {
       "name": "sorter-cli",
-      "version": "0.1.0",
+      "version": "15.0.0",
       "manifest_path": "native/crates/sorter-cli/Cargo.toml"
     },
     {
       "name": "sorter-core",
-      "version": "0.1.0",
+      "version": "15.0.0",
       "manifest_path": "native/crates/sorter-core/Cargo.toml"
     },
     {
       "name": "sorter-executor",
-      "version": "0.1.0",
+      "version": "15.0.0",
       "manifest_path": "native/crates/sorter-executor/Cargo.toml"
     },
     {
       "name": "sorter-io",
-      "version": "0.1.0",
+      "version": "15.0.0",
       "manifest_path": "native/crates/sorter-io/Cargo.toml"
     },
     {
       "name": "sorter-recognition",
-      "version": "0.1.0",
+      "version": "15.0.0",
       "manifest_path": "native/crates/sorter-recognition/Cargo.toml"
     },
     {
       "name": "sorter-storage-contracts",
-      "version": "0.1.0",
+      "version": "15.0.0",
       "manifest_path": "native/crates/sorter-storage-contracts/Cargo.toml"
     }
   ],
@@ -864,7 +864,7 @@
       ]
     },
     {
-      "package": "sorter-classifier@0.1.0",
+      "package": "sorter-classifier@15.0.0",
       "features": [],
       "dependencies": [
         {
@@ -879,7 +879,7 @@
       ]
     },
     {
-      "package": "sorter-cli@0.1.0",
+      "package": "sorter-cli@15.0.0",
       "features": [
         "default",
         "original-ai",
@@ -914,7 +914,7 @@
           ]
         },
         {
-          "package": "sorter-core@0.1.0",
+          "package": "sorter-core@15.0.0",
           "kinds": [
             {
               "kind": "normal",
@@ -923,7 +923,7 @@
           ]
         },
         {
-          "package": "sorter-executor@0.1.0",
+          "package": "sorter-executor@15.0.0",
           "kinds": [
             {
               "kind": "normal",
@@ -932,7 +932,7 @@
           ]
         },
         {
-          "package": "sorter-io@0.1.0",
+          "package": "sorter-io@15.0.0",
           "kinds": [
             {
               "kind": "normal",
@@ -941,7 +941,7 @@
           ]
         },
         {
-          "package": "sorter-recognition@0.1.0",
+          "package": "sorter-recognition@15.0.0",
           "kinds": [
             {
               "kind": "normal",
@@ -952,7 +952,7 @@
       ]
     },
     {
-      "package": "sorter-core@0.1.0",
+      "package": "sorter-core@15.0.0",
       "features": [],
       "dependencies": [
         {
@@ -985,7 +985,7 @@
       ]
     },
     {
-      "package": "sorter-executor@0.1.0",
+      "package": "sorter-executor@15.0.0",
       "features": [
         "default",
         "experimental-windows-copy",
@@ -1022,7 +1022,7 @@
           ]
         },
         {
-          "package": "sorter-core@0.1.0",
+          "package": "sorter-core@15.0.0",
           "kinds": [
             {
               "kind": "normal",
@@ -1031,7 +1031,7 @@
           ]
         },
         {
-          "package": "sorter-io@0.1.0",
+          "package": "sorter-io@15.0.0",
           "kinds": [
             {
               "kind": "normal",
@@ -1040,7 +1040,7 @@
           ]
         },
         {
-          "package": "sorter-storage-contracts@0.1.0",
+          "package": "sorter-storage-contracts@15.0.0",
           "kinds": [
             {
               "kind": "normal",
@@ -1051,7 +1051,7 @@
       ]
     },
     {
-      "package": "sorter-io@0.1.0",
+      "package": "sorter-io@15.0.0",
       "features": [
         "default",
         "experimental-windows-mutation"
@@ -1067,7 +1067,7 @@
           ]
         },
         {
-          "package": "sorter-core@0.1.0",
+          "package": "sorter-core@15.0.0",
           "kinds": [
             {
               "kind": "normal",
@@ -1076,7 +1076,7 @@
           ]
         },
         {
-          "package": "sorter-storage-contracts@0.1.0",
+          "package": "sorter-storage-contracts@15.0.0",
           "kinds": [
             {
               "kind": "normal",
@@ -1105,7 +1105,7 @@
       ]
     },
     {
-      "package": "sorter-recognition@0.1.0",
+      "package": "sorter-recognition@15.0.0",
       "features": [],
       "dependencies": [
         {
@@ -1158,7 +1158,7 @@
           ]
         },
         {
-          "package": "sorter-classifier@0.1.0",
+          "package": "sorter-classifier@15.0.0",
           "kinds": [
             {
               "kind": "normal",
@@ -1167,7 +1167,7 @@
           ]
         },
         {
-          "package": "sorter-core@0.1.0",
+          "package": "sorter-core@15.0.0",
           "kinds": [
             {
               "kind": "normal",
@@ -1178,7 +1178,7 @@
       ]
     },
     {
-      "package": "sorter-storage-contracts@0.1.0",
+      "package": "sorter-storage-contracts@15.0.0",
       "features": [],
       "dependencies": [
         {
@@ -1191,7 +1191,7 @@
           ]
         },
         {
-          "package": "sorter-core@0.1.0",
+          "package": "sorter-core@15.0.0",
           "kinds": [
             {
               "kind": "normal",

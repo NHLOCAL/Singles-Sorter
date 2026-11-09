@@ -572,31 +572,31 @@
     },
     {
       "name": "sorter-classifier",
-      "version": "0.1.0",
+      "version": "15.0.0",
       "license": "MIT",
       "manifest_path": "native/crates/sorter-classifier/Cargo.toml"
     },
     {
       "name": "sorter-core",
-      "version": "0.1.0",
+      "version": "15.0.0",
       "license": "MIT",
       "manifest_path": "native/crates/sorter-core/Cargo.toml"
     },
     {
       "name": "sorter-io",
-      "version": "0.1.0",
+      "version": "15.0.0",
       "license": "MIT",
       "manifest_path": "native/crates/sorter-io/Cargo.toml"
     },
     {
       "name": "sorter-recognition",
-      "version": "0.1.0",
+      "version": "15.0.0",
       "license": "MIT",
       "manifest_path": "native/crates/sorter-recognition/Cargo.toml"
     },
     {
       "name": "sorter-storage-contracts",
-      "version": "0.1.0",
+      "version": "15.0.0",
       "license": "MIT",
       "manifest_path": "native/crates/sorter-storage-contracts/Cargo.toml"
     }
@@ -1486,7 +1486,7 @@
           ]
         },
         {
-          "package": "sorter-core@0.1.0",
+          "package": "sorter-core@15.0.0",
           "kinds": [
             {
               "kind": "normal",
@@ -1495,7 +1495,7 @@
           ]
         },
         {
-          "package": "sorter-io@0.1.0",
+          "package": "sorter-io@15.0.0",
           "kinds": [
             {
               "kind": "normal",
@@ -1504,7 +1504,7 @@
           ]
         },
         {
-          "package": "sorter-recognition@0.1.0",
+          "package": "sorter-recognition@15.0.0",
           "kinds": [
             {
               "kind": "normal",
@@ -1515,7 +1515,7 @@
       ]
     },
     {
-      "package": "sorter-classifier@0.1.0",
+      "package": "sorter-classifier@15.0.0",
       "features": [],
       "dependencies": [
         {
@@ -1539,7 +1539,7 @@
       ]
     },
     {
-      "package": "sorter-core@0.1.0",
+      "package": "sorter-core@15.0.0",
       "features": [],
       "dependencies": [
         {
@@ -1572,7 +1572,7 @@
       ]
     },
     {
-      "package": "sorter-io@0.1.0",
+      "package": "sorter-io@15.0.0",
       "features": [
         "default"
       ],
@@ -1596,7 +1596,7 @@
           ]
         },
         {
-          "package": "sorter-core@0.1.0",
+          "package": "sorter-core@15.0.0",
           "kinds": [
             {
               "kind": "normal",
@@ -1605,7 +1605,7 @@
           ]
         },
         {
-          "package": "sorter-storage-contracts@0.1.0",
+          "package": "sorter-storage-contracts@15.0.0",
           "kinds": [
             {
               "kind": "normal",
@@ -1625,7 +1625,7 @@
       ]
     },
     {
-      "package": "sorter-recognition@0.1.0",
+      "package": "sorter-recognition@15.0.0",
       "features": [],
       "dependencies": [
         {
@@ -1678,7 +1678,7 @@
           ]
         },
         {
-          "package": "sorter-classifier@0.1.0",
+          "package": "sorter-classifier@15.0.0",
           "kinds": [
             {
               "kind": "normal",
@@ -1687,7 +1687,7 @@
           ]
         },
         {
-          "package": "sorter-core@0.1.0",
+          "package": "sorter-core@15.0.0",
           "kinds": [
             {
               "kind": "normal",
@@ -1698,7 +1698,7 @@
       ]
     },
     {
-      "package": "sorter-storage-contracts@0.1.0",
+      "package": "sorter-storage-contracts@15.0.0",
       "features": [],
       "dependencies": [
         {
@@ -1711,7 +1711,7 @@
           ]
         },
         {
-          "package": "sorter-core@0.1.0",
+          "package": "sorter-core@15.0.0",
           "kinds": [
             {
               "kind": "normal",

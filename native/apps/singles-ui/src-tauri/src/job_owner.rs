@@ -1926,7 +1926,7 @@ mod tests {
             serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
         let capability: serde_json::Value =
             serde_json::from_str(include_str!("../capabilities/main.json")).unwrap();
-        assert_eq!(config["identifier"], "com.nhlocal.singlesorter.preview");
+        assert_eq!(config["identifier"], "com.nhlocal.singlesorter");
         assert_eq!(config["bundle"]["active"], false);
         assert_eq!(capability["windows"], serde_json::json!(["main"]));
         assert_eq!(capability["local"], true);
