@@ -28,8 +28,8 @@ existing host-owned root capabilities and read-only plan projection.
   job independently reloads and revalidates the assets. An availability display
   is a point-in-time observation, never authority to skip later validation.
 - Missing/corrupt assets fail with `RECOGNITION_UNAVAILABLE`, no partial plan and
-  no automatic change to Disabled. Explicit Disabled remains the initial UI
-  choice, as before this integration.
+  no automatic change to Disabled during a job. AI starts on when the model is
+  available; a saved choice to turn it off is kept.
 - No runtime downloads, arbitrary shell commands, Python, model cache, or music
   writes are introduced. Existing profile/list edits keep their existing scope.
 

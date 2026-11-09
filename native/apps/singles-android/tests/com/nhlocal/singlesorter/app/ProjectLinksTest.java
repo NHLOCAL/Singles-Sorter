@@ -3,6 +3,8 @@ package com.nhlocal.singlesorter.app;
 public final class ProjectLinksTest {
     private ProjectLinksTest() {}
     public static void main(String[] args) {
+        if (!ProjectLinks.resolve("Website").equals("https://singles-sorter.ze-kal.top")) throw new AssertionError("website");
+        if (!ProjectLinks.resolve("Feedback").startsWith("https://docs.google.com/forms/")) throw new AssertionError("feedback");
         if (!ProjectLinks.resolve("Source").equals("https://github.com/NHLOCAL/Singles-Sorter")) throw new AssertionError("source");
         if (!ProjectLinks.resolve("License").equals("https://github.com/NHLOCAL/Singles-Sorter/blob/main/LICENSE")) throw new AssertionError("license");
         String[] invalid = {null, "", "source", "License ", "https://example.com", "javascript:alert(1)", "file:///private"};

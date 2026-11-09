@@ -107,7 +107,7 @@ try:
         assert all(icon_centers), icon_centers
         assert page.locator('#open-settings').bounding_box()['x'] < 150
         checks.append('Work modes preserve paths without starting work; both toolbar icons centered on the left')
-        badge=page.locator('[aria-label="עזרה: תיקית מקור"]')
+        badge=page.locator('[aria-label="עזרה: תיקיית מקור"]')
         badge.hover()
         expect(page.locator('#context-help')).to_be_visible()
         # Check within the same event turn: no timeout, transition or pinned click.
@@ -291,8 +291,9 @@ try:
         expect(page.locator('#setup-screen')).to_be_visible()
         page.locator('#open-settings').click()
         expect(page.locator('#advanced-dialog')).to_be_visible()
-        expect(page.locator('#model-status')).to_have_text('המודל לא מותקן')
-        expect(page.locator('#model-help')).to_have_attribute('data-help-text', 'בדיקת ממשק בלבד עם IPC מדומה. לא בוצעה הסקה.')
+        expect(page.locator('#model-status')).to_have_text('לא זמין')
+        expect(page.locator('#ai-profile')).to_be_disabled()
+        expect(page.locator('#ai-profile')).not_to_be_checked()
         page.locator('#duet-all').check()
         expect(page.locator('#duet-all')).to_be_checked()
         assert page.evaluate('window.__storedSettings.duet_mode') is True
@@ -392,7 +393,7 @@ try:
         assert page.evaluate('window.__personalList.rows.length') == 2
         assert page.evaluate('window.__personalList.rows[1][0]') == 'זמר שנערך לפני אישור'
         checks.append('Draft cancellation, explicit list save, encoding preview and confirmed append')
-        page.locator('#ai-profile').select_option('Configured')
+        page.evaluate("const toggle=document.querySelector('#ai-profile');toggle.checked=true;toggle.dispatchEvent(new Event('change',{bubbles:true}))")
         page.keyboard.press('Escape')
         expect(page.locator('#advanced-dialog')).not_to_be_visible()
         expect(page.locator('#open-settings')).to_be_focused()
@@ -406,14 +407,14 @@ try:
         checks.append('Dialog escape/focus return, sixth setting, configured AI fail closed')
         page.locator('#menu').click()
         page.get_by_role('button', name='איך משתמשים?').click()
-        expect(page.locator('#help-content')).to_contain_text('בחר תיקית מקור')
+        expect(page.locator('#help-content')).to_contain_text('בחר תיקיית מקור')
         page.locator('[data-help="about"]').click()
         expect(page.locator('#usage-content')).to_be_hidden()
         expect(page.locator('#about-content')).to_be_visible()
         expect(page.locator('#about-version')).to_have_text(json.loads((ROOT/'package.json').read_text())['version'])
         expect(page.locator('[data-help="about"]')).to_have_attribute('aria-pressed','true')
         page.screenshot(path=str(OUTPUT/'renderer-about.png'),full_page=True)
-        for target in ['Source','License']:
+        for target in ['Website','Feedback','Source','License']:
             page.locator(f'[data-project-link="{target}"]').click()
             assert page.evaluate("window.__calls.at(-1)")=={'command':'open_project_link','args':{'target':target}}
         page.evaluate('window.__linkFailure=true')
@@ -485,7 +486,7 @@ try:
         touch_page.goto(f'http://127.0.0.1:{server.server_port}/')
         expect(touch_page.locator('#sort')).to_be_enabled()
         expect(touch_page.locator('#app')).to_have_attribute('data-developer-mode','false')
-        touch_badge=touch_page.locator('[aria-label="עזרה: תיקית מקור"]')
+        touch_badge=touch_page.locator('[aria-label="עזרה: תיקיית מקור"]')
         touch_badge.tap()
         expect(touch_page.locator('#context-help')).to_be_visible()
         touch_badge.tap()

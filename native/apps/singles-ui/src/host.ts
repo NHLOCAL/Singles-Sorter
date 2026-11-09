@@ -2,7 +2,12 @@ import { invoke } from '@tauri-apps/api/core';
 import { androidInvoke,hasAndroidHost } from './android-transport';
 const invokeHost = <T>(command:string,args:Record<string,unknown>={}):Promise<T> => hasAndroidHost()?androidInvoke<T>(command,args):invoke<T>(command,args);
 import type {ProjectLinkTarget} from './about';
-import type { Host,ProfileHost,RecoveryHost,RootSelection } from './contracts';
+import type { Host,ModelStatus,ProfileHost,RecoveryHost,RootSelection } from './contracts';
+const AI_PREFERENCE='singles-sorter.ai-profile.v1';
+type AiProfile='Disabled'|'Configured';
+function storedAiProfile():AiProfile|undefined{try{const value=localStorage.getItem(AI_PREFERENCE);return value==='Disabled'||value==='Configured'?value:undefined;}catch{return undefined;}}
+/** Android stores this choice natively; desktop keeps it with the other view preferences. */
+async function saveDesktopAiProfile(value:AiProfile):Promise<AiProfile>{try{localStorage.setItem(AI_PREFERENCE,value);}catch{/* The current session keeps the choice. */}return value;}
 /** No generic shell, filesystem or arbitrary URL command is exposed here.
  * Apply accepts only a retained job and its inspected plan digest. */
 export const nativeHost: Host & ProfileHost = {
@@ -19,8 +24,8 @@ export const nativeHost: Host & ProfileHost = {
   selectRoot: role => invokeHost('select_root',{role}),
   resolveRoot: (role,text) => invokeHost('resolve_typed_root',{role,text}),
   getSettings: () => invokeHost('get_settings'),
-  getModelStatus: () => invokeHost('get_model_status'),
-  ...(hasAndroidHost()?{saveAiProfile:(value:'Disabled'|'Configured')=>androidInvoke<'Disabled'|'Configured'>('save_ai_profile',{value})}:{}),
+  getModelStatus: async () => {const status=await invokeHost<ModelStatus>('get_model_status');return hasAndroidHost()?status:{...status,preferred_ai:storedAiProfile()};},
+  saveAiProfile: value => hasAndroidHost()?androidInvoke<AiProfile>('save_ai_profile',{value}):saveDesktopAiProfile(value),
   startPreview: request => invokeHost('start_preview',{request}),
   cancelPreview: jobId => invokeHost('cancel_preview',{jobId}),
   snapshot: jobId => invokeHost('job_snapshot',{jobId}),

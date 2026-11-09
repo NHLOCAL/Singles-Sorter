@@ -82,7 +82,7 @@ def exercise_copied_move(script, click, fill, wait, capture, root, output, secon
             click('#open-settings'); click('#duet-all' if configured else '#duet-first')
             wait(lambda: script("return !document.querySelector('#duet-first').disabled"))
             profile = 'Configured' if configured else 'Disabled'
-            script(f"document.querySelector('#ai-profile').value='{profile}';document.querySelector('#ai-profile').dispatchEvent(new Event('change',{{bubbles:true}}));")
+            script(f"document.querySelector('#ai-profile').checked={'true' if profile=='Configured' else 'false'};document.querySelector('#ai-profile').dispatchEvent(new Event('change',{{bubbles:true}}));")
             click('#advanced-dialog .close-dialog'); set_developer_mode(script, click, wait, False)
             journal_before = journal_snapshot(journal_root)
             click('#tab-mode-sort')

@@ -25,8 +25,8 @@ export function installStudio(app:HTMLElement,isBusy:()=>boolean,onModeChange:()
     get('copy_mode').closest<HTMLElement>('.option-row')!.hidden=!sorting;
     get('options-heading').textContent='אפשרויות';
     get('mode-deck-description').textContent=sorting
-      ?'בחר תיקיית מקור לבדיקה ותיקיית יעד לארגון השירים לפי אמנים'
-      :'בדיקת שמות ותגיות בתיקיית המקור, ללא צורך בתיקיית יעד';
+      ?'בחר תיקיית מקור ותיקיית יעד למיון השירים'
+      :'תיקון שמות ותגיות בתיקיית המקור';
   }
 
   function filterRows(){

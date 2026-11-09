@@ -35,7 +35,7 @@ def exercise_apply(script, click, fill, wait, capture, root, output, ai_mode="of
         wait(lambda: script("return !document.querySelector('#duet-first').disabled"))
         # Explicit profiles exercise both original aliases and real original inference.
         profile = 'Configured' if configured else 'Disabled'
-        script(f"document.querySelector('#ai-profile').value='{profile}';document.querySelector('#ai-profile').dispatchEvent(new Event('change',{{bubbles:true}}));")
+        script(f"document.querySelector('#ai-profile').checked={'true' if profile=='Configured' else 'false'};document.querySelector('#ai-profile').dispatchEvent(new Event('change',{{bubbles:true}}));")
         click('#advanced-dialog .close-dialog')
         click('#tab-mode-sort')
         click('#sort')

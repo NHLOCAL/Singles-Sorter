@@ -32,7 +32,7 @@ export function errorText(error:unknown):string {
   return 'הפעולה לא הושלמה. נסה שוב לאחר בדיקת החיבור לתוכנה.';
 }
 export class PreviewController {
-  readonly state:State={source:newRoot(),target:newRoot(),settings:{...defaults},model:null,initialized:false,startupWaiting:false,hostAvailable:false,busy:false,cancelRequested:false,activity:null,error:null,recoveryNotice:null,snapshot:null,execution:null,page:null,offset:0,ai:'Disabled',developerMode:false,showInactive:false};
+  readonly state:State={source:newRoot(),target:newRoot(),settings:{...defaults},model:null,initialized:false,startupWaiting:false,hostAvailable:false,busy:false,cancelRequested:false,activity:null,error:null,recoveryNotice:null,snapshot:null,execution:null,page:null,offset:0,ai:'Configured',developerMode:false,showInactive:false};
   private activeApply:{jobId:string;started:boolean;cancelSent:boolean;terminal:boolean}|null=null;
   private activePreview:{jobId:string|null;cancelSent:boolean;terminal:boolean}|null=null;
   private retainedPreview:{snapshot:Snapshot;request:PreviewRequest}|null=null;
@@ -60,6 +60,7 @@ export class PreviewController {
       }
       this.state.settings={...settings};this.state.model=model;this.state.hostAvailable=true;
       if(model.preferred_ai==='Configured'||model.preferred_ai==='Disabled')this.state.ai=model.preferred_ai;
+      if(!model.available)this.state.ai='Disabled';
       if((model.platform==='windows'||model.execution_available===true)&&this.host.latestExecution){
         const retained=await this.host.latestExecution();
         if(retained&&'recovery_notice' in retained){

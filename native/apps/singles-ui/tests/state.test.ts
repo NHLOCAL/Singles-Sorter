@@ -16,7 +16,9 @@ describe('read-only preview controller',()=>{
  it('requires a new preview after opening retained-effects review',async()=>{const c=await ready();c.editRoot('Source','owned-source');await c.preview('FixNames');expect(c.state.snapshot).not.toBeNull();c.resourcesChanged();expect(c.state.snapshot).toBeNull();expect(c.state.page).toBeNull();expect(c.state.execution).toBeNull();expect(c.state.source.text).toBe('owned-source');expect(c.state.hostAvailable).toBe(true);});
 
  it('uses all six release defaults including explicit false',async()=>{const c=await ready();expect(c.state.settings).toEqual(defaults);expect(c.state.settings.singles_folder).toBe(false);});
- it('keeps the explicit Disabled default even when a model is available',async()=>{const h=host();h.getModelStatus=async()=>({available:true,message:'loaded',platform:'windows'});const c=await ready(h);expect(c.state.model?.available).toBe(true);expect(c.state.ai).toBe('Disabled');});
+ it('enables AI by default when a model is available',async()=>{const h=host();h.getModelStatus=async()=>({available:true,message:'loaded',platform:'windows'});const c=await ready(h);expect(c.state.model?.available).toBe(true);expect(c.state.ai).toBe('Configured');});
+ it('keeps a saved Disabled choice',async()=>{const h=host();h.getModelStatus=async()=>({available:true,message:'loaded',platform:'windows',preferred_ai:'Disabled'});const c=await ready(h);expect(c.state.ai).toBe('Disabled');});
+ it('starts with AI off when no model is available',async()=>{const h=host();h.getModelStatus=async()=>({available:false,message:'missing',platform:'windows',preferred_ai:'Configured'});const c=await ready(h);expect(c.state.ai).toBe('Disabled');});
  it('preserves explicit false preference values',async()=>{const h=host();h.getSettings=async()=>({...defaults,singles_folder:false});const c=await ready(h);expect(c.state.settings.singles_folder).toBe(false);});
  it('rejects malformed settings rather than silently coercing false',async()=>{const h=host();h.getSettings=async()=>({...defaults,copy_mode:'false'} as never);const c=await ready(h);expect(c.state.hostAvailable).toBe(false);});
  it('does not fabricate a host in a browser',async()=>{const h=host();h.getSettings=async()=>{throw new Error('offline');};const c=await ready(h);await c.preview('Sort');expect(h.startPreview).not.toHaveBeenCalled();expect(c.state.error).toBe('offline');});
@@ -130,7 +132,7 @@ describe('reload startup recovery',()=>{
    const c=new PreviewController(h),pending=c.initialize();await vi.advanceTimersByTimeAsync(0);
    expect(c.state.initialized).toBe(false);expect(c.state.startupWaiting).toBe(true);expect(c.state.hostAvailable).toBe(false);expect(c.state.error).toBeNull();
    await vi.advanceTimersByTimeAsync(500);await pending;
-   expect(h.getModelStatus).toHaveBeenCalledTimes(3);expect(c.state.initialized).toBe(true);expect(c.state.startupWaiting).toBe(false);expect(c.state.hostAvailable).toBe(true);expect(c.state.ai).toBe('Disabled');
+   expect(h.getModelStatus).toHaveBeenCalledTimes(3);expect(c.state.initialized).toBe(true);expect(c.state.startupWaiting).toBe(false);expect(c.state.hostAvailable).toBe(true);expect(c.state.ai).toBe('Configured');
   }finally{vi.useRealTimers();}
  });
  it('does not retry a model status transport failure as BUSY',async()=>{

@@ -75,7 +75,7 @@ def exercise_metadata_readiness(script, click, fill, wait, capture, root, output
                 click('#' + key)
         click('#open-settings'); click('#duet-first')
         wait(lambda: script("return !document.querySelector('#duet-first').disabled"))
-        script("document.querySelector('#ai-profile').value='Disabled';document.querySelector('#ai-profile').dispatchEvent(new Event('change',{bubbles:true}));")
+        script("document.querySelector('#ai-profile').checked=false;document.querySelector('#ai-profile').dispatchEvent(new Event('change',{bubbles:true}));")
         click('#advanced-dialog .close-dialog'); set_developer_mode(script, click, wait, False)
         before, before_journal = tree_snapshot(case), journal_snapshot(journal)
         click('#sort')

@@ -402,10 +402,10 @@ const invoke = (name, args) => window.__TAURI_INTERNALS__.invoke(name, args);
 
     def choose_profile(self, value, available):
         self.click('#open-settings')
-        require(self.script('return document.querySelector("#model-status").textContent') ==
-                ('המודל מותקן' if available else 'המודל לא מותקן'), 'Rendered model readiness is incorrect')
-        self.script('const select=document.querySelector("#ai-profile");select.value=' +
-                    json.dumps(value) + ';select.dispatchEvent(new Event("change",{bubbles:true}));')
+        require(self.script('return document.querySelector("#model-status").hidden') is available,
+                'Rendered model readiness is incorrect')
+        self.script('const toggle=document.querySelector("#ai-profile");toggle.checked=' +
+                    json.dumps(value == 'Configured') + ';toggle.dispatchEvent(new Event("change",{bubbles:true}));')
         self.click('#advanced-dialog .close-dialog')
 
     def setup(self, source, target, profile, available):

@@ -1,8 +1,10 @@
 import {version} from '../package.json';
 export const APP_VERSION=version;
-export type ProjectLinkTarget='Source'|'License';
+export type ProjectLinkTarget='Website'|'Feedback'|'Source'|'License';
 /** Display-only fallbacks. The native host independently owns its URL allowlist. */
 export const PROJECT_LINKS:Record<ProjectLinkTarget,string>={
+ Website:'https://singles-sorter.ze-kal.top',
+ Feedback:'https://docs.google.com/forms/d/e/1FAIpQLScOaX1wWW1YXXlX4cylMA6LWpO7yIb2fStmjzfSqmLc_V9CIw/viewform?usp=sf_link',
  Source:'https://github.com/NHLOCAL/Singles-Sorter',
  License:'https://github.com/NHLOCAL/Singles-Sorter/blob/main/LICENSE',
 };
@@ -11,7 +13,7 @@ export function installAbout(root:HTMLElement,openLink:(target:ProjectLinkTarget
  const error=root.querySelector<HTMLElement>('#about-link-error')!;
  for(const button of root.querySelectorAll<HTMLButtonElement>('[data-project-link]'))button.addEventListener('click',async()=>{
   const target=button.dataset.projectLink as ProjectLinkTarget;
-  if(target!=='Source'&&target!=='License')return;
+  if(!Object.hasOwn(PROJECT_LINKS,target))return;
   button.disabled=true;error.hidden=true;
   try{await openLink(target);}catch{error.textContent=`לא ניתן לפתוח כעת את הדפדפן. אפשר להעתיק את הכתובת: ${PROJECT_LINKS[target]}`;error.hidden=false;}
   finally{button.disabled=false;}

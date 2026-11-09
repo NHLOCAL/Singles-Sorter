@@ -121,7 +121,7 @@ final class AndroidHost implements AutoCloseable {
                             retainedPlan=null;value=profile.saveAiProfile(args.getString("value"));break;
                         case "get_model_status":
                             if(models==null)models=OriginalAssets.prepare(activity.getApplicationContext(),()->{synchronized(AndroidHost.this){return closed;}});
-                            value=new JSONObject().put("available",true).put("platform","android").put("execution_available",true).put("preferred_ai",profile.aiProfile()).put("message","שני מודלי הזיהוי המקוריים אומתו. הקבצים נבדקים מחדש לפני כל בדיקה.");break;
+                            value=new JSONObject().put("available",true).put("platform","android").put("execution_available",true).put("preferred_ai",profile.aiProfile()).put("message","מודל ה-AI מוכן.");break;
                         case "open_recovery":
                             if(args.length()!=0)throw new IllegalArgumentException("RECOVERY_ARGUMENTS");
                             activity.runOnUiThread(()->{synchronized(AndroidHost.this){if(closed)return;try{activity.startActivity(new Intent(activity,RecoveryActivity.class));completion.finish(()->reply(requestId,true,JSONObject.NULL));}catch(RuntimeException failure){completion.finish(()->error(requestId,"RECOVERY_UNAVAILABLE",failure));}}});return;
@@ -136,7 +136,7 @@ final class AndroidHost implements AutoCloseable {
                             final String projectUrl=ProjectLinks.resolve(args.getString("target"));
                             activity.runOnUiThread(()->{synchronized(AndroidHost.this){if(closed)return;try{activity.startActivity(new Intent(Intent.ACTION_VIEW,android.net.Uri.parse(projectUrl)));completion.finish(()->reply(requestId,true,JSONObject.NULL));}catch(RuntimeException failure){completion.finish(()->error(requestId,"LINK_UNAVAILABLE",failure));}}});return;
                         case "open_footer_link":
-                            activity.runOnUiThread(()->{synchronized(AndroidHost.this){if(closed)return;try{activity.startActivity(new Intent(Intent.ACTION_VIEW,android.net.Uri.parse("https://nhlocal.github.io/shir-bot?utm_source=singles_sorter_program&utm_medium=android")));completion.finish(()->reply(requestId,true,JSONObject.NULL));}catch(RuntimeException failure){completion.finish(()->error(requestId,"LINK_UNAVAILABLE",failure));}}});return;
+                            activity.runOnUiThread(()->{synchronized(AndroidHost.this){if(closed)return;try{activity.startActivity(new Intent(Intent.ACTION_VIEW,android.net.Uri.parse("https://shir-bot.ze-kal.top/?utm_source=singles_sorter_program&utm_medium=android")));completion.finish(()->reply(requestId,true,JSONObject.NULL));}catch(RuntimeException failure){completion.finish(()->error(requestId,"LINK_UNAVAILABLE",failure));}}});return;
                         default:throw new IllegalArgumentException("הפעולה עדיין אינה זמינה במהדורת Android זו: "+command);
                     }
                     final Object result=value;completion.finish(()->reply(requestId,true,result));

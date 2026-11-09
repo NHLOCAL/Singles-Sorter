@@ -152,7 +152,7 @@ def main(page: ft.Page):
                         color=ft.Colors.BLUE,
                         weight="BOLD",
                     ),
-                    url="https://nhlocal.github.io/shir-bot?utm_source=singles_sorter_program&utm_medium=desktop"
+                    url="https://shir-bot.ze-kal.top/?utm_source=singles_sorter_program&utm_medium=desktop"
                 ),
             ],
         ),

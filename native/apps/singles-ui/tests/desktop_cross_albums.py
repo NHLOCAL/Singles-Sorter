@@ -72,7 +72,7 @@ def exercise_cross_albums(script, click, fill, wait, capture, root, output, audi
                     click('#' + key)
             click('#open-settings'); click('#duet-first')
             wait(lambda: script("return !document.querySelector('#duet-first').disabled"))
-            script("document.querySelector('#ai-profile').value='Disabled';document.querySelector('#ai-profile').dispatchEvent(new Event('change',{bubbles:true}));")
+            script("document.querySelector('#ai-profile').checked=false;document.querySelector('#ai-profile').dispatchEvent(new Event('change',{bubbles:true}));")
             click('#advanced-dialog .close-dialog'); set_developer_mode(script, click, wait, False)
             before_journal = journal_snapshot(journal_root)
             click('#tab-mode-sort')

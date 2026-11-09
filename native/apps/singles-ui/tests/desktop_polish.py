@@ -9,21 +9,21 @@ def exercise_information(command, script, click, wait, capture, root, output):
         command('POST', '/actions', {'actions':[{'type':'pointer','id':'help-mouse',
             'parameters':{'pointerType':'mouse'},'actions':[{'type':'pointerMove',
             'duration':0,'origin':{ELEMENT:element},'x':0,'y':0}]}]})
-    badge = '[aria-label="עזרה: תיקית מקור"]'
+    badge = '[aria-label="עזרה: תיקיית מקור"]'
     visible = "return !document.querySelector('#context-help').hidden"
     hover('h1')
     hover(badge)
     wait(lambda: script(visible))
     capture('01-native-help-hover')
     # Also enforce synchronous dismissal in a single renderer turn.
-    assert script("const b=document.querySelector('[aria-label=\"עזרה: תיקית מקור\"]');b.dispatchEvent(new PointerEvent('pointerleave',{pointerType:'mouse'}));return document.querySelector('#context-help').hidden")
+    assert script("const b=document.querySelector('[aria-label=\"עזרה: תיקיית מקור\"]');b.dispatchEvent(new PointerEvent('pointerleave',{pointerType:'mouse'}));return document.querySelector('#context-help').hidden")
     hover('h1')
     hover(badge)
     click(badge)
     click(badge)
     hover('h1')
     assert not script(visible), 'Mouse clicks must not pin help after pointer leave'
-    script("document.querySelector('#source').focus();document.querySelector('[aria-label=\"עזרה: תיקית מקור\"]').focus()")
+    script("document.querySelector('#source').focus();document.querySelector('[aria-label=\"עזרה: תיקיית מקור\"]').focus()")
     assert script(visible)
     # Native key input, not a dispatched keyboard event.
     element = command('POST', '/element', {'using':'css selector','value':badge})[ELEMENT]

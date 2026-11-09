@@ -38,7 +38,7 @@ export const appTemplate = `
         <div class="deck-header">
           <div class="deck-title-group">
             <h2 id="folders-heading">בחירת תיקיות</h2>
-            <p class="deck-subtitle" id="mode-deck-description">בחר תיקיית מקור לבדיקה ותיקיית יעד לארגון השירים לפי אמנים.</p>
+            <p class="deck-subtitle" id="mode-deck-description">בחר תיקיית מקור ותיקיית יעד למיון השירים.</p>
           </div>
         </div>
 
@@ -48,14 +48,14 @@ export const appTemplate = `
               <div class="field-label">
                 <span class="station-badge">1</span>
                 <label for="source">תיקיית מקור</label>
-                <button class="help-badge" aria-label="עזרה: תיקית מקור" data-help-text="בחירת תיקיה המכילה את המוזיקה שברצונך לסדר.">?</button>
+                <button class="help-badge" aria-label="עזרה: תיקיית מקור" data-help-text="התיקייה עם המוזיקה שברצונך לסדר.">?</button>
               </div>
             </div>
             <div class="folder-row">
               <input id="source" dir="ltr" autocomplete="off" spellcheck="false" placeholder="C:\\Music\\סינגלים">
               <button id="source-picker" class="secondary">בחר תיקיה</button>
             </div>
-            <p class="station-hint">השירים ייסרקו וינותחו מקומית ללא שינוי עד לאישורך.</p>
+            <p class="station-hint">הקבצים לא ישתנו לפני אישורך.</p>
           </div>
 
           <div class="station-flow-indicator" id="station-flow" aria-hidden="true">
@@ -67,14 +67,14 @@ export const appTemplate = `
               <div class="field-label">
                 <span class="station-badge">2</span>
                 <label for="target">תיקיית יעד</label>
-                <button class="help-badge" aria-label="עזרה: תיקית יעד" data-help-text="בחירת תיקית יעד אליה יוכנסו תיקיות המוזיקה שיווצרו. נדרשת למיון בלבד.">?</button>
+                <button class="help-badge" aria-label="עזרה: תיקיית יעד" data-help-text="כאן ייווצרו תיקיות המוזיקה. נדרשת למיון בלבד.">?</button>
               </div>
             </div>
             <div class="folder-row">
               <input id="target" dir="ltr" autocomplete="off" spellcheck="false" placeholder="D:\\המוזיקה שלי">
               <button id="target-picker" class="secondary">בחר תיקיה</button>
             </div>
-            <p class="station-hint">התיקיות החדשות והשירים הממוינים ייווצרו במיקום זה.</p>
+            <p class="station-hint">כאן יישמרו השירים הממוינים.</p>
           </div>
 
         </div>
@@ -82,7 +82,7 @@ export const appTemplate = `
         <div class="actions-dock">
           <div class="action-command" id="sort-command-wrap">
             <button id="sort" class="primary action-launch">מיין שירים</button>
-            <button class="help-badge" aria-label="עזרה: מיין שירים" data-help-text="מיון מתקדם של הסינגלים שלך בתיקיות לפי אמנים.">?</button>
+            <button class="help-badge" aria-label="עזרה: מיין שירים" data-help-text="מיון הסינגלים לתיקיות לפי אמנים.">?</button>
           </div>
           <div class="action-command" id="fix-command-wrap" hidden>
             <button id="fix" class="primary action-launch">תקן שמות</button>
@@ -98,7 +98,7 @@ export const appTemplate = `
         <div class="section-title">
           <div class="field-label">
             <h2 id="options-heading">אפשרויות</h2>
-            <button class="help-badge" aria-label="עזרה: אפשרויות מיון" data-help-text="חמש האפשרויות נשמרות בלחיצה על שמור הגדרות; מצב דואטים נשמר מיד בהגדרות מתקדמות.">?</button>
+            <button class="help-badge" aria-label="עזרה: אפשרויות מיון" data-help-text="לחץ על ״שמור כברירת מחדל״ כדי לשמור את הבחירה.">?</button>
           </div>
           <span id="settings-label" class="quiet-label">ההגדרות שלך</span>
         </div>
@@ -149,7 +149,7 @@ export const appTemplate = `
                 <input id="exist_only" type="checkbox">
                 <span id="exist_only-label">שימוש בתיקיות קיימות</span>
               </label>
-              <button class="help-badge" aria-label="עזרה: שימוש בתיקיות קיימות" data-help-text="העברת קבצים רק לתיקיות אמנים הקיימות כבר בתיקית היעד">?</button>
+              <button class="help-badge" aria-label="עזרה: שימוש בתיקיות קיימות" data-help-text="העברת קבצים רק לתיקיות אמנים הקיימות כבר בתיקיית היעד">?</button>
             </div>
           </fieldset>
         </div>
@@ -194,10 +194,10 @@ export const appTemplate = `
         <button id="finish-results" class="primary" hidden>סיום</button>
         <button id="show-completed-list" class="text-button" hidden>הצג את הקבצים</button>
       </div>
-      <p id="album-source-parent-help" class="hint" hidden>תיקיית האב משמשת רק להסרת תיקיית המקור אם תתרוקן לאחר ההעברה המתוכננת. ודא ששום יישום או משתמש אחר אינו משנה את התיקיות בזמן הביצוע.</p>
+      <p id="album-source-parent-help" class="hint" hidden>נדרשת כדי להסיר את תיקיית המקור אם תתרוקן. אל תשנה את התיקיות בזמן הביצוע.</p>
       <details id="execution-refusal" class="execution-refusal" hidden>
         <summary>פרטי החסימה</summary>
-        <p class="hint">מידע טכני לבירור הסיבה. ייתכן שמופיעים בו שמות קבצים או מיקומים.</p>
+        <p class="hint">עשוי לכלול שמות קבצים ונתיבים.</p>
         <pre id="execution-refusal-details" dir="auto"></pre>
       </details>
       <progress id="execution-progress" aria-label="התקדמות הקובץ הנוכחי" hidden></progress>
@@ -217,7 +217,7 @@ export const appTemplate = `
         <button type="button" class="filter-chip" aria-pressed="false" data-filter="attention" id="filter-chip-attention">דורש בדיקה</button>
         <button type="button" class="filter-chip" aria-pressed="false" data-filter="inactive" id="filter-chip-inactive">ללא פעולה</button>
       </div>
-      <p class="filter-note">הסינון משנה את התצוגה בלבד, הביצוע חל על התוכנית המלאה</p>
+      <p class="filter-note">הסינון משפיע על התצוגה בלבד</p>
 
       <label class="option inactive-option">
         <input id="show-inactive" type="checkbox">
@@ -286,7 +286,7 @@ export const appTemplate = `
     <span id="recovery-range"></span>
     <button id="recovery-next" class="secondary">הבא</button>
   </nav>
-  <p id="recovery-truncated" class="warning" hidden>הרשימה מוגבלת למספר קבוע של יומנים. יומנים נוספים נשמרו בתיקיית נתוני התוכנה.</p>
+  <p id="recovery-truncated" class="warning" hidden>מוצגת רשימה חלקית. יומנים נוספים שמורים בתיקיית נתוני התוכנה.</p>
   <section id="recovery-selection" hidden>
     <p id="recovery-record-detail" class="hint"></p>
     <h3>התיקיות שתועדו ביומן</h3>
@@ -302,9 +302,9 @@ export const appTemplate = `
       <p class="hint">אם המקור הועבר בשלמותו, בחר את התיקייה שהכילה אותו. המיקום ייבדק בלי לשנות קבצים.</p>
     </div>
     <div class="recovery-roots">
-      <button id="recovery-source-picker" class="secondary">בחר תיקית מקור</button>
+      <button id="recovery-source-picker" class="secondary">בחר תיקיית מקור</button>
       <bdi id="recovery-selected-source"></bdi>
-      <button id="recovery-target-picker" class="secondary">בחר תיקית יעד</button>
+      <button id="recovery-target-picker" class="secondary">בחר תיקיית יעד</button>
       <bdi id="recovery-selected-target"></bdi>
     </div>
     <button id="recovery-inspect" class="primary">בדוק את הקבצים מול היומן</button>
@@ -340,7 +340,6 @@ export const appTemplate = `
   <p id="apply-description"></p>
   <label class="detail-path-label apply-path">מ<input id="apply-source" class="source-path" dir="ltr" readonly></label>
   <label id="apply-target-label" class="detail-path-label apply-path">אל<input id="apply-target" class="source-path" dir="ltr" readonly></label>
-  <p class="hint">הקבצים ייבדקו שוב רגע לפני הביצוע.</p>
   <div class="dialog-actions">
     <button id="confirm-apply" class="primary">אשר ביצוע</button>
     <button id="apply-back" class="secondary">ביטול</button>
@@ -369,7 +368,7 @@ export const appTemplate = `
     <section id="usage-content" data-info-page="help" aria-labelledby="usage-title">
       <h3 id="usage-title">שלושה צעדים</h3>
       <ol class="usage-steps">
-        <li>בחר תיקית מקור, ובמיון גם תיקית יעד.</li>
+        <li>בחר תיקיית מקור, ובמיון גם תיקיית יעד.</li>
         <li>לחץ על <strong>מיין שירים</strong> או <strong>תקן שמות</strong>.</li>
         <li>עיין בתוכנית ואשר את הביצוע. שום קובץ לא משתנה לפני האישור.</li>
       </ol>
@@ -379,21 +378,24 @@ export const appTemplate = `
         <img src="/icon.png" width="44" height="44" alt="">
         <div>
           <h3 id="about-name">מסדר הסינגלים</h3>
+          <p class="hint">כלי מתקדם למיון אוטומטי של קבצי הסינגלים שלך לפי שמות הזמרים.</p>
         </div>
       </div>
       <dl class="about-facts">
-        <div><dt>גרסת התוכנה</dt><dd id="about-version" dir="ltr"></dd></div>
-        <div><dt>פרויקט המקור</dt><dd><bdi>NHLOCAL / Singles-Sorter</bdi></dd></div>
+        <div><dt>גרסה</dt><dd id="about-version" dir="ltr"></dd></div>
+        <div><dt>יצירת קשר</dt><dd><bdi>nh.local11@gmail.com</bdi></dd></div>
       </dl>
       <div class="about-links">
+        <button class="secondary" data-project-link="Website">אתר התוכנה</button>
+        <button class="secondary" data-project-link="Feedback">דיווח על באג או בקשת תכונה</button>
         <button class="secondary" data-project-link="Source">קוד המקור ב־GitHub</button>
         <button class="secondary" data-project-link="License">רישיון MIT</button>
       </div>
       <p id="about-link-error" class="error" role="alert" hidden></p>
       <button class="secondary" data-local-notices hidden>הודעות רישוי וקוד מקור לרכיבים</button>
       <details class="about-credits">
-        <summary>רכיבים ותודות</summary>
-        <p>מבוסס על מסדר הסינגלים המקורי של NHLOCAL. נבנה עם <bdi>Rust</bdi>, <bdi>Tauri</bdi>, <bdi>TagLib</bdi> ו־<bdi>Fluent UI Icons</bdi>. לרכיבי צד שלישי תנאי רישוי משלהם.</p>
+        <summary>רכיבי צד שלישי</summary>
+        <p>נבנה עם <bdi>Rust</bdi>, <bdi>Tauri</bdi>, <bdi>TagLib</bdi> ו־<bdi>Fluent UI Icons</bdi>. לרכיבי צד שלישי תנאי רישוי משלהם.</p>
       </details>
     </section>
   </div>
@@ -405,29 +407,24 @@ export const appTemplate = `
     <button class="close-dialog icon-button" aria-label="סגור">×</button>
   </div>
   <fieldset>
-    <legend>מיון דואטים <button class="help-badge" aria-label="עזרה: דואטים" data-help-text="בחר להיכן יועתקו שירי דואט. הבחירה נשמרת מיד, בלי לשמור שינויים באפשרויות האחרות.">?</button></legend>
+    <legend>מיון דואטים <button class="help-badge" aria-label="עזרה: דואטים" data-help-text="בחר להיכן יועתקו שירי דואט.">?</button></legend>
     <label class="option"><input type="radio" name="duet" id="duet-first" value="first" checked><span>לזמר הראשון בשם השיר</span></label>
     <label class="option"><input type="radio" name="duet" id="duet-all" value="all"><span>לכל הזמרים המופיעים בשיר</span></label>
   </fieldset>
   <fieldset>
-    <legend class="ai-heading">
-      <span>זיהוי אמנים בעזרת AI</span>
-      <span id="model-status" class="quiet-label"></span>
-      <button id="model-help" class="help-badge" aria-label="עזרה: מצב מודל ה-AI" data-help-text="">?</button>
-    </legend>
-    <div class="field-label visually-hidden">
-      <label for="ai-profile">שימוש ב-AI</label>
-      <button class="help-badge" aria-label="עזרה: שימוש ב-AI" data-help-text="כשהאפשרות פעילה, מודל AI מזהה אמנים שאינם מופיעים ברשימה. אם המודל אינו מותקן, הבדיקה לא תתחיל.">?</button>
+    <legend class="visually-hidden">בינה מלאכותית</legend>
+    <div class="option-row">
+      <label class="option">
+        <input id="ai-profile" type="checkbox" role="switch">
+        <span>זיהוי אמנים בעזרת AI</span>
+      </label>
+      <span id="model-status" class="quiet-label" hidden>לא זמין</span>
     </div>
-    <select id="ai-profile">
-      <option value="Disabled">כבוי – זיהוי לפי הרשימה בלבד</option>
-      <option value="Configured">פעיל – דורש מודל מותקן</option>
-    </select>
   </fieldset>
   <section>
     <div class="field-label">
       <h3>רשימת זמרים אישית</h3>
-      <button class="help-badge" aria-label="עזרה: רשימת אמנים" data-help-text="השורות האישיות מתווספות אחרי הרשימה המובנית. סדר ההתאמה נשמר.">?</button>
+      <button class="help-badge" aria-label="עזרה: רשימת אמנים" data-help-text="השורות שלך מתווספות לרשימה המובנית.">?</button>
     </div>
     <div class="list-actions">
       <button id="edit-list" class="secondary">ערוך רשימה</button>
@@ -453,7 +450,7 @@ export const appTemplate = `
   <div class="dialog-heading">
     <h2 id="list-title">הוספת זמרים</h2>
     <button id="list-cancel-x" class="icon-button" aria-label="סגור בלי לשמור">×</button>
-    <button class="help-badge" aria-label="עזרה: עריכת רשימה" data-help-text="שם האמן הוא הטקסט לחיפוש; שם התיקייה הוא היעד. אין שינוי סדר או הסרת כפילויות אוטומטיים.">?</button>
+    <button class="help-badge" aria-label="עזרה: עריכת רשימה" data-help-text="שם הזמר הוא הטקסט לחיפוש; שם התיקיה הוא היעד.">?</button>
   </div>
   <div class="editor-content">
     <div class="editor-config">
@@ -488,7 +485,7 @@ export const appTemplate = `
   <div class="dialog-heading">
     <h2 id="import-title">בדיקת קובץ הייבוא</h2>
     <button id="import-cancel-x" class="icon-button" aria-label="בטל ייבוא">×</button>
-    <button class="help-badge" aria-label="עזרה: ייבוא רשימה" data-help-text="האישור מוסיף את כל השורות בסוף הרשימה. שורות לא תקינות וכפילויות אינן מוסרות אוטומטית. אפשר לערוך או למחוק שורות לפני האישור.">?</button>
+    <button class="help-badge" aria-label="עזרה: ייבוא רשימה" data-help-text="השורות יתווספו בסוף הרשימה. אפשר לערוך או למחוק אותן לפני האישור.">?</button>
   </div>
   <div class="editor-content">
     <div class="editor-config">

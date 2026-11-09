@@ -106,7 +106,7 @@ def exercise_result_stability(command, script, click, fill, wait, capture, root,
     for key, value in dict(copy_mode=True,main_folder_only=False,singles_folder=True,abc_sort=False,exist_only=False).items():
         if script(f"return document.querySelector('#{key}').checked") != value: click('#'+key)
     click('#open-settings');click('#duet-first');wait(lambda: script("return !document.querySelector('#duet-first').disabled"))
-    script("document.querySelector('#ai-profile').value='Disabled';document.querySelector('#ai-profile').dispatchEvent(new Event('change',{bubbles:true}))")
+    script("document.querySelector('#ai-profile').checked=false;document.querySelector('#ai-profile').dispatchEvent(new Event('change',{bubbles:true}))")
     click('#advanced-dialog .close-dialog');set_developer_mode(script,click,wait,False)
     click('#tab-mode-sort')
     click('#sort');wait(lambda: script("return document.querySelector('#app').dataset.view==='results' && !document.querySelector('#show-inactive').disabled"),timeout=120)

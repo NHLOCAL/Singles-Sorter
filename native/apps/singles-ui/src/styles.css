@@ -1005,26 +1005,6 @@ td details p {
   padding-top: 16px;
 }
 
-.ai-heading {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.ai-heading #model-status {
-  margin: 0;
-  padding-inline-start: 8px;
-  border-inline-start: 1px solid var(--line);
-  font-weight: 400;
-  white-space: nowrap;
-  unicode-bidi: isolate;
-}
-
-#model-status {
-  margin: 5px 0 12px;
-}
-
 .help-badge {
   display: inline-flex;
   align-items: center;

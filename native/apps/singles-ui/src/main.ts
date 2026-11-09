@@ -29,7 +29,6 @@ window.addEventListener('pagehide',()=>{viewRevision++;controller.discardAlbumSo
 const app=document.querySelector<HTMLDivElement>('#app')!;
 // Static trusted markup only. Every host/file value is rendered with textContent.
 app.innerHTML=appTemplate;
-// Keep the historical footer destination, verified from the released source.
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 const source=$<HTMLInputElement>('source'),target=$<HTMLInputElement>('target');
 const studio=installStudio(app,()=>controller.state.busy||personal.busy,()=>{if(navigation.screen==='results')backToSetup();});
@@ -72,7 +71,7 @@ function renderRecovery(){
  $('recovery-source-mode').hidden=!recovery.canSelectParent;
  $<HTMLSelectElement>('recovery-source-location').value=recovery.sourceMode;$<HTMLSelectElement>('recovery-source-location').disabled=recovery.busy;
  $<HTMLInputElement>('recovery-recorded-parent').value=displayRecoveryPath(record?.original_parent??'');
- $('recovery-source-picker').textContent=recovery.sourceMode==='removed'?'בחר את התיקייה שהכילה את המקור':'בחר תיקית מקור';
+ $('recovery-source-picker').textContent=recovery.sourceMode==='removed'?'בחר את התיקייה שהכילה את המקור':'בחר תיקיית מקור';
  $('recovery-recorded-target').parentElement!.hidden=!recovery.requiresTarget;
  $('recovery-target-picker').hidden=!recovery.requiresTarget;$('recovery-selected-target').hidden=!recovery.requiresTarget;
  $<HTMLInputElement>('recovery-recorded-source').value=displayRecoveryPath(record?.source??'');$<HTMLInputElement>('recovery-recorded-target').value=displayRecoveryPath(record?.target??'');
@@ -104,7 +103,7 @@ function renderRecovery(){
  if(record&&!recovery.inspectable){$('recovery-error').hidden=false;$('recovery-error').textContent=record.detail;}
 }
 recovery.subscribe(renderRecovery);
-$('footer-link').addEventListener('click',async()=>{try{await openFooterLink();}catch{ $('error').textContent='לא ניתן לפתוח כעת את הקישור בדפדפן. כתובת האתר: https://nhlocal.github.io/shir-bot';$('error').hidden=false; }});
+$('footer-link').addEventListener('click',async()=>{try{await openFooterLink();}catch{ $('error').textContent='לא ניתן לפתוח כעת את הקישור בדפדפן. כתובת האתר: https://shir-bot.ze-kal.top';$('error').hidden=false; }});
 source.addEventListener('input',()=>controller.editRoot('Source',source.value));
 target.addEventListener('input',()=>controller.editRoot('Target',target.value));
 $('source-picker').addEventListener('click',()=>void controller.selectRoot('Source'));
@@ -140,8 +139,8 @@ $('review-apply').addEventListener('click',()=>{
  const repairing=readiness.mode==='FixNames';
  $('apply-title').textContent=repairing?'תיקון שמות ותגיות':`${applyActionLabel(readiness)}?`;$('confirm-apply').textContent=applyActionLabel(readiness);
  $('apply-target-label').hidden=repairing;
- $('apply-description').textContent=repairing?REPAIR_REVIEW_TEXT:readiness.operation_count===0?'לא בוצעו שינויים. קובצי המקור יישארו במקומם; הבדיקה החוזרת תאמת שאין פעולות לביצוע.':controller.state.developerMode?`${readiness.copy_mode?'העתקת':'העברת'} ${readiness.operation_count.toLocaleString('he-IL')} פעולות לפי התוכנית שהוצגה.`:readiness.copy_mode?'קובצי המקור יישארו במקומם.':'';
- if(readiness.duet_groups&&readiness.operation_count>0)$('apply-description').append(document.createTextNode(' בדואטים, המקור יימחק רק לאחר אימות כל העותקים הנדרשים בתוכנית. מקור ללא יעד מתאים יישמר.'));
+ $('apply-description').textContent=repairing?REPAIR_REVIEW_TEXT:readiness.operation_count===0?'אין פעולות לביצוע. קובצי המקור יישארו במקומם.':controller.state.developerMode?`${readiness.copy_mode?'העתקת':'העברת'} ${readiness.operation_count.toLocaleString('he-IL')} פעולות לפי התוכנית שהוצגה.`:readiness.copy_mode?'קובצי המקור יישארו במקומם.':'';
+ if(readiness.duet_groups&&readiness.operation_count>0)$('apply-description').append(document.createTextNode(' בדואטים, המקור יימחק רק לאחר אימות כל העותקים; מקור ללא יעד יישמר.'));
  if(readiness.notice)$('apply-description').append(document.createTextNode(' '+readiness.notice));
  if(controller.state.model?.platform==='android'&&readiness.reason)$('apply-description').append(document.createTextNode(' '+readiness.reason));
  $<HTMLInputElement>('apply-source').value=readiness.source;$<HTMLInputElement>('apply-target').value=readiness.target??'';
@@ -189,7 +188,7 @@ for(const key of keys)$<HTMLInputElement>(key).addEventListener('change',event=>
 $('duet-first').addEventListener('change',()=>void controller.setDuet(false));
 $('duet-all').addEventListener('change',()=>void controller.setDuet(true));
 $('save-settings').addEventListener('click',()=>void controller.saveMainSettings());
-$<HTMLSelectElement>('ai-profile').addEventListener('change',event=>controller.changeAi((event.target as HTMLSelectElement).value as 'Disabled'|'Configured'));
+$<HTMLInputElement>('ai-profile').addEventListener('change',event=>controller.changeAi((event.target as HTMLInputElement).checked?'Configured':'Disabled'));
 function syncPersonalNotices(){
  const editing=$<HTMLDialogElement>('list-dialog').open||$<HTMLDialogElement>('import-dialog').open;
  $('profile-notice').hidden=editing;
@@ -296,7 +295,7 @@ function renderExecution(){
  const legacy=stats.length?e?.result?.legacy_summary:null,leaders=legacy?.top_artists??[];
  if(leaders.length)$('execution-stats').append(leaderList(leaders,legacy!.songs_sorted));
  if(!developer&&running)$('execution-summary').textContent=s.cancelRequested?'ממתין לעצירה בטוחה…':e?.operation!==null&&e?.operation!==undefined?`התקדמות: ${e.operation+1} מתוך ${e.operation_count}`:'בודק שהקבצים מוכנים…';
- if(parentNeeded){$('execution-title').textContent='נדרשת בחירה מפורשת של תיקיית האב';$('execution-summary').textContent=parentPending?'ממתין לבחירת תיקיית האב…':'לאחר הבחירה תופעל בדיקת מיון חדשה. עדיין לא יבוצעו שינויים בקבצים.';}
+ if(parentNeeded){$('execution-title').textContent='יש לבחור את תיקיית האב';$('execution-summary').textContent=parentPending?'ממתין לבחירת תיקיית האב…':'לאחר הבחירה תתבצע בדיקה חדשה, ללא שינוי בקבצים.';}
  if(running&&e?.verification){
   $('execution-title').textContent='בודק את תוצאות הביצוע';
   $('execution-summary').textContent=s.cancelRequested?'ממתין לעצירה בטוחה…':verificationProgressText(e.verification,developer);
@@ -332,13 +331,12 @@ function render(){
  $('copy_mode-label').textContent=s.settings.copy_mode?'העתק קבצים':'העבר קבצים';
  $('main_folder_only-label').textContent=s.settings.main_folder_only?'סרוק תיקיה ראשית בלבד':'סרוק עץ תיקיות';
  $<HTMLInputElement>('duet-first').checked=!s.settings.duet_mode;$<HTMLInputElement>('duet-all').checked=s.settings.duet_mode;
- for(const id of ['duet-first','duet-all','ai-profile'])$(id).toggleAttribute('disabled',blocked);
- $<HTMLSelectElement>('ai-profile').value=s.ai;
- $('model-status').textContent=s.model?.available?'המודל מותקן':'המודל לא מותקן';
- $('model-help').dataset.helpText=s.model?.message??'לא התקבל מצב המודל מהמארח.';
+ for(const id of ['duet-first','duet-all'])$(id).toggleAttribute('disabled',blocked);
+ $<HTMLInputElement>('ai-profile').checked=s.ai==='Configured';$<HTMLInputElement>('ai-profile').disabled=blocked||s.model?.available===false;
+ $('model-status').hidden=s.model?.available!==false;$('model-status').title=s.model?.available===false?s.model.message:'';
  const previewCancelled=s.snapshot?.status==='cancelled'&&!s.busy&&!s.execution;
  $('connection').hidden=s.hostAvailable&&!previewCancelled;
- $('connection').textContent=previewCancelled?'הבדיקה בוטלה. לא בוצעו שינויים בקבצים.':!s.initialized?(s.startupWaiting?'ממתין לסיום הבדיקה הקודמת…':'טוען את המארח המקומי…'):'המארח המקומי אינו מחובר. יש לפתוח את התוכנה כדי לבדוק תיקיות.';
+ $('connection').textContent=previewCancelled?'הבדיקה בוטלה. לא בוצעו שינויים בקבצים.':!s.initialized?(s.startupWaiting?'ממתין לסיום הבדיקה הקודמת…':'טוען…'):'לא ניתן להתחבר למנוע התוכנה. הפעל את התוכנה מחדש.';
  $('recovery-notice').hidden=!s.recoveryNotice;
  $('recovery-notice-text').textContent=recoveryNoticeText(s.recoveryNotice);
  $('open-recovery').hidden=!hasAndroidHost()||!s.recoveryNotice;$<HTMLButtonElement>('open-recovery').disabled=s.busy;

@@ -43,16 +43,20 @@ const BUNDLED: &[u8] =
 const COVERAGE: &[u8] = include_bytes!("../../../../tests/fixtures/media/metadata-coverage.json");
 const MAX_PAGE: usize = 200;
 pub const FOOTER_URL: &str =
-    "https://nhlocal.github.io/shir-bot?utm_source=singles_sorter_program&utm_medium=desktop";
+    "https://shir-bot.ze-kal.top/?utm_source=singles_sorter_program&utm_medium=desktop";
 
 #[derive(Clone, Copy, Debug, Deserialize)]
 pub enum ProjectLink {
+    Website,
+    Feedback,
     Source,
     License,
 }
 impl ProjectLink {
     pub fn url(self) -> &'static str {
         match self {
+            Self::Website => "https://singles-sorter.ze-kal.top",
+            Self::Feedback => "https://docs.google.com/forms/d/e/1FAIpQLScOaX1wWW1YXXlX4cylMA6LWpO7yIb2fStmjzfSqmLc_V9CIw/viewform?usp=sf_link",
             Self::Source => "https://github.com/NHLOCAL/Singles-Sorter",
             Self::License => "https://github.com/NHLOCAL/Singles-Sorter/blob/main/LICENSE",
         }
@@ -925,7 +929,7 @@ fn recognition(
                     let error: sorter_core::job_plan::JobError = abort.into();
                     HostError::new(&error.code, error.detail)
                 }
-                _ => HostError::new("RECOGNITION_UNAVAILABLE", "המודלים המקוריים חסרים או לא תקינים. הבדיקה לא הופעלה; אין מעבר אוטומטי לעבודה ללא AI."),
+                _ => HostError::new("RECOGNITION_UNAVAILABLE", "מודל ה-AI חסר או פגום. הבדיקה לא הופעלה."),
             })?;
         let resources = provider.resource_ids();
         let adapters = provider.adapter_versions();
@@ -972,13 +976,13 @@ impl Host {
             platform: platform(),
             message: match result {
                 Ok(_) => {
-                    "שני מודלי הזיהוי המקוריים אומתו. הקבצים נבדקים מחדש לפני כל בדיקה.".into()
+                    "מודל ה-AI מוכן.".into()
                 }
                 Err(error) => {
                     if cfg!(feature = "original-ai") {
                         error.message
                     } else {
-                        "מהדורה זו אינה כוללת את מודלי ה־AI המקוריים. בחר במפורש עבודה ללא AI או פתח את המהדורה הכוללת אותם.".into()
+                        "גרסה זו אינה כוללת את מודל ה-AI.".into()
                     }
                 }
             },
@@ -1933,13 +1937,17 @@ mod tests {
         assert!(permissions.contains("open_project_link"));
         assert_eq!(
             FOOTER_URL,
-            "https://nhlocal.github.io/shir-bot?utm_source=singles_sorter_program&utm_medium=desktop"
+            "https://shir-bot.ze-kal.top/?utm_source=singles_sorter_program&utm_medium=desktop"
         );
     }
     #[test]
     fn project_links_accept_named_destinations_only() {
         let source: ProjectLink = serde_json::from_str("\"Source\"").unwrap();
         let license: ProjectLink = serde_json::from_str("\"License\"").unwrap();
+        let website: ProjectLink = serde_json::from_str("\"Website\"").unwrap();
+        let feedback: ProjectLink = serde_json::from_str("\"Feedback\"").unwrap();
+        assert_eq!(website.url(), "https://singles-sorter.ze-kal.top");
+        assert!(feedback.url().starts_with("https://docs.google.com/forms/"));
         assert_eq!(source.url(), "https://github.com/NHLOCAL/Singles-Sorter");
         assert_eq!(
             license.url(),
