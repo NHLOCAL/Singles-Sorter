@@ -132,7 +132,7 @@ final class LocalProviderEffects {
     }
     JSONObject transfer(JSONObject sourceReference,JSONArray destination,boolean copy,String operation)throws Exception{return transfer(sourceReference,destination,copy,operation,false);}
     JSONObject transfer(JSONObject sourceReference,JSONArray destination,boolean copy,String operation,boolean duetCopy)throws Exception{
-        destinationObserved=false;checkpoint();references.requireDisjointRoots();targetGuard.validateTree();Uri source=references.uri(sourceReference),sourceParent=references.parent(sourceReference);JSONObject expected=references.resolve(sourceReference),binding=references.binding(sourceReference);
+        destinationObserved=false;checkpoint();references.requireDisjointRoots();targetGuard.validateTreeIfDue();Uri source=references.uri(sourceReference),sourceParent=references.parent(sourceReference);JSONObject expected=references.resolve(sourceReference),binding=references.binding(sourceReference);
         if(!expected.getString("name").equals(info(source).getString("name"))||!DocumentsContract.isChildDocument(resolver,sourceParent,source))throw new IOException("SOURCE_OBSERVATION_CHANGED");
         reservations.require(source);verify(source,binding);
         if(duetCopy){if(!copy)throw new IOException("DUET_COPY_REQUIRED");record("duet-copy-start",operation,new JSONObject().put("source",source.toString()).put("parent",sourceParent.toString()).put("name",expected.getString("name")).put("binding",binding).put("target",references.targetRoot().toString()).put("components",destination));}
@@ -170,6 +170,7 @@ final class LocalProviderEffects {
         record("verified",operation,result);return result;
     }
     /** Fresh read-only cohort observations; only the live owner can call the retirement port. */
+    void validateFinished(TargetObservationGuard sourceGuard)throws Exception{if(sourceGuard!=null)sourceGuard.validateTree();targetGuard.validateTree();}
     DuetRetirement.Port duetPort(java.util.Map<Integer,NativeTransferPlan.Transfer> transfers,TargetObservationGuard sourceGuard){
         return new DuetRetirement.Port(){
             public void checkpoint(){LocalProviderEffects.this.checkpoint();}
@@ -200,7 +201,7 @@ final class LocalProviderEffects {
                     if(c==null)throw new IOException("DUET_SOURCE_ABSENCE_UNCERTAIN");while(c.moveToNext()){checkpoint();listing.child(c.getString(0),c.getString(1));}
                     if(!listing.absent(c.getExtras()!=null&&c.getExtras().getBoolean(DocumentsContract.EXTRA_LOADING,false),c.getExtras()!=null&&c.getExtras().containsKey(DocumentsContract.EXTRA_ERROR)))throw new IOException("DUET_SOURCE_ABSENCE_UNCERTAIN");
                 }
-                sourceGuard.removedSubtree(source,parent);sourceGuard.validateTree();targetGuard.validateTree();checkpoint();
+                sourceGuard.removedSubtree(source,parent);sourceGuard.validateTreeIfDue();targetGuard.validateTreeIfDue();checkpoint();
             }
         };
     }

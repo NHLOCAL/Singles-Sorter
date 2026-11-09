@@ -105,6 +105,7 @@ final class ProviderExecutionOwner {
                     synchronized(ProviderExecutionOwner.class){job.completed++;job.repairs[fix.id]=FixUiProjection.flags(actual);job.evidence[fix.id]=actual;job.outcomes.finish(fix.id,status,actual.toString());job.cursor.verified();}
                     if(!status.equals("complete"))terminal="partial";
                 }
+                LifecycleIo.run(ProviderExecutionOwner.class,()->{effects.validateFinished();return null;});
             }else{
             phase(job,"original-sort-projection");NativeTransferPlan singles=LifecycleIo.run(ProviderExecutionOwner.class,()->NativeTransferPlan.prepare(retained,references));NativeAlbumPlan albums=LifecycleIo.run(ProviderExecutionOwner.class,()->NativeAlbumPlan.prepare(retained,references,job.cancel::isCanceled));NativeDuetPlan duets=NativeDuetPlan.inspectOriginal(retained.planCopy(),job.cancel::isCanceled);AlbumAdmissionBounds.require(retained,singles,albums,job.cancel::isCanceled);DuetAdmissionBounds.require(retained,singles,albums,duets,references,job.cancel::isCanceled);job.cancel.throwIfCanceled();
             synchronized(ProviderExecutionOwner.class){job.duets=new JSONObject[duets.groups.size()];for(int i=0;i<job.duets.length;i++)job.duets[i]=new JSONObject().put("group",i).put("status","pending").put("required_operations",new JSONArray(duets.groups.get(i).requiredOperations)).put("source_retirement_attempted",false);}
@@ -142,6 +143,7 @@ final class ProviderExecutionOwner {
                 }
                 finishDuets(job,duets,id,verifiedCopies,duetPort,ownedJournal);
             }
+            LifecycleIo.run(ProviderExecutionOwner.class,()->{effects.validateFinished(source);return null;});
             }
         }catch(Throwable error){
             failure=error.getClass().getSimpleName()+": "+error.getMessage();synchronized(ProviderExecutionOwner.class){job.diagnosticCode=ReadinessDiagnostic.code(error);}

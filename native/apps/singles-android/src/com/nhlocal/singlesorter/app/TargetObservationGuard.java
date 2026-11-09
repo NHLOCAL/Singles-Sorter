@@ -38,11 +38,15 @@ final class TargetObservationGuard {
         if(expected.isEmpty())throw new IOException("TARGET_OBSERVATIONS_MISSING");
     }
     private Uri uri(String id){return DocumentsContract.buildDocumentUriUsingTree(tree,id);}
+    private static final String[] PROJECTION={DocumentsContract.Document.COLUMN_DOCUMENT_ID,DocumentsContract.Document.COLUMN_DISPLAY_NAME,DocumentsContract.Document.COLUMN_MIME_TYPE,DocumentsContract.Document.COLUMN_LAST_MODIFIED,DocumentsContract.Document.COLUMN_SIZE};
+    private static JSONObject row(Cursor c,Object parent)throws Exception{
+        boolean directory=DocumentsContract.Document.MIME_TYPE_DIR.equals(c.getString(2));
+        Object modified=c.isNull(3)||c.getLong(3)<=0?JSONObject.NULL:Long.toString(c.getLong(3));Object size=directory||c.isNull(4)||c.getLong(4)<0?JSONObject.NULL:c.getLong(4);
+        return new JSONObject().put("id",c.getString(0)).put("name",c.getString(1)).put("directory",directory).put("modified",modified).put("size",size).put("parent",parent);
+    }
     private JSONObject observe(Uri uri,Object parent)throws Exception{
-        cancel.throwIfCanceled();try(Cursor c=resolver.query(uri,new String[]{DocumentsContract.Document.COLUMN_DOCUMENT_ID,DocumentsContract.Document.COLUMN_DISPLAY_NAME,DocumentsContract.Document.COLUMN_MIME_TYPE,DocumentsContract.Document.COLUMN_LAST_MODIFIED,DocumentsContract.Document.COLUMN_SIZE},null,null,null,cancel)){
-            if(c==null||!c.moveToFirst())throw new IOException("TARGET_UNAVAILABLE");boolean directory=DocumentsContract.Document.MIME_TYPE_DIR.equals(c.getString(2));
-            Object modified=c.isNull(3)||c.getLong(3)<=0?JSONObject.NULL:Long.toString(c.getLong(3));Object size=directory||c.isNull(4)||c.getLong(4)<0?JSONObject.NULL:c.getLong(4);
-            JSONObject result=new JSONObject().put("id",c.getString(0)).put("name",c.getString(1)).put("directory",directory).put("modified",modified).put("size",size).put("parent",parent);
+        cancel.throwIfCanceled();try(Cursor c=resolver.query(uri,PROJECTION,null,null,null,cancel)){
+            if(c==null||!c.moveToFirst())throw new IOException("TARGET_UNAVAILABLE");JSONObject result=row(c,parent);
             if(c.moveToNext())throw new IOException("TARGET_AMBIGUOUS");return result;
         }
     }
@@ -54,15 +58,22 @@ final class TargetObservationGuard {
     private static TargetFingerprint fingerprint(JSONObject value)throws Exception{
         return new TargetFingerprint(value.getString("id"),value.getString("name"),value.getBoolean("directory"),value.isNull("modified")?null:value.getString("modified"),value.isNull("size")?null:value.getLong("size"),value.isNull("parent")?null:value.getString("parent"));
     }
+    /** Operation-boundary check. Small jobs still validate every call; large ones keep total cost linear in job size.
+     * The files an operation touches are always re-observed by require, and the job ends with a full validateTree. */
+    void validateTreeIfDue()throws Exception{if(++boundaries>=Math.max(1,expected.size()/16)){boundaries=0;validateTree();}}
+    private int boundaries=Integer.MAX_VALUE-1;
     void validateTree()throws Exception{HashSet<String> seen=new HashSet<>();walk(uri(DocumentsContract.getTreeDocumentId(tree)),seen,0);if(seen.size()!=expected.size())throw new IOException("TARGET_REMOVED_SINCE_PREVIEW");}
+    /** One listing per directory reads every child's fingerprint, so a walk costs directories rather than files. */
     private void walk(Uri current,HashSet<String> seen,int depth)throws Exception{
-        cancel.throwIfCanceled();String id=DocumentsContract.getDocumentId(current);if(depth>128||seen.size()>=10000||!seen.add(id))throw new IOException("TARGET_TREE_LIMIT");require(current);
+        cancel.throwIfCanceled();String id=DocumentsContract.getDocumentId(current);if(depth>128||seen.size()>=10000||!seen.add(id))throw new IOException("TARGET_TREE_LIMIT");if(depth==0)require(current);
         if(!expected.get(id).getBoolean("directory")||unlistedSourceDirectories.contains(id))return;
-        try(Cursor c=resolver.query(DocumentsContract.buildChildDocumentsUriUsingTree(tree,id),new String[]{DocumentsContract.Document.COLUMN_DOCUMENT_ID},null,null,null,cancel)){
+        try(Cursor c=resolver.query(DocumentsContract.buildChildDocumentsUriUsingTree(tree,id),PROJECTION,null,null,null,cancel)){
             if(c==null)throw new IOException("TARGET_LIST_UNAVAILABLE");
             while(c.moveToNext()){
-                String child=c.getString(0);JSONObject known=expected.get(child);if(known==null||!id.equals(known.optString("parent")))throw new IOException("TARGET_ADDED_OR_REPARENTED");
-                Uri childUri=uri(child);if(!DocumentsContract.isChildDocument(resolver,current,childUri))throw new IOException("TARGET_CHILD_SCOPE");walk(childUri,seen,depth+1);
+                cancel.throwIfCanceled();String child=c.getString(0);JSONObject known=expected.get(child);if(known==null||!id.equals(known.optString("parent")))throw new IOException("TARGET_ADDED_OR_REPARENTED");
+                if(!fingerprint(known).same(fingerprint(row(c,known.get("parent")))))throw new IOException("TARGET_CHANGED_SINCE_OBSERVATION");
+                if(known.getBoolean("directory")){Uri childUri=uri(child);if(!DocumentsContract.isChildDocument(resolver,current,childUri))throw new IOException("TARGET_CHILD_SCOPE");walk(childUri,seen,depth+1);}
+                else if(seen.size()>=10000||!seen.add(child))throw new IOException("TARGET_TREE_LIMIT");
             }
             if(c.getExtras()!=null&&(c.getExtras().getBoolean(DocumentsContract.EXTRA_LOADING,false)||c.getExtras().containsKey(DocumentsContract.EXTRA_ERROR)))throw new IOException("TARGET_LIST_INCOMPLETE");
         }
