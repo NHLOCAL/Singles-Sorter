@@ -13,11 +13,11 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
     - name: Require the version 15 native build for current sources
       run: |
@@ -27,7 +27,7 @@ jobs:
         fi
 
     - name: Setup Python ${{ env.PYTHON_VERSION }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
@@ -42,7 +42,7 @@ jobs:
         flutter-version: ${{ env.FLUTTER_VERSION }}
 
     - name: Setup Java JDK
-      uses: actions/setup-java@v4.2.1
+      uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
       with:
         distribution: 'temurin'
         java-version: '21'
@@ -67,7 +67,7 @@ jobs:
         mv build/apk/*.apk build/apk/${{ steps.get_version.outputs.FILENAME }}
 
     - name: Create Draft Release
-      uses: softprops/action-gh-release@v2.0.6
+      uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
