@@ -81,6 +81,9 @@ function(sorter_acquire_dependency name version url sha256 result)
   elseif(SORTER_DEPENDENCIES_OFFLINE)
     message(FATAL_ERROR "Dependency offline cache is missing: ${archive}. Download ${url} on an allowed connection, verify SHA256 ${sha256}, and place it at this path.")
   else()
+    # A build tree restored without the archive cache still holds population
+    # stamps that would skip the download. Discard them so it runs again.
+    file(REMOVE_RECURSE "${CMAKE_BINARY_DIR}/_deps/sorter_${name}-subbuild")
     set(location "${url}")
   endif()
   # Offline is enforced by selecting a verified local archive. CMake's generic
