@@ -56,7 +56,9 @@ impl ProjectLink {
     pub fn url(self) -> &'static str {
         match self {
             Self::Website => "https://singles-sorter.ze-kal.top",
-            Self::Feedback => "https://docs.google.com/forms/d/e/1FAIpQLScOaX1wWW1YXXlX4cylMA6LWpO7yIb2fStmjzfSqmLc_V9CIw/viewform?usp=sf_link",
+            Self::Feedback => {
+                "https://docs.google.com/forms/d/e/1FAIpQLScOaX1wWW1YXXlX4cylMA6LWpO7yIb2fStmjzfSqmLc_V9CIw/viewform?usp=sf_link"
+            }
             Self::Source => "https://github.com/NHLOCAL/Singles-Sorter",
             Self::License => "https://github.com/NHLOCAL/Singles-Sorter/blob/main/LICENSE",
         }
@@ -923,14 +925,22 @@ fn recognition(
                 "Original model directory missing",
             )
         })?;
-        let provider = sorter_recognition::OriginalRecognition::load(directory, sorter_recognition::BUNDLE_ID,
-            sorter_recognition::Limits::default(), cancellation.recognition.clone()).map_err(|error| match error {
-                sorter_core::job_plan::RecognitionError::Abort(abort) => {
-                    let error: sorter_core::job_plan::JobError = abort.into();
-                    HostError::new(&error.code, error.detail)
-                }
-                _ => HostError::new("RECOGNITION_UNAVAILABLE", "מודל ה-AI חסר או פגום. הבדיקה לא הופעלה."),
-            })?;
+        let provider = sorter_recognition::OriginalRecognition::load(
+            directory,
+            sorter_recognition::BUNDLE_ID,
+            sorter_recognition::Limits::default(),
+            cancellation.recognition.clone(),
+        )
+        .map_err(|error| match error {
+            sorter_core::job_plan::RecognitionError::Abort(abort) => {
+                let error: sorter_core::job_plan::JobError = abort.into();
+                HostError::new(&error.code, error.detail)
+            }
+            _ => HostError::new(
+                "RECOGNITION_UNAVAILABLE",
+                "מודל ה-AI חסר או פגום. הבדיקה לא הופעלה.",
+            ),
+        })?;
         let resources = provider.resource_ids();
         let adapters = provider.adapter_versions();
         Ok((Box::new(provider), resources, adapters))
@@ -975,9 +985,7 @@ impl Host {
             available: result.is_ok(),
             platform: platform(),
             message: match result {
-                Ok(_) => {
-                    "מודל ה-AI מוכן.".into()
-                }
+                Ok(_) => "מודל ה-AI מוכן.".into(),
                 Err(error) => {
                     if cfg!(feature = "original-ai") {
                         error.message
