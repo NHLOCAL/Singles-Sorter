@@ -78,8 +78,14 @@ jobs:
           $accepted = Join-Path $env:RUNNER_TEMP 'accepted'
           $out = Join-Path $env:RUNNER_TEMP 'release'
           New-Item -ItemType Directory -Force $out | Out-Null
+          # An artifact keeps the folders below its files' common parent, so find each file by name.
+          function Find($artifact, $name) {
+            $found = @(Get-ChildItem (Join-Path $accepted "$artifact-$env:GITHUB_SHA") -Recurse -File -Filter $name)
+            if ($found.Count -ne 1) { throw "Expected exactly one $name in $artifact, found $($found.Count)" }
+            return $found[0].FullName
+          }
           function Accepted($artifact, $zip) {
-            $path = Join-Path $accepted "$artifact-$env:GITHUB_SHA/$zip"
+            $path = Find $artifact $zip
             $expected = ((Get-Content "$path.sha256" -Raw).Trim() -split '\s+')[0].ToLowerInvariant()
             if ((Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) { throw "Checksum mismatch: $zip" }
             return $path
@@ -88,9 +94,8 @@ jobs:
           $cli = Accepted 'original-ai-windows-x64-cli-preview' 'singles-sorter-original-ai-windows-x64-selected-cli.zip'
           Copy-Item $desktop (Join-Path $out "Singles-Sorter-Portable-$env:VERSION.zip")
           Copy-Item $cli (Join-Path $out "Singles-Sorter-CLI-$env:VERSION.zip")
-          $android = Join-Path $accepted "singles-sorter-15-android-$env:GITHUB_SHA"
-          $receipt = Get-Content (Join-Path $android "Singles-Sorter-$env:VERSION.signing.json") -Raw | ConvertFrom-Json
-          $apk = Join-Path $android "Singles-Sorter-$env:VERSION.apk"
+          $receipt = Get-Content (Find 'singles-sorter-15-android' "Singles-Sorter-$env:VERSION.signing.json") -Raw | ConvertFrom-Json
+          $apk = Find 'singles-sorter-15-android' "Singles-Sorter-$env:VERSION.apk"
           if ($receipt.qa_only -or $receipt.certificate_sha256 -ne $env:CERTIFICATE) { throw 'APK is not signed by the permanent identity' }
           if ((Get-FileHash $apk -Algorithm SHA256).Hash.ToLowerInvariant() -ne $receipt.apk_sha256) { throw 'APK does not match its signing receipt' }
           Copy-Item $apk $out

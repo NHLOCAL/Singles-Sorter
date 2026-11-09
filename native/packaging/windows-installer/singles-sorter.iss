@@ -1,4 +1,4 @@
-; Compiled by .github/workflows/release-v15.yml from an already-accepted desktop package.
+﻿; Compiled by .github/workflows/release-v15.yml from an already-accepted desktop package.
 ; Required defines: MyAppVersion, MyAppId, PackageDir, OutputDir, RepoRoot.
 #define MyAppName "מסדר הסינגלים"
 #define MyAppPublisher "nhlocal"
