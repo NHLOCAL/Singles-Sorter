@@ -464,7 +464,7 @@
   ],
   "root_package": "sorter-cli",
   "lock_path": "native/Cargo.lock",
-  "lock_sha256_lf": "3b1974bbc3d2b16296b0aba5494350ad9687b3ba2d22b7231ac665cef1caa4bf",
+  "lock_sha256_lf": "c822877dc0ee4bbf2e03619bc9fc76dd8133170d95655355d851967898821dc6",
   "graph": [
     {
       "package": "block-buffer@0.10.4",

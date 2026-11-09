@@ -9,7 +9,7 @@
     "tauri/custom-protocol"
   ],
   "lock_path": "native/apps/singles-ui/src-tauri/Cargo.lock",
-  "lock_sha256_lf": "260506768409370a5231628f84eac403a7f2d8d4c619cf90f9c216f48d7d0bbc",
+  "lock_sha256_lf": "74dfd3272bb450d5765c9c627b0610d08c48ebdbae037c7c31a89dbfac90a44a",
   "scope": "singles-ui-host desktop+original-ai+selected-windows-execution+tauri/custom-protocol Windows normal and build dependency closure; no dev-only edges; full features and identity graph pinned",
   "packages": [
     {

@@ -135,7 +135,7 @@ adds the local executor and host dependency edge, with no registry version drift
 Selected metadata SHA256:
 `e2c25b36bf845ad0d2b035d6ddd31d9841c170cbf9001e1cb56965b14645e8c4`.
 The reviewed LF-normalized Cargo.lock SHA256 is
-`260506768409370a5231628f84eac403a7f2d8d4c619cf90f9c216f48d7d0bbc`.
+`74dfd3272bb450d5765c9c627b0610d08c48ebdbae037c7c31a89dbfac90a44a`.
 The policy now pins the actual default-enabled combined feature graph used by
 Tauri's production build and the collector. Runtime archive/checksum/full-notice
 checks are unchanged. This resolution review does not establish Windows runtime

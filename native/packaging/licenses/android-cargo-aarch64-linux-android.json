@@ -2,7 +2,7 @@
   "target": "aarch64-linux-android",
   "root_package": "singles-android-inference",
   "required_root_feature": "product",
-  "lock_sha256_lf": "cd4cef32fbb8d2bd41512abb3bac47ea2683df82ef0536780f10e204f27a9705",
+  "lock_sha256_lf": "b654a7ef8ffe36032586fd3998b3d8b85a870b28622ec6b90ec4bc884bcdd4f4",
   "packages": [
     {
       "name": "bitflags",

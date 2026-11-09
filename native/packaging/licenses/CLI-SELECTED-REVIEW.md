@@ -13,7 +13,7 @@ Windows target and default-enabled original-AI + selected-execution features.
 - The profile/feature dependency differences are confined to the CLI, executor
   and I/O nodes. The complete measured selected graph is now pinned, alongside
   the unchanged normalized workspace lock SHA-256
-  `3b1974bbc3d2b16296b0aba5494350ad9687b3ba2d22b7231ac665cef1caa4bf`.
+  `c822877dc0ee4bbf2e03619bc9fc76dd8133170d95655355d851967898821dc6`.
 - Old metadata SHA-256:
   `3f0e71fee628d45d0745fa8e1e903069bd78f62ea24c101b40778533d8034e7a`.
 - Selected metadata SHA-256:
