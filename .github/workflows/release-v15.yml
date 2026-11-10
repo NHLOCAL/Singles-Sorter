@@ -117,10 +117,18 @@ jobs:
         run: |
           $target = Join-Path $env:RUNNER_TEMP 'installed app'
           $setup = Join-Path $env:RELEASE_DIR "Singles-Sorter-Installer-$env:VERSION.exe"
-          $process = Start-Process $setup -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER',"/DIR=$target" -Wait -PassThru
-          if ($process.ExitCode -ne 0) { throw "Installer exit $($process.ExitCode)" }
-          foreach ($file in 'singles-sorter-desktop.exe','models/original/manifest.json') {
-            if (-not (Test-Path (Join-Path $target $file))) { throw "Installed file missing: $file" }
+          $log = Join-Path $env:RUNNER_TEMP 'installer.log'
+          # Start-Process joins arguments without adding quotes around paths.
+          $arguments = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CURRENTUSER /DIR="{0}" /LOG="{1}"' -f $target, $log
+          try {
+            $process = Start-Process $setup -ArgumentList $arguments -Wait -PassThru
+            if ($process.ExitCode -ne 0) { throw "Installer exit $($process.ExitCode)" }
+            foreach ($file in 'singles-sorter-desktop.exe','models/original/manifest.json') {
+              if (-not (Test-Path (Join-Path $target $file))) { throw "Installed file missing: $file" }
+            }
+          } catch {
+            if (Test-Path $log) { Get-Content $log }
+            throw
           }
           $process = Start-Process (Join-Path $target 'unins000.exe') -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -PassThru
           if ($process.ExitCode -ne 0) { throw "Uninstaller exit $($process.ExitCode)" }
