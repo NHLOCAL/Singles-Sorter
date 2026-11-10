@@ -1,5 +1,0 @@
-plyer
-pyjnius
-Requests
-sseclient
-

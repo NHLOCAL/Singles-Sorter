@@ -1,0 +1,7 @@
+{
+  "identifier": "main-read-only",
+  "description": "Only the bundled main view can inspect read-only music plans, manage its separate development profile, and use explicit CSV import/export dialogs.",
+  "local": true,
+  "windows": ["main"],
+  "permissions": ["allow-preview-commands"]
+}

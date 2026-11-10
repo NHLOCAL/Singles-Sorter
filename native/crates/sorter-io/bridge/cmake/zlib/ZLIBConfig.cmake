@@ -1,0 +1,13 @@
+# Owned adapter to the pinned upstream zlibstatic target, not a second build.
+if(NOT TARGET zlibstatic)
+  message(FATAL_ERROR "Pinned zlib target must exist before resolving ZLIB")
+endif()
+if(NOT TARGET ZLIB::ZLIB)
+  add_library(ZLIB::ZLIB INTERFACE IMPORTED GLOBAL)
+  set_target_properties(ZLIB::ZLIB PROPERTIES INTERFACE_LINK_LIBRARIES zlibstatic)
+endif()
+set(ZLIB_FOUND TRUE)
+set(ZLIB_VERSION "1.3.1")
+set(ZLIB_VERSION_STRING "1.3.1")
+set(ZLIB_LIBRARIES ZLIB::ZLIB)
+set(ZLIB_INCLUDE_DIRS "${CMAKE_BINARY_DIR}/deps/zlib-1.3.1;${CMAKE_BINARY_DIR}/zlib-build")

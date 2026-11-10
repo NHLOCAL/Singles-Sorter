@@ -1,0 +1,1 @@
+{"schema_version":1,"status":"ok","result":{"command":"classify","inference_executed":false,"executable":false,"decision":{"provenance":"supplied_facts","artists":["אמן ראשון"],"selected_by":"filename_alias","trace":[{"kind":"alias_selected","source":"filename_alias","index":0},{"kind":"metadata_read_observed","failed":false}],"warnings":[],"apply_blockers":[]}},"error":null}

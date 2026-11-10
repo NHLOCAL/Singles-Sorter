@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "context": {
+    "ruleset_id": "singles-v14.0",
+    "settings": {},
+    "aliases": [
+      {
+        "source": "אמן",
+        "target": "אמן ראשון"
+      },
+      {
+        "source": "אמן",
+        "target": "אמן שני"
+      }
+    ],
+    "recognition": {
+      "kind": "disabled"
+    }
+  },
+  "songs": [
+    {
+      "source_id": "song-1",
+      "filename": "אמן - שיר.mp3",
+      "metadata": {
+        "kind": "present",
+        "artist": "אמן שני",
+        "title": "שיר"
+      }
+    },
+    {
+      "source_id": "song-2",
+      "filename": "אמן - שיר.mp3",
+      "metadata": {
+        "kind": "present",
+        "artist": "אמן שני",
+        "title": "שיר"
+      }
+    }
+  ],
+  "target": {
+    "root_id": "logical-target",
+    "existing_directories": [],
+    "existing_files": [
+      [
+        "אמן ראשון",
+        "סינגלים",
+        "אמן - שיר.mp3"
+      ]
+    ]
+  }
+}

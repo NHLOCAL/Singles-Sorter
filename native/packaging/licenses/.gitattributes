@@ -1,0 +1,2 @@
+# Preserve exact upstream license text, including original trailing spaces.
+desktop-upstream/** whitespace=-blank-at-eol

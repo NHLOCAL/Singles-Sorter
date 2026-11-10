@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Hash-bound historical journal fixture must retain exact LF bytes on Windows.
+/native/crates/sorter-executor/tests/fixtures/physical-copy-v2-before-metadata.jsonl text eol=lf

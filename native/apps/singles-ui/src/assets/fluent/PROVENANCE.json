@@ -1,0 +1,28 @@
+{
+  "package": "@fluentui/svg-icons",
+  "version": "1.1.344",
+  "source": "https://registry.npmjs.org/@fluentui/svg-icons/-/svg-icons-1.1.344.tgz",
+  "tarball_sha512": "adab236aae21057cd14b6e69498f606aac18ecd76f6490b3ec6febb69c05ea60a683647ef539f248b8476d1fac3a990c3ff2030c6dbc5efc5170d110fe5258a1",
+  "license": "MIT; public/licenses/fluent-system-icons-MIT.txt",
+  "selection": "Unmodified 20px regular SVG subset, imported statically; no runtime catalog or network fetch",
+  "files": {
+    "folder_open_20_regular.svg": "ed56c692301eba6af0415171afdd55ff11577206e739b2887f60047935ff5a6a",
+    "dismiss_20_regular.svg": "3d95fdce4bb3a29b983377648e5528d73d965ed90409bce5fa096ef790b75ccb",
+    "settings_20_regular.svg": "082803991d9af2fdb934957c5c8cddb04885665c7669d73d0c3d3dfee7ac7e6a",
+    "folder_20_regular.svg": "d144cc84fe8997e44aede97843ba009454b5302e9d9827e01c6540e8eef4aaa8",
+    "arrow_left_20_regular.svg": "d94a8b83b6764b02c7e80a80d7854b37eaa2ce0b505f289ed2a0e3b2a1d2f82c",
+    "wrench_20_regular.svg": "35032e75227053783c0a35d87fdd3e99a8287b57175876e4ea04304e305ce554",
+    "more_horizontal_20_regular.svg": "d700fdb05f2b48ed931352413ce2fd110fbbaa77f661858568312d31aadd2cdf",
+    "add_20_regular.svg": "eace2d0d89e66e50d5c93cf82d21eb9e73a452dc370a76846d1f1802788dd71c",
+    "save_20_regular.svg": "c28f4f46d9a4ab46b1d39491b734ee41e84919b9ee6b67f2833a46682bf404af",
+    "delete_20_regular.svg": "117dd937dfea155b95a157489089b658bb0611c736cbad4e5339c8470d5a3b93",
+    "question_circle_20_regular.svg": "b42a01c3a7d4721158305403a563aa348bf47dce28f59919ee0caa2fb8648003",
+    "info_20_regular.svg": "b2171313057fcd3cffca9c20cf905a05977e63eebe5275bab4371b1f0d4a1ff8",
+    "arrow_sort_down_lines_20_regular.svg": "2f68afa08bf9a5613647513f4e46ec07aa91e900b7e42d42ccef22e5e94cf6f3",
+    "arrow_right_20_regular.svg": "be74746338292cc2bb120ab6fa119bf8d8065e4bdcd67baef406c3444368b08d",
+    "arrow_import_20_regular.svg": "aa324edaff9ce3b52abebded8937211344c4b6acec2a46242cd6521b4d7b936d",
+    "arrow_export_20_regular.svg": "02ae2c55ce1c831701cb5d00a9a5b2eb8dca757f070f2442df888cbf1461ff2f"
+  },
+  "registry_integrity": "sha512-rasjaq4hBXzRS25pSY9gaqwY7NdvZJCz7G/rtpwF6mCmg2R+9TnySLhHbR+sOpkMP/IDDG28XvxRcNEQ/lJYoQ==",
+  "integrity_verified_against": "Official npm dist.integrity metadata, read from the research npm cache"
+}

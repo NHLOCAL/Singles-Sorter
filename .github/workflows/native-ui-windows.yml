@@ -1,0 +1,256 @@
+name: Windows native UI acceptance
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-ui-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-ui:
+    runs-on: windows-2025
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: native/apps/singles-ui
+    env:
+      RUSTUP_TOOLCHAIN: '1.99.0'
+      CARGO_INCREMENTAL: '0'
+      CARGO_TARGET_DIR: ${{ github.workspace }}/native/apps/singles-ui/src-tauri/target
+      MSEDGEDRIVER_TELEMETRY_OPTOUT: '1'
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+    steps:
+      - name: Keep authenticated source bytes identical on Windows
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config --global core.autocrlf false
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git config --global core.eol lf
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check out reviewed sources
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout: |
+            native
+            .github/workflows
+
+      - name: Install pinned official Python for exports and driver tests
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12.10'
+
+      - name: Require FFmpeg and FFprobe before owned media helper tests
+        run: |
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+            choco install ffmpeg --yes --no-progress
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          foreach ($tool in @('ffmpeg', 'ffprobe')) {
+            if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) { throw "$tool must be available; decoder tests cannot be skipped" }
+            & $tool -version
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+      - name: Fetch hash-pinned official portable least-privilege launcher
+        run: |
+          $directory = Join-Path $env:RUNNER_TEMP 'singles-ui-gsudo-2.6.1'
+          New-Item -ItemType Directory -Force $directory | Out-Null
+          $archive = Join-Path $directory 'gsudo.portable.zip'
+          Invoke-WebRequest 'https://github.com/gerardog/gsudo/releases/download/v2.6.1/gsudo.portable.zip' -OutFile $archive
+          $expected = '21130bf178d7b9891207f00bff56f05b6b363ce9cec7b2d084e45fb12ee51f44'
+          if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) {
+            throw 'Official portable gsudo archive hash mismatch'
+          }
+          Expand-Archive $archive -DestinationPath $directory
+          $launcher = Join-Path $directory 'x64/gsudo.exe'
+          if (-not (Test-Path $launcher)) { throw 'Pinned x64 launcher missing' }
+          "SINGLES_GSUDO_EXE=$launcher" >> $env:GITHUB_ENV
+
+      - name: Verify effective normal-user rights before compilation
+        run: python tests/run_desktop_medium.py --preflight
+
+      - name: Locate the driver installation
+        run: |
+          "TAURI_DRIVER_ROOT=$env:RUNNER_TEMP/singles-ui-tauri-driver-2.1.0" >> $env:GITHUB_ENV
+
+      - name: Install pinned official Rust toolchain
+        run: rustup toolchain install 1.99.0 --profile minimal
+
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: native/apps/singles-ui/src-tauri -> target
+
+      - name: Restore pinned official tauri-driver installation
+        id: driver-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ env.TAURI_DRIVER_ROOT }}/bin/tauri-driver.exe
+            ${{ env.TAURI_DRIVER_ROOT }}/.crates.toml
+            ${{ env.TAURI_DRIVER_ROOT }}/.crates2.json
+          key: native-ui-tauri-driver-2.1.0-v2-${{ runner.os }}
+
+      - name: Verify runner tools and matching Edge driver
+        run: |
+          node -e "const [major,minor]=process.versions.node.split('.').map(Number); if(major<22 || (major===22&&minor<12)) process.exit(1)"
+          if ($LASTEXITCODE -ne 0) { throw 'Runner Node must be 22.12 or newer' }
+          if (-not $env:EDGEWEBDRIVER) { throw 'Official runner Edge driver directory missing' }
+          $driver = Join-Path $env:EDGEWEBDRIVER 'msedgedriver.exe'
+          if (-not (Test-Path $driver)) { throw 'Official runner Edge driver missing' }
+          $edge = Join-Path ${env:ProgramFiles(x86)} 'Microsoft/Edge/Application/msedge.exe'
+          $edgeVersion = (Get-Item $edge).VersionInfo.ProductVersion
+          $driverOutput = (& $driver --version | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'Edge driver version command failed' }
+          $versionMatches = [regex]::Matches($driverOutput, '\b[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\b')
+          if ($versionMatches.Count -ne 1) { throw "Unrecognized Edge driver version banner: $driverOutput" }
+          $driverVersion = $versionMatches[0].Value
+          if (($edgeVersion.Split('.')[0..2] -join '.') -ne ($driverVersion.Split('.')[0..2] -join '.')) {
+            throw "Edge/driver version mismatch: $edgeVersion / $driverVersion"
+          }
+          $env:EDGEWEBDRIVER >> $env:GITHUB_PATH
+          Write-Output "Edge $edgeVersion; driver $driverVersion"
+          cmake --version
+          if ($LASTEXITCODE -ne 0) { throw 'Official runner CMake missing' }
+
+      - name: Install locked frontend and official test tools
+        run: |
+          npm ci
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install pywinauto==0.6.9
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Install and verify exact tauri-driver receipt
+        run: |
+          $driver = Join-Path $env:TAURI_DRIVER_ROOT 'bin/tauri-driver.exe'
+          if (-not (Test-Path $driver)) {
+            cargo install tauri-driver --version '=2.1.0' --locked --root $env:TAURI_DRIVER_ROOT --target-dir "$env:RUNNER_TEMP/tauri-driver-build"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          # This version has no --version flag. Cargo records the exact installed version.
+          $installed = (& cargo install --list --root $env:TAURI_DRIVER_ROOT | Out-String)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($installed -notmatch '(?m)^tauri-driver v2\.1\.0:\r?$') {
+            throw 'Pinned tauri-driver 2.1.0 install receipt missing or mismatched'
+          }
+          & $driver --help
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          (Join-Path $env:TAURI_DRIVER_ROOT 'bin') >> $env:GITHUB_PATH
+
+      - name: Save verified driver
+        if: steps.driver-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ env.TAURI_DRIVER_ROOT }}/bin/tauri-driver.exe
+            ${{ env.TAURI_DRIVER_ROOT }}/.crates.toml
+            ${{ env.TAURI_DRIVER_ROOT }}/.crates2.json
+          key: ${{ steps.driver-cache.outputs.cache-primary-key }}
+
+      - name: Read only the pinned public original baseline
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: NHLOCAL/Singles-Sorter
+          ref: 78d001aee5ce49628bdffebd34540fa83ba32c12
+          path: original-baseline
+          persist-credentials: false
+          sparse-checkout: src/core
+
+      - name: Prepare authenticated original assets and static PCRE2
+        working-directory: native
+        run: |
+          python -m pip install --only-binary=:all: --require-hashes --disable-pip-version-check -r probes/released-ner/oracle-requirements.txt -r crates/sorter-classifier/tools/oracle-requirements.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python probes/released-ner/check_oracle_runtime.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python probes/released-ner/released-ner-export/export.py --model "$env:GITHUB_WORKSPACE/original-baseline/src/core/models/singer_ner_he" --out target/desktop-original/bundle --suite platform
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python probes/released-ner/released-ner-export/verify.py target/desktop-original/bundle
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python probes/released-ner/check_oracle_golden.py target/desktop-original/bundle
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python crates/sorter-classifier/tools/export_original.py --baseline "$env:GITHUB_WORKSPACE/original-baseline" --output target/desktop-original/bundle
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python probes/released-ner/acquire_pcre2.py --out target/desktop-original/pcre2 --build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "PCRE2_STATIC_DIR=$((Resolve-Path target/desktop-original/pcre2/install/lib).Path)" >> $env:GITHUB_ENV
+
+      - name: Build original-AI and selected-execution desktop through pinned Tauri CLI
+        run: |
+          npm run build:desktop -- --ci --features original-ai,selected-windows-execution -- --locked
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Stage only reviewed desktop runtime, exact models and full notices
+        run: |
+          $out = '../../target/desktop-original'
+          $compilerFiles = @(Get-ChildItem src-tauri/target/release/build/sorter-io-*/out/taglib/CMakeFiles/*/CMakeCXXCompiler.cmake)
+          if ($compilerFiles.Count -lt 1) { throw 'Missing native compiler identity' }
+          $identity = @('Native static TagLib/zlib/PCRE2; dynamic MSVC CRT', (cmake --version))
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($file in $compilerFiles) {
+            $identity += Get-Content $file | Where-Object { $_ -match '^set\(CMAKE_CXX_(COMPILER_ID |COMPILER_VERSION |COMPILER_ARCHITECTURE_ID |SIMULATE_ID |SIMULATE_VERSION |COMPILER_FRONTEND_VARIANT )' }
+          }
+          $identity | Set-Content -Encoding utf8 "$out/native-build-info.txt"
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $dumpbin = @(& $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find 'VC\Tools\MSVC\**\bin\Hostx64\x64\dumpbin.exe') | Select-Object -Last 1
+          if (-not $dumpbin) { throw 'Official MSVC dumpbin unavailable' }
+          & $dumpbin /dependents src-tauri/target/release/singles-sorter-desktop.exe | Set-Content -Encoding utf8 "$out/dumpbin-dependents.txt"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python ../../packaging/windows-desktop-preview/package_desktop.py build --binary src-tauri/target/release/singles-sorter-desktop.exe --bundle "$out/bundle" --pcre2-receipt "$out/pcre2/build-receipt.json" --build-info "$out/native-build-info.txt" --dumpbin-report "$out/dumpbin-dependents.txt" --ci-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" --output "$out/windows-desktop-preview"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Package and extract the exact release candidate
+        run: |
+          python ../../packaging/windows-desktop-preview/package_desktop.py archive --package ../../target/desktop-original/windows-desktop-preview --output ../../target/desktop-original/singles-sorter-original-ai-windows-x64-selected-desktop.zip
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Expand-Archive -LiteralPath ../../target/desktop-original/singles-sorter-original-ai-windows-x64-selected-desktop.zip -DestinationPath '../../target/desktop-original/תצוגה חדשה extracted'
+
+      - name: Exercise extracted original-AI desktop and actual selected Copy Move and FixNames
+        env:
+          SINGLES_DESKTOP_AI_EXPECTED: 'on'
+          SINGLES_DESKTOP_APPLY_EXPECTED: 'on'
+          SINGLES_DESKTOP_RECOVERY_EXPECTED: 'on'
+          SINGLES_DESKTOP_BIN: ${{ github.workspace }}/native/target/desktop-original/תצוגה חדשה extracted/singles-sorter-desktop.exe
+          SINGLES_UI_OUTPUT: ${{ github.workspace }}/native/apps/singles-ui/test-results/native-windows/original-extracted
+        run: |
+          python tests/run_desktop_medium.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python ../../packaging/windows-desktop-preview/package_desktop.py verify --package '../../target/desktop-original/תצוגה חדשה extracted' --report test-results/native-windows/original-extracted/acceptance.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Retain verified original-AI selected-execution desktop package
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: original-ai-windows-x64-selected-desktop-${{ github.sha }}
+          path: |
+            native/target/desktop-original/singles-sorter-original-ai-windows-x64-selected-desktop.zip
+            native/target/desktop-original/singles-sorter-original-ai-windows-x64-selected-desktop.zip.sha256
+            native/apps/singles-ui/test-results/native-windows/original-extracted/acceptance.json
+          if-no-files-found: error
+          retention-days: 7
+          include-hidden-files: false
+          overwrite: false
+
+      - name: Upload actual runtime evidence, including failures
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: singles-native-ui-evidence-${{ github.run_attempt }}
+          path: native/apps/singles-ui/test-results/native-windows/
+          if-no-files-found: warn
+          retention-days: 7
+          include-hidden-files: false
+          overwrite: false

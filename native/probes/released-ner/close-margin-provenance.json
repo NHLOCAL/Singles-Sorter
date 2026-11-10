@@ -1,0 +1,23 @@
+{
+  "source_artifact": "released-ner-review/independent-fixtures.json",
+  "source_sha256": "2e4d62136b2a661176efc79a6f796d5ad1fc1400c36a0f23aabf572d0b1e8799",
+  "fixture_id": 247,
+  "text_utf8_sha256": "49216e8243be39fb25ff9310599c498a12fa1eee6e0e8837e8430729c5f7364a",
+  "text_codepoints": [
+    2407,
+    2408,
+    10,
+    1488,
+    1500,
+    1489,
+    1493,
+    1501,
+    45,
+    1488,
+    1489,
+    1512,
+    1492,
+    1501
+  ],
+  "note": "Authoritative original text contains actual U+000A, not literal backslash-n; copied without changing data."
+}

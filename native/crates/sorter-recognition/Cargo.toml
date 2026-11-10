@@ -1,0 +1,19 @@
+[package]
+name = "sorter-recognition"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+sorter-core.workspace = true
+sorter-classifier = { path = "../sorter-classifier" }
+released-ner-probe = { path = "../../probes/released-ner/released-ner-math" }
+released-ner-text = { path = "../../probes/released-ner/released-ner-text" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+
+[build-dependencies]
+sha2.workspace = true

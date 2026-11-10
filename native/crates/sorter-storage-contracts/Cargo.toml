@@ -1,0 +1,10 @@
+[package]
+name = "sorter-storage-contracts"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+sorter-core.workspace = true
+serde.workspace = true

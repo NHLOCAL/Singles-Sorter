@@ -1,0 +1,28 @@
+[package]
+name = "sorter-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "singles-sorter"
+path = "src/main.rs"
+
+[features]
+default = []
+original-ai = ["dep:sorter-recognition"]
+selected-windows-execution = ["dep:sorter-executor", "sorter-executor/selected-windows-execution"]
+
+[dependencies]
+sorter-recognition = { path = "../sorter-recognition", optional = true }
+sorter-executor = { path = "../sorter-executor", optional = true }
+sorter-io = { path = "../sorter-io" }
+sha2.workspace = true
+sorter-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+tempfile = "=3.27.0"
+sha2.workspace = true

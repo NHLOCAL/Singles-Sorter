@@ -1,0 +1,1377 @@
+{
+  "schema": "released-ner-v1",
+  "release": "78d001aee5ce49628bdffebd34540fa83ba32c12",
+  "model_sha256": "5f0d50400f685c3992a21d395f7fab30b45ca3a9968383c24044ff4478ec865e",
+  "dtype": "<f4",
+  "order": "C",
+  "graph": [
+    {
+      "node": 0,
+      "name": "parser_model",
+      "layers": [
+        1,
+        2,
+        3
+      ],
+      "dims": {},
+      "attrs": {
+        "has_upper": true,
+        "unseen_classes": [],
+        "resize_output": {
+          "callable": "spacy.ml.models.parser.resize_output"
+        }
+      },
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 1,
+      "name": "extract_features>>list2ragged>>with_array(ints-getitem>>hashembed|ints-getitem>>hashembed|ints-getitem>>hashembed|ints-getitem>>hashembed)>>with_array(maxout>>layernorm>>dropout)>>ragged2list>>with_array(residual(expand_window>>maxout>>layernorm>>dropout)>>residual(expand_window>>maxout>>layernorm>>dropout)>>residual(expand_window>>maxout>>layernorm>>dropout)>>residual(expand_window>>maxout>>layernorm>>dropout))>>list2array>>linear",
+      "layers": [
+        4,
+        5,
+        6
+      ],
+      "dims": {
+        "nO": 64
+      },
+      "attrs": {},
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 2,
+      "name": "precomputable_affine",
+      "layers": [],
+      "dims": {
+        "nO": 64,
+        "nI": 64,
+        "nF": 3,
+        "nP": 2
+      },
+      "attrs": {
+        "dropout_rate": 0.35
+      },
+      "params": [
+        "W",
+        "b",
+        "pad"
+      ],
+      "shims": 0
+    },
+    {
+      "node": 3,
+      "name": "linear",
+      "layers": [],
+      "dims": {
+        "nO": 22,
+        "nI": 64
+      },
+      "attrs": {},
+      "params": [
+        "W",
+        "b"
+      ],
+      "shims": 0
+    },
+    {
+      "node": 4,
+      "name": "extract_features>>list2ragged>>with_array(ints-getitem>>hashembed|ints-getitem>>hashembed|ints-getitem>>hashembed|ints-getitem>>hashembed)>>with_array(maxout>>layernorm>>dropout)>>ragged2list>>with_array(residual(expand_window>>maxout>>layernorm>>dropout)>>residual(expand_window>>maxout>>layernorm>>dropout)>>residual(expand_window>>maxout>>layernorm>>dropout)>>residual(expand_window>>maxout>>layernorm>>dropout))",
+      "layers": [
+        7,
+        8
+      ],
+      "dims": {
+        "nO": 96
+      },
+      "attrs": {},
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 5,
+      "name": "list2array",
+      "layers": [],
+      "dims": {},
+      "attrs": {},
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 6,
+      "name": "linear",
+      "layers": [],
+      "dims": {
+        "nO": 64,
+        "nI": 96
+      },
+      "attrs": {},
+      "params": [
+        "W",
+        "b"
+      ],
+      "shims": 0
+    },
+    {
+      "node": 7,
+      "name": "extract_features>>list2ragged>>with_array(ints-getitem>>hashembed|ints-getitem>>hashembed|ints-getitem>>hashembed|ints-getitem>>hashembed)>>with_array(maxout>>layernorm>>dropout)>>ragged2list",
+      "layers": [
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "dims": {
+        "nO": 96
+      },
+      "attrs": {},
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 8,
+      "name": "with_array(residual(expand_window>>maxout>>layernorm>>dropout)>>residual(expand_window>>maxout>>layernorm>>dropout)>>residual(expand_window>>maxout>>layernorm>>dropout)>>residual(expand_window>>maxout>>layernorm>>dropout))",
+      "layers": [
+        14
+      ],
+      "dims": {
+        "nO": 96
+      },
+      "attrs": {
+        "pad": 4
+      },
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 9,
+      "name": "extract_features",
+      "layers": [],
+      "dims": {},
+      "attrs": {
+        "columns": [
+          "NORM",
+          "PREFIX",
+          "SUFFIX",
+          "SHAPE"
+        ]
+      },
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 10,
+      "name": "list2ragged",
+      "layers": [],
+      "dims": {},
+      "attrs": {},
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 11,
+      "name": "with_array(ints-getitem>>hashembed|ints-getitem>>hashembed|ints-getitem>>hashembed|ints-getitem>>hashembed)",
+      "layers": [
+        15
+      ],
+      "dims": {
+        "nO": 384
+      },
+      "attrs": {
+        "pad": 0
+      },
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 12,
+      "name": "with_array(maxout>>layernorm>>dropout)",
+      "layers": [
+        16
+      ],
+      "dims": {
+        "nO": 96,
+        "nI": 384
+      },
+      "attrs": {
+        "pad": 0
+      },
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 13,
+      "name": "ragged2list",
+      "layers": [],
+      "dims": {},
+      "attrs": {},
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 14,
+      "name": "residual(expand_window>>maxout>>layernorm>>dropout)>>residual(expand_window>>maxout>>layernorm>>dropout)>>residual(expand_window>>maxout>>layernorm>>dropout)>>residual(expand_window>>maxout>>layernorm>>dropout)",
+      "layers": [
+        17,
+        18,
+        19,
+        20
+      ],
+      "dims": {
+        "nO": 96
+      },
+      "attrs": {},
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 15,
+      "name": "ints-getitem>>hashembed|ints-getitem>>hashembed|ints-getitem>>hashembed|ints-getitem>>hashembed",
+      "layers": [
+        21,
+        22,
+        23,
+        24
+      ],
+      "dims": {
+        "nO": 384
+      },
+      "attrs": {},
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 16,
+      "name": "maxout>>layernorm>>dropout",
+      "layers": [
+        25,
+        26
+      ],
+      "dims": {
+        "nO": 96,
+        "nI": 384
+      },
+      "attrs": {},
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 17,
+      "name": "residual(expand_window>>maxout>>layernorm>>dropout)",
+      "layers": [
+        27
+      ],
+      "dims": {
+        "nO": 96
+      },
+      "attrs": {},
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 18,
+      "name": "residual(expand_window>>maxout>>layernorm>>dropout)",
+      "layers": [
+        28
+      ],
+      "dims": {
+        "nO": 96
+      },
+      "attrs": {},
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 19,
+      "name": "residual(expand_window>>maxout>>layernorm>>dropout)",
+      "layers": [
+        29
+      ],
+      "dims": {
+        "nO": 96
+      },
+      "attrs": {},
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 20,
+      "name": "residual(expand_window>>maxout>>layernorm>>dropout)",
+      "layers": [
+        30
+      ],
+      "dims": {
+        "nO": 96
+      },
+      "attrs": {},
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 21,
+      "name": "ints-getitem>>hashembed",
+      "layers": [
+        31,
+        32
+      ],
+      "dims": {
+        "nO": 96
+      },
+      "attrs": {
+        "column": 0
+      },
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 22,
+      "name": "ints-getitem>>hashembed",
+      "layers": [
+        33,
+        34
+      ],
+      "dims": {
+        "nO": 96
+      },
+      "attrs": {
+        "column": 1
+      },
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 23,
+      "name": "ints-getitem>>hashembed",
+      "layers": [
+        35,
+        36
+      ],
+      "dims": {
+        "nO": 96
+      },
+      "attrs": {
+        "column": 2
+      },
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 24,
+      "name": "ints-getitem>>hashembed",
+      "layers": [
+        37,
+        38
+      ],
+      "dims": {
+        "nO": 96
+      },
+      "attrs": {
+        "column": 3
+      },
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 25,
+      "name": "maxout>>layernorm",
+      "layers": [
+        39,
+        40
+      ],
+      "dims": {
+        "nO": 96,
+        "nI": 384
+      },
+      "attrs": {},
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 26,
+      "name": "dropout",
+      "layers": [],
+      "dims": {},
+      "attrs": {
+        "dropout_rate": 0.35,
+        "is_enabled": true
+      },
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 27,
+      "name": "expand_window>>maxout>>layernorm>>dropout",
+      "layers": [
+        41,
+        42
+      ],
+      "dims": {
+        "nO": 96
+      },
+      "attrs": {},
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 28,
+      "name": "expand_window>>maxout>>layernorm>>dropout",
+      "layers": [
+        43,
+        44
+      ],
+      "dims": {
+        "nO": 96
+      },
+      "attrs": {},
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 29,
+      "name": "expand_window>>maxout>>layernorm>>dropout",
+      "layers": [
+        45,
+        46
+      ],
+      "dims": {
+        "nO": 96
+      },
+      "attrs": {},
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 30,
+      "name": "expand_window>>maxout>>layernorm>>dropout",
+      "layers": [
+        47,
+        48
+      ],
+      "dims": {
+        "nO": 96
+      },
+      "attrs": {},
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 31,
+      "name": "ints-getitem",
+      "layers": [],
+      "dims": {},
+      "attrs": {
+        "index": "(slice(0, None, None), 0)"
+      },
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 32,
+      "name": "hashembed",
+      "layers": [],
+      "dims": {
+        "nO": 96,
+        "nV": 2000
+      },
+      "attrs": {
+        "column": 0,
+        "seed": 8,
+        "dropout_rate": 0.35
+      },
+      "params": [
+        "E"
+      ],
+      "shims": 0
+    },
+    {
+      "node": 33,
+      "name": "ints-getitem",
+      "layers": [],
+      "dims": {},
+      "attrs": {
+        "index": "(slice(0, None, None), 1)"
+      },
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 34,
+      "name": "hashembed",
+      "layers": [],
+      "dims": {
+        "nO": 96,
+        "nV": 1000
+      },
+      "attrs": {
+        "column": 1,
+        "seed": 9,
+        "dropout_rate": 0.35
+      },
+      "params": [
+        "E"
+      ],
+      "shims": 0
+    },
+    {
+      "node": 35,
+      "name": "ints-getitem",
+      "layers": [],
+      "dims": {},
+      "attrs": {
+        "index": "(slice(0, None, None), 2)"
+      },
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 36,
+      "name": "hashembed",
+      "layers": [],
+      "dims": {
+        "nO": 96,
+        "nV": 1000
+      },
+      "attrs": {
+        "column": 2,
+        "seed": 10,
+        "dropout_rate": 0.35
+      },
+      "params": [
+        "E"
+      ],
+      "shims": 0
+    },
+    {
+      "node": 37,
+      "name": "ints-getitem",
+      "layers": [],
+      "dims": {},
+      "attrs": {
+        "index": "(slice(0, None, None), 3)"
+      },
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 38,
+      "name": "hashembed",
+      "layers": [],
+      "dims": {
+        "nO": 96,
+        "nV": 1000
+      },
+      "attrs": {
+        "column": 3,
+        "seed": 11,
+        "dropout_rate": 0.35
+      },
+      "params": [
+        "E"
+      ],
+      "shims": 0
+    },
+    {
+      "node": 39,
+      "name": "maxout",
+      "layers": [],
+      "dims": {
+        "nO": 96,
+        "nI": 384,
+        "nP": 3
+      },
+      "attrs": {},
+      "params": [
+        "W",
+        "b"
+      ],
+      "shims": 0
+    },
+    {
+      "node": 40,
+      "name": "layernorm",
+      "layers": [],
+      "dims": {
+        "nI": 96,
+        "nO": 96
+      },
+      "attrs": {},
+      "params": [
+        "G",
+        "b"
+      ],
+      "shims": 0
+    },
+    {
+      "node": 41,
+      "name": "expand_window",
+      "layers": [],
+      "dims": {},
+      "attrs": {
+        "window_size": 1
+      },
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 42,
+      "name": "maxout>>layernorm>>dropout",
+      "layers": [
+        49,
+        50
+      ],
+      "dims": {
+        "nO": 96,
+        "nI": 288
+      },
+      "attrs": {},
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 43,
+      "name": "expand_window",
+      "layers": [],
+      "dims": {},
+      "attrs": {
+        "window_size": 1
+      },
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 44,
+      "name": "maxout>>layernorm>>dropout",
+      "layers": [
+        51,
+        52
+      ],
+      "dims": {
+        "nO": 96,
+        "nI": 288
+      },
+      "attrs": {},
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 45,
+      "name": "expand_window",
+      "layers": [],
+      "dims": {},
+      "attrs": {
+        "window_size": 1
+      },
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 46,
+      "name": "maxout>>layernorm>>dropout",
+      "layers": [
+        53,
+        54
+      ],
+      "dims": {
+        "nO": 96,
+        "nI": 288
+      },
+      "attrs": {},
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 47,
+      "name": "expand_window",
+      "layers": [],
+      "dims": {},
+      "attrs": {
+        "window_size": 1
+      },
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 48,
+      "name": "maxout>>layernorm>>dropout",
+      "layers": [
+        55,
+        56
+      ],
+      "dims": {
+        "nO": 96,
+        "nI": 288
+      },
+      "attrs": {},
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 49,
+      "name": "maxout>>layernorm",
+      "layers": [
+        57,
+        58
+      ],
+      "dims": {
+        "nO": 96,
+        "nI": 288
+      },
+      "attrs": {},
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 50,
+      "name": "dropout",
+      "layers": [],
+      "dims": {},
+      "attrs": {
+        "dropout_rate": 0.35,
+        "is_enabled": true
+      },
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 51,
+      "name": "maxout>>layernorm",
+      "layers": [
+        59,
+        60
+      ],
+      "dims": {
+        "nO": 96,
+        "nI": 288
+      },
+      "attrs": {},
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 52,
+      "name": "dropout",
+      "layers": [],
+      "dims": {},
+      "attrs": {
+        "dropout_rate": 0.35,
+        "is_enabled": true
+      },
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 53,
+      "name": "maxout>>layernorm",
+      "layers": [
+        61,
+        62
+      ],
+      "dims": {
+        "nO": 96,
+        "nI": 288
+      },
+      "attrs": {},
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 54,
+      "name": "dropout",
+      "layers": [],
+      "dims": {},
+      "attrs": {
+        "dropout_rate": 0.35,
+        "is_enabled": true
+      },
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 55,
+      "name": "maxout>>layernorm",
+      "layers": [
+        63,
+        64
+      ],
+      "dims": {
+        "nO": 96,
+        "nI": 288
+      },
+      "attrs": {},
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 56,
+      "name": "dropout",
+      "layers": [],
+      "dims": {},
+      "attrs": {
+        "dropout_rate": 0.35,
+        "is_enabled": true
+      },
+      "params": [],
+      "shims": 0
+    },
+    {
+      "node": 57,
+      "name": "maxout",
+      "layers": [],
+      "dims": {
+        "nO": 96,
+        "nI": 288,
+        "nP": 3
+      },
+      "attrs": {},
+      "params": [
+        "W",
+        "b"
+      ],
+      "shims": 0
+    },
+    {
+      "node": 58,
+      "name": "layernorm",
+      "layers": [],
+      "dims": {
+        "nI": 96,
+        "nO": 96
+      },
+      "attrs": {},
+      "params": [
+        "G",
+        "b"
+      ],
+      "shims": 0
+    },
+    {
+      "node": 59,
+      "name": "maxout",
+      "layers": [],
+      "dims": {
+        "nO": 96,
+        "nI": 288,
+        "nP": 3
+      },
+      "attrs": {},
+      "params": [
+        "W",
+        "b"
+      ],
+      "shims": 0
+    },
+    {
+      "node": 60,
+      "name": "layernorm",
+      "layers": [],
+      "dims": {
+        "nI": 96,
+        "nO": 96
+      },
+      "attrs": {},
+      "params": [
+        "G",
+        "b"
+      ],
+      "shims": 0
+    },
+    {
+      "node": 61,
+      "name": "maxout",
+      "layers": [],
+      "dims": {
+        "nO": 96,
+        "nI": 288,
+        "nP": 3
+      },
+      "attrs": {},
+      "params": [
+        "W",
+        "b"
+      ],
+      "shims": 0
+    },
+    {
+      "node": 62,
+      "name": "layernorm",
+      "layers": [],
+      "dims": {
+        "nI": 96,
+        "nO": 96
+      },
+      "attrs": {},
+      "params": [
+        "G",
+        "b"
+      ],
+      "shims": 0
+    },
+    {
+      "node": 63,
+      "name": "maxout",
+      "layers": [],
+      "dims": {
+        "nO": 96,
+        "nI": 288,
+        "nP": 3
+      },
+      "attrs": {},
+      "params": [
+        "W",
+        "b"
+      ],
+      "shims": 0
+    },
+    {
+      "node": 64,
+      "name": "layernorm",
+      "layers": [],
+      "dims": {
+        "nI": 96,
+        "nO": 96
+      },
+      "attrs": {},
+      "params": [
+        "G",
+        "b"
+      ],
+      "shims": 0
+    }
+  ],
+  "actions": [
+    "U-",
+    "O",
+    "B-SINGER",
+    "I-SINGER",
+    "L-SINGER",
+    "U-SINGER",
+    "B-SONG",
+    "I-SONG",
+    "L-SONG",
+    "U-SONG",
+    "B-MISC",
+    "I-MISC",
+    "L-MISC",
+    "U-MISC",
+    "B-ALBUM",
+    "I-ALBUM",
+    "L-ALBUM",
+    "U-ALBUM",
+    "B-GENRE",
+    "I-GENRE",
+    "L-GENRE",
+    "U-GENRE"
+  ],
+  "unseen_classes": [],
+  "features": [
+    "NORM",
+    "PREFIX",
+    "SUFFIX",
+    "SHAPE"
+  ],
+  "tensors": [
+    {
+      "node": 2,
+      "name": "precomputable_affine",
+      "param": "W",
+      "shape": [
+        3,
+        64,
+        2,
+        64
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 0,
+      "nbytes": 98304,
+      "sha256": "0f80a9352e51cd1305f8347f23868bbb834692a374190f44707a85713c35ae3f"
+    },
+    {
+      "node": 2,
+      "name": "precomputable_affine",
+      "param": "b",
+      "shape": [
+        64,
+        2
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 98304,
+      "nbytes": 512,
+      "sha256": "9a9e38b23aa735450025c8bb29df5ef662cf189b807ef960e0931f78b9b9e50f"
+    },
+    {
+      "node": 2,
+      "name": "precomputable_affine",
+      "param": "pad",
+      "shape": [
+        1,
+        3,
+        64,
+        2
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 98816,
+      "nbytes": 1536,
+      "sha256": "64ada422f060142ee762f95202be27a6ecb3db2ee7b454be39375b548a3a2406"
+    },
+    {
+      "node": 3,
+      "name": "linear",
+      "param": "W",
+      "shape": [
+        22,
+        64
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 100352,
+      "nbytes": 5632,
+      "sha256": "c8a319f3856afb002950ce0f68273ae72cb9d3482e721543ad20785f9bed5039"
+    },
+    {
+      "node": 3,
+      "name": "linear",
+      "param": "b",
+      "shape": [
+        22
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 105984,
+      "nbytes": 88,
+      "sha256": "636af9b5058b158869e779642acd1501883c2a1d40f847fe59c8c967d70f69c8"
+    },
+    {
+      "node": 6,
+      "name": "linear",
+      "param": "W",
+      "shape": [
+        64,
+        96
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 106072,
+      "nbytes": 24576,
+      "sha256": "789d34c31917b0d601fc8ef290f35bcb2f9529d58a2a547efbe8d2b0685b7a06"
+    },
+    {
+      "node": 6,
+      "name": "linear",
+      "param": "b",
+      "shape": [
+        64
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 130648,
+      "nbytes": 256,
+      "sha256": "a44ac1bf86197f1cfb688abcd42356d681ccac1a3a612d03fefe5593bcc337d9"
+    },
+    {
+      "node": 32,
+      "name": "hashembed",
+      "param": "E",
+      "shape": [
+        2000,
+        96
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 130904,
+      "nbytes": 768000,
+      "sha256": "66f8768b5be06224c1adf9ffdf0326f6e2b51ea2b4429fd0d991437325ae0078"
+    },
+    {
+      "node": 34,
+      "name": "hashembed",
+      "param": "E",
+      "shape": [
+        1000,
+        96
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 898904,
+      "nbytes": 384000,
+      "sha256": "50ce98cccb29f28a301b61ff691275cc893dcd1a00e015fe7333b1544e458b14"
+    },
+    {
+      "node": 36,
+      "name": "hashembed",
+      "param": "E",
+      "shape": [
+        1000,
+        96
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 1282904,
+      "nbytes": 384000,
+      "sha256": "4c9eb3894a134be99e2485b99f0751da629d2a62de96ea7eded0a2e608678db7"
+    },
+    {
+      "node": 38,
+      "name": "hashembed",
+      "param": "E",
+      "shape": [
+        1000,
+        96
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 1666904,
+      "nbytes": 384000,
+      "sha256": "5f75ecf9d8ab6d9fb6a08ed5e8b07878a5c896ff7e8147b4fd8584a5a4bf9667"
+    },
+    {
+      "node": 39,
+      "name": "maxout",
+      "param": "W",
+      "shape": [
+        96,
+        3,
+        384
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 2050904,
+      "nbytes": 442368,
+      "sha256": "240f596eed11a1ad8db97285272ea46821d86de83857367d3081253ee2e80618"
+    },
+    {
+      "node": 39,
+      "name": "maxout",
+      "param": "b",
+      "shape": [
+        96,
+        3
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 2493272,
+      "nbytes": 1152,
+      "sha256": "420ea2809fba684d12a2337a847b186598263833c8f2dafc2c9cdc9762d1ee8f"
+    },
+    {
+      "node": 40,
+      "name": "layernorm",
+      "param": "G",
+      "shape": [
+        96
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 2494424,
+      "nbytes": 384,
+      "sha256": "b1e160e06237f32752a450081acc5aae12d8dc8961281938b10da7935c0a591a"
+    },
+    {
+      "node": 40,
+      "name": "layernorm",
+      "param": "b",
+      "shape": [
+        96
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 2494808,
+      "nbytes": 384,
+      "sha256": "66cfaa0d1a7f606568c69cbe9b53db7346f61a308a2d360d028ed8d6d3124d2a"
+    },
+    {
+      "node": 57,
+      "name": "maxout",
+      "param": "W",
+      "shape": [
+        96,
+        3,
+        288
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 2495192,
+      "nbytes": 331776,
+      "sha256": "b73d3cc81dfff3f1f7d31a90f87931ea7d03f55f1c8532a8010138c159a7911b"
+    },
+    {
+      "node": 57,
+      "name": "maxout",
+      "param": "b",
+      "shape": [
+        96,
+        3
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 2826968,
+      "nbytes": 1152,
+      "sha256": "2cfdaa2a3b66d1c164bff7a9578eb7d84e72cd4048fd5410db20a60ea66c24d7"
+    },
+    {
+      "node": 58,
+      "name": "layernorm",
+      "param": "G",
+      "shape": [
+        96
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 2828120,
+      "nbytes": 384,
+      "sha256": "91f3e013217ef38a74e92b06a96e80c3275f6f9ff017aaef70f8c2ffc259d797"
+    },
+    {
+      "node": 58,
+      "name": "layernorm",
+      "param": "b",
+      "shape": [
+        96
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 2828504,
+      "nbytes": 384,
+      "sha256": "d80c44542da281b79089835d130d426fede829414a829a1a83ad16622c920262"
+    },
+    {
+      "node": 59,
+      "name": "maxout",
+      "param": "W",
+      "shape": [
+        96,
+        3,
+        288
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 2828888,
+      "nbytes": 331776,
+      "sha256": "8af96519a83e7b1dbd3a19acad00d70fea704e49620563c30cba208d489e1d1a"
+    },
+    {
+      "node": 59,
+      "name": "maxout",
+      "param": "b",
+      "shape": [
+        96,
+        3
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 3160664,
+      "nbytes": 1152,
+      "sha256": "08e8e81e490d7d5b622324a7999def94414d5bf687ad3f96184e6be73c2bce42"
+    },
+    {
+      "node": 60,
+      "name": "layernorm",
+      "param": "G",
+      "shape": [
+        96
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 3161816,
+      "nbytes": 384,
+      "sha256": "0c1dffdbf4411b022ac42dfcd385d2b8cc7ab2887c97bce46ced17ee2c1a43cd"
+    },
+    {
+      "node": 60,
+      "name": "layernorm",
+      "param": "b",
+      "shape": [
+        96
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 3162200,
+      "nbytes": 384,
+      "sha256": "fc6761157e6c8eaf4ab6d2812f21a5dfc0e0c8e0f51d83a9ede37d82a374fd07"
+    },
+    {
+      "node": 61,
+      "name": "maxout",
+      "param": "W",
+      "shape": [
+        96,
+        3,
+        288
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 3162584,
+      "nbytes": 331776,
+      "sha256": "21f9cde91b645cff6e923284b9c2d7275e796bf3106a5463badc6b4c9d905d0c"
+    },
+    {
+      "node": 61,
+      "name": "maxout",
+      "param": "b",
+      "shape": [
+        96,
+        3
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 3494360,
+      "nbytes": 1152,
+      "sha256": "a94e74bce4ea04a67dc065e965e80662f559978454649f0e99dad021432c6c17"
+    },
+    {
+      "node": 62,
+      "name": "layernorm",
+      "param": "G",
+      "shape": [
+        96
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 3495512,
+      "nbytes": 384,
+      "sha256": "8a93ac8de556da15d6f30404de3166d9e01fa3aa728e382f1591310ee20a743c"
+    },
+    {
+      "node": 62,
+      "name": "layernorm",
+      "param": "b",
+      "shape": [
+        96
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 3495896,
+      "nbytes": 384,
+      "sha256": "a21936e9c23f5f59fda2a79f71f08ec6c5316e7ab4b15ce86e2d5532fc926879"
+    },
+    {
+      "node": 63,
+      "name": "maxout",
+      "param": "W",
+      "shape": [
+        96,
+        3,
+        288
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 3496280,
+      "nbytes": 331776,
+      "sha256": "c5d47029c41694c55949a3fcb19ce5accd4136bb3528f6fd25f82966b67316b8"
+    },
+    {
+      "node": 63,
+      "name": "maxout",
+      "param": "b",
+      "shape": [
+        96,
+        3
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 3828056,
+      "nbytes": 1152,
+      "sha256": "d52e954212ee204b0edf62b976f0523300fceb7d39e05f96d9c511511478e820"
+    },
+    {
+      "node": 64,
+      "name": "layernorm",
+      "param": "G",
+      "shape": [
+        96
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 3829208,
+      "nbytes": 384,
+      "sha256": "291583eb3df2f389c55eeafdd29bbe696f21b43809d5ba7d77199238ad53af95"
+    },
+    {
+      "node": 64,
+      "name": "layernorm",
+      "param": "b",
+      "shape": [
+        96
+      ],
+      "dtype": "<f4",
+      "offset_bytes": 3829592,
+      "nbytes": 384,
+      "sha256": "b24cb06eca5d0778fa9136d3b68282a3b64116b5da30d716adb09f7cc9347030"
+    }
+  ],
+  "tensor_sha256": "84b8c643b32d734c626e90890c389807000741a2863930585e931467f7e00745",
+  "parameter_bytes": 3829976
+}

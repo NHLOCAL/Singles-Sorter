@@ -1,0 +1,48 @@
+{
+  "export": {
+    "commit": "b9f24126670e635925d4c2f4828256e95ef60c66",
+    "files": {
+      "export.py": "bc8ba843e16f4dda6c3cec53ca4e497c5bd74e3362719a7b2d9cd5a2c7e60750",
+      "release-lock.json": "0756424d9e12b40d541c4d311f7b810b5b31c10de3bfe8406fd41825428269a7",
+      "synthetic.py": "b6a30ac408a63fd9b2405d607f5b6fbcfddf94e8ce19ea122c75195b1912bb89",
+      "verify.py": "a34208022327d041d0eda45bbcf0bd03bc80d3be56393ce0675a757d0e091fbc"
+    }
+  },
+  "math": {
+    "commit": "395450ed08ea42b46415f7914d16c628625b4746",
+    "files": {
+      "Cargo.lock": "6240ffe33b7bd59cecc44ec3e27712e5e84cb9ae2d86943472b32629066e1eab",
+      "Cargo.toml": "d8c36f818d90592bcadecb76ca35a9fd1a2c866c0fd2ff55b9e005399ba40f56",
+      "licenses/numpy-BSD.txt": "1107b0c831e918d4f1dbc28a33190c77215ef278d4a4c4009572088770d4334a",
+      "licenses/spacy-MIT.txt": "3f4378e67708fecacd3e27651c8bc0f977cf20789e19da0d81a2840e7cf573a2",
+      "licenses/thinc-MIT.txt": "d7192459f33a5d8c66358e2115ccbd3265478750f0b9d15f0c22e68e3ce6cc1e",
+      "model-lock.json": "b5a56ce49ec24c603b06b9dd3753ce1f8163af2d7523bc0c0ad0b81bd4b599f8",
+      "source-provenance.json": "ef414ca442fdae4c3ec700434a847b8314443806b53d0310e674dd47525dba31",
+      "src/lib.rs": "845bf1d4023f5ecdf26f0434805487efa4de1299b9571d0ecb7dd3663f274b10",
+      "src/loader.rs": "9479b3b439e978d9498c2c6af50fd0c904e4ec8aaab9e157e354a26a244b01d2",
+      "src/main.rs": "a40ce1aa0f8114e7de202110770991ca07a6f22668e45451a34ace64576ee8a6"
+    }
+  },
+  "text": {
+    "commit": "2cb8497784e305385c1207374e46f0bc4605ca91",
+    "files": {
+      "Cargo.lock": "ba8243b2ced2791c55f9e21e16877fa56ecda36af36d8d004db895f3ab718293",
+      "Cargo.toml": "a4e42e0f572a19664b33f269731c631eb332c63722d0ed56ab29245388eb90c1",
+      "licenses/CPython-LICENSE.txt": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf",
+      "licenses/Unicode-data-packaged.txt": "9c2d400b7b6065235f656936ee86fefe66b75d93158a7630b28ee567dd7bf3e8",
+      "licenses/pcre2-packaged.txt": "e915cde4251f96ec6af107ecd2e194440a4e69440893b0c982802f8a1e4ae40a",
+      "licenses/spacy-MIT.txt": "3f4378e67708fecacd3e27651c8bc0f977cf20789e19da0d81a2840e7cf573a2",
+      "licenses/thinc-MIT.txt": "d7192459f33a5d8c66358e2115ccbd3265478750f0b9d15f0c22e68e3ce6cc1e",
+      "sentence-start-receipt.json": "dd341f36e10c053fe2918aa5b803c83662124ca530f1b5172098faeb72bf1722",
+      "source-receipt.json": "566be1df59f39fe0fce10f148acd83f92f136305f93113e1caee769f486a4889",
+      "src/bin/raw-ner.rs": "ed8ff4c7e7f26e335ba8063d544b004af4c3e58a8ab887a0cc451ed12eb8c785",
+      "src/lib.rs": "07783f76bba9ec4a49cfaec94af2d2cf2d46b5d3aa4db7624ff0bb823e882f27",
+      "src/main.rs": "e25677cfc966a31202cb84aece8c9858549756b6646f44bac36f985239af5302",
+      "src/regex.rs": "12dd180db36b85fa6c01fc60c1615cec195d2aaa75456a453e8acf90bd4d62ea",
+      "src/tables.rs": "578296c9513e7b958b01a2dcb96e52f93c01c2a0cc9d81f262b714d66e9cb6d1",
+      "src/tokenizer.rs": "5c097c99d0a5594d7ff44a0420914ae868e6bcb256d57bd9d962909d6c2722ee",
+      "tests/boundaries.rs": "f01c33e31cb025aa1f8ffd50fd2547de57979ce1314f50433076b6fe1571579c",
+      "tokenizer.json": "33841cad4949620c48fbb0570865a31a19cfbb463088b1fec3d9fb7e1a8c8574"
+    }
+  }
+}

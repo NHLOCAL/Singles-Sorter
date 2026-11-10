@@ -1,0 +1,215 @@
+name: Native CI
+
+# The fast gate for every pull request. Full product acceptance lives in release-v15.yml.
+on:
+  pull_request:
+    paths:
+      - 'native/**'
+      - 'release.json'
+      - '.github/workflows/native-ci.yml'
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: '0'
+  RUSTUP_TOOLCHAIN: '1.99.0'
+  PYTHONUTF8: '1'
+
+jobs:
+  linux:
+    name: Rust on Linux
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      PCRE2_STATIC_DIR: ${{ github.workspace }}/native/probes/released-ner/.pcre2/install/lib
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup toolchain install 1.99.0 --profile minimal --component rustfmt --component clippy
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: |
+            native -> target
+            native/apps/singles-ui/src-tauri -> target
+            native/plugins/original-inference -> target
+      - name: Restore static PCRE2
+        id: pcre2
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: native/probes/released-ner/.pcre2/install
+          key: pcre2-${{ runner.os }}-${{ hashFiles('native/probes/released-ner/acquire_pcre2.py') }}
+      - name: Build static PCRE2
+        if: steps.pcre2.outputs.cache-hit != 'true'
+        working-directory: native
+        run: python probes/released-ner/acquire_pcre2.py --out probes/released-ner/.pcre2 --build
+      - run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends ffmpeg
+      - name: Format
+        working-directory: native
+        run: |
+          cargo fmt --all -- --check
+          cargo fmt --manifest-path apps/singles-ui/src-tauri/Cargo.toml -- --check
+          cargo fmt --manifest-path plugins/original-inference/Cargo.toml -- --check
+      - name: Lint
+        working-directory: native
+        run: |
+          cargo clippy --locked --workspace --all-targets --features sorter-cli/original-ai -- -D warnings
+          cargo clippy --locked --manifest-path plugins/original-inference/Cargo.toml --all-targets -- -D warnings
+      - name: Test
+        working-directory: native
+        run: |
+          cargo test --locked --workspace --features sorter-cli/original-ai
+          cargo test --locked --manifest-path plugins/original-inference/Cargo.toml --lib
+      - name: Check release identity and packaging policy
+        working-directory: native
+        run: |
+          python3 packaging/windows-installer/check_release_identity.py
+          python3 -m unittest discover -s packaging/licenses -p 'test_*.py'
+          python3 -m unittest discover -s packaging/windows-preview -p 'test_package_preview.py'
+
+  windows:
+    name: Rust on Windows
+    runs-on: windows-2025
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      PCRE2_STATIC_DIR: ${{ github.workspace }}\native\probes\released-ner\.pcre2\install\lib
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup toolchain install 1.99.0 --profile minimal --component rustfmt --component clippy
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: |
+            native -> target
+            native/apps/singles-ui/src-tauri -> target
+            native/plugins/original-inference -> target
+      - name: Restore static PCRE2
+        id: pcre2
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: native/probes/released-ner/.pcre2/install
+          key: pcre2-${{ runner.os }}-${{ hashFiles('native/probes/released-ner/acquire_pcre2.py') }}
+      - name: Build static PCRE2
+        if: steps.pcre2.outputs.cache-hit != 'true'
+        working-directory: native
+        run: python probes/released-ner/acquire_pcre2.py --out probes/released-ner/.pcre2 --build
+      - run: choco install ffmpeg --yes --no-progress
+      - name: Lint the Windows execution code
+        working-directory: native
+        run: |
+          cargo clippy --locked --workspace --all-targets --features sorter-cli/original-ai,sorter-cli/selected-windows-execution -- -D warnings
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Test sorting, execution and recovery
+        working-directory: native
+        run: |
+          cargo test --locked --workspace --features sorter-cli/original-ai,sorter-cli/selected-windows-execution
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Test the desktop host
+        working-directory: native/apps/singles-ui
+        run: |
+          cargo test --locked --manifest-path src-tauri/Cargo.toml --no-default-features --features original-ai,selected-windows-execution --lib
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m unittest discover -s ../../packaging/windows-desktop-preview -p 'test_*.py'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: native/apps/singles-ui
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: native/apps/singles-ui/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  android:
+    name: Android source
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Compile strictly and run ownership tests
+        run: |
+          export JAVA_HOME="$JAVA_HOME_21_X64"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_HOME" 'platforms;android-35' > /dev/null
+          ANDROID_JAR="$ANDROID_HOME/platforms/android-35/android.jar" bash native/apps/singles-android/check-java.sh
+          python3 -m unittest discover -s native/apps/singles-android -p 'test_release.py'
+
+  metadata-sanitizers:
+    name: Native metadata ASan, UBSan and leak checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+        working-directory: native
+    steps:
+      - name: Check out reviewed native sources
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          sparse-checkout: native
+
+      - name: Verify bounded official zlib acquisition
+        run: |
+          python tests/build/test_acquire_zlib.py
+          python tests/build/acquire_zlib.py --evidence test-results/zlib-acquisition
+
+      - name: Retain exact zlib acquisition response receipts
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: zlib-acquisition-sanitizer-${{ github.run_attempt }}
+          path: native/test-results/zlib-acquisition
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Build finite owned ABI sanitizer harness
+        run: |
+          cmake -S crates/sorter-io/bridge -B target/metadata-sanitizers \
+            -DSORTER_BRIDGE_TESTS=ON -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS='-fsanitize=address,undefined -fno-omit-frame-pointer' \
+            -DCMAKE_C_FLAGS='-fsanitize=address,undefined -fno-omit-frame-pointer' \
+            -DCMAKE_EXE_LINKER_FLAGS='-fsanitize=address,undefined'
+          cmake --build target/metadata-sanitizers --target sorter_bridge_tests --parallel 2
+
+      - name: Exercise all frozen media, truncations and deterministic malformed inputs
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: |
+          python - <<'PYCODE'
+          from pathlib import Path
+          import subprocess
+          root = Path("tests/fixtures/media")
+          files = [str(root / line.split("  ", 1)[1].removeprefix("fixtures/"))
+                   for line in (root / "fixtures.sha256").read_text().splitlines() if line]
+          assert len(files) == 60 and all(Path(f).is_file() for f in files)
+          subprocess.run(["target/metadata-sanitizers/sorter_bridge_tests", *files],
+                         check=True, timeout=300)
+          PYCODE

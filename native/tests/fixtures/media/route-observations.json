@@ -1,0 +1,1189 @@
+{
+  "aliases": [
+    [
+      "אמן בדיקה",
+      "Mapped Hebrew"
+    ],
+    [
+      "Artist",
+      "Mapped Latin"
+    ],
+    [
+      "Synthetic Title",
+      "Mapped Title"
+    ],
+    [
+      "Filename Artist",
+      "Mapped Filename"
+    ]
+  ],
+  "release_sources": {
+    "src/core/app/singer-list.csv": {
+      "bytes": 49284,
+      "git_blob": "51aab636dafe0101570e0e3fb60b0f21c322f07b",
+      "sha256": "7d2b0c806a18043c16b7baa99ebd174955bad1f8b70f606ee8f56e9559d4d391"
+    },
+    "src/core/check_name.py": {
+      "bytes": 2996,
+      "git_blob": "24edf4cf4bd61aab710e4e7808d67404f49b4a79",
+      "sha256": "788b5952ed3af91f8206dceb3db7cb3d5cccf38923a2feb73b9e1860f448e3b5"
+    },
+    "src/core/jibrish_to_hebrew.py": {
+      "bytes": 2681,
+      "git_blob": "f779ad638b1d4a5a0f471daf760b4c1d4228e421",
+      "sha256": "add66eb62535d42d5ad3257de5d081be6faf97de500234f05c6b0e3716f667b6"
+    },
+    "src/core/singles_sorter_v5.py": {
+      "bytes": 41353,
+      "git_blob": "0b67726e72e527556f47a8eeffeb44778c62809b",
+      "sha256": "ec4a98ce29c431b5d46b59f11a531eaf8fb4f3c8c16248372771de630086fffa"
+    }
+  },
+  "routes": [
+    {
+      "filename": "bad_header.aac",
+      "fixture": "bad_header.aac",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist bad_header.aac",
+      "fixture": "bad_header.aac",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "bad_header.aiff",
+      "fixture": "bad_header.aiff",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist bad_header.aiff",
+      "fixture": "bad_header.aiff",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "bad_header.alac",
+      "fixture": "bad_header.alac",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist bad_header.alac",
+      "fixture": "bad_header.alac",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "bad_header.dsf",
+      "fixture": "bad_header.dsf",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist bad_header.dsf",
+      "fixture": "bad_header.dsf",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "bad_header.flac",
+      "fixture": "bad_header.flac",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist bad_header.flac",
+      "fixture": "bad_header.flac",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "bad_header.m4a",
+      "fixture": "bad_header.m4a",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist bad_header.m4a",
+      "fixture": "bad_header.m4a",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "bad_header.mp3",
+      "fixture": "bad_header.mp3",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist bad_header.mp3",
+      "fixture": "bad_header.mp3",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "bad_header.ogg",
+      "fixture": "bad_header.ogg",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist bad_header.ogg",
+      "fixture": "bad_header.ogg",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "bad_header.opus",
+      "fixture": "bad_header.opus",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist bad_header.opus",
+      "fixture": "bad_header.opus",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "bad_header.wav",
+      "fixture": "bad_header.wav",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist bad_header.wav",
+      "fixture": "bad_header.wav",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "bad_header.wma",
+      "fixture": "bad_header.wma",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist bad_header.wma",
+      "fixture": "bad_header.wma",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "bad_header.wv",
+      "fixture": "bad_header.wv",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist bad_header.wv",
+      "fixture": "bad_header.wv",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "blank.aac",
+      "fixture": "blank.aac",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist blank.aac",
+      "fixture": "blank.aac",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "blank.aiff",
+      "fixture": "blank.aiff",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist blank.aiff",
+      "fixture": "blank.aiff",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "blank.alac",
+      "fixture": "blank.alac",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist blank.alac",
+      "fixture": "blank.alac",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "blank.dsf",
+      "fixture": "blank.dsf",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist blank.dsf",
+      "fixture": "blank.dsf",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "blank.flac",
+      "fixture": "blank.flac",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist blank.flac",
+      "fixture": "blank.flac",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "blank.m4a",
+      "fixture": "blank.m4a",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist blank.m4a",
+      "fixture": "blank.m4a",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "blank.mp3",
+      "fixture": "blank.mp3",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist blank.mp3",
+      "fixture": "blank.mp3",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "blank.ogg",
+      "fixture": "blank.ogg",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist blank.ogg",
+      "fixture": "blank.ogg",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "blank.opus",
+      "fixture": "blank.opus",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist blank.opus",
+      "fixture": "blank.opus",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "blank.wav",
+      "fixture": "blank.wav",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist blank.wav",
+      "fixture": "blank.wav",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "blank.wma",
+      "fixture": "blank.wma",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist blank.wma",
+      "fixture": "blank.wma",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "blank.wv",
+      "fixture": "blank.wv",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist blank.wv",
+      "fixture": "blank.wv",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "id3v23_utf16.mp3",
+      "fixture": "id3v23_utf16.mp3",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist id3v23_utf16.mp3",
+      "fixture": "id3v23_utf16.mp3",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "id3v24_empty_values.mp3",
+      "fixture": "id3v24_empty_values.mp3",
+      "result": {
+        "artists": [
+          "Mapped Title"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist id3v24_empty_values.mp3",
+      "fixture": "id3v24_empty_values.mp3",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "id3v24_latin1.mp3",
+      "fixture": "id3v24_latin1.mp3",
+      "result": {
+        "artists": [
+          "Mapped Title"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist id3v24_latin1.mp3",
+      "fixture": "id3v24_latin1.mp3",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "id3v24_mixed_empty.mp3",
+      "fixture": "id3v24_mixed_empty.mp3",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist id3v24_mixed_empty.mp3",
+      "fixture": "id3v24_mixed_empty.mp3",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "id3v24_multi_track.mp3",
+      "fixture": "id3v24_multi_track.mp3",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist id3v24_multi_track.mp3",
+      "fixture": "id3v24_multi_track.mp3",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "id3v24_utf16.mp3",
+      "fixture": "id3v24_utf16.mp3",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist id3v24_utf16.mp3",
+      "fixture": "id3v24_utf16.mp3",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "malformed_track.aac",
+      "fixture": "malformed_track.aac",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist malformed_track.aac",
+      "fixture": "malformed_track.aac",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "malformed_track.aiff",
+      "fixture": "malformed_track.aiff",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist malformed_track.aiff",
+      "fixture": "malformed_track.aiff",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "malformed_track.alac",
+      "fixture": "malformed_track.alac",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist malformed_track.alac",
+      "fixture": "malformed_track.alac",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "malformed_track.dsf",
+      "fixture": "malformed_track.dsf",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist malformed_track.dsf",
+      "fixture": "malformed_track.dsf",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "malformed_track.flac",
+      "fixture": "malformed_track.flac",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist malformed_track.flac",
+      "fixture": "malformed_track.flac",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "malformed_track.m4a",
+      "fixture": "malformed_track.m4a",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist malformed_track.m4a",
+      "fixture": "malformed_track.m4a",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "malformed_track.mp3",
+      "fixture": "malformed_track.mp3",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist malformed_track.mp3",
+      "fixture": "malformed_track.mp3",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "malformed_track.ogg",
+      "fixture": "malformed_track.ogg",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist malformed_track.ogg",
+      "fixture": "malformed_track.ogg",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "malformed_track.opus",
+      "fixture": "malformed_track.opus",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist malformed_track.opus",
+      "fixture": "malformed_track.opus",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "malformed_track.wav",
+      "fixture": "malformed_track.wav",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist malformed_track.wav",
+      "fixture": "malformed_track.wav",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "malformed_track.wma",
+      "fixture": "malformed_track.wma",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist malformed_track.wma",
+      "fixture": "malformed_track.wma",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "malformed_track.wv",
+      "fixture": "malformed_track.wv",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist malformed_track.wv",
+      "fixture": "malformed_track.wv",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "mp4_multi_tuple.m4a",
+      "fixture": "mp4_multi_tuple.m4a",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist mp4_multi_tuple.m4a",
+      "fixture": "mp4_multi_tuple.m4a",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "mp4_zero_tuple.m4a",
+      "fixture": "mp4_zero_tuple.m4a",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist mp4_zero_tuple.m4a",
+      "fixture": "mp4_zero_tuple.m4a",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "tagged.aac",
+      "fixture": "tagged.aac",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist tagged.aac",
+      "fixture": "tagged.aac",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "tagged.aiff",
+      "fixture": "tagged.aiff",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist tagged.aiff",
+      "fixture": "tagged.aiff",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "tagged.alac",
+      "fixture": "tagged.alac",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist tagged.alac",
+      "fixture": "tagged.alac",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "tagged.dsf",
+      "fixture": "tagged.dsf",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist tagged.dsf",
+      "fixture": "tagged.dsf",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "tagged.flac",
+      "fixture": "tagged.flac",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist tagged.flac",
+      "fixture": "tagged.flac",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "tagged.m4a",
+      "fixture": "tagged.m4a",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist tagged.m4a",
+      "fixture": "tagged.m4a",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "tagged.mp3",
+      "fixture": "tagged.mp3",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist tagged.mp3",
+      "fixture": "tagged.mp3",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "tagged.ogg",
+      "fixture": "tagged.ogg",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist tagged.ogg",
+      "fixture": "tagged.ogg",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "tagged.opus",
+      "fixture": "tagged.opus",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist tagged.opus",
+      "fixture": "tagged.opus",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "tagged.wav",
+      "fixture": "tagged.wav",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist tagged.wav",
+      "fixture": "tagged.wav",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "tagged.wma",
+      "fixture": "tagged.wma",
+      "result": {
+        "artists": null,
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist tagged.wma",
+      "fixture": "tagged.wma",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "tagged.wv",
+      "fixture": "tagged.wv",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist tagged.wv",
+      "fixture": "tagged.wv",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "xiph_multi_track.flac",
+      "fixture": "xiph_multi_track.flac",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist xiph_multi_track.flac",
+      "fixture": "xiph_multi_track.flac",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "xiph_oversize_track.flac",
+      "fixture": "xiph_oversize_track.flac",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist xiph_oversize_track.flac",
+      "fixture": "xiph_oversize_track.flac",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "xiph_unicode_track.flac",
+      "fixture": "xiph_unicode_track.flac",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist xiph_unicode_track.flac",
+      "fixture": "xiph_unicode_track.flac",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "xiph_zero_track.flac",
+      "fixture": "xiph_zero_track.flac",
+      "result": {
+        "artists": [
+          "Mapped Hebrew"
+        ],
+        "ok": true
+      }
+    },
+    {
+      "filename": "Filename Artist xiph_zero_track.flac",
+      "fixture": "xiph_zero_track.flac",
+      "result": {
+        "artists": [
+          "Mapped Latin"
+        ],
+        "ok": true
+      }
+    }
+  ],
+  "scope": "Actual frozen synthetic metadata into unchanged released single-song routing, AI intentionally disabled. No album/job-v2 coverage."
+}

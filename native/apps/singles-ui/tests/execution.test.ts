@@ -1,0 +1,93 @@
+import {describe,it,expect,vi} from 'vitest';
+import {PreviewController} from '../src/state';
+import {defaults} from '../src/contracts';
+import type {Host,Snapshot,ExecutionSnapshot} from '../src/contracts';
+const readyPlan:Snapshot={host_schema:1,job_id:'job',status:'completed',plan_id:'digest',total_rows:1,blockers:['PHYSICAL_APPLY_UNAVAILABLE'],warnings:[],apply:{supported:true,reason:null,operation_count:2,copy_mode:false,source:'C:\\source',target:'C:\\target'}};
+const done:ExecutionSnapshot={host_schema:1,job_id:'job',plan_id:'digest',status:'complete',operation_count:2,operation:null,bytes_written:0,source_length:0,journal_path:'C:\\app\\journal',error:null,result:{source_items:2,committed_destinations:2,moved_sources:2,failed_operations:0,blocked_operations:0,recovery_operations:0,cancelled_operations:0,items:[{operation:0,status:'complete',detail:'verified'},{operation:1,status:'complete',detail:'verified'}]}};
+function host():Host{return {
+ getSettings:async()=>({...defaults}),getModelStatus:async()=>({available:false,message:'fixture',platform:'windows'}),selectRoot:async()=>null,resolveRoot:async(role,text)=>({token:role,display_name:text,capabilities:{read:true,list:true},platform:'windows'}),startPreview:async()=>({job_id:'job'}),cancelPreview:async()=>{},snapshot:async()=>structuredClone(readyPlan),page:async()=>({rows:[],total:1}),startApply:vi.fn(async()=>({job_id:'job'})),executionSnapshot:vi.fn(async()=>structuredClone(done)),cancelApply:vi.fn(async()=>{})
+};}
+async function selected(h:Host){const c=new PreviewController(h);await c.initialize();c.editRoot('Source','C:\\source');c.editRoot('Target','C:\\target');await c.preview('Sort');return c;}
+describe('retained native apply ownership',()=>{
+ it('requires native eligibility and all commands; never infers it from rows or a platform',async()=>{const h=host();h.snapshot=async()=>({...readyPlan,apply:undefined});const c=await selected(h);expect(c.canApply).toBe(false);await c.apply();expect(h.startApply).not.toHaveBeenCalled();});
+ it('applies a native source-only repair without sending a target or inventing sort counts',async()=>{
+  const h=host();h.snapshot=async()=>({...readyPlan,apply:{...readyPlan.apply!,mode:'FixNames',target:null}});
+  h.executionSnapshot=async()=>({...done,result:{...done.result!,committed_destinations:0,moved_sources:0,repair:{total_files:2,processed_files:2,renamed_files:1,repaired_files:2,unchanged_files:0,unsupported_files:0,failed_files:0,retained_backup_bytes:700}}});
+  const c=new PreviewController(h);await c.initialize();c.editRoot('Source','C:\\source');await c.preview('FixNames');
+  expect(c.canApply).toBe(true);await c.apply();expect(h.startApply).toHaveBeenCalledExactlyOnceWith('job','digest');expect(c.state.execution?.result?.repair?.repaired_files).toBe(2);expect(c.state.execution?.result?.moved_sources).toBe(0);
+ });
+ it('sends only the retained job ID and inspected binding, then disables repetition',async()=>{const h=host(),c=await selected(h);await c.apply();expect(h.startApply).toHaveBeenCalledExactlyOnceWith('job','digest');expect(c.state.execution?.result?.committed_destinations).toBe(2);expect(c.canApply).toBe(false);await c.apply();expect(h.startApply).toHaveBeenCalledTimes(1);});
+ it('does not convert partial results into complete or increment predicted counts',async()=>{const h=host();h.executionSnapshot=async()=>({...done,status:'partial',result:{...done.result!,committed_destinations:1,moved_sources:0,failed_operations:1}});const c=await selected(h);await c.apply();expect(c.state.execution?.status).toBe('partial');expect(c.state.execution?.result?.committed_destinations).toBe(1);});
+ it('freezes plan changes and waits for actual terminal response after cancellation',async()=>{vi.useFakeTimers();try{const h=host();h.executionSnapshot=vi.fn().mockResolvedValueOnce({...done,status:'running',result:null}).mockResolvedValue({...done,status:'cancelled',result:{...done.result!,committed_destinations:1}});const c=await selected(h),run=c.apply();await vi.advanceTimersByTimeAsync(0);c.changeSetting('copy_mode',true);c.editRoot('Source','changed');c.cancelApply();c.cancelApply();expect(c.state.settings.copy_mode).toBe(false);expect(c.state.source.text).toBe('C:\\source');expect(c.state.busy).toBe(true);expect(h.cancelApply).toHaveBeenCalledTimes(1);await vi.advanceTimersByTimeAsync(250);await run;expect(c.state.execution?.status).toBe('cancelled');expect(c.state.busy).toBe(false);}finally{vi.useRealTimers();}});
+ it('does not release mutation ownership on a lost start response or stale progress',async()=>{vi.useFakeTimers();try{const h=host();h.startApply=vi.fn(async()=>{throw new Error('transport lost');});h.executionSnapshot=vi.fn().mockResolvedValueOnce({...done,plan_id:'other'}).mockResolvedValue(done);const c=await selected(h),run=c.apply();await vi.advanceTimersByTimeAsync(0);expect(c.state.busy).toBe(true);expect(c.state.execution).toBeNull();await vi.advanceTimersByTimeAsync(250);await run;expect(c.state.execution?.status).toBe('complete');expect(h.startApply).toHaveBeenCalledTimes(1);}finally{vi.useRealTimers();}});
+ it('reports a native refusal and requires new preview rather than retrying old consent',async()=>{const h=host();h.startApply=vi.fn(async()=>{throw {code:'PLAN_CHANGED',message:'Plan changed'};});const c=await selected(h);await c.apply();expect(c.state.error).toBe('Plan changed');expect(c.canApply).toBe(false);expect(h.executionSnapshot).not.toHaveBeenCalled();});
+ it('keeps needs_recovery distinct and never offers blind retry',async()=>{const h=host();h.executionSnapshot=async()=>({...done,status:'needs_recovery',error:'Journal requires reconciliation'});const c=await selected(h);await c.apply();expect(c.state.execution?.status).toBe('needs_recovery');expect(c.state.error).toContain('reconciliation');expect(c.canApply).toBe(false);});
+ it('restores retained terminal execution after a view reload without offering apply again',async()=>{const h=host();h.latestExecution=async()=>({preview:readyPlan,execution:done});const c=new PreviewController(h);await c.initialize();expect(c.state.execution?.status).toBe('complete');expect(c.state.snapshot?.job_id).toBe('job');expect(c.canApply).toBe(false);});
+ it('rejects mismatched retained execution instead of attaching it to another plan',async()=>{const h=host();h.latestExecution=async()=>({preview:readyPlan,execution:{...done,plan_id:'other'}});const c=new PreviewController(h);await c.initialize();expect(c.state.hostAvailable).toBe(false);expect(c.state.execution).toBeNull();});
+
+ it('defers cancellation until a delayed native start is acknowledged',async()=>{vi.useFakeTimers();try{
+   let acknowledge!:(value:{job_id:string})=>void;const h=host();h.startApply=vi.fn(()=>new Promise<{job_id:string}>(resolve=>{acknowledge=resolve;}));
+   h.executionSnapshot=vi.fn().mockResolvedValueOnce({...done,status:'running',result:null}).mockResolvedValue({...done,status:'cancelled'});
+   const c=await selected(h),run=c.apply();c.cancelApply();expect(h.cancelApply).not.toHaveBeenCalled();expect(c.state.busy).toBe(true);
+   acknowledge({job_id:'job'});await vi.advanceTimersByTimeAsync(0);expect(h.cancelApply).toHaveBeenCalledExactlyOnceWith('job');
+   await vi.advanceTimersByTimeAsync(250);await run;expect(c.state.execution?.status).toBe('cancelled');
+ }finally{vi.useRealTimers();}});
+
+});
+
+describe('actual terminal result projection',()=>{
+ it('refetches display rows after execution without changing actual counters',async()=>{
+  const h=host();h.page=vi.fn().mockResolvedValueOnce({total:2,rows:[]}).mockResolvedValueOnce({total:1,skipped:1,rows:[]});
+  const c=await selected(h);c.state.offset=50;await c.apply();
+  expect(h.page).toHaveBeenLastCalledWith('job',0,50,false,false);
+  expect(c.state.offset).toBe(0);expect(c.state.page?.skipped).toBe(1);
+  expect(c.state.execution?.result?.committed_destinations).toBe(2);
+ });
+ it('retains the real terminal outcome when display reconciliation fails',async()=>{
+  const h=host();h.page=vi.fn().mockResolvedValueOnce({total:2,rows:[]}).mockRejectedValueOnce(new Error('offline'));
+  const c=await selected(h);await c.apply();expect(c.state.execution?.status).toBe('complete');
+  expect(c.state.error).toBe('offline');expect(c.canApply).toBe(false);
+ });
+});
+
+describe('retained no-op completion',()=>{
+ it('accepts a host-verified empty result without granting a second apply',async()=>{
+  const h=host();h.snapshot=async()=>({...readyPlan,apply:{...readyPlan.apply!,operation_count:0}});
+  h.executionSnapshot=async()=>({...done,operation_count:0,journal_path:null,result:{source_items:0,committed_destinations:0,moved_sources:0,failed_operations:0,blocked_operations:0,recovery_operations:0,cancelled_operations:0,items:[],legacy_summary:{songs_sorted:0,artist_folders_created:0,albums_processed:0,top_artists:[]}}});
+  const c=await selected(h);expect(c.canApply).toBe(true);await c.apply();
+  expect(c.state.execution?.status).toBe('complete');expect(c.state.execution?.result?.legacy_summary?.songs_sorted).toBe(0);
+  expect(c.state.execution?.journal_path).toBeNull();expect(c.canApply).toBe(false);
+ });
+});
+
+ describe('Android recovery startup',()=>{
+ it('keeps the host connected and read-only navigation available for unresolved historical work',async()=>{
+  const h=host();h.getModelStatus=async()=>({available:false,message:'fixture',platform:'android',execution_available:true});
+  h.latestExecution=async()=>({recovery_notice:{status:'attention',journal_count:1,acknowledged_operations:1,unresolved_operations:1}});
+  const c=new PreviewController(h);await c.initialize();expect(c.state.hostAvailable).toBe(true);expect(c.state.error).toBeNull();expect(c.state.recoveryNotice?.acknowledged_operations).toBe(1);expect(c.canApply).toBe(false);
+  c.editRoot('Source','selected');expect(c.state.source.text).toBe('selected');expect(c.state.recoveryNotice).not.toBeNull();c.state.snapshot=readyPlan;expect(c.canApply).toBe(false);
+ });
+ it('keeps unreadable evidence explicit without inventing counters or a clean idle result',async()=>{
+  const h=host();h.latestExecution=async()=>({recovery_notice:{status:'unreadable',journal_count:1,acknowledged_operations:null,unresolved_operations:null}});
+  const c=new PreviewController(h);await c.initialize();expect(c.state.hostAvailable).toBe(true);expect(c.state.recoveryNotice?.status).toBe('unreadable');expect(c.state.execution).toBeNull();expect(c.canApply).toBe(false);
+ });
+ it('does not swallow unrelated host errors',async()=>{const h=host();h.latestExecution=async()=>{throw new Error('transport failed');};const c=new PreviewController(h);await c.initialize();expect(c.state.hostAvailable).toBe(false);expect(c.state.error).toBe('transport failed');});
+ it('rejects malformed recovery counters',async()=>{const h=host();h.latestExecution=async()=>({recovery_notice:{status:'attention',journal_count:1,acknowledged_operations:-1,unresolved_operations:1}});const c=new PreviewController(h);await c.initialize();expect(c.state.hostAvailable).toBe(false);});
+ });
+
+describe('native scoped recovery admission',()=>{
+ it('requires explicit Android native admission and invalidates it when selection changes',async()=>{
+  const h=host();h.getModelStatus=async()=>({available:false,message:'fixture',platform:'android',execution_available:true});
+  h.latestExecution=async()=>({recovery_notice:{status:'attention',journal_count:1,acknowledged_operations:1,unresolved_operations:1}});
+  const c=new PreviewController(h);await c.initialize();c.state.snapshot=structuredClone(readyPlan);expect(c.canApply).toBe(false);
+  c.state.snapshot.apply!.recovery_scope_admitted=true;expect(c.canApply).toBe(true);expect(c.state.recoveryNotice?.unresolved_operations).toBe(1);
+  c.changeSetting('copy_mode',true);expect(c.canApply).toBe(false);expect(c.state.snapshot).toBeNull();
+ });
+ it('never overrides unreadable history or extends the flag to other platforms',async()=>{
+  for(const platform of ['android','windows'] as const){
+   const h=host();h.getModelStatus=async()=>({available:false,message:'fixture',platform,execution_available:true});
+   h.latestExecution=async()=>({recovery_notice:{status:platform==='android'?'unreadable':'attention',journal_count:1,acknowledged_operations:platform==='android'?null:1,unresolved_operations:platform==='android'?null:1}});
+   const c=new PreviewController(h);await c.initialize();c.state.snapshot={...readyPlan,apply:{...readyPlan.apply!,recovery_scope_admitted:true}};expect(c.canApply).toBe(false);
+  }
+ });
+});

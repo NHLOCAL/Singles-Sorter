@@ -1,0 +1,67 @@
+[
+  {
+    "file": "spacy/ml/models/tok2vec.py",
+    "sha256": "136a036c0a929863f9971b94366778066119f0cf2638dbd89052d28a41de4a9b",
+    "official_source": "https://github.com/explosion/spaCy/blob/v3.7.5/spacy/ml/models/tok2vec.py"
+  },
+  {
+    "file": "spacy/ml/_precomputable_affine.py",
+    "sha256": "2070d2d81bddc5eb5dc2b62a37e3829e9cfbe9be630d71d7cd43bb686f481da8",
+    "official_source": "https://github.com/explosion/spaCy/blob/v3.7.5/spacy/ml/_precomputable_affine.py"
+  },
+  {
+    "file": "spacy/ml/parser_model.pyx",
+    "sha256": "3e2a5d9caa3ac7212c68f53e8a5a28ebc15ff2b818c9828dba8a3a9a5cbbb76f",
+    "official_source": "https://github.com/explosion/spaCy/blob/v3.7.5/spacy/ml/parser_model.pyx"
+  },
+  {
+    "file": "spacy/pipeline/_parser_internals/ner.pyx",
+    "sha256": "827139f64f94d574c4193b8148211635b38b5e4721b51844cfad0050fa7b4de9",
+    "official_source": "https://github.com/explosion/spaCy/blob/v3.7.5/spacy/pipeline/_parser_internals/ner.pyx"
+  },
+  {
+    "file": "spacy/pipeline/_parser_internals/_state.pxd",
+    "sha256": "c530aa5d3eef233b1fee06a34c9524baea5ad579af81c2573a20145316b69457",
+    "official_source": "https://github.com/explosion/spaCy/blob/v3.7.5/spacy/pipeline/_parser_internals/_state.pxd"
+  },
+  {
+    "file": "thinc/layers/hashembed.py",
+    "sha256": "29ec1061570972ae6c541280ed3c086162bcf0eb129824e716a5cb7e5d38f8e7",
+    "official_source": "https://github.com/explosion/thinc/blob/v8.2.5/thinc/layers/hashembed.py"
+  },
+  {
+    "file": "thinc/layers/maxout.py",
+    "sha256": "3a99e35e93a49dea68c50384cd7bc9e9927aa7174763b95c8b3069cfe17e5b04",
+    "official_source": "https://github.com/explosion/thinc/blob/v8.2.5/thinc/layers/maxout.py"
+  },
+  {
+    "file": "thinc/layers/layernorm.py",
+    "sha256": "6d6cd215d259c89a85d219d9b22a0d8cc880770c21fccf8c63d6311e8fbb5e26",
+    "official_source": "https://github.com/explosion/thinc/blob/v8.2.5/thinc/layers/layernorm.py"
+  },
+  {
+    "file": "thinc/layers/with_array.py",
+    "sha256": "c27355d7b0cdd19931bddda54637def3c21fa528e3087328e27dc0e78c3e9477",
+    "official_source": "https://github.com/explosion/thinc/blob/v8.2.5/thinc/layers/with_array.py"
+  },
+  {
+    "file": "thinc/layers/residual.py",
+    "sha256": "d830758b4536d8c56ab13203540e78d4bdc7759560c2dc7e5b0fbf021ac0d0ea",
+    "official_source": "https://github.com/explosion/thinc/blob/v8.2.5/thinc/layers/residual.py"
+  },
+  {
+    "file": "thinc/layers/expand_window.py",
+    "sha256": "17a33ee6e6b9a3cc9f048fdc108f36aa5abc1ce704d38704c0166d7f98ea3016",
+    "official_source": "https://github.com/explosion/thinc/blob/v8.2.5/thinc/layers/expand_window.py"
+  },
+  {
+    "file": "thinc/backends/ops.py",
+    "sha256": "80d3a5597c5349045789e69b8e255a6ab50c42ef1f1804969e4761f4d1f2b9f5",
+    "official_source": "https://github.com/explosion/thinc/blob/v8.2.5/thinc/backends/ops.py"
+  },
+  {
+    "file": "thinc/backends/numpy_ops.pyx",
+    "sha256": "884221757b780e198a2ded38bcf6aef3395383c43a47c991dae9d5a8aba28c76",
+    "official_source": "https://github.com/explosion/thinc/blob/v8.2.5/thinc/backends/numpy_ops.pyx"
+  }
+]

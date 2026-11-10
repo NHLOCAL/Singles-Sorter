@@ -1,0 +1,2604 @@
+{
+  "schema_version": 2,
+  "provenance": "authored synthetic case inputs; expected results are release-generated",
+  "default_aliases": [
+    [
+      "אברהם פריד",
+      "אברהם פריד"
+    ],
+    [
+      "מוטי שטיינמץ",
+      "מוטי שטיינמץ"
+    ]
+  ],
+  "cases": [
+    {
+      "id": "album-minimum-0",
+      "op": "album",
+      "folder": "source/album",
+      "files": []
+    },
+    {
+      "id": "album-minimum-1",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-minimum-2",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-minimum-3",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-child-dirs-0",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-child-dirs-1",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/extra-0",
+          "kind": "directory"
+        }
+      ]
+    },
+    {
+      "id": "album-child-dirs-2",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/extra-0",
+          "kind": "directory"
+        },
+        {
+          "path": "album/extra-1",
+          "kind": "directory"
+        }
+      ]
+    },
+    {
+      "id": "album-majority-6-of-10",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_d.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_e.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_f.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_g.mp3",
+          "metadata": {
+            "album": "אחר-0",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_h.mp3",
+          "metadata": {
+            "album": "אחר-1",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_i.mp3",
+          "metadata": {
+            "album": "אחר-2",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_j.mp3",
+          "metadata": {
+            "album": "אחר-3",
+            "artist": "אברהם פריד"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-artist-6-of-10",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_d.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_e.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_f.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_g.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "מוטי שטיינמץ"
+          }
+        },
+        {
+          "path": "album/track_h.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "מוטי שטיינמץ"
+          }
+        },
+        {
+          "path": "album/track_i.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "מוטי שטיינמץ"
+          }
+        },
+        {
+          "path": "album/track_j.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "מוטי שטיינמץ"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-numbered-6-of-10",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "1"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "2"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "3"
+          }
+        },
+        {
+          "path": "album/track_d.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "4"
+          }
+        },
+        {
+          "path": "album/track_e.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "5"
+          }
+        },
+        {
+          "path": "album/track_f.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "6"
+          }
+        },
+        {
+          "path": "album/track_g.mp3",
+          "metadata": {
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_h.mp3",
+          "metadata": {
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_i.mp3",
+          "metadata": {
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_j.mp3",
+          "metadata": {
+            "artist": "אברהם פריד"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-majority-7-of-10",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_d.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_e.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_f.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_g.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_h.mp3",
+          "metadata": {
+            "album": "אחר-0",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_i.mp3",
+          "metadata": {
+            "album": "אחר-1",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_j.mp3",
+          "metadata": {
+            "album": "אחר-2",
+            "artist": "אברהם פריד"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-artist-7-of-10",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_d.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_e.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_f.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_g.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_h.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "מוטי שטיינמץ"
+          }
+        },
+        {
+          "path": "album/track_i.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "מוטי שטיינמץ"
+          }
+        },
+        {
+          "path": "album/track_j.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "מוטי שטיינמץ"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-numbered-7-of-10",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "1"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "2"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "3"
+          }
+        },
+        {
+          "path": "album/track_d.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "4"
+          }
+        },
+        {
+          "path": "album/track_e.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "5"
+          }
+        },
+        {
+          "path": "album/track_f.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "6"
+          }
+        },
+        {
+          "path": "album/track_g.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "7"
+          }
+        },
+        {
+          "path": "album/track_h.mp3",
+          "metadata": {
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_i.mp3",
+          "metadata": {
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_j.mp3",
+          "metadata": {
+            "artist": "אברהם פריד"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-majority-8-of-10",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_d.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_e.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_f.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_g.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_h.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_i.mp3",
+          "metadata": {
+            "album": "אחר-0",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_j.mp3",
+          "metadata": {
+            "album": "אחר-1",
+            "artist": "אברהם פריד"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-artist-8-of-10",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_d.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_e.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_f.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_g.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_h.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_i.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "מוטי שטיינמץ"
+          }
+        },
+        {
+          "path": "album/track_j.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "מוטי שטיינמץ"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-numbered-8-of-10",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "1"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "2"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "3"
+          }
+        },
+        {
+          "path": "album/track_d.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "4"
+          }
+        },
+        {
+          "path": "album/track_e.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "5"
+          }
+        },
+        {
+          "path": "album/track_f.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "6"
+          }
+        },
+        {
+          "path": "album/track_g.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "7"
+          }
+        },
+        {
+          "path": "album/track_h.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "8"
+          }
+        },
+        {
+          "path": "album/track_i.mp3",
+          "metadata": {
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_j.mp3",
+          "metadata": {
+            "artist": "אברהם פריד"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-track-123",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "1"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "2"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "3"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-track-113",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "1"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "1"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "3"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-track-124",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "1"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "2"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "4"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-track-012",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "0"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "1"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "2"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-filename-arabic-indic",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/١ song.mp3",
+          "metadata": {
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/٢ song.mp3",
+          "metadata": {
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/٣ song.mp3",
+          "metadata": {
+            "artist": "אברהם פריד"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-filename-fullwidth",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/１ song.mp3",
+          "metadata": {
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/２ song.mp3",
+          "metadata": {
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/３ song.mp3",
+          "metadata": {
+            "artist": "אברהם פריד"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-filename-ascii",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/1 song.mp3",
+          "metadata": {
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/2 song.mp3",
+          "metadata": {
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/3 song.mp3",
+          "metadata": {
+            "artist": "אברהם פריד"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-huge-text-track",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "1"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "2"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-huge-integer-track",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": {
+              "kind": "integer",
+              "decimal": "1"
+            }
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": {
+              "kind": "integer",
+              "decimal": "2"
+            }
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": {
+              "kind": "integer",
+              "decimal": "9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-huge-filename-number",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/1.mp3",
+          "metadata": {
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/2.mp3",
+          "metadata": {
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999.mp3",
+          "metadata": {
+            "artist": "אברהם פריד"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-track-fraction",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "1/10"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "2/10"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "artist": "אברהם פריד",
+            "tracknumber": "3/10"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-unreadable-denominator",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "open_error": "OSError"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-no-readable-protected",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "open_error": "OSError"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "open_error": "OSError"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "open_error": "OSError"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-completely-empty",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {}
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {}
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "id": "album-without-artist-protected",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-blank-artist-denominator",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-albumartist-wins",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד",
+            "albumartist": "מוטי שטיינמץ"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד",
+            "albumartist": "מוטי שטיינמץ"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד",
+            "albumartist": "מוטי שטיינמץ"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-keyword-album",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "Super Singles",
+            "artist": "אברהם פריד",
+            "tracknumber": "1"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד",
+            "tracknumber": "2"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד",
+            "tracknumber": "3"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-keyword-artist",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "זמר סינגלים",
+            "tracknumber": "1"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד",
+            "tracknumber": "2"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד",
+            "tracknumber": "3"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-folder-keyword-ignored",
+      "op": "album",
+      "folder": "source/סינגלים",
+      "files": [
+        {
+          "path": "סינגלים/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "סינגלים/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "סינגלים/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-first-tie-wins",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "ראשון",
+            "artist": "אברהם פריד",
+            "tracknumber": "1"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "שני",
+            "artist": "אברהם פריד",
+            "tracknumber": "2"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "ראשון",
+            "artist": "אברהם פריד",
+            "tracknumber": "3"
+          }
+        },
+        {
+          "path": "album/track_d.mp3",
+          "metadata": {
+            "album": "שני",
+            "artist": "אברהם פריד",
+            "tracknumber": "4"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-empty-sentinel-first-tie",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד",
+            "tracknumber": "1"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "",
+            "artist": "אברהם פריד",
+            "tracknumber": "2"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד",
+            "tracknumber": "3"
+          }
+        },
+        {
+          "path": "album/track_d.mp3",
+          "metadata": {
+            "album": "",
+            "artist": "אברהם פריד",
+            "tracknumber": "4"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-raw-name-not-normalized",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": " אלבום ",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-partial-artist-value-error",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": {
+              "value_error": "ValueError",
+              "truthy": true
+            }
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": {
+              "value_error": "ValueError",
+              "truthy": true
+            }
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": {
+              "value_error": "ValueError",
+              "truthy": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-partial-artist-get-error",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": {
+              "get_error": "KeyError"
+            }
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": {
+              "get_error": "KeyError"
+            }
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": {
+              "get_error": "KeyError"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-partial-track-value-error",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד",
+            "tracknumber": {
+              "truthy": true,
+              "value_error": "ValueError"
+            }
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד",
+            "tracknumber": {
+              "truthy": true,
+              "value_error": "ValueError"
+            }
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד",
+            "tracknumber": {
+              "truthy": true,
+              "value_error": "ValueError"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-falsey-item-skips-value",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": {
+              "truthy": false,
+              "value_error": "ValueError"
+            },
+            "artist": "אברהם פריד",
+            "tracknumber": "1"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": {
+              "truthy": false,
+              "value_error": "ValueError"
+            },
+            "artist": "אברהם פריד",
+            "tracknumber": "2"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": {
+              "truthy": false,
+              "value_error": "ValueError"
+            },
+            "artist": "אברהם פריד",
+            "tracknumber": "3"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-null-value-partial",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": {
+              "kind": "null",
+              "truthy": true
+            },
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": {
+              "kind": "null",
+              "truthy": true
+            },
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": {
+              "kind": "null",
+              "truthy": true
+            },
+            "artist": "אברהם פריד"
+          }
+        }
+      ]
+    },
+    {
+      "id": "album-suffix-directory-unreadable",
+      "op": "album",
+      "folder": "source/album",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/child.mp3",
+          "kind": "directory",
+          "metadata": {
+            "open_error": "OSError"
+          }
+        }
+      ]
+    },
+    {
+      "id": "single-filename-first",
+      "op": "single",
+      "files": [
+        {
+          "path": "מוטי שטיינמץ ואברהם פריד.mp3",
+          "metadata": {
+            "artist": "מוטי שטיינמץ",
+            "title": "מוטי שטיינמץ"
+          }
+        }
+      ]
+    },
+    {
+      "id": "single-open-error-survives",
+      "op": "single",
+      "files": [
+        {
+          "path": "אברהם פריד.mp3",
+          "metadata": {
+            "open_error": "OSError"
+          }
+        }
+      ]
+    },
+    {
+      "id": "single-title-get-error-after-match",
+      "op": "single",
+      "files": [
+        {
+          "path": "אברהם פריד.mp3",
+          "metadata": {
+            "title": {
+              "get_error": "KeyError"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "single-title-value-error-after-match",
+      "op": "single",
+      "files": [
+        {
+          "path": "אברהם פריד.mp3",
+          "metadata": {
+            "title": {
+              "value_error": "ValueError"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "single-metadata-artist-first",
+      "op": "single",
+      "files": [
+        {
+          "path": "unrecognized.mp3",
+          "metadata": {
+            "artist": "מוטי שטיינמץ",
+            "title": "אברהם פריד"
+          }
+        }
+      ]
+    },
+    {
+      "id": "single-no-ai-unknown",
+      "op": "single",
+      "files": [
+        {
+          "path": "unrecognized.mp3",
+          "metadata": {
+            "artist": "דוד ישראל"
+          }
+        }
+      ]
+    },
+    {
+      "id": "single-classifier-precedes-title",
+      "op": "single",
+      "files": [
+        {
+          "path": "unrecognized.mp3",
+          "metadata": {
+            "artist": "דוד ישראל",
+            "title": "אברהם פריד"
+          }
+        }
+      ],
+      "ai": {
+        "accept": true
+      }
+    },
+    {
+      "id": "single-classifier-rejects",
+      "op": "single",
+      "files": [
+        {
+          "path": "unrecognized.mp3",
+          "metadata": {
+            "artist": "דוד ישראל",
+            "title": "אברהם פריד"
+          }
+        }
+      ],
+      "ai": {
+        "accept": false
+      }
+    },
+    {
+      "id": "single-ner-duplicates",
+      "op": "single",
+      "files": [
+        {
+          "path": "unrecognized.mp3",
+          "metadata": {
+            "title": "unknown title"
+          }
+        }
+      ],
+      "ai": {
+        "accept": false,
+        "ner": {
+          "unrecognized": [
+            "English Name",
+            "English Name"
+          ]
+        }
+      }
+    },
+    {
+      "id": "single-title-ner",
+      "op": "single",
+      "files": [
+        {
+          "path": "unrecognized.mp3",
+          "metadata": {
+            "title": "unknown title"
+          }
+        }
+      ],
+      "ai": {
+        "accept": false,
+        "ner": {
+          "unknown title": [
+            "דוד ישראל"
+          ]
+        }
+      }
+    },
+    {
+      "id": "single-lazy-personal-success",
+      "op": "single",
+      "files": [
+        {
+          "path": "אברהם פריד.mp3",
+          "metadata": {}
+        }
+      ],
+      "personal_csv": "broken\n"
+    },
+    {
+      "id": "single-lazy-personal-error",
+      "op": "single",
+      "files": [
+        {
+          "path": "unrecognized.mp3",
+          "metadata": {}
+        }
+      ],
+      "personal_csv": "broken\n"
+    },
+    {
+      "id": "single-integer-title-error",
+      "op": "single",
+      "files": [
+        {
+          "path": "אברהם פריד.mp3",
+          "metadata": {
+            "title": {
+              "kind": "integer",
+              "decimal": "999999999999999999999"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "scan-album-nested-move",
+      "op": "sort",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/cover.jpg"
+        },
+        {
+          "path": "album/extra/אברהם פריד.mp3",
+          "metadata": {}
+        },
+        {
+          "path": "album/extra/keep.txt"
+        }
+      ],
+      "settings": {
+        "copy_mode": false,
+        "singles_folder": false
+      }
+    },
+    {
+      "id": "scan-album-nested-copy",
+      "op": "sort",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/cover.jpg"
+        },
+        {
+          "path": "album/extra/אברהם פריד.mp3",
+          "metadata": {}
+        },
+        {
+          "path": "album/extra/keep.txt"
+        }
+      ],
+      "settings": {
+        "copy_mode": true,
+        "singles_folder": false
+      }
+    },
+    {
+      "id": "scan-root-album-recursive",
+      "op": "sort",
+      "files": [
+        {
+          "path": "1 אברהם פריד.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "2 אברהם פריד.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "3 אברהם פריד.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        }
+      ],
+      "settings": {
+        "copy_mode": true,
+        "main_folder_only": false,
+        "singles_folder": false
+      }
+    },
+    {
+      "id": "scan-direct-child-recursive",
+      "op": "sort",
+      "files": [
+        {
+          "path": "child/אברהם פריד.mp3",
+          "metadata": {}
+        },
+        {
+          "path": "child/deep/מוטי שטיינמץ.mp3",
+          "metadata": {}
+        }
+      ],
+      "settings": {
+        "copy_mode": true,
+        "main_folder_only": false,
+        "singles_folder": false
+      }
+    },
+    {
+      "id": "scan-root-album-main-only",
+      "op": "sort",
+      "files": [
+        {
+          "path": "1 אברהם פריד.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "2 אברהם פריד.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "3 אברהם פריד.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        }
+      ],
+      "settings": {
+        "copy_mode": true,
+        "main_folder_only": true,
+        "singles_folder": false
+      }
+    },
+    {
+      "id": "scan-direct-child-main-only",
+      "op": "sort",
+      "files": [
+        {
+          "path": "child/אברהם פריד.mp3",
+          "metadata": {}
+        },
+        {
+          "path": "child/deep/מוטי שטיינמץ.mp3",
+          "metadata": {}
+        }
+      ],
+      "settings": {
+        "copy_mode": true,
+        "main_folder_only": true,
+        "singles_folder": false
+      }
+    },
+    {
+      "id": "scan-protected-album-descendants",
+      "op": "sort",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום"
+          }
+        },
+        {
+          "path": "album/extra/אברהם פריד.mp3",
+          "metadata": {}
+        }
+      ],
+      "settings": {
+        "copy_mode": true,
+        "singles_folder": false
+      }
+    },
+    {
+      "id": "scan-1-child-dirs",
+      "op": "sort",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/extra-0/אברהם פריד.mp3",
+          "metadata": {}
+        }
+      ],
+      "settings": {
+        "copy_mode": true,
+        "singles_folder": false
+      }
+    },
+    {
+      "id": "scan-2-child-dirs",
+      "op": "sort",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/extra-0/אברהם פריד.mp3",
+          "metadata": {}
+        },
+        {
+          "path": "album/extra-1/אברהם פריד.mp3",
+          "metadata": {}
+        }
+      ],
+      "settings": {
+        "copy_mode": true,
+        "singles_folder": false
+      }
+    },
+    {
+      "id": "scan-existing-album",
+      "op": "sort",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/cover.jpg"
+        }
+      ],
+      "target_directories": [
+        "אברהם פריד/אלבום"
+      ],
+      "settings": {
+        "copy_mode": true
+      }
+    },
+    {
+      "id": "scan-exist-only-absent",
+      "op": "sort",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/cover.jpg"
+        }
+      ],
+      "target_directories": [],
+      "settings": {
+        "copy_mode": true,
+        "exist_only": true
+      }
+    },
+    {
+      "id": "scan-exist-only-present",
+      "op": "sort",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/cover.jpg"
+        }
+      ],
+      "target_directories": [
+        "אברהם פריד"
+      ],
+      "settings": {
+        "copy_mode": true,
+        "exist_only": true
+      }
+    },
+    {
+      "id": "scan-abc-album",
+      "op": "sort",
+      "files": [
+        {
+          "path": "album/track_a.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_b.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/track_c.mp3",
+          "metadata": {
+            "album": "אלבום",
+            "artist": "אברהם פריד"
+          }
+        },
+        {
+          "path": "album/cover.jpg"
+        }
+      ],
+      "target_directories": [],
+      "settings": {
+        "copy_mode": true,
+        "abc_sort": true
+      }
+    },
+    {
+      "id": "scan-original-filename-collision",
+      "op": "sort",
+      "files": [
+        {
+          "path": "מייל מיוזיק אברהם פריד.mp3",
+          "metadata": {}
+        }
+      ],
+      "target_files": [
+        "אברהם פריד/מייל מיוזיק אברהם פריד.mp3",
+        "אברהם פריד/מייל מיוזיק אברהם פריד_1.mp3"
+      ],
+      "settings": {
+        "copy_mode": true,
+        "singles_folder": false
+      }
+    },
+    {
+      "id": "scan-top-five-stable-ties",
+      "op": "sort",
+      "files": [
+        {
+          "path": "0.mp3",
+          "artists": [
+            "זמר ראשון"
+          ]
+        },
+        {
+          "path": "1.mp3",
+          "artists": [
+            "זמר שני"
+          ]
+        },
+        {
+          "path": "2.mp3",
+          "artists": [
+            "זמר שלישי"
+          ]
+        },
+        {
+          "path": "3.mp3",
+          "artists": [
+            "זמר רביעי"
+          ]
+        },
+        {
+          "path": "4.mp3",
+          "artists": [
+            "זמר חמישי"
+          ]
+        },
+        {
+          "path": "5.mp3",
+          "artists": [
+            "זמר שישי"
+          ]
+        }
+      ],
+      "settings": {
+        "copy_mode": true,
+        "singles_folder": false
+      }
+    },
+    {
+      "id": "fix-fields-recursive",
+      "op": "fix",
+      "files": [
+        {
+          "path": "àìáåí.mp3",
+          "metadata": {
+            "artist": "à",
+            "albumartist": "à",
+            "title": "à",
+            "album": "à",
+            "genre": "à",
+            "tracknumber": "1"
+          }
+        },
+        {
+          "path": "child/אברהם_פריד.mp3",
+          "metadata": {
+            "artist": "à"
+          }
+        },
+        {
+          "path": "unrelated.txt"
+        }
+      ],
+      "settings": {
+        "main_folder_only": false
+      }
+    },
+    {
+      "id": "fix-fields-main-only",
+      "op": "fix",
+      "files": [
+        {
+          "path": "àìáåí.mp3",
+          "metadata": {
+            "artist": "à",
+            "albumartist": "à",
+            "title": "à",
+            "album": "à",
+            "genre": "à",
+            "tracknumber": "1"
+          }
+        },
+        {
+          "path": "child/אברהם_פריד.mp3",
+          "metadata": {
+            "artist": "à"
+          }
+        },
+        {
+          "path": "unrelated.txt"
+        }
+      ],
+      "settings": {
+        "main_folder_only": true
+      }
+    },
+    {
+      "id": "fix-clean-collision",
+      "op": "fix",
+      "files": [
+        {
+          "path": "אברהם_פריד.mp3",
+          "metadata": {}
+        },
+        {
+          "path": "אברהם פריד.mp3",
+          "metadata": {}
+        },
+        {
+          "path": "אברהם פריד_1.mp3",
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "id": "fix-unconditional-save",
+      "op": "fix",
+      "files": [
+        {
+          "path": "normal.mp3",
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "id": "fix-partial-field-error",
+      "op": "fix",
+      "files": [
+        {
+          "path": "normal.mp3",
+          "metadata": {
+            "artist": "à",
+            "albumartist": {
+              "value_error": "ValueError"
+            },
+            "title": "à"
+          }
+        }
+      ]
+    },
+    {
+      "id": "fix-unreadable",
+      "op": "fix",
+      "files": [
+        {
+          "path": "אמן_חדש.mp3",
+          "metadata": {
+            "open_error": "OSError"
+          }
+        }
+      ]
+    },
+    {
+      "id": "fix-recursive-collection-collision",
+      "op": "fix",
+      "files": [
+        {
+          "path": "אברהם_פריד.mp3",
+          "metadata": {}
+        },
+        {
+          "path": "אברהם פריד.mp3",
+          "metadata": {}
+        },
+        {
+          "path": "nested/מוטי_שטיינמץ.mp3",
+          "metadata": {}
+        },
+        {
+          "path": "nested/cover.jpg"
+        },
+        {
+          "path": "empty",
+          "kind": "directory"
+        },
+        {
+          "path": "nested/deeper/note.txt"
+        },
+        {
+          "path": "nested/deeper/track.MP3",
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "id": "historical-duet-skipped-source-loss",
+      "op": "unsafe",
+      "files": [
+        {
+          "path": "fixture.mp3",
+          "artists": [
+            "אברהם פריד",
+            "מוטי שטיינמץ"
+          ]
+        }
+      ],
+      "settings": {
+        "duet_mode": true,
+        "exist_only": true,
+        "singles_folder": false
+      },
+      "historical_only": true,
+      "future_acceptance": false
+    },
+    {
+      "id": "historical-failed-move-false-success",
+      "op": "unsafe",
+      "files": [
+        {
+          "path": "fixture.mp3",
+          "artists": [
+            "אברהם פריד"
+          ]
+        }
+      ],
+      "settings": {
+        "singles_folder": false
+      },
+      "inject_move_failure": true,
+      "historical_only": true,
+      "future_acceptance": false
+    }
+  ]
+}

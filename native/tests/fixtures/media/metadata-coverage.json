@@ -1,0 +1,757 @@
+{
+  "scope": "Linux x86_64 read-only test bridge: exact frozen fixture-class parity and existing single-song route parity. No arbitrary-library or Windows/Android acceptance; no shipping format enabled.",
+  "suffixes": [
+    {
+      "suffix": ".m4a",
+      "fixture_count": 6,
+      "actual_probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "aac"
+          },
+          {
+            "codec_name": "png"
+          }
+        ],
+        "format": {
+          "format_name": "mov,mp4,m4a,3gp,3g2,mj2"
+        }
+      },
+      "reference_tagged_open": {
+        "ok": true,
+        "type": "Mp4File"
+      },
+      "native_parity": "PASS_FROZEN_FIXTURES_ONLY",
+      "enable_native_compatibility": false,
+      "legacy_unsupported_open": false,
+      "limitations": [
+        "malformed track label does not prove malformed tuple atom"
+      ],
+      "shipping_blocker": "Platform/release and unproven representation gates remain open; this is not arbitrary-file compatibility."
+    },
+    {
+      "suffix": ".wma",
+      "fixture_count": 4,
+      "actual_probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "wmav2"
+          }
+        ],
+        "format": {
+          "format_name": "asf"
+        }
+      },
+      "reference_tagged_open": {
+        "ok": false,
+        "error": {
+          "type": "NotImplementedError",
+          "message": "ASF format not implemented"
+        }
+      },
+      "native_parity": "PASS_FROZEN_FIXTURES_ONLY",
+      "enable_native_compatibility": false,
+      "legacy_unsupported_open": true,
+      "limitations": [
+        "reference open intentionally blocked"
+      ],
+      "shipping_blocker": "Platform/release and unproven representation gates remain open; this is not arbitrary-file compatibility."
+    },
+    {
+      "suffix": ".wav",
+      "fixture_count": 4,
+      "actual_probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "pcm_s16le"
+          },
+          {
+            "codec_name": "png"
+          }
+        ],
+        "format": {
+          "format_name": "wav"
+        }
+      },
+      "reference_tagged_open": {
+        "ok": true,
+        "type": "WaveId3File"
+      },
+      "native_parity": "PASS_FROZEN_FIXTURES_ONLY",
+      "enable_native_compatibility": false,
+      "legacy_unsupported_open": false,
+      "limitations": [],
+      "shipping_blocker": "Platform/release and unproven representation gates remain open; this is not arbitrary-file compatibility."
+    },
+    {
+      "suffix": ".aiff",
+      "fixture_count": 4,
+      "actual_probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "pcm_s16be"
+          },
+          {
+            "codec_name": "png"
+          }
+        ],
+        "format": {
+          "format_name": "aiff"
+        }
+      },
+      "reference_tagged_open": {
+        "ok": true,
+        "type": "AiffFile"
+      },
+      "native_parity": "PASS_FROZEN_FIXTURES_ONLY",
+      "enable_native_compatibility": false,
+      "legacy_unsupported_open": false,
+      "limitations": [],
+      "shipping_blocker": "Platform/release and unproven representation gates remain open; this is not arbitrary-file compatibility."
+    },
+    {
+      "suffix": ".flac",
+      "fixture_count": 8,
+      "actual_probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "flac"
+          }
+        ],
+        "format": {
+          "format_name": "flac"
+        }
+      },
+      "reference_tagged_open": {
+        "ok": true,
+        "type": "FlacFile"
+      },
+      "native_parity": "PASS_FROZEN_FIXTURES_ONLY",
+      "enable_native_compatibility": false,
+      "legacy_unsupported_open": false,
+      "limitations": [],
+      "shipping_blocker": "Platform/release and unproven representation gates remain open; this is not arbitrary-file compatibility."
+    },
+    {
+      "suffix": ".aac",
+      "fixture_count": 4,
+      "actual_probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "aac"
+          }
+        ],
+        "format": {
+          "format_name": "aac"
+        }
+      },
+      "reference_tagged_open": {
+        "ok": false,
+        "error": {
+          "type": "AACError",
+          "message": "doesn't support tags"
+        }
+      },
+      "native_parity": "PASS_FROZEN_FIXTURES_ONLY",
+      "enable_native_compatibility": false,
+      "legacy_unsupported_open": true,
+      "limitations": [
+        "tagged/malformed variants could not be created; kept as untagged ADTS"
+      ],
+      "shipping_blocker": "Platform/release and unproven representation gates remain open; this is not arbitrary-file compatibility."
+    },
+    {
+      "suffix": ".alac",
+      "fixture_count": 4,
+      "actual_probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "alac"
+          },
+          {
+            "codec_name": "png"
+          }
+        ],
+        "format": {
+          "format_name": "mov,mp4,m4a,3gp,3g2,mj2"
+        }
+      },
+      "reference_tagged_open": {
+        "ok": true,
+        "type": "Mp4File"
+      },
+      "native_parity": "PASS_FROZEN_FIXTURES_ONLY",
+      "enable_native_compatibility": false,
+      "legacy_unsupported_open": false,
+      "limitations": [
+        "malformed track label does not prove malformed tuple atom"
+      ],
+      "shipping_blocker": "Platform/release and unproven representation gates remain open; this is not arbitrary-file compatibility."
+    },
+    {
+      "suffix": ".wv",
+      "fixture_count": 4,
+      "actual_probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "wavpack"
+          }
+        ],
+        "format": {
+          "format_name": "wv"
+        }
+      },
+      "reference_tagged_open": {
+        "ok": true,
+        "type": "WavePackFile"
+      },
+      "native_parity": "PASS_FROZEN_FIXTURES_ONLY",
+      "enable_native_compatibility": false,
+      "legacy_unsupported_open": false,
+      "limitations": [],
+      "shipping_blocker": "Platform/release and unproven representation gates remain open; this is not arbitrary-file compatibility."
+    },
+    {
+      "suffix": ".ogg",
+      "fixture_count": 4,
+      "actual_probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "vorbis"
+          }
+        ],
+        "format": {
+          "format_name": "ogg"
+        }
+      },
+      "reference_tagged_open": {
+        "ok": true,
+        "type": "OggVorbisFile"
+      },
+      "native_parity": "PASS_FROZEN_FIXTURES_ONLY",
+      "enable_native_compatibility": false,
+      "legacy_unsupported_open": false,
+      "limitations": [],
+      "shipping_blocker": "Platform/release and unproven representation gates remain open; this is not arbitrary-file compatibility."
+    },
+    {
+      "suffix": ".dsf",
+      "fixture_count": 4,
+      "actual_probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "dsd_lsbf_planar"
+          },
+          {
+            "codec_name": "png"
+          }
+        ],
+        "format": {
+          "format_name": "dsf"
+        }
+      },
+      "reference_tagged_open": {
+        "ok": true,
+        "type": "DsfFile"
+      },
+      "native_parity": "PASS_FROZEN_FIXTURES_ONLY",
+      "enable_native_compatibility": false,
+      "legacy_unsupported_open": false,
+      "limitations": [],
+      "shipping_blocker": "Platform/release and unproven representation gates remain open; this is not arbitrary-file compatibility."
+    },
+    {
+      "suffix": ".opus",
+      "fixture_count": 4,
+      "actual_probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "opus"
+          }
+        ],
+        "format": {
+          "format_name": "ogg"
+        }
+      },
+      "reference_tagged_open": {
+        "ok": true,
+        "type": "OggOpusFile"
+      },
+      "native_parity": "PASS_FROZEN_FIXTURES_ONLY",
+      "enable_native_compatibility": false,
+      "legacy_unsupported_open": false,
+      "limitations": [],
+      "shipping_blocker": "Platform/release and unproven representation gates remain open; this is not arbitrary-file compatibility."
+    },
+    {
+      "suffix": ".mp3",
+      "fixture_count": 10,
+      "actual_probe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "mp3"
+          },
+          {
+            "codec_name": "png"
+          }
+        ],
+        "format": {
+          "format_name": "mp3"
+        }
+      },
+      "reference_tagged_open": {
+        "ok": true,
+        "type": "Mp3File"
+      },
+      "native_parity": "PASS_FROZEN_FIXTURES_ONLY",
+      "enable_native_compatibility": false,
+      "legacy_unsupported_open": false,
+      "limitations": [],
+      "shipping_blocker": "Platform/release and unproven representation gates remain open; this is not arbitrary-file compatibility."
+    }
+  ],
+  "counts": {
+    "files": 60,
+    "reference_open_success": 42,
+    "reference_open_failure": 18,
+    "field_requests": 252,
+    "get_failures": 12,
+    "single_song_routes": 120
+  },
+  "platforms": {
+    "linux_x86_64": "PASS frozen corpus and existing single-song routes; test-only bridge",
+    "windows": "PREPARED_NOT_EXECUTED: native MSVC/static-zlib/CRT recipe and real Unicode-path test; actual CI runtime required. Cross-host builds fail UnsupportedPlatform.",
+    "android": "BLOCKED: real FD/seek bridge build and runtime not integrated; MetadataError::UnsupportedPlatform",
+    "streaming": "SeekRequired; caller must explicitly supply an approved seekable/spooled ReadInput"
+  },
+  "guarded_unsupported_classes": [
+    "ID3v2.2",
+    "ID3 unsynchronization, extended headers/footer",
+    "compressed/encrypted/grouped ID3 frames, including ignored fields",
+    "duplicate relevant ID3 frame IDs",
+    "ID3v1-only MPEG",
+    "malformed ID3 encodings",
+    "binary APE values for requested fields",
+    "Ogg codecs other than identified Vorbis/Opus",
+    "unknown headers; no suffix-based fallback"
+  ],
+  "unproven_classes": [
+    "Malformed MP4 atoms/track representation variants beyond frozen tuple corpus",
+    "compressed ID3 and unsynchronization",
+    "full ID3 genre-conversion coverage",
+    "leading-ID3 FLAC and nonstandard container layouts",
+    "arbitrary malformed Xiph/APE/MP4 UTF text",
+    "complete album and job-v2 route/error-boundary integration (Task 4)",
+    "large-file/resource and live-provider mutation acceptance",
+    "native Windows Unicode paths",
+    "real Android FD ownership and seek behavior"
+  ],
+  "exact_fixture_results": [
+    {
+      "file": "bad_header.aac",
+      "sha256": "1e58ee81ffe7bf105531c1931a1194deede5c2a5001f128e7e54107747f4e95d",
+      "reference_open": false,
+      "native_result": "OPEN_FAILURE_PRESERVED"
+    },
+    {
+      "file": "bad_header.aiff",
+      "sha256": "1e58ee81ffe7bf105531c1931a1194deede5c2a5001f128e7e54107747f4e95d",
+      "reference_open": false,
+      "native_result": "OPEN_FAILURE_PRESERVED"
+    },
+    {
+      "file": "bad_header.alac",
+      "sha256": "1e58ee81ffe7bf105531c1931a1194deede5c2a5001f128e7e54107747f4e95d",
+      "reference_open": false,
+      "native_result": "OPEN_FAILURE_PRESERVED"
+    },
+    {
+      "file": "bad_header.dsf",
+      "sha256": "1e58ee81ffe7bf105531c1931a1194deede5c2a5001f128e7e54107747f4e95d",
+      "reference_open": false,
+      "native_result": "OPEN_FAILURE_PRESERVED"
+    },
+    {
+      "file": "bad_header.flac",
+      "sha256": "1e58ee81ffe7bf105531c1931a1194deede5c2a5001f128e7e54107747f4e95d",
+      "reference_open": false,
+      "native_result": "OPEN_FAILURE_PRESERVED"
+    },
+    {
+      "file": "bad_header.m4a",
+      "sha256": "1e58ee81ffe7bf105531c1931a1194deede5c2a5001f128e7e54107747f4e95d",
+      "reference_open": false,
+      "native_result": "OPEN_FAILURE_PRESERVED"
+    },
+    {
+      "file": "bad_header.mp3",
+      "sha256": "1e58ee81ffe7bf105531c1931a1194deede5c2a5001f128e7e54107747f4e95d",
+      "reference_open": false,
+      "native_result": "OPEN_FAILURE_PRESERVED"
+    },
+    {
+      "file": "bad_header.ogg",
+      "sha256": "1e58ee81ffe7bf105531c1931a1194deede5c2a5001f128e7e54107747f4e95d",
+      "reference_open": false,
+      "native_result": "OPEN_FAILURE_PRESERVED"
+    },
+    {
+      "file": "bad_header.opus",
+      "sha256": "1e58ee81ffe7bf105531c1931a1194deede5c2a5001f128e7e54107747f4e95d",
+      "reference_open": false,
+      "native_result": "OPEN_FAILURE_PRESERVED"
+    },
+    {
+      "file": "bad_header.wav",
+      "sha256": "1e58ee81ffe7bf105531c1931a1194deede5c2a5001f128e7e54107747f4e95d",
+      "reference_open": false,
+      "native_result": "OPEN_FAILURE_PRESERVED"
+    },
+    {
+      "file": "bad_header.wma",
+      "sha256": "1e58ee81ffe7bf105531c1931a1194deede5c2a5001f128e7e54107747f4e95d",
+      "reference_open": false,
+      "native_result": "OPEN_FAILURE_PRESERVED"
+    },
+    {
+      "file": "bad_header.wv",
+      "sha256": "1e58ee81ffe7bf105531c1931a1194deede5c2a5001f128e7e54107747f4e95d",
+      "reference_open": false,
+      "native_result": "OPEN_FAILURE_PRESERVED"
+    },
+    {
+      "file": "blank.aac",
+      "sha256": "de2e15dc4a4abe06502244f2fc2ae9ab3f17aacd75f4ab0c1bb1b790889e055d",
+      "reference_open": false,
+      "native_result": "OPEN_FAILURE_PRESERVED"
+    },
+    {
+      "file": "blank.aiff",
+      "sha256": "41c324384b3024089c97f355ae1b3f5d3f9dcbc3d97a4109d23e3d960eee84a7",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "blank.alac",
+      "sha256": "433e927dc6f575d7f52f7f82edd1e5b80f99c90d2714bfc7e3d4ee3371f994b1",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "blank.dsf",
+      "sha256": "c1916b859fa8f74af8293177ed7d4ed1151f93b45e78e973ed0d95b259667a70",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "blank.flac",
+      "sha256": "626b7009add72ab6ab011656b07b8f7cf32a5e0ee24658ccd7caa8875b6b7332",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "blank.m4a",
+      "sha256": "d0b6dd28d1b6027150c188cfadd4a9d2732ef7f127507b35d85be12cb8b429bc",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "blank.mp3",
+      "sha256": "22243ac666aded18eba7be81321eb883bf63c615fa8fbe4690cf646b5c4b51e5",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "blank.ogg",
+      "sha256": "178172d2f6c1ba8aeff6ec6aa8c7cbe28e4b2bfc62644d7c53831541e3417214",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "blank.opus",
+      "sha256": "f35a572151d51d49e08563004c1f79887bba6eba97e479d351b31f6fa1b12dc7",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "blank.wav",
+      "sha256": "e40fde31d225d47e2aeb94dcadafd712ed6e81916904b30e51f795788f98805f",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "blank.wma",
+      "sha256": "c3ddbb61153f5244c4d768afe80fcee6e79e3edbb0ef16e5c6d6261a6fb75e46",
+      "reference_open": false,
+      "native_result": "OPEN_FAILURE_PRESERVED"
+    },
+    {
+      "file": "blank.wv",
+      "sha256": "8419d6791599b819bedd067c4f6637743d52ab5b30ecdc16de4a92573989f37d",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "id3v23_utf16.mp3",
+      "sha256": "0f7fbf833cd4ec87a3e24fd35b8c1c23981adba61b25cc2f29ff5368bc32463e",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "id3v24_empty_values.mp3",
+      "sha256": "a86600693cb52f33e5215690695db65dba692346565445a6b9804545f10cf853",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "id3v24_latin1.mp3",
+      "sha256": "0c2d3b38f2de6bec5afaa2f2d7ed96fb479a4224e2a504b1cddc847f0f20fab9",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "id3v24_mixed_empty.mp3",
+      "sha256": "fff2c34d458b839f6f3387e5d5178f3b4e476030c418cd5ab34019a769c2d8d8",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "id3v24_multi_track.mp3",
+      "sha256": "6cdd70826f272a136a9d62f896f8481268f5dfd373c2ca92f799760e034b7f3d",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "id3v24_utf16.mp3",
+      "sha256": "4a1bad87e8e65f2e978462a2c4b77fd4517f3e1df74d476cb8b429d3e8f3fb9e",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "malformed_track.aac",
+      "sha256": "de2e15dc4a4abe06502244f2fc2ae9ab3f17aacd75f4ab0c1bb1b790889e055d",
+      "reference_open": false,
+      "native_result": "OPEN_FAILURE_PRESERVED"
+    },
+    {
+      "file": "malformed_track.aiff",
+      "sha256": "3e32f8177ec634406311e76fbe9e61f8498654d6aa84e94077c0ad2926e09853",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "malformed_track.alac",
+      "sha256": "c6f6d9f3c8b673304bf1bfac8d0e1a08a59992ff984df22645be98a2fabb8d46",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "malformed_track.dsf",
+      "sha256": "5934c109b9e140ed8e72928a0ff09a6fe7a025c5bcbdec4835d7abba2cd76bd6",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "malformed_track.flac",
+      "sha256": "cf90d1a5f0e5ccd398d668fde2fc5f7e1cdf0b158a78d39b8f0744e444f9f4c6",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "malformed_track.m4a",
+      "sha256": "90606d164d86c70a6c5a7cbc0dd25ad28c2a6f73bedd2053be24a77c63708b37",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "malformed_track.mp3",
+      "sha256": "eb330581ef77e68c1cf057978ceb029da211a516f92670677854d7ba6d15c92f",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "malformed_track.ogg",
+      "sha256": "d7a6f00bfff408b65b31aac83bdd5d42a790e353c17fda3c770cd3888d0d8f9c",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "malformed_track.opus",
+      "sha256": "0c0f71f28957f1149f0540224b287df8bc7567673e7142e54426036bdb9f8034",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "malformed_track.wav",
+      "sha256": "a56ea9d551572a7c43805de9b2866e001e309fbda7e8f4e4731d0dad05c74f8e",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "malformed_track.wma",
+      "sha256": "464a71968d29b0e70bf418c308f7e6045cb6711121fe60a07ed33cfff776fd6f",
+      "reference_open": false,
+      "native_result": "OPEN_FAILURE_PRESERVED"
+    },
+    {
+      "file": "malformed_track.wv",
+      "sha256": "9b6d89c38f40ffe0fb8e941d887138b833efde33cbb2c4ae9746da362adebc02",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "mp4_multi_tuple.m4a",
+      "sha256": "8878303c786ec6d8868c2d3f836d2c1c4e751dc5ee363862c0f80adbad0f915a",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "mp4_zero_tuple.m4a",
+      "sha256": "835e97fb3550c95394bd29368fe3967e39b6427f5194d1fdb0f76842b0d4b86c",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "tagged.aac",
+      "sha256": "de2e15dc4a4abe06502244f2fc2ae9ab3f17aacd75f4ab0c1bb1b790889e055d",
+      "reference_open": false,
+      "native_result": "OPEN_FAILURE_PRESERVED"
+    },
+    {
+      "file": "tagged.aiff",
+      "sha256": "f75e12075e10cc20e30ec77c92c47998bd62940ced6d7ac4f38b84d83626f42f",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "tagged.alac",
+      "sha256": "c6f6d9f3c8b673304bf1bfac8d0e1a08a59992ff984df22645be98a2fabb8d46",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "tagged.dsf",
+      "sha256": "5034f6e109d46d183085a096486da9b0551bfefdddd0ee006b88e64d9e1bcb72",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "tagged.flac",
+      "sha256": "8c2ea7b8e1e01460587ab697a01f9ca92b1da725b06fe6f3413c87b70dd254ef",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "tagged.m4a",
+      "sha256": "90606d164d86c70a6c5a7cbc0dd25ad28c2a6f73bedd2053be24a77c63708b37",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "tagged.mp3",
+      "sha256": "e783d83d4cd4714e3ccfa7891233c9e7a8a164a9d529979fc1ad61c633cc4921",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "tagged.ogg",
+      "sha256": "86b83b96919571c3144d444ed057cd081fd01c3e22aec763694c1cb548e83746",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "tagged.opus",
+      "sha256": "bacd7c911d076563354dc2f3232ed15b0e4800c393439a81546318f42c31a1a9",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "tagged.wav",
+      "sha256": "ce64b3289b5490e303abca8395effd343fb514eb2b06d35f1997f3b8ce4bbc8a",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "tagged.wma",
+      "sha256": "ba8069bdd8b4b6999afd727efc8419b516fb714fb3ba09b47b8d0cefb73e92bd",
+      "reference_open": false,
+      "native_result": "OPEN_FAILURE_PRESERVED"
+    },
+    {
+      "file": "tagged.wv",
+      "sha256": "dd5f9ed215bf1f0200d19ba8488dcf00e47bc27a7967cc3d31fb7c25c03f1205",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "xiph_multi_track.flac",
+      "sha256": "219dfe24dbf2d7d2e0569ed9cced6283e85df67a4cc53f24143e36ca0e0f675c",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "xiph_oversize_track.flac",
+      "sha256": "aab6108e70b9444e160f0c88e46c5e72293c8590f93455e81cce0e9d9a19ed41",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "xiph_unicode_track.flac",
+      "sha256": "f6608dccf294ea0a567b2f69caa57221835e708db8875931202a0c254bfd8576",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    },
+    {
+      "file": "xiph_zero_track.flac",
+      "sha256": "39ae4b78d861210e76a55913b542e8ce0c7bb4cabc1d62771dfae44b6b4f2b38",
+      "reference_open": true,
+      "native_result": "MATCH_FIELDS_AND_STAGES"
+    }
+  ],
+  "validation": {
+    "rust_workspace": "Historical round-1: 180 tests PASS. Round-2 scoped rerun: 16 boundary tests + 3 reference/provenance tests PASS; existing 20,000-input decoder loop skipped; no full-workspace rerun.",
+    "clippy": "PASS --workspace --all-targets -D warnings",
+    "python_reference": "81 PASS on pinned runtime/dependencies",
+    "asan_ubsan": "Historical pre-round-1 result: PASS 60 fixtures/truncations/3000 buffers. Not rerun for this fix while ML work is active; do not treat as sanitizer coverage of changed preflight.",
+    "leak_sanitizer": "BLOCKED: sandbox ptrace prevents LeakSanitizer execution; no leak-free claim",
+    "windows_cross_source_check": "PASS Rust GNU-target Clippy; native C++ bridge deliberately not linked during cross-check, not MSVC or runtime acceptance",
+    "autocrlf_checkout": "PASS all 772 staged fixture/vendor files byte-identical with core.autocrlf=true command-only override"
+  },
+  "allocation_guarantees": {
+    "id3": "Pre-constructor raw-byte preflight for MPEG/WAV/AIFF/DSF: ID3 bytes <=16MiB, <=4096 frames and <=4096 aggregate text components including ignored fields and conservative TCON expansion charges. Unsupported flags/structured frame classes blocked. RIFF/AIFF chunks and WAV INFO fields bounded separately; LIST/BEXT/iXML bytes capped. No universal process-heap bound claimed. Round-2: v2.3 IPLS is counted as TIPL; NUL/space-padded three-character v2.3 IDs rejected. MPEG Fast discovery permits native ID3 parsing only at offset zero.",
+    "other_families": "Xiph/APE/MP4 component caps are post-query only; their intermediate native allocations remain an explicit review/release gate. Supported frozen corpus behavior is preserved.",
+    "new_conservative_gates": [
+      "ID3 structured frame classes CHAP/CTOC/SYLT/ETCO/RVA2",
+      "duplicate RIFF/AIFF ID3 chunks",
+      "MPEG APE trailers",
+      "over-budget RIFF/AIFF chunks or WAV INFO field counts",
+      "ID3v2.3 three-character compatibility IDs padded with NUL or space",
+      "MPEG without offset-zero ID3 whose initial header uses reserved fields or free-format bitrate zero"
+    ],
+    "preflight_replay": "Validated metadata windows replayed into native parser; cap 32MiB + 64KiB and 8196 regions. Prevents changed providers bypassing preflight, without claiming whole-recording immutability."
+  }
+}
